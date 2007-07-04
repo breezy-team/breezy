@@ -29,7 +29,7 @@ class TestAdd(ExternalBase):
         self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
-        out = self.run_bzr('add', retcode=0)[0]
+        out = self.run_bzr('add')[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
@@ -40,7 +40,7 @@ class TestAdd(ExternalBase):
                            'added top.txt',
                            'ignored 1 file(s).'],
                           results)
-        out = self.run_bzr('add -v', retcode=0)[0]
+        out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
@@ -51,7 +51,7 @@ class TestAdd(ExternalBase):
         """add -q does not print the names of added files."""
         self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr('add -q', retcode=0)[0]
+        out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals([''], results)

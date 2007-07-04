@@ -433,7 +433,7 @@ class TestBzrSubprocess(TestCaseWithTransport):
         """
         process = self.start_bzr_subprocess(['--versionn'])
         self.assertRaises(self.failureException, self.finish_bzr_subprocess,
-                          process, retcode=0)
+                          process)
         
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
@@ -461,7 +461,7 @@ class TestBzrSubprocess(TestCaseWithTransport):
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=0)
+        out, err = self.run_bzr_error(['^$'], ['rocks'])
         self.assertEqual(out, 'It sure does!\n')
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],

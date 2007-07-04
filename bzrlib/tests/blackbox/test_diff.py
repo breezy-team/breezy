@@ -179,7 +179,7 @@ class TestDiff(DiffBase):
                       'update file once more', 'branch2'])
 
         out, err = self.run_bzr('diff -r revno:1:branch2..revno:1:branch1',
-                                retcode=0)
+                                )
         self.assertEquals('', err)
         self.assertEquals('', out)
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1:branch1',
