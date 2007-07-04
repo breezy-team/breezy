@@ -570,25 +570,6 @@ class LockDir(object):
             raise LockContention(self)
         self._fake_read_lock = True
 
-    def wait(self, timeout=20, poll=0.5):
-        """Wait a certain period for a lock to be released."""
-        # XXX: the transport interface doesn't let us guard 
-        # against operations there taking a long time.
-        #
-        # XXX: Is this really needed?  Do people want to wait for the lock but
-        # not acquire it?  As of bzr 0.17, this seems to only be called from
-        # the test suite.
-        deadline = time.time() + timeout
-        while True:
-            if self.peek():
-                return
-            if time.time() + poll < deadline:
-                self._trace("waiting %ss", poll)
-                time.sleep(poll)
-            else:
-                self._trace("timeout after waiting %ss", timeout)
-                raise LockContention(self)
-
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
         lock_url = self.transport.abspath(self.path)

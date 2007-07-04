@@ -268,33 +268,6 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEndsWith(args[3], ' ago')
         self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
-    def test_33_wait(self):
-        """Succeed when waiting on a lock that gets released
-
-        The difference from test_32_lock_wait_succeed is that the second 
-        caller does not actually acquire the lock, but just waits for it
-        to be released.  This is done over a readonly transport.
-        """
-        t = self.get_transport()
-        lf1 = LockDir(t, 'test_lock')
-        lf1.create()
-        lf1.attempt_lock()
-
-        def wait_and_unlock():
-            time.sleep(0.1)
-            lf1.unlock()
-        unlocker = Thread(target=wait_and_unlock)
-        unlocker.start()
-        try:
-            lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
-            before = time.time()
-            # wait but don't lock
-            lf2.wait(timeout=0.4, poll=0.1)
-            after = time.time()
-            self.assertTrue(after - before <= 1.0)
-        finally:
-            unlocker.join()
-
     def test_34_lock_write_waits(self):
         """LockDir.lock_write() will wait for the lock.""" 
         # the test suite sets the default to 0 to make deadlocks fail fast.

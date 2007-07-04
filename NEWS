@@ -119,6 +119,8 @@ IN DEVELOPMENT
     * ``bzrlib.add.FastPath`` is now private and moved to 
       ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
+    * ``LockDir.wait`` removed.  (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
