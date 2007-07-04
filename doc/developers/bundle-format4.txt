@@ -113,7 +113,6 @@ Bazaar revision bundles  begin with a format marker that reads
 
 Putting the format marker in plaintext ensures that old clients will give good
 diagnostics, but renders the file unreadable by standard bzip2 utilities.
-``bzr bundle-info -v`` can be used to dump the unencoded output.
 
 Serialization
 ~~~~~~~~~~~~~
@@ -189,8 +188,6 @@ Its metadata contains:
     and revision data.  May be ``xml5``, ``xml6`` or ``xml7``.
 :supports_rich_root: 1 if the source repository supports rich roots,
     0 otherwise.
-:supports_tree_references: 1 if the source repository supports subtree
-    references, 0 otherwise.
 
 
 Implementation notes
@@ -230,15 +227,14 @@ Model differences
 ~~~~~~~~~~~~~~~~~
 
 Note that there may be model differences requiring additional changes.  These
-differences are described by the "supports_rich_root" and
-"supports_tree_references" values in the info record.
+differences are described by the "supports_rich_root" value in the info record.
 
 A subset of xml6 and xml7 records are compatible with xml5 (i.e. those that
 were converted from xml5 originally).
 
-When installing from a supports_tree_references bundle to a repository that
-does not support tree references, clients should halt if they encounter a
-record containing a tree reference.
+When installing from a bundle whose serializer supports tree references to a
+repository that does not support tree references, clients should halt if they
+encounter a record containing a tree reference.
 
 When installing from a supports_rich_root bundle to a repository that does not
 support rich roots, clients should halt if they encounter an inventory record
