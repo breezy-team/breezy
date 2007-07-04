@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.commands import Command, Option, display_command, register_command
-from bzrlib.errors import BzrCommandError, UnrelatedBranches, ConflictsInTree
+from bzrlib.errors import BzrCommandError, UnrelatedBranches, ConflictsInTree, NoSuchFile
+from bzrlib.trace import info
 
 class cmd_rebase(Command):
     """Re-base a branch.
@@ -96,7 +97,10 @@ class cmd_rebase_abort(Command):
         wt.lock_write()
         try:
             # Read plan file and set last revision
-            last_rev_info = read_rebase_plan(wt)[0]
+            try:
+                last_rev_info = read_rebase_plan(wt)[0]
+            except NoSuchFile:
+                raise BzrCommandError("No rebase to abort")
             wt.branch.set_last_revision_info(last_rev_info[0], last_rev_info[1])
             wt.set_last_revision(last_rev_info[1])
             wt.revert([], backups=False)
@@ -112,7 +116,7 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, rebase, remove_rebase_plan
+        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, rebase, remove_rebase_plan, commit_rebase, read_active_rebase_revid
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
         wt.lock_write()
@@ -121,8 +125,14 @@ class cmd_rebase_continue(Command):
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError("There are still conflicts present")
             # Read plan file
-            replace_map = read_rebase_plan(wt)[1]
-
+            try:
+                replace_map = read_rebase_plan(wt)[1]
+            except NoSuchFile:
+                raise BzrCommandError("No rebase to continue")
+            oldrevid = read_active_rebase_revid(wt)
+            if oldrevid is not None:
+                oldrev = wt.branch.repository.get_revision(oldrevid)
+                commit_rebase(wt, oldrev, replace_map[oldrevid][0])
             try:
                 # Start executing plan from current Branch.last_revision()
                 rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
@@ -134,9 +144,33 @@ class cmd_rebase_continue(Command):
             wt.unlock()
 
 
+class cmd_rebase_todo(Command):
+    """Print list of revisions that still need to be replayed as part of the current rebase operation.
+
+    """
+    
+    def run(self):
+        from rebase import read_rebase_plan, rebase_todo, read_active_rebase_revid
+        from bzrlib.workingtree import WorkingTree
+        wt = WorkingTree.open('.')
+        wt.lock_read()
+        try:
+            try:
+                replace_map = read_rebase_plan(wt)[1]
+            except NoSuchFile:
+                raise BzrCommandError("No rebase to view")
+            currentrevid = read_active_rebase_revid(wt)
+            if currentrevid is not None:
+                info("Currently replaying: %s" % currentrevid)
+            for revid in rebase_todo(wt.branch.repository, replace_map):
+                info("%s -> %s" % (revid, replace_map[revid][0]))
+        finally:
+            wt.unlock()
+
 register_command(cmd_rebase)
 register_command(cmd_rebase_abort)
 register_command(cmd_rebase_continue)
+register_command(cmd_rebase_todo)
 
 def test_suite():
     from unittest import TestSuite

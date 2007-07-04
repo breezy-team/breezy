@@ -22,7 +22,10 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     replay_snapshot, generate_simple_plan,
                     generate_transpose_plan, rebase_plan_exists,
                     REBASE_PLAN_FILENAME, write_rebase_plan,
-                    read_rebase_plan, remove_rebase_plan) 
+                    REBASE_CURRENT_REVID_FILENAME,
+                    read_rebase_plan, remove_rebase_plan, 
+                    read_active_rebase_revid, 
+                    write_active_rebase_revid)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -204,4 +207,29 @@ oldrev newrev newparent1 newparent2
 """)
         self.assertEquals(((1, "bla"), {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
                 read_rebase_plan(wt))
+
+class CurrentRevidFileTests(TestCaseWithTransport):
+    def test_read_nonexistant(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertIs(None, read_active_rebase_revid(wt))
+
+    def test_read_null(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, NULL_REVISION)
+        self.assertIs(None, read_active_rebase_revid(wt))
+
+    def test_read(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, "bla")
+        self.assertEquals("bla", read_active_rebase_revid(wt))
+
+    def test_write(self):
+        wt = self.make_branch_and_tree('.')
+        write_active_rebase_revid(wt, "bloe")
+        self.assertEquals("bloe", read_active_rebase_revid(wt))
+
+    def test_write_null(self):
+        wt = self.make_branch_and_tree('.')
+        write_active_rebase_revid(wt, None)
+        self.assertIs(None, read_active_rebase_revid(wt))
 
