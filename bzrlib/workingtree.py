@@ -1970,7 +1970,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self):
+    def update(self, change_reporter=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2006,12 +2006,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 old_tip = self.branch.update()
             else:
                 old_tip = None
-            return self._update_tree(old_tip)
+            return self._update_tree(old_tip, change_reporter)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None):
+    def _update_tree(self, old_tip=None, change_reporter=None):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2045,7 +2045,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                       self.branch,
                                       to_tree,
                                       basis,
-                                      this_tree=self)
+                                      this_tree=self,
+                                      change_reporter=change_reporter)
             finally:
                 basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
@@ -2093,7 +2094,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   self.branch,
                                   other_tree,
                                   base_tree,
-                                  this_tree=self)
+                                  this_tree=self,
+                                  change_reporter=change_reporter)
         return result
 
     def _write_hashcache_if_dirty(self):
