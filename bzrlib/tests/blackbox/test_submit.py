@@ -112,3 +112,40 @@ class TestSubmit(tests.TestCaseWithTransport):
         bar.commit('rev b')
         os.chdir('foo')
         self.run_bzr('submit ../bar')
+
+    def submit_directive(self, args):
+        sio = StringIO(self.run_bzr(['submit'] + args)[0])
+        return merge_directive.MergeDirective.from_lines(sio.readlines())
+
+    def test_content_options(self):
+        """--no-patch and --no-bundle should work and be independant"""
+        self.make_trees()
+        os.chdir('branch')
+        md = self.submit_directive([])
+        self.assertIsNot(None, md.bundle)
+        self.assertIsNot(None, md.patch)
+        md = self.submit_directive(['--no-patch'])
+        self.assertIsNot(None, md.bundle)
+        self.assertIs(None, md.patch)
+        md = self.submit_directive(['--no-bundle', '.', '.'])
+        self.assertIs(None, md.bundle)
+        self.assertIsNot(None, md.patch)
+        md = self.submit_directive(['--no-bundle', '--no-patch', '.', '.'])
+        self.assertIs(None, md.bundle)
+        self.assertIs(None, md.patch)
+
+    def test_from_option(self):
+        self.make_trees()
+        self.run_bzr('submit', retcode=3)
+        md = self.submit_directive(['--from', 'branch'])
+        self.assertEqual('revision3', md.revision_id)
+        md = self.submit_directive(['-f', 'branch'])
+        self.assertEqual('revision3', md.revision_id)
+
+    def test_output_option(self):
+        self.make_trees()
+        stdout = self.run_bzr('submit -f branch --output file1')[0]
+        self.assertEqual('', stdout)
+        md_file = open('file1', 'rb')
+        self.addCleanup(md_file.close)
+        self.assertContainsRe(md_file.read(), 'revision3')

@@ -3536,6 +3536,8 @@ class cmd_merge_directive(Command):
 
     hidden = True
 
+    _see_also = ['submit']
+
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
             'The type of patch to include in the directive',
@@ -3638,68 +3640,89 @@ class cmd_submit(Command):
 
     aliases = ['bundle', 'bundle-revisions']
 
+    _see_also = ['merge']
+
     takes_args = ['submit_branch?', 'public_branch?']
-    takes_options = [Option('no-bundle',
-                     help='Do not include a bundle in the merge directive'),
-                     Option('no-patch',
-                     help='Do not include a preview patch in the merge'
-                     ' directive'),
-                     Option('remember',
-                            help='Remember submit and public branch'),
-                     'revision']
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive'),
+        Option('remember',
+               help='Remember submit and public branch'),
+        Option('from',
+               help='branch to generate the submission from, '
+               'rather than the one containing the working directory',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o', help='Write directive to this file',
+               type=unicode),
+        'revision',
+        ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
-            no_patch=False, revision=None, remember=False):
+            no_patch=False, revision=None, remember=False, output=None,
+            **kwargs):
         from bzrlib.revision import ensure_null, NULL_REVISION
-        branch = Branch.open_containing('.')[0]
-        if remember and submit_branch is None:
-            raise errors.BzrCommandError(
-                '--remember requires a branch to be specified.')
-        stored_submit_branch = branch.get_submit_branch()
-        remembered_submit_branch = False
-        if submit_branch is None:
-            submit_branch = stored_submit_branch
-            remembered_submit_branch = True
+        if output is None:
+            outfile = self.outf
         else:
-            if stored_submit_branch is None or remember:
-                branch.set_submit_branch(submit_branch)
-        if submit_branch is None:
-            submit_branch = branch.get_parent()
-            remembered_submit_branch = True
-        if submit_branch is None:
-            raise errors.BzrCommandError('No submit branch known or specified')
-        if remembered_submit_branch:
-            note('Using saved location: %s', submit_branch)
+            outfile = open(output, 'wb')
+        try:
+            from_ = kwargs.get('from', '.')
+            branch = Branch.open_containing(from_)[0]
+            if remember and submit_branch is None:
+                raise errors.BzrCommandError(
+                    '--remember requires a branch to be specified.')
+            stored_submit_branch = branch.get_submit_branch()
+            remembered_submit_branch = False
+            if submit_branch is None:
+                submit_branch = stored_submit_branch
+                remembered_submit_branch = True
+            else:
+                if stored_submit_branch is None or remember:
+                    branch.set_submit_branch(submit_branch)
+            if submit_branch is None:
+                submit_branch = branch.get_parent()
+                remembered_submit_branch = True
+            if submit_branch is None:
+                raise errors.BzrCommandError('No submit branch known or'
+                                             ' specified')
+            if remembered_submit_branch:
+                note('Using saved location: %s', submit_branch)
 
-        stored_public_branch = branch.get_public_branch()
-        if public_branch is None:
-            public_branch = stored_public_branch
-        elif stored_public_branch is None or remember:
-            branch.set_public_branch(public_branch)
-        if no_bundle and public_branch is None:
-            raise errors.BzrCommandError('No public branch specified or'
-                                         ' known')
-        base_revision_id = None
-        if revision is not None:
-            if len(revision) > 2:
-                raise errors.BzrCommandError('bzr submit takes '
-                    'at most two one revision identifiers')
-            revision_id = revision[-1].in_history(branch).rev_id
-            if len(revision) == 2:
-                base_revision_id = revision[0].in_history(branch).rev_id
-                base_revision_id = ensure_null(base_revision_id)
-        else:
-            revision_id = branch.last_revision()
-        revision_id = ensure_null(revision_id)
-        if revision_id == NULL_REVISION:
-            raise errors.BzrCommandError('No revisions to bundle.')
-        directive = merge_directive.MergeDirective2.from_objects(
-            branch.repository, revision_id, time.time(),
-            osutils.local_time_offset(), submit_branch,
-            public_branch=public_branch, include_patch=not no_patch,
-            include_bundle=not no_bundle, message=None,
-            base_revision_id=base_revision_id)
-        self.outf.writelines(directive.to_lines())
+            stored_public_branch = branch.get_public_branch()
+            if public_branch is None:
+                public_branch = stored_public_branch
+            elif stored_public_branch is None or remember:
+                branch.set_public_branch(public_branch)
+            if no_bundle and public_branch is None:
+                raise errors.BzrCommandError('No public branch specified or'
+                                             ' known')
+            base_revision_id = None
+            if revision is not None:
+                if len(revision) > 2:
+                    raise errors.BzrCommandError('bzr submit takes '
+                        'at most two one revision identifiers')
+                revision_id = revision[-1].in_history(branch).rev_id
+                if len(revision) == 2:
+                    base_revision_id = revision[0].in_history(branch).rev_id
+                    base_revision_id = ensure_null(base_revision_id)
+            else:
+                revision_id = branch.last_revision()
+            revision_id = ensure_null(revision_id)
+            if revision_id == NULL_REVISION:
+                raise errors.BzrCommandError('No revisions to submit.')
+            directive = merge_directive.MergeDirective2.from_objects(
+                branch.repository, revision_id, time.time(),
+                osutils.local_time_offset(), submit_branch,
+                public_branch=public_branch, include_patch=not no_patch,
+                include_bundle=not no_bundle, message=None,
+                base_revision_id=base_revision_id)
+            outfile.writelines(directive.to_lines())
+        finally:
+            if output is not None:
+                outfile.close()
 
 class cmd_tag(Command):
     """Create a tag naming a revision.
