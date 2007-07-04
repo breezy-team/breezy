@@ -59,6 +59,7 @@ def topo_iter(vf, versions=None):
 
 
 class MultiParent(object):
+    """A multi-parent diff"""
 
     def __init__(self, hunks=None):
         if hunks is not None:
@@ -163,6 +164,7 @@ class MultiParent(object):
 
     @classmethod
     def from_patch(cls, text):
+        """Create a MultiParent from its string form"""
         return cls._from_patch(StringIO(text))
 
     @staticmethod
@@ -215,6 +217,7 @@ class MultiParent(object):
             start = end
 
     def num_lines(self):
+        """The number of lines in the output text"""
         extra_n = 0
         for hunk in reversed(self.hunks):
             if isinstance(hunk, ParentText):
@@ -223,6 +226,7 @@ class MultiParent(object):
         return extra_n
 
     def is_snapshot(self):
+        """Return true of this hunk is effectively a fulltext"""
         if len(self.hunks) != 1:
             return False
         return (isinstance(self.hunks[0], NewText))
@@ -273,7 +277,7 @@ class ParentText(object):
 
 
 class BaseVersionedFile(object):
-    """VersionedFile skeleton for MultiParent"""
+    """Pseudo-VersionedFile skeleton for MultiParent"""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
         self._lines = {}
@@ -289,6 +293,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
+        """Determine whether to perform a a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\
@@ -309,6 +314,16 @@ class BaseVersionedFile(object):
 
     def add_version(self, lines, version_id, parent_ids,
                     force_snapshot=None, single_parent=False):
+        """Add a version to the versionedfile
+
+        :param lines: The list of lines to add.  Must be split on '\n'.
+        :param version_id: The version_id of the version to add
+        :param force_snapshot: If true, force this version to be added as a
+            snapshot version.  If false, force this version to be added as a
+            diff.  If none, determine this automatically.
+        :param single_parent: If true, use a single parent, rather than
+            multiple parents.
+        """
         if force_snapshot is None:
             do_snapshot = self.do_snapshot(version_id, parent_ids)
         else:
@@ -379,6 +394,7 @@ class BaseVersionedFile(object):
             pb.finished()
 
     def select_snapshots(self, vf):
+        """Determine which versions to add as snapshots"""
         build_ancestors = {}
         descendants = {}
         snapshots = set()
@@ -405,6 +421,7 @@ class BaseVersionedFile(object):
         return [v for n, v in new_snapshots]
 
     def get_size_ranking(self):
+        """Get versions ranked by size"""
         versions = []
         new_snapshots = set()
         for version_id in self.versions():
@@ -416,14 +433,15 @@ class BaseVersionedFile(object):
             versions.append((snapshot_len - diff_len, version_id))
         versions.sort()
         return versions
-        return [v for n, v in versions]
 
     def import_diffs(self, vf):
+        """Import the diffs from another pseudo-versionedfile"""
         for version_id in vf.versions():
             self.add_diff(vf.get_diff(version_id), version_id,
                           vf._parents[version_id])
 
     def get_build_ranking(self):
+        """Return revisions sorted by how much they reduce build complexity"""
         could_avoid = {}
         referenced_by = {}
         for version_id in topo_iter(self):
@@ -473,6 +491,7 @@ class BaseVersionedFile(object):
 
 
 class MultiMemoryVersionedFile(BaseVersionedFile):
+    """Memory-backed pseudo-versionedfile"""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
@@ -490,6 +509,7 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
 
 
 class MultiVersionedFile(BaseVersionedFile):
+    """Disk-backed pseudo-versionedfile"""
 
     def __init__(self, filename, snapshot_interval=25, max_snapshots=None):
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
