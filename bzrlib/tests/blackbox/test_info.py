@@ -107,7 +107,7 @@ Related branches:
   publish to branch: %s
 """ % (branch2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base)
+       branch1.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
         out, err = self.run_bzr('info branch --verbose')
