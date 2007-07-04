@@ -28,8 +28,6 @@ from bzrlib import (
 from bzrlib.add import (
     AddAction,
     AddFromBaseAction,
-    smart_add,
-    smart_add_tree,
     )
 from bzrlib.tests.test_smart_add import AddCustomIDAction
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
