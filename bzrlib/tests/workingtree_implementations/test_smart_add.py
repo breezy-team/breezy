@@ -23,6 +23,7 @@ from bzrlib import (
     errors,
     ignores,
     osutils,
+    tests,
     workingtree,
     )
 from bzrlib.add import (
@@ -197,7 +198,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         try:
             self.build_tree([u'a\u030a'])
         except UnicodeError:
-            raise TestSkipped('Filesystem cannot create unicode filenames')
+            raise tests.TestSkipped('Filesystem cannot create unicode filenames')
         self.wt = self.make_branch_and_tree('.')
 
     def test_accessible_explicit(self):
