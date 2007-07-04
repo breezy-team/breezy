@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
       (Kent Gibson, #4663)
+ 
+    * Don't leave cruft behind when failing to acquire a lockdir.
+      (Martin Pool, #109169)
 
   IMPROVEMENTS:
 
@@ -72,6 +75,9 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * Remove unnecessary lock probes when acquiring a lockdir.
+      (Martin Pool)
+
     * ``bzr --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
 
@@ -113,9 +119,14 @@ IN DEVELOPMENT
     * ``bzrlib.add.FastPath`` is now private and moved to 
       ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
+    * ``LockDir.wait`` removed.  (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
+      lockdirs are taken or released.  (Martin Pool)
 
     * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
       allows a nicer UI when hooks are running as the current hook can

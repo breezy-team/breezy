@@ -22,9 +22,9 @@ import subprocess
 import sys
 import time
 
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
-class TestDebugOption(TestCase):
+class TestDebugOption(TestCaseInTempDir):
 
     def test_dash_derror(self):
         """With -Derror, tracebacks are shown even for user errors"""
@@ -34,3 +34,9 @@ class TestDebugOption(TestCase):
         # here but it may be missing if the source is not in sync with the
         # pyc file.
         self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
+
+    def test_dash_dlock(self):
+        # With -Dlock, locking and unlocking is recorded into the log
+        self.run_bzr("-Dlock init foo")
+        trace_messages = self._get_log(keep_log_file=True)
+        self.assertContainsRe(trace_messages, "lock_write")
