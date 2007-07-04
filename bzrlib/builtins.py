@@ -384,7 +384,7 @@ class cmd_add(Command):
         if base_tree:
             base_tree.lock_read()
         try:
-            file_list = self._glob_expand_file_list_if_needed(file_list)
+            file_list = self._maybe_expand_globs(file_list)
             if file_list:
                 tree = WorkingTree.open_containing(file_list[0])[0]
             else:

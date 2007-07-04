@@ -100,8 +100,8 @@ IN DEVELOPMENT
       allows a nicer UI when hooks are running as the current hook can
       be displayed. (Robert Collins)
 
-    * New method ``_glob_expand_file_list_if_needed`` on the ``Command`` class
-      for dealing with unexpanded glob lists - e.g. on the win32 platform. This
+    * New method ``_maybe_expand_globs`` on the ``Command`` class for 
+      dealing with unexpanded glob lists - e.g. on the win32 platform. This
       was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)
 
     * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now

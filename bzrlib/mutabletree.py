@@ -24,8 +24,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import os
 
-from bzrlib import add
-from bzrlib import bzrdir
+from bzrlib import (
+    add,
+    bzrdir,
+    )
 from bzrlib.osutils import dirname
 from bzrlib.trace import mutter
 """)
@@ -278,8 +280,6 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        Returns the number of files added.
-
         :param action: A reporter to be called with the inventory, parent_ie,
             path and kind of the path being added. It may return a file_id if 
             a specific one should be used.
@@ -288,6 +288,9 @@ class MutableTree(tree.Tree):
             the inventory.  Note that the modified inventory is left in place,
             allowing further dry-run tasks to take place. To restore the
             original inventory call self.read_working_inventory().
+        :return: A tuple - files_added, ignored_files. files_added is the count
+            of added files, and ignored_files is a dict mapping files that were
+            ignored to the rule that caused them to be ignored.
         """
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
@@ -307,7 +310,7 @@ class MutableTree(tree.Tree):
         user_dirs = set()
 
         # validate user file paths and convert all paths to tree 
-        # relative : its cheaper to make a tree relative path an abspath
+        # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative.
         for filepath in file_list:
             rf = _FastPath(self.relpath(filepath))

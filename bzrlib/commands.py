@@ -241,7 +241,7 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
-    def _glob_expand_file_list_if_needed(self, file_list):
+    def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
         
         :return: A possibly empty list of unicode paths.
