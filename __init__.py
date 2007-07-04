@@ -91,7 +91,7 @@ class cmd_rebase_abort(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, remove_rebase_plan
+        from rebase import read_rebase_plan, remove_rebase_plan, complete_revert
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
         wt.lock_write()
@@ -101,9 +101,7 @@ class cmd_rebase_abort(Command):
                 last_rev_info = read_rebase_plan(wt)[0]
             except NoSuchFile:
                 raise BzrCommandError("No rebase to abort")
-            wt.branch.set_last_revision_info(last_rev_info[0], last_rev_info[1])
-            wt.set_last_revision(last_rev_info[1])
-            wt.revert([], backups=False)
+            complete_revert(wt, [last_rev_info[1]])
             remove_rebase_plan(wt)
         finally:
             wt.unlock()
@@ -166,6 +164,7 @@ class cmd_rebase_todo(Command):
                 info("%s -> %s" % (revid, replace_map[revid][0]))
         finally:
             wt.unlock()
+
 
 register_command(cmd_rebase)
 register_command(cmd_rebase_abort)

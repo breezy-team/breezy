@@ -17,6 +17,7 @@
 from bzrlib.config import Config
 from bzrlib.errors import UnknownFormatError, NoSuchFile, BzrError
 from bzrlib.generate_ids import gen_revision_id
+from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
@@ -363,9 +364,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     # in the working tree
     if wt.changes_from(wt.basis_tree()).has_changed():
         raise BzrError("Working tree has uncommitted changes.")
-    wt.branch.generate_revision_history(newparents[0])
-    wt.set_parent_ids(newparents)
-    wt.revert([], backups=False)
+    complete_revert(wt, newparents)
     assert not wt.changes_from(wt.basis_tree()).has_changed()
 
     oldtree = repository.revision_tree(oldrevid)
@@ -380,6 +379,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
             other_tree=oldtree)
 
     commit_rebase(wt, oldrev, newrevid)
+
 
 def workingtree_replay(wt, map_ids=False):
     """Returns a function that can replay revisions in wt.
@@ -398,6 +398,7 @@ def write_active_rebase_revid(wt, revid):
         revid = NULL_REVISION
     wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, revid)
 
+
 def read_active_rebase_revid(wt):
     try:
         text = wt._control_files.get(REBASE_CURRENT_REVID_FILENAME).read().rstrip("\n")
@@ -406,3 +407,19 @@ def read_active_rebase_revid(wt):
         return text
     except NoSuchFile:
         return None
+
+
+def complete_revert(wt, newparents):
+    """Simple helper that reverts to specified new 
+    parents and makes sure none of the extra files 
+    are left around.
+    """
+    newtree = wt.branch.repository.revision_tree(newparents[0])
+    delta = wt.changes_from(newtree)
+    wt.branch.generate_revision_history(newparents[0])
+    wt.set_parent_ids(newparents)
+    for (f, _, _) in delta.added:
+        abs_path = wt.abspath(f)
+        if osutils.lexists(abs_path):
+            osutils.delete_any(abs_path)
+    wt.revert([], old_tree=newtree, backups=False)
