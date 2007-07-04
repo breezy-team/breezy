@@ -55,16 +55,21 @@ class cmd_rebase(Command):
 
             wt.branch.repository.fetch(upstream_repository, onto)
 
-            start_revid = None
             revhistory = wt.branch.revision_history()
             revhistory.reverse()
+            common_revid = None
             for revid in revhistory:
                 if revid in upstream.revision_history():
-                    start_revid = wt.branch.get_rev_id(wt.branch.revision_id_to_revno(revid)+1)
+                    common_revid = revid
                     break
 
-            if start_revid is None:
+            if common_revid is None:
                 raise UnrelatedBranches()
+
+            if common_revid == upstream.last_revision():
+                raise BzrCommandError("Already rebased on %s" % upstream)
+
+            start_revid = wt.branch.get_rev_id(wt.branch.revision_id_to_revno(common_revid)+1)
 
             # Create plan
             replace_map = generate_simple_plan(
@@ -83,6 +88,7 @@ class cmd_rebase(Command):
             remove_rebase_plan(wt)
         finally:
             wt.unlock()
+
 
 class cmd_rebase_abort(Command):
     """Abort an interrupted rebase
