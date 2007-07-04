@@ -20,8 +20,6 @@ At format 7 this was split out into Branch, Repository and Checkout control
 directories.
 """
 
-# TODO: remove unittest dependency; put that stuff inside the test suite
-
 # TODO: Can we move specific formats into separate modules to make this file
 # smaller?
 
@@ -31,9 +29,7 @@ import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
 from stat import S_ISDIR
-import unittest
 
 import bzrlib
 from bzrlib import (
@@ -1702,43 +1698,6 @@ BzrDirFormat.register_format(BzrDirFormat6())
 __default_format = BzrDirMetaFormat1()
 BzrDirFormat.register_format(__default_format)
 BzrDirFormat._default_format = __default_format
-
-
-class BzrDirTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple bzrdir formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and bzrdir_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, vfs_factory, transport_server, transport_readonly_server,
-        formats):
-        """Create an object to adapt tests.
-
-        :param vfs_server: A factory to create a Transport Server which has
-            all the VFS methods working, and is writable.
-        """
-        self._vfs_factory = vfs_factory
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for format in self._formats:
-            new_test = deepcopy(test)
-            new_test.vfs_transport_factory = self._vfs_factory
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
 
 
 class Converter(object):

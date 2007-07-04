@@ -139,6 +139,7 @@ doc/developers/performance.png: doc/developers/performance.dot
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	python setup.py build_ext -i -f
 	python setup.py py2exe > py2exe.log
 	python tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
 	python tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
@@ -152,7 +153,8 @@ installer: exe copy-docs
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
 python-installer: docs
-	python setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 
 # clean on win32 all installer-related files and directories

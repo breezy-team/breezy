@@ -541,18 +541,22 @@ class TestTransportImplementation(TestCaseInTempDir):
         self._server.setUp()
         self.addCleanup(self._server.tearDown)
 
-    def get_transport(self):
-        """Return a connected transport to the local directory."""
+    def get_transport(self, relpath=None):
+        """Return a connected transport to the local directory.
+
+        :param relpath: a path relative to the base url.
+        """
         base_url = self._server.get_url()
+        url = self._adjust_url(base_url, relpath)
         # try getting the transport via the regular interface:
-        t = get_transport(base_url)
+        t = get_transport(url)
         # vila--20070607 if the following are commented out the test suite
         # still pass. Is this really still needed or was it a forgotten
         # temporary fix ?
         if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
-            t = self.transport_class(base_url)
+            t = self.transport_class(url)
         return t
 
 

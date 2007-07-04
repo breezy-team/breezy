@@ -200,7 +200,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         tree.commit('initial', rev_id='rev-1')
         revision_id = 'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
-        t = self.get_transport().clone('tree')
+        t = self.get_transport('tree')
         a_text = t.get_bytes('a')
         a_sha = osutils.sha_string(a_text)
         a_len = len(a_text)

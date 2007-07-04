@@ -1047,6 +1047,10 @@ class Inventory(object):
                         child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
 
+    def make_entry(self, kind, name, parent_id, file_id=None):
+        """Simple thunk to bzrlib.inventory.make_entry."""
+        return make_entry(kind, name, parent_id, file_id)
+
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
 

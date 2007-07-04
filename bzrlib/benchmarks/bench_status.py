@@ -21,6 +21,7 @@ from bzrlib.benchmarks import Benchmark
 
 
 class StatusBenchmark(Benchmark):
+    """Benchmarks for ``'bzr status'``."""
 
     def test_no_ignored_unknown_kernel_like_tree(self):
         """Status in a kernel sized tree with no ignored or unknowns.

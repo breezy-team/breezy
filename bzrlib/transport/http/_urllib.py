@@ -118,18 +118,22 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
 
         abspath = self._remote_path(relpath)
         headers = {}
-        if ranges or tail_amount:
-            range_header = self.attempted_range_header(ranges, tail_amount)
+        accepted_errors = [200, 404]
+        if offsets or tail_amount:
+            range_header = self._attempted_range_header(offsets, tail_amount)
             if range_header is not None:
+                accepted_errors.append(206)
+                accepted_errors.append(400)
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
 
-        request = Request('GET', abspath, None, headers)
+        request = Request('GET', abspath, None, headers,
+                          accepted_errors=accepted_errors)
         response = self._perform(request)
 
         code = response.code
@@ -162,7 +166,8 @@ class HttpTransport_urllib(HttpTransportBase):
         Performs the request and leaves callers handle the results.
         """
         abspath = self._remote_path(relpath)
-        request = Request('HEAD', abspath)
+        request = Request('HEAD', abspath,
+                          accepted_errors=[200, 404])
         response = self._perform(request)
 
         self._get_connection().fake_close()
@@ -177,7 +182,6 @@ class HttpTransport_urllib(HttpTransportBase):
         if code == 200: # "ok",
             return True
         else:
-            assert(code == 404, 'Only 200 or 404 are correct')
             return False
 
 
