@@ -93,6 +93,8 @@ class SFTPBenchmark(Benchmark):
 
 
 class SFTPSlowSocketBenchmark(SFTPBenchmark):
+    """Benchmarks of SFTP performance with a 30ms delay per roundtrip."""
+
     def setUp(self):
         super(SFTPSlowSocketBenchmark, self).setUp()
         self.get_server().add_latency = 0.03

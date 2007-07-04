@@ -326,17 +326,6 @@ class TestHooks(TestCase):
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
 
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = BranchHooks()
-        self.assertRaises(UnknownHook, hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = BranchHooks()
-        hooks.install_hook('set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
-
 
 class TestPullResult(TestCase):
 

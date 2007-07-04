@@ -2150,6 +2150,57 @@ class UnexpectedSmartServerResponse(BzrError):
         self.response_tuple = response_tuple
 
 
+class ContainerError(BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+    
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+    internal_error = False
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+
+
 class NoDestinationAddress(BzrError):
 
     _fmt = "Message does not have a destination address."

@@ -23,7 +23,6 @@ from bzrlib import (
     generate_ids,
     osutils,
     )
-from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
 from bzrlib.errors import (NotBranchError, NotVersionedError,
@@ -426,7 +425,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree(("original/", "original/file1", "original/file2"))
         tree = self.make_branch_and_tree('original')
         branch = tree.branch
-        smart_add_tree(tree, ["original"])
+        tree.smart_add(["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
