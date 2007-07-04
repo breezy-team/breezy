@@ -123,7 +123,7 @@ Name: "{userappdata}\bazaar\2.0"
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
 Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
 Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
-Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
+Name: "{group}\Uninstall Bazaar"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
 
 
 [Tasks]
