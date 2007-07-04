@@ -38,6 +38,8 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 _serializers = {}
 
+v4_string = '4alpha'
+
 def _get_bundle_header(version):
     return '%s%s\n' % (BUNDLE_HEADER, version)
 
@@ -216,7 +218,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
 
 register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 register_lazy('0.9', 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
-register_lazy('4alpha', 'bzrlib.bundle.serializer.v4',
+register_lazy(v4_string, 'bzrlib.bundle.serializer.v4',
               'BundleSerializerV4')
 register_lazy(None, 'bzrlib.bundle.serializer.v4', 'BundleSerializerV4')
 

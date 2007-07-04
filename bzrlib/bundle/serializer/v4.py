@@ -33,15 +33,15 @@ from bzrlib.util import bencode
 
 
 class BundleWriter(object):
-
     """Writer for bundle-format files.
 
     This serves roughly the same purpose as ContainerReader, but acts as a
     layer on top of it.
 
-    Provides ways of writing the spcific record types supported this bundle
+    Provides ways of writing the specific record types supported this bundle
     format.
     """
+
     def __init__(self, fileobj):
         self._container = pack.ContainerWriter(self._write_encoded)
         self._fileobj = fileobj
@@ -53,7 +53,8 @@ class BundleWriter(object):
 
     def begin(self):
         """Start writing the bundle"""
-        self._fileobj.write(serializer._get_bundle_header('4alpha'))
+        self._fileobj.write(serializer._get_bundle_header(
+            serializer.v4_string))
         self._fileobj.write('#\n')
         self._container.begin()
 
@@ -67,6 +68,7 @@ class BundleWriter(object):
         """Add a record for a multi-parent diff
 
         :mp_bytes: A multi-parent diff, as a bytestring
+        :sha1: The sha1 hash of the fulltext
         :parents: a list of revision-ids of the parents
         :repo_kind: The kind of object in the repository.  May be 'file' or
             'inventory'
@@ -78,8 +80,7 @@ class BundleWriter(object):
                     'sha1': sha1}
         self._add_record(mp_bytes, metadata, repo_kind, revision_id, file_id)
 
-    def add_fulltext_record(self, bytes, parents, repo_kind, revision_id,
-                            file_id):
+    def add_fulltext_record(self, bytes, parents, repo_kind, revision_id):
         """Add a record for a fulltext
 
         :bytes: The fulltext, as a bytestring
@@ -87,12 +88,11 @@ class BundleWriter(object):
         :repo_kind: The kind of object in the repository.  May be 'revision' or
             'signature'
         :revision_id: The revision id of the fulltext being added.
-        :file_id: must be None
         """
         metadata = {'parents': parents,
                     'storage_kind': 'mpdiff'}
         self._add_record(bytes, {'parents': parents,
-            'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
+            'storage_kind': 'fulltext'}, repo_kind, revision_id, None)
 
     def add_info_record(self, **kwargs):
         """Add an info record to the bundle
@@ -139,13 +139,13 @@ class BundleWriter(object):
 
 
 class BundleReader(object):
-
     """Reader for bundle-format files.
 
     This serves roughly the same purpose as ContainerReader, but acts as a
     layer on top of it, providing metadata, a semantic name, and a record
     body
     """
+
     def __init__(self, fileobj):
         line = fileobj.readline()
         if line != '\n':
@@ -195,8 +195,8 @@ class BundleReader(object):
 
 
 class BundleSerializerV4(serializer.BundleSerializer):
-
     """Implement the high-level bundle interface"""
+
     def write(self, repository, revision_ids, forced_bases, fileobj):
         """Write a bundle to a file-like object
 
@@ -230,10 +230,11 @@ class BundleSerializerV4(serializer.BundleSerializer):
 
 
 class BundleWriteOperation(object):
-
     """Perform the operation of writing revisions to a bundle"""
+
     @classmethod
     def from_old_args(cls, repository, revision_ids, forced_bases, fileobj):
+        """Create a BundleWriteOperation from old-style arguments"""
         base, target = cls.get_base_target(revision_ids, forced_bases,
                                            repository)
         return BundleWriteOperation(base, target, repository, fileobj,
@@ -325,16 +326,17 @@ class BundleWriteOperation(object):
         for parents, revision_id in zip(parents_list, revision_order):
             revision_text = self.repository.get_revision_xml(revision_id)
             self.bundle.add_fulltext_record(revision_text, parents,
-                                       'revision', revision_id, None)
+                                       'revision', revision_id)
             try:
                 self.bundle.add_fulltext_record(
                     self.repository.get_signature_text(
-                    revision_id), parents, 'signature', revision_id, None)
+                    revision_id), parents, 'signature', revision_id)
             except errors.NoSuchRevision:
                 pass
 
     @staticmethod
     def get_base_target(revision_ids, forced_bases, repository):
+        """Determine the base and target from old-style revision ids"""
         if len(revision_ids) == 0:
             return None, None
         target = revision_ids[0]
@@ -372,6 +374,7 @@ class BundleInfoV4(object):
         return self.install_revisions(repository)
 
     def install_revisions(self, repository):
+        """Install this bundle's revisions into the specified repository"""
         repository.lock_write()
         try:
             ri = RevisionInstaller(self.get_bundle_reader(),
@@ -386,7 +389,6 @@ class BundleInfoV4(object):
         Returns suggested base, suggested target, and patch verification status
         """
         return None, self.target, 'inapplicable'
-
 
     def get_bundle_reader(self):
         self._fileobj.seek(0)
@@ -424,6 +426,7 @@ class BundleInfoV4(object):
 
 
 class RevisionInstaller(object):
+    """Installs revisions into a repository"""
 
     def __init__(self, container, serializer, repository):
         self._container = container
@@ -431,16 +434,8 @@ class RevisionInstaller(object):
         self._repository = repository
         self._info = None
 
-    def handle_info(self, info):
-        self._info = info
-        self._source_serializer = self._serializer.get_source_serializer(info)
-        if (info['supports_rich_root'] == 0 and
-            self._repository.supports_rich_root()):
-            self.update_root = True
-        else:
-            self.update_root = False
-
     def install(self):
+        """Perform the installation"""
         current_file = None
         current_versionedfile = None
         pending_file_records = []
@@ -450,7 +445,7 @@ class RevisionInstaller(object):
             self._container.iter_records():
             if repo_kind == 'info':
                 assert self._info is None
-                self.handle_info(metadata)
+                self._handle_info(metadata)
             if repo_kind != 'file':
                 self._install_mp_records(current_versionedfile,
                     pending_file_records)
@@ -478,6 +473,16 @@ class RevisionInstaller(object):
                 pending_file_records.append((revision_id, metadata, bytes))
         self._install_mp_records(current_versionedfile, pending_file_records)
         return target_revision
+
+    def _handle_info(self, info):
+        """Extract data from an info record"""
+        self._info = info
+        self._source_serializer = self._serializer.get_source_serializer(info)
+        if (info['supports_rich_root'] == 0 and
+            self._repository.supports_rich_root()):
+            self.update_root = True
+        else:
+            self.update_root = False
 
     def _install_mp_records(self, versionedfile, records):
         if len(records) == 0:
