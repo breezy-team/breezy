@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@ import sys
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
                            ParamikoNotPresent,
+                           SocketConnectionError,
+                           SSHVendorNotFound,
                            TransportError,
                            UnknownSSH,
                            )
@@ -38,7 +40,9 @@ import bzrlib.ui
 try:
     import paramiko
 except ImportError, e:
-    raise ParamikoNotPresent(e)
+    # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
+    # access
+    paramiko = None
 else:
     from paramiko.sftp_client import SFTPClient
 
@@ -55,56 +59,110 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
-_ssh_vendors = {}
 
-def register_ssh_vendor(name, vendor):
-    """Register SSH vendor."""
-    _ssh_vendors[name] = vendor
+class SSHVendorManager(object):
+    """Manager for manage SSH vendors."""
 
-    
-_ssh_vendor = None
-def _get_ssh_vendor():
-    """Find out what version of SSH is on the system."""
-    global _ssh_vendor
-    if _ssh_vendor is not None:
-        return _ssh_vendor
+    # Note, although at first sign the class interface seems similar to
+    # bzrlib.registry.Registry it is not possible/convenient to directly use
+    # the Registry because the class just has "get()" interface instead of the
+    # Registry's "get(key)".
 
-    if 'BZR_SSH' in os.environ:
-        vendor_name = os.environ['BZR_SSH']
+    def __init__(self):
+        self._ssh_vendors = {}
+        self._cached_ssh_vendor = None
+        self._default_ssh_vendor = None
+
+    def register_default_vendor(self, vendor):
+        """Register default SSH vendor."""
+        self._default_ssh_vendor = vendor
+
+    def register_vendor(self, name, vendor):
+        """Register new SSH vendor by name."""
+        self._ssh_vendors[name] = vendor
+
+    def clear_cache(self):
+        """Clear previously cached lookup result."""
+        self._cached_ssh_vendor = None
+
+    def _get_vendor_by_environment(self, environment=None):
+        """Return the vendor or None based on BZR_SSH environment variable.
+
+        :raises UnknownSSH: if the BZR_SSH environment variable contains
+                            unknown vendor name
+        """
+        if environment is None:
+            environment = os.environ
+        if 'BZR_SSH' in environment:
+            vendor_name = environment['BZR_SSH']
+            try:
+                vendor = self._ssh_vendors[vendor_name]
+            except KeyError:
+                raise UnknownSSH(vendor_name)
+            return vendor
+        return None
+
+    def _get_ssh_version_string(self, args):
+        """Return SSH version string from the subprocess."""
         try:
-            _ssh_vendor = _ssh_vendors[vendor_name]
-        except KeyError:
-            raise UnknownSSH(vendor_name)
-        return _ssh_vendor
+            p = subprocess.Popen(args,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 **os_specific_subprocess_params())
+            stdout, stderr = p.communicate()
+        except OSError:
+            stdout = stderr = ''
+        return stdout + stderr
 
-    try:
-        p = subprocess.Popen(['ssh', '-V'],
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             **os_specific_subprocess_params())
-        returncode = p.returncode
-        stdout, stderr = p.communicate()
-    except OSError:
-        returncode = -1
-        stdout = stderr = ''
-    if 'OpenSSH' in stderr:
-        mutter('ssh implementation is OpenSSH')
-        _ssh_vendor = OpenSSHSubprocessVendor()
-    elif 'SSH Secure Shell' in stderr:
-        mutter('ssh implementation is SSH Corp.')
-        _ssh_vendor = SSHCorpSubprocessVendor()
+    def _get_vendor_by_version_string(self, version):
+        """Return the vendor or None based on output from the subprocess.
 
-    if _ssh_vendor is not None:
-        return _ssh_vendor
+        :param version: The output of 'ssh -V' like command.
+        """
+        vendor = None
+        if 'OpenSSH' in version:
+            mutter('ssh implementation is OpenSSH')
+            vendor = OpenSSHSubprocessVendor()
+        elif 'SSH Secure Shell' in version:
+            mutter('ssh implementation is SSH Corp.')
+            vendor = SSHCorpSubprocessVendor()
+        elif 'plink' in version:
+            mutter("ssh implementation is Putty's plink.")
+            vendor = PLinkSubprocessVendor()
+        return vendor
 
-    # XXX: 20051123 jamesh
-    # A check for putty's plink or lsh would go here.
+    def _get_vendor_by_inspection(self):
+        """Return the vendor or None by checking for known SSH implementations."""
+        for args in [['ssh', '-V'], ['plink', '-V']]:
+            version = self._get_ssh_version_string(args)
+            vendor = self._get_vendor_by_version_string(version)
+            if vendor is not None:
+                return vendor
+        return None
 
-    mutter('falling back to paramiko implementation')
-    _ssh_vendor = ParamikoVendor()
-    return _ssh_vendor
+    def get_vendor(self, environment=None):
+        """Find out what version of SSH is on the system.
 
+        :raises SSHVendorNotFound: if no any SSH vendor is found
+        :raises UnknownSSH: if the BZR_SSH environment variable contains
+                            unknown vendor name
+        """
+        if self._cached_ssh_vendor is None:
+            vendor = self._get_vendor_by_environment(environment)
+            if vendor is None:
+                vendor = self._get_vendor_by_inspection()
+                if vendor is None:
+                    mutter('falling back to default implementation')
+                    vendor = self._default_ssh_vendor
+                    if vendor is None:
+                        raise SSHVendorNotFound()
+            self._cached_ssh_vendor = vendor
+        return self._cached_ssh_vendor
+
+_ssh_vendor_manager = SSHVendorManager()
+_get_ssh_vendor = _ssh_vendor_manager.get_vendor
+register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
+register_ssh_vendor = _ssh_vendor_manager.register_vendor
 
 
 def _ignore_sigint():
@@ -113,7 +171,6 @@ def _ignore_sigint():
     # <https://launchpad.net/products/bzr/+bug/41433/+index>
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    
 
 
 class LoopbackSFTP(object):
@@ -161,6 +218,16 @@ class SSHVendor(object):
         """
         raise NotImplementedError(self.connect_ssh)
         
+    def _raise_connection_error(self, host, port=None, orig_error=None,
+                                msg='Unable to connect to SSH host'):
+        """Raise a SocketConnectionError with properly formatted host.
+
+        This just unifies all the locations that try to raise ConnectionError,
+        so that they format things properly.
+        """
+        raise SocketConnectionError(host=host, port=port, msg=msg,
+                                    orig_error=orig_error)
+
 
 class LoopbackVendor(SSHVendor):
     """SSH "vendor" that connects over a plain TCP socket, not SSH."""
@@ -170,8 +237,7 @@ class LoopbackVendor(SSHVendor):
         try:
             sock.connect((host, port))
         except socket.error, e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
         return SFTPClient(LoopbackSFTP(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
@@ -201,8 +267,7 @@ class ParamikoVendor(SSHVendor):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except (paramiko.SSHException, socket.error), e:
-            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -215,9 +280,11 @@ class ParamikoVendor(SSHVendor):
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
         else:
             warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
-            if host not in BZR_HOSTKEYS:
-                BZR_HOSTKEYS[host] = {}
-            BZR_HOSTKEYS[host][keytype] = server_key
+            add = getattr(BZR_HOSTKEYS, 'add', None)
+            if add is not None: # paramiko >= 1.X.X
+                BZR_HOSTKEYS.add(host, keytype, server_key)
+            else:
+                BZR_HOSTKEYS.setdefault(host, {})[keytype] = server_key
             our_server_key = server_key
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
             save_host_keys()
@@ -236,8 +303,8 @@ class ParamikoVendor(SSHVendor):
         try:
             return t.open_sftp_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to start sftp client %s:%d' %
-                                  (host, port), e)
+            self._raise_connection_error(host, port=port, orig_error=e,
+                                         msg='Unable to start sftp client')
 
     def connect_ssh(self, username, password, host, port, command):
         t = self._connect(username, password, host, port)
@@ -247,10 +314,15 @@ class ParamikoVendor(SSHVendor):
             channel.exec_command(cmdline)
             return _ParamikoSSHConnection(channel)
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to invoke remote bzr %s:%d' %
-                                  (host, port), e)
+            self._raise_connection_error(host, port=port, orig_error=e,
+                                         msg='Unable to invoke remote bzr')
 
-register_ssh_vendor('paramiko', ParamikoVendor())
+if paramiko is not None:
+    vendor = ParamikoVendor()
+    register_ssh_vendor('paramiko', vendor)
+    register_ssh_vendor('none', vendor)
+    register_default_ssh_vendor(vendor)
+    del vendor
 
 
 class SubprocessVendor(SSHVendor):
@@ -270,16 +342,14 @@ class SubprocessVendor(SSHVendor):
             sock = self._connect(argv)
             return SFTPClient(sock)
         except (EOFError, paramiko.SSHException), e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe
             if e.errno not in (errno.EPIPE,):
                 raise
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
         try:
@@ -287,16 +357,14 @@ class SubprocessVendor(SSHVendor):
                                                   command=command)
             return self._connect(argv)
         except (EOFError), e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe
             if e.errno not in (errno.EPIPE,):
                 raise
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
@@ -305,8 +373,6 @@ class SubprocessVendor(SSHVendor):
         Exactly one of 'subsystem' and 'command' must be specified.
         """
         raise NotImplementedError(self._get_vendor_specific_argv)
-
-register_ssh_vendor('none', ParamikoVendor())
 
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
@@ -358,6 +424,30 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         return args
     
 register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
+
+
+class PLinkSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'plink' executable from Putty."""
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        assert subsystem is not None or command is not None, (
+            'Must specify a command or subsystem')
+        if subsystem is not None:
+            assert command is None, (
+                'subsystem and command are mutually exclusive')
+        args = ['plink', '-x', '-a', '-ssh', '-2']
+        if port is not None:
+            args.extend(['-P', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['-s', host, subsystem])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, paramiko_transport):

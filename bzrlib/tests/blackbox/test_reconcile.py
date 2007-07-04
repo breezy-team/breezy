@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ import bzrlib.bzrdir as bzrdir
 from bzrlib.inventory import Inventory
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.blackbox import TestUIFactory
+from bzrlib.tests import TestUIFactory
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 
@@ -41,7 +41,7 @@ class TrivialTest(TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
-        (out, err) = self.run_bzr_captured(['reconcile'])
+        (out, err) = self.run_bzr(['reconcile'])
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Inventory ok.\n"
                                   "Reconciliation complete.\n" %
@@ -55,7 +55,7 @@ class TrivialTest(TestCaseWithTransport):
         inv = Inventory(revision_id='missing')
         inv.root.revision='missing'
         repo.add_inventory('missing', inv, [])
-        (out, err) = self.run_bzr_captured(['reconcile'])
+        (out, err) = self.run_bzr(['reconcile'])
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Backup Inventory created.\n"
                                   "Inventory regenerated.\n"

@@ -136,7 +136,14 @@ class MemoryTransport(Transport):
         """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = (f.read(), mode)
+        bytes = f.read()
+        if type(bytes) is not str:
+            # Although not strictly correct, we raise UnicodeEncodeError to be
+            # compatible with other transports.
+            raise UnicodeEncodeError(
+                'undefined', bytes, 0, 1,
+                'put_file must be given a file of bytes, not unicode.')
+        self._files[_abspath] = (bytes, mode)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -161,17 +168,16 @@ class MemoryTransport(Transport):
         if _abspath != '/' and _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         result = []
-        for path in self._files:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath)):
-                result.append(path[len(_abspath) + 1:])
-        for path in self._dirs:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath) and
-                path[len(_abspath)] == '/'):
-                result.append(path[len(_abspath) + 1:])
+
+        if not _abspath.endswith('/'):
+            _abspath += '/'
+
+        for path_group in self._files, self._dirs:
+            for path in path_group:
+                if path.startswith(_abspath):
+                    trailing = path[len(_abspath):]
+                    if trailing and '/' not in trailing:
+                        result.append(trailing)
         return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
@@ -201,11 +207,11 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
         for path in self._files:
-            if path.startswith(_abspath):
+            if path.startswith(_abspath + '/'):
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath),
                                       relpath)
         for path in self._dirs:
-            if path.startswith(_abspath) and path != _abspath:
+            if path.startswith(_abspath + '/') and path != _abspath:
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
         if not _abspath in self._dirs:
             raise NoSuchFile(relpath)

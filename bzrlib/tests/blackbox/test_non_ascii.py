@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -228,7 +228,8 @@ class TestNonAscii(TestCaseWithTransport):
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
 
-        self.assertEqual(u'Using saved location: %s/\n' % (pwd,), txt)
+        self.assertEqual(u'Using saved location: %s/\n'
+                'No revisions to pull.\n' % (pwd,), txt)
 
         os.chdir('../' + dirname1)
         open('a', 'ab').write('and yet more\n')

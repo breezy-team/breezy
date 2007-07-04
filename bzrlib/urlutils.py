@@ -1,6 +1,6 @@
 # Bazaar -- distributed version control
 #
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,19 @@
 """A collection of function for handling URL operations."""
 
 import os
-from posixpath import split as _posix_split, normpath as _posix_normpath
 import re
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from posixpath import split as _posix_split, normpath as _posix_normpath
 import urllib
 
-import bzrlib.errors as errors
-import bzrlib.osutils
+from bzrlib import (
+    errors,
+    osutils,
+    )
+""")
 
 
 def basename(url, exclude_trailing_slash=True):
@@ -75,7 +81,7 @@ def file_relpath(base, path):
 
     base = local_path_from_url(base)
     path = local_path_from_url(path)
-    return escape(bzrlib.osutils.relpath(base, path))
+    return escape(osutils.relpath(base, path))
 
 
 def _find_scheme_and_separator(url):
@@ -111,11 +117,13 @@ def join(base, *args):
         join('http://foo', 'bar') => 'http://foo/bar'
         join('http://foo', 'bar', '../baz') => 'http://foo/baz'
     """
-    m = _url_scheme_re.match(base)
+    if not args:
+        return base
+    match = _url_scheme_re.match(base)
     scheme = None
-    if m:
-        scheme = m.group('scheme')
-        path = m.group('path').split('/')
+    if match:
+        scheme = match.group('scheme')
+        path = match.group('path').split('/')
         if path[-1:] == ['']:
             # Strip off a trailing slash
             # This helps both when we are at the root, and when
@@ -124,31 +132,87 @@ def join(base, *args):
     else:
         path = base.split('/')
 
+    if scheme is not None and len(path) >= 1:
+        host = path[:1]
+        # the path should be represented as an abs path.
+        # we know this must be absolute because of the presence of a URL scheme.
+        remove_root = True
+        path = [''] + path[1:]
+    else:
+        # create an empty host, but dont alter the path - this might be a
+        # relative url fragment.
+        host = []
+        remove_root = False
+
     for arg in args:
-        m = _url_scheme_re.match(arg)
-        if m:
+        match = _url_scheme_re.match(arg)
+        if match:
             # Absolute URL
-            scheme = m.group('scheme')
+            scheme = match.group('scheme')
             # this skips .. normalisation, making http://host/../../..
             # be rather strange.
-            path = m.group('path').split('/')
+            path = match.group('path').split('/')
+            # set the host and path according to new absolute URL, discarding
+            # any previous values.
+            # XXX: duplicates mess from earlier in this function.  This URL
+            # manipulation code needs some cleaning up.
+            if scheme is not None and len(path) >= 1:
+                host = path[:1]
+                path = path[1:]
+                # url scheme implies absolute path.
+                path = [''] + path
+            else:
+                # no url scheme we take the path as is.
+                host = []
         else:
-            for chunk in arg.split('/'):
-                if chunk == '.':
-                    continue
-                elif chunk == '..':
-                    if len(path) >= 2:
-                        # Don't pop off the host portion
-                        path.pop()
-                    else:
-                        raise errors.InvalidURLJoin('Cannot go above root',
-                                base, args)
-                else:
-                    path.append(chunk)
+            path = '/'.join(path)
+            path = joinpath(path, arg)
+            path = path.split('/')
+    if remove_root and path[0:1] == ['']:
+        del path[0]
+    if host:
+        # Remove the leading slash from the path, so long as it isn't also the
+        # trailing slash, which we want to keep if present.
+        if path and path[0] == '' and len(path) > 1:
+            del path[0]
+        path = host + path
 
     if scheme is None:
         return '/'.join(path)
     return scheme + '://' + '/'.join(path)
+
+
+def joinpath(base, *args):
+    """Join URL path segments to a URL path segment.
+    
+    This is somewhat like osutils.joinpath, but intended for URLs.
+
+    XXX: this duplicates some normalisation logic, and also duplicates a lot of
+    path handling logic that already exists in some Transport implementations.
+    We really should try to have exactly one place in the code base responsible
+    for combining paths of URLs.
+    """
+    path = base.split('/')
+    if len(path) > 1 and path[-1] == '':
+        #If the path ends in a trailing /, remove it.
+        path.pop()
+    for arg in args:
+        if arg.startswith('/'):
+            path = []
+        for chunk in arg.split('/'):
+            if chunk == '.':
+                continue
+            elif chunk == '..':
+                if path == ['']:
+                    raise errors.InvalidURLJoin('Cannot go above root',
+                            base, args)
+                path.pop()
+            else:
+                path.append(chunk)
+    if path == ['']:
+        return '/'
+    else:
+        return '/'.join(path)
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -168,22 +232,31 @@ def _posix_local_path_to_url(path):
     # importing directly from posixpath allows us to test this 
     # on non-posix platforms
     return 'file://' + escape(_posix_normpath(
-        bzrlib.osutils._posix_abspath(path)))
+        osutils._posix_abspath(path)))
 
 
 def _win32_local_path_from_url(url):
     """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    if not url.startswith('file://'):
+        raise errors.InvalidURL(url, 'local urls must start with file:///, '
+                                     'UNC path urls must start with file://')
     # We strip off all 3 slashes
-    win32_url = url[len('file:///'):]
-    if (win32_url[0] not in ('abcdefghijklmnopqrstuvwxyz'
+    win32_url = url[len('file:'):]
+    # check for UNC path: //HOST/path
+    if not win32_url.startswith('///'):
+        if (win32_url[2] == '/'
+            or win32_url[3] in '|:'):
+            raise errors.InvalidURL(url, 'Win32 UNC path urls'
+                ' have form file://HOST/path')
+        return unescape(win32_url)
+    # usual local path with drive letter
+    if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        or win32_url[1] not in  '|:'
-        or win32_url[2] != '/'):
+        or win32_url[4] not in  '|:'
+        or win32_url[5] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
                 ' file:///x:/, where x is a valid drive letter')
-    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
+    return win32_url[3].upper() + u':' + unescape(win32_url[5:])
 
 
 def _win32_local_path_to_url(path):
@@ -197,8 +270,10 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
-    win32_path = bzrlib.osutils._nt_normpath(
-        bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
+    win32_path = osutils._win32_abspath(path)
+    # check for UNC path \\HOST\path
+    if win32_path.startswith('//'):
+        return 'file:' + escape(win32_path)
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
@@ -215,12 +290,26 @@ if sys.platform == 'win32':
 
 
 _url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
+_url_hex_escapes_re = re.compile(r'(%[0-9a-fA-F]{2})')
+
+
+def _unescape_safe_chars(matchobj):
+    """re.sub callback to convert hex-escapes to plain characters (if safe).
+    
+    e.g. '%7E' will be converted to '~'.
+    """
+    hex_digits = matchobj.group(0)[1:]
+    char = chr(int(hex_digits, 16))
+    if char in _url_dont_escape_characters:
+        return char
+    else:
+        return matchobj.group(0).upper()
 
 
 def normalize_url(url):
     """Make sure that a path string is in fully normalized URL form.
     
-    This handles URLs which have unicode characters, spaces, 
+    This handles URLs which have unicode characters, spaces,
     special characters, etc.
 
     It has two basic modes of operation, depending on whether the
@@ -239,21 +328,27 @@ def normalize_url(url):
     m = _url_scheme_re.match(url)
     if not m:
         return local_path_to_url(url)
+    scheme = m.group('scheme')
+    path = m.group('path')
     if not isinstance(url, unicode):
         for c in url:
             if c not in _url_safe_characters:
                 raise errors.InvalidURL(url, 'URLs can only contain specific'
                                             ' safe characters (not %r)' % c)
-        return url
-    # We have a unicode (hybrid) url
-    scheme = m.group('scheme')
-    path = list(m.group('path'))
+        path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
+        return str(scheme + '://' + ''.join(path))
 
-    for i in xrange(len(path)):
-        if path[i] not in _url_safe_characters:
-            chars = path[i].encode('utf-8')
-            path[i] = ''.join(['%%%02X' % ord(c) for c in path[i].encode('utf-8')])
-    return scheme + '://' + ''.join(path)
+    # We have a unicode (hybrid) url
+    path_chars = list(path)
+
+    for i in xrange(len(path_chars)):
+        if path_chars[i] not in _url_safe_characters:
+            chars = path_chars[i].encode('utf-8')
+            path_chars[i] = ''.join(
+                ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
+    path = ''.join(path_chars)
+    path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
+    return str(scheme + '://' + path)
 
 
 def relative_url(base, other):
@@ -387,7 +482,7 @@ def strip_trailing_slash(url):
     if not url.endswith('/'):
         # Nothing to do
         return url
-    if sys.platform == 'win32' and url.startswith('file:///'):
+    if sys.platform == 'win32' and url.startswith('file://'):
         return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
@@ -439,12 +534,24 @@ _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
 #These entries get mapped to themselves
 _hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 
-# These characters should not be escaped
-_url_safe_characters = set('abcdefghijklmnopqrstuvwxyz'
-                        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                        '0123456789' '_.-/'
-                        ';?:@&=+$,%#')
+# These characters shouldn't be percent-encoded, and it's always safe to
+# unencode them if they are.
+_url_dont_escape_characters = set(
+   "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Uppercase alpha
+   "0123456789" # Numbers
+   "-._~"  # Unreserved characters
+)
 
+# These characters should not be escaped
+_url_safe_characters = set(
+   "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Uppercase alpha
+   "0123456789" # Numbers
+   "_.-!~*'()"  # Unreserved characters
+   "/;?:@&=+$," # Reserved characters
+   "%#"         # Extra reserved characters
+)
 
 def unescape_for_display(url, encoding):
     """Decode what you can for a URL, so that we get a nice looking path.
@@ -501,3 +608,24 @@ def unescape_for_display(url, encoding):
                 # Otherwise take the url decoded one
                 res[i] = decoded
     return u'/'.join(res)
+
+
+def derive_to_location(from_location):
+    """Derive a TO_LOCATION given a FROM_LOCATION.
+
+    The normal case is a FROM_LOCATION of http://foo/bar => bar.
+    The Right Thing for some logical destinations may differ though
+    because no / may be present at all. In that case, the result is
+    the full name without the scheme indicator, e.g. lp:foo-bar => foo-bar.
+    This latter case also applies when a Windows drive
+    is used without a path, e.g. c:foo-bar => foo-bar.
+    If no /, path separator or : is found, the from_location is returned.
+    """
+    if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
+        return os.path.basename(from_location.rstrip("/\\"))
+    else:
+        sep = from_location.find(":")
+        if sep > 0:
+            return from_location[sep+1:]
+        else:
+            return from_location

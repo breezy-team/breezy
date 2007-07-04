@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Development Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import os
 import gzip
 
+from bzrlib import osutils
 from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
 from bzrlib.store import copy_all
 from bzrlib.store.text import TextStore
@@ -74,9 +75,20 @@ class TestEscaped(TestCaseWithTransport):
         self.failUnlessExists('72/@%3a%3c%3e')
         self.assertEquals('surprise', text_store.get('@:<>').read())
 
-        text_store.add(StringIO('unicode'), u'\xe5')
+        self.callDeprecated([osutils._file_id_warning],
+                            text_store.add, StringIO('unicode'), u'\xe5')
         self.failUnlessExists('77/%c3%a5')
-        self.assertEquals('unicode', text_store.get(u'\xe5').read())
+        self.assertEquals('unicode',
+                          self.callDeprecated([osutils._file_id_warning],
+                          text_store.get, u'\xe5').read())
+        self.assertEquals('unicode', text_store.get('\xc3\xa5').read())
+
+        text_store.add(StringIO('utf8'), '\xc2\xb5')
+        self.failUnlessExists('77/%c2%b5')
+        self.assertEquals('utf8', text_store.get('\xc2\xb5').read())
+        self.assertEquals('utf8',
+                          self.callDeprecated([osutils._file_id_warning],
+                          text_store.get, u'\xb5').read())
 
     def test_weave(self):
         from bzrlib.store.versioned import WeaveStore
@@ -107,6 +119,15 @@ class TestEscaped(TestCaseWithTransport):
         self.failUnlessExists('72/@%3a%3c%3e.weave')
         check_text('@:<>', 'r', ['surprise'])
 
-        add_text(u'\xe5', 'r', ['unicode'], [], trans)
+        self.callDeprecated([osutils._file_id_warning],
+                            add_text, u'\xe5', 'r', ['unicode'], [], trans)
         self.failUnlessExists('77/%c3%a5.weave')
-        check_text(u'\xe5', 'r', ['unicode'])
+        self.callDeprecated([osutils._file_id_warning],
+                            check_text, u'\xe5', 'r', ['unicode'])
+        check_text('\xc3\xa5', 'r', ['unicode'])
+
+        add_text('\xc2\xb5', 'r', ['utf8'], [], trans)
+        self.failUnlessExists('77/%c2%b5.weave')
+        check_text('\xc2\xb5', 'r', ['utf8'])
+        self.callDeprecated([osutils._file_id_warning],
+                            check_text, u'\xb5', 'r', ['utf8'])

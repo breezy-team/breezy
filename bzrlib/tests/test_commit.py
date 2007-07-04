@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ import bzrlib
 from bzrlib import (
     errors,
     lockdir,
+    osutils,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
@@ -221,28 +223,40 @@ class TestCommit(TestCaseWithTransport):
         wt.move(['hello'], 'a')
         r2 = 'test@rev-2'
         wt.commit('two', rev_id=r2, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a/', 'a/hello', 'b/'])
+        finally:
+            wt.unlock()
 
         wt.move(['b'], 'a')
         r3 = 'test@rev-3'
         wt.commit('three', rev_id=r3, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'a/b'])
-        self.check_inventory_shape(b.repository.get_revision_inventory(r3),
-                                   ['a', 'a/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a/', 'a/hello', 'a/b/'])
+            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+                                       ['a/', 'a/hello', 'a/b/'])
+        finally:
+            wt.unlock()
 
         wt.move(['a/hello'], 'a/b')
         r4 = 'test@rev-4'
         wt.commit('four', rev_id=r4, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/b/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a/', 'a/b/hello', 'a/b/'])
+        finally:
+            wt.unlock()
 
         inv = b.repository.get_revision_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
-        
+
     def test_removed_commit(self):
         """Commit with a removed file"""
         wt = self.make_branch_and_tree('.')
@@ -343,8 +357,10 @@ class TestCommit(TestCaseWithTransport):
                                                       allow_pointless=True,
                                                       rev_id='B',
                                                       working_tree=wt)
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'B').as_short_text(),
+            def sign(text):
+                return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
+            self.assertEqual(sign(Testament.from_revision(branch.repository,
+                             'B').as_short_text()),
                              branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -525,9 +541,13 @@ class TestCommit(TestCaseWithTransport):
         tree.commit('added a, b')
         tree.remove(['a', 'b'])
         tree.commit('removed a', specific_files='a')
-        basis = tree.basis_tree().inventory
-        self.assertIs(None, basis.path2id('a'))
-        self.assertFalse(basis.path2id('b') is None)
+        basis = tree.basis_tree()
+        tree.lock_read()
+        try:
+            self.assertIs(None, basis.path2id('a'))
+            self.assertFalse(basis.path2id('b') is None)
+        finally:
+            tree.unlock()
 
     def test_commit_saves_1ms_timestamp(self):
         """Passing in a timestamp is saved with 1ms resolution"""
@@ -552,8 +572,126 @@ class TestCommit(TestCaseWithTransport):
         timestamp_1ms = round(timestamp, 3)
         self.assertEqual(timestamp_1ms, timestamp)
 
+    def assertBasisTreeKind(self, kind, tree, file_id):
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            self.assertEqual(kind, basis.kind(file_id))
+        finally:
+            basis.unlock()
+
+    def test_commit_kind_changes(self):
+        if not osutils.has_symlinks():
+            raise tests.TestSkipped('Test requires symlink support')
+        tree = self.make_branch_and_tree('.')
+        os.symlink('target', 'name')
+        tree.add('name', 'a-file-id')
+        tree.commit('Added a symlink')
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
+
+        os.unlink('name')
+        self.build_tree(['name'])
+        tree.commit('Changed symlink to file')
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
+
+        os.unlink('name')
+        os.symlink('target', 'name')
+        tree.commit('file to symlink')
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
+
+        os.unlink('name')
+        os.mkdir('name')
+        tree.commit('symlink to directory')
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
+
+        os.rmdir('name')
+        os.symlink('target', 'name')
+        tree.commit('directory to symlink')
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
+
+        # prepare for directory <-> file tests
+        os.unlink('name')
+        os.mkdir('name')
+        tree.commit('symlink to directory')
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
+
+        os.rmdir('name')
+        self.build_tree(['name'])
+        tree.commit('Changed directory to file')
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
+
+        os.unlink('name')
+        os.mkdir('name')
+        tree.commit('file to directory')
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
+
     def test_commit_unversioned_specified(self):
         """Commit should raise if specified files isn't in basis or worktree"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
                           'message', specific_files=['bogus'])
+
+    class Callback(object):
+        
+        def __init__(self, message, testcase):
+            self.called = False
+            self.message = message
+            self.testcase = testcase
+
+        def __call__(self, commit_obj):
+            self.called = True
+            self.testcase.assertTrue(isinstance(commit_obj, Commit))
+            return self.message
+
+    def test_commit_callback(self):
+        """Commit should invoke a callback to get the message"""
+
+        tree = self.make_branch_and_tree('.')
+        try:
+            tree.commit()
+        except Exception, e:
+            self.assertTrue(isinstance(e, BzrError))
+            self.assertEqual('The message or message_callback keyword'
+                             ' parameter is required for commit().', str(e))
+        else:
+            self.fail('exception not raised')
+        cb = self.Callback(u'commit 1', self)
+        tree.commit(message_callback=cb)
+        self.assertTrue(cb.called)
+        repository = tree.branch.repository
+        message = repository.get_revision(tree.last_revision()).message
+        self.assertEqual('commit 1', message)
+
+    def test_no_callback_pointless(self):
+        """Callback should not be invoked for pointless commit"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
+                          allow_pointless=False)
+        self.assertFalse(cb.called)
+
+    def test_no_callback_netfailure(self):
+        """Callback should not be invoked if connectivity fails"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        repository = tree.branch.repository
+        # simulate network failure
+        def raise_(self, arg, arg2):
+            raise errors.NoSuchFile('foo')
+        repository.add_inventory = raise_
+        self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertFalse(cb.called)
+
+    def test_selected_file_merge_commit(self):
+        """Ensure the correct error is raised"""
+        tree = self.make_branch_and_tree('foo')
+        # pending merge would turn into a left parent
+        tree.commit('commit 1')
+        tree.add_parent_tree_id('example')
+        self.build_tree(['foo/bar', 'foo/baz'])
+        tree.add(['bar', 'baz'])
+        err = self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            tree.commit, 'commit 2', specific_files=['bar', 'baz'])
+        self.assertEqual(['bar', 'baz'], err.files)
+        self.assertEqual('Selected-file commit of merges is not supported'
+                         ' yet: files bar, baz', str(err))

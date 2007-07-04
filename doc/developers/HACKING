@@ -1,0 +1,1111 @@
+======================
+Bazaar Developer Guide
+======================
+
+.. contents::
+
+(The current version of this document is available in the file ``HACKING``
+in the source tree, or at http://doc.bazaar-vcs.org/bzr.dev/hacking.html)
+
+
+Getting Started
+###############
+
+Exploring the Bazaar Platform
+=============================
+
+Before making changes, it's a good idea to explore the work already
+done by others. Perhaps the new feature or improvement you're looking
+for is available in another plug-in already? If you find a bug,
+perhaps someone else has already fixed it?
+
+To answer these questions and more, take a moment to explore the
+overall Bazaar Platform. Here are some links to browse:
+
+* The Plugins page on the Wiki - http://bazaar-vcs.org/BzrPlugins
+
+* The Bazaar product family on Launchpad - https://launchpad.net/bazaar
+
+* Bug Tracker for the core product - https://bugs.launchpad.net/bzr/
+
+* Blueprint Tracker for the core product - https://blueprints.launchpad.net/bzr/
+
+If nothing else, perhaps you'll find inspiration in how other developers
+have solved their challenges.
+
+
+Planning and Discussing Changes
+===============================
+
+There is a very active community around Bazaar. Mostly we meet on IRC
+(#bzr on irc.freenode.net) and on the mailing list. To join the Bazaar
+community, see http://bazaar-vcs.org/BzrSupport.
+
+If you are planning to make a change, it's a very good idea to mention it
+on the IRC channel and/or on the mailing list. There are many advantages
+to involving the community before you spend much time on a change.
+These include:
+
+* you get to build on the wisdom on others, saving time
+
+* if others can direct you to similar code, it minimises the work to be done 
+
+* it assists everyone in coordinating direction, priorities and effort.
+
+In summary, maximising the input from others typically minimises the
+total effort required to get your changes merged. The community is
+friendly, helpful and always keen to welcome newcomers.
+
+
+Bazaar Development in a Nutshell
+================================
+
+Looking for a 10 minute introduction to submitting a change?
+See http://bazaar-vcs.org/BzrGivingBack.
+
+TODO: Merge that Wiki page into this document.
+
+
+Understanding the Development Process
+=====================================
+
+The development team follows many best-practices including:
+
+* a public roadmap and planning process in which anyone can participate
+
+* time based milestones everyone can work towards and plan around
+
+* extensive code review and feedback to contributors
+
+* complete and rigorous test coverage on any code contributed
+
+* automated validation that all tests still pass before code is merged
+  into the main code branch.
+
+The key tools we use to enable these practices are:
+
+* Launchpad - https://launchpad.net/
+
+* Bazaar - http://bazaar-vcs.org/
+
+* Bundle Buggy - http://bundlebuggy.aaronbentley.com/
+
+* Patch Queue Manager - https://launchpad.net/pqm/
+
+For further information, see http://bazaar-vcs.org/BzrDevelopment.
+
+
+A Closer Look at the Merge & Review Process
+===========================================
+
+If you'd like to propose a change, please post to the
+bazaar@lists.canonical.com list with a bundle, patch, or link to a
+branch. Put '[PATCH]' or '[MERGE]' in the subject so Bundle Buggy
+can pick it out, and explain the change in the email message text.
+Remember to update the NEWS file as part of your change if it makes any
+changes visible to users or plugin developers. Please include a diff
+against mainline if you're giving a link to a branch.
+
+You can generate a bundle like this::
+
+  bzr bundle > mybundle.patch
+  
+A .patch extension is recommended instead of .bundle as many mail clients
+will send the latter as a binary file. If a bundle would be too long or your
+mailer mangles whitespace (e.g. implicitly converts Unix newlines to DOS
+newlines), use the merge-directive command instead like this::
+
+  bzr merge-directive http://bazaar-vcs.org http://example.org/my_branch > my_directive.patch
+
+See the help for details on the arguments to merge-directive.
+
+Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
+want it to be merged. If you want comments from developers rather than
+to be merged, you can put '[RFC]' in the subject line.
+
+Anyone is welcome to review code.  There are broadly three gates for
+code to get in:
+
+ * Doesn't reduce test coverage: if it adds new methods or commands,
+   there should be tests for them.  There is a good test framework
+   and plenty of examples to crib from, but if you are having trouble
+   working out how to test something feel free to post a draft patch
+   and ask for help.
+
+ * Doesn't reduce design clarity, such as by entangling objects
+   we're trying to separate.  This is mostly something the more
+   experienced reviewers need to help check.
+
+ * Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should pass all three. The core developers take care
+to keep the code quality high and understandable while recognising that
+perfect is sometimes the enemy of good. (It is easy for reviews to make
+people notice other things which should be fixed but those things should
+not hold up the original fix being accepted. New things can easily be
+recorded in the Bug Tracker instead.)
+
+Anyone can "vote" on the mailing list. Core developers can also vote using
+Bundle Buggy. Here are the voting codes and their explanations.
+
+  -1	really don't want it in current form
+  -0	somewhat uncomfortable 
+  +0	comfortable but resubmission after changes requested
+  +1 conditional	good to go after some minor changes
+  +1	good to go
+
++1 conditional is used as a way to avoid another submit/review cycle for
+patches that need small changes.
+
+If a change gets two +1 votes from core reviewers, and no
+vetos, then it's OK to come in.  Any of the core developers can bring it
+into the bzr.dev trunk and backport it to maintenance branches if required.
+The Release Manager will merge the change into the branch for a pending
+release, if any. As a guideline, core developers usually merge their own
+changes and volunteer to merge other contributions if they were the second
+reviewer to agree to a change.
+
+To track the progress of proposed changes, use Bundle Buggy. See
+http://bundlebuggy.aaronbentley.com/help for a link to all the
+outstanding merge requests together with an explanation of the columns.
+Bundle Buggy will also mail you a link to track just your change.
+
+
+Preparing a Sandbox for Making Changes to Bazaar
+================================================
+
+Bazaar supports many ways of organising your work. See
+http://bazaar-vcs.org/SharedRepositoryLayouts for a summary of the
+popular alternatives.
+
+Of course, the best choice for you will depend on numerous factors:
+the number of changes you may be making, the complexity of the changes, etc.
+As a starting suggestion though:
+
+* create a local copy of the main development branch (bzr.dev) by using
+  this command::
+  
+    bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+   
+* keep your copy of bzr.dev prestine (by not developing in it) and keep
+  it up to date (by using bzr pull)
+
+* create a new branch off your local bzr.dev copy for each issue
+  (bug or feature) you are working on.
+
+This approach makes it easy to go back and make any required changes
+after a code review. Resubmitting the change is then simple with no
+risk of accidentially including edits related to other issues you may
+be working on. After the changes for an issue are accepted and merged,
+the associated branch can be deleted or archived as you wish.
+
+
+Navigating the Code Base
+========================
+
+TODO: List and describe in one line the purpose of each directory
+inside an installation of bzr.
+
+TODO: Refer to a central location holding an up to date copy of the API
+documentation generated by epydoc, e.g. something like
+http://starship.python.net/crew/mwh/bzrlibapi/bzrlib.html.
+
+
+Testing Bazaar
+##############
+
+The Importance of Testing
+=========================
+
+Reliability is a critical success factor for any Version Control System.
+We want Bazaar to be highly reliable across multiple platforms while
+evolving over time to meet the needs of its community. 
+
+In a nutshell, this is want we expect and encourage:
+
+* New functionality should have test cases.  Preferably write the
+  test before writing the code.
+
+  In general, you can test at either the command-line level or the
+  internal API level.  See Writing tests below for more detail.
+
+* Try to practice Test-Driven Development: before fixing a bug, write a
+  test case so that it does not regress.  Similarly for adding a new
+  feature: write a test case for a small version of the new feature before
+  starting on the code itself.  Check the test fails on the old code, then
+  add the feature or fix and check it passes.
+
+By doing these things, the Bazaar team gets increased confidence that
+changes do what they claim to do, whether provided by the core team or
+by community members. Equally importantly, we can be surer that changes
+down the track do not break new features or bug fixes that you are
+contributing today.
+
+As of May 2007, Bazaar ships with a test suite containing over 6000 tests
+and growing. We are proud of it and want to remain so. As community
+members, we all benefit from it. Would you trust version control on
+your project to a product *without* a test suite like Bazaar has?
+
+
+Running the Test Suite
+======================
+
+Currently, bzr selftest is used to invoke tests.
+You can provide a pattern argument to run a subset. For example, 
+to run just the blackbox tests, run::
+
+  ./bzr selftest -v blackbox
+
+To skip a particular test (or set of tests), use the --exclude option
+(shorthand -x) like so::
+
+  ./bzr selftest -v -x blackbox  
+
+To list tests without running them, use the --list-only option like so::
+
+  ./bzr selftest --list-only
+
+This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.
+
+
+Writing Tests
+=============
+
+In general tests should be placed in a file named test_FOO.py where 
+FOO is the logical thing under test. That file should be placed in the
+tests subdirectory under the package being tested.
+
+For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
+See bzrlib/tests/test_sampler.py for a template test script.
+
+Tests can be written for the UI or for individual areas of the library.
+Choose whichever is appropriate: if adding a new command, or a new command 
+option, then you should be writing a UI test.  If you are both adding UI
+functionality and library functionality, you will want to write tests for 
+both the UI and the core behaviours.  We call UI tests 'blackbox' tests
+and they are found in ``bzrlib/tests/blackbox/*.py``. 
+
+When writing blackbox tests please honour the following conventions:
+
+ 1. Place the tests for the command 'name' in
+    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
+    to locate the test script for a faulty command.
+
+ 2. Use the 'self.run_bzr("name")' utility function to invoke the command
+    rather than running bzr in a subprocess or invoking the
+    cmd_object.run() method directly. This is a lot faster than
+    subprocesses and generates the same logging output as running it in a
+    subprocess (which invoking the method directly does not).
+ 
+ 3. Only test the one command in a single test script. Use the bzrlib 
+    library when setting up tests and when evaluating the side-effects of
+    the command. We do this so that the library api has continual pressure
+    on it to be as functional as the command line in a simple manner, and
+    to isolate knock-on effects throughout the blackbox test suite when a
+    command changes its name or signature. Ideally only the tests for a
+    given command are affected when a given command is changed.
+
+ 4. If you have a test which does actually require running bzr in a
+    subprocess you can use ``run_bzr_subprocess``. By default the spawned
+    process will not load plugins unless ``--allow-plugins`` is supplied.
+
+
+Doctests
+--------
+
+We make selective use of doctests__.  In general they should provide 
+*examples* within the API documentation which can incidentally be tested.  We 
+don't try to test every important case using doctests -- regular Python
+tests are generally a better solution.
+
+Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
+
+  __ http://docs.python.org/lib/module-doctest.html
+
+
+Skipping tests and test requirements
+------------------------------------
+
+In our enhancements to unittest we allow for some addition results beyond
+just success or failure.
+
+If a test can't be run, it can say that it's skipped.  This is typically
+used in parameterized tests - for example if a transport doesn't support
+setting permissions, we'll skip the tests that relating to that.  ::
+
+    try:
+        return self.branch_format.initialize(repo.bzrdir)
+    except errors.UninitializableFormat:
+        raise tests.TestSkipped('Uninitializable branch format')
+
+Raising TestSkipped is a good idea when you want to make it clear that the
+test was not run, rather than just returning which makes it look as if it
+was run and passed.
+
+A subtly different case is a test that should run, but can't run in the
+current environment.  This covers tests that can only run in particular
+operating systems or locales, or that depend on external libraries.  Here
+we want to inform the user that they didn't get full test coverage, but
+they possibly could if they installed more libraries.  These are expressed
+as a dependency on a feature so we can summarise them, and so that the
+test for the feature is done only once.  (For historical reasons, as of
+May 2007 many cases that should depend on features currently raise
+TestSkipped.)  The typical use is::
+
+    class TestStrace(TestCaseWithTransport):
+
+        _test_needs_features = [StraceFeature]
+
+which means all tests in this class need the feature.  The feature itself
+should provide a ``_probe`` method which is called once to determine if
+it's available.
+
+
+Known failures
+--------------
+
+Known failures are when a test exists but we know it currently doesn't
+work, allowing the test suite to still pass.  These should be used with
+care, we don't want a proliferation of quietly broken tests.  It might be
+appropriate to use them if you've committed a test for a bug but not the
+fix for it, or if something works on Unix but not on Windows.
+
+
+
+Essential Domain Classes
+########################
+
+Introducing the Object Model
+============================
+
+The core domain objects within the bazaar model are:
+
+* Transport
+
+* Branch
+
+* Repository
+
+* WorkingTree
+
+Transports are explained below. See http://bazaar-vcs.org/Classes/
+for an introduction to the other key classes.
+
+Using Transports
+================
+
+The ``Transport`` layer handles access to local or remote directories.
+Each Transport object acts like a logical connection to a particular
+directory, and it allows various operations on files within it.  You can
+*clone* a transport to get a new Transport connected to a subdirectory or
+parent directory.
+
+Transports are not used for access to the working tree.  At present
+working trees are always local and they are accessed through the regular
+Python file io mechanisms.
+
+Filenames vs URLs
+-----------------
+
+Transports work in URLs.  Take note that URLs are by definition only
+ASCII - the decision of how to encode a Unicode string into a URL must be
+taken at a higher level, typically in the Store.  (Note that Stores also
+escape filenames which cannot be safely stored on all filesystems, but
+this is a different level.)
+
+The main reason for this is that it's not possible to safely roundtrip a
+URL into Unicode and then back into the same URL.  The URL standard
+gives a way to represent non-ASCII bytes in ASCII (as %-escapes), but
+doesn't say how those bytes represent non-ASCII characters.  (They're not
+guaranteed to be UTF-8 -- that is common but doesn't happen everywhere.)
+
+For example if the user enters the url ``http://example/%e0`` there's no
+way to tell whether that character represents "latin small letter a with
+grave" in iso-8859-1, or "latin small letter r with acute" in iso-8859-2
+or malformed UTF-8.  So we can't convert their URL to Unicode reliably.
+
+Equally problematic if we're given a url-like string containing non-ascii
+characters (such as the accented a) we can't be sure how to convert that
+to the correct URL, because we don't know what encoding the server expects
+for those characters.  (Although this is not totally reliable we might still
+accept these and assume they should be put into UTF-8.)
+
+A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
+one directory component whose name is "sweet/sour".  The escaped slash is
+not a directory separator.  If we try to convert URLs to regular Unicode
+paths this information will be lost.
+
+This implies that Transports must natively deal with URLs; for simplicity
+they *only* deal with URLs and conversion of other strings to URLs is done
+elsewhere.  Information they return, such as from ``list_dir``, is also in
+the form of URL components.
+
+
+Core Topics
+###########
+
+Evolving Interfaces
+===================
+
+We have a commitment to 6 months API stability - any supported symbol in a
+release of bzr MUST NOT be altered in any way that would result in
+breaking existing code that uses it. That means that method names,
+parameter ordering, parameter names, variable and attribute names etc must
+not be changed without leaving a 'deprecated forwarder' behind. This even
+applies to modules and classes.
+
+If you wish to change the behaviour of a supported API in an incompatible
+way, you need to change its name as well. For instance, if I add an optional keyword
+parameter to branch.commit - that's fine. On the other hand, if I add a
+keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+When renaming such supported API's, be sure to leave a deprecated_method (or
+_function or ...) behind which forwards to the new API. See the
+bzrlib.symbol_versioning module for decorators that take care of the
+details for you - such as updating the docstring, and issuing a warning
+when the old api is used.
+
+For unsupported API's, it does not hurt to follow this discipline, but it's
+not required. Minimally though, please try to rename things so that
+callers will at least get an AttributeError rather than weird results.
+
+
+Coding Style Guidelines
+=======================
+
+Please write PEP-8__ compliant code.  
+
+One often-missed requirement is that the first line of docstrings
+should be a self-contained one-sentence summary.
+
+__ http://www.python.org/peps/pep-0008.html
+
+
+Module Imports
+--------------
+
+* Imports should be done at the top-level of the file, unless there is
+  a strong reason to have them lazily loaded when a particular
+  function runs.  Import statements have a cost, so try to make sure
+  they don't run inside hot functions.
+
+* Module names should always be given fully-qualified,
+  i.e. ``bzrlib.hashcache`` not just ``hashcache``.
+
+
+Naming
+------
+
+Functions, methods or members that are in some sense "private" are given
+a leading underscore prefix.  This is just a hint that code outside the
+implementation should probably not use that interface.
+
+We prefer class names to be concatenated capital words (``TestCase``)
+and variables, methods and functions to be lowercase words joined by
+underscores (``revision_id``, ``get_revision``).
+
+For the purposes of naming some names are treated as single compound
+words: "filename", "revno".
+
+Consider naming classes as nouns and functions/methods as verbs.
+
+Try to avoid using abbreviations in names, because there can be
+inconsistency if other people use the full name.
+
+
+Standard Names
+--------------
+
+``revision_id`` not ``rev_id`` or ``revid``
+
+Functions that transform one thing to another should be named ``x_to_y``
+(not ``x2y`` as occurs in some old code.)
+
+
+Destructors
+-----------
+
+Python destructors (``__del__``) work differently to those of other
+languages.  In particular, bear in mind that destructors may be called
+immediately when the object apparently becomes unreferenced, or at some
+later time, or possibly never at all.  Therefore we have restrictions on
+what can be done inside them.
+
+ 0. Never use a __del__ method without asking Martin/Robert first.
+
+ 1. Never rely on a ``__del__`` method running.  If there is code that
+    must run, do it from a ``finally`` block instead.
+
+ 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
+    interpreter!!
+
+ 3. In some places we raise a warning from the destructor if the object
+    has not been cleaned up or closed.  This is considered OK: the warning
+    may not catch every case but it's still useful sometimes.
+
+
+Factories
+---------
+
+In some places we have variables which point to callables that construct
+new instances.  That is to say, they can be used a lot like class objects,
+but they shouldn't be *named* like classes:
+
+> I think that things named FooBar should create instances of FooBar when
+> called. Its plain confusing for them to do otherwise. When we have
+> something that is going to be used as a class - that is, checked for via
+> isinstance or other such idioms, them I would call it foo_class, so that
+> it is clear that a callable is not sufficient. If it is only used as a
+> factory, then yes, foo_factory is what I would use.
+
+
+Registries
+----------
+
+Several places in Bazaar use (or will use) a registry, which is a 
+mapping from names to objects or classes.  The registry allows for 
+loading in registered code only when it's needed, and keeping
+associated information such as a help string or description.
+
+
+Lazy Imports
+------------
+
+To make startup time faster, we use the ``bzrlib.lazy_import`` module to
+delay importing modules until they are actually used. ``lazy_import`` uses
+the same syntax as regular python imports. So to import a few modules in a
+lazy fashion do::
+
+  from bzrlib.lazy_import import lazy_import
+  lazy_import(globals(), """
+  import os
+  import subprocess
+  import sys
+  import time
+
+  from bzrlib import (
+     errors,
+     transport,
+     revision as _mod_revision,
+     )
+  import bzrlib.transport
+  import bzrlib.xml5
+  """)
+
+At this point, all of these exist as a ``ImportReplacer`` object, ready to
+be imported once a member is accessed. Also, when importing a module into
+the local namespace, which is likely to clash with variable names, it is
+recommended to prefix it as ``_mod_<module>``. This makes it clearer that
+the variable is a module, and these object should be hidden anyway, since
+they shouldn't be imported into other namespaces.
+
+
+Modules versus Members
+~~~~~~~~~~~~~~~~~~~~~~
+
+While it is possible for ``lazy_import()`` to import members of a module
+when using the ``from module import member`` syntax, it is recommended to
+only use that syntax to load sub modules ``from module import submodule``.
+This is because variables and classes can frequently be used without
+needing a sub-member for example::
+
+  lazy_import(globals(), """
+  from module import MyClass
+  """)
+
+  def test(x):
+      return isinstance(x, MyClass)
+
+This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
+object, rather than the real class.
+
+
+Passing to Other Variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
+Because the replacer only knows about the original name, it is unable to
+replace other variables. The ``ImportReplacer`` class will raise an
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
+
+
+Getting Input
+=============
+
+Processing Command Lines
+------------------------
+
+bzrlib has a standard framework for parsing command lines and calling
+processing routines associated with various commands. See builtins.py
+for numerous examples.
+
+
+Standard Parameter Types
+------------------------
+
+There are some common requirements in the library: some parameters need to be
+unicode safe, some need byte strings, and so on. At the moment we have
+only codified one specific pattern: Parameters that need to be unicode
+should be checked via ``bzrlib.osutils.safe_unicode``. This will coerce the
+input into unicode in a consistent fashion, allowing trivial strings to be
+used for programmer convenience, but not performing unpredictably in the
+presence of different locales.
+
+
+Writing Output
+==============
+
+(The strategy described here is what we want to get to, but it's not
+consistently followed in the code at the moment.)
+
+bzrlib is intended to be a generically reusable library.  It shouldn't
+write messages to stdout or stderr, because some programs that use it
+might want to display that information through a GUI or some other
+mechanism.
+
+We can distinguish two types of output from the library:
+
+ 1. Structured data representing the progress or result of an
+    operation.  For example, for a commit command this will be a list
+    of the modified files and the finally committed revision number
+    and id.
+
+    These should be exposed either through the return code or by calls
+    to a callback parameter.
+
+    A special case of this is progress indicators for long-lived
+    operations, where the caller should pass a ProgressBar object.
+
+ 2. Unstructured log/debug messages, mostly for the benefit of the
+    developers or users trying to debug problems.  This should always
+    be sent through ``bzrlib.trace`` and Python ``logging``, so that
+    it can be redirected by the client.
+
+The distinction between the two is a bit subjective, but in general if
+there is any chance that a library would want to see something as
+structured data, we should make it so.
+
+The policy about how output is presented in the text-mode client
+should be only in the command-line tool.
+
+
+Writing tests
+=============
+
+In general tests should be placed in a file named test_FOO.py where 
+FOO is the logical thing under test. That file should be placed in the
+tests subdirectory under the package being tested.
+
+For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
+See bzrlib/tests/test_sampler.py for a template test script.
+
+Tests can be written for the UI or for individual areas of the library.
+Choose whichever is appropriate: if adding a new command, or a new command 
+option, then you should be writing a UI test.  If you are both adding UI
+functionality and library functionality, you will want to write tests for 
+both the UI and the core behaviours.  We call UI tests 'blackbox' tests
+and they are found in ``bzrlib/tests/blackbox/*.py``. 
+
+When writing blackbox tests please honour the following conventions:
+
+ 1. Place the tests for the command 'name' in
+    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
+    to locate the test script for a faulty command.
+
+ 2. Use the 'self.run_bzr("name")' utility function to invoke the command
+    rather than running bzr in a subprocess or invoking the
+    cmd_object.run() method directly. This is a lot faster than
+    subprocesses and generates the same logging output as running it in a
+    subprocess (which invoking the method directly does not).
+ 
+ 3. Only test the one command in a single test script. Use the bzrlib 
+    library when setting up tests and when evaluating the side-effects of
+    the command. We do this so that the library api has continual pressure
+    on it to be as functional as the command line in a simple manner, and
+    to isolate knock-on effects throughout the blackbox test suite when a
+    command changes its name or signature. Ideally only the tests for a
+    given command are affected when a given command is changed.
+
+ 4. If you have a test which does actually require running bzr in a
+    subprocess you can use ``run_bzr_subprocess``. By default the spawned
+    process will not load plugins unless ``--allow-plugins`` is supplied.
+
+
+Test support
+------------
+
+We have a rich collection of tools to support writing tests. Please use
+them in preference to ad-hoc solutions as they provide portability and
+performance benefits.
+
+TreeBuilder
+~~~~~~~~~~~
+
+The ``TreeBuilder`` interface allows the construction of arbitrary trees
+with a declarative interface. A sample session might look like::
+
+  tree = self.make_branch_and_tree('path')
+  builder = TreeBuilder()
+  builder.start_tree(tree)
+  builder.build(['foo', "bar/", "bar/file"])
+  tree.commit('commit the tree')
+  builder.finish_tree()
+
+Please see bzrlib.treebuilder for more details.
+
+BranchBuilder
+~~~~~~~~~~~~~
+
+The ``BranchBuilder`` interface allows the creation of test branches in a
+quick and easy manner. A sample session::
+
+  builder = BranchBuilder(self.get_transport().clone('relpath'))
+  builder.build_commit()
+  builder.build_commit()
+  builder.build_commit()
+  branch = builder.get_branch()
+
+Please see bzrlib.branchbuilder for more details.
+
+Doctests
+--------
+
+We make selective use of doctests__.  In general they should provide 
+*examples* within the API documentation which can incidentally be tested.  We 
+don't try to test every important case using doctests -- regular Python
+tests are generally a better solution.
+
+Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
+
+  __ http://docs.python.org/lib/module-doctest.html
+
+
+Running tests
+=============
+Currently, bzr selftest is used to invoke tests.
+You can provide a pattern argument to run a subset. For example, 
+to run just the blackbox tests, run::
+
+  ./bzr selftest -v blackbox
+
+To skip a particular test (or set of tests), use the --exclude option
+(shorthand -x) like so::
+
+  ./bzr selftest -v -x blackbox  
+
+To list tests without running them, use the --list-only option like so::
+
+  ./bzr selftest --list-only
+
+This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.
+
+
+Handling Errors and Exceptions
+==============================
+
+Commands should return non-zero when they encounter circumstances that
+the user should really pay attention to - which includes trivial shell
+pipelines.
+
+Recommended values are:
+
+    0. OK.
+    1. Conflicts in merge-like operations, or changes are present in
+       diff-like operations. 
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show 
+       a diff of).
+    3. An error or exception has occurred.
+
+Errors are handled through Python exceptions. Exceptions should be defined
+inside bzrlib.errors, so that we can see the whole tree at a glance.
+
+We broadly classify errors as either being either internal or not,
+depending on whether ``internal_error`` is set or not.  If we think it's our
+fault, we show a backtrace, an invitation to report the bug, and possibly
+other details.  This is the default for errors that aren't specifically
+recognized as being caused by a user error.  Otherwise we show a briefer
+message, unless -Derror was given.
+
+Many errors originate as "environmental errors" which are raised by Python
+or builtin libraries -- for example IOError.  These are treated as being
+our fault, unless they're caught in a particular tight scope where we know
+that they indicate a user errors.  For example if the repository format
+is not found, the user probably gave the wrong path or URL.  But if one of
+the files inside the repository is not found, then it's our fault --
+either there's a bug in bzr, or something complicated has gone wrong in
+the environment that means one internal file was deleted.
+
+Many errors are defined in ``bzrlib/errors.py`` but it's OK for new errors
+to be added near the place where they are used.
+
+Exceptions are formatted for the user by conversion to a string
+(eventually calling their ``__str__`` method.)  As a convenience the
+``._fmt`` member can be used as a template which will be mapped to the
+error's instance dict.
+
+New exception classes should be defined when callers might want to catch
+that exception specifically, or when it needs a substantially different
+format string.
+
+Exception strings should start with a capital letter and should not have a
+final fullstop.  If long, they may contain newlines to break the text.
+
+
+Documenting Changes
+===================
+
+When you change bzrlib, please update the relevant documentation for the
+change you made: Changes to commands should update their help, and
+possibly end user tutorials; changes to the core library should be
+reflected in API documentation.
+
+NEWS File
+---------
+
+If you make a user-visible change, please add a note to the NEWS file.
+The description should be written to make sense to someone who's just
+a user of bzr, not a developer: new functions or classes shouldn't be
+mentioned, but new commands, changes in behaviour or fixed nontrivial
+bugs should be listed.  See the existing entries for an idea of what
+should be done.
+
+Within each release, entries in the news file should have the most
+user-visible changes first.  So the order should be approximately:
+
+ * changes to existing behaviour - the highest priority because the 
+   user's existing knowledge is incorrect
+ * new features - should be brought to their attention
+ * bug fixes - may be of interest if the bug was affecting them, and
+   should include the bug number if any
+ * major documentation changes
+ * changes to internal interfaces
+
+People who made significant contributions to each change are listed in
+parenthesis.  This can include reporting bugs (particularly with good
+details or reproduction recipes), submitting patches, etc.
+
+Commands
+--------
+
+The docstring of a command is used by ``bzr help`` to generate help output
+for the command. The list 'takes_options' attribute on a command is used by
+``bzr help`` to document the options for the command - the command
+docstring does not need to document them. Finally, the '_see_also'
+attribute on a command can be used to reference other related help topics.
+
+API Documentation
+-----------------
+
+Functions, methods, classes and modules should have docstrings
+describing how they are used. 
+
+The first line of the docstring should be a self-contained sentence.
+
+For the special case of Command classes, this acts as the user-visible
+documentation shown by the help command.
+
+The docstrings should be formatted as reStructuredText_ (like this
+document), suitable for processing using the epydoc_ tool into HTML
+documentation.
+
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _epydoc: http://epydoc.sourceforge.net/
+
+
+General Guidelines
+==================
+
+Copyright
+---------
+
+The copyright policy for bzr was recently made clear in this email (edited
+for grammatical correctness)::
+
+    The attached patch cleans up the copyright and license statements in
+    the bzr source. It also adds tests to help us remember to add them
+    with the correct text.
+
+    We had the problem that lots of our files were "Copyright Canonical
+    Development Ltd" which is not a real company, and some other variations
+    on this theme. Also, some files were missing the GPL statements.
+    
+    I want to be clear about the intent of this patch, since copyright can
+    be a little controversial.
+    
+    1) The big motivation for this is not to shut out the community, but
+    just to clean up all of the invalid copyright statements.
+    
+    2) It has been the general policy for bzr that we want a single
+    copyright holder for all of the core code. This is following the model
+    set by the FSF, which makes it easier to update the code to a new
+    license in case problems are encountered. (For example, if we want to
+    upgrade the project universally to GPL v3 it is much simpler if there is
+    a single copyright holder). It also makes it clearer if copyright is
+    ever debated, there is a single holder, which makes it easier to defend
+    in court, etc. (I think the FSF position is that if you assign them
+    copyright, they can defend it in court rather than you needing to, and
+    I'm sure Canonical would do the same).
+    As such, Canonical has requested copyright assignments from all of the
+    major contributers.
+    
+    3) If someone wants to add code and not attribute it to Canonical, there
+    is a specific list of files that are excluded from this check. And the
+    test failure indicates where that is, and how to update it.
+    
+    4) If anyone feels that I changed a copyright statement incorrectly, just
+    let me know, and I'll be happy to correct it. Whenever you have large
+    mechanical changes like this, it is possible to make some mistakes.
+    
+    Just to reiterate, this is a community project, and it is meant to stay
+    that way. Core bzr code is copyright Canonical for legal reasons, and
+    the tests are just there to help us maintain that.
+
+
+Miscellaneous Topics
+####################
+
+Debugging
+=========
+
+Bazaar has a few facilities to help debug problems by going into pdb_, the
+Python debugger.
+
+.. _pdb: http://docs.python.org/lib/debugger-commands.html
+
+If the ``BZR_PDB`` environment variable is set 
+then bzr will go into pdb post-mortem mode when an unhandled exception
+occurs.
+
+If you send a SIGQUIT signal to bzr, which can be done by pressing
+Ctrl-\\ on Unix, bzr will go into the debugger immediately.  You can
+continue execution by typing ``c``.  This can be disabled if necessary
+by setting the environment variable ``BZR_SIGQUIT_PDB=0``.
+
+
+Jargon
+======
+
+revno
+    Integer identifier for a revision on the main line of a branch.
+    Revision 0 is always the null revision; others are 1-based
+    indexes into the branch's revision history.
+
+
+Unicode and Encoding Support
+============================
+
+This section discusses various techniques that Bazaar uses to handle
+characters that are outside the ASCII set.
+
+``Command.outf``
+----------------
+
+When a ``Command`` object is created, it is given a member variable
+accessible by ``self.outf``.  This is a file-like object, which is bound to
+``sys.stdout``, and should be used to write information to the screen,
+rather than directly writing to ``sys.stdout`` or calling ``print``.
+This file has the ability to translate Unicode objects into the correct
+representation, based on the console encoding.  Also, the class attribute
+``encoding_type`` will effect how unprintable characters will be
+handled.  This parameter can take one of 3 values:
+
+  replace
+    Unprintable characters will be represented with a suitable replacement
+    marker (typically '?'), and no exception will be raised. This is for
+    any command which generates text for the user to review, rather than
+    for automated processing.
+    For example: ``bzr log`` should not fail if one of the entries has text
+    that cannot be displayed.
+  
+  strict
+    Attempting to print an unprintable character will cause a UnicodeError.
+    This is for commands that are intended more as scripting support, rather
+    than plain user review.
+    For exampl: ``bzr ls`` is designed to be used with shell scripting. One
+    use would be ``bzr ls --null --unknows | xargs -0 rm``.  If ``bzr``
+    printed a filename with a '?', the wrong file could be deleted. (At the
+    very least, the correct file would not be deleted). An error is used to
+    indicate that the requested action could not be performed.
+  
+  exact
+    Do not attempt to automatically convert Unicode strings. This is used
+    for commands that must handle conversion themselves.
+    For example: ``bzr diff`` needs to translate Unicode paths, but should
+    not change the exact text of the contents of the files.
+
+
+``bzrlib.urlutils.unescape_for_display``
+----------------------------------------
+
+Because Transports work in URLs (as defined earlier), printing the raw URL
+to the user is usually less than optimal. Characters outside the standard
+set are printed as escapes, rather than the real character, and local
+paths would be printed as ``file://`` urls. The function
+``unescape_for_display`` attempts to unescape a URL, such that anything
+that cannot be printed in the current encoding stays an escaped URL, but
+valid characters are generated where possible.
+
+
+Portability Tips
+================
+
+The ``bzrlib.osutils`` module has many useful helper functions, including
+some more portable variants of functions in the standard library.
+
+In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
+to fail on Windows if some files are readonly or still open elsewhere.
+Use ``bzrlib.osutils.rmtree`` instead.
+
+
+C Extension Modules
+===================
+
+We write some extensions in C using pyrex. We design these to work in
+three scenarios:
+
+ * User with no C compiler
+ * User with C compiler
+ * Developers
+
+The recommended way to install bzr is to have a C compiler so that the
+extensions can be built, but if no C compiler is present, the pure python
+versions we supply will work, though more slowly.
+
+For developers we recommend that pyrex be installed, so that the C
+extensions can be changed if needed.
+
+For the C extensions, the extension module should always match the
+original python one in all respects (modulo speed). This should be
+maintained over time.
+
+To create an extension, add rules to setup.py for building it with pyrex,
+and with distutils. Now start with an empty .pyx file. At the top add
+"include 'yourmodule.py'". This will import the contents of foo.py into this 
+file at build time - remember that only one module will be loaded at
+runtime. Now you can subclass classes, or replace functions, and only your
+changes need to be present in the .pyx file.
+
+Note that pyrex does not support all 2.4 programming idioms, so some
+syntax changes may be required. I.e. 
+
+ - 'from foo import (bar, gam)' needs to change to not use the brackets. 
+ - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+
+If the changes are too dramatic, consider
+maintaining the python code twice - once in the .pyx, and once in the .py,
+and no longer including the .py file.
+
+
+Making Installers for OS Windows
+================================
+To build a win32 installer, see the instructions on the wiki page:
+http://bazaar-vcs.org/BzrWin32Installer
+
+
+..
+   vim: ft=rst tw=74 ai

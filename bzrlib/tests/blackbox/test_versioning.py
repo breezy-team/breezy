@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 import os
 
-from bzrlib.tests import BzrTestBase, TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 from bzrlib.osutils import pathjoin

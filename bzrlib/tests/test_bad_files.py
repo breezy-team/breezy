@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,54 +15,49 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Tests being able to ignore mad filetypes.
-"""
+"""Tests being able to ignore bad filetypes."""
 
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.errors import BadFileKindError
+from cStringIO import StringIO
 import os
 
-def verify_status(tester, tree, value):
-    from bzrlib.status import show_tree_status
-    from cStringIO import StringIO
+from bzrlib import (
+    add,
+    errors,
+    )
+from bzrlib.status import show_tree_status
+from bzrlib.tests import TestCaseWithTransport
 
+
+def verify_status(tester, tree, value):
+    """Verify the output of show_tree_status"""
     tof = StringIO()
     show_tree_status(tree, to_file=tof)
     tof.seek(0)
-    tester.assertEquals(tof.readlines(), value)
+    tester.assertEqual(value, tof.readlines())
 
 
 class TestBadFiles(TestCaseWithTransport):
-    
+
     def test_bad_files(self):
         """Test that bzr will ignore files it doesn't like"""
-        from bzrlib.add import smart_add_tree
-        from bzrlib.branch import Branch
-
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-
-        files = ['one', 'two', 'three']
-        self.build_tree(files)
-        wt.add(files)
-        wt.commit("Commit one", rev_id="a@u-0-0")
-        self.build_tree(['four'])
-        wt.add(['four'])
-        wt.commit("Commit two", rev_id="a@u-0-1")
-        self.build_tree(['five'])
-        wt.add(['five'])
-        wt.commit("Commit three", rev_id="a@u-0-2")
-
-        # We should now have a few files, lets try to
-        # put some bogus stuff in the tree
-
-        # We can only continue if we have mkfifo
         if getattr(os, 'mkfifo', None) is None:
             # TODO: Ultimately this should be TestSkipped
             # or PlatformDeficiency
             return
 
-        # status with nothing
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+
+        files = ['one', 'two', 'three']
+        file_ids = ['one-id', 'two-id', 'three-id']
+        self.build_tree(files)
+        wt.add(files, file_ids)
+        wt.commit("Commit one", rev_id="a@u-0-0")
+
+        # We should now have a few files, lets try to
+        # put some bogus stuff in the tree
+
+        # status with nothing changed
         verify_status(self, wt, [])
 
         os.mkfifo('a-fifo')
@@ -73,10 +68,21 @@ class TestBadFiles(TestCaseWithTransport):
                            '  a-fifo\n',
                            '  six\n'
                            ])
-        
+
+        # We should raise an error if we are adding a bogus file
+        self.assertRaises(errors.BadFileKindError,
+                          add.smart_add_tree, wt, ['a-fifo'])
+
+        # And the list of files shouldn't have been modified
+        verify_status(self, wt,
+                          ['unknown:\n',
+                           '  a-fifo\n',
+                           '  six\n'
+                           ])
+
         # Make sure smart_add can handle having a bogus
         # file in the way
-        smart_add_tree(wt, '.')
+        add.smart_add_tree(wt, ['.'])
         verify_status(self, wt,
                           ['added:\n',
                            '  six\n',
@@ -89,8 +95,3 @@ class TestBadFiles(TestCaseWithTransport):
                           ['unknown:\n',
                            '  a-fifo\n',
                            ])
-
-        # We should raise an error if we are adding a bogus file
-        # Is there a way to test the actual error that should be raised?
-        self.run_bzr('add', 'a-fifo', retcode=3)
-

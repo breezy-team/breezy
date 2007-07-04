@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ class TestCheckout(ExternalBase):
         tree.commit('2', rev_id='2')
 
     def test_checkout_makes_bound_branch(self):
-        self.runbzr('checkout branch checkout')
+        self.run_bzr('checkout branch checkout')
         # if we have a checkout, the branch base should be 'branch'
         source = bzrdir.BzrDir.open('branch')
         result = bzrdir.BzrDir.open('checkout')
@@ -46,7 +46,7 @@ class TestCheckout(ExternalBase):
                          result.open_branch().get_bound_location())
 
     def test_checkout_light_makes_checkout(self):
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         # if we have a checkout, the branch base should be 'branch'
         source = bzrdir.BzrDir.open('branch')
         result = bzrdir.BzrDir.open('checkout')
@@ -54,7 +54,7 @@ class TestCheckout(ExternalBase):
                          result.open_branch().bzrdir.root_transport.base)
 
     def test_checkout_dash_r(self):
-        self.runbzr('checkout -r -2 branch checkout')
+        self.run_bzr('checkout -r -2 branch checkout')
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
@@ -62,7 +62,7 @@ class TestCheckout(ExternalBase):
         self.failIfExists('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        self.runbzr('checkout --lightweight -r -2 branch checkout')
+        self.run_bzr('checkout --lightweight -r -2 branch checkout')
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,15 +21,14 @@
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.blackbox import TestCaseWithTransport
 
-class TestCat(TestCaseInTempDir):
+class TestCat(TestCaseWithTransport):
 
     def test_cat(self):
 
         def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_subprocess(*args, **kwargs)[0]
 
         os.mkdir('branch')
         os.chdir('branch')
@@ -60,4 +59,67 @@ class TestCat(TestCaseInTempDir):
                           'foo\n')
         bzr('cat', 'a', retcode=3)
         bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
+        
+    def test_cat_different_id(self):
+        """'cat' works with old and new files"""
+        tree = self.make_branch_and_tree('.')
+        # the files are named after their path in the revision and
+        # current trees later in the test case
+        # a-rev-tree is special because it appears in both the revision
+        # tree and the working tree
+        self.build_tree_contents([('a-rev-tree', 'foo\n'),
+            ('c-rev', 'baz\n'), ('d-rev', 'bar\n')])
+        tree.lock_write()
+        try:
+            tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
+            tree.commit('add test files')
+            # remove currently uses self._write_inventory - 
+            # work around that for now.
+            tree.flush()
+            tree.remove(['d-rev'])
+            tree.rename_one('a-rev-tree', 'b-tree')
+            tree.rename_one('c-rev', 'a-rev-tree')
+        finally:
+            # calling bzr as another process require free lock on win32
+            tree.unlock()
+
+        # 'b-tree' is not present in the old tree.
+        self.run_bzr_error(["^bzr: ERROR: u?'b-tree' "
+                            "is not present in revision .+$"],
+                           'cat', 'b-tree', '--name-from-revision')
+
+        # get to the old file automatically
+        out, err = self.run_bzr('cat', 'd-rev')
+        self.assertEqual('bar\n', out)
+        self.assertEqual('', err)
+
+        out, err = self.run_bzr('cat', 'a-rev-tree',
+                                '--name-from-revision')
+        self.assertEqual('foo\n', out)
+        self.assertEqual('', err)
+
+        out, err = self.run_bzr('cat', 'a-rev-tree')
+        self.assertEqual('baz\n', out)
+        self.assertEqual('', err)
+
+    def test_remote_cat(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+
+        url = self.get_readonly_url() + '/README'
+        out, err = self.run_bzr('cat', url)
+        self.assertEqual('contents of README\n', out)
+
+    def test_cat_no_working_tree(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        wt.branch.bzrdir.destroy_workingtree()
+
+        url = self.get_readonly_url() + '/README'
+        out, err = self.run_bzr('cat', url)
+        self.assertEqual('contents of README\n', out)
         

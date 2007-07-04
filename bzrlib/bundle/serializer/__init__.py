@@ -1,4 +1,4 @@
-# (C) 2005-2006 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@ import re
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
+# For backwards-compatibility
+from bzrlib.timestamp import unpack_highres_date, format_highres_date
+
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = '# Bazaar revision bundle v'
@@ -117,118 +120,14 @@ def _write_bundle(repository, revision_id, base_revision_id, out, format):
     """
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
-    base_ancestry = set(repository.get_ancestry(base_revision_id))
-    revision_ids = [r for r in repository.get_ancestry(revision_id) if r
-                    not in base_ancestry]
-    revision_ids = list(reversed(revision_ids))
+    revision_ids = set(repository.get_ancestry(revision_id, topo_sorted=False))
+    revision_ids.difference_update(repository.get_ancestry(base_revision_id,
+                                   topo_sorted=False))
+    revision_ids = list(repository.get_graph().iter_topo_order(revision_ids))
+    revision_ids.reverse()
     write(repository, revision_ids, out, format,
           forced_bases = {revision_id:base_revision_id})
     return revision_ids
-
-
-def format_highres_date(t, offset=0):
-    """Format a date, such that it includes higher precision in the
-    seconds field.
-
-    :param t:   The local time in fractional seconds since the epoch
-    :type t: float
-    :param offset:  The timezone offset in integer seconds
-    :type offset: int
-
-    Example: format_highres_date(time.time(), -time.timezone)
-    this will return a date stamp for right now,
-    formatted for the local timezone.
-
-    >>> from bzrlib.osutils import format_date
-    >>> format_date(1120153132.350850105, 0)
-    'Thu 2005-06-30 17:38:52 +0000'
-    >>> format_highres_date(1120153132.350850105, 0)
-    'Thu 2005-06-30 17:38:52.350850105 +0000'
-    >>> format_date(1120153132.350850105, -5*3600)
-    'Thu 2005-06-30 12:38:52 -0500'
-    >>> format_highres_date(1120153132.350850105, -5*3600)
-    'Thu 2005-06-30 12:38:52.350850105 -0500'
-    >>> format_highres_date(1120153132.350850105, 7200)
-    'Thu 2005-06-30 19:38:52.350850105 +0200'
-    >>> format_highres_date(1152428738.867522, 19800)
-    'Sun 2006-07-09 12:35:38.867522001 +0530'
-    """
-    import time
-    assert isinstance(t, float)
-    
-    # This has to be formatted for "original" date, so that the
-    # revision XML entry will be reproduced faithfully.
-    if offset is None:
-        offset = 0
-    tt = time.gmtime(t + offset)
-
-    return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
-            + ('%.9f' % (t - int(t)))[1:] # Get the high-res seconds, but ignore the 0
-            + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
-
-
-def unpack_highres_date(date):
-    """This takes the high-resolution date stamp, and
-    converts it back into the tuple (timestamp, timezone)
-    Where timestamp is in real UTC since epoch seconds, and timezone is an integer
-    number of seconds offset.
-
-    :param date: A date formated by format_highres_date
-    :type date: string
-
-    >>> import time, random
-    >>> unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500')
-    (1120153132.3508501, -18000)
-    >>> unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000')
-    (1120153132.3508501, 0)
-    >>> unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200')
-    (1120153132.3508501, 7200)
-    >>> unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530')
-    (1152428738.867522, 19800)
-    >>> from bzrlib.osutils import local_time_offset
-    >>> t = time.time()
-    >>> o = local_time_offset()
-    >>> t2, o2 = unpack_highres_date(format_highres_date(t, o))
-    >>> t == t2
-    True
-    >>> o == o2
-    True
-    >>> t -= 24*3600*365*2 # Start 2 years ago
-    >>> o = -12*3600
-    >>> for count in xrange(500):
-    ...   t += random.random()*24*3600*30
-    ...   o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
-    ...   date = format_highres_date(t, o)
-    ...   t2, o2 = unpack_highres_date(date)
-    ...   if t != t2 or o != o2:
-    ...      print 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t)
-    ...      break
-
-    """
-    import time, calendar
-    # Up until the first period is a datestamp that is generated
-    # as normal from time.strftime, so use time.strptime to
-    # parse it
-    dot_loc = date.find('.')
-    if dot_loc == -1:
-        raise ValueError(
-            'Date string does not contain high-precision seconds: %r' % date)
-    base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
-    fract_seconds, offset = date[dot_loc:].split()
-    fract_seconds = float(fract_seconds)
-
-    offset = int(offset)
-
-    hours = int(offset / 100)
-    minutes = (offset % 100)
-    seconds_offset = (hours * 3600) + (minutes * 60)
-    
-    # time.mktime returns localtime, but calendar.timegm returns UTC time
-    timestamp = calendar.timegm(base_time)
-    timestamp -= seconds_offset
-    # Add back in the fractional seconds
-    timestamp += fract_seconds
-    return (timestamp, seconds_offset)
 
 
 class BundleSerializer(object):
@@ -298,5 +197,5 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
 
 register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 register_lazy('0.9', 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
-register_lazy(None, 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
+register_lazy(None, 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
 

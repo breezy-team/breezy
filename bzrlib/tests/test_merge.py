@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,13 +17,17 @@
 import os
 from StringIO import StringIO
 
-from bzrlib import conflicts
+from bzrlib import (
+    conflicts,
+    merge as _mod_merge,
+    option,
+    )
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.revision import common_ancestor
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import (enable_test_log, disable_test_log)
@@ -73,8 +77,8 @@ class TestMerge(TestCaseWithTransport):
         wt1.add('bar')
         wt1.commit('add foobar')
         os.chdir('branch2')
-        self.run_bzr('merge', '../branch1/baz', retcode=3)
-        self.run_bzr('merge', '../branch1/foo')
+        self.run_bzr('merge ../branch1/baz', retcode=3)
+        self.run_bzr('merge ../branch1/foo')
         self.failUnlessExists('foo')
         self.failIfExists('bar')
         wt2 = WorkingTree.open('.') # opens branch2
@@ -155,7 +159,10 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a/b/'])
         tree_a.add('b', 'b-id')
         tree_a.commit('added b')
-        base_tree = tree_a.basis_tree()
+        # basis_tree() is only guaranteed to be valid as long as it is actually
+        # the basis tree. This mutates the tree after grabbing basis, so go to
+        # the repository.
+        base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
         tree_z = tree_a.bzrdir.sprout('z').open_workingtree()
         self.build_tree(['a/b/c'])
         tree_a.add('b/c')
@@ -167,9 +174,99 @@ class TestMerge(TestCaseWithTransport):
             conflicts.MissingParent('Created directory', 'b', 'b-id'),
             conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
             tree_z.conflicts())
-        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree, 
+        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree,
                     this_tree=tree_a)
         self.assertEqual([
             conflicts.DeletingParent('Not deleting', 'b', 'b-id'),
             conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
             tree_a.conflicts())
+
+    def test_nested_merge(self):
+        tree = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
+        sub_tree = self.make_branch_and_tree('tree/sub-tree',
+            format='dirstate-with-subtree')
+        sub_tree.set_root_id('sub-tree-root')
+        self.build_tree_contents([('tree/sub-tree/file', 'text1')])
+        sub_tree.add('file')
+        sub_tree.commit('foo')
+        tree.add_reference(sub_tree)
+        tree.commit('set text to 1')
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        # modify the file in the subtree
+        self.build_tree_contents([('tree2/sub-tree/file', 'text2')])
+        # and merge the changes from the diverged subtree into the containing
+        # tree
+        tree2.commit('changed file text')
+        tree.merge_from_branch(tree2.branch)
+        self.assertFileEqual('text2', 'tree/sub-tree/file')
+
+    def test_merge_with_missing(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file')
+        tree_a.commit('commit base')
+        # basis_tree() is only guaranteed to be valid as long as it is actually
+        # the basis tree. This mutates the tree after grabbing basis, so go to
+        # the repository.
+        base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree_contents([('tree_a/file', 'content_2')])
+        tree_a.commit('commit other')
+        other_tree = tree_a.basis_tree()
+        os.unlink('tree_b/file')
+        merge_inner(tree_b.branch, other_tree, base_tree, this_tree=tree_b)
+
+    def test_merge_kind_change(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file', 'file-id')
+        tree_a.commit('added file')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        os.unlink('tree_a/file')
+        self.build_tree(['tree_a/file/'])
+        tree_a.commit('changed file to directory')
+        tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual('directory', file_kind('tree_b/file'))
+        tree_b.revert([])
+        self.assertEqual('file', file_kind('tree_b/file'))
+        self.build_tree_contents([('tree_b/file', 'content_2')])
+        tree_b.commit('content change')
+        tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(tree_b.conflicts(),
+                         [conflicts.ContentsConflict('file',
+                          file_id='file-id')])
+    
+    def test_merge_type_registry(self):
+        merge_type_option = option.Option.OPTIONS['merge-type']
+        self.assertFalse('merge4' in [x[0] for x in 
+                        merge_type_option.iter_switches()])
+        registry = _mod_merge.get_merge_type_registry()
+        registry.register_lazy('merge4', 'bzrlib.merge', 'Merge4Merger',
+                               'time-travelling merge')
+        self.assertTrue('merge4' in [x[0] for x in 
+                        merge_type_option.iter_switches()])
+        registry.remove('merge4')
+        self.assertFalse('merge4' in [x[0] for x in 
+                        merge_type_option.iter_switches()])
+
+    def test_merge_other_moves_we_deleted(self):
+        tree_a = self.make_branch_and_tree('A')
+        tree_a.lock_write()
+        self.addCleanup(tree_a.unlock)
+        self.build_tree(['A/a'])
+        tree_a.add('a')
+        tree_a.commit('1', rev_id='rev-1')
+        tree_a.flush()
+        tree_a.rename_one('a', 'b')
+        tree_a.commit('2')
+        bzrdir_b = tree_a.bzrdir.sprout('B', revision_id='rev-1')
+        tree_b = bzrdir_b.open_workingtree()
+        tree_b.lock_write()
+        self.addCleanup(tree_b.unlock)
+        os.unlink('B/a')
+        tree_b.commit('3')
+        try:
+            tree_b.merge_from_branch(tree_a.branch)
+        except AttributeError:
+            self.fail('tried to join a path when name was None')

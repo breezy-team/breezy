@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,41 +20,28 @@
 import os
 import signal
 import subprocess
+import sys
 import threading
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
+from bzrlib.smart import medium
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport, smart
-
-
-class DoesNotCloseStdOutClient(smart.SmartStreamClient):
-    """A client that doesn't close stdout upon disconnect().
-    
-    We wish to let stdout remain open so that we can see if the server writes
-    anything to stdout during its shutdown.
-    """
-
-    def disconnect(self):
-        if self._connected:
-            self._connected = False
-            # The client's out is the server's in.
-            self._out.close()
+from bzrlib.transport import get_transport, remote
 
 
 class TestBzrServe(TestCaseWithTransport):
 
-    def assertInetServerShutsdownCleanly(self, client, process):
+    def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""
-        # Disconnect the client forcefully JUST IN CASE because of __del__'s use
-        # in the smart module.
-        client.disconnect()
-
-        # Shutdown the server: the client should have disconnected cleanly and
-        # closed stdin, so the server process should shut itself down.
-        self.assertTrue(process.stdin.closed)
+        # Shutdown the server: the server should shut down when it cannot read
+        # from stdin anymore.
+        process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
         result = self.finish_bzr_subprocess(process, retcode=0)
@@ -82,10 +69,11 @@ class TestBzrServe(TestCaseWithTransport):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
-        client = DoesNotCloseStdOutClient(
-            lambda: (process.stdout, process.stdin))
-        transport = smart.SmartTransport('bzr://localhost/', client=client)
-        return process, client, transport
+        client_medium = medium.SmartSimplePipesClientMedium(
+            process.stdout, process.stdin)
+        transport = remote.RemoteTransport(
+            'bzr://localhost/', medium=client_medium)
+        return process, transport
 
     def start_server_port(self, extra_options=()):
         """Start a bzr server subprocess.
@@ -106,27 +94,21 @@ class TestBzrServe(TestCaseWithTransport):
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
-        process, client, transport = self.start_server_inet()
+        process, transport = self.start_server_inet()
         self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
-        # finish with the transport
-        del transport
-        self.assertInetServerShutsdownCleanly(client, process)
+        self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_inet_readwrite(self):
         # Make a branch
         self.make_branch('.')
 
-        process, client, transport = self.start_server_inet(['--allow-writes'])
+        process, transport = self.start_server_inet(['--allow-writes'])
 
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
         branch.repository.get_revision_graph()
         self.assertEqual(None, branch.last_revision())
-
-        # finish with the transport
-        del transport
-
-        self.assertInetServerShutsdownCleanly(client, process)
+        self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
         """bzr server should provide a read only filesystem by default."""
@@ -149,11 +131,6 @@ class TestBzrServe(TestCaseWithTransport):
         self.assertEqual(None, branch.last_revision())
 
         self.assertServerFinishesCleanly(process)
-
-    def test_bzr_serve_no_args(self):
-        """'bzr serve' with no arguments or options should not traceback."""
-        out, err = self.run_bzr_error(
-            ['bzr serve requires one of --inet or --port'], 'serve')
 
     def test_bzr_connect_to_bzr_ssh(self):
         """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
@@ -216,11 +193,16 @@ class TestBzrServe(TestCaseWithTransport):
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
-        path_to_branch = os.path.abspath('a_branch')
+        path_to_branch = osutils.abspath('a_branch')
         
         orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        os.environ['BZR_REMOTE_PATH'] = self.get_bzr_path()
+        bzr_remote_path = self.get_bzr_path()
+        if sys.platform == 'win32':
+            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
+        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
         try:
+            if sys.platform == 'win32':
+                path_to_branch = os.path.splitdrive(path_to_branch)[1]
             branch = Branch.open(
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
             
@@ -238,6 +220,6 @@ class TestBzrServe(TestCaseWithTransport):
 
         self.assertEqual(
             ['%s serve --inet --directory=/ --allow-writes'
-             % self.get_bzr_path()],
+             % bzr_remote_path],
             self.command_executed)
         

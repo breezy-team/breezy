@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,18 +50,24 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import errno
 import os
 import sys
 import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
+
+lazy_import(globals(), """
+from bzrlib import debug
+""")
 
 _file_handler = None
 _stderr_handler = None
@@ -69,6 +75,7 @@ _stderr_quiet = False
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
+_bzr_log_filename = None
 
 
 # configure convenient aliases for output routines
@@ -116,7 +123,6 @@ def mutter(fmt, *args):
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
-debug = mutter
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -132,24 +138,34 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def open_tracefile(tracefilename='~/.bzr.log'):
+def open_tracefile(tracefilename=None):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
-    global _file_handler, _bzr_log_file
+    global _file_handler, _bzr_log_file, _bzr_log_filename
     import codecs
 
-    trace_fname = os.path.join(os.path.expanduser(tracefilename))
-    _rollover_trace_maybe(trace_fname)
+    if tracefilename is None:
+        if sys.platform == 'win32':
+            from bzrlib import win32utils
+            home = win32utils.get_home_location()
+        else:
+            home = os.path.expanduser('~')
+        _bzr_log_filename = os.path.join(home, '.bzr.log')
+
+    _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
+    _rollover_trace_maybe(_bzr_log_filename)
     try:
         LINE_BUFFERED = 1
         #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
-        tf = open(trace_fname, 'at', LINE_BUFFERED)
+        tf = open(_bzr_log_filename, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
-        if tf.tell() == 0:
-            tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+        # tf.tell() on windows always return 0 until some writing done
+        tf.write('\n')
+        if tf.tell() <= 2:
+            tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+            tf.write("bug reports to bazaar@lists.canonical.com\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
         datefmt = r'%a %H:%M:%S'
@@ -166,6 +182,8 @@ def log_exception(msg=None):
 
     The exception string representation is used as the error
     summary, unless msg is given.
+
+    Please see log_exception_quietly() for the replacement API.
     """
     if msg:
         error(msg)
@@ -180,7 +198,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
-    debug(traceback.format_exc())
+    mutter(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -267,7 +285,7 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif getattr(exc_object, 'is_user_error', False):
+    elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
@@ -279,6 +297,13 @@ def report_exception(exc_info, err_file):
 
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
+    """Report to err_file an error that's not an internal error.
+
+    These don't get a traceback unless -Derror was given.
+    """
+    if 'error' in debug.debug_flags:
+        report_bug(exc_info, err_file)
+        return
     print >>err_file, "bzr: ERROR:", str(exc_info[1])
 
 
@@ -297,4 +322,4 @@ def report_bug(exc_info, err_file):
                         sys.platform)
     print >>err_file, 'arguments: %r' % sys.argv
     print >>err_file
-    print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
+    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"

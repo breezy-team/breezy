@@ -14,27 +14,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
 import os
 import re
-import subprocess
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import subprocess
 import tempfile
 import time
 
 from bzrlib import (
     errors,
     osutils,
+    patiencediff,
+    textfile,
+    timestamp,
     )
+""")
+
 # compatability - plugins import compare_trees from diff!!!
 # deprecated as of 0.10
 from bzrlib.delta import compare_trees
-from bzrlib.errors import BzrError
-from bzrlib.patiencediff import unified_diff
-import bzrlib.patiencediff
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight)
-from bzrlib.textfile import check_text_lines
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_eight,
+        )
 from bzrlib.trace import mutter, warning
 
 
@@ -62,12 +68,12 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         return
     
     if allow_binary is False:
-        check_text_lines(oldlines)
-        check_text_lines(newlines)
+        textfile.check_text_lines(oldlines)
+        textfile.check_text_lines(newlines)
 
     if sequence_matcher is None:
-        sequence_matcher = bzrlib.patiencediff.PatienceSequenceMatcher
-    ud = unified_diff(oldlines, newlines,
+        sequence_matcher = patiencediff.PatienceSequenceMatcher
+    ud = patiencediff.unified_diff(oldlines, newlines,
                       fromfile=old_filename.encode(path_encoding),
                       tofile=new_filename.encode(path_encoding),
                       sequencematcher=sequence_matcher)
@@ -90,33 +96,27 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     print >>to_file
 
 
-def _set_lang_C():
-    """Set the env var LANG=C"""
-    osutils.set_or_unset_env('LANG', 'C')
-    osutils.set_or_unset_env('LC_ALL', None)
-    osutils.set_or_unset_env('LC_CTYPE', None)
-    osutils.set_or_unset_env('LANGUAGE', None)
-
-
 def _spawn_external_diff(diffcmd, capture_errors=True):
     """Spawn the externall diff process, and return the child handle.
 
     :param diffcmd: The command list to spawn
-    :param capture_errors: Capture stderr as well as setting LANG=C.
-        This lets us read and understand the output of diff, and respond 
-        to any errors.
+    :param capture_errors: Capture stderr as well as setting LANG=C
+        and LC_ALL=C. This lets us read and understand the output of diff,
+        and respond to any errors.
     :return: A Popen object.
     """
     if capture_errors:
-        if sys.platform == 'win32':
-            # Win32 doesn't support preexec_fn, but that is
-            # okay, because it doesn't support LANG either.
-            preexec_fn = None
-        else:
-            preexec_fn = _set_lang_C
+        # construct minimal environment
+        env = {}
+        path = os.environ.get('PATH')
+        if path is not None:
+            env['PATH'] = path
+        env['LANGUAGE'] = 'C'   # on win32 only LANGUAGE has effect
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
         stderr = subprocess.PIPE
     else:
-        preexec_fn = None
+        env = None
         stderr = None
 
     try:
@@ -124,7 +124,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=stderr,
-                                preexec_fn=preexec_fn)
+                                env=env)
     except OSError, e:
         if e.errno == errno.ENOENT:
             raise errors.NoDiff(str(e))
@@ -212,16 +212,17 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             # Write out the new i18n diff response
             to_file.write(out+'\n')
             if pipe.returncode != 2:
-                raise BzrError('external diff failed with exit code 2'
-                               ' when run with LANG=C, but not when run'
-                               ' natively: %r' % (diffcmd,))
+                raise errors.BzrError(
+                               'external diff failed with exit code 2'
+                               ' when run with LANG=C and LC_ALL=C,'
+                               ' but not when run natively: %r' % (diffcmd,))
 
             first_line = lang_c_out.split('\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.
             m = re.match('^(binary )?files.*differ$', first_line, re.I)
             if m is None:
-                raise BzrError('external diff failed with exit code 2;'
-                               ' command: %r' % (diffcmd,))
+                raise errors.BzrError('external diff failed with exit code 2;'
+                                      ' command: %r' % (diffcmd,))
             else:
                 # Binary files differ, just return
                 return
@@ -236,8 +237,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             else:
                 msg = 'exit code %d' % rc
                 
-            raise BzrError('external diff failed with %s; command: %r' 
-                           % (rc, diffcmd))
+            raise errors.BzrError('external diff failed with %s; command: %r' 
+                                  % (rc, diffcmd))
 
 
     finally:
@@ -300,29 +301,41 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
+                    revision_specs=None,
                     old_label='a/', new_label='b/'):
     """Helper for cmd_diff.
 
-   tree 
+    :param tree:
         A WorkingTree
 
-    specific_files
+    :param specific_files:
         The specific files to compare, or None
 
-    external_diff_options
+    :param external_diff_options:
         If non-None, run an external diff, and pass it these options
 
-    old_revision_spec
+    :param old_revision_spec:
         If None, use basis tree as old revision, otherwise use the tree for
         the specified revision. 
 
-    new_revision_spec
+    :param new_revision_spec:
         If None, use working tree as new revision, otherwise use the tree for
         the specified revision.
     
+    :param revision_specs: 
+        Zero, one or two RevisionSpecs from the command line, saying what revisions 
+        to compare.  This can be passed as an alternative to the old_revision_spec 
+        and new_revision_spec parameters.
+
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
+
+    # TODO: perhaps remove the old parameters old_revision_spec and
+    # new_revision_spec, since this is only really for use from cmd_diff and
+    # it now always passes through a sequence of revision_specs -- mbp
+    # 20061221
+
     def spec_tree(spec):
         if tree:
             revision = spec.in_store(tree.branch)
@@ -331,15 +344,26 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         revision_id = revision.rev_id
         branch = revision.branch
         return branch.repository.revision_tree(revision_id)
+
+    if revision_specs is not None:
+        assert (old_revision_spec is None
+                and new_revision_spec is None)
+        if len(revision_specs) > 0:
+            old_revision_spec = revision_specs[0]
+        if len(revision_specs) > 1:
+            new_revision_spec = revision_specs[1]
+
     if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
         old_tree = spec_tree(old_revision_spec)
 
-    if new_revision_spec is None:
+    if (new_revision_spec is None
+        or new_revision_spec.spec is None):
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+
     if new_tree is not tree:
         extra_trees = (tree,)
     else:
@@ -368,6 +392,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     """
     old_tree.lock_read()
     try:
+        if extra_trees is not None:
+            for tree in extra_trees:
+                tree.lock_read()
         new_tree.lock_read()
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
@@ -376,6 +403,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                                     extra_trees=extra_trees)
         finally:
             new_tree.unlock()
+            if extra_trees is not None:
+                for tree in extra_trees:
+                    tree.unlock()
     finally:
         old_tree.unlock()
 
@@ -441,8 +471,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
-        old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id, path))
+        # The file may be in a different location in the old tree (because
+        # the containing dir was renamed, but the file itself was not)
+        old_path = old_tree.id2path(file_id)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id, old_path))
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
         if text_modified:
@@ -455,8 +488,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    tm = time.gmtime(tree.get_file_mtime(file_id, path))
-    return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
+    mtime = tree.get_file_mtime(file_id, path)
+    assert mtime is not None, \
+        "got an mtime of None for file-id %s, path %s in tree %s" % (
+                file_id, path, tree)
+    return timestamp.format_patch_date(mtime)
 
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):

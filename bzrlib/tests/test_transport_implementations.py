@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,58 +22,118 @@ TransportTestProviderAdapter.
 
 import os
 from cStringIO import StringIO
+from StringIO import StringIO as pyStringIO
 import stat
 import sys
+import unittest
 
 from bzrlib import (
     errors,
     osutils,
     urlutils,
     )
-from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, NoSmartServer, PathError,
-                           TransportNotPossible, ConnectionError,
-                           InvalidURL)
+from bzrlib.errors import (ConnectionError,
+                           DirectoryNotEmpty,
+                           FileExists,
+                           InvalidURL,
+                           LockError,
+                           NoSmartServer,
+                           NoSuchFile,
+                           NotLocalUrl,
+                           PathError,
+                           TransportNotPossible,
+                           )
 from bzrlib.osutils import getcwd
+from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, smart
+from bzrlib.transport import memory, remote, _get_transport_modules
 import bzrlib.transport
 
 
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    try:
-        f.write(txt.read())
-    finally:
-        f.close()
+class TransportTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing all transports for a single test.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_class and transport_server classes into each copy. Each copy
+    is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self):
+        self.scenarios = self._test_permutations()
+
+    def get_transport_test_permutations(self, module):
+        """Get the permutations module wants to have tested."""
+        if getattr(module, 'get_test_permutations', None) is None:
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
+                    % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
+            return []
+        return module.get_test_permutations()
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        result = []
+        for module in _get_transport_modules():
+            try:
+                permutations = self.get_transport_test_permutations(
+                    reduce(getattr, (module).split('.')[1:], __import__(module)))
+                for (klass, server_factory) in permutations:
+                    scenario = (server_factory.__name__,
+                        {"transport_class":klass,
+                         "transport_server":server_factory})
+                    result.append(scenario)
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from running this test
+                pass
+        return result
+
 
 
 class TransportTests(TestTransportImplementation):
+
+    def setUp(self):
+        super(TransportTests, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqualDiff(content, transport.get(relpath).read())
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
-        """Fail unless excClass is raised when the iterator from func is used.
-        
-        Many transport functions can return generators this makes sure
-        to wrap them in a list() call to make sure the whole generator
-        is run, and that the proper exception is raised.
-        """
-        try:
-            list(func(*args, **kwargs))
-        except excClass:
+    def test_ensure_base_missing(self):
+        """.ensure_base() should create the directory if it doesn't exist"""
+        t = self.get_transport()
+        t_a = t.clone('a')
+        if t_a.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                              t_a.ensure_base)
             return
-        else:
-            if getattr(excClass,'__name__', None) is not None:
-                excName = excClass.__name__
-            else:
-                excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+        self.assertTrue(t_a.ensure_base())
+        self.assertTrue(t.has('a'))
+
+    def test_ensure_base_exists(self):
+        """.ensure_base() should just be happy if it already exists"""
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+
+        t.mkdir('a')
+        t_a = t.clone('a')
+        # ensure_base returns False if it didn't create the base
+        self.assertFalse(t_a.ensure_base())
+
+    def test_ensure_base_missing_parent(self):
+        """.ensure_base() will fail if the parent dir doesn't exist"""
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+
+        t_a = t.clone('a')
+        t_b = t_a.clone('b')
+        self.assertRaises(NoSuchFile, t_b.ensure_base)
 
     def test_has(self):
         t = self.get_transport()
@@ -94,7 +154,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_has_root_works(self):
         current_transport = self.get_transport()
-        # import pdb;pdb.set_trace()
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')
         self.assertTrue(root.has(''))
@@ -122,8 +181,8 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
 
-    def test_get_directory(self):
-        """get() of a directory should only error when read() is called."""
+    def test_get_directory_read_gives_ReadError(self):
+        """consistent errors for read() on a file returned by get()."""
         t = self.get_transport()
         if t.is_readonly():
             self.build_tree(['a directory/'])
@@ -132,7 +191,7 @@ class TransportTests(TestTransportImplementation):
         # getting the file must either work or fail with a PathError
         try:
             a_file = t.get('a%20directory')
-        except errors.PathError:
+        except (errors.PathError, errors.RedirectRequested):
             # early failure return immediately.
             return
         # having got a file, read() must either work (i.e. http reading a dir listing) or
@@ -411,6 +470,34 @@ class TransportTests(TestTransportImplementation):
         t.put_file_non_atomic('dir777/mode664', sio, mode=0664,
                               dir_mode=0777, create_parent_dir=True)
         self.assertTransportMode(t, 'dir777', 0777)
+
+    def test_put_bytes_unicode(self):
+        # Expect put_bytes to raise AssertionError or UnicodeEncodeError if
+        # given unicode "bytes".  UnicodeEncodeError doesn't really make sense
+        # (we don't want to encode unicode here at all, callers should be
+        # strictly passing bytes to put_bytes), but we allow it for backwards
+        # compatibility.  At some point we should use a specific exception.
+        # See https://bugs.launchpad.net/bzr/+bug/106898.
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        unicode_string = u'\u1234'
+        self.assertRaises(
+            (AssertionError, UnicodeEncodeError),
+            t.put_bytes, 'foo', unicode_string)
+
+    def test_put_file_unicode(self):
+        # Like put_bytes, except with a StringIO.StringIO of a unicode string.
+        # This situation can happen (and has) if code is careless about the type
+        # of "string" they initialise/write to a StringIO with.  We cannot use
+        # cStringIO, because it never returns unicode from read.
+        # Like put_bytes, UnicodeEncodeError isn't quite the right exception to
+        # raise, but we raise it for hysterical raisins.
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        unicode_file = pyStringIO(u'\u1234')
+        self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
 
     def test_put_multi(self):
         t = self.get_transport()
@@ -796,6 +883,24 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir/bdir')
         self.assertRaises(PathError, t.rmdir, 'adir')
 
+    def test_rmdir_empty_but_similar_prefix(self):
+        """rmdir does not get confused by sibling paths.
+        
+        A naive implementation of MemoryTransport would refuse to rmdir
+        ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
+        uses "path.startswith(dir)" on all file paths to determine if directory
+        is empty.
+        """
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.mkdir('foo')
+        t.put_bytes('foo-bar', '')
+        t.mkdir('foo-baz')
+        t.rmdir('foo')
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'foo')
+        self.failUnless(t.has('foo-bar'))
+
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
         if t.is_readonly():
@@ -917,6 +1022,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
+        # This should be:  but SSH still connects on construction. No COOKIE!
+        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
         try:
             t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
@@ -979,23 +1086,16 @@ class TransportTests(TestTransportImplementation):
             l.sort()
             return l
 
-        # SftpServer creates control files in the working directory
-        # so lets move down a directory to avoid those.
-        if not t.is_readonly():
-            t.mkdir('wd')
-        else:
-            os.mkdir('wd')
-        t = t.clone('wd')
-
         self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
         tree_names = ['a', 'a%25b', 'b', 'c/', 'c/d', 'c/e', 'c2/']
+
         if not t.is_readonly():
             self.build_tree(tree_names, transport=t)
         else:
-            self.build_tree(['wd/' + name for name in tree_names])
+            self.build_tree(tree_names)
 
         self.assertEqual(
             ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
@@ -1005,8 +1105,8 @@ class TransportTests(TestTransportImplementation):
             t.delete('c/d')
             t.delete('b')
         else:
-            os.unlink('wd/c/d')
-            os.unlink('wd/b')
+            os.unlink('c/d')
+            os.unlink('b')
             
         self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
         self.assertEqual(['e'], sorted_list('c'))
@@ -1068,14 +1168,14 @@ class TransportTests(TestTransportImplementation):
         # directory of this transport
         root_transport = orig_transport
         new_transport = root_transport.clone("..")
-        # as we are walking up directories, the path must be must be 
+        # as we are walking up directories, the path must be
         # growing less, except at the top
         self.assertTrue(len(new_transport.base) < len(root_transport.base)
             or new_transport.base == root_transport.base)
         while new_transport.base != root_transport.base:
             root_transport = new_transport
             new_transport = root_transport.clone("..")
-            # as we are walking up directories, the path must be must be 
+            # as we are walking up directories, the path must be
             # growing less, except at the top
             self.assertTrue(len(new_transport.base) < len(root_transport.base)
                 or new_transport.base == root_transport.base)
@@ -1137,12 +1237,16 @@ class TransportTests(TestTransportImplementation):
         # the abspath of "/" and "/foo/.." should result in the same location
         self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
 
+        self.assertEqual(transport.clone("/").abspath('foo'),
+                         transport.abspath("/foo"))
+
     def test_local_abspath(self):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except TransportNotPossible:
-            pass # This is not a local transport
+        except (errors.NotLocalUrl, TransportNotPossible), e:
+            # should be formattable
+            s = str(e)
         else:
             self.assertEqual(getcwd(), p)
 
@@ -1310,6 +1414,9 @@ class TransportTests(TestTransportImplementation):
         else:
             transport.put_bytes('a', '0123456789')
 
+        d = list(transport.readv('a', ((0, 1),)))
+        self.assertEqual(d[0], (0, '0'))
+
         d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
         self.assertEqual(d[1], (1, '1'))
@@ -1329,19 +1436,14 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
-    def test_get_smart_client(self):
-        """All transports must either give a smart client, or know they can't.
-
-        For some transports such as http this might depend on probing to see 
-        what's actually present on the other end.  (But we can adjust for that 
-        in the future.)
+    def test_get_smart_medium(self):
+        """All transports must either give a smart medium, or know they can't.
         """
         transport = self.get_transport()
         try:
-            client = transport.get_smart_client()
-            # XXX: should be a more general class
-            self.assertIsInstance(client, smart.SmartStreamClient)
-        except NoSmartServer:
+            client_medium = transport.get_smart_medium()
+            self.assertIsInstance(client_medium, medium.SmartClientMedium)
+        except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
 
@@ -1354,10 +1456,12 @@ class TransportTests(TestTransportImplementation):
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
-        self.assertListRaises((errors.ShortReadvError, AssertionError),
+        self.assertListRaises((errors.ShortReadvError, errors.InvalidRange,
+                               # Can be raised by paramiko
+                               AssertionError),
                               transport.readv, 'a', [(1,1), (8,10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
-        self.assertListRaises(errors.ShortReadvError,
+        self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])

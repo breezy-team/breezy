@@ -19,6 +19,9 @@ import stat
 import sys
 
 from bzrlib import (
+    errors,
+    generate_ids,
+    symbol_versioning,
     tests,
     urlutils,
     )
@@ -37,17 +40,17 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               find_interesting, build_tree, get_backup_name)
 
 
-class TestTreeTransform(TestCaseInTempDir):
+class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = BzrDir.create_standalone_workingtree('.')
+        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
         os.chdir('..')
 
     def get_transform(self):
         transform = TreeTransform(self.wt)
         #self.addCleanup(transform.finalize)
-        return transform, transform.trans_id_tree_file_id(self.wt.get_root_id())
+        return transform, transform.root
 
     def test_existing_limbo(self):
         limbo_name = urlutils.local_path_from_url(
@@ -124,9 +127,20 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(self.wt.path2id('oz/dorothy'), 'dorothy-id')
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
-        self.assertEqual('toto-contents', 
+        self.assertEqual('toto-contents',
                          self.wt.get_file_byname('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('toto-id'), False)
+
+    def test_tree_reference(self):
+        transform, root = self.get_transform()
+        tree = transform._tree
+        trans_id = transform.new_directory('reference', root, 'subtree-id')
+        transform.set_tree_reference('subtree-revision', trans_id)
+        transform.apply()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('subtree-revision',
+                         tree.inventory['subtree-id'].reference_revision)
 
     def test_conflicts(self):
         transform, root = self.get_transform()
@@ -197,7 +211,7 @@ class TestTreeTransform(TestCaseInTempDir):
         transform3.delete_contents(oz_id)
         self.assertEqual(transform3.find_conflicts(), 
                          [('missing parent', oz_id)])
-        root_id = transform3.trans_id_tree_file_id('TREE_ROOT')
+        root_id = transform3.root
         tip_id = transform3.trans_id_tree_file_id('tip-id')
         transform3.adjust_path('tip', root_id, tip_id)
         transform3.apply()
@@ -229,7 +243,7 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_name_invariants(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
+        root = create_tree.root
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.new_file('name2', root, 'hello2', 'name2')
         ddir = create_tree.new_directory('dying_directory', root, 'ddir')
@@ -239,7 +253,7 @@ class TestTreeTransform(TestCaseInTempDir):
         create_tree.apply()
 
         mangle_tree,root = self.get_transform()
-        root = mangle_tree.trans_id_tree_file_id('TREE_ROOT')
+        root = mangle_tree.root
         #swap names
         name1 = mangle_tree.trans_id_tree_file_id('name1')
         name2 = mangle_tree.trans_id_tree_file_id('name2')
@@ -324,7 +338,7 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_move_dangling_ie(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
+        root = create_tree.root
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.apply()
         delete_contents, root = self.get_transform()
@@ -340,7 +354,7 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_replace_dangling_ie(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
+        root = create_tree.root
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.apply()
         delete_contents = TreeTransform(self.wt)
@@ -379,7 +393,6 @@ class TestTreeTransform(TestCaseInTempDir):
                          'behind_curtain')
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
-
 
     def get_conflicted(self):
         create,root = self.get_transform()
@@ -514,10 +527,9 @@ class TestTreeTransform(TestCaseInTempDir):
         create.new_file('vfile', root, 'myfile-text', 'myfile-id')
         create.new_file('uvfile', root, 'othertext')
         create.apply()
-        self.assertEqual(find_interesting(wt, wt, ['vfile']),
-                         set(['myfile-id']))
-        self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
-                          ['uvfile'])
+        result = self.applyDeprecated(symbol_versioning.zero_fifteen,
+            find_interesting, wt, wt, ['vfile'])
+        self.assertEqual(result, set(['myfile-id']))
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
@@ -532,9 +544,11 @@ class TestTreeTransform(TestCaseInTempDir):
         wt = transform._tree
         transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
                            True)
-        sac = transform.new_file('set_after_creation', root, 'Set after creation', 'sac')
+        sac = transform.new_file('set_after_creation', root,
+                                 'Set after creation', 'sac')
         transform.set_executability(True, sac)
-        uws = transform.new_file('unset_without_set', root, 'Unset badly', 'uws')
+        uws = transform.new_file('unset_without_set', root, 'Unset badly',
+                                 'uws')
         self.assertRaises(KeyError, transform.set_executability, None, uws)
         transform.apply()
         self.assertTrue(wt.is_executable('soc'))
@@ -585,15 +599,360 @@ class TestTreeTransform(TestCaseInTempDir):
         bar1_abspath = self.wt.abspath('bar')
         self.assertEqual([bar1_abspath], stat_paths)
 
+    def test_iter_changes(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1', True)
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            self.assertEqual([], list(transform._iter_changes()))
+            old = transform.trans_id_tree_file_id('id-1')
+            transform.unversion_file(old)
+            self.assertEqual([('id-1', ('old', None), False, (True, False),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (True, True))], list(transform._iter_changes()))
+            transform.new_directory('new', root, 'id-1')
+            self.assertEqual([('id-1', ('old', 'new'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'new'),
+                ('file', 'directory'),
+                (True, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_new(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            transform.version_file('id-1', old)
+            self.assertEqual([('id-1', (None, 'old'), False, (False, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_modifications(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_file('new', root, 'blah')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            new = transform.trans_id_tree_path('new')
+            self.assertEqual([], list(transform._iter_changes()))
+
+            #content deletion
+            transform.delete_contents(old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', None),
+                (False, False))], list(transform._iter_changes()))
+
+            #content change
+            transform.create_file('blah', old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_deletion(old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_creation(old)
+
+            # move file_id to a different file
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.unversion_file(old)
+            transform.version_file('id-1', new)
+            transform.adjust_path('old', root, new)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_versioning(new)
+            transform._removed_id = set()
+
+            #execute bit
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.set_executability(True, old)
+            self.assertEqual([('id-1', ('old', 'old'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, True))], list(transform._iter_changes()))
+            transform.set_executability(None, old)
+
+            # filename
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', root, old)
+            transform._new_parent = {}
+            self.assertEqual([('id-1', ('old', 'new'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'new'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform._new_name = {}
+
+            # parent directory
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', subdir, old)
+            transform._new_name = {}
+            self.assertEqual([('id-1', ('old', 'subdir/old'), False,
+                (True, True), ('eert_toor', 'subdir-id'), ('old', 'old'),
+                ('file', 'file'), (False, False))],
+                list(transform._iter_changes()))
+            transform._new_path = {}
+
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_modified_bleed(self):
+        self.wt.set_root_id('eert_toor')
+        """Modified flag should not bleed from one change to another"""
+        # unfortunately, we have no guarantee that file1 (which is modified)
+        # will be applied before file2.  And if it's applied after file2, it
+        # obviously can't bleed into file2's change output.  But for now, it
+        # works.
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'blah', 'id-1')
+        transform.new_file('file2', root, 'blah', 'id-2')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            transform.delete_contents(transform.trans_id_file_id('id-1'))
+            transform.set_executability(True,
+            transform.trans_id_file_id('id-2'))
+            self.assertEqual([('id-1', (u'file1', u'file1'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('file1', u'file1'),
+                ('file', None), (False, False)),
+                ('id-2', (u'file2', u'file2'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('file2', u'file2'),
+                ('file', 'file'), (False, True))],
+                list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_move_missing(self):
+        """Test moving ids with no files around"""
+        self.wt.set_root_id('toor_eert')
+        # Need two steps because versioning a non-existant file is a conflict.
+        transform, root = self.get_transform()
+        transform.new_directory('floater', root, 'floater-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        transform.delete_contents(transform.trans_id_tree_path('floater'))
+        transform.apply()
+        transform, root = self.get_transform()
+        floater = transform.trans_id_tree_path('floater')
+        try:
+            transform.adjust_path('flitter', root, floater)
+            self.assertEqual([('floater-id', ('floater', 'flitter'), False,
+            (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
+            (None, None), (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_pointless(self):
+        """Ensure that no-ops are not treated as modifications"""
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.delete_contents(subdir)
+            transform.create_directory(subdir)
+            transform.set_executability(False, old)
+            transform.unversion_file(old)
+            transform.version_file('id-1', old)
+            transform.adjust_path('old', root, old)
+            self.assertEqual([], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_rename_count(self):
+        transform, root = self.get_transform()
+        transform.new_file('name1', root, 'contents')
+        self.assertEqual(transform.rename_count, 0)
+        transform.apply()
+        self.assertEqual(transform.rename_count, 1)
+        transform2, root = self.get_transform()
+        transform2.adjust_path('name2', root,
+                               transform2.trans_id_tree_path('name1'))
+        self.assertEqual(transform2.rename_count, 0)
+        transform2.apply()
+        self.assertEqual(transform2.rename_count, 2)
+
+    def test_change_parent(self):
+        """Ensure that after we change a parent, the results are still right.
+
+        Renames and parent changes on pending transforms can happen as part
+        of conflict resolution, and are explicitly permitted by the
+        TreeTransform API.
+
+        This test ensures they work correctly with the rename-avoidance
+        optimization.
+        """
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('parent1/child1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-1 => parent1, rename limbo/new-3 => parent2
+        # no rename for child1 (counting only renames during apply)
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_cancel_parent(self):
+        """Cancelling a parent doesn't cause deletion of a non-empty directory
+
+        This is like the test_change_parent, except that we cancel the parent
+        before adjusting the path.  The transform must detect that the
+        directory is non-empty, and move children to safe locations.
+        """
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        child2 = transform.new_file('child2', parent1, 'contents')
+        try:
+            transform.cancel_creation(parent1)
+        except OSError:
+            self.fail('Failed to move child1 before deleting parent1')
+        transform.cancel_creation(child2)
+        transform.create_directory(parent1)
+        try:
+            transform.cancel_creation(parent1)
+        # If the transform incorrectly believes that child2 is still in
+        # parent1's limbo directory, it will try to rename it and fail
+        # because was already moved by the first cancel_creation.
+        except OSError:
+            self.fail('Transform still thinks child2 is a child of parent1')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('parent1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-3 => parent2, rename limbo/new-2 => child1
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_adjust_and_cancel(self):
+        """Make sure adjust_path keeps track of limbo children properly"""
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.cancel_creation(child1)
+        try:
+            transform.cancel_creation(parent1)
+        # if the transform thinks child1 is still in parent1's limbo
+        # directory, it will attempt to move it and fail.
+        except OSError:
+            self.fail('Transform still thinks child1 is a child of parent1')
+        transform.finalize()
+
+    def test_noname_contents(self):
+        """TreeTransform should permit deferring naming files."""
+        transform, root = self.get_transform()
+        parent = transform.trans_id_file_id('parent-id')
+        try:
+            transform.create_directory(parent)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        transform.finalize()
+
+    def test_noname_contents_nested(self):
+        """TreeTransform should permit deferring naming files."""
+        transform, root = self.get_transform()
+        parent = transform.trans_id_file_id('parent-id')
+        try:
+            transform.create_directory(parent)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        child = transform.new_directory('child', parent)
+        transform.adjust_path('parent', root, parent)
+        transform.apply()
+        self.failUnlessExists(self.wt.abspath('parent/child'))
+        self.assertEqual(1, transform.rename_count)
+
+    def test_reuse_name(self):
+        """Avoid reusing the same limbo name for different files"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
+        try:
+            child2 = transform.new_directory('child', parent)
+        except OSError:
+            self.fail('Tranform tried to use the same limbo name twice')
+        transform.adjust_path('child2', parent, child2)
+        transform.apply()
+        # limbo/new-1 => parent, limbo/new-3 => parent/child2
+        # child2 is put into top-level limbo because child1 has already
+        # claimed the direct limbo path when child2 is created.  There is no
+        # advantage in renaming files once they're in top-level limbo, except
+        # as part of apply.
+        self.assertEqual(2, transform.rename_count)
+
+    def test_reuse_when_first_moved(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
+        transform.adjust_path('child1', parent, child1)
+        child2 = transform.new_directory('child', parent)
+        transform.apply()
+        # limbo/new-1 => parent
+        self.assertEqual(1, transform.rename_count)
+
+    def test_reuse_after_cancel(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        parent2 = transform.new_directory('parent2', root)
+        child1 = transform.new_directory('child1', parent2)
+        transform.cancel_creation(parent2)
+        transform.create_directory(parent2)
+        child2 = transform.new_directory('child1', parent2)
+        transform.adjust_path('child2', parent2, child1)
+        transform.apply()
+        # limbo/new-1 => parent2, limbo/new-2 => parent2/child1
+        self.assertEqual(2, transform.rename_count)
+
+    def test_finalize_order(self):
+        """Finalize must be done in child-to-parent order"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child = transform.new_directory('child', parent)
+        try:
+            transform.finalize()
+        except OSError:
+            self.fail('Tried to remove parent before child1')
+
+    def test_cancel_with_cancelled_child_should_succeed(self):
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child = transform.new_directory('child', parent)
+        transform.cancel_creation(child)
+        transform.cancel_creation(parent)
+        transform.finalize()
+
 
 class TransformGroup(object):
-    def __init__(self, dirname):
+    def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
         self.wt = BzrDir.create_standalone_workingtree(dirname)
+        self.wt.set_root_id(root_id)
         self.b = self.wt.branch
         self.tt = TreeTransform(self.wt)
         self.root = self.tt.trans_id_tree_file_id(self.wt.get_root_id())
+
 
 def conflict_text(tree, merge):
     template = '%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'
@@ -602,7 +961,8 @@ def conflict_text(tree, merge):
 
 class TestTransformMerge(TestCaseInTempDir):
     def test_text_merge(self):
-        base = TransformGroup("base")
+        root_id = generate_ids.gen_root_id()
+        base = TransformGroup("base", root_id)
         base.tt.new_file('a', base.root, 'a\nb\nc\nd\be\n', 'a')
         base.tt.new_file('b', base.root, 'b1', 'b')
         base.tt.new_file('c', base.root, 'c', 'c')
@@ -612,7 +972,7 @@ class TestTransformMerge(TestCaseInTempDir):
         base.tt.new_directory('g', base.root, 'g')
         base.tt.new_directory('h', base.root, 'h')
         base.tt.apply()
-        other = TransformGroup("other")
+        other = TransformGroup("other", root_id)
         other.tt.new_file('a', other.root, 'y\nb\nc\nd\be\n', 'a')
         other.tt.new_file('b', other.root, 'b2', 'b')
         other.tt.new_file('c', other.root, 'c2', 'c')
@@ -623,7 +983,7 @@ class TestTransformMerge(TestCaseInTempDir):
         other.tt.new_file('h', other.root, 'h\ni\nj\nk\n', 'h')
         other.tt.new_file('i', other.root, 'h\ni\nj\nk\n', 'i')
         other.tt.apply()
-        this = TransformGroup("this")
+        this = TransformGroup("this", root_id)
         this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
         this.tt.new_file('b', this.root, 'b', 'b')
         this.tt.new_file('c', this.root, 'c', 'c')
@@ -680,9 +1040,10 @@ class TestTransformMerge(TestCaseInTempDir):
     def test_file_merge(self):
         if not has_symlinks():
             raise TestSkipped('Symlinks are not supported on this platform')
-        base = TransformGroup("BASE")
-        this = TransformGroup("THIS")
-        other = TransformGroup("OTHER")
+        root_id = generate_ids.gen_root_id()
+        base = TransformGroup("BASE", root_id)
+        this = TransformGroup("THIS", root_id)
+        other = TransformGroup("OTHER", root_id)
         for tg in this, base, other:
             tg.tt.new_directory('a', tg.root, 'a')
             tg.tt.new_symlink('b', tg.root, 'b', 'b')
@@ -720,9 +1081,10 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('h.OTHER')), True)
 
     def test_filename_merge(self):
-        base = TransformGroup("BASE")
-        this = TransformGroup("THIS")
-        other = TransformGroup("OTHER")
+        root_id = generate_ids.gen_root_id()
+        base = TransformGroup("BASE", root_id)
+        this = TransformGroup("THIS", root_id)
+        other = TransformGroup("OTHER", root_id)
         base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a') 
                                    for t in [base, this, other]]
         base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b') 
@@ -752,9 +1114,10 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.id2path('f'), pathjoin('b/f1'))
 
     def test_filename_merge_conflicts(self):
-        base = TransformGroup("BASE")
-        this = TransformGroup("THIS")
-        other = TransformGroup("OTHER")
+        root_id = generate_ids.gen_root_id()
+        base = TransformGroup("BASE", root_id)
+        this = TransformGroup("THIS", root_id)
+        other = TransformGroup("OTHER", root_id)
         base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a') 
                                    for t in [base, this, other]]
         base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b') 
@@ -795,10 +1158,24 @@ class TestBuildTree(tests.TestCaseWithTransport):
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
         b = BzrDir.create_standalone_workingtree('b')
-        build_tree(a.basis_tree(), b)
+        basis = a.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        build_tree(basis, b)
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+
+    def test_build_with_references(self):
+        tree = self.make_branch_and_tree('source',
+            format='dirstate-with-subtree')
+        subtree = self.make_branch_and_tree('source/subtree',
+            format='dirstate-with-subtree')
+        tree.add_reference(subtree)
+        tree.commit('a revision')
+        tree.branch.create_checkout('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/subtree')
 
     def test_file_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
@@ -904,8 +1281,25 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target = self.make_branch_and_tree('target')
         self.build_tree(['target/name'])
         target.add('name')
-        self.assertRaises(AssertionError, build_tree, source.basis_tree(),
-                          target)
+        self.assertRaises(errors.WorkingTreeAlreadyPopulated, 
+            build_tree, source.basis_tree(), target)
+
+    def test_build_tree_rename_count(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1', 'source/dir1/'])
+        source.add(['file1', 'dir1'])
+        source.commit('add1')
+        target1 = self.make_branch_and_tree('target1')
+        transform_result = build_tree(source.basis_tree(), target1)
+        self.assertEqual(2, transform_result.rename_count)
+
+        self.build_tree(['source/dir1/file2'])
+        source.add(['dir1/file2'])
+        source.commit('add3')
+        target2 = self.make_branch_and_tree('target2')
+        transform_result = build_tree(source.basis_tree(), target2)
+        # children of non-root directories should not be renamed
+        self.assertEqual(2, transform_result.rename_count)
 
 
 class MockTransform(object):
@@ -918,6 +1312,7 @@ class MockTransform(object):
             elif name == "name.~%s~" % child_id:
                 return True
         return False
+
 
 class MockEntry(object):
     def __init__(self):

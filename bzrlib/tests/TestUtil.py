@@ -1,4 +1,4 @@
-# Copyright (c) 2004 Canonical Limited
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,11 @@
 import sys
 import logging
 import unittest
+
+# Mark this python module as being part of the implementation
+# of unittest: this gives us better tracebacks where the last
+# shown frame is the test code, not our assertXYZ.
+__unittest = 1
 
 
 class LogCollector(logging.Handler):

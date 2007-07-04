@@ -18,25 +18,26 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import ignores
-import bzrlib
+from bzrlib import (
+    bzrdir,
+    conflicts,
+    errors,
+    workingtree,
+    )
 from bzrlib.branch import Branch
-from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
+from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,
     TreeLink,
-    WorkingTree,
     )
+
 
 class TestTreeDirectory(TestCaseWithTransport):
 
@@ -173,9 +174,10 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff('<inventory format="5">\n'
-                             '</inventory>\n',
-                             t.get('inventory').read())
+        self.assertEqualDiff(t.get('inventory').read(), 
+                              '<inventory format="5">\n'
+                              '</inventory>\n',
+                             )
         self.assertEqualDiff('### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
@@ -223,7 +225,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
 
     def create_format2_tree(self, url):
         return self.make_branch_and_tree(
-            url, format=bzrlib.bzrdir.BzrDirFormat6())
+            url, format=bzrdir.BzrDirFormat6())
 
     def test_conflicts(self):
         # test backwards compatability
@@ -251,126 +253,15 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
 class TestNonFormatSpecificCode(TestCaseWithTransport):
     """This class contains tests of workingtree that are not format specific."""
 
-    
     def test_gen_file_id(self):
-        gen_file_id = bzrlib.workingtree.gen_file_id
+        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_file_id,
+                                      'filename')
+        self.assertStartsWith(file_id, 'filename-')
 
-        # We try to use the filename if possible
-        self.assertStartsWith(gen_file_id('bar'), 'bar-')
-
-        # but we squash capitalization, and remove non word characters
-        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
-
-        # We also remove leading '.' characters to prevent hidden file-ids
-        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
-
-        # we remove unicode characters, and still don't end up with a 
-        # hidden file id
-        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+    def test_gen_root_id(self):
+        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_root_id)
+        self.assertStartsWith(file_id, 'tree_root-')
         
-        # Our current method of generating unique ids adds 33 characters
-        # plus an serial number (log10(N) characters)
-        # to the end of the filename. We now restrict the filename portion to
-        # be <= 20 characters, so the maximum length should now be approx < 60
-
-        # Test both case squashing and length restriction
-        fid = gen_file_id('A'*50 + '.txt')
-        self.assertStartsWith(fid, 'a'*20 + '-')
-        self.failUnless(len(fid) < 60)
-
-        # restricting length happens after the other actions, so
-        # we preserve as much as possible
-        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
-        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
-        self.failUnless(len(fid) < 60)
-
-    def test_next_id_suffix(self):
-        bzrlib.workingtree._gen_id_suffix = None
-        bzrlib.workingtree._next_id_suffix()
-        self.assertNotEqual(None, bzrlib.workingtree._gen_id_suffix)
-        bzrlib.workingtree._gen_id_suffix = "foo-"
-        bzrlib.workingtree._gen_id_serial = 1
-        self.assertEqual("foo-2", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-3", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-4", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-5", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-6", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-7", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-8", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-9", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-10", bzrlib.workingtree._next_id_suffix())
-
-    def test__translate_ignore_rule(self):
-        tree = self.make_branch_and_tree('.')
-        # translation should return the regex, the number of groups in it,
-        # and the original rule in a tuple.
-        # there are three sorts of ignore rules:
-        # root only - regex is the rule itself without the leading ./
-        self.assertEqual(
-            "(rootdirrule$)", 
-            tree._translate_ignore_rule("./rootdirrule"))
-        # full path - regex is the rule itself
-        self.assertEqual(
-            "(path\\/to\\/file$)",
-            tree._translate_ignore_rule("path/to/file"))
-        # basename only rule - regex is a rule that ignores everything up
-        # to the last / in the filename
-        self.assertEqual(
-            "((?:.*/)?(?!.*/)basenamerule$)",
-            tree._translate_ignore_rule("basenamerule"))
-
-    def test__combine_ignore_rules(self):
-        tree = self.make_branch_and_tree('.')
-        # the combined ignore regexs need the outer group indices
-        # placed in a dictionary with the rules that were combined.
-        # an empty set of rules
-        # this is returned as a list of combined regex,rule sets, because
-        # python has a limit of 100 combined regexes.
-        compiled_rules = tree._combine_ignore_rules([])
-        self.assertEqual([], compiled_rules)
-        # one of each type of rule.
-        compiled_rules = tree._combine_ignore_rules(
-            ["rule1", "rule/two", "./three"])[0]
-        # what type *is* the compiled regex to do an isinstance of ?
-        self.assertEqual(3, compiled_rules[0].groups)
-        self.assertEqual(
-            {0:"rule1",1:"rule/two",2:"./three"},
-            compiled_rules[1])
-
-    def test__combine_ignore_rules_grouping(self):
-        tree = self.make_branch_and_tree('.')
-        # when there are too many rules, the output is split into groups of 100
-        rules = []
-        for index in range(198):
-            rules.append('foo')
-        self.assertEqual(2, len(tree._combine_ignore_rules(rules)))
-
-    def test__get_ignore_rules_as_regex(self):
-        tree = self.make_branch_and_tree('.')
-        # Setup the default ignore list to be empty
-        ignores._set_user_ignores([])
-
-        # some plugins (shelf) modifies the DEFAULT_IGNORE list in memory
-        # which causes this test to fail so force the DEFAULT_IGNORE
-        # list to be empty
-        orig_default = bzrlib.DEFAULT_IGNORE
-        # Also make sure the runtime ignore list is empty
-        orig_runtime = ignores._runtime_ignores
-        try:
-            bzrlib.DEFAULT_IGNORE = []
-            ignores._runtime_ignores = set()
-
-            self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
-            reference_output = tree._combine_ignore_rules(
-                                    set(['CVS', '.hg']))[0]
-            regex_rules = tree._get_ignore_rules_as_regex()[0]
-            self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
-            self.assertEqual(reference_output[1], regex_rules[1])
-        finally:
-            bzrlib.DEFAULT_IGNORE = orig_default
-            ignores._runtime_ignores = orig_runtime
-
 
 class InstrumentedTree(object):
     """A instrumented tree to check the needs_tree_write_lock decorator."""
@@ -416,3 +307,52 @@ class TestInstrumentedTree(TestCase):
         self.assertEqual(['t', 'u'], tree._locks)
         self.assertRaises(TypeError, tree.method_that_raises, 'foo')
         self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
+
+
+class TestAutoResolve(TestCaseWithTransport):
+
+    def test_auto_resolve(self):
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', 'hello_id')
+        base.commit('Hello')
+        other = base.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'hELLO')])
+        other.commit('Case switch')
+        this = base.bzrdir.sprout('this').open_workingtree()
+        self.failUnlessExists('this/hello')
+        self.build_tree_contents([('this/hello', 'Hello World')])
+        this.commit('Add World')
+        this.merge_from_branch(other.branch)
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '=======')])
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        remaining, resolved = this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.assertEqual([], resolved)
+        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        remaining, resolved = this.auto_resolve()
+        self.assertEqual([], this.conflicts())
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         resolved)
+        self.failIfExists('this/hello.BASE')
+
+    def test_auto_resolve_dir(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello/'])
+        tree.add('hello', 'hello-id')
+        file_conflict = conflicts.TextConflict('file', None, 'hello-id')
+        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        tree.auto_resolve()

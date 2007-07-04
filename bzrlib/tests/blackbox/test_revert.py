@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,15 +27,15 @@ from bzrlib.workingtree import WorkingTree
 class TestRevert(ExternalBase):
 
     def _prepare_tree(self):
-        self.runbzr('init')
-        self.runbzr('mkdir dir')
+        self.run_bzr('init')
+        self.run_bzr('mkdir dir')
 
         f = file('dir/file', 'wb')
         f.write('spam')
         f.close()
-        self.runbzr('add dir/file')
+        self.run_bzr('add dir/file')
 
-        self.runbzr('commit -m1')
+        self.run_bzr('commit -m1')
 
         # modify file
         f = file('dir/file', 'wb')
@@ -43,7 +43,7 @@ class TestRevert(ExternalBase):
         f.close()
 
         # check status
-        self.assertEquals('modified:\n  dir/file\n', self.capture('status'))
+        self.assertEquals('modified:\n  dir/file\n', self.run_bzr(['status'])[0])
 
     def _prepare_rename_mod_tree(self):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
@@ -66,8 +66,8 @@ class TestRevert(ExternalBase):
         os.chdir('dir')
         mutter('cd dir\n')
 
-        self.assertEquals('1\n', self.capture('revno'))
-        self.runbzr('revert %s file' % param)
+        self.assertEquals('1\n', self.run_bzr(['revno'])[0])
+        self.run_bzr('revert %s file' % param)
         self.assertEquals('spam', open('file', 'rb').read())
 
     def test_revert_in_subdir(self):
@@ -82,12 +82,12 @@ class TestRevert(ExternalBase):
         os.mkdir('brach')
         os.chdir('brach')
         self._prepare_tree()
-        self.runbzr('checkout --lightweight . ../sprach')
-        self.runbzr('commit -m more')
+        self.run_bzr('checkout --lightweight . ../sprach')
+        self.run_bzr('commit -m more')
         os.chdir('../sprach')
-        self.assertEqual('', self.capture('status'))
-        self.runbzr('revert')
-        self.assertEqual('', self.capture('status'))
+        self.assertEqual('', self.run_bzr(['status'])[0])
+        self.run_bzr('revert')
+        self.assertEqual('', self.run_bzr(['status'])[0])
 
     def test_revert_dirname(self):
         """Test that revert DIRECTORY does what's expected"""
@@ -102,6 +102,18 @@ class TestRevert(ExternalBase):
         self.failIfExists('j')
         self.failIfExists('h')
         self.failUnlessExists('a/d/e')
+
+    def test_revert_chatter(self):
+        self._prepare_rename_mod_tree()
+        chatter = self.run_bzr('revert')[1]
+        self.assertEqualDiff(
+            'R   a/g => f/g\n'
+            'R   h => f/h\n'
+            'R   j/ => f/\n'
+            'R   j/b => a/b\n'
+            'R   j/d/ => a/d/\n'
+            'R   j/e => a/d/e\n',
+            chatter)
 
     def test_revert(self):
         self.run_bzr('init')
@@ -153,3 +165,24 @@ class TestRevert(ExternalBase):
         self.run_bzr('revert')
         os.chdir('..')
 
+    def test_revert_newly_added(self):
+        # this tests the UI reports reverting a newly added file
+        # correct (such files are not deleted)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add(['file'])
+        out, err = self.run_bzr('revert')
+        self.assertEqual('', out)
+        self.assertEqual('-   file\n', err)
+
+    def test_revert_removing_file(self):
+        # this tests the UI reports reverting a file which has been committed
+        # to a revision that did not have it, reports it as being deleted.
+        tree = self.make_branch_and_tree('.')
+        tree.commit('empty commit')
+        self.build_tree(['file'])
+        tree.add(['file'])
+        tree.commit('add file')
+        out, err = self.run_bzr('revert', '-r', '-2')
+        self.assertEqual('', out)
+        self.assertEqual('-D  file\n', err)

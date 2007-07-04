@@ -99,6 +99,9 @@ class MemoryTree(mutabletree.MutableTree):
     def is_executable(self, file_id, path=None):
         return self._inventory[file_id].executable
 
+    def kind(self, file_id):
+        return self._inventory[file_id].kind
+
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         self.add(path, file_id, 'directory')
@@ -167,8 +170,9 @@ class MemoryTree(mutabletree.MutableTree):
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
         inventory_entries = self._inventory.iter_entries()
-        inventory_entries.next()
         for path, entry in inventory_entries:
+            if path == '':
+                continue
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
@@ -218,18 +222,29 @@ class MemoryTree(mutabletree.MutableTree):
             else:
                 raise errors.NoSuchId(self, file_id)
 
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """See MutableTree.set_parent_trees()."""
+        if len(revision_ids) == 0:
+            self._parent_ids = []
+            self._basis_tree = self.branch.repository.revision_tree(None)
+        else:
+            self._parent_ids = revision_ids
+            self._basis_tree = self.branch.repository.revision_tree(
+                                    revision_ids[0])
+            self._branch_revision_id = revision_ids[0]
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revisiontree(None)
+            self._basis_tree = self.branch.repository.revision_tree(None)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None:
-                self._basis_tree = self.branch.repository.revisiontree(None)
+                self._basis_tree = self.branch.repository.revision_tree(None)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

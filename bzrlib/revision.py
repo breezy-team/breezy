@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,12 @@
 
 
 import bzrlib.errors as errors
-from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
+from bzrlib.deprecated_graph import (
+    all_descendants,
+    Graph,
+    node_distances,
+    select_farthest,
+    )
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -27,6 +32,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
         )
 
 NULL_REVISION="null:"
+CURRENT_REVISION="current:"
 
 
 class Revision(object):
@@ -118,7 +124,8 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return (candidate_id in branch.repository.get_ancestry(revision_id))
+    return (candidate_id in branch.repository.get_ancestry(revision_id,
+            topo_sorted=False))
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -250,11 +257,19 @@ def common_ancestor(revision_a, revision_b, revision_source,
             pb.update('Picking ancestor', 1, 3)
             graph = revision_source.get_revision_graph_with_ghosts(
                 [revision_a, revision_b])
+            # Shortcut the case where one of the tips is already included in
+            # the other graphs ancestry.
+            ancestry_a = graph.get_ancestry(revision_a, topo_sorted=False)
+            if revision_b in ancestry_a:
+                return revision_b
+            ancestry_b = graph.get_ancestry(revision_b, topo_sorted=False)
+            if revision_a in ancestry_b:
+                return revision_a
             # convert to a NULL_REVISION based graph.
             ancestors = graph.get_ancestors()
             descendants = graph.get_descendants()
-            common = set(graph.get_ancestry(revision_a)).intersection(
-                     set(graph.get_ancestry(revision_b)))
+            common = set(ancestry_a)
+            common.intersection_update(ancestry_b)
             descendants[NULL_REVISION] = {}
             ancestors[NULL_REVISION] = []
             for root in graph.roots:
@@ -453,3 +468,24 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
         next = best_ancestor(next)
     path.reverse()
     return path
+
+
+def is_reserved_id(revision_id):
+    """Determine whether a revision id is reserved
+
+    :return: True if the revision is is reserved, False otherwise
+    """
+    return isinstance(revision_id, basestring) and revision_id.endswith(':')
+
+
+def check_not_reserved_id(revision_id):
+    """Raise ReservedId if the supplied revision_id is reserved"""
+    if is_reserved_id(revision_id):
+        raise errors.ReservedId(revision_id)
+
+def ensure_null(revision_id):
+    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    if revision_id is None:
+        return NULL_REVISION
+    else:
+        return revision_id

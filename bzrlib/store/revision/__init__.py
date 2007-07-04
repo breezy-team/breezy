@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,55 +21,17 @@ and returning some interesting data about them such as ancestors
 and ghosts information.
 """
 
-
-from copy import deepcopy
 from cStringIO import StringIO
-from unittest import TestSuite
 
-
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    osutils,
+    xml5,
+    )
 from bzrlib.trace import mutter
-
-
-class RevisionStoreTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple repository stores.
-
-    This is done by copying the test once for each repository store
-    and injecting the transport_server, transport_readonly_server,
-    and revision-store-factory into each copy.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, factories):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._factories = factories
-    
-    def adapt(self, test):
-        result = TestSuite()
-        for factory in self._factories:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.store_factory = factory
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), factory)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of revision store permutations to test."""
-        from bzrlib.store.revision.text import TextRevisionStoreTestFactory
-        from bzrlib.store.revision.knit import KnitRevisionStoreFactory
-        result = []
-        # test the fallback InterVersionedFile from weave to annotated knits
-        result.append(TextRevisionStoreTestFactory())
-        result.append(KnitRevisionStoreFactory())
-        return result
+""")
 
 
 class RevisionStore(object):
@@ -76,7 +39,7 @@ class RevisionStore(object):
 
     def __init__(self, serializer=None):
         if serializer is None:
-            serializer = bzrlib.xml5.serializer_v5
+            serializer = xml5.serializer_v5
         self._serializer = serializer
 
     def add_revision(self, revision, transaction):
@@ -119,6 +82,7 @@ class RevisionStore(object):
         
         :return: a signature text.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         self._guard_revision(revision_id, transaction)
         return self._get_signature_text(revision_id, transaction)
 
@@ -137,6 +101,7 @@ class RevisionStore(object):
 
     def has_signature(self, revision_id, transaction):
         """True if the store has a signature for revision_id."""
+        revision_id = osutils.safe_revision_id(revision_id)
         self._guard_revision(revision_id, transaction)
         return self._has_signature(revision_id, transaction)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,11 @@ from cStringIO import StringIO
 import os
 import pprint
 
+from bzrlib import (
+    osutils,
+    )
 import bzrlib.errors
+from bzrlib.bundle import apply_bundle
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
@@ -72,9 +76,13 @@ class RevisionInfo(object):
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
-                assert key_end is not None
-                key = property[:key_end].encode('utf-8')
-                value = property[key_end+2:].encode('utf-8')
+                if key_end == -1:
+                    assert property.endswith(':')
+                    key = str(property[:-1])
+                    value = ''
+                else:
+                    key = str(property[:key_end])
+                    value = property[key_end+2:]
                 rev.properties[key] = value
 
         return rev
@@ -101,6 +109,9 @@ class BundleInfo(object):
         self.timestamp = None
         self.timezone = None
 
+        # Have we checked the repository yet?
+        self._validated_revisions_against_repo = False
+
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
@@ -109,7 +120,7 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.bundle.serializer import unpack_highres_date
+        from bzrlib.timestamp import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -168,10 +179,12 @@ class BundleInfo(object):
         raise KeyError(revision_id)
 
     def revision_tree(self, repository, revision_id, base=None):
+        revision_id = osutils.safe_revision_id(revision_id)
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
         assert base != revision_id
-        self._validate_references_from_repository(repository)
+        if not self._validated_revisions_against_repo:
+            self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
         bundle_tree = BundleTree(repository.revision_tree(base), 
@@ -253,6 +266,7 @@ class BundleInfo(object):
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the bundle.' % count)
+        self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):
         """At this point we should have generated the BundleTree,
@@ -299,7 +313,10 @@ class BundleInfo(object):
 
         def get_rev_id(last_changed, path, kind):
             if last_changed is not None:
-                changed_revision_id = last_changed.decode('utf-8')
+                # last_changed will be a Unicode string because of how it was
+                # read. Convert it back to utf8.
+                changed_revision_id = osutils.safe_revision_id(last_changed,
+                                                               warn=False)
             else:
                 changed_revision_id = revision_id
             bundle_tree.note_last_changed(path, changed_revision_id)
@@ -372,7 +389,9 @@ class BundleInfo(object):
             if not info[1].startswith('file-id:'):
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
-            file_id = info[1][8:]
+            # This will be Unicode because of how the stream is read. Turn it
+            # back into a utf8 file_id
+            file_id = osutils.safe_file_id(info[1][8:], warn=False)
 
             bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.
@@ -422,6 +441,11 @@ class BundleInfo(object):
                 raise BzrError('Bogus action line'
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
+
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
+        apply_bundle.install_bundle(target_repo, self)
+        return self.target
 
 
 class BundleTree(Tree):
@@ -648,22 +672,16 @@ class BundleTree(Tree):
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        root_id = base_inv.root.file_id
-        try:
-            # New inventories have a unique root_id
-            inv = Inventory(root_id, self.revision_id)
-        except TypeError:
-            inv = Inventory(revision_id=self.revision_id)
-        inv.root.revision = self.get_last_changed(root_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
             if path is None:
                 return
-            parent_path = dirname(path)
-            if parent_path == u'':
-                parent_id = root_id
+            if path == '':
+                parent_id = None
             else:
+                parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
@@ -690,8 +708,6 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            if file_id == inv.root.file_id:
-                continue
             add_entry(file_id)
 
         return inv

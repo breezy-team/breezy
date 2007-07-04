@@ -14,11 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Helper functions for adding files to working trees."""
+
 import errno
 import os
 from os.path import dirname
 import sys
 
+import bzrlib.bzrdir
 import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
@@ -28,13 +31,21 @@ from bzrlib.workingtree import WorkingTree
 
 
 def glob_expand_for_win32(file_list):
+    """Replacement for glob expansion by the shell.
+
+    Win32's cmd.exe does not do glob expansion (eg ``*.py``), so we do our own
+    here.
+
+    :param file_list: A list of filenames which may include shell globs.
+    :return: An expanded list of filenames.
+    """
     if not file_list:
         return
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
         glob_files = glob.glob(possible_glob)
-       
+
         if glob_files == []:
             # special case to let the normal code path handle
             # files that do not exists
@@ -58,6 +69,12 @@ class AddAction(object):
     """A class which defines what action to take when adding a file."""
 
     def __init__(self, to_file=None, should_print=None):
+        """Initialize an action which prints added files to an output stream.
+
+        :param to_file: The stream to write into. This is expected to take
+            Unicode paths. If not supplied, it will default to ``sys.stdout``.
+        :param should_print: If False, printing will be supressed.
+        """
         self._to_file = to_file
         if to_file is None:
             self._to_file = sys.stdout
@@ -176,12 +193,26 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     This calls reporter with each (path, kind, file_id) of added files.
 
     Returns the number of files added.
-    
+
     :param save: Save the inventory after completing the adds. If False this
-    provides dry-run functionality by doing the add and not saving the
-    inventory.  Note that the modified inventory is left in place, allowing 
-    further dry-run tasks to take place. To restore the original inventory
-    call tree.read_working_inventory().
+        provides dry-run functionality by doing the add and not saving the
+        inventory.  Note that the modified inventory is left in place, allowing
+        further dry-run tasks to take place. To restore the original inventory
+        call tree.read_working_inventory().
+    """
+    tree.lock_tree_write()
+    try:
+        return _smart_add_tree(tree=tree, file_list=file_list, recurse=recurse,
+                               action=action, save=save)
+    finally:
+        tree.unlock()
+
+
+def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
+    """Helper for smart_add_tree.
+
+    The tree should be locked before entering this function. See smart_add_tree
+    for parameter definitions.
     """
     assert isinstance(recurse, bool)
     if action is None:
@@ -203,7 +234,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
         if tree.is_control_filename(rf.raw_path):
-            raise errors.ForbiddenControlFileError(filename=rf)
+            raise errors.ForbiddenControlFileError(filename=rf.raw_path)
         
         abspath = tree.abspath(rf.raw_path)
         kind = bzrlib.osutils.file_kind(abspath)
@@ -278,6 +309,13 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
             pass
             # mutter("%r is already versioned", abspath)
         elif sub_tree:
+            # XXX: This is wrong; people *might* reasonably be trying to add
+            # subtrees as subtrees.  This should probably only be done in formats 
+            # which can represent subtrees, and even then perhaps only when
+            # the user asked to add subtrees.  At the moment you can add them
+            # specially through 'join --reference', which is perhaps
+            # reasonable: adding a new reference is a special operation and
+            # can have a special behaviour.  mbp 20070306
             mutter("%r is a nested bzr tree", abspath)
         else:
             __add_one(tree, inv, parent_ie, directory, kind, action)
@@ -331,11 +369,11 @@ def __add_one_and_parent(tree, inv, parent_ie, path, kind, action):
 
     :param inv: Inventory which will receive the new entry.
     :param parent_ie: Parent inventory entry if known, or None.  If
-    None, the parent is looked up by name and used if present, otherwise
-    it is recursively added.
+        None, the parent is looked up by name and used if present, otherwise it
+        is recursively added.
     :param kind: Kind of new entry (file, directory, etc)
     :param action: callback(inv, parent_ie, path, kind); return ignored.
-    :returns: A list of paths which have been added.
+    :return: A list of paths which have been added.
     """
     # Nothing to do if path is already versioned.
     # This is safe from infinite recursion because the tree root is

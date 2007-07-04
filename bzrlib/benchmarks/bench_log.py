@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,24 +26,45 @@ from cStringIO import StringIO
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
+
 class LinesDone(Exception):
+    """Raised when `LineConsumer` reaches the required number of lines."""
     pass
 
+
 class LineConsumer(object):
+    """Count lines that are produced.
+
+    When the required number of lines have been reached, raise `LinesDone`.
+    """
 
     def __init__(self, required_lines):
+        """Create a new consumer.
+
+        :param required_lines: How many lines must be produced.
+        :type required_lines: integer
+        """
         self.required_lines = required_lines
 
     def write(self, text):
+        """Write some text to the black hole.
+
+        But count how many lines have been written.
+
+        :param text: A string that would be written.
+        :raise LinesDone: when the required number of lines has been reached.
+        :return: None
+        """
         self.required_lines -= text.count('\n')
         if self.required_lines < 0:
             raise LinesDone()
-        
+
 
 class LogBenchmark(Benchmark):
+    """Benchmarks for ``'bzr log'`` performance."""
 
     def test_log(self):
-        """Run log in a many-commit tree.""" 
+        """Run log in a many-commit tree."""
         tree = self.make_many_commit_tree(hardlink=True)
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')

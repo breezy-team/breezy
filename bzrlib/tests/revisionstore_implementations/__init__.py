@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -24,14 +24,54 @@ Specific tests for individual cases are in the tests/test_revisionstore.py file
 rather than in tests/revisionstore_implementations/*.py.
 """
 
-from bzrlib.store.revision import RevisionStoreTestProviderAdapter
-                            
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestLoader,
+                          TestScenarioApplier,
                           TestSuite,
                           )
+
+
+class RevisionStoreTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing multiple repository stores.
+
+    This is done by copying the test once for each repository store
+    and injecting the transport_server, transport_readonly_server,
+    and revision-store-factory into each copy.
+    Each copy is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, factories):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self.scenarios = self.factories_to_scenarios(factories)
+    
+    def factories_to_scenarios(self, factories):
+        """Transform the input factories to a list of scenarios.
+
+        :param factories: A list of factories.
+        """
+        result = []
+        for factory in factories:
+            scenario = (factory, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "store_factory":factory,
+                })
+            result.append(scenario)
+        return result
+
+    @staticmethod
+    def default_test_list():
+        """Generate the default list of revision store permutations to test."""
+        from bzrlib.store.revision.text import TextRevisionStoreTestFactory
+        from bzrlib.store.revision.knit import KnitRevisionStoreFactory
+        result = []
+        # test the fallback InterVersionedFile from weave to annotated knits
+        result.append(TextRevisionStoreTestFactory())
+        result.append(KnitRevisionStoreFactory())
+        return result
 
 
 def test_suite():

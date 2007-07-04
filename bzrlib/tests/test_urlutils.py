@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ import os
 import re
 import sys
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils, urlutils, win32utils
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -115,6 +115,12 @@ class TestUrlToPath(TestCase):
         eq('http://host/ab/%C2%B5/%C2%B5',
             normalize_url(u'http://host/ab/%C2%B5/\xb5'))
 
+        # Unescape characters that don't need to be escaped
+        eq('http://host/~bob%2525-._',
+                normalize_url('http://host/%7Ebob%2525%2D%2E%5F'))
+        eq('http://host/~bob%2525-._',
+                normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
+
         # Normalize verifies URLs when they are not unicode
         # (indicating they did not come from the user)
         self.assertRaises(InvalidURL, normalize_url, 'http://host/\xb5')
@@ -197,21 +203,24 @@ class TestUrlToPath(TestCase):
             joined = urlutils.join(*args)
             self.assertEqual(expected, joined)
 
-        # Test a single element
-        test('foo', 'foo')
-
         # Test relative path joining
+        test('foo', 'foo') # relative fragment with nothing is preserved.
         test('foo/bar', 'foo', 'bar')
         test('http://foo/bar', 'http://foo', 'bar')
         test('http://foo/bar', 'http://foo', '.', 'bar')
         test('http://foo/baz', 'http://foo', 'bar', '../baz')
         test('http://foo/bar/baz', 'http://foo', 'bar/baz')
         test('http://foo/baz', 'http://foo', 'bar/../baz')
+        test('http://foo/baz', 'http://foo/bar/', '../baz')
 
         # Absolute paths
+        test('http://foo', 'http://foo') # abs url with nothing is preserved.
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+        test('http://bar/', 'http://foo', 'http://bar/')
+        test('http://bar/a', 'http://foo', 'http://bar/a')
+        test('http://bar/a/', 'http://foo', 'http://bar/a/')
 
         # From a base path
         test('file:///foo', 'file:///', 'foo')
@@ -221,8 +230,47 @@ class TestUrlToPath(TestCase):
         
         # Invalid joinings
         # Cannot go above root
+        # Implicitly at root:
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo', '/..')
+        # Joining from a path explicitly under the root.
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo/a', '../../b')
+
+    def test_joinpath(self):
+        def test(expected, *args):
+            joined = urlutils.joinpath(*args)
+            self.assertEqual(expected, joined)
+
+        # Test a single element
+        test('foo', 'foo')
+
+        # Test relative path joining
+        test('foo/bar', 'foo', 'bar')
+        test('foo/bar', 'foo', '.', 'bar')
+        test('foo/baz', 'foo', 'bar', '../baz')
+        test('foo/bar/baz', 'foo', 'bar/baz')
+        test('foo/baz', 'foo', 'bar/../baz')
+
+        # Test joining to an absolute path
+        test('/foo', '/foo')
+        test('/foo', '/foo', '.')
+        test('/foo/bar', '/foo', 'bar')
+        test('/', '/foo', '..')
+
+        # Test joining with an absolute path
+        test('/bar', 'foo', '/bar')
+
+        # Test joining to a path with a trailing slash
+        test('foo/bar', 'foo/', 'bar')
+        
+        # Invalid joinings
+        # Cannot go above root
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '..')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '/..')
 
     def test_function_type(self):
         if sys.platform == 'win32':
@@ -275,6 +323,21 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
+    def test_win32_unc_path_to_url(self):
+        to_url = urlutils._win32_local_path_to_url
+        self.assertEqual('file://HOST/path',
+            to_url(r'\\HOST\path'))
+        self.assertEqual('file://HOST/path',
+            to_url('//HOST/path'))
+
+        try:
+            result = to_url(u'//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
+        except UnicodeError:
+            raise TestSkipped("local encoding cannot handle unicode")
+
+        self.assertEqual('file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+
+
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('C:/path/to/foo',
@@ -288,7 +351,19 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
-    def test__win32_extract_drive_letter(self):
+    def test_win32_unc_path_from_url(self):
+        from_url = urlutils._win32_local_path_from_url
+        self.assertEqual('//HOST/path', from_url('file://HOST/path'))
+        # despite IE allows 2, 4, 5 and 6 slashes in URL to another machine
+        # we want to use only 2 slashes
+        # Firefox understand only 5 slashes in URL, but it's ugly
+        self.assertRaises(InvalidURL, from_url, 'file:////HOST/path')
+        self.assertRaises(InvalidURL, from_url, 'file://///HOST/path')
+        self.assertRaises(InvalidURL, from_url, 'file://////HOST/path')
+        # check for file://C:/ instead of file:///C:/
+        self.assertRaises(InvalidURL, from_url, 'file://C:/path')
+
+    def test_win32_extract_drive_letter(self):
         extract = urlutils._win32_extract_drive_letter
         self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
         self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
@@ -329,7 +404,7 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
 
-    def test__win32_strip_local_trailing_slash(self):
+    def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
         self.assertEqual('file://', strip('file://'))
         self.assertEqual('file:///', strip('file:///'))
@@ -479,6 +554,9 @@ class TestCwdToURL(TestCaseInTempDir):
         self.assertEndsWith(url, '/mytest')
 
     def test_non_ascii(self):
+        if win32utils.winver == 'Windows 98':
+            raise TestSkipped('Windows 98 cannot handle unicode filenames')
+
         try:
             os.mkdir(u'dod\xe9')
         except UnicodeError:
@@ -492,3 +570,21 @@ class TestCwdToURL(TestCaseInTempDir):
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')
+
+
+class TestDeriveToLocation(TestCase):
+    """Test that the mapping of FROM_LOCATION to TO_LOCATION works."""
+
+    def test_to_locations_derived_from_paths(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("bar"))
+        self.assertEqual("bar", derive("../bar"))
+        self.assertEqual("bar", derive("/foo/bar"))
+        self.assertEqual("bar", derive("c:/foo/bar"))
+        self.assertEqual("bar", derive("c:bar"))
+
+    def test_to_locations_derived_from_urls(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("http://foo/bar"))
+        self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
+        self.assertEqual("foo-bar", derive("lp:foo-bar"))

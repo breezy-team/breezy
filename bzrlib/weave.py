@@ -247,6 +247,7 @@ class Weave(VersionedFile):
 
     def _lookup(self, name):
         """Convert symbolic version name to index."""
+        self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
         except KeyError:
@@ -606,7 +607,7 @@ class Weave(VersionedFile):
         else:
             return self.get_ancestry(version_ids)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(version_ids, basestring):
             version_ids = [version_ids]
@@ -640,20 +641,6 @@ class Weave(VersionedFile):
         """
         return len(other_parents.difference(my_parents)) == 0
 
-    def annotate(self, version_id):
-        if isinstance(version_id, int):
-            warnings.warn('Weave.annotate(int) is deprecated. Please use version names'
-                 ' in all circumstances as of 0.8',
-                 DeprecationWarning,
-                 stacklevel=2
-                 )
-            result = []
-            for origin, lineno, text in self._extract([version_id]):
-                result.append((origin, text))
-            return result
-        else:
-            return super(Weave, self).annotate(version_id)
-    
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified version.
 
@@ -1120,6 +1107,7 @@ class WeaveFile(Weave):
 
     def _add_lines(self, version_id, parents, lines, parent_texts):
         """Add a version and save the weave."""
+        self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
                                                    parent_texts)
         self._save()

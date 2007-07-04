@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 import os
 
 from bzrlib import branch, bzrdir
-from bzrlib.repository import RepositoryFormatKnit1
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 
@@ -28,13 +28,13 @@ from bzrlib.workingtree import WorkingTree
 class TestBranch(ExternalBase):
 
     def example_branch(test):
-        test.runbzr('init')
+        test.run_bzr('init')
         file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
+        test.run_bzr('add hello')
+        test.run_bzr('commit -m setup hello')
         file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+        test.run_bzr('add goodbye')
+        test.run_bzr('commit -m setup goodbye')
 
     def test_branch(self):
         """Branch from one branch to another."""
@@ -42,33 +42,13 @@ class TestBranch(ExternalBase):
         os.chdir('a')
         self.example_branch()
         os.chdir('..')
-        self.runbzr('branch a b')
+        self.run_bzr('branch a b')
         b = branch.Branch.open('b')
         self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
-        self.runbzr('branch a c -r 1')
+        self.run_bzr('branch a c -r 1')
         os.chdir('b')
-        self.runbzr('commit -m foo --unchanged')
+        self.run_bzr('commit -m foo --unchanged')
         os.chdir('..')
-
-    def test_branch_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-        tree.copy_content_into(source)
-        self.assertFalse(source.branch.repository.has_revision('2'))
-        dir = source.bzrdir
-        self.runbzr('branch source target --basis commit_tree')
-        target = bzrdir.BzrDir.open('target')
-        self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
-        self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.

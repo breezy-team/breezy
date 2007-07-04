@@ -1,3 +1,18 @@
+# Copyright (C) 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """\
 This contains functionality for installing bundles into repositories
 """
@@ -27,14 +42,15 @@ def install_bundle(repository, bundle_reader):
 
 
 def merge_bundle(reader, tree, check_clean, merge_type, 
-                    reprocess, show_base):
+                    reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()
         install_bundle(tree.branch.repository, reader)
-        merger = Merger(tree.branch, this_tree=tree, pb=pb)
+        merger = Merger(tree.branch, this_tree=tree, pb=pb,
+                        change_reporter=change_reporter)
         merger.pp = pp
         merger.pp.next_phase()
         merger.check_basis(check_clean, require_commits=False)

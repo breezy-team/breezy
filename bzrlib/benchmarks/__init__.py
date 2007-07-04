@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,16 +26,19 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class Benchmark(ExternalBase):
+    """A Test class which provides helpers for writing benchmark tests."""
 
     def make_kernel_like_tree(self, url=None, root='.',
                               link_working=False):
         """Setup a temporary tree roughly like a kernel tree.
-        
+
         :param url: Creat the kernel like tree as a lightweight checkout
-        of a new branch created at url.
+            of a new branch created at url.
+        :param root: Path where the tree will be created.
         :param link_working: instead of creating a new copy of all files
             just hardlink the working tree. Tests must request this, because
             they must break links if they want to change the files
+        :return: A newly created tree.
         """
         from bzrlib.benchmarks.tree_creator.kernel_like import (
             KernelLikeTreeCreator,
@@ -127,36 +130,22 @@ class Benchmark(ExternalBase):
         creator = HeavilyMergedTreeCreator(self, link_bzr=hardlink)
         return creator.create(root=directory_name)
 
-    def create_with_commits(self, num_files, num_commits, directory_name='.'):
+    def create_with_commits(self, num_files, num_commits, directory_name='.',
+                            hardlink=False):
         """Create a tree with many files and many commits. Every commit changes
         exactly one file.
-        
+
         :param num_files: number of files to be created
         :param num_commits: number of commits in the newly created tree
         """
-        files = ["%s/%s" % (directory_name, i) for i in range(num_files)]
-        for fn in files:
-            f = open(fn, "wb")
-            try:
-                f.write("some content\n")
-            finally:
-                f.close()
-        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
-        tree.add([str(i) for i in range(num_files)])
-        tree.lock_write()
-        try:
-            tree.commit('initial commit')
-            for i in range(num_commits):
-                fn = files[i % len(files)]
-                content = range(i) + [i, i, i, ""]
-                f = open(fn, "wb")
-                try:
-                    f.write("\n".join([str(i) for i in content]))
-                finally:
-                    f.close()
-                tree.commit("changing file %s" % fn)
-        finally:
-            tree.unlock()
+        from bzrlib.benchmarks.tree_creator.many_commit import (
+            ManyCommitTreeCreator,
+            )
+        creator = ManyCommitTreeCreator(self, link_bzr=hardlink,
+                                        num_files=num_files,
+                                        num_commits=num_commits)
+        tree = creator.create(root=directory_name)
+        files = ["%s/%s" % (directory_name, fn) for fn in creator.files]
         return tree, files
 
     def commit_some_revisions(self, tree, files, num_commits,
@@ -167,8 +156,8 @@ class Benchmark(ExternalBase):
         :param tree: The tree in which the changes happen.
         :param files: The list of files where changes should occur.
         :param num_commits: The number of commits
-        :param changes_per_commit: The number of files that are touched in 
-        each commit.
+        :param changes_per_commit: The number of files that are touched in
+            each commit.
         """
         for j in range(num_commits):
             for i in range(changes_per_commit):
@@ -187,13 +176,16 @@ def test_suite():
     testmod_names = [ \
                    'bzrlib.benchmarks.bench_add',
                    'bzrlib.benchmarks.bench_bench',
+                   'bzrlib.benchmarks.bench_bundle',
                    'bzrlib.benchmarks.bench_cache_utf8',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_info',
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',
+                   'bzrlib.benchmarks.bench_startup',
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',

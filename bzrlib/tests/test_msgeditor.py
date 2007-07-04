@@ -1,8 +1,9 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -79,9 +80,12 @@ added:
         self.assertEqual(True, bzrlib.msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
-    def test_edit_commit_message(self):
-        working_tree = self.make_uncommitted_tree()
-        # make fake editor
+    def make_fake_editor(self):
+        """Set up environment so that an editor will be a known script.
+
+        Sets up BZR_EDITOR so that if an editor is spawned it will run a
+        script that just adds a known message to the start of the file.
+        """
         f = file('fed.py', 'wb')
         f.write('#!%s\n' % sys.executable)
         f.write("""\
@@ -111,6 +115,10 @@ if len(sys.argv) == 2:
             os.chmod('fed.py', 0755)
             os.environ['BZR_EDITOR'] = './fed.py'
 
+    def test_edit_commit_message(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message without infotext')
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(''))
@@ -118,6 +126,16 @@ if len(sys.argv) == 2:
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(u'\u1234'))
+
+    def test_start_message(self):
+        self.make_uncommitted_tree()
+        self.make_fake_editor()
+        self.assertEqual('test message from fed\nstart message\n',
+                         bzrlib.msgeditor.edit_commit_message('',
+                                              start_message='start message\n'))
+        self.assertEqual('test message from fed\n',
+                         bzrlib.msgeditor.edit_commit_message('',
+                                              start_message=''))
 
     def test_deleted_commit_message(self):
         working_tree = self.make_uncommitted_tree()
@@ -169,3 +187,26 @@ if len(sys.argv) == 2:
                 del os.environ['EDITOR']
             else:
                 os.environ['EDITOR'] = editor
+
+    def test__create_temp_file_with_commit_template(self):
+        # check that commit template written properly
+        # and has platform native line-endings (CRLF on win32)
+        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        msgfilename, hasinfo = create_file('infotext','----','start message')
+        self.assertNotEqual(None, msgfilename)
+        self.assertTrue(hasinfo)
+        expected = os.linesep.join(['start message',
+                                    '',
+                                    '',
+                                    '----',
+                                    '',
+                                    'infotext'])
+        self.assertFileEqual(expected, msgfilename)
+
+    def test__create_temp_file_with_empty_commit_template(self):
+        # empty file
+        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        msgfilename, hasinfo = create_file('')
+        self.assertNotEqual(None, msgfilename)
+        self.assertFalse(hasinfo)
+        self.assertFileEqual('', msgfilename)

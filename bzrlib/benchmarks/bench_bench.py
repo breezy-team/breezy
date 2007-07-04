@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,6 +29,7 @@ from bzrlib.tests import TestSkipped
 
 
 class MakeKernelLikeTreeBenchmark(Benchmark):
+    """Benchmark creating benchmark trees."""
 
     def test_make_kernel_like_tree(self):
         """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 

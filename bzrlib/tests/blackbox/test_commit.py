@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@ import os
 import re
 import sys
 
+from bzrlib import (
+    ignores,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCommandError
@@ -35,10 +38,20 @@ class TestCommit(ExternalBase):
         # If forced, it should succeed, but this is not tested here.
         self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        result = self.run_bzr("commit", "-m", "empty", retcode=3)
-        self.assertEqual(('', 'bzr: ERROR: no changes to commit.'
-                              ' use --unchanged to commit anyhow\n'),
-                         result)
+        out,err = self.run_bzr("commit", "-m", "empty", retcode=3)
+        self.assertEqual('', out)
+        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
+                                  ' use --unchanged to commit anyhow\n')
+
+    def test_commit_success(self):
+        """Successful commit should not leave behind a bzr-commit-* file"""
+        self.run_bzr("init")
+        self.run_bzr("commit", "--unchanged", "-m", "message")
+        self.assertEqual('', self.run_bzr(['unknowns'])[0])
+
+        # same for unicode messages
+        self.run_bzr("commit", "--unchanged", "-m", u'foo\xb5')
+        self.assertEqual('', self.run_bzr(['unknowns'])[0])
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -63,9 +76,9 @@ class TestCommit(ExternalBase):
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("add hello.txt")
+        self.run_bzr("add hello.txt")
         out,err = self.run_bzr("commit", "-m", "added")
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -128,11 +141,11 @@ class TestCommit(ExternalBase):
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt', 'unchanged.txt'])
-        self.runbzr('add unchanged.txt')
-        self.runbzr('commit -m unchanged unchanged.txt')
-        self.runbzr("add hello.txt")
+        self.run_bzr('add unchanged.txt')
+        self.run_bzr('commit -m unchanged unchanged.txt')
+        self.run_bzr("add hello.txt")
         out,err = self.run_bzr("commit", "-m", "added")
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -206,42 +219,42 @@ class TestCommit(ExternalBase):
             err)
 
     def test_empty_commit_message(self):
-        self.runbzr("init")
+        self.run_bzr("init")
         file('foo.c', 'wt').write('int main() {}')
-        self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=3)
+        self.run_bzr('add foo.c')
+        self.run_bzr('commit -m ""', retcode=3)
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
         os.mkdir('empty_branch')
         os.chdir('empty_branch')
-        self.runbzr('init')
+        self.run_bzr('init')
         os.mkdir('branch')
         os.chdir('branch')
-        self.runbzr('init')
+        self.run_bzr('init')
         file('foo.c', 'wt').write('int main() {}')
         file('bar.c', 'wt').write('int main() {}')
         os.chdir('..')
-        self.runbzr(['add', 'branch/foo.c'])
-        self.runbzr(['add', 'branch'])
+        self.run_bzr(['add', 'branch/foo.c'])
+        self.run_bzr(['add', 'branch'])
         # can't commit files in different trees; sane error
-        self.runbzr('commit -m newstuff branch/foo.c .', retcode=3)
-        self.runbzr('commit -m newstuff branch/foo.c')
-        self.runbzr('commit -m newstuff branch')
-        self.runbzr('commit -m newstuff branch', retcode=3)
+        self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
+        self.run_bzr('commit -m newstuff branch/foo.c')
+        self.run_bzr('commit -m newstuff branch')
+        self.run_bzr('commit -m newstuff branch', retcode=3)
 
     def test_out_of_date_tree_commit(self):
         # check we get an error code and a clear message committing with an out
         # of date checkout
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         # commit to the original branch to make the checkout out of date
-        self.runbzr('commit --unchanged -m message branch')
+        self.run_bzr('commit --unchanged -m message branch')
         # now commit to the checkout should emit
         # ERROR: Out of date with the branch, 'bzr update' is suggested
-        output = self.runbzr('commit --unchanged -m checkout_message '
+        output = self.run_bzr('commit --unchanged -m checkout_message '
                              'checkout', retcode=3)
         self.assertEqual(output,
                          ('',
@@ -300,3 +313,164 @@ class TestCommit(ExternalBase):
         self.assertNotContainsRe(result, 'file-a')
         result = self.run_bzr('status')[0]
         self.assertContainsRe(result, 'removed:\n  file-a')
+
+    def test_strict_commit(self):
+        """Commit with --strict works if everything is known"""
+        ignores._set_user_ignores([])
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        # A simple change should just work
+        self.run_bzr('commit', '--strict', '-m', 'adding a',
+                     working_dir='tree')
+
+    def test_strict_commit_no_changes(self):
+        """commit --strict gives "no changes" if there is nothing to commit"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # With no changes, it should just be 'no changes'
+        # Make sure that commit is failing because there is nothing to do
+        self.run_bzr_error(['no changes to commit'],
+                           'commit', '--strict', '-m', 'no changes',
+                           working_dir='tree')
+
+        # But --strict doesn't care if you supply --unchanged
+        self.run_bzr('commit', '--strict', '--unchanged', '-m', 'no changes',
+                     working_dir='tree')
+
+    def test_strict_commit_unknown(self):
+        """commit --strict fails if a file is unknown"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # Add one file so there is a change, but forget the other
+        self.build_tree(['tree/b', 'tree/c'])
+        tree.add('b')
+        self.run_bzr_error(['Commit refused because there are unknown files'],
+                           'commit', '--strict', '-m', 'add b',
+                           working_dir='tree')
+
+        # --no-strict overrides --strict
+        self.run_bzr('commit', '--strict', '-m', 'add b', '--no-strict',
+                     working_dir='tree')
+
+    def test_fixes_bug_output(self):
+        """commit --fixes=lp:23452 succeeds without output."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        output, err = self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:23452', 'tree/hello.txt')
+        self.assertEqual('', output)
+        self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
+
+    def test_no_bugs_no_properties(self):
+        """If no bugs are fixed, the bugs property is not set.
+
+        see https://beta.launchpad.net/bzr/+bug/109613
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr( 'commit', '-m', 'hello', 'tree/hello.txt')
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+        self.assertFalse('bugs' in properties)
+
+    def test_fixes_bug_sets_property(self):
+        """commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:234', 'tree/hello.txt')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
+                         properties)
+
+    def test_fixes_multiple_bugs_sets_properties(self):
+        """--fixes can be used more than once to show that bugs are fixed."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:123', '--fixes=lp:235',
+            'tree/hello.txt')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual(
+            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
+                     'https://launchpad.net/bugs/235 fixed'},
+            properties)
+
+    def test_fixes_bug_with_alternate_trackers(self):
+        """--fixes can be used on a properly configured branch to mark bug
+        fixes on multiple trackers.
+        """
+        tree = self.make_branch_and_tree('tree')
+        tree.branch.get_config().set_user_option(
+            'trac_twisted_url', 'http://twistedmatrix.com/trac')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:123',
+            '--fixes=twisted:235', 'tree/')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual(
+            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
+                     'http://twistedmatrix.com/trac/ticket/235 fixed'},
+            properties)
+
+    def test_fixes_unknown_bug_prefix(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["Unrecognized bug %s. Commit refused." % 'xxx:123'],
+            'commit', '-m', 'add b', '--fixes=xxx:123',
+            working_dir='tree')
+
+    def test_fixes_invalid_bug_number(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
+            'commit', '-m', 'add b', '--fixes=lp:orange',
+            working_dir='tree')
+
+    def test_fixes_invalid_argument(self):
+        """Raise an appropriate error when the fixes argument isn't tag:id."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+             r"Commit refused\."],
+            'commit', '-m', 'add b', '--fixes=orange',
+            working_dir='tree')

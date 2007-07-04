@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,21 +29,21 @@ from bzrlib.workingtree import WorkingTree
 class TestUpdate(ExternalBase):
 
     def test_update_standalone_trivial(self):
-        self.runbzr("init")
-        out, err = self.runbzr('update')
+        self.run_bzr("init")
+        out, err = self.run_bzr('update')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_standalone_trivial_with_alias_up(self):
-        self.runbzr("init")
-        out, err = self.runbzr('up')
+        self.run_bzr("init")
+        out, err = self.run_bzr('up')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
-        self.runbzr('checkout --lightweight branch checkout')
-        out, err = self.runbzr('update checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
+        out, err = self.run_bzr('update checkout')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
@@ -59,12 +59,12 @@ class TestUpdate(ExternalBase):
         # because it currently uses the branch last-revision marker.
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
         # now branch should be out of date
-        out,err = self.runbzr('update branch')
+        out,err = self.run_bzr('update branch')
         self.assertEqual('', out)
         self.assertEqual('All changes applied successfully.\n'
                          'Updated to revision 1.\n', err)
@@ -73,13 +73,13 @@ class TestUpdate(ExternalBase):
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout --lightweight branch checkout')
-        self.runbzr('checkout --lightweight branch checkout2')
+        self.run_bzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout2')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
         # now checkout2 should be out of date
-        out,err = self.runbzr('update checkout2')
+        out,err = self.run_bzr('update checkout2')
         self.assertEqual('All changes applied successfully.\n'
                          'Updated to revision 1.\n',
                          err)
@@ -88,22 +88,22 @@ class TestUpdate(ExternalBase):
     def test_update_conflicts_returns_2(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
-        self.runbzr('checkout --lightweight branch checkout2')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
+        self.run_bzr('checkout --lightweight branch checkout2')
         # now alter file in checkout
         a_file = file('checkout/file', 'wt')
         a_file.write('Foo')
         a_file.close()
-        self.runbzr('commit -m checnge-file checkout')
+        self.run_bzr('commit -m checnge-file checkout')
         # now checkout2 should be out of date
         # make a local change to file
         a_file = file('checkout2/file', 'wt')
         a_file.write('Bar')
         a_file.close()
-        out,err = self.runbzr('update checkout2', retcode=1)
+        out,err = self.run_bzr('update checkout2', retcode=1)
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
                          err.split('\n')[1:3])
@@ -197,3 +197,12 @@ class TestUpdate(ExternalBase):
 
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+
+    def test_readonly_lightweight_update(self):
+        """Update a light checkout of a readonly branch"""
+        tree = self.make_branch_and_tree('branch')
+        readonly_branch = branch.Branch.open(self.get_readonly_url('branch'))
+        checkout = readonly_branch.create_checkout('checkout',
+                                                   lightweight=True)
+        tree.commit('empty commit')
+        self.run_bzr(['update', 'checkout'])

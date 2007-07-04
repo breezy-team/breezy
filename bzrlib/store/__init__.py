@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from zlib import adler32
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     symbol_versioning,
     urlutils,
     )
@@ -128,7 +129,7 @@ class Store(object):
             pb.update('preparing to copy')
         failed = set()
         count = 0
-        ids = list(ids) # get the list for showing a length.
+        ids = [osutils.safe_file_id(i) for i in ids] # get the list for showing a length.
         for fileid in ids:
             count += 1
             if self.has_id(fileid):
@@ -173,6 +174,7 @@ class TransportStore(Store):
 
         f -- A file-like object
         """
+        fileid = osutils.safe_file_id(fileid)
         mutter("add store entry %r", fileid)
         if isinstance(f, str):
             symbol_versioning.warn(zero_eleven % 'Passing a string to Store.add',
@@ -217,6 +219,7 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
+        fileid = osutils.safe_file_id(fileid)
         return self._transport.has_any(self._id_to_names(fileid, suffix))
 
     def _get_name(self, fileid, suffix=None):
@@ -240,6 +243,7 @@ class TransportStore(Store):
 
     def get(self, fileid, suffix=None):
         """See Store.get()."""
+        fileid = osutils.safe_file_id(fileid)
         names = self._id_to_names(fileid, suffix)
         for name in names:
             try:

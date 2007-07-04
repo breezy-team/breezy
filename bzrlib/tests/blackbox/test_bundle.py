@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,10 +21,10 @@ from StringIO import StringIO
 
 from bzrlib.bundle.serializer import read_bundle
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import tests
 
 
-class TestBundle(TestCaseInTempDir):
+class TestBundle(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
@@ -37,7 +37,7 @@ class TestBundle(TestCaseInTempDir):
 
     def test_uses_parent(self):
         """Parent location is used as a basis by default"""
-        self.make_trees()        
+        self.make_trees()
         os.chdir('grandparent')
         errmsg = self.run_bzr('bundle', retcode=3)[1]
         self.assertContainsRe(errmsg, 'No base branch known or specified')
@@ -82,3 +82,19 @@ class TestBundle(TestCaseInTempDir):
         bi = read_bundle(StringIO(self.run_bzr('bundle', '-r', '-2..-1')[0]))
         self.assertRevisions(bi, ['revision3'])
         self.run_bzr('bundle', '../grandparent', '-r', '-2..-1', retcode=3)
+
+    def test_output(self):
+        # check output for consistency
+        # win32 stdout converts LF to CRLF,
+        # and this is breaks the created bundle
+        self.make_trees()        
+        os.chdir('branch')
+        stdout = self.run_bzr_subprocess('bundle')[0]
+        br = read_bundle(StringIO(stdout))
+        self.assertRevisions(br, ['revision3'])
+
+    def test_no_common_ancestor(self):
+        foo = self.make_branch_and_tree('foo')
+        bar = self.make_branch_and_tree('bar')
+        os.chdir('foo')
+        self.run_bzr('bundle', '../bar')

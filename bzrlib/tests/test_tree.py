@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -62,11 +62,12 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
              specific_files, extra_trees, require_versioned, 
-             include_root)
+             include_root, want_unversioned)
             )
     
     @classmethod
@@ -98,14 +99,24 @@ class TestTree(TestCaseWithTransport):
                 extra_trees='extra',
                 require_versioned='require',
                 include_root=True,
+                want_unversioned=True,
                 )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', tree2, tree, False, None, None, False, False),
+             ('compare', tree2, tree, False, None, None, False, False, False),
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True),
+              'require', True, False),
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True),
+              'require', True, True),
             ], RecordingOptimiser.calls)
+
+    def test_changes_from_with_root(self):
+        """Ensure the include_root option does what's expected."""
+        wt = self.make_branch_and_tree('.')
+        delta = wt.changes_from(wt.basis_tree())
+        self.assertEqual(len(delta.added), 0)
+        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], '')

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ from bzrlib.benchmarks.tree_creator import TreeCreator
 
 
 class KernelLikeTreeCreator(TreeCreator):
-    """Create a basic tree with ~10k unversioned files""" 
+    """Create a basic tree with ~10k unversioned files"""
 
     def __init__(self, test, link_working=False, url=None):
         super(KernelLikeTreeCreator, self).__init__(test,
@@ -97,6 +97,7 @@ class KernelLikeTreeCreator(TreeCreator):
 
 
 class KernelLikeAddedTreeCreator(TreeCreator):
+    """Create a tree with ~10k versioned but not committed files"""
 
     def __init__(self, test, link_working=False, hot_cache=True):
         super(KernelLikeAddedTreeCreator, self).__init__(test,
@@ -188,11 +189,14 @@ class KernelLikeInventoryCreator(TreeCreator):
         finally:
             f.close()
 
-    def create(self):
+    def create(self, root=None):
         """Create a kernel like inventory
 
+        :param root: Exists to mimic the base class, but this class
+            returns only an in-memory Inventory, so it should always be None.
         :return: An Inventory object.
         """
+        assert root is None, "Cannot create a memory inventory in a on disk."
         cache_dir = self._get_cache_dir()
         if cache_dir is None:
             return self._create_and_return()

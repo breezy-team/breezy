@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -19,17 +19,21 @@
 
 """Versioned text file storage api."""
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 
-from copy import deepcopy
-from unittest import TestSuite
+from bzrlib import (
+    errors,
+    osutils,
+    tsort,
+    revision,
+    ui,
+    )
+from bzrlib.transport.memory import MemoryTransport
+""")
 
-
-import bzrlib.errors as errors
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib import ui
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
         zero_eight,
@@ -53,6 +57,10 @@ class VersionedFile(object):
     def __init__(self, access_mode):
         self.finished = False
         self._access_mode = access_mode
+
+    @staticmethod
+    def check_not_reserved_id(version_id):
+        revision.check_not_reserved_id(version_id)
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
@@ -87,6 +95,8 @@ class VersionedFile(object):
         :param sha1: The sha1 of the full text.
         :param delta: The delta instructions. See get_delta for details.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         if self.has_version(version_id):
             raise errors.RevisionAlreadyPresent(version_id, self)
@@ -129,6 +139,8 @@ class VersionedFile(object):
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts)
 
@@ -142,6 +154,8 @@ class VersionedFile(object):
         
         This takes the same parameters as add_lines.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
                                            parent_texts)
@@ -195,6 +209,8 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
+        new_version_id = osutils.safe_revision_id(new_version_id)
+        old_version_id = osutils.safe_revision_id(old_version_id)
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -211,7 +227,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version, new_parents):
+    def fix_parents(self, version_id, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -219,10 +235,12 @@ class VersionedFile(object):
         the parents list must be a superset of the current
         list.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
         self._check_write_ok()
-        return self._fix_parents(version, new_parents)
+        return self._fix_parents(version_id, new_parents)
 
-    def _fix_parents(self, version, new_parents):
+    def _fix_parents(self, version_id, new_parents):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
 
@@ -234,7 +252,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_delta)
 
-    def get_deltas(self, versions):
+    def get_deltas(self, version_ids):
         """Get multiple deltas at once for constructing versions.
         
         :return: dict(version_id:(delta_parent, sha1, noeol, delta))
@@ -242,8 +260,8 @@ class VersionedFile(object):
         version_id is the version_id created by that delta.
         """
         result = {}
-        for version in versions:
-            result[version] = self.get_delta(version)
+        for version_id in version_ids:
+            result[version_id] = self.get_delta(version_id)
         return result
 
     def get_sha1(self, version_id):
@@ -282,9 +300,12 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_lines)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
+
+        This list will not be topologically sorted if topo_sorted=False is
+        passed.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""
@@ -316,7 +337,7 @@ class VersionedFile(object):
             for version in self.versions():
                 result[version] = self.get_parents(version)
         else:
-            pending = set(version_ids)
+            pending = set(osutils.safe_revision_id(v) for v in version_ids)
             while pending:
                 version = pending.pop()
                 if version in result:
@@ -473,7 +494,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(VersionedFile.plan_merge)
         
-    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
+    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
@@ -590,7 +611,7 @@ class InterVersionedFile(InterObject):
             target = temp_source
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        order = tsort.topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -648,6 +669,7 @@ class InterVersionedFile(InterObject):
             # None cannot be in source.versions
             return set(self.source.versions())
         else:
+            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
             if ignore_missing:
                 return set(self.source.versions()).intersection(set(version_ids))
             else:
@@ -660,55 +682,3 @@ class InterVersionedFile(InterObject):
                     else:
                         new_version_ids.add(version)
                 return new_version_ids
-
-
-class InterVersionedFileTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple inter versioned-file classes.
-
-    This is done by copying the test once for each InterVersionedFile provider
-    and injecting the transport_server, transport_readonly_server,
-    versionedfile_factory and versionedfile_factory_to classes into each copy.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = TestSuite()
-        for (interversionedfile_class,
-             versionedfile_factory,
-             versionedfile_factory_to) in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.interversionedfile_class = interversionedfile_class
-            new_test.versionedfile_factory = versionedfile_factory
-            new_test.versionedfile_factory_to = versionedfile_factory_to
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), interversionedfile_class.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of interversionedfile permutations to test."""
-        from bzrlib.weave import WeaveFile
-        from bzrlib.knit import KnitVersionedFile
-        result = []
-        # test the fallback InterVersionedFile from annotated knits to weave
-        result.append((InterVersionedFile, 
-                       KnitVersionedFile,
-                       WeaveFile))
-        for optimiser in InterVersionedFile._optimisers:
-            result.append((optimiser,
-                           optimiser._matching_file_from_factory,
-                           optimiser._matching_file_to_factory
-                           ))
-        # if there are specific combinations we want to use, we can add them 
-        # here.
-        return result

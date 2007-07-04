@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,13 @@ import os
 import sys
 
 import bzrlib
-from bzrlib import errors, osutils
+from bzrlib import (
+    bzrdir,
+    config,
+    errors,
+    osutils,
+    trace,
+    )
 from bzrlib.branch import Branch
 
 
@@ -35,9 +41,8 @@ def show_version():
         print "    revision:", revno
         print "    revid:", src_revision_id
         print "    branch nick:", src_tree.branch.nick
-    print "Using python interpreter:", sys.executable
-    import site
-    print "Using python standard library:", os.path.dirname(site.__file__)
+    print "Using Python interpreter:", sys.executable
+    print "Using Python standard library:", os.path.dirname(os.__file__)
     print "Using bzrlib:",
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
@@ -45,7 +50,8 @@ def show_version():
         print repr(bzrlib.__path__)
     else:
         print bzrlib.__path__[0]
-
+    print "Using Bazaar configuration:", config.config_dir()
+    print "Using Bazaar log file:", trace._bzr_log_filename
     print
     print bzrlib.__copyright__
     print "http://bazaar-vcs.org/"
@@ -61,7 +67,8 @@ def _get_bzr_source_tree():
     If bzr is not being run from its working tree, returns None.
     """
     try:
-        from bzrlib.workingtree import WorkingTree
-        return WorkingTree.open_containing(__file__)[0]
-    except (errors.NotBranchError, errors.UnknownFormatError):
+        control = bzrdir.BzrDir.open_containing(__file__)[0]
+        return control.open_workingtree(recommend_upgrade=False)
+    except (errors.NotBranchError, errors.UnknownFormatError,
+            errors.NoWorkingTree):
         return None

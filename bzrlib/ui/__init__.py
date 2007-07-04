@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,17 @@ displays no output.
 
 import sys
 
-import bzrlib.progress
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import getpass
+
+from bzrlib import (
+    osutils,
+    progress,
+    trace,
+    )
+""")
+
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 
 
@@ -57,15 +67,18 @@ class UIFactory(object):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user 
-                 canceled the request.
+
+        :return: The password string, return None if the user canceled the
+                 request. Note that we do not touch the encoding, users may
+                 have whatever they see fit and the password should be
+                 transported as is.
         """
         raise NotImplementedError(self.get_password)
-        
+
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
-        When the bar has been finished with, it should be released bu calling
+        When the bar has been finished with, it should be released by calling
         bar.finished().
         """
         raise NotImplementedError(self.nested_progress_bar)
@@ -86,6 +99,19 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
+    def recommend_upgrade(self,
+        current_format_name,
+        basedir):
+        # this should perhaps be in the TextUIFactory and the default can do
+        # nothing
+        trace.warning("%s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %s",
+            current_format_name,
+            basedir)
+
 
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories."""
@@ -98,12 +124,32 @@ class CLIUIFactory(UIFactory):
         self.clear_term()
         # FIXME: make a regexp and handle case variations as well.
         while True:
-            self.prompt(prompt)
+            self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
             if line in ('y\n', 'yes\n'):
                 return True
             if line in ('n\n', 'no\n'):
                 return False
+
+    def get_non_echoed_password(self, prompt):
+        encoding = osutils.get_terminal_encoding()
+        return getpass.getpass(prompt.encode(encoding, 'replace'))
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        prompt += ': '
+        prompt = (prompt % kwargs)
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return self.get_non_echoed_password(prompt)
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
@@ -118,18 +164,21 @@ class SilentUIFactory(CLIUIFactory):
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
-        return bzrlib.progress.DummyProgress()
+        return progress.DummyProgress()
 
     def get_password(self, prompt='', **kwargs):
         return None
 
     def nested_progress_bar(self):
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
-                klass=bzrlib.progress.DummyProgress)
+            self._progress_bar_stack = progress.ProgressBarStack(
+                klass=progress.DummyProgress)
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):
+        pass
+
+    def recommend_upgrade(self, *args):
         pass
 
 

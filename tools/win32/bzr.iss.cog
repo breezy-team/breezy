@@ -7,6 +7,14 @@
 AppName=Bazaar
 
 ; [[[cog
+; # Python 2.5 compatibility code
+; import os
+; import sys
+; cwd = os.getcwd()
+; if cwd not in sys.path:
+;     sys.path.insert(0, cwd)
+; #/Python 2.5 compatibility code
+;
 ; import bzrlib
 ; try: 
 ;     VERSION = bzrlib.__version__
@@ -33,10 +41,10 @@ OutputDir="..\"
 SourceDir="..\..\win32_bzr.exe"
 
 SetupIconFile="..\bzr.ico"
-LicenseFile="..\COPYING.txt"
+InfoBeforeFile="..\tools\win32\info.txt"
 
 VersionInfoCompany="Canonical Ltd."
-VersionInfoCopyright="Canonical Ltd., 2005-2006"
+VersionInfoCopyright="Canonical Ltd., 2005-2007"
 VersionInfoDescription="Installer for stand-alone bzr.exe"
 ; [[[cog
 ; import bzrlib
@@ -70,30 +78,72 @@ AppUpdatesURL="http://www.bazaar-vcs.org/WindowsDownloads"
 ; [[[end]]]
 
 ChangesEnvironment=yes
+PrivilegesRequired=none
+
 
 [Files]
 Source: "*.*"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs;
 Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs;
+; [[[cog
+; try:
+;     import pycurl
+; except ImportError:
+;     ca_path = None
+; else:
+;     supported = pycurl.version_info()[8]
+;     if 'https' in supported:
+;         from bzrlib.transport.http.ca_bundle import get_ca_path
+;         ca_path = get_ca_path()
+;         if ca_path:
+;             cog.outl('Source: "%s"; DestDir: "{app}"; Components: cabundle' % ca_path)
+;         else:
+;             cog.msg('You have pycurl with SSL support, '
+;                     'but CA Bundle (curl-ca-bundle.crt) not found!')
+; ]]]
+; [[[end]]]
+
+
+[Components]
+Name: "main"; Description: "Main Files"; Types: full compact custom; Flags: fixed
+; [[[cog
+; if ca_path:
+;     cog.outl('Name: "cabundle"; '
+;              'Description: "CA certificates for SSL support"; '
+;              'Types: full custom')
+; ]]]
+; [[[end]]]
+
 
 [Dirs]
 Name: "{userappdata}\bazaar\2.0"
 
+
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
 Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
-Name: "{group}\Start Bzr in cmd shell"; Filename: "{sys}\cmd.exe"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
 Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
+
 
 [Tasks]
 Name: Path; Description: "Add {app} directory to PATH environment variable";
-Name: Shell; Description: "Add Bzr context menu to shell";
+Name: Shell; Description: "Add Bzr context menu to shell"; Flags: unchecked
+
 
 [Run]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--start-bzr"; Flags: skipifdoesntexist runhidden;
-Filename: "{app}\bzr_postinstall.exe"; Parameters: "--check-mfc71"; Flags: skipifdoesntexist skipifsilent runhidden;
+; [[[cog
+; import os
+; if os.path.isfile('win32_bzr.exe/lib/win32ui.pyd'):	# pywin32 mfc wrapper
+;     cog.outl('Filename: "{app}\bzr_postinstall.exe"; '
+;              'Parameters: "--check-mfc71"; '
+;              'Flags: skipifdoesntexist skipifsilent runhidden;')
+; ]]]
+; [[[end]]]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Flags: skipifdoesntexist skipifsilent runhidden;
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Shell; Flags: skipifdoesntexist skipifsilent runhidden;
+
 
 [UninstallRun]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,16 +17,20 @@
 
 """GPG signing and checking logic."""
 
-import errno
 import os
-import subprocess
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import subprocess
 
 from bzrlib import (
     errors,
     trace,
     ui,
     )
+""")
 
 
 class DisabledGPGStrategy(object):
@@ -46,7 +50,8 @@ class LoopbackGPGStrategy(object):
         """Real strategies take a configuration."""
 
     def sign(self, content):
-        return content
+        return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
+                "-----END PSEUDO-SIGNED CONTENT-----\n")
 
 
 def _set_gpg_tty():
@@ -72,6 +77,8 @@ class GPGStrategy(object):
         self._config = config
 
     def sign(self, content):
+        if isinstance(content, unicode):
+            raise errors.BzrBadParameterUnicode('content')
         ui.ui_factory.clear_term()
 
         preexec_fn = _set_gpg_tty

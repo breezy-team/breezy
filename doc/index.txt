@@ -41,11 +41,19 @@ and what is documented on the wiki.
 * `Using aliases <using_aliases.htm>`_
   (wiki page: http://bazaar-vcs.org/CommandAliases)
 
-    How to setup and use command aliases.
+    How to set up and use command aliases.
 
 * `Running a Bazaar server <server.htm>`_
   
     How to run a server to allow remote access to Bazaar branches.
+
+* `Running a Bazaar HTTP server <http_smart_server.htm>`_
+
+    How to run a smart HTTP server to allow remote access to Bazaar branches.
+
+* `Guidelines for modifying bzr <developers/index.htm>`_
+
+    Guide to policies and tools for working on Bazaar itself.
 
 This document automatically created based on output of **bzr help**:
 

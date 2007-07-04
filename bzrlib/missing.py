@@ -1,9 +1,38 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
-import bzrlib.ui as ui
+from bzrlib import ui
+from bzrlib.log import (
+    LogRevision,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    zero_seventeen,
+    )
 
 
+@deprecated_function(zero_seventeen)
 def iter_log_data(revisions, revision_source, verbose):
+    for revision in iter_log_revisions(revisions, revision_source, verbose):
+        yield revision.revno, revision.rev, revision.delta
+
+
+def iter_log_revisions(revisions, revision_source, verbose):
     last_tree = revision_source.revision_tree(None)
     last_rev_id = None
     for revno, rev_id in revisions:
@@ -18,10 +47,10 @@ def iter_log_data(revisions, revision_source, verbose):
             revision_tree = revision_source.revision_tree(rev_id)
             last_rev_id = rev_id
             last_tree = revision_tree
-            delta = parent_tree.changes_from(revision_tree)
+            delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
-        yield revno, rev, delta
+        yield LogRevision(rev, revno, delta=delta)
 
 
 def find_unmerged(local_branch, remote_branch):
@@ -90,7 +119,8 @@ def _get_history(branch, progress, label, step):
 def _get_ancestry(repository, progress, label, step, rev_history):
     progress.update('%s ancestry' % label, step, 5)
     if len(rev_history) > 0:
-        ancestry = set(repository.get_ancestry(rev_history[-1]))
+        ancestry = set(repository.get_ancestry(rev_history[-1],
+                       topo_sorted=False))
     else:
         ancestry = set()
     return ancestry

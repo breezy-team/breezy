@@ -27,5 +27,5 @@ REM SET BZR_DEBUG=30
 
 REM --------------------------------------------------------------------------
 
-bzr.exe help
 @ECHO ON
+@bzr.exe help

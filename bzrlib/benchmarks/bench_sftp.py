@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -92,6 +93,8 @@ class SFTPBenchmark(Benchmark):
 
 
 class SFTPSlowSocketBenchmark(SFTPBenchmark):
+    """Benchmarks of SFTP performance with a 30ms delay per roundtrip."""
+
     def setUp(self):
         super(SFTPSlowSocketBenchmark, self).setUp()
         self.get_server().add_latency = 0.03

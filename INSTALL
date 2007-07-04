@@ -16,6 +16,9 @@ pycrypto:
 Installation
 ------------
 
+When upgrading using setup.py, it is recommended that you first delete the
+bzrlib directory from the install target.
+
 To install bzr as a user, run
 
   python setup.py install --home ~ 
@@ -24,3 +27,6 @@ To install system-wide, run (as root)
 
   python setup.py install
 
+For more information on installation, see
+http://bazaar-vcs.org/InstallationFaq
+or write to bazaar@lists.canonical.com.

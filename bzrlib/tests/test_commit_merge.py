@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,14 @@
 import os
 import shutil
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import PointlessCommit, BzrError
 from bzrlib.tests.test_revision import make_branches
+from bzrlib import osutils
 
 
 class TestCommitMerge(TestCaseWithTransport):
@@ -63,7 +67,9 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx = self.make_branch_and_tree('x')
         base_rev = wtx.commit('common parent')
         bx = wtx.branch
+        wtx.commit('establish root id')
         wty = wtx.bzrdir.sprout('y').open_workingtree()
+        self.assertEqual(wtx.get_root_id(), wty.get_root_id())
         by = wty.branch
 
         self.build_tree(['x/ecks', 'y/why'])
@@ -94,3 +100,20 @@ class TestCommitMerge(TestCaseWithTransport):
         by.check()
         bx.repository.check([bx.last_revision()])
         by.repository.check([by.last_revision()])
+
+    def test_merge_with_symlink(self):
+        if not osutils.has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
+        tree_a = self.make_branch_and_tree('tree_a')
+        os.symlink('target', osutils.pathjoin('tree_a', 'link'))
+        tree_a.add('link')
+        tree_a.commit('added link')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree(['tree_a/file'])
+        tree_a.add('file')
+        tree_a.commit('added file')
+        self.build_tree(['tree_b/another_file'])
+        tree_b.add('another_file')
+        tree_b.commit('add another file')
+        tree_b.merge_from_branch(tree_a.branch)
+        tree_b.commit('merge')

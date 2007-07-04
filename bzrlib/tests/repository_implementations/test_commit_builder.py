@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 """Tests for repository commit builder."""
 
 from bzrlib import inventory
-from bzrlib.errors import UnsupportedOperation
+from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
 from bzrlib.repository import CommitBuilder
 from bzrlib import tests
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -32,7 +32,11 @@ class TestCommitBuilder(TestCaseWithRepository):
 
     def record_root(self, builder, tree):
         if builder.record_root_entry is True:
-            ie = tree.inventory.root
+            tree.lock_read()
+            try:
+                ie = tree.inventory.root
+            finally:
+                tree.unlock()
             parent_tree = tree.branch.repository.revision_tree(None)
             parent_invs = []
             builder.record_entry_contents(ie, parent_invs, '', tree)
@@ -54,34 +58,49 @@ class TestCommitBuilder(TestCaseWithRepository):
 
     def test_commit_with_revision_id(self):
         tree = self.make_branch_and_tree(".")
+        # use a unicode revision id to test more corner cases.
+        # The repository layer is meant to handle this.
+        revision_id = u'\xc8abc'.encode('utf8')
         try:
-            builder = tree.branch.get_commit_builder([], revision_id="foo")
-        except UnsupportedOperation:
+            try:
+                builder = tree.branch.get_commit_builder([],
+                    revision_id=revision_id)
+            except NonAsciiRevisionId:
+                revision_id = 'abc'
+                builder = tree.branch.get_commit_builder([],
+                    revision_id=revision_id)
+        except CannotSetRevisionId:
             # This format doesn't support supplied revision ids
             return
         self.record_root(builder, tree)
         builder.finish_inventory()
-        self.assertEqual("foo", builder.commit('foo bar'))
-        self.assertTrue(tree.branch.repository.has_revision("foo"))
-        # the revision id must be set on the inventory when saving it. This does not
-        # precisely test that - a repository that wants to can add it on deserialisation,
-        # but thats all the current contract guarantees anyway.
-        self.assertEqual('foo', tree.branch.repository.get_inventory('foo').revision_id)
+        self.assertEqual(revision_id, builder.commit('foo bar'))
+        self.assertTrue(tree.branch.repository.has_revision(revision_id))
+        # the revision id must be set on the inventory when saving it. This
+        # does not precisely test that - a repository that wants to can add it
+        # on deserialisation, but thats all the current contract guarantees
+        # anyway.
+        self.assertEqual(revision_id,
+            tree.branch.repository.get_inventory(revision_id).revision_id)
 
     def test_commit_without_root(self):
         """This should cause a deprecation warning, not an assertion failure"""
         tree = self.make_branch_and_tree(".")
-        if tree.branch.repository._format.rich_root_data:
+        if tree.branch.repository.supports_rich_root():
             raise tests.TestSkipped('Format requires root')
         self.build_tree(['foo'])
         tree.add('foo', 'foo-id')
-        entry = tree.inventory['foo-id']
-        builder = tree.branch.get_commit_builder([])
-        self.callDeprecated(['Root entry should be supplied to'
-            ' record_entry_contents, as of bzr 0.10.'],
-            builder.record_entry_contents, entry, [], 'foo', tree)
-        builder.finish_inventory()
-        rev_id = builder.commit('foo bar')
+        tree.lock_write()
+        try:
+            entry = tree.inventory['foo-id']
+            builder = tree.branch.get_commit_builder([])
+            self.callDeprecated(['Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.'],
+                builder.record_entry_contents, entry, [], 'foo', tree)
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar')
+        finally:
+            tree.unlock()
 
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
@@ -107,3 +126,14 @@ class TestCommitBuilder(TestCaseWithRepository):
         # the RevisionTree api.
         self.assertEqual(rev_id, rev_tree.get_revision_id())
         self.assertEqual([], rev_tree.get_parent_ids())
+
+    def test_root_entry_has_revision(self):
+        # test the root revision created and put in the basis
+        # has the right rev id.
+        tree = self.make_branch_and_tree('.')
+        rev_id = tree.commit('message')
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
+        self.assertEqual(rev_id, basis_tree.inventory.root.revision)
+

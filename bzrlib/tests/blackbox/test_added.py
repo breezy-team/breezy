@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -30,7 +30,7 @@ class TestAdded(TestCaseInTempDir):
         """Test that 'added' command reports added files"""
 
         def check_added(expected):
-            out, err = self.run_bzr_captured(['added'])
+            out, err = self.run_bzr(['added'])
             self.assertEquals(out, expected)
             self.assertEquals(err, '')
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,10 +35,18 @@ from bzrlib.tests.tree_implementations import (
     revision_tree_from_workingtree,
     TestCaseWithTree,
     )
+from bzrlib.tests.workingtree_implementations import (
+    WorkingTreeTestProviderAdapter,
+    )
 from bzrlib.tree import InterTree
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeTestProviderAdapter,
-                                )
+from bzrlib.workingtree import (
+    WorkingTreeFormat3,
+    )
+
+
+def return_provided_trees(source, target):
+    """Return the source and target tree unaltered."""
+    return source, target
 
 
 class TestCaseWithTwoTrees(TestCaseWithTree):
@@ -51,48 +59,39 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
         made_control.create_branch()
         return self.workingtree_format_to.initialize(made_control)
 
-    def get_to_tree_no_parents_no_content(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_no_content(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content_2(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_2(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content_3(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_3(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content_4(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_4(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content_5(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_5(empty_tree, converter=self.workingtree_to_test_tree_to)
-
-    def get_to_tree_no_parents_abc_content_6(self, empty_tree):
-        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_6(empty_tree, converter=self.workingtree_to_test_tree_to)
-
 
 class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each InterTree implementation in bzrlib."""
 
-    def adapt(self, test):
-        result = TestSuite()
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of tuples:.
+            (intertree_class,
+             workingtree_format,
+             workingtree_format_to,
+             mutable_trees_to_test_trees)
+        """
+        result = []
         for (intertree_class,
             workingtree_format,
-            workingtree_to_test_tree,
             workingtree_format_to,
-            workingtree_to_test_tree_to) in self._formats:
-            new_test = self._clone_test(
-                test,
-                workingtree_format._matchingbzrdir,
-                workingtree_format,
-                intertree_class.__name__)
-            new_test.intertree_class = intertree_class
-            new_test.workingtree_to_test_tree = workingtree_to_test_tree
-            new_test.workingtree_format_to = workingtree_format_to
-            new_test.workingtree_to_test_tree_to = workingtree_to_test_tree_to
-            result.addTest(new_test)
+            mutable_trees_to_test_trees) in formats:
+            scenario = (intertree_class.__name__, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "bzrdir_format":workingtree_format._matchingbzrdir,
+                "workingtree_format":workingtree_format,
+                "intertree_class":intertree_class,
+                "workingtree_format_to":workingtree_format_to,
+                # mutable_trees_to_test_trees takes two trees and converts them to,
+                # whatever relationship the optimiser under test requires.,
+                "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
+                # workingtree_to_test_tree is set to disable changing individual,
+                # trees: instead the mutable_trees_to_test_trees helper is used.,
+                "workingtree_to_test_tree":return_parameter,
+                })
+            result.append(scenario)
         return result
 
 
@@ -102,19 +101,20 @@ def test_suite():
     # load the tests of the infrastructure for these tests
     result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.intertree_implementations']))
 
-    default_tree_format = WorkingTreeFormat.get_default_format()
+    default_tree_format = WorkingTreeFormat3()
     test_intertree_implementations = [
         'bzrlib.tests.intertree_implementations.test_compare',
         ]
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.
-        (InterTree, default_tree_format, return_parameter,
-         default_tree_format, return_parameter)]
+        (InterTree, default_tree_format, default_tree_format,
+         return_provided_trees)]
     for optimiser in InterTree._optimisers:
         test_intertree_permutations.append(
             (optimiser,
-             optimiser._matching_from_tree_format, optimiser._from_tree_converter,
-             optimiser._matching_to_tree_format, optimiser._to_tree_converter))
+             optimiser._matching_from_tree_format,
+             optimiser._matching_to_tree_format,
+             optimiser._test_mutable_trees_to_test_trees))
     adapter = InterTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created

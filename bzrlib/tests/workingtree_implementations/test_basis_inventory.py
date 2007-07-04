@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,11 @@ import bzrlib.xml6
 class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_create(self):
+        # This test is not applicable to DirState based trees: the basis is
+        # not separate is mandatory.
+        if isinstance(self.workingtree_format,
+            bzrlib.workingtree_4.WorkingTreeFormat4):
+            return
         # TODO: jam 20051218 this probably should add more than just
         #                    a couple files to the inventory
 
@@ -51,7 +56,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t._control_files.get_utf8('basis-inventory-cache')
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(basis_inv_txt)
+        basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
@@ -59,6 +64,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_wrong_format(self):
         """WorkingTree.basis safely ignores junk basis inventories"""
+        # This test is not applicable to DirState based trees: the basis is
+        # not separate and ignorable.
+        if isinstance(self.workingtree_format,
+            bzrlib.workingtree_4.WorkingTreeFormat4):
+            return
         t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('a\n')
@@ -73,38 +83,3 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t._control_files.put_utf8('basis-inventory-cache', 
                                   '<inventory format="pi"/>')
         t.basis_tree()
-
-    def test_basis_inv_gets_revision(self):
-        """When the inventory of the basis tree has no revision id it gets set.
-
-        It gets set during set_parent_trees() or set_parent_ids().
-        """
-        tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        # TODO change this to use CommitBuilder
-        inv = inventory.Inventory(revision_id='r1')
-        inv.root.revision = 'r1'
-        inv_lines = tree.branch.repository.serialise_inventory(inv).split('\n')
-        inv_lines = [(l + '\n') for l in inv_lines if l is not None]
-        tree.branch.repository.control_weaves.get_weave('inventory',
-            tree.branch.repository.get_transaction()
-            ).add_lines('r1', [], inv_lines)
-        rev = Revision(timestamp=0,
-                       timezone=None,
-                       committer="Foo Bar <foo@example.com>",
-                       message="Message",
-                       inventory_sha1="",
-                       revision_id='r1')
-        rev.parent_ids = []
-        tree.branch.repository.add_revision('r1', rev)
-        tree.unlock()
-        tree.branch.append_revision('r1')
-        tree.set_parent_trees(
-            [('r1', tree.branch.repository.revision_tree('r1'))])
-        # TODO: we should deserialise the file here, rather than peeking
-        # without parsing, but to do this properly needs a serialiser on the
-        # tree object that abstracts whether it is xml/rio/etc.
-        self.assertContainsRe(
-            tree._control_files.get_utf8('basis-inventory-cache').read(),
-            'revision_id="r1"')
-        
