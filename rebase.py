@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.config import Config
-from bzrlib.errors import UnknownFormatError
+from bzrlib.errors import UnknownFormatError, NoSuchFile, BzrError
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
@@ -29,7 +29,10 @@ def rebase_plan_exists(wt):
     :param wt: Working tree for which to check.
     :return: boolean
     """
-    return wt._control_files.get(REBASE_PLAN_FILENAME).read() != ''
+    try:
+        return wt._control_files.get(REBASE_PLAN_FILENAME).read() != ''
+    except NoSuchFile:
+        return False
 
 
 def read_rebase_plan(wt):
@@ -40,7 +43,7 @@ def read_rebase_plan(wt):
     """
     text = wt._control_files.get(REBASE_PLAN_FILENAME).read()
     if text == '':
-        raise BzrError("No rebase plan exists")
+        raise NoSuchFile(REBASE_PLAN_FILENAME)
     return unmarshall_rebase_plan(text)
 
 
@@ -50,8 +53,8 @@ def write_rebase_plan(wt, replace_map):
     :param wt: Working Tree for which to write the plan.
     :param replace_map: Replace map (old revid -> (new revid, new parents))
     """
-    wt._control_files.put(REBASE_PLAN_FILENAME, 
-            marshall_rebase_plan(wt.last_revision_info(), replace_map))
+    wt._control_files.put_utf8(REBASE_PLAN_FILENAME, 
+            marshall_rebase_plan(wt.branch.last_revision_info(), replace_map))
 
 
 def remove_rebase_plan(wt):
@@ -59,7 +62,7 @@ def remove_rebase_plan(wt):
 
     :param wt: Working Tree for which to remove the plan.
     """
-    wt._control_files.put(REBASE_PLAN_FILENAME, '')
+    wt._control_files.put_utf8(REBASE_PLAN_FILENAME, '')
 
 
 def marshall_rebase_plan(last_rev_info, replace_map):
@@ -230,9 +233,42 @@ def rebase(repository, replace_map, replay_fn):
     assert all(map(repository.has_revision, [replace_map[r][0] for r in replace_map]))
      
 
-# Change the parent of a revision
-def change_revision_parent(repository, oldrevid, newrevid, new_parents):
-    """Create a copy of a revision with different parents.
+class MapTree:
+    def __init__(self, oldtree, old_parents, new_parents):
+        self.map = {}
+        for (oldp, newp) in zip(old_parents, new_parents):
+            oldinv = repository.get_revision_inventory(oldp)
+            newinv = repository.get_revision_inventory(newp)
+            for path, ie in oldinv.iter_entries():
+                if newinv.has_filename(path):
+                    self.map[ie.file_id] = newinv.path2id(path)
+        self.oldtree = oldtree
+
+    def old_id(self, file_id):
+        for x in self.map:
+            if self.map[x] == file_id:
+                return x
+        return file_id
+
+    def new_id(self, file_id):
+        try:
+            return new_id[file_id]
+        except KeyError:
+            return file_id
+
+    def get_file_sha1(self, file_id, path=None):
+        return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
+                                          path=path)
+
+    def get_file(self, file_id):
+        return self.oldtree.get_file(self.old_id(file_id=file_id))
+
+    def is_executable(self, file_id, path=None):
+        return self.oldtree.is_executable(self.old_id(file_id=file_id), 
+                                          path=path)
+
+def replay_snapshot(repository, oldrevid, newrevid, new_parents):
+    """Replay a commit by simply commiting the same snapshot with different parents.
 
     :param repository: Repository in which the revision is present.
     :param oldrevid: Revision id of the revision to copy.
@@ -243,68 +279,35 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
 
+    revprops = dict(oldrev.properties)
+    revprops['rebase-of'] = oldrevid
+
     builder = repository.get_commit_builder(branch=None, parents=new_parents, 
                                   config=Config(),
                                   committer=oldrev.committer,
                                   timestamp=oldrev.timestamp,
                                   timezone=oldrev.timezone,
-                                  revprops=oldrev.properties,
+                                  revprops=revprops,
                                   revision_id=newrevid)
 
     # Check what new_ie.file_id should be
     # use old and new parent inventories to generate new_id map
-    old_parents = oldrev.parent_ids
-    new_id = {}
-    for (oldp, newp) in zip(old_parents, new_parents):
-        oldinv = repository.get_revision_inventory(oldp)
-        newinv = repository.get_revision_inventory(newp)
-        for path, ie in oldinv.iter_entries():
-            if newinv.has_filename(path):
-                new_id[ie.file_id] = newinv.path2id(path)
-
-    i = 0
-    class MapTree:
-        def __init__(self, oldtree, map):
-            self.oldtree = oldtree
-            self.map = map
-
-        def old_id(self, file_id):
-            for x in self.map:
-                if self.map[x] == file_id:
-                    return x
-            return file_id
-
-        def get_file_sha1(self, file_id, path=None):
-            return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
-                                              path=path)
-
-        def get_file(self, file_id):
-            return self.oldtree.get_file(self.old_id(file_id=file_id))
-
-        def is_executable(self, file_id, path=None):
-            return self.oldtree.is_executable(self.old_id(file_id=file_id), 
-                                              path=path)
-
-    oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
+    oldtree = MapTree(repository.revision_tree(oldrevid), 
+                      oldrev.parent_ids, new_parents)
     oldinv = repository.get_revision_inventory(oldrevid)
     total = len(oldinv)
     pb = ui.ui_factory.nested_progress_bar()
-    transact = repository.get_transaction()
+    i = 0
     try:
+        transact = repository.get_transaction()
         for path, ie in oldinv.iter_entries():
             pb.update('upgrading file', i, total)
             i += 1
             new_ie = ie.copy()
             if new_ie.revision == oldrevid:
                 new_ie.revision = None
-            def lookup(file_id):
-                try:
-                    return new_id[file_id]
-                except KeyError:
-                    return file_id
-
-            new_ie.file_id = lookup(new_ie.file_id)
-            new_ie.parent_id = lookup(new_ie.parent_id)
+            new_ie.file_id = oldtree.new_id(new_ie.file_id)
+            new_ie.parent_id = oldtree.new_id(new_ie.parent_id)
             builder.record_entry_contents(new_ie, 
                    map(repository.get_revision_inventory, new_parents), 
                    path, oldtree)
@@ -315,12 +318,55 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     return builder.commit(oldrev.message)
 
 
-def workingtree_replay(wt):
+def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
+        merge_type=None):
+    """Replay a commit in a working tree, with a different base.
+
+    :param wt: Working tree in which to do the replays.
+    :param oldrevid: Old revision id
+    :param newrevid: New revision id
+    :param newparents: New parent revision ids
+    :param map_ids: Whether to map file ids from the rebased revision using 
+        the old and new parent tree file ids.
+    """
+    repository = wt.branch.repository
+    if merge_type is None:
+        from bzrlib.merge import Merge3Merger
+        merge_type = Merge3Merger
+    oldrev = wt.branch.repository.get_revision(oldrevid)
+    # Make sure there are no conflicts or pending merges/changes 
+    # in the working tree
+    if wt.changes_from(wt.basis_tree()).has_changed():
+        raise BzrError("Working tree has uncommitted changes.")
+    wt.branch.generate_revision_history(newparents[0])
+    wt.set_parent_ids(newparents)
+
+    oldtree = repository.revision_tree(oldrevid)
+    basetree = repository.revision_tree(oldrev.parent_ids[0])
+    if map_ids:
+        oldtree = MapTree(oldtree, oldrev.parent_ids, new_parents)
+        basetree = MapTree(basetree, oldrev.parent_ids, new_parents)
+
+    merge = merge_type(working_tree=wt, this_tree=wt, 
+            base_tree=basetree,
+            other_tree=oldtree)
+
+    # commit
+    revprops = dict(oldrev.properties)
+    revprops['rebase-of'] = oldrevid
+    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, timezone=oldrev.timezone,
+              revprops=revprops, rev_id=newrevid)
+
+def workingtree_replay(wt, map_ids=False):
     """Returns a function that can replay revisions in wt.
 
     :param wt: Working tree in which to do the replays.
+    :param map_ids: Whether to try to map between file ids (False for path-based merge)
     """
     def replay(repository, oldrevid, newrevid, newparents):
-        # TODO
-        pass
+        assert wt.branch.repository == repository
+        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents)
     return replay
+
+class MergeConflicted(BzrError):
+    _fmt = "Conflict during merge"

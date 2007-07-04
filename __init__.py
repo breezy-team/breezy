@@ -14,53 +14,69 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, display_command, register_command
-from bzrlib.errors import BzrCommandError
-from bzrlib.workingtree import WorkingTree
+from bzrlib.errors import BzrCommandError, UnrelatedBranches
 
 class cmd_rebase(Command):
     """Re-base a branch.
 
     """
-    takes_args = ['upstream_location']
-    takes_options = [Option('onto', help='Different revision to replay onto')]
+    takes_args = ['upstream_location?']
+    takes_options = ['revision', Option('onto', help='Different revision to replay onto')]
     
     @display_command
-    def run(self, upstream_location, onto=None):
+    def run(self, upstream_location=None, onto=None, revision=None):
+        from bzrlib.branch import Branch
+        from bzrlib.revisionspec import RevisionSpec
+        from bzrlib.workingtree import WorkingTree
         from rebase import (generate_simple_plan, rebase, 
                             rebase_plan_exists, write_rebase_plan, 
-                            read_rebase_plan, workingtree_replay)
-        upstream = Branch.open(upstream_location)
+                            read_rebase_plan, workingtree_replay, MergeConflicted, remove_rebase_plan)
         wt = WorkingTree.open('.')
-        wt.write_lock()
+        wt.lock_write()
+        if upstream_location is None:
+            upstream_location = wt.branch.get_parent()
+        upstream = Branch.open(upstream_location)
+        upstream_repository = upstream.repository
+        upstream_revision = upstream.last_revision()
         try:
             # Abort if there already is a plan file
             if rebase_plan_exists(wt):
                 raise BzrCommandError("A rebase operation was interrupted. Continue using 'bzr rebase-continue' or abort using 'bzr rebase-abort'")
 
             # Pull required revisions
-            wt.branch.repository.fetch(upstream.repository, 
-                                       upstream.last_revision())
+            wt.branch.repository.fetch(upstream_repository, 
+                                       upstream_revision)
             if onto is None:
                 onto = upstream.last_revision()
+            else:
+                onto = RevisionSpec.from_string(onto)
 
-            wt.branch.repository.fetch(upstream.repository, onto)
+            wt.branch.repository.fetch(upstream_repository, onto)
+
+            start_revid = None
+            revhistory = wt.branch.revision_history()
+            revhistory.reverse()
+            for revid in revhistory:
+                if revid in upstream.revision_history():
+                    start_revid = wt.branch.get_rev_id(wt.branch.revision_id_to_revno(revid)+1)
+                    break
+
+            if start_revid is None:
+                raise UnrelatedBranches()
 
             # Create plan
             replace_map = generate_simple_plan(
-                    wt.branch, upstream.last_revision(), onto)
+                    wt.branch.repository, 
+                    wt.branch.revision_history(), start_revid, onto)
 
             # Write plan file
             write_rebase_plan(wt, replace_map)
 
-            # Set last-revision back to start revision
-            wt.set_last_revision(onto)
-
             # Start executing plan
             try:
                 rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
-            except Conflict:
+            except MergeConflicted:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file
             remove_rebase_plan(wt)
@@ -74,12 +90,16 @@ class cmd_rebase_abort(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan
+        from rebase import read_rebase_plan, remove_rebase_plan
+        from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
-        wt.write_lock()
+        wt.lock_write()
         try:
             # Read plan file and set last revision
-            wt.set_last_revision_info(read_rebase_plan(wt)[0])
+            last_rev_info = read_rebase_plan(wt)[0]
+            wt.branch.set_last_revision_info(last_rev_info[0], last_rev_info[1])
+            wt.set_last_revision(last_rev_info[1])
+            remove_rebase_plan(wt)
         finally:
             wt.unlock()
 
@@ -91,9 +111,10 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay
+        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, MergeConflicted, rebase, remove_rebase_plan
+        from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
-        wt.write_lock()
+        wt.lock_write()
         try:
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
@@ -104,7 +125,7 @@ class cmd_rebase_continue(Command):
             try:
                 # Start executing plan from current Branch.last_revision()
                 rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
-            except Conflict:
+            except MergeConflicted:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  
             remove_rebase_plan(wt)

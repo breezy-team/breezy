@@ -14,13 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import UnknownFormatError
+from bzrlib.errors import UnknownFormatError, NoSuchFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
-                    change_revision_parent, generate_simple_plan,
-                    generate_transpose_plan) 
+                    replay_snapshot, generate_simple_plan,
+                    generate_transpose_plan, rebase_plan_exists,
+                    REBASE_PLAN_FILENAME, write_rebase_plan,
+                    read_rebase_plan, remove_rebase_plan) 
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -62,11 +64,12 @@ class ConversionTests(TestCaseWithTransport):
         file('hello', 'w').write('world')
         wt.commit(message='change hello', rev_id="bla2")
         
-        newrev = change_revision_parent(wt.branch.repository, "bla2", "bla4", 
+        newrev = replay_snapshot(wt.branch.repository, "bla2", "bla4", 
                                         ["bloe"])
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
         self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
+        self.assertEqual("bla2", wt.branch.repository.get_revision(newrev).properties["rebase-of"])
 
 
 class PlanCreatorTests(TestCaseWithTransport):
@@ -144,4 +147,61 @@ class PlanCreatorTests(TestCaseWithTransport):
                 'bloe': ('newbloe', ['lala'])},
                 generate_transpose_plan(b.repository, b.repository.get_revision_graph(), 
                 {"bla": "lala"}, lambda y: "new"+y.revision_id))
+
+
+class PlanFileTests(TestCaseWithTransport):
+   def test_rebase_plan_exists_false(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertFalse(rebase_plan_exists(wt))
+
+   def test_rebase_plan_exists_empty(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "")
+        self.assertFalse(rebase_plan_exists(wt))
+
+   def test_rebase_plan_exists(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "foo")
+        self.assertTrue(rebase_plan_exists(wt))
+
+   def test_remove_rebase_plan(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "foo")
+        remove_rebase_plan(wt)
+        self.assertFalse(rebase_plan_exists(wt))
+
+   def test_remove_rebase_plan_twice(self):
+        wt = self.make_branch_and_tree('.')
+        remove_rebase_plan(wt)
+        self.assertFalse(rebase_plan_exists(wt))
+
+   def test_write_rebase_plan(self):
+        wt = self.make_branch_and_tree('.')
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="bla")
+        write_rebase_plan(wt, 
+                {"oldrev": ("newrev", ["newparent1", "newparent2"])})
+        self.assertEqualDiff("""# Bazaar rebase plan 1
+1 bla
+oldrev newrev newparent1 newparent2
+""", wt._control_files.get(REBASE_PLAN_FILENAME).read())
+
+   def test_read_rebase_plan_nonexistant(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertRaises(NoSuchFile, read_rebase_plan, wt)
+
+   def test_read_rebase_plan_empty(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "")
+        self.assertRaises(NoSuchFile, read_rebase_plan, wt)
+        
+   def test_read_rebase_plan(self):
+        wt = self.make_branch_and_tree('.')
+        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, """# Bazaar rebase plan 1
+1 bla
+oldrev newrev newparent1 newparent2
+""")
+        self.assertEquals(((1, "bla"), {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
+                read_rebase_plan(wt))
 
