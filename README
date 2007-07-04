@@ -24,6 +24,10 @@ and Debian Etch and Sid also contain the required changes.
 If you are running an older version of Python (under 2.5), you will also 
 need to have the pysqlite package installed.
 
+In order to be able to use the ``svn-upgrade`` command (for those 
+who used earlier versions of bzr-svn), you will need the bzr-rebase 
+plugin (http://people.samba.org/bzr/jelmer/bzr-rebase/trunk).
+
 ========
 Features
 ========

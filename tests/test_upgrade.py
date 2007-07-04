@@ -19,13 +19,14 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import Repository
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
+from errors import RebaseNotPresent
 from fileids import generate_svn_file_id
 from format import get_rich_root_format
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
-from upgrade import (change_revision_parent, upgrade_repository, upgrade_branch,
+from upgrade import (upgrade_repository, upgrade_branch,
                      UpgradeChangesContent, parse_legacy_revision_id,
                      create_upgraded_revid)
 
@@ -65,28 +66,19 @@ class ParserTests(TestCase):
                          create_upgraded_revid("bla-svn1-upgrade"))
 
 
-class ConversionTests(TestCaseWithTransport):
-    def test_simple(self):
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        file('hello', 'w').write('hello world')
-        wt.add('hello')
-        wt.commit(message='add hello', rev_id="bla")
-        file('hello', 'w').write('world')
-        wt.commit(message='change hello', rev_id="bloe")
-        wt.set_last_revision("bla")
-        b.set_revision_history(["bla"])
-        file('hello', 'w').write('world')
-        wt.commit(message='change hello', rev_id="bla2")
-        
-        newrev = change_revision_parent(wt.branch.repository, "bla2", "bla4", 
-                                        ["bloe"])
-        self.assertEqual("bla4", newrev)
-        self.assertTrue(wt.branch.repository.has_revision(newrev))
-        self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
+def skip_no_rebase(unbound):
+    def check_error(self, *args, **kwargs):
+        try:
+            return unbound(self, *args, **kwargs)
+        except RebaseNotPresent, e:
+            raise TestSkipped(e)
+    check_error.__doc__ = unbound.__doc__
+    check_error.__name__ = unbound.__name__
+    return check_error
 
 
 class UpgradeTests(TestCaseWithSubversionRepository):
+    @skip_no_rebase
     def test_no_custom(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -109,6 +101,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
 
+    @skip_no_rebase
     def test_single_custom(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -134,6 +127,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
+    @skip_no_rebase
     def test_single_keep_parent_fileid(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -161,7 +155,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertEqual(generate_svn_file_id(oldrepos.uuid, 1, "", "a"), 
                          tree.inventory.path2id("b"))
 
-
+    @skip_no_rebase
     def test_single_custom_continue(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b', 'dc/b': 'c'})
@@ -197,6 +191,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
+    @skip_no_rebase
     def test_more_custom(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -231,6 +226,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(["customrev-svn%d-upgrade" % MAPPING_VERSION],
                         newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
 
+    @skip_no_rebase
     def test_more_custom_branch(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -257,6 +253,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
                           "anotherrev-svn%d-upgrade" % MAPPING_VERSION
                           ], b.revision_history())
 
+    @skip_no_rebase
     def test_branch_none(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})
@@ -280,6 +277,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertEqual(["blarev", "customrev", "anotherrev"],
                 b.revision_history())
 
+    @skip_no_rebase
     def test_raise_incompat(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/d': 'e'})

@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
-from bzrlib.errors import BzrError, ConnectionReset, LockError, PermissionDenied
+from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
+                           PermissionDenied, DependencyNotPresent)
 
 import svn.core
 
@@ -74,3 +75,9 @@ class InvalidPropertyValue(BzrError):
         BzrError.__init__(self)
         self.property = property
         self.msg = msg
+
+class RebaseNotPresent(DependencyNotPresent):
+    _fmt = "Unable to import bzr-rebase (required for svn-upgrade support): %(error)s"
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'bzr-rebase', error)
