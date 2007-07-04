@@ -29,4 +29,20 @@ with KCacheGrind to visualize what the "status" command is doing::
    though the lsprof one is generally recommended. See
    http://docs.python.org/lib/node795.html.
 
+Note that to use --lsprof you must install the lsprof module, which you
+can get with::
 
+  svn co http://codespeak.net/svn/user/arigo/hack/misc/lsprof
+
+
+Profiling locks
+---------------
+
+Bazaar can log when locks are taken or released, which can help in
+identifying unnecessary lock traffic.  This is activated by the ``-Dlock``
+global option.
+
+This writes messages into ~/.bzr.log.
+At present this only logs actions relating to the on-disk lockdir.  It 
+doesn't describe actions on in-memory lock counters, or OS locks (which
+are used for dirstate.)

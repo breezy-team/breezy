@@ -29,21 +29,21 @@ from bzrlib.workingtree import WorkingTree
 class TestUpdate(ExternalBase):
 
     def test_update_standalone_trivial(self):
-        self.runbzr("init")
-        out, err = self.runbzr('update')
+        self.run_bzr("init")
+        out, err = self.run_bzr('update')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_standalone_trivial_with_alias_up(self):
-        self.runbzr("init")
-        out, err = self.runbzr('up')
+        self.run_bzr("init")
+        out, err = self.run_bzr('up')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
-        self.runbzr('checkout --lightweight branch checkout')
-        out, err = self.runbzr('update checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
+        out, err = self.run_bzr('update checkout')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
@@ -59,54 +59,56 @@ class TestUpdate(ExternalBase):
         # because it currently uses the branch last-revision marker.
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
         # now branch should be out of date
-        out,err = self.runbzr('update branch')
+        out,err = self.run_bzr('update branch')
         self.assertEqual('', out)
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 1.\n', err)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 1.\n')
         self.failUnlessExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout --lightweight branch checkout')
-        self.runbzr('checkout --lightweight branch checkout2')
+        self.run_bzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout2')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
         # now checkout2 should be out of date
-        out,err = self.runbzr('update checkout2')
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 1.\n',
-                         err)
+        out,err = self.run_bzr('update checkout2')
+        self.assertContainsRe(err, '\+N  file')
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 1.\n')
         self.assertEqual('', out)
 
     def test_update_conflicts_returns_2(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
-        self.runbzr('checkout --lightweight branch checkout2')
+        self.run_bzr('add checkout/file')
+        self.run_bzr('commit -m add-file checkout')
+        self.run_bzr('checkout --lightweight branch checkout2')
         # now alter file in checkout
         a_file = file('checkout/file', 'wt')
         a_file.write('Foo')
         a_file.close()
-        self.runbzr('commit -m checnge-file checkout')
+        self.run_bzr('commit -m checnge-file checkout')
         # now checkout2 should be out of date
         # make a local change to file
         a_file = file('checkout2/file', 'wt')
         a_file.write('Bar')
         a_file.close()
-        out,err = self.runbzr('update checkout2', retcode=1)
+        out,err = self.run_bzr('update checkout2', retcode=1)
+        self.assertContainsRe(err, 'M  file')
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
-                         err.split('\n')[1:3])
+                         err.split('\n')[-3:-1])
         self.assertContainsRe(err, 'Text conflict in file\n')
         self.assertEqual('', out)
 
@@ -144,6 +146,8 @@ class TestUpdate(ExternalBase):
         # get all three files and a pending merge.
         out, err = self.run_bzr('update', 'checkout')
         self.assertEqual('', out)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertContainsRe(err, '\+N  file_b')
         self.assertContainsRe(err, 'Updated to revision 1.\n'
                                    'Your local commits will now show as'
                                    ' pending merges')
@@ -192,9 +196,9 @@ class TestUpdate(ExternalBase):
         # merges, because they were real merges
         out, err = self.run_bzr('update')
         self.assertEqual('', out)
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 2.\n', err)
-
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 2.\n')
+        self.assertContainsRe(err, r'\+N  file3')
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
@@ -205,4 +209,4 @@ class TestUpdate(ExternalBase):
         checkout = readonly_branch.create_checkout('checkout',
                                                    lightweight=True)
         tree.commit('empty commit')
-        self.runbzr(['update', 'checkout'])
+        self.run_bzr(['update', 'checkout'])

@@ -41,11 +41,13 @@ from bzrlib.tests import (
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.workingtree_implementations import (
+    WorkingTreeTestProviderAdapter,
+    )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTreeFormat3,
-    WorkingTreeTestProviderAdapter,
     _legacy_formats,
     )
 from bzrlib.workingtree_4 import (
@@ -289,35 +291,33 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each Tree implementation in bzrlib.
 
-    Currently this covers all working tree formats, and RevisionTree by 
-    committing a working tree to create the revision tree.
+    Currently this covers all working tree formats, and RevisionTree and
+    DirStateRevisionTree by committing a working tree to create the revision
+    tree.
     """
 
-    def adapt(self, test):
-        result = super(TreeTestProviderAdapter, self).adapt(test)
-        for adapted_test in result:
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        super(TreeTestProviderAdapter, self).__init__(transport_server,
+            transport_readonly_server, formats)
+        # now adjust the scenarios and add the non-working-tree tree scenarios.
+        for scenario in self.scenarios:
             # for working tree adapted tests, preserve the tree
-            adapted_test.workingtree_to_test_tree = return_parameter
-        # this is the default in that it's used to test the generic InterTree
+            scenario[1]["workingtree_to_test_tree"] = return_parameter
+        # add RevisionTree scenario
+        # this is the 'default format' in that it's used to test the generic InterTree
         # code.
         default_format = WorkingTreeFormat3()
-        revision_tree_test = self._clone_test(
-            test,
-            default_format._matchingbzrdir, 
-            default_format,
-            RevisionTree.__name__)
-        revision_tree_test.workingtree_to_test_tree = revision_tree_from_workingtree
-        result.addTest(revision_tree_test)
-        # also explicity test WorkingTree4 against everything
+        self.scenarios.append(self.formats_to_scenarios([
+            (default_format, default_format._matchingbzrdir)])[0])
+        self.scenarios[-1] = (RevisionTree.__name__, self.scenarios[-1][1])
+        self.scenarios[-1][1]["workingtree_to_test_tree"] = revision_tree_from_workingtree
+
+        # also test WorkingTree4's RevisionTree implementation which is specialised.
         dirstate_format = WorkingTreeFormat4()
-        dirstate_revision_tree_test = self._clone_test(
-            test,
-            dirstate_format._matchingbzrdir,
-            dirstate_format,
-            DirStateRevisionTree.__name__)
-        dirstate_revision_tree_test.workingtree_to_test_tree = _dirstate_tree_from_workingtree
-        result.addTest(dirstate_revision_tree_test)
-        return result
+        self.scenarios.append(self.formats_to_scenarios([
+            (dirstate_format, dirstate_format._matchingbzrdir)])[0])
+        self.scenarios[-1] = (DirStateRevisionTree.__name__, self.scenarios[-1][1])
+        self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
 
 
 def test_suite():

@@ -22,7 +22,7 @@
 
 import os
 
-from bzrlib.tests import BzrTestBase, TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 from bzrlib.osutils import pathjoin

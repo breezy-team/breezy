@@ -44,6 +44,7 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    win32utils,
     )
 """)
 
@@ -239,6 +240,19 @@ class Command(object):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
+
+    def _maybe_expand_globs(self, file_list):
+        """Glob expand file_list if the platform does not do that itself.
+        
+        :return: A possibly empty list of unicode paths.
+
+        Introduced in bzrlib 0.18.
+        """
+        if not file_list:
+            file_list = []
+        if sys.platform == 'win32':
+            file_list = win32utils.glob_expand(file_list)
+        return list(file_list)
 
     def _usage(self):
         """Return single-line grammar for this command.
@@ -712,11 +726,7 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now

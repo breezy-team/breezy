@@ -28,13 +28,45 @@ from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestLoader,
+                          TestScenarioApplier,
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeTestProviderAdapter,
                                 _legacy_formats,
                                 )
+
+
+class WorkingTreeTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing multiple workingtree formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and workingtree_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self.scenarios = self.formats_to_scenarios(formats)
+    
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (workingtree_format, bzrdir_format).
+        """
+    
+        result = []
+        for workingtree_format, bzrdir_format in formats:
+            scenario = (workingtree_format.__class__.__name__, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "bzrdir_format":bzrdir_format,
+                "workingtree_format":workingtree_format,
+                })
+            result.append(scenario)
+        return result
 
 
 class TestCaseWithWorkingTree(TestCaseWithBzrDir):

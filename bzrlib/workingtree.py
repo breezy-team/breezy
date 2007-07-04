@@ -44,7 +44,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bisect import bisect_left
 import collections
-from copy import deepcopy
 import errno
 import itertools
 import operator
@@ -616,7 +615,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # should probably put it back with the previous ID.
         # the read and write working inventory should not occur in this 
         # function - they should be part of lock_write and unlock.
-        inv = self.read_working_inventory()
+        inv = self.inventory
         for f, file_id, kind in zip(files, ids, kinds):
             assert kind is not None
             if file_id is None:
@@ -624,7 +623,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 file_id = osutils.safe_file_id(file_id)
                 inv.add_path(f, kind=kind, file_id=file_id)
-        self._write_inventory(inv)
+            self._inventory_is_modified = True
 
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
@@ -1971,7 +1970,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self):
+    def update(self, change_reporter=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2007,12 +2006,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 old_tip = self.branch.update()
             else:
                 old_tip = None
-            return self._update_tree(old_tip)
+            return self._update_tree(old_tip, change_reporter)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None):
+    def _update_tree(self, old_tip=None, change_reporter=None):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2046,7 +2045,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                       self.branch,
                                       to_tree,
                                       basis,
-                                      this_tree=self)
+                                      this_tree=self,
+                                      change_reporter=change_reporter)
             finally:
                 basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
@@ -2094,7 +2094,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   self.branch,
                                   other_tree,
                                   base_tree,
-                                  this_tree=self)
+                                  this_tree=self,
+                                  change_reporter=change_reporter)
         return result
 
     def _write_hashcache_if_dirty(self):
@@ -2772,42 +2773,3 @@ WorkingTreeFormat.set_default_format(__default_format)
 # and not independently creatable, so are not registered.
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
-
-
-class WorkingTreeTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple workingtree formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and workingtree_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
-        """Clone test for adaption."""
-        new_test = deepcopy(test)
-        new_test.transport_server = self._transport_server
-        new_test.transport_readonly_server = self._transport_readonly_server
-        new_test.bzrdir_format = bzrdir_format
-        new_test.workingtree_format = workingtree_format
-        def make_new_test_id():
-            new_id = "%s(%s)" % (test.id(), variation)
-            return lambda: new_id
-        new_test.id = make_new_test_id()
-        return new_test
-    
-    def adapt(self, test):
-        from bzrlib.tests import TestSuite
-        result = TestSuite()
-        for workingtree_format, bzrdir_format in self._formats:
-            new_test = self._clone_test(
-                test,
-                bzrdir_format,
-                workingtree_format, workingtree_format.__class__.__name__)
-            result.addTest(new_test)
-        return result
