@@ -168,8 +168,14 @@ class cmd_svn_upgrade(Command):
     @display_command
     def run(self, svn_repository=None, allow_changes=False):
         from upgrade import upgrade_branch
-        
-        branch_to = Branch.open(".")
+        from bzrlib.errors import NoWorkingTree
+        from bzrlib.workingtree import WorkingTree
+        try:
+            wt_to = WorkingTree.open(".")
+            branch_to = wt_to.branch
+        except NoWorkingTree:
+            wt_to = None
+            branch_to = Branch.open(".")
 
         stored_loc = branch_to.get_parent()
         if svn_repository is None:
@@ -180,10 +186,14 @@ class cmd_svn_upgrade(Command):
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
-                svn_repository = stored_loc
+                svn_repository = Branch.open(stored_loc).repository
+        else:
+            svn_repository = Repository.open(svn_repository)
 
-        upgrade_branch(branch_to, Repository.open(svn_repository), 
-                       allow_changes)
+        upgrade_branch(branch_to, svn_repository, allow_changes)
+
+        if wt_to is not None:
+            wt_to.set_last_revision(branch_to.last_revision())
 
 register_command(cmd_svn_upgrade)
 

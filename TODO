@@ -6,6 +6,7 @@
 - report changes to delta editor in Branch.pull()
 - more blackbox tests
 - integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
+- transform file ids in workingtree in svn-upgrade
 
 Working trees:
 - custom implementation of WorkingTree.revert() / WorkingTree.merge()
