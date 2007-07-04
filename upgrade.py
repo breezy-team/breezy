@@ -58,6 +58,8 @@ def parse_legacy_revision_id(revid):
         return (uuid, branch_path, revnum, None, 2)
     elif revid.startswith("svn-v3-"):
         (uuid, bp, rev, scheme) = parse_svn_revision_id(revid)
+        if scheme == "undefined":
+            scheme = None
         return (uuid, bp, rev, scheme, 3)
 
     raise InvalidRevisionId(revid, None)
@@ -117,7 +119,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     :return: Dictionary of mapped revisions
     """
     try:
-        from bzrlib.plugins.rebase.rebase import change_revision_parent, generate_transpose_plan, rebase
+        from bzrlib.plugins.rebase.rebase import replay_snapshot, generate_transpose_plan, rebase
     except ImportError, e:
         raise RebaseNotPresent(e)
     needed_revs = []
@@ -171,7 +173,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         plan = generate_transpose_plan(repository, graph, rename_map, 
                                        lambda rev: create_upgraded_revid(rev.revision_id))
         mutter('rebase plan: %r' % plan)
-        rebase(repository, plan, change_revision_parent)
+        rebase(repository, plan, replay_snapshot)
         def remove_parents((oldrevid, (newrevid, parents))):
             return (oldrevid, newrevid)
         return dict(map(remove_parents, plan.items()))
