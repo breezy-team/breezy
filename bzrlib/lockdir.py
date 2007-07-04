@@ -197,7 +197,7 @@ class LockDir(object):
         self._trace("create lock directory")
         self.transport.mkdir(self.path, mode=mode)
 
-    def _lock_core(self):
+    def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
         
         If the rename succeeds, we read back the info file to check that we
@@ -448,7 +448,7 @@ class LockDir(object):
             raise LockContention(self)
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
-        return self._lock_core()
+        return self._attempt_lock()
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
