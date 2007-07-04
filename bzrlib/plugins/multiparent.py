@@ -30,7 +30,10 @@ from bzrlib.plugins.multiparent.multiparent import (
 class cmd_mp_regen(commands.Command):
     """Generate a multiparent versionedfile"""
 
+    hidden = True
+
     takes_args = ['file?']
+
     takes_options = [commands.Option('sync-snapshots',
                                      help='Snapshots follow source'),
                      commands.Option('snapshot-interval', type=int,
@@ -114,6 +117,8 @@ class cmd_mp_regen(commands.Command):
 
 class cmd_mp_extract(commands.Command):
     """Test extraction time multiparent knits"""
+
+    hidden = True
 
     takes_options = [
         commands.Option('lsprof-timed', help='Use lsprof'),
