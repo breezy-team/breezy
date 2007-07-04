@@ -340,6 +340,8 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
         raise BzrError("Working tree has uncommitted changes.")
     wt.branch.generate_revision_history(newparents[0])
     wt.set_parent_ids(newparents)
+    wt.revert([], backups=False)
+    assert not wt.changes_from(wt.basis_tree()).has_changed()
 
     oldtree = repository.revision_tree(oldrevid)
     basetree = repository.revision_tree(oldrev.parent_ids[0])
@@ -356,6 +358,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     revprops['rebase-of'] = oldrevid
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, timezone=oldrev.timezone,
               revprops=revprops, rev_id=newrevid)
+
 
 def workingtree_replay(wt, map_ids=False):
     """Returns a function that can replay revisions in wt.

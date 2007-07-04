@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.commands import Command, Option, display_command, register_command
-from bzrlib.errors import BzrCommandError, UnrelatedBranches
+from bzrlib.errors import BzrCommandError, UnrelatedBranches, ConflictsInTree
 
 class cmd_rebase(Command):
     """Re-base a branch.
@@ -31,7 +31,7 @@ class cmd_rebase(Command):
         from bzrlib.workingtree import WorkingTree
         from rebase import (generate_simple_plan, rebase, 
                             rebase_plan_exists, write_rebase_plan, 
-                            read_rebase_plan, workingtree_replay, MergeConflicted, remove_rebase_plan)
+                            read_rebase_plan, workingtree_replay, remove_rebase_plan)
         wt = WorkingTree.open('.')
         wt.lock_write()
         if upstream_location is None:
@@ -76,8 +76,8 @@ class cmd_rebase(Command):
             # Start executing plan
             try:
                 rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
-            except MergeConflicted:
-                raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
+            except ConflictsInTree:
+                raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file
             remove_rebase_plan(wt)
         finally:
@@ -99,6 +99,7 @@ class cmd_rebase_abort(Command):
             last_rev_info = read_rebase_plan(wt)[0]
             wt.branch.set_last_revision_info(last_rev_info[0], last_rev_info[1])
             wt.set_last_revision(last_rev_info[1])
+            wt.revert([], backups=False)
             remove_rebase_plan(wt)
         finally:
             wt.unlock()
@@ -111,7 +112,7 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, MergeConflicted, rebase, remove_rebase_plan
+        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, rebase, remove_rebase_plan
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
         wt.lock_write()
@@ -125,8 +126,8 @@ class cmd_rebase_continue(Command):
             try:
                 # Start executing plan from current Branch.last_revision()
                 rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
-            except MergeConflicted:
-                raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
+            except ConflictsInTree:
+                raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  
             remove_rebase_plan(wt)
         finally:
