@@ -20,6 +20,10 @@ IN DEVELOPMENT
       via a proxy to enable SSL tunneling.
      (Vincent Ladeuil, #120678)
 
+    * Fix ``bzr log -r`` to support selecting merge revisions, both 
+      individually and as part of revision ranges.
+      (Kent Gibson, #4663)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling

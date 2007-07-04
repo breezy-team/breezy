@@ -1639,7 +1639,7 @@ class cmd_log(Command):
                 rev1 = None
                 rev2 = None
             elif len(revision) == 1:
-                rev1 = rev2 = revision[0].in_history(b).revno
+                rev1 = rev2 = revision[0].in_history(b)
             elif len(revision) == 2:
                 if revision[1].get_branch() != revision[0].get_branch():
                     # b is taken from revision[0].get_branch(), and
@@ -1648,26 +1648,11 @@ class cmd_log(Command):
                     raise errors.BzrCommandError(
                         "Log doesn't accept two revisions in different"
                         " branches.")
-                if revision[0].spec is None:
-                    # missing begin-range means first revision
-                    rev1 = 1
-                else:
-                    rev1 = revision[0].in_history(b).revno
-
-                if revision[1].spec is None:
-                    # missing end-range means last known revision
-                    rev2 = b.revno()
-                else:
-                    rev2 = revision[1].in_history(b).revno
+                rev1 = revision[0].in_history(b)
+                rev2 = revision[1].in_history(b)
             else:
                 raise errors.BzrCommandError(
                     'bzr log --revision takes one or two values.')
-
-            # By this point, the revision numbers are converted to the +ve
-            # form if they were supplied in the -ve form, so we can do
-            # this comparison in relative safety
-            if rev1 > rev2:
-                (rev2, rev1) = (rev1, rev2)
 
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
