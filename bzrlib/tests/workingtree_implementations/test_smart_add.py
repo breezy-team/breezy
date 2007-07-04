@@ -54,10 +54,14 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
     def test_save_false(self):
         """Dry-run add doesn't permanently affect the tree."""
         wt = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        wt.smart_add(['file'], save=False)
-        # the file should not be added - no id.
-        self.assertEqual(wt.path2id('file'), None)
+        wt.lock_write()
+        try:
+            self.build_tree(['file'])
+            wt.smart_add(['file'], save=False)
+            # the file should not be added - no id.
+            self.assertEqual(wt.path2id('file'), None)
+        finally:
+            wt.unlock()
         # and the disk state should be the same - reopen to check.
         wt = wt.bzrdir.open_workingtree()
         self.assertEqual(wt.path2id('file'), None)
