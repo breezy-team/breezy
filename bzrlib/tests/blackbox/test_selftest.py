@@ -461,11 +461,15 @@ class TestBzrSubprocess(TestCaseWithTransport):
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], ['rocks'])
+        # retcode=0 is specially needed here because run_bzr_error expects
+        # an error (oddly enough) but we want to test the case of not
+        # actually getting one
+        out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=0)
         self.assertEqual(out, 'It sure does!\n')
-
-        out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
-                                      ['file-id', 'foobarbaz'])
+        # now test actually getting an error
+        out, err = self.run_bzr_error(
+                ["bzr: ERROR: foobarbaz is not versioned"],
+                ['file-id', 'foobarbaz'])
 
 
 class TestSelftestCleanOutput(TestCaseInTempDir):
