@@ -20,7 +20,6 @@ import errno
 import os
 
 from bzrlib import (
-    add,
     bzrdir,
     osutils,
     workingtree,
@@ -119,7 +118,7 @@ class KernelLikeAddedTreeCreator(TreeCreator):
         # Add everything to it
         tree.lock_write()
         try:
-            add.smart_add_tree(tree, [root], recurse=True, save=True)
+            tree.smart_add([root], recurse=True, save=True)
             if in_cache:
                 self._protect_files(root+'/.bzr')
         finally:
