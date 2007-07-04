@@ -171,13 +171,16 @@ def generate_transpose_plan(repository, graph, renames,
         children = list(find_revision_children(r))
         # Add entry for them in replace_map
         for c in children:
+            if c in renames:
+                continue
             rev = repository.get_revision(c)
             if replace_map.has_key(c):
                 parents = replace_map[c][1]
             else:
                 parents = rev.parent_ids
             # replace r in parents with replace_map[r][0]
-            parents[parents.index(r)] = replace_map[r][0]
+            if not replace_map[r][0] in parents:
+                parents[parents.index(r)] = replace_map[r][0]
             replace_map[c] = (generate_revid(rev), parents)
             assert replace_map[c][0] != rev.revision_id
         # Add them to todo[]
