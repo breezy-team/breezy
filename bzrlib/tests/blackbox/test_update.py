@@ -66,8 +66,9 @@ class TestUpdate(ExternalBase):
         # now branch should be out of date
         out,err = self.run_bzr('update branch')
         self.assertEqual('', out)
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 1.\n', err)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 1.\n')
         self.failUnlessExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
@@ -80,9 +81,9 @@ class TestUpdate(ExternalBase):
         self.run_bzr('commit -m add-file checkout')
         # now checkout2 should be out of date
         out,err = self.run_bzr('update checkout2')
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 1.\n',
-                         err)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 1.\n')
         self.assertEqual('', out)
 
     def test_update_conflicts_returns_2(self):
@@ -104,9 +105,10 @@ class TestUpdate(ExternalBase):
         a_file.write('Bar')
         a_file.close()
         out,err = self.run_bzr('update checkout2', retcode=1)
+        self.assertContainsRe(err, 'M  file')
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
-                         err.split('\n')[1:3])
+                         err.split('\n')[-3:-1])
         self.assertContainsRe(err, 'Text conflict in file\n')
         self.assertEqual('', out)
 
@@ -144,6 +146,8 @@ class TestUpdate(ExternalBase):
         # get all three files and a pending merge.
         out, err = self.run_bzr('update', 'checkout')
         self.assertEqual('', out)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertContainsRe(err, '\+N  file_b')
         self.assertContainsRe(err, 'Updated to revision 1.\n'
                                    'Your local commits will now show as'
                                    ' pending merges')
@@ -192,9 +196,9 @@ class TestUpdate(ExternalBase):
         # merges, because they were real merges
         out, err = self.run_bzr('update')
         self.assertEqual('', out)
-        self.assertEqual('All changes applied successfully.\n'
-                         'Updated to revision 2.\n', err)
-
+        self.assertEndsWith(err, 'All changes applied successfully.\n'
+                         'Updated to revision 2.\n')
+        self.assertContainsRe(err, r'\+N  file3')
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
