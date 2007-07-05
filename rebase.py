@@ -224,11 +224,9 @@ def rebase(repository, replace_map, replay_fn):
 
     # Figure out the dependencies
     for revid in todo:
-        possible = True
         for p in replace_map[revid][1]:
             if repository.has_revision(p):
                 continue
-            possible = False
             if not dependencies.has_key(p):
                 dependencies[p] = []
             dependencies[p].append(revid)
@@ -326,17 +324,23 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     pb = ui.ui_factory.nested_progress_bar()
     i = 0
     try:
+        parent_invs = map(repository.get_revision_inventory, new_parents)
         transact = repository.get_transaction()
         for path, ie in oldinv.iter_entries():
             pb.update('upgrading file', i, total)
             i += 1
             new_ie = ie.copy()
-            if new_ie.revision == oldrevid:
-                new_ie.revision = None
             new_ie.file_id = oldtree.new_id(new_ie.file_id)
             new_ie.parent_id = oldtree.new_id(new_ie.parent_id)
+            if new_ie.revision == oldrevid:
+                if repository.weave_store.get_weave_or_empty(new_ie.file_id, 
+                        transact).has_version(newrevid):
+                    new_ie.revision = newrevid
+                else:
+                    new_ie.revision = None
+
             builder.record_entry_contents(new_ie, 
-                   map(repository.get_revision_inventory, new_parents), 
+                    parent_invs,
                    path, oldtree)
     finally:
         pb.finished()
