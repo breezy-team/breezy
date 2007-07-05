@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import bz2
+import re
 
 from bzrlib import (
     diff,
@@ -164,16 +165,16 @@ class BundleReader(object):
 
         :retval: content_kind, revision_id, file_id
         """
-        segments = re.split('//?', name)
-        names = []
+        segments = re.split('(//?)', name)
+        names = ['']
         for segment in segments:
             if segment == '//':
                 names[-1] += '/'
-            if segment == '/':
+            elif segment == '/':
                 names.append('')
             else:
                 names[-1] += segment
-        content_kind = name[0]
+        content_kind = names[0]
         revision_id = None
         file_id = None
         if len(names) > 1:
