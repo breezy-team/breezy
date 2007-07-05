@@ -172,7 +172,7 @@ class Branch(object):
         return self.get_config().get_nickname()
 
     def _set_nick(self, nick):
-        self.get_config().set_user_option('nickname', nick)
+        self.get_config().set_user_option('nickname', nick, warn_masked=True)
 
     nick = property(_get_nick, _set_nick)
 
@@ -584,7 +584,7 @@ class Branch(object):
             url = ''
         elif make_relative:
             url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url)
+        config.set_user_option(name, url, warn_masked=True)
 
     def _get_config_location(self, name, config=None):
         if config is None:
@@ -610,7 +610,8 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        self.get_config().set_user_option('submit_branch', location)
+        self.get_config().set_user_option('submit_branch', location,
+            warn_masked=True)
 
     def get_public_branch(self):
         """Return the public location of the branch.
@@ -2031,12 +2032,12 @@ class BzrBranch6(BzrBranch5):
             if config.get_user_option('bound') != 'True':
                 return False
             else:
-                config.set_user_option('bound', 'False')
+                config.set_user_option('bound', 'False', warn_masked=True)
                 return True
         else:
             self._set_config_location('bound_location', location,
                                       config=config)
-            config.set_user_option('bound', 'True')
+            config.set_user_option('bound', 'True', warn_masked=True)
         return True
 
     def _get_bound_location(self, bound):
@@ -2062,7 +2063,8 @@ class BzrBranch6(BzrBranch5):
             value = 'True'
         else:
             value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value)
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
