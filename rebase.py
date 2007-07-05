@@ -194,7 +194,7 @@ def generate_transpose_plan(repository, graph, renames,
                 assert replace_map[c][0] != rev.revision_id
             processed.add(r)
             # Add them to todo[]
-            todo.extend(filter(lambda x: x in processed, children[r]))
+            todo.extend(filter(lambda x: not x in processed, children[r]))
     finally:
         pb.finished()
 
