@@ -285,9 +285,7 @@ class MutableTree(tree.Tree):
             a specific one should be used.
         :param save: Save the inventory after completing the adds. If False
             this provides dry-run functionality by doing the add and not saving
-            the inventory.  Note that the modified inventory is left in place,
-            allowing further dry-run tasks to take place. To restore the
-            original inventory call self.read_working_inventory().
+            the inventory.
         :return: A tuple - files_added, ignored_files. files_added is the count
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
@@ -444,8 +442,11 @@ class MutableTree(tree.Tree):
                             #mutter("queue to add sub-file %r", subp)
                             dirs_to_add.append((_FastPath(subp, subf), this_ie))
 
-        if len(added) > 0 and save:
-            self._write_inventory(inv)
+        if len(added) > 0:
+            if save:
+                self._write_inventory(inv)
+            else:
+                self.read_working_inventory()
         return added, ignored
 
 

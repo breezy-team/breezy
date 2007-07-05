@@ -42,6 +42,8 @@ Use cases
 
 .. include:: revert.txt
 
+.. include:: status.txt
+
 .. include:: annotate.txt
 
 .. include:: merge-scaling.txt
