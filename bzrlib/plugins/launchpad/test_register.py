@@ -129,7 +129,7 @@ class TestBranchRegistration(TestCase):
 
     def test_register_help(self):
         """register-branch accepts --help"""
-        out, err = self.run_bzr('register-branch', '--help')
+        out, err = self.run_bzr(['register-branch', '--help'])
         self.assertContainsRe(out, r'Register a branch')
 
     def test_register_no_url(self):
@@ -137,9 +137,9 @@ class TestBranchRegistration(TestCase):
         self.run_bzr('register-branch', retcode=3)
 
     def test_register_dry_run(self):
-        out, err = self.run_bzr('register-branch',
+        out, err = self.run_bzr(['register-branch',
                                 'http://test-server.com/bzr/branch',
-                                '--dry-run')
+                                '--dry-run'])
         self.assertEquals(out, 'Branch registered.\n')
 
     def test_onto_transport(self):

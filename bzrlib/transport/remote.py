@@ -389,6 +389,12 @@ class RemoteTransport(transport.Transport):
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
         elif what == "ReadOnlyError":
             raise errors.TransportNotPossible('readonly transport')
+        elif what == "ReadError":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.ReadError(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 

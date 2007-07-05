@@ -37,17 +37,17 @@ class TestRevno(TestCaseInTempDir):
         self.assertEquals(int(bzr('revno')), 0)
 
         open('foo', 'wb').write('foo\n')
-        bzr('add', 'foo')
-        bzr('commit', '-m', 'foo')
+        bzr('add foo')
+        bzr('commit -m foo')
         self.assertEquals(int(bzr('revno')), 1)
 
         os.mkdir('baz')
-        bzr('add', 'baz')
-        bzr('commit', '-m', 'baz')
+        bzr('add baz')
+        bzr('commit -m baz')
         self.assertEquals(int(bzr('revno')), 2)
 
         os.chdir('..')
-        self.assertEquals(int(bzr('revno', 'a')), 2)
-        self.assertEquals(int(bzr('revno', 'a/baz')), 2)
+        self.assertEquals(int(bzr('revno a')), 2)
+        self.assertEquals(int(bzr('revno a/baz')), 2)
 
 

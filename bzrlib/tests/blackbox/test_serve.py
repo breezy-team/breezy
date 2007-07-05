@@ -44,7 +44,7 @@ class TestBzrServe(TestCaseWithTransport):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        result = self.finish_bzr_subprocess(process, retcode=0)
+        result = self.finish_bzr_subprocess(process)
         self.assertEqual('', result[0])
         self.assertEqual('', result[1])
     

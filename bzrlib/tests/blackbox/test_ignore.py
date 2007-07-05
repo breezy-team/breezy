@@ -48,7 +48,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('init')
         self.run_bzr_error(('bzr: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
-                           'ignore','/crud')
+                           'ignore /crud')
         
     def test_ignore_directories(self):
         """ignoring a directory should ignore directory tree.
@@ -65,7 +65,7 @@ class TestCommands(ExternalBase):
 
     def test_ignore_patterns(self):
         self.run_bzr('init')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
         # is_ignored() will now create the user global ignore file
         # if it doesn't exist, so make sure we ignore it in our tests
@@ -74,35 +74,35 @@ class TestCommands(ExternalBase):
         self.build_tree_contents(
             [('foo.tmp', '.tmp files are ignored by default'),
              ])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
         file('foo.c', 'wt').write('int main() {}')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'foo.c\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'foo.c\n')
 
         self.run_bzr('add foo.c')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
         # 'ignore' works when creating the .bzrignore file
         file('foo.blah', 'wt').write('blah')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'foo.blah\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'foo.blah\n')
         self.run_bzr('ignore *.blah')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
         self.check_file_contents('.bzrignore', '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'garh\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'garh\n')
         self.run_bzr('ignore garh')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
         self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
        
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         self.run_bzr('init')
         self.build_tree(['a','b','c','d'])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'a\nb\nc\nd\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\nd\n')
         self.run_bzr('ignore a b c')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'd\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'd\n')
         self.check_file_contents('.bzrignore', 'a\nb\nc\n')
 
     def test_ignore_no_arguments(self):
@@ -113,7 +113,7 @@ class TestCommands(ExternalBase):
                            'ignore')
 
     def test_ignore_old_defaults(self):
-        out, err = self.run_bzr('ignore', '--old-default-rules')
+        out, err = self.run_bzr('ignore --old-default-rules')
         self.assertContainsRe(out, 'CVS')
         self.assertEqual('', err)
 
