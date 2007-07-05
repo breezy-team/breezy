@@ -834,6 +834,8 @@ class TestSmartTCPServer(tests.TestCase):
         self._captureVar('BZR_NO_SMART_VFS', None)
         class FlakyTransport(object):
             base = 'a_url'
+            def external_url(self):
+                return self.base
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
