@@ -429,6 +429,7 @@ class Merge3Merger(object):
                  pb=DummyProgress(), pp=None, change_reporter=None):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
+        self.interesting_ids = interesting_ids
         self.this_tree = working_tree
         self.this_tree.lock_tree_write()
         self.base_tree = base_tree
@@ -445,33 +446,15 @@ class Merge3Merger(object):
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
 
-        if interesting_ids is not None:
-            all_ids = interesting_ids
-        else:
-            all_ids = set(base_tree)
-            all_ids.update(other_tree)
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
+            entries = self._entries3()
             child_pb = ui.ui_factory.nested_progress_bar()
-            entries = [e for e in other_tree._iter_changes(base_tree,
-                       include_unchanged=True) if e[0] in all_ids]
             try:
-                for num, (file_id, paths, changed, versioned, parents, names,
-                          kind, executable) in enumerate(entries):
+                for num, (file_id, changed, parents3, names3,
+                          executable3) in enumerate(entries):
                     child_pb.update('Preparing file merge', num, len(entries))
-                    if file_id in this_tree.inventory:
-                        entry = this_tree.inventory[file_id]
-                        this_name = entry.name
-                        this_parent = entry.parent_id
-                        this_executable = entry.executable
-                    else:
-                        this_name = None
-                        this_parent = None
-                        this_executable = None
-                    parents3 = parents + (this_parent,)
-                    names3 = names + (this_name,)
-                    executable3 = executable + (this_executable,)
                     self._merge_names(file_id, parents3, names3)
                     if changed:
                         file_status = self.merge_contents(file_id)
@@ -507,6 +490,29 @@ class Merge3Merger(object):
             self.base_tree.unlock()
             self.this_tree.unlock()
             self.pb.clear()
+
+    def _entries3(self):
+        result = []
+        for (file_id, paths, changed, versioned, parents, names, kind,
+             executable) in self.other_tree._iter_changes(self.base_tree,
+                include_unchanged=True):
+            if (self.interesting_ids is not None and
+                file_id not in self.interesting_ids):
+                continue
+            if file_id in self.this_tree.inventory:
+                entry = self.this_tree.inventory[file_id]
+                this_name = entry.name
+                this_parent = entry.parent_id
+                this_executable = entry.executable
+            else:
+                this_name = None
+                this_parent = None
+                this_executable = None
+            parents3 = parents + (this_parent,)
+            names3 = names + (this_name,)
+            executable3 = executable + (this_executable,)
+            result.append((file_id, changed, parents3, names3, executable3))
+        return result
 
     def fix_root(self):
         try:
