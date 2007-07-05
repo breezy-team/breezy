@@ -23,6 +23,12 @@ IN DEVELOPMENT
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
       (Kent Gibson, #4663)
+ 
+    * Don't leave cruft behind when failing to acquire a lockdir.
+      (Martin Pool, #109169)
+
+    * Don't use the '-f' strace option during tests.
+      (Vincent Ladeuil, #102019).
 
   IMPROVEMENTS:
 
@@ -72,6 +78,9 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * Remove unnecessary lock probes when acquiring a lockdir.
+      (Martin Pool)
+
     * ``bzr --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
 
@@ -103,9 +112,24 @@ IN DEVELOPMENT
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
+    * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
+      win32. Callers of the function should do this and use the new
+      ``MutableTree.smart_add`` method instead. (Robert Collins)
+
+    * ``bzrlib.add.glob_expand_for_win32`` is now
+      ``bzrlib.win32utils.glob_expand``.  (Robert Collins)
+
+    * ``bzrlib.add.FastPath`` is now private and moved to 
+      ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
+
+    * ``LockDir.wait`` removed.  (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
+      lockdirs are taken or released.  (Martin Pool)
 
     * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
       allows a nicer UI when hooks are running as the current hook can
@@ -114,6 +138,14 @@ IN DEVELOPMENT
     * ``Transport.get`` has had its interface made more clear for ease of use.
       Retrieval of a directory must now fail with either 'PathError' at open
       time, or raise 'ReadError' on a read. (Robert Collins)
+
+    * New method ``_maybe_expand_globs`` on the ``Command`` class for 
+      dealing with unexpanded glob lists - e.g. on the win32 platform. This
+      was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)
+
+    * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
+      deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
+      Martin Pool)
 
   TESTING:
 

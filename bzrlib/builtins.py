@@ -367,8 +367,13 @@ class cmd_add(Command):
         if base_tree:
             base_tree.lock_read()
         try:
-            added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
-                action=action, save=not dry_run)
+            file_list = self._maybe_expand_globs(file_list)
+            if file_list:
+                tree = WorkingTree.open_containing(file_list[0])[0]
+            else:
+                tree = WorkingTree.open_containing(u'.')[0]
+            added, ignored = tree.smart_add(file_list, not
+                no_recurse, action=action, save=not dry_run)
         finally:
             if base_tree is not None:
                 base_tree.unlock()
