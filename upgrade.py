@@ -159,10 +159,11 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                     check_revision_changed(oldrev, newrev)
         finally:
             pb.finished()
-
+        
         # Make sure all the required current version revisions are present
         for revid in rename_map.values():
-            repository.fetch(svn_repository, revid)
+            if not repository.has_revision(revid):
+                repository.fetch(svn_repository, revid)
 
         plan = generate_transpose_plan(repository, graph, rename_map, 
                                        lambda rev: create_upgraded_revid(rev.revision_id))
