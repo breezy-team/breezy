@@ -190,14 +190,17 @@ class BundleReader(object):
             file_id)
         """
         iterator = self._container.iter_records()
-        for (name,), meta_bytes in iterator:
+        for names, meta_bytes in iterator:
+            if len(names) != 1:
+                raise errors.BadBundle('Record has %d names instead of 1'
+                                       % len(names))
             metadata = bencode.bdecode(meta_bytes(None))
             if metadata['storage_kind'] == 'header':
                 bytes = None
             else:
                 _unused, bytes = iterator.next()
                 bytes = bytes(None)
-            yield (bytes, metadata) + self.decode_name(name)
+            yield (bytes, metadata) + self.decode_name(names[0])
 
 
 class BundleSerializerV4(serializer.BundleSerializer):
@@ -514,7 +517,7 @@ class RevisionInstaller(object):
             parent_texts)
         sha1 = osutils.sha_strings(target_lines)
         if sha1 != metadata['sha1']:
-            raise BadBundle("Can't convert to target format")
+            raise errors.BadBundle("Can't convert to target format")
         target_inv = self._source_serializer.read_inventory_from_string(
             ''.join(target_lines))
         self._handle_root(target_inv, parent_ids)

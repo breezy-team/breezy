@@ -1485,3 +1485,17 @@ class TestBundleWriterReader(TestCase):
             v4.BundleReader.decode_name('file/rev//1/file-id-1'))
         self.assertEqual(('info', None, None),
                          v4.BundleReader.decode_name('info'))
+
+    def test_too_many_names(self):
+        fileobj = StringIO()
+        writer = v4.BundleWriter(fileobj)
+        writer.begin()
+        writer.add_info_record(foo='bar')
+        writer._container.add_bytes_record('blah', ['two', 'names'])
+        writer.end()
+        fileobj.seek(0)
+        record_iter = v4.BundleReader(fileobj).iter_records()
+        record = record_iter.next()
+        self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
+            'info', None, None), record)
+        self.assertRaises(BadBundle, record_iter.next)
