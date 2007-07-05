@@ -135,6 +135,10 @@ IN DEVELOPMENT
       allows a nicer UI when hooks are running as the current hook can
       be displayed. (Robert Collins)
 
+    * ``Transport.get`` has had its interface made more clear for ease of use.
+      Retrieval of a directory must now fail with either 'PathError' at open
+      time, or raise 'ReadError' on a read. (Robert Collins)
+
     * New method ``_maybe_expand_globs`` on the ``Command`` class for 
       dealing with unexpanded glob lists - e.g. on the win32 platform. This
       was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)

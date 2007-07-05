@@ -32,6 +32,9 @@ from bzrlib.errors import (ConnectionError,
                            NoSuchFile,
                            PathNotChild,
                            TransportNotPossible,
+                           ConnectionError,
+                           DependencyNotPresent,
+                           ReadError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
@@ -40,6 +43,7 @@ from bzrlib.transport import (_CoalescedOffset,
                               _set_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
+                              LateReadError,
                               register_lazy_transport,
                               register_transport_proto,
                               _clear_protocol_handlers,
@@ -116,6 +120,16 @@ class TestTransport(TestCase):
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
             _set_protocol_handlers(saved_handlers)
+
+    def test_LateReadError(self):
+        """The LateReadError helper should raise on read()."""
+        a_file = LateReadError('a path')
+        try:
+            a_file.read()
+        except ReadError, error:
+            self.assertEqual('a path', error.path)
+        self.assertRaises(ReadError, a_file.read, 40)
+        a_file.close()
 
     def test__combine_paths(self):
         t = Transport('/')
