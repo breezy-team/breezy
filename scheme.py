@@ -65,6 +65,9 @@ class BranchingScheme:
         if name == "none":
             return NoBranchingScheme()
 
+        if name.startswith("single-"):
+            return SingleBranchingScheme(name[len("single-"):])
+
         raise UnknownBranchingScheme(name)
 
     def is_branch_parent(self, path):
@@ -107,7 +110,7 @@ class TrunkBranchingScheme(BranchingScheme):
         return False
 
     def is_tag(self, path):
-        """See BranchingScheme.is_branch()."""
+        """See BranchingScheme.is_tag()."""
         parts = path.strip("/").split("/")
         if len(parts) == self.level+2 and \
            (parts[self.level] == "tags"):
@@ -201,3 +204,42 @@ class UnknownBranchingScheme(BzrError):
 
     def __init__(self, name):
         self.name = name
+
+
+class SingleBranchingScheme(BranchingScheme):
+    """Recognizes just one directory in the repository as branch.
+    """
+    def __init__(self, path):
+        self.path = path.strip("/")
+        if self.path == "":
+            raise BzrError("NoneBranchingScheme should be used")
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        return self.path == path.strip("/")
+
+    def is_tag(self, path):
+        """See BranchingScheme.is_tag()."""
+        return False
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        path = path.strip("/")
+        if not path.startswith(self.path):
+            raise NotBranchError(path=path)
+
+        return (path[0:len(self.path)].strip("/"), 
+                path[len(self.path):].strip("/"))
+
+    def __str__(self):
+        return "single-%s" % self.path
+
+    def is_branch_parent(self, path):
+        if not "/" in self.path:
+            return False
+        return self.is_branch(path+"/"+self.path.split("/")[-1])
+
+    def is_tag_parent(self, path):
+        return False
+
+

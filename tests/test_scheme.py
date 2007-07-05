@@ -21,6 +21,7 @@ from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
+                    SingleBranchingScheme,
                     UnknownBranchingScheme)
 
 class BranchingSchemeTest(TestCase):
@@ -75,6 +76,11 @@ class BranchingSchemeTest(TestCase):
     def test_find_scheme_trunk_invalid(self):
         self.assertRaises(BzrError, 
                           lambda: BranchingScheme.find_scheme("trunkinvalid"))
+
+    def test_find_scheme_single(self):
+        scheme = BranchingScheme.find_scheme("single-habla")
+        self.assertIsInstance(scheme, SingleBranchingScheme)
+        self.assertEqual("habla", scheme.path)
 
     def test_unknownscheme(self):
         e = UnknownBranchingScheme("foo")
@@ -399,3 +405,46 @@ class TrunkScheme(TestCase):
 
     def test_is_branch_parent_other(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))
+
+class SingleBranchingSchemeTests(TestCase):
+    def test_is_branch(self):
+        self.assertTrue(SingleBranchingScheme("bla").is_branch("bla"))
+
+    def test_is_branch_tooshort(self):
+        self.assertFalse(SingleBranchingScheme("bla").is_branch("bl"))
+
+    def test_is_branch_nested(self):
+        self.assertTrue(SingleBranchingScheme("bla/bloe").is_branch("bla/bloe"))
+
+    def test_is_branch_child(self):
+        self.assertFalse(SingleBranchingScheme("bla/bloe").is_branch("bla/bloe/blie"))
+
+    def test_is_tag(self):
+        self.assertFalse(SingleBranchingScheme("bla/bloe").is_tag("bla/bloe"))
+
+    def test_unprefix(self):
+        self.assertEquals(("ha", "ho"), SingleBranchingScheme("ha").unprefix("ha/ho"))
+
+    def test_unprefix_branch(self):
+        self.assertEquals(("ha", ""), SingleBranchingScheme("ha").unprefix("ha"))
+
+    def test_unprefix_raises(self):
+        self.assertRaises(NotBranchError, SingleBranchingScheme("ha").unprefix, "bla")
+
+    def test_is_branch_parent_not(self):
+        self.assertFalse(SingleBranchingScheme("ha").is_branch_parent("bla"))
+
+    def test_is_branch_parent_branch(self):
+        self.assertFalse(SingleBranchingScheme("bla/bla").is_branch_parent("bla/bla"))
+
+    def test_is_branch_parent(self):
+        self.assertTrue(SingleBranchingScheme("bla/bla").is_branch_parent("bla"))
+
+    def test_is_branch_parent_grandparent(self):
+        self.assertFalse(SingleBranchingScheme("bla/bla/bla").is_branch_parent("bla"))
+
+    def test_create_empty(self):
+        self.assertRaises(BzrError, SingleBranchingScheme, "")
+
+    def test_str(self):
+        self.assertEquals("single-ha/bla", str(SingleBranchingScheme("ha/bla")))
