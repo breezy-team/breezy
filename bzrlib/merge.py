@@ -460,7 +460,16 @@ class Merge3Merger(object):
                 for num, (file_id, paths, changed, versioned, parents, names,
                           kind, executable) in enumerate(entries):
                     child_pb.update('Preparing file merge', num, len(entries))
-                    self.merge_names(file_id)
+                    if file_id in this_tree.inventory:
+                        entry = this_tree.inventory[file_id]
+                        this_name = entry.name
+                        this_parent = entry.parent_id
+                    else:
+                        this_name = None
+                        this_parent = None
+
+                    self._merge_names(file_id, parents + (this_parent,),
+                                      names + (this_name,))
                     file_status = self.merge_contents(file_id)
                     self.merge_executable(file_id, file_status)
             finally:
@@ -608,8 +617,7 @@ class Merge3Merger(object):
             else:
                 names.append(entry.name)
                 parents.append(entry.parent_id)
-        return self._merge_names(file_id, parents, names, (this_entry is None),
-            (other_entry is None))
+        return self._merge_names(file_id, parents, names)
 
     @staticmethod
     def _three_way(base, other, this):
@@ -624,13 +632,14 @@ class Merge3Merger(object):
             return "other"
 
 
-    def _merge_names(self, file_id, parents, names, no_this, no_other):
+    def _merge_names(self, file_id, parents, names):
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
+
         name_winner = self._three_way(*names)
 
         parent_id_winner = self._three_way(*parents)
-        if no_this:
+        if this_name is None:
             if name_winner == "this":
                 name_winner = "other"
             if parent_id_winner == "this":
@@ -645,7 +654,7 @@ class Merge3Merger(object):
             trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('parent conflict', trans_id, 
                                         this_parent, other_parent))
-        if no_other:
+        if other_name is None:
             # it doesn't matter whether the result was 'other' or 
             # 'conflict'-- if there's no 'other', we leave it alone.
             return
