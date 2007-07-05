@@ -63,14 +63,14 @@ class TestPush(ExternalBase):
                 ('','bzr: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
-        self.run_bzr('push', '../path/which/doesnt/exist', retcode=3)
+        self.run_bzr('push ../path/which/doesnt/exist', retcode=3)
         out = self.run_bzr('push', retcode=3)
         self.assertEquals(
                 ('', 'bzr: ERROR: No push location known or specified.\n'),
                 out)
 
         # test implicit --remember when no push location set, push fails
-        out = self.run_bzr('push', '../branch_b', retcode=3)
+        out = self.run_bzr('push ../branch_b', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                     'Try using "merge" and then "push".\n'))
@@ -91,14 +91,14 @@ class TestPush(ExternalBase):
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
-        self.run_bzr('push', '../branch_c', '--remember')
+        self.run_bzr('push ../branch_c --remember')
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
     
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
-        out, err = self.run_bzr('push', 'pushed-location')
+        out, err = self.run_bzr('push pushed-location')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
         b2 = Branch.open('pushed-location')
@@ -113,7 +113,7 @@ class TestPush(ExternalBase):
         t.add('file')
         t.commit('commit 1')
         os.chdir('tree')
-        out, err = self.run_bzr('push', 'pushed-to')
+        out, err = self.run_bzr('push pushed-to')
         os.chdir('..')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
@@ -150,7 +150,7 @@ class TestPush(ExternalBase):
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'push'
         os.chdir('repo/b')
-        self.run_bzr('push', '../../push-b')
+        self.run_bzr('push ../../push-b')
         pushed_tree = WorkingTree.open('../../push-b')
         pushed_repo = pushed_tree.branch.repository
         self.assertFalse(pushed_repo.has_revision('a-1'))
@@ -163,7 +163,7 @@ class TestPush(ExternalBase):
         self.build_tree(['filename'])
         t.add('filename', 'funky-chars<>%&;"\'')
         t.commit('commit filename')
-        self.run_bzr('push', '../new-tree')
+        self.run_bzr('push ../new-tree')
 
     def test_push_dash_d(self):
         t = self.make_branch_and_tree('from')
@@ -187,9 +187,9 @@ class TestPush(ExternalBase):
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
-                           'push', '../new/tree',
+                           'push ../new/tree',
                            working_dir='tree')
-        self.run_bzr('push', '../new/tree', '--create-prefix',
+        self.run_bzr('push ../new/tree --create-prefix',
                      working_dir='tree')
         new_tree = WorkingTree.open('new/tree')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
@@ -205,10 +205,10 @@ class TestPush(ExternalBase):
 
         self.run_bzr_error(['Target directory ../target already exists',
                             'Supply --use-existing-dir',
-                           ], 'push', '../target',
-                           working_dir='tree')
+                           ],
+                           'push ../target', working_dir='tree')
 
-        self.run_bzr('push', '--use-existing-dir', '../target',
+        self.run_bzr('push --use-existing-dir ../target',
                      working_dir='tree')
 
         new_tree = WorkingTree.open('target')
@@ -221,7 +221,7 @@ class TestPush(ExternalBase):
         tree = self.create_simple_tree()
         repo = self.make_repository('repo', shared=True)
 
-        self.run_bzr('push', '../repo',
+        self.run_bzr('push ../repo',
                      working_dir='tree')
 
         # Pushing onto an existing bzrdir will create a repository and
@@ -242,5 +242,5 @@ class TestPush(ExternalBase):
         a_bzrdir = self.make_bzrdir('dir')
 
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
-                'push', '../dir',
+                'push ../dir',
                 working_dir='tree')

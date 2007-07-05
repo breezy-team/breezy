@@ -116,13 +116,13 @@ class TestCommands(ExternalBase):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        output = self.run_bzr(['version'])[0]
+        output = self.run_bzr('version')[0]
         self.log('bzr version output:')
         self.log(output)
         self.assert_(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
-        tmp_output = self.run_bzr(['--version'])[0]
+        tmp_output = self.run_bzr('--version')[0]
         self.assertEquals(output, tmp_output)
 
     def example_branch(test):
@@ -205,8 +205,7 @@ class TestCommands(ExternalBase):
         
     def test_unknown_command(self):
         """Handling of unknown command."""
-        out, err = self.run_bzr(['fluffy-badger'],
-                                         retcode=3)
+        out, err = self.run_bzr('fluffy-badger', retcode=3)
         self.assertEquals(out, '')
         err.index('unknown command')
 
@@ -485,7 +484,7 @@ class OldTests(ExternalBase):
             self.run_bzr('add link1')
             self.assertEquals(self.run_bzr('unknowns')[0], '')
             self.run_bzr(['commit', '-m', '1: added symlink link1'])
-    
+
             mkdir('d1')
             self.run_bzr('add d1')
             self.assertEquals(self.run_bzr('unknowns')[0], '')
@@ -497,7 +496,7 @@ class OldTests(ExternalBase):
             os.symlink("NOWHERE3", "d1/link3")
             self.assertEquals(self.run_bzr('unknowns')[0], 'd1/link3\n')
             self.run_bzr(['commit', '-m', '2: added dir, symlink'])
-    
+
             self.run_bzr('rename d1 d2')
             self.run_bzr('move d2/link2 .')
             self.run_bzr('move link1 d2')
@@ -505,8 +504,9 @@ class OldTests(ExternalBase):
             self.assertEquals(os.readlink("d2/link1"), "NOWHERE1")
             self.run_bzr('add d2/link3')
             self.run_bzr('diff', retcode=1)
-            self.run_bzr(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
-    
+            self.run_bzr(['commit', '-m',
+                          '3: rename of dir, move symlinks, add link3'])
+
             os.unlink("link2")
             os.symlink("TARGET 2", "link2")
             os.unlink("d2/link1")
@@ -514,7 +514,7 @@ class OldTests(ExternalBase):
             self.run_bzr('diff', retcode=1)
             self.assertEquals(self.run_bzr("relpath d2/link1")[0], "d2/link1\n")
             self.run_bzr(['commit', '-m', '4: retarget of two links'])
-    
+
             self.run_bzr('remove --keep d2/link1')
             self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
             self.run_bzr(['commit', '-m', '5: remove d2/link1'])
@@ -524,50 +524,51 @@ class OldTests(ExternalBase):
             self.run_bzr('rm --keep d2/link1')
             self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
             self.run_bzr(['commit', '-m', '7: remove d2/link1'])
-    
+
             os.mkdir("d1")
             self.run_bzr('add d1')
             self.run_bzr('rename d2/link3 d1/link3new')
             self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
-            self.run_bzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
-            
-            self.run_bzr(['check'])
-            
-            self.run_bzr(['export', '-r', '1', 'exp1.tmp'])
+            self.run_bzr(['commit', '-m',
+                          '8: remove d2/link1, move/rename link3'])
+
+            self.run_bzr('check')
+
+            self.run_bzr('export -r 1 exp1.tmp')
             chdir("exp1.tmp")
             self.assertEquals(listdir_sorted("."), [ "link1" ])
             self.assertEquals(os.readlink("link1"), "NOWHERE1")
             chdir("..")
-            
-            self.run_bzr(['export', '-r', '2', 'exp2.tmp'])
+
+            self.run_bzr('export -r 2 exp2.tmp')
             chdir("exp2.tmp")
             self.assertEquals(listdir_sorted("."), [ "d1", "link1" ])
             chdir("..")
-            
-            self.run_bzr(['export', '-r', '3', 'exp3.tmp'])
+
+            self.run_bzr('export -r 3 exp3.tmp')
             chdir("exp3.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
             self.assertEquals(os.readlink("d2/link1"), "NOWHERE1")
             self.assertEquals(os.readlink("link2")   , "NOWHERE2")
             chdir("..")
-            
-            self.run_bzr(['export', '-r', '4', 'exp4.tmp'])
+
+            self.run_bzr('export -r 4 exp4.tmp')
             chdir("exp4.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(os.readlink("d2/link1"), "TARGET 1")
             self.assertEquals(os.readlink("link2")   , "TARGET 2")
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
             chdir("..")
-            
-            self.run_bzr(['export', '-r', '5', 'exp5.tmp'])
+
+            self.run_bzr('export -r 5 exp5.tmp')
             chdir("exp5.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assert_(os.path.islink("link2"))
             self.assert_(listdir_sorted("d2")== [ "link3" ])
             chdir("..")
-            
-            self.run_bzr(['export', '-r', '8', 'exp6.tmp'])
+
+            self.run_bzr('export -r 8 exp6.tmp')
             chdir("exp6.tmp")
             self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             self.assertEquals(listdir_sorted("d1"), [ "link3new" ])
@@ -587,7 +588,7 @@ class RemoteTests(object):
         branch = wt.branch
         wt.commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_readonly_url('from')
-        self.run_bzr('branch', url, 'to')
+        self.run_bzr(['branch', url, 'to'])
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
         # the branch should be set in to to from
@@ -608,7 +609,7 @@ class RemoteTests(object):
         self.run_bzr('add branch/file')[0]
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
-        self.run_bzr('check', url)
+        self.run_bzr(['check', url])
     
     def test_push(self):
         # create a source branch
@@ -616,11 +617,11 @@ class RemoteTests(object):
         os.chdir('my-branch')
         self.run_bzr('init')
         file('hello', 'wt').write('foo')
-        self.run_bzr('add', 'hello')
-        self.run_bzr('commit', '-m', 'setup')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup')
 
         # with an explicit target work
-        self.run_bzr('push', self.get_url('output-branch'))
+        self.run_bzr(['push', self.get_url('output-branch')])
 
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):

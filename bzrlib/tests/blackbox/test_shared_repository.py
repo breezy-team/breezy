@@ -25,7 +25,7 @@ from bzrlib.tests import TestCaseInTempDir
 class TestSharedRepo(TestCaseInTempDir):
 
     def test_make_repository(self):
-        out, err = self.run_bzr("init-repository", "a")
+        out, err = self.run_bzr("init-repository a")
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = BzrDir.open('a')
@@ -38,13 +38,13 @@ class TestSharedRepo(TestCaseInTempDir):
         
         (Malone #38331)
         """
-        out, err = self.run_bzr("init-repository", ".")
+        out, err = self.run_bzr("init-repository .")
         dir = BzrDir.open('.')
         self.assertTrue(dir.open_repository())
 
     def test_init(self):
-        self.run_bzr("init-repo", "a")
-        self.run_bzr("init", "--format=default", "a/b")
+        self.run_bzr("init-repo a")
+        self.run_bzr("init --format=default a/b")
         dir = BzrDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
@@ -55,22 +55,22 @@ class TestSharedRepo(TestCaseInTempDir):
         wt = bdir.open_workingtree()
 
     def test_branch(self):
-        self.run_bzr("init-repo", "a")
-        self.run_bzr("init", "--format=default", "a/b")
-        self.run_bzr('branch', 'a/b', 'a/c')
+        self.run_bzr("init-repo a")
+        self.run_bzr("init --format=default a/b")
+        self.run_bzr('branch a/b a/c')
         cdir = BzrDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
         cdir.open_workingtree()
 
     def test_branch_tree(self):
-        self.run_bzr("init-repo", "--trees", "a")
-        self.run_bzr("init", "--format=default", "b")
+        self.run_bzr("init-repo --trees a")
+        self.run_bzr("init --format=default b")
         file('b/hello', 'wt').write('bar')
-        self.run_bzr("add", "b/hello")
-        self.run_bzr("commit", "-m", "bar", "b/hello")
+        self.run_bzr("add b/hello")
+        self.run_bzr("commit -m bar b/hello")
 
-        self.run_bzr('branch', 'b', 'a/c')
+        self.run_bzr('branch b a/c')
         cdir = BzrDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
@@ -79,19 +79,19 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_trees_default(self):
         # 0.15 switched to trees by default
-        self.run_bzr("init-repo", "repo")
+        self.run_bzr("init-repo repo")
         repo = BzrDir.open("repo").open_repository()
         self.assertEqual(True, repo.make_working_trees())
 
     def test_trees_argument(self):
         # Supplying the --trees argument should be harmless,
         # as it was previously non-default we need to get it right.
-        self.run_bzr("init-repo", "--trees", "trees")
+        self.run_bzr("init-repo --trees trees")
         repo = BzrDir.open("trees").open_repository()
         self.assertEqual(True, repo.make_working_trees())
 
     def test_no_trees_argument(self):
         # --no-trees should make it so that there is no working tree
-        self.run_bzr("init-repo", "--no-trees", "notrees")
+        self.run_bzr("init-repo --no-trees notrees")
         repo = BzrDir.open("notrees").open_repository()
         self.assertEqual(False, repo.make_working_trees())
