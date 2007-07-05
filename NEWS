@@ -143,6 +143,9 @@ IN DEVELOPMENT
       deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
       Martin Pool)
 
+    * New method ``external_url`` on Transport for obtaining the url to
+      hand to external processes. (Robert Collins)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
