@@ -464,14 +464,21 @@ class Merge3Merger(object):
                         entry = this_tree.inventory[file_id]
                         this_name = entry.name
                         this_parent = entry.parent_id
+                        this_executable = entry.executable
                     else:
                         this_name = None
                         this_parent = None
-
-                    self._merge_names(file_id, parents + (this_parent,),
-                                      names + (this_name,))
-                    file_status = self.merge_contents(file_id)
-                    self.merge_executable(file_id, file_status)
+                        this_executable = None
+                    parents3 = parents + (this_parent,)
+                    names3 = names + (this_name,)
+                    executable3 = executable + (this_executable,)
+                    self._merge_names(file_id, parents3, names3)
+                    if changed:
+                        file_status = self.merge_contents(file_id)
+                    else:
+                        file_status = 'unmodified'
+                    self._merge_executable(file_id,
+                        executable3, file_status)
             finally:
                 child_pb.finished()
             self.fix_root()
@@ -830,6 +837,13 @@ class Merge3Merger(object):
 
     def merge_executable(self, file_id, file_status):
         """Perform a merge on the execute bit."""
+        executable = [self.executable(t, file_id) for t in (self.base_tree,
+                      self.other_tree, self.this_tree)]
+        self._merge_executable(file_id, executable, file_status)
+
+    def _merge_executable(self, file_id, executable, file_status):
+        """Perform a merge on the execute bit."""
+        base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
         trans_id = self.tt.trans_id_file_id(file_id)
@@ -838,9 +852,7 @@ class Merge3Merger(object):
                 return
         except NoSuchFile:
             return
-        winner = self.scalar_three_way(self.this_tree, self.base_tree, 
-                                       self.other_tree, file_id, 
-                                       self.executable)
+        winner = self._three_way(*executable)
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
@@ -850,18 +862,18 @@ class Merge3Merger(object):
                 winner = "other"
         if winner == "this":
             if file_status == "modified":
-                executability = self.this_tree.is_executable(file_id)
+                executability = this_executable
                 if executability is not None:
                     trans_id = self.tt.trans_id_file_id(file_id)
                     self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
             if file_id in self.other_tree:
-                executability = self.other_tree.is_executable(file_id)
+                executability = other_executable
             elif file_id in self.this_tree:
-                executability = self.this_tree.is_executable(file_id)
+                executability = this_executable
             elif file_id in self.base_tree:
-                executability = self.base_tree.is_executable(file_id)
+                executability = base_executable
             if executability is not None:
                 trans_id = self.tt.trans_id_file_id(file_id)
                 self.tt.set_executability(executability, trans_id)
