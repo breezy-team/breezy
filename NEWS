@@ -33,6 +33,8 @@ IN DEVELOPMENT
     * Warn when setting ``push_location`` to a value that will be masked by
       locations.conf.  (Aaron Bentley, #122286)
 
+    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
