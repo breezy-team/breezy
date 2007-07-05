@@ -260,15 +260,11 @@ cdef class KnitIndexReader:
             # Process until the end of the file
             last = self.end_str - 1
             self.cur_str = self.end_str
-            line = PyString_FromStringAndSize(start, last - start)
-            ending = PyString_FromStringAndSize(last, 1)
         else:
             # The last character is right before the '\n'
             # And the next string is right after it
-            line = PyString_FromStringAndSize(start, last - start)
             self.cur_str = last + 1
             last = last - 1
-            ending = PyString_FromStringAndSize(last, 3)
 
         if last <= start or last[0] != c':':
             # Incomplete record

@@ -38,7 +38,7 @@ def _load_data_py(kndx, fp):
         if len(rec) < 5 or rec[-1] != ':':
             # corrupt line.
             # FIXME: in the future we should determine if its a
-            # short write - and ignore it 
+            # short write - and ignore it
             # or a different failure, and raise. RBC 20060407
             continue
 

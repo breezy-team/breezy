@@ -795,6 +795,37 @@ class LowLevelKnitIndexTests(TestCase):
             else:
                 raise
 
+    def test_short_line(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0", # This line isn't terminated, ignored
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a'], index.get_versions())
+
+    def test_skip_incomplete_record(self):
+        # A line with bogus data should just be skipped
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0", # This line isn't terminated, ignored
+            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a', 'c'], index.get_versions())
+
+    def test_trailing_characters(self):
+        # A line with bogus data should just be skipped
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0 :a", # This line has extra trailing characters
+            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a', 'c'], index.get_versions())
+
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
