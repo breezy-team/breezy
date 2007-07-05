@@ -287,7 +287,7 @@ class Commit(object):
             self.pb.show_spinner = False
             self.pb.show_eta = False
             self.pb.show_count = True
-            self.pb.show_bar = False
+            self.pb.show_bar = True
 
             # After a merge, a selected file commit is not supported.
             # See 'bzr help merge' for an explanation as to why.
