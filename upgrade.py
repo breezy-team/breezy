@@ -122,7 +122,6 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         from bzrlib.plugins.rebase.rebase import replay_snapshot, generate_transpose_plan, rebase
     except ImportError, e:
         raise RebaseNotPresent(e)
-    needed_revs = []
     rename_map = {}
 
     try:
@@ -149,7 +148,8 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                    not svn_repository.has_revision(newrevid):
                     # Not a revision that can be upgraded using the remote repository, 
                     # nothing to do
-                    if svn_repository.uuid == uuid:
+                    if hasattr(svn_repository, 'uuid') and \
+                            svn_repository.uuid == uuid:
                         mutter("Remote repository doesn't have %r" % newrevid)
                     continue
                 rename_map[revid] = newrevid
@@ -157,19 +157,12 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                     oldrev = repository.get_revision(revid)
                     newrev = svn_repository.get_revision(newrevid)
                     check_revision_changed(oldrev, newrev)
-                if not repository.has_revision(newrevid):
-                    needed_revs.append(newrevid)
         finally:
             pb.finished()
 
         # Make sure all the required current version revisions are present
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for revid in needed_revs:
-                pb.update('fetching new revisions', needed_revs.index(revid), len(needed_revs))
-                repository.fetch(svn_repository, revid)
-        finally:
-            pb.finished()
+        for revid in rename_map.values():
+            repository.fetch(svn_repository, revid)
 
         plan = generate_transpose_plan(repository, graph, rename_map, 
                                        lambda rev: create_upgraded_revid(rev.revision_id))
