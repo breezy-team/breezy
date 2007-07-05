@@ -69,17 +69,20 @@ class SmartTCPServer(object):
         # for hooks we are letting code know that a server has started (and
         # later stopped).
         # There are three interesting urls:
-        # The URL the server can be contacted on.
+        # The URL the server can be contacted on. (e.g. bzr://host/)
         # The URL that a commit done on the same machine as the server will
-        # have within the servers space.
+        # have within the servers space. (e.g. file:///home/user/source)
         # The URL that will be given to other hooks in the same process -
-        # The URL of the backing transport itself.
+        # the URL of the backing transport itself. (e.g. chroot+:///)
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to
         #    this server 
         #  * commits the server does itself need to be mapped across to this
         #    server.
+        # The latter two urls are different aliases to the servers url,
+        # so we group those in a list - as there might be more aliases 
+        # in the future.
         backing_urls = [self.backing_transport.base]
         try:
             backing_urls.append(self.backing_transport.external_url())
