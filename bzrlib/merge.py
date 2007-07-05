@@ -454,9 +454,12 @@ class Merge3Merger(object):
         try:
             self.pp.next_phase()
             child_pb = ui.ui_factory.nested_progress_bar()
+            entries = [e for e in other_tree._iter_changes(base_tree,
+                       include_unchanged=True) if e[0] in all_ids]
             try:
-                for num, file_id in enumerate(all_ids):
-                    child_pb.update('Preparing file merge', num, len(all_ids))
+                for num, (file_id, paths, changed, versioned, parents, names,
+                          kind, executable) in enumerate(entries):
+                    child_pb.update('Preparing file merge', num, len(entries))
                     self.merge_names(file_id)
                     file_status = self.merge_contents(file_id)
                     self.merge_executable(file_id, file_status)
@@ -595,12 +598,39 @@ class Merge3Merger(object):
         this_entry = get_entry(self.this_tree)
         other_entry = get_entry(self.other_tree)
         base_entry = get_entry(self.base_tree)
-        name_winner = self.scalar_three_way(this_entry, base_entry, 
-                                            other_entry, file_id, self.name)
-        parent_id_winner = self.scalar_three_way(this_entry, base_entry, 
-                                                 other_entry, file_id, 
-                                                 self.parent)
-        if this_entry is None:
+        entries = (base_entry, other_entry, this_entry)
+        names = []
+        parents = []
+        for entry in entries:
+            if entry is None:
+                names.append(None)
+                parents.append(None)
+            else:
+                names.append(entry.name)
+                parents.append(entry.parent_id)
+        return self._merge_names(file_id, parents, names, (this_entry is None),
+            (other_entry is None))
+
+    @staticmethod
+    def _three_way(base, other, this):
+        if base == other:
+            return 'this'
+        if this not in (base, other):
+            return 'conflict'
+        elif this == other:
+            return "this"
+        else:
+            assert this == base
+            return "other"
+
+
+    def _merge_names(self, file_id, parents, names, no_this, no_other):
+        base_name, other_name, this_name = names
+        base_parent, other_parent, this_parent = parents
+        name_winner = self._three_way(*names)
+
+        parent_id_winner = self._three_way(*parents)
+        if no_this:
             if name_winner == "this":
                 name_winner = "other"
             if parent_id_winner == "this":
@@ -610,25 +640,22 @@ class Merge3Merger(object):
         if name_winner == "conflict":
             trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('name conflict', trans_id, 
-                                        self.name(this_entry, file_id), 
-                                        self.name(other_entry, file_id)))
+                                        this_name, other_name))
         if parent_id_winner == "conflict":
             trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('parent conflict', trans_id, 
-                                        self.parent(this_entry, file_id), 
-                                        self.parent(other_entry, file_id)))
-        if other_entry is None:
+                                        this_parent, other_parent))
+        if no_other:
             # it doesn't matter whether the result was 'other' or 
             # 'conflict'-- if there's no 'other', we leave it alone.
             return
         # if we get here, name_winner and parent_winner are set to safe values.
-        winner_entry = {"this": this_entry, "other": other_entry, 
-                        "conflict": other_entry}
+        winner_idx = {"this": 2, "other": 1, "conflict": 1}
         trans_id = self.tt.trans_id_file_id(file_id)
-        parent_id = winner_entry[parent_id_winner].parent_id
+        parent_id = parents[winner_idx[parent_id_winner]]
         if parent_id is not None:
             parent_trans_id = self.tt.trans_id_file_id(parent_id)
-            self.tt.adjust_path(winner_entry[name_winner].name, 
+            self.tt.adjust_path(names[winner_idx[name_winner]],
                                 parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):
