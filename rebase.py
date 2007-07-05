@@ -159,32 +159,44 @@ def generate_transpose_plan(repository, graph, renames,
         replace_map[r] = (renames[r], 
                           repository.revision_parents(renames[r]))
         todo.append(r)
+    
+    children = {}
+    for r in graph:
+        if not children.has_key(r):
+            children[r] = []
+        for p in graph[r]:
+            if not children.has_key(p):
+                children[p] = []
+            children[p].append(r)
 
-    def find_revision_children(revid):
-        for x in graph: 
-            if revid in graph[x]: 
-                yield x
-
-    while len(todo) > 0:
-        r = todo.pop()
-        # Find children of r in graph
-        children = list(find_revision_children(r))
-        # Add entry for them in replace_map
-        for c in children:
-            if c in renames:
-                continue
-            rev = repository.get_revision(c)
-            if replace_map.has_key(c):
-                parents = replace_map[c][1]
-            else:
-                parents = rev.parent_ids
-            # replace r in parents with replace_map[r][0]
-            if not replace_map[r][0] in parents:
-                parents[parents.index(r)] = replace_map[r][0]
-            replace_map[c] = (generate_revid(rev), parents)
-            assert replace_map[c][0] != rev.revision_id
-        # Add them to todo[]
-        todo.extend(children)
+    total = len(todo)
+    processed = set()
+    i = 0
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        while len(todo) > 0:
+            r = todo.pop()
+            i += 1
+            pb.update('determining dependencies', i, total)
+            # Add entry for them in replace_map
+            for c in children[r]:
+                if c in renames:
+                    continue
+                rev = repository.get_revision(c)
+                if replace_map.has_key(c):
+                    parents = replace_map[c][1]
+                else:
+                    parents = rev.parent_ids
+                # replace r in parents with replace_map[r][0]
+                if not replace_map[r][0] in parents:
+                    parents[parents.index(r)] = replace_map[r][0]
+                replace_map[c] = (generate_revid(rev), parents)
+                assert replace_map[c][0] != rev.revision_id
+            processed.add(r)
+            # Add them to todo[]
+            todo.extend(filter(lambda x: x in processed, children[r]))
+    finally:
+        pb.finished()
 
     return replace_map
 
@@ -384,7 +396,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     commit_rebase(wt, oldrev, newrevid)
 
 
-def workingtree_replay(wt, map_ids=False):
+def workingtree_replay(wt, map_ids=False, merge_type=None):
     """Returns a function that can replay revisions in wt.
 
     :param wt: Working tree in which to do the replays.
@@ -392,7 +404,7 @@ def workingtree_replay(wt, map_ids=False):
     """
     def replay(repository, oldrevid, newrevid, newparents):
         assert wt.branch.repository == repository
-        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents)
+        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents, merge_type=merge_type)
     return replay
 
 

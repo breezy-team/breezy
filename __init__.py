@@ -23,10 +23,11 @@ class cmd_rebase(Command):
 
     """
     takes_args = ['upstream_location?']
-    takes_options = ['revision', Option('onto', help='Different revision to replay onto')]
+    takes_options = ['revision', 'merge-type', 
+                     Option('onto', help='Different revision to replay onto')]
     
     @display_command
-    def run(self, upstream_location=None, onto=None, revision=None):
+    def run(self, upstream_location=None, onto=None, revision=None, merge_type=None):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -81,7 +82,7 @@ class cmd_rebase(Command):
 
             # Start executing plan
             try:
-                rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
+                rebase(wt.branch.repository, replace_map, workingtree_replay(wt, merge_type=merge_type))
             except ConflictsInTree:
                 raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file
@@ -117,9 +118,10 @@ class cmd_rebase_continue(Command):
     """Continue an interrupted rebase after resolving conflicts
 
     """
+    takes_options = ['merge-type']
     
     @display_command
-    def run(self):
+    def run(self, merge_type=None):
         from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, rebase, remove_rebase_plan, commit_rebase, read_active_rebase_revid
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
@@ -139,7 +141,7 @@ class cmd_rebase_continue(Command):
                 commit_rebase(wt, oldrev, replace_map[oldrevid][0])
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
+                rebase(wt.branch.repository, replace_map, workingtree_replay(wt, merge_type=merge_type))
             except ConflictsInTree:
                 raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  
