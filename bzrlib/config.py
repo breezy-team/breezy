@@ -661,7 +661,7 @@ class BranchConfig(Config):
                     mask_value = branch_config.get_user_option(name)
                     if mask_value is not None:
                         trace.warning('Value "%s" is masked by "%s" from'
-                                      ' branch.conf' % (value, mask_value))
+                                      ' branch.conf', value, mask_value)
 
 
     def _gpg_signing_command(self):
