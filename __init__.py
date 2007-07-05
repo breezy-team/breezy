@@ -163,10 +163,10 @@ class cmd_svn_upgrade(Command):
     were mapped from svn revisions.
     """
     takes_args = ['svn_repository?']
-    takes_options = [Option('allow-changes', help='Allow content changes')]
+    takes_options = []
 
     @display_command
-    def run(self, svn_repository=None, allow_changes=False):
+    def run(self, svn_repository=None):
         from upgrade import upgrade_branch
         from bzrlib.errors import NoWorkingTree
         from bzrlib.workingtree import WorkingTree
@@ -190,7 +190,7 @@ class cmd_svn_upgrade(Command):
         else:
             svn_repository = Repository.open(svn_repository)
 
-        upgrade_branch(branch_to, svn_repository, allow_changes)
+        upgrade_branch(branch_to, svn_repository, allow_changes=True)
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())

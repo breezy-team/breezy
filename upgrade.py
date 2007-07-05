@@ -80,16 +80,16 @@ def create_upgraded_revid(revid):
         return revid + suffix
 
 
-def upgrade_branch(branch, svn_repository, allow_change=False):
+def upgrade_branch(branch, svn_repository, allow_changes=False):
     """Upgrade a branch to the current mapping version.
     
     :param branch: Branch to upgrade.
     :param svn_repository: Repository to fetch new revisions from
-    :param allow_change: Allow changes in mappings.
+    :param allow_changes: Allow changes in mappings.
     """
     revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, svn_repository, 
-              revid, allow_change)
+              revid, allow_changes)
     mutter('renames %r' % renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
