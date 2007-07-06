@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from urllib import quote
 
 from bzrlib import (
     branch as _mod_branch,
@@ -247,10 +248,13 @@ class TestInfo(tests.TestCaseWithTransport):
         locs.add_url('c', 'file:///home/bar/bar')
         locs.add_url('d', 'http://example.com/example/')
         locs.add_url('e', None)
-        self.assertEqual(locs.urls, [('a', '.'),
+        self.assertEqual(locs.locs, [('a', '.'),
                                      ('b', 'bar'),
                                      ('c', '/home/bar/bar'),
                                      ('d', 'http://example.com/example/')])
+        self.assertEqualDiff('  a: .\n  b: bar\n  c: /home/bar/bar\n'
+                             '  d: http://example.com/example/\n',
+                             ''.join(locs.get_lines()))
 
     def test_gather_related_braches(self):
         branch = self.make_branch('.')
@@ -261,4 +265,4 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(
             [('public branch', 'baz'), ('push branch', 'bar'),
              ('parent branch', 'foo'), ('submit branch', 'qux')],
-            info._gather_related_branches(branch).urls)
+            info._gather_related_branches(branch).locs)
