@@ -46,7 +46,7 @@ IN DEVELOPMENT
 
     * ``info`` now defaults to non-verbose mode, displaying only paths and
       abbreviated format info.  ``info -v`` displays all the information
-      formerly displayed by ``info``.  (Aaron Bentley)
+      formerly displayed by ``info``.  (Aaron Bentley, Adeodato Simó)
 
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
