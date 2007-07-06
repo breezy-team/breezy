@@ -169,11 +169,7 @@ class Merger(object):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
-        try:
-            self.interesting_files = file_list
-        except NotVersionedError, e:
-            raise BzrCommandError("%s is not a source file in any"
-                                      " tree." % e.path)
+        self.interesting_files = file_list
 
     def _set_interesting_files(self, file_list):
         """Set the list of interesting ids from a list of files."""
@@ -425,6 +421,7 @@ class Merge3Merger(object):
     supports_reprocess = True
     supports_show_base = True
     history_based = False
+    winner_idx = {"this": 2, "other": 1, "conflict": 1}
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
@@ -498,6 +495,14 @@ class Merge3Merger(object):
             self.pb.clear()
 
     def _entries3(self):
+        """Gather data about files modified between three trees.
+
+        Return a list of tuples of file_id, changed, parents3, names3,
+        executable3.  changed is a boolean indicating whether the file contents
+        or kind were changed.  parents3 is a tuple of parent ids for base,
+        other and this.  names3 is a tuple of names for base, other and this.
+        executable3 is a tuple of execute-bit values for base, other and this.
+        """
         result = []
         iterator = self.other_tree._iter_changes(self.base_tree,
                 include_unchanged=True, specific_files=self.interesting_files,
@@ -619,7 +624,6 @@ class Merge3Merger(object):
             return "other"
 
     def merge_names(self, file_id):
-        """Perform a merge on file_id names and parents"""
         def get_entry(tree):
             if file_id in tree.inventory:
                 return tree.inventory[file_id]
@@ -652,8 +656,8 @@ class Merge3Merger(object):
             assert this == base
             return "other"
 
-
     def _merge_names(self, file_id, parents, names):
+        """Perform a merge on file_id names and parents"""
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
 
@@ -680,12 +684,11 @@ class Merge3Merger(object):
             # 'conflict'-- if there's no 'other', we leave it alone.
             return
         # if we get here, name_winner and parent_winner are set to safe values.
-        winner_idx = {"this": 2, "other": 1, "conflict": 1}
         trans_id = self.tt.trans_id_file_id(file_id)
-        parent_id = parents[winner_idx[parent_id_winner]]
+        parent_id = parents[self.winner_idx[parent_id_winner]]
         if parent_id is not None:
             parent_trans_id = self.tt.trans_id_file_id(parent_id)
-            self.tt.adjust_path(names[winner_idx[name_winner]],
+            self.tt.adjust_path(names[self.winner_idx[name_winner]],
                                 parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):

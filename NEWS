@@ -150,6 +150,8 @@ IN DEVELOPMENT
       deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
       Martin Pool)
 
+    * merge now uses iter_changes to calculate changes. (Aaron Bentley)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
