@@ -114,6 +114,7 @@ class Merger(object):
         self.ignore_zero = False
         self.backup_files = False
         self.interesting_ids = None
+        self.interesting_files = None
         self.show_base = False
         self.reprocess = False
         self._pb = pb
@@ -169,7 +170,7 @@ class Merger(object):
 
     def set_interesting_files(self, file_list):
         try:
-            self._set_interesting_files(file_list)
+            self.interesting_files = file_list
         except NotVersionedError, e:
             raise BzrCommandError("%s is not a source file in any"
                                       " tree." % e.path)
@@ -294,6 +295,7 @@ class Merger(object):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
+                  'interesting_files': self.interesting_files,
                   'pp': self.pp}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
@@ -426,10 +428,14 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=DummyProgress(), pp=None, change_reporter=None):
+                 pb=DummyProgress(), pp=None, change_reporter=None,
+                 interesting_files=None):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
+        if interesting_files is not None:
+            assert interesting_ids is None
         self.interesting_ids = interesting_ids
+        self.interesting_files = interesting_files
         self.this_tree = working_tree
         self.this_tree.lock_tree_write()
         self.base_tree = base_tree
@@ -493,9 +499,11 @@ class Merge3Merger(object):
 
     def _entries3(self):
         result = []
+        iterator = self.other_tree._iter_changes(self.base_tree,
+                include_unchanged=True, specific_files=self.interesting_files,
+                extra_trees=[self.this_tree])
         for (file_id, paths, changed, versioned, parents, names, kind,
-             executable) in self.other_tree._iter_changes(self.base_tree,
-                include_unchanged=True):
+             executable) in iterator:
             if (self.interesting_ids is not None and
                 file_id not in self.interesting_ids):
                 continue
@@ -951,7 +959,8 @@ class WeaveMerger(Merge3Merger):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
-                 reprocess=False, change_reporter=None):
+                 reprocess=False, change_reporter=None,
+                 interesting_files=None):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
@@ -1085,7 +1094,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     if interesting_files:
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
-        merger._set_interesting_files(interesting_files)
+        merger.interesting_files = interesting_files
     merger.show_base = show_base
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id
