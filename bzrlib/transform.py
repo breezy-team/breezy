@@ -1645,8 +1645,13 @@ def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
         pb.clear()
 
 
-def conflict_pass(tt, conflicts):
-    """Resolve some classes of conflicts."""
+def conflict_pass(tt, conflicts, path_tree=None):
+    """Resolve some classes of conflicts.
+
+    :param tt: The transform to resolve conflicts in
+    :param conflicts: The conflicts to resolve
+    :param path_tree: A Tree to get supplemental paths from
+    """
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         if c_type == 'duplicate id':
@@ -1683,6 +1688,13 @@ def conflict_pass(tt, conflicts):
             except KeyError:
                 tt.create_directory(trans_id)
                 new_conflicts.add((c_type, 'Created directory', trans_id))
+                try:
+                    tt.final_name(trans_id)
+                except NoFinalPath:
+                    file_id = tt.final_file_id(trans_id)
+                    entry = path_tree.inventory[file_id]
+                    parent_trans_id = tt.trans_id_file_id(entry.parent_id)
+                    tt.adjust_path(entry.name, parent_trans_id, trans_id)
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

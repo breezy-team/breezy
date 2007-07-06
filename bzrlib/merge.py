@@ -45,8 +45,8 @@ from bzrlib.revision import (is_ancestor, NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
-                              FinalPaths, create_by_entry, unique_add,
-                              ROOT_PARENT)
+                              conflict_pass, FinalPaths, create_by_entry,
+                              unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import WeaveMerge
 from bzrlib import ui
 
@@ -471,7 +471,8 @@ class Merge3Merger(object):
             self.pp.next_phase()
             child_pb = ui.ui_factory.nested_progress_bar()
             try:
-                fs_conflicts = resolve_conflicts(self.tt, child_pb)
+                fs_conflicts = resolve_conflicts(self.tt, child_pb,
+                    lambda t, c: conflict_pass(t, c, self.other_tree))
             finally:
                 child_pb.finished()
             if change_reporter is not None:
@@ -604,6 +605,20 @@ class Merge3Merger(object):
         return tree.kind(file_id)
 
     @staticmethod
+    def _three_way(base, other, this):
+        #if base == other, either they all agree, or only THIS has changed.
+        if base == other:
+            return 'this'
+        if this not in (base, other):
+            return 'conflict'
+        # "Ambiguous clean merge"
+        elif this == other:
+            return "this"
+        else:
+            assert this == base
+            return "other"
+
+    @staticmethod
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -643,18 +658,6 @@ class Merge3Merger(object):
                 names.append(entry.name)
                 parents.append(entry.parent_id)
         return self._merge_names(file_id, parents, names)
-
-    @staticmethod
-    def _three_way(base, other, this):
-        if base == other:
-            return 'this'
-        if this not in (base, other):
-            return 'conflict'
-        elif this == other:
-            return "this"
-        else:
-            assert this == base
-            return "other"
 
     def _merge_names(self, file_id, parents, names):
         """Perform a merge on file_id names and parents"""
