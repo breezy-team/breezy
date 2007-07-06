@@ -30,6 +30,7 @@ import time
 
 from bzrlib import (
     errors,
+    osutils,
     patiencediff,
     tsort,
     )
@@ -82,7 +83,9 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         try:
             to_file.write(anno)
         except UnicodeEncodeError:
-            to_file.write(anno.encode(to_file.encoding, 'replace'))
+            encoding = getattr(to_file, 'encoding', None) or \
+                    osutils.get_terminal_encoding()
+            to_file.write(anno.encode(encoding, 'replace'))
         print >>to_file, '| %s' % (text,)
         prevanno=anno
 

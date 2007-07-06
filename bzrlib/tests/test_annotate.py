@@ -327,6 +327,17 @@ class TestAnnotate(tests.TestCaseWithTransport):
         annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
+        # test now with to_file.encoding = None
+        to_file = tests.StringIOWrapper()
+        to_file.encoding = None
+        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        self.assertContainsRe('2   p.rez   | bye\n', sio.getvalue())
+
+        # and when it does not exist
+        to_file = StringIO()
+        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        self.assertContainsRe('2   p.rez   | bye\n', sio.getvalue())
+
 
 class TestReannotate(tests.TestCase):
 
