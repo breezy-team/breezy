@@ -3100,6 +3100,7 @@ class cmd_annotate(Command):
                      'revision',
                      'show-ids',
                      ]
+    encoding_type = 'exact'
 
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
@@ -3120,7 +3121,7 @@ class cmd_annotate(Command):
                 raise errors.NotVersionedError(filename)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, sys.stdout,
+            annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
         finally:
             branch.unlock()

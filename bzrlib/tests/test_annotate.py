@@ -16,6 +16,7 @@
 
 """Whitebox tests for annotate functionality."""
 
+import codecs
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -300,6 +301,31 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              'rev-1_1_1_1_1_1_1 | fifth\n'
                              'rev-1_1_1_1_1_1_1 | sixth\n',
                              sio.getvalue())
+
+    def test_annotate_unicode_author(self):
+        tree1 = self.make_branch_and_tree('tree1')
+
+        self.build_tree_contents([('tree1/a', 'adi\xc3\xb3s')])
+        tree1.add(['a'], ['a-id'])
+        tree1.commit('a', rev_id='rev-1',
+                     committer=u'Pepe P\xe9rez <pperez@ejemplo.com>',
+                     timestamp=1166046000.00, timezone=0)
+
+        self.build_tree_contents([('tree1/b', 'bye')])
+        tree1.add(['b'], ['b-id'])
+        tree1.commit('b', rev_id='rev-2',
+                     committer=u'p\xe9rez',
+                     timestamp=1166046000.00, timezone=0)
+
+        # the test passes if the annotate_file() calls below do not raise an
+        # exception
+
+        to_file = codecs.EncodedFile(StringIO(), 'utf-8')
+        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
+
+        to_file = codecs.getwriter('ascii')(StringIO())
+        to_file.encoding = 'ascii' # codecs does not set it
+        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
 
 
 class TestReannotate(tests.TestCase):

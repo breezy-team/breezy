@@ -79,7 +79,11 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
 
         if anno.lstrip() == "" and full: anno = prevanno
-        print >>to_file, '%s| %s' % (anno, text)
+        try:
+            to_file.write(anno)
+        except UnicodeEncodeError:
+            to_file.write(anno.encode(to_file.encoding, 'replace'))
+        print >>to_file, '| %s' % (text,)
         prevanno=anno
 
 
