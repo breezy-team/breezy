@@ -441,6 +441,30 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
 
+    def test_binary_unicode_filenames(self):
+        """Test that contents of files are encoded in UTF-8 when there is a
+        binary file in the diff.
+        """
+        # See https://bugs.launchpad.net/bugs/110092.
+
+        # This bug isn't triggered with cStringIO.
+        from StringIO import StringIO
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents(
+            [('tree/binary', chr(0)),
+             ('tree/elephant', '\xc7a trompe \xc3\xa9norm\xc3\xa9ment.\n')])
+        tree.add(['binary'], ['file-id'])
+        tree.add(['elephant'], ['file-id-2'])
+        diff_content = StringIO()
+        show_diff_trees(tree.basis_tree(), tree, diff_content)
+        diff = diff_content.getvalue()
+        self.assertContainsRe(diff, "=== added file 'binary'")
+        self.assertContainsRe(
+            diff, "Binary files a/binary.*and b/binary.* differ\n")
+        self.assertContainsRe(diff, "=== added file 'elephant'")
+        self.assertContainsRe(diff, "--- a/elephant")
+        self.assertContainsRe(diff, "\\+\\+\\+ b/elephant")
+
 
 class TestPatienceDiffLib(TestCase):
 
