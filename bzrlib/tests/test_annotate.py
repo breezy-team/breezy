@@ -317,15 +317,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      committer=u'p\xe9rez',
                      timestamp=1166046000.00, timezone=0)
 
-        # the test passes if the annotate_file() calls below do not raise an
-        # exception
-
-        to_file = codecs.EncodedFile(StringIO(), 'utf-8')
+        # this passes if no exception is raised
+        to_file = StringIO()
         annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
 
-        to_file = codecs.getwriter('ascii')(StringIO())
+        sio = StringIO()
+        to_file = codecs.getwriter('ascii')(sio)
         to_file.encoding = 'ascii' # codecs does not set it
         annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
 
 class TestReannotate(tests.TestCase):
