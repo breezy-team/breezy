@@ -95,6 +95,9 @@ IN DEVELOPMENT
     * Long log format reports deltas on merge revisions. 
       (John Arbash Meinel, Kent Gibson)
 
+    * ``info`` now formats locations more nicely and lists "submit" and
+      "public" branches (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
