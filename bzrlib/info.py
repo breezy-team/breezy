@@ -343,10 +343,10 @@ def show_component_info(control, repository, branch=None, working=None,
     format = describe_format(control, repository, branch, working)
     print "%s (format: %s)" % (layout, format)
     _show_location_info(gather_location_info(repository, branch, working))
-    if verbose == 0:
-        return
     if branch is not None:
         _show_related_info(branch)
+    if verbose == 0:
+        return
     _show_format_info(control, repository, branch, working)
     _show_locking_info(repository, branch, working)
     if branch is not None:

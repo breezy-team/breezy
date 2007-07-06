@@ -48,6 +48,15 @@ class TestInfo(ExternalBase):
         self.build_tree(['standalone/a'])
         tree1.add('a')
         branch1 = tree1.branch
+
+        out, err = self.run_bzr('info standalone')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: %s
+""" % branch1.bzrdir.root_transport.base, out)
+        self.assertEqual('', err)
+
         out, err = self.run_bzr('info standalone -v')
         self.assertEqualDiff(
 """Standalone tree (format: weave)
@@ -86,6 +95,21 @@ Repository:
         # Branch standalone with push location
         branch2 = branch1.bzrdir.sprout('branch').open_branch()
         branch2.set_push_location(branch1.bzrdir.root_transport.base)
+
+        out, err = self.run_bzr('info branch')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: %s
+
+Related branches:
+      parent branch: %s
+  publish to branch: %s
+""" % (branch2.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base), out)
+        self.assertEqual('', err)
+
         out, err = self.run_bzr('info branch --verbose')
         self.assertEqualDiff(
 """Standalone tree (format: weave)

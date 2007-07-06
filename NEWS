@@ -46,7 +46,7 @@ IN DEVELOPMENT
 
     * ``info`` now defaults to non-verbose mode, displaying only paths and
       abbreviated format info.  ``info -v`` displays all the information
-      formerly displayed by ``info``.  (Aaron Bentley)
+      formerly displayed by ``info``.  (Aaron Bentley, Adeodato Simó)
 
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
@@ -129,6 +129,13 @@ IN DEVELOPMENT
 
     * ``LockDir.wait`` removed.  (Martin Pool)
 
+    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
+      ``server_stopped`` hooks. The first parameter is now an iterable of
+      backing URLs rather than a single URL. This is to reflect that many
+      URLs may map to the external URL of the server. E.g. the server interally
+      may have a chrooted URL but also the local file:// URL will be at the 
+      same location. (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
@@ -151,6 +158,9 @@ IN DEVELOPMENT
     * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
       deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
       Martin Pool)
+
+    * New method ``external_url`` on Transport for obtaining the url to
+      hand to external processes. (Robert Collins)
 
   TESTING:
 
