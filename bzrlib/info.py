@@ -16,12 +16,14 @@
 
 __all__ = ['show_bzrdir_info']
 
+import os
 import time
 
 
 from bzrlib import (
     bzrdir,
     diff,
+    errors,
     osutils,
     urlutils,
     )
@@ -41,35 +43,31 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_rel_url(repo_url, inner_url):
-    """Return path with common prefix of repository path removed.
+class LocationList(object):
 
-    If path is not part of the repository, the original path is returned.
-    If path is equal to the repository, the current directory marker '.' is
-    returned.
-    Otherwise, a relative path is returned, with trailing '/' stripped.
-    """
-    inner_url = urlutils.normalize_url(inner_url)
-    repo_url = urlutils.normalize_url(repo_url)
-    if inner_url == repo_url:
-        return '.'
-    result = urlutils.relative_url(repo_url, inner_url)
-    if result != inner_url:
-        result = result.rstrip('/')
-    return result
-
-class _UrlList(object):
-
-    def __init__(self):
+    def __init__(self, base_path):
         self.urls = []
+        self.base_path = base_path
 
     def add_url(self, label, url):
-        self.add_path(label, urlutils.unescape_for_display(url, 'ascii'))
-
-    def add_url(self, label, url):
-        self.add_path(label, url)
+        if url is None:
+            return
+        path = urlutils.unescape_for_display(url, 'ascii')
+        if path != url:
+            self.add_path(label, path)
+        else:
+            self.urls.append((label, url))
 
     def add_path(self, label, path):
+        try:
+            path = osutils.relpath(self.base_path, path)
+        except errors.PathNotChild:
+            pass
+        else:
+            if path == '':
+                path = '.'
+        if path != '/':
+            path = path.rstrip('/')
         self.urls.append((label, path))
 
     def print_lines(self):
@@ -101,8 +99,7 @@ def gather_location_info(repository, branch=None, working=None):
         if working_path != master_path:
             locs['checkout of branch'] = master_path
         elif repository.is_shared():
-            locs['repository branch'] = _repo_rel_url(repository_path,
-                branch_path)
+            locs['repository branch'] = branch_path
         elif branch_path is not None:
             # standalone
             locs['branch root'] = branch_path
@@ -111,8 +108,7 @@ def gather_location_info(repository, branch=None, working=None):
         if repository.is_shared():
             # lightweight checkout of branch in shared repository
             if branch_path is not None:
-                locs['repository branch'] = _repo_rel_url(repository_path,
-                                                          branch_path)
+                locs['repository branch'] = branch_path
         elif branch_path is not None:
             # standalone
             locs['branch root'] = branch_path
@@ -133,24 +129,26 @@ def gather_location_info(repository, branch=None, working=None):
 def _show_location_info(locs):
     """Show known locations for working, branch and repository."""
     print 'Location:'
-    path_list = _UrlList()
+    path_list = LocationList(os.getcwd())
     for name, loc in locs:
         path_list.add_url(name, loc)
     path_list.print_lines()
 
+def _gather_related_branches(branch):
+    locs = LocationList(os.getcwd())
+    locs.add_url('public branch', branch.get_public_branch())
+    locs.add_url('push branch', branch.get_push_location())
+    locs.add_url('parent branch', branch.get_parent())
+    locs.add_url('submit branch', branch.get_submit_branch())
+    return locs
 
 def _show_related_info(branch):
     """Show parent and push location of branch."""
-    if branch.get_parent() or branch.get_push_location():
+    locs = _gather_related_branches(branch)
+    if len(locs.urls) > 0:
         print
         print 'Related branches:'
-        if branch.get_parent():
-            if branch.get_push_location():
-                print '      parent branch: %s' % branch.get_parent()
-            else:
-                print '  parent branch: %s' % branch.get_parent()
-        if branch.get_push_location():
-            print '  publish to branch: %s' % branch.get_push_location()
+        locs.print_lines()
 
 
 def _show_format_info(control=None, repository=None, branch=None, working=None):

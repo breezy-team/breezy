@@ -187,7 +187,7 @@ class TestInfo(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('shared/tree')
         self.assertEqual([('shared repository',
                           srepo.bzrdir.root_transport.base),
-                          ('repository branch', 'tree')],
+                          ('repository branch', tree.branch.base)],
                           info.gather_location_info(srepo, tree.branch, tree))
 
     def test_gather_location_light_checkout(self):
@@ -239,3 +239,26 @@ class TestInfo(tests.TestCaseWithTransport):
              ('bound to branch', branch.bzrdir.root_transport.base)],
             info.gather_location_info(bound_branch.repository, bound_branch)
         )
+
+    def test_location_list(self):
+        locs = info.LocationList('/home/foo')
+        locs.add_url('a', 'file:///home/foo/')
+        locs.add_url('b', 'file:///home/foo/bar/')
+        locs.add_url('c', 'file:///home/bar/bar')
+        locs.add_url('d', 'http://example.com/example/')
+        locs.add_url('e', None)
+        self.assertEqual(locs.urls, [('a', '.'),
+                                     ('b', 'bar'),
+                                     ('c', '/home/bar/bar'),
+                                     ('d', 'http://example.com/example/')])
+
+    def test_gather_related_braches(self):
+        branch = self.make_branch('.')
+        branch.set_public_branch('baz')
+        branch.set_push_location('bar')
+        branch.set_parent('foo')
+        branch.set_submit_branch('qux')
+        self.assertEqual(
+            [('public branch', 'baz'), ('push branch', 'bar'),
+             ('parent branch', 'foo'), ('submit branch', 'qux')],
+            info._gather_related_branches(branch).urls)
