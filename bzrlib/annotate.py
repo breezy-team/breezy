@@ -83,6 +83,12 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         try:
             to_file.write(anno)
         except UnicodeEncodeError:
+            # cmd_annotate should be passing in an 'exact' object, which means
+            # we have a direct handle to sys.stdout or equivalent. It may not
+            # be able to handle the exact Unicode characters, but 'annotate' is
+            # a user function (non-scripting), so shouldn't die because of
+            # unrepresentable annotation characters. So encode using 'replace',
+            # and write them again.
             encoding = getattr(to_file, 'encoding', None) or \
                     osutils.get_terminal_encoding()
             to_file.write(anno.encode(encoding, 'replace'))
