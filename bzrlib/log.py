@@ -233,10 +233,8 @@ def _show_log(branch,
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
-        depths = list(set([d for r,n,d in view_revisions]))
-        depths.sort()
-        min_depth = depths[0]
-        if min_depth:
+        min_depth = min([d for r,n,d in view_revisions])
+        if min_depth != 0:
             view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
         
     rev_tag_dict = {}
