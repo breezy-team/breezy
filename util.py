@@ -91,4 +91,8 @@ def find_changelog(t, merge):
     changelog = Changelog(contents, max_blocks=1)
     return changelog, larstiq
 
+def tarball_name(package, version):
+  """Return the name of the .orig.tar.gz for the given pakcage and version."""
+
+  return "%s_%s.orig.tar.gz" % (package, str(version))
 

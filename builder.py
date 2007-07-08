@@ -37,7 +37,7 @@ from errors import (DebianError,
                     BuildFailedError,
                     StopBuild,
                     )
-from util import recursive_copy
+from util import recursive_copy, tarball_name
 
 def remove_dir(base, dir):
   """Removes a directory from within a base."""
@@ -113,7 +113,7 @@ class DebBuild(object):
     """Returns the name that the upstream tarball should have."""
     package = self._properties.package()
     upstream = self._properties.upstream_version()
-    return package+"_"+upstream+".orig.tar.gz"
+    return tarball_name(package, upstream)
 
   def export(self, use_existing=False):
     """Export the package in to a clean dir for building.

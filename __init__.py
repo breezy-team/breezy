@@ -41,7 +41,7 @@ from errors import (ChangedError,
                     StopBuild,
                     )
 from properties import BuildProperties
-from util import goto_branch, find_changelog, is_clean
+from util import goto_branch, find_changelog, is_clean, tarball_name
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building")
@@ -293,19 +293,59 @@ class cmd_merge_upstream(Command):
 
   You must supply the source to import from, and the version number of the
   new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-  archive, or a directory.
+  archive, or a directory. The source may also be a remote file.
+
+  If there is no debian changelog in the branch to retrieve the package
+  name from then you must pass the --package option. If this version
+  will change the name of the source package then you can use this option
+  to set the new name.
   """
-  takes_args = ['filename', 'version']
+  takes_args = ['path', 'version']
   aliases = ['mu']
 
-  def run(self, filename, version):
+  package_opt = Option('package', help="The name of the source package.",
+                            type=str)
+  takes_options = [package_opt]
 
-    from merge_upstream import merge_upstream
+  def run(self, path, version, package=None):
+
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
                                )
+    from errors import MissingChangelogError
+    from merge_upstream import merge_upstream
+    from repack_tarball import repack_tarball
 
     tree, relpath = WorkingTree.open_containing('.')
+
+    config = DebBuildConfig([(local_conf, True), (global_conf, True),
+                             (default_conf, False)], branch=tree.branch)
+
+    if config.merge:
+      raise BzrCommandError("Merge upstream in merge mode is not yet "
+                            "supported")
+    if config.native:
+      raise BzrCommandError("Merge upstream in native mode is not yet "
+                            "supported")
+    if config.export_upstream:
+      raise BzrCommandError("Merge upstream in export upstream is not yet "
+                            "supported")
+
+    if package is None:
+      try:
+        package = find_changelog(tree, False)[0].package
+      except MissingChangelogError:
+        raise BzrCommandError("There is no changelog to rertrieve the package "
+                              "information from, please use the --package option "
+                              "to give the name of the package")
+
+    orig_dir = config.orig_dir or '../tarballs'
+    orig_dir = os.path.join(tree.basedir, orig_dir)
+
+    dest_name = tarball_name(package, version)
+    repack_tarball(path, dest_name, target_dir=orig_dir)
+    filename = os.path.join(orig_dir, dest_name)
+
     try:
       merge_upstream(tree, filename, version)
     # TODO: tidy all of this up, and be more precise in what is wrong and
@@ -319,7 +359,9 @@ class cmd_merge_upstream(Command):
                             "been performed, as there is already a tag "
                             "for this upstream version. If that is not the "
                             "case then delete that tag and try again.")
-    # TODO: also repack the tarball.
+    info("The new upstream version has been imported. You should now update "
+         "the changelog (try dch -v %s), and then commit. Note that debcommit "
+         "will not do what you want in this case." % str(version))
 
 
 register_command(cmd_merge_upstream)
