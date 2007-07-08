@@ -29,6 +29,9 @@ implementation. At the moment, the following branching schemes are available:
 - ListBranchingScheme: There is a list of branches. This branching 
   scheme is present in the code, but is never used automatically (yet).
 
+- SingleBranchingScheme: There is a single branch (path of that branch is also 
+	part of the scheme name).
+
 The branching scheme can be explicitly specified or automatically guessed. 
 The guessing algorithm currently works as follows and is based on paths 
 relative to the repository root:
@@ -52,7 +55,7 @@ then one branch (something that is possible in SVN). This can be fixed by
 including the branch path (trunk, branches/SAMBA_4_0, etc) in the 
 revision-id. Example revision id:
 
-``svn-v3-trunk:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323``
+``svn-v3-trunk0:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323``
 
 The version number is used to distinguish between versions of the mapping 
 between Bazaar and Subversion. The mapping will change when previously 
