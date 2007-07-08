@@ -60,8 +60,6 @@ def repack_tarball(orig_name, new_name, target_dir=None):
                       exists.
   :throes BzrCommandError: if the source isn't supported for repacking.
   """
-  if not os.path.exists(orig_name):
-    raise NoSuchFile(orig_name)
   if target_dir is not None:
     if not os.path.exists(target_dir):
       os.mkdir(target_dir)
@@ -78,6 +76,8 @@ def repack_tarball(orig_name, new_name, target_dir=None):
     finally:
       tar.close()
   else:
+    if isinstance(orig_name, unicode):
+      orig_name = orig_name.encode('utf-8')
     base_dir, path = urlutils.split(orig_name)
     transport = get_transport(base_dir)
     trans_file = transport.get(path)
