@@ -28,6 +28,8 @@ from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
+from bzrlib.transport import get_transport
+from bzrlib import urlutils
 from bzrlib.workingtree import WorkingTree
 
 from builder import (DebBuild,
@@ -387,6 +389,12 @@ class cmd_import_dsc(Command):
   any source packages on the command line, and if you omit the
   --to option then the name of the package as passed to --snapshot
   will be used as the branch name.
+
+  In addition to the above choices you can specify a file
+  (possibly remote) that contains a list of source packages (.dsc
+  files) to import. Each line is taken to be a URI or path to
+  import. The sources specified in the file are used in addition
+  to those specified by other methods.
   """
 
   takes_args = ['files*']
@@ -394,13 +402,24 @@ class cmd_import_dsc(Command):
   to_opt = Option('to', help="The branch to import to.", type=str)
   snapshot_opt = Option('snapshot', help="Retrieve source packages from "
                         "snapshot.debian.net.", type=str)
+  filename_opt = Option('file', help="File containing URIs of source "
+                        "packages to import.", type=str, argname="filename",
+                        short_name='F')
 
-  takes_options = [to_opt, snapshot_opt]
+  takes_options = [to_opt, snapshot_opt, filename_opt]
 
-  def run(self, files_list, to=None, snapshot=None):
+  def run(self, files_list, to=None, snapshot=None, filename=None):
     from import_dsc import DscImporter, SnapshotImporter
     if files_list is None:
       files_list = []
+    if filename is not None:
+      if isinstance(filename, unicode):
+        filename = filename.encode('utf-8')
+      base_dir, path = urlutils.split(filename)
+      sources_file = get_transport(base_dir).get(path)
+      for line in sources_file:
+        line.strip()
+        files_list.append(line)
     if snapshot is None:
       if len(files_list) < 1:
         raise BzrCommandError("You must give the location of at least one "
