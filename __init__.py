@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Sending emails upon commit with informatiopn about the commit.
+"""Sending emails upon commit with information about the commit.
 
 To have bzr send an email you need to configure an address to send mail
 to for that branch. To do this set the configuration option ``post_commit_to``
