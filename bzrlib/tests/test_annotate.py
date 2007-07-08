@@ -331,12 +331,12 @@ class TestAnnotate(tests.TestCaseWithTransport):
         to_file = tests.StringIOWrapper()
         to_file.encoding = None
         annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
-        self.assertContainsRe('2   p.rez   | bye\n', sio.getvalue())
+        self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
         # and when it does not exist
         to_file = StringIO()
         annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
-        self.assertContainsRe('2   p.rez   | bye\n', sio.getvalue())
+        self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
 
 class TestReannotate(tests.TestCase):
