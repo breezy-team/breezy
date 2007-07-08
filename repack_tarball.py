@@ -28,6 +28,8 @@ from bzrlib.errors import (NoSuchFile,
                            BzrCommandError,
                            NotADirectory,
                            )
+from bzrlib.transport import get_transport
+from bzrlib import urlutils
 
 
 def repack_tarball(orig_name, new_name, target_dir=None):
@@ -76,30 +78,36 @@ def repack_tarball(orig_name, new_name, target_dir=None):
     finally:
       tar.close()
   else:
-    if orig_name.endswith('.tar.gz') or orig_name.endswith('.tgz'):
-      shutil.copyfile(orig_name, new_name)
-    elif orig_name.endswith('.tar'):
-      f = open(orig_name)
-      try:
+    base_dir, path = urlutils.split(orig_name)
+    transport = get_transport(base_dir)
+    trans_file = transport.get(path)
+    try:
+      if orig_name.endswith('.tar.gz') or orig_name.endswith('.tgz'):
+        dest = open(new_name, 'wb')
+        try:
+          dest.write(trans_file.read())
+        finally:
+          dest.close()
+      elif orig_name.endswith('.tar'):
         gz = gzip.GzipFile(new_name, 'w')
         try:
-          gz.write(f.read())
+          gz.write(trans_file.read())
         finally:
           gz.close()
-      finally:
-        f.close()
-    elif orig_name.endswith('.tar.bz2'):
-      old_tar = tarfile.open(orig_name, 'r:bz2')
-      try:
-        new_tar = tarfile.open(new_name, 'w:gz')
+      elif orig_name.endswith('.tar.bz2'):
+        old_tar = tarfile.open(orig_name, 'r|bz2', trans_file)
         try:
-          for old_member in old_tar.getmembers():
-            new_tar.addfile(old_member)
+          new_tar = tarfile.open(new_name, 'w|gz')
+          try:
+            for old_member in old_tar.getmembers():
+              new_tar.addfile(old_member)
+          finally:
+            new_tar.close()
         finally:
-          new_tar.close()
-      finally:
-        old_tar.close()
-    else:
-      raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
-  # TODO: handle zip files.
+          old_tar.close()
+      else:
+        raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
+      # TODO: handle zip files.
+    finally:
+      trans_file.close()
 
