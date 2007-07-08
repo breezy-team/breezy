@@ -14,12 +14,46 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Allow sending an email after a new commit.
+"""Sending emails upon commit with informatiopn about the commit.
 
-This plugin provides a 'post_commit' hook, which is used to send an email (like
-to a developer mailing list) with the basic contents of the change.
+To have bzr send an email you need to configure an address to send mail
+to for that branch. To do this set the configuration option ``post_commit_to``
+and the address to send the mail from is read from the configuration option
+``post_commit_sender`` (if not supplied defaults to the email address reported
+by ``bzr whoami``).
 
-See the README file for basic information on how to configure this plugin.
+By default, the diff for the commit will be included in the email, if the
+length is less than 1000 lines. This limit can be changed (for instance, to 0
+to disable the feature) by setting the configuration option
+'post_commit_difflimit' to the number of lines you wish it to be limited to.
+
+If you are using a bzr release from before 0.15, you need to manually tell
+bzr about the commit action, by setting
+post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
+
+The URL of the branch is determined from the following checks (in order):
+ - If the configuration value 'post_commit_url' is set, it is used.
+ - If the configuration value 'public_branch' is set, it is used.
+ - The URL of the branch itself.
+
+Setting public_branch is highly recommended if you commit via a protocol which
+has a pricate address (e.g. bzr+ssh but anonymous access might be bzr:// or
+http://).
+
+How emails are sent is determined by the value of the configuration option
+'post_commit_mailer':
+ - Unset: use ``/usr/bin/mail``.
+ - ``smtplib``: Use python's smtplib to send the mail. If you use 'smtplib' you
+   can also configure the settings "smtp_server=host[:port]",
+   "smtp_username=userid", "smtp_password". If "smtp_username" is set but
+   "smtp_password" is not, you will be prompted for a password.S
+
+   Also, if using 'smtplib', the messages will be sent as a UTF-8 text message,
+   with a 8-bit text diff attached (rather than all-as-one). Work has also been
+   done to make sure usernames do not have to be ascii.
+ - Any other value: Run the value expecting it to behave like ``/usr/bin/mail``
+   - in particular supporting the -s and -a options.
+
 """
 
 
@@ -29,6 +63,7 @@ if __name__ != 'bzrlib.plugins.email':
                       % __name__)
 
 
+# These three are used during import: No point lazy_importing them.
 from bzrlib import errors
 from bzrlib.branch import Branch
 from bzrlib.lazy_import import lazy_import
@@ -40,9 +75,9 @@ from bzrlib.plugins.email import emailer as _emailer
 
 
 def post_commit(branch, revision_id):
+    """This is the post_commit hook that should get run after commit."""
     if not use_legacy:
         return
-    """This is the post_commit hook that should get run after commit."""
     _emailer.EmailSender(branch, revision_id, branch.get_config()).send_maybe()
 
 
