@@ -304,7 +304,7 @@ class cmd_merge_upstream(Command):
   aliases = ['mu']
 
   package_opt = Option('package', help="The name of the source package.",
-                            type=str)
+                       type=str)
   takes_options = [package_opt]
 
   def run(self, path, version, package=None):
@@ -367,19 +367,57 @@ class cmd_merge_upstream(Command):
 register_command(cmd_merge_upstream)
 
 
-class cmd_import_snapshot(Command):
+class cmd_import_dsc(Command):
+  """Import a series of source packages.
 
-  takes_args = ['package', 'directory?']
+  Provide a number of source packages (.dsc files), and they will
+  be imported to create a branch with history that reflects those
+  packages. You must provide the --to option with the name of the
+  branch that will be created.
 
-  def run(self, package, directory=None):
-    from import_dsc import SnapshotImporter
-    if directory is None:
-      directory = package
-    importer = SnapshotImporter(package)
-    importer.import_dsc(directory)
+  If there are packages that are available on snapshot.debian.net
+  then you can use the --snapshot option to supplement the packages
+  you provide with those available on that service. Pass the name
+  of the source package as on snapshot.debian.net as this option,
+  i.e. to import all versions of apt
+
+    import-dsc --snapshot apt
+
+  If you use the --snapshot option then you don't have to provide
+  any source packages on the command line, and if you omit the
+  --to option then the name of the package as passed to --snapshot
+  will be used as the branch name.
+  """
+
+  takes_args = ['files*']
+  
+  to_opt = Option('to', help="The branch to import to.", type=str)
+  snapshot_opt = Option('snapshot', help="Retrieve source packages from "
+                        "snapshot.debian.net.", type=str)
+
+  takes_options = [to_opt, snapshot_opt]
+
+  def run(self, files_list, to=None, snapshot=None):
+    from import_dsc import DscImporter, SnapshotImporter
+    if files_list is None:
+      files_list = []
+    if snapshot is None:
+      if len(files_list) < 1:
+        raise BzrCommandError("You must give the location of at least one "
+                              "source package to install")
+      if to is None:
+        raise BzrCommandError("You must specify the name of the "
+                              "destination branch using the --to option")
+      importer = DscImporter(files)
+    else:
+      if to is None:
+        to = snapshot
+      importer = SnapshotImporter(snapshot, other_sources=files_list)
+    orig_target = os.path.join(to, '../tarballs')
+    importer.import_dsc(to, orig_target=orig_target)
 
 
-register_command(cmd_import_snapshot)
+register_command(cmd_import_dsc)
 
 
 def test_suite():

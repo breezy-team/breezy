@@ -209,6 +209,18 @@ class DscImporter(object):
                   transport=None, base_dir=None):
     f = open_file(origname, transport, base_dir=base_dir)[0]
     try:
+      if self.orig_target is not None:
+        if not os.path.isdir(self.orig_target):
+          os.mkdir(self.orig_target)
+        new_filename = os.path.join(self.orig_target,
+                                    os.path.basename(origname))
+        new_f = open(new_filename, 'wb')
+        try:
+          new_f.write(f.read())
+        finally:
+          new_f.close()
+        f.close()
+        f = open(new_filename)
       dangling_revid = None
       dangling_tree = None
       if last_upstream is not None:
@@ -459,9 +471,10 @@ class DscImporter(object):
       self._check_orig_exists(version)
       self._add_to_safe(diff_file, version, 'diff', base_dir, dsc_transport)
 
-  def import_dsc(self, target_dir):
+  def import_dsc(self, target_dir, orig_target=None):
     if os.path.exists(target_dir):
       raise FileExists(target_dir)
+    self.orig_target = orig_target
     self.cache = DscCache(transport=self.transport)
     self.dsc_files.sort(cmp=DscComp(self.cache).cmp)
     self.safe_files = []
@@ -511,7 +524,7 @@ class DscImporter(object):
 class SourcesImporter(DscImporter):
   """For importing all the .dsc files from a Sources file."""
 
-  def __init__(self, base, sources_path):
+  def __init__(self, base, sources_path, other_sources=[]):
     """Create a SourcesImporter.
 
     :param base: the base URI from which all paths should be interpreted.
@@ -537,6 +550,7 @@ class SourcesImporter(DscImporter):
         name = file_info['name']
         if name.endswith('.dsc'):
           dsc_files.append(urlutils.join(base_dir, name))
+    dsc_files += other_sources
     super(SourcesImporter, self).__init__(dsc_files)
 
   def _check_basedir(self, base_dir):
@@ -546,10 +560,10 @@ class SourcesImporter(DscImporter):
 class SnapshotImporter(SourcesImporter):
   """Import all versions of a package recorded on snapshot.debian.net."""
 
-  def __init__(self, package_name):
+  def __init__(self, package_name, other_sources=[]):
     base = 'http://snapshot.debian.net/archive/'
     path = 'pool/%s/%s/source/Sources.gz' % (package_name[0], package_name)
-    super(SnapshotImporter, self).__init__(base, path)
+    super(SnapshotImporter, self).__init__(base, path, other_sources=other_sources)
     warning("snapshot.debian.net has lost packages from before 12/03/2005, "
             "only packages from after that date will be imported.")
 
