@@ -91,7 +91,7 @@ def find_changelog(t, merge):
       contents = t.get_file_text(changelog_id)
     finally:
       t.unlock()
-    changelog = Changelog(contents, max_blocks=1)
+    changelog = Changelog()
+    changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
     return changelog, larstiq
-
 
