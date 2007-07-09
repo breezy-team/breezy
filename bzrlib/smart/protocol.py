@@ -21,8 +21,10 @@ client and server.
 
 from cStringIO import StringIO
 
+from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import request
+from bzrlib.trace import note
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -299,6 +301,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._body_buffer = None
 
     def call(self, *args):
+        if 'hpss' in debug.debug_flags:
+            note('hpss call: %r', args)
         self._write_args(args)
         self._request.finished_writing()
 
@@ -307,6 +311,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
         After calling this, call read_response_tuple to find the result out.
         """
+        if 'hpss' in debug.debug_flags:
+            note('hpss call w/body: %r (%r...)', args, body[:20])
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
@@ -318,6 +324,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \n is emitted.
         """
+        if 'hpss' in debug.debug_flags:
+            note('hpss call w/readv: %r', args)
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
@@ -339,6 +347,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         This should only be called once.
         """
         result = self._recv_tuple()
+        if 'hpss' in debug.debug_flags:
+            note('hpss result: %r', result)
         if not expect_body:
             self._request.finished_reading()
         return result
