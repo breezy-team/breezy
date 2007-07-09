@@ -442,28 +442,31 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
                                     '\\+new contents\n')
 
     def test_binary_unicode_filenames(self):
-        """Test that contents of files are encoded in UTF-8 when there is a
-        binary file in the diff.
+        """Test that contents of files are *not* encoded in UTF-8 when there
+        is a binary file in the diff.
         """
         # See https://bugs.launchpad.net/bugs/110092.
 
         # This bug isn't triggered with cStringIO.
         from StringIO import StringIO
         tree = self.make_branch_and_tree('tree')
+        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
         self.build_tree_contents(
-            [('tree/binary', chr(0)),
-             ('tree/elephant', '\xc7a trompe \xc3\xa9norm\xc3\xa9ment.\n')])
-        tree.add(['binary'], ['file-id'])
-        tree.add(['elephant'], ['file-id-2'])
+            [('tree/' + alpha, chr(0)),
+             ('tree/' + omega,
+              ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
+        tree.add([alpha], ['file-id'])
+        tree.add([omega], ['file-id-2'])
         diff_content = StringIO()
         show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff = diff_content.getvalue()
-        self.assertContainsRe(diff, "=== added file 'binary'")
+        self.assertContainsRe(diff, r"=== added file '%s'" % alpha_utf8)
         self.assertContainsRe(
-            diff, "Binary files a/binary.*and b/binary.* differ\n")
-        self.assertContainsRe(diff, "=== added file 'elephant'")
-        self.assertContainsRe(diff, "--- a/elephant")
-        self.assertContainsRe(diff, "\\+\\+\\+ b/elephant")
+            diff, "Binary files a/%s.*and b/%s.* differ\n" % (alpha_utf8, alpha_utf8))
+        self.assertContainsRe(diff, r"=== added file '%s'" % omega_utf8)
+        self.assertContainsRe(diff, r"--- a/%s" % (omega_utf8,))
+        self.assertContainsRe(diff, r"\+\+\+ b/%s" % (omega_utf8,))
 
 
 class TestPatienceDiffLib(TestCase):
