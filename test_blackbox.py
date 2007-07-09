@@ -51,3 +51,43 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m this')
         self.check_output('', 'rebase ../main')
         self.check_output('3\n', 'revno')
+
+    def test_conflicting(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hello', "other data")
+        self.run_bzr('commit -m this')
+        self.run_bzr_error('Text conflict in hello\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n', 'rebase ../main')
+
+    def test_conflicting_abort(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hello', "other data")
+        self.run_bzr('commit -m this')
+        old_log = self.run_bzr('log')[0]
+        self.run_bzr_error('Text conflict in hello\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n', 'rebase ../main')
+        self.check_output('', 'rebase-abort')
+        self.check_output(old_log, 'log')
+
+    def test_conflicting_continue(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hello', "other data")
+        self.run_bzr('commit -m this')
+        self.run_bzr_error('Text conflict in hello\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n', 'rebase ../main')
+        self.run_bzr('resolved hello')
+        self.check_output('', 'rebase-continue')
+        self.check_output('3\n', 'revno')
+
+    def test_continue_nothing(self):
+        self.run_bzr_error('bzr: ERROR: No rebase to continue', 
+                           'rebase-continue')
+
+    def test_abort_nothing(self):
+        self.run_bzr_error('bzr: ERROR: No rebase to abort', 
+                           'rebase-abort')
+
+

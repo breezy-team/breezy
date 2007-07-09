@@ -71,8 +71,10 @@ class ConversionTests(TestCaseWithTransport):
                                         ["bloe"])
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
-        self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
-        self.assertEqual("bla2", wt.branch.repository.get_revision(newrev).properties["rebase-of"])
+        self.assertEqual(["bloe"], 
+                wt.branch.repository.revision_parents(newrev))
+        self.assertEqual("bla2", 
+            wt.branch.repository.get_revision(newrev).properties["rebase-of"])
 
 
 class PlanCreatorTests(TestCaseWithTransport):
@@ -208,6 +210,7 @@ oldrev newrev newparent1 newparent2
         self.assertEquals(((1, "bla"), {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
                 read_rebase_plan(wt))
 
+
 class CurrentRevidFileTests(TestCaseWithTransport):
     def test_read_nonexistant(self):
         wt = self.make_branch_and_tree('.')
@@ -232,6 +235,7 @@ class CurrentRevidFileTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         write_active_rebase_revid(wt, None)
         self.assertIs(None, read_active_rebase_revid(wt))
+
 
 class RebaseTodoTests(TestCase):
     def test_done(self):
