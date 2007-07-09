@@ -4,11 +4,12 @@ famous git-rebase.
 ==========
 How to use
 ==========
+Simply run ``bzr rebase``, optionally specifying an upstream branch. If no 
+branch is specified, it will use the current parent branch (which is usually 
+what you want).
 
-Simply run ``bzr rebase``, optionally specifying an upstream branch. If no branch is specified, 
-it will use the current parent branch (which is usually what you want).
-
-In the future, I hope it can also support rebasing on top of an unrelated branch.
+In the future, I hope it can also support rebasing on top of an unrelated 
+branch.
 
 ============
 How it works
@@ -46,4 +47,3 @@ The rebase-state file contains the following information:
          \ -> E ---> F next
 
     Would G get rebased on top of D rather than B?
-

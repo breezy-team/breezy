@@ -13,19 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Tests for the rebase code."""
 
 from bzrlib.errors import UnknownFormatError, NoSuchFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.treebuilder import TreeBuilder
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
                     replay_snapshot, generate_simple_plan,
                     generate_transpose_plan, rebase_plan_exists,
-                    REBASE_PLAN_FILENAME, write_rebase_plan,
-                    REBASE_CURRENT_REVID_FILENAME,
+                    REBASE_PLAN_FILENAME, REBASE_CURRENT_REVID_FILENAME,
                     read_rebase_plan, remove_rebase_plan, 
-                    read_active_rebase_revid, 
-                    write_active_rebase_revid)
+                    read_active_rebase_revid, write_active_rebase_revid, 
+                    write_rebase_plan, MapTree)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -233,3 +234,15 @@ class CurrentRevidFileTests(TestCaseWithTransport):
         write_active_rebase_revid(wt, None)
         self.assertIs(None, read_active_rebase_revid(wt))
 
+
+class MapTreeTests(TestCaseWithTransport):
+    def setUp(self):
+        super(MapTreeTests, self).setUp()
+
+    def test_empty_map(self):
+        tree = self.make_branch_and_memory_tree('branch') 
+        builder = TreeBuilder()
+        builder.start_tree(tree)
+        builder.build(['foo'])
+        builder.finish_tree()
+        m = MapTree(tree, {})

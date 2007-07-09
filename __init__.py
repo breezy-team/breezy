@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.commands import Command, Option, display_command, register_command
-from bzrlib.errors import BzrCommandError, UnrelatedBranches, ConflictsInTree, NoSuchFile
+from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
+                           UnrelatedBranches)
 from bzrlib.trace import info
 
 class cmd_rebase(Command):
@@ -27,13 +28,14 @@ class cmd_rebase(Command):
                      Option('onto', help='Different revision to replay onto')]
     
     @display_command
-    def run(self, upstream_location=None, onto=None, revision=None, merge_type=None):
+    def run(self, upstream_location=None, onto=None, revision=None, 
+            merge_type=None):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
-        from rebase import (generate_simple_plan, rebase, 
-                            rebase_plan_exists, write_rebase_plan, 
-                            read_rebase_plan, workingtree_replay, remove_rebase_plan)
+        from rebase import (generate_simple_plan, rebase, rebase_plan_exists, 
+                            read_rebase_plan, remove_rebase_plan, 
+                            workingtree_replay, write_rebase_plan)
         wt = WorkingTree.open('.')
         wt.lock_write()
         if upstream_location is None:
@@ -70,7 +72,8 @@ class cmd_rebase(Command):
             if common_revid == upstream.last_revision():
                 raise BzrCommandError("Already rebased on %s" % upstream)
 
-            start_revid = wt.branch.get_rev_id(wt.branch.revision_id_to_revno(common_revid)+1)
+            start_revid = wt.branch.get_rev_id(
+                    wt.branch.revision_id_to_revno(common_revid)+1)
 
             # Create plan
             replace_map = generate_simple_plan(
@@ -122,7 +125,9 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self, merge_type=None):
-        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay, rebase, remove_rebase_plan, commit_rebase, read_active_rebase_revid
+        from rebase import (commit_rebase, rebase, rebase_plan_exists, 
+                            read_rebase_plan, read_active_rebase_revid, 
+                            remove_rebase_plan, workingtree_replay)
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
         wt.lock_write()
@@ -141,7 +146,8 @@ class cmd_rebase_continue(Command):
                 commit_rebase(wt, oldrev, replace_map[oldrevid][0])
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt.branch.repository, replace_map, workingtree_replay(wt, merge_type=merge_type))
+                rebase(wt.branch.repository, replace_map, 
+                        workingtree_replay(wt, merge_type=merge_type))
             except ConflictsInTree:
                 raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  
@@ -151,12 +157,14 @@ class cmd_rebase_continue(Command):
 
 
 class cmd_rebase_todo(Command):
-    """Print list of revisions that still need to be replayed as part of the current rebase operation.
+    """Print list of revisions that still need to be replayed as part of the 
+    current rebase operation.
 
     """
     
     def run(self):
-        from rebase import read_rebase_plan, rebase_todo, read_active_rebase_revid
+        from rebase import (rebase_todo, read_rebase_plan, 
+                            read_active_rebase_revid)
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open('.')
         wt.lock_read()
@@ -164,7 +172,7 @@ class cmd_rebase_todo(Command):
             try:
                 replace_map = read_rebase_plan(wt)[1]
             except NoSuchFile:
-                raise BzrCommandError("No rebase to view")
+                raise BzrCommandError("No rebase in progress")
             currentrevid = read_active_rebase_revid(wt)
             if currentrevid is not None:
                 info("Currently replaying: %s" % currentrevid)
@@ -187,7 +195,8 @@ def test_suite():
     suite = TestSuite()
     testmod_names = [
             'test_rebase']
-    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
+    suite.addTest(loader.loadTestsFromModuleNames(
+                              ["%s.%s" % (__name__, i) for i in testmod_names]))
 
     return suite
 

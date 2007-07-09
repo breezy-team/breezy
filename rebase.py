@@ -13,9 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Rebase."""
 
 from bzrlib.config import Config
-from bzrlib.errors import UnknownFormatError, NoSuchFile, BzrError
+from bzrlib.errors import BzrError, NoSuchFile, UnknownFormatError
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
@@ -254,27 +255,76 @@ def rebase(repository, replace_map, replay_fn):
     finally:
         pb.finished()
         
-    assert all(map(repository.has_revision, [replace_map[r][0] for r in replace_map]))
+    assert all(map(repository.has_revision, 
+               [replace_map[r][0] for r in replace_map]))
      
 
+def map_file_ids(repository, old_parents, new_parents):
+    ret = {}
+    for (oldp, newp) in zip(old_parents, new_parents):
+        oldinv = repository.get_revision_inventory(oldp)
+        newinv = repository.get_revision_inventory(newp)
+        for path, ie in oldinv.iter_entries():
+            if newinv.has_filename(path):
+                ret[ie.file_id] = newinv.path2id(path)
+    return ret
+
+
+class MapInventory:
+    def __init__(self, oldinv, maptree):
+        self.oldinv = oldinv
+        self.maptree = maptree
+
+    def map_ie(self, ie):
+        """Fix the references to old file ids in an inventory entry.
+
+        :param ie: Inventory entry to map
+        :return: New inventory entry
+        """
+        new_ie = ie.copy()
+        new_ie.file_id = self.maptree.new_id(new_ie.file_id)
+        new_ie.parent_id = self.maptree.new_id(new_ie.parent_id)
+        return new_ie
+
+    def __len__(self):
+        return len(self.oldinv)
+
+    def iter_entries(self):
+        for path, ie in self.oldinv.iter_entries():
+            yield path, self.map_ie(ie)
+
+
 class MapTree:
-    def __init__(self, repository, oldtree, old_parents, new_parents):
-        self.map = {}
-        for (oldp, newp) in zip(old_parents, new_parents):
-            oldinv = repository.get_revision_inventory(oldp)
-            newinv = repository.get_revision_inventory(newp)
-            for path, ie in oldinv.iter_entries():
-                if newinv.has_filename(path):
-                    self.map[ie.file_id] = newinv.path2id(path)
+    """Wrapper around a tree that translates file ids.
+    """
+    # TODO: Inventory
+    def __init__(self, oldtree, fileid_map):
+        """Create a new MapTree. 
+
+        :param oldtree: Old tree to map to.
+        :param fileid_map: Map with old -> new file ids.
+        """
         self.oldtree = oldtree
+        self.map = fileid_map
+        self.inventory = MapInventory(self.oldtree.inventory, self)
 
     def old_id(self, file_id):
+        """Look up the original file id of a file.
+
+        :param file_id: New file id
+        :return: Old file id if mapped, otherwise new file id
+        """
         for x in self.map:
             if self.map[x] == file_id:
                 return x
         return file_id
 
     def new_id(self, file_id):
+        """Look up the new file id of a file.
+
+        :param file_id: Old file id
+        :return: New file id
+        """
         try:
             return self.map[file_id]
         except KeyError:
@@ -291,6 +341,7 @@ class MapTree:
         return self.oldtree.is_executable(self.old_id(file_id=file_id), 
                                           path=path)
 
+
 def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     """Replay a commit by simply commiting the same snapshot with different parents.
 
@@ -300,7 +351,8 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     :param new_parents: Revision ids of the new parent revisions.
     """
     assert isinstance(new_parents, list)
-    mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
+    mutter('creating copy %r of %r with new parents %r' % 
+                               (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
 
     revprops = dict(oldrev.properties)
@@ -316,30 +368,18 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
 
     # Check what new_ie.file_id should be
     # use old and new parent inventories to generate new_id map
-    oldtree = MapTree(repository, 
-                      repository.revision_tree(oldrevid), 
-                      oldrev.parent_ids, new_parents)
-    oldinv = repository.get_revision_inventory(oldrevid)
-    total = len(oldinv)
+    fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
+    oldtree = MapTree(repository.revision_tree(oldrevid), fileid_map)
+    total = len(oldtree.inventory)
     pb = ui.ui_factory.nested_progress_bar()
     i = 0
     try:
         parent_invs = map(repository.get_revision_inventory, new_parents)
         transact = repository.get_transaction()
-        for path, ie in oldinv.iter_entries():
+        for path, ie in oldtree.inventory.iter_entries():
             pb.update('upgrading file', i, total)
             i += 1
-            new_ie = ie.copy()
-            new_ie.file_id = oldtree.new_id(new_ie.file_id)
-            new_ie.parent_id = oldtree.new_id(new_ie.parent_id)
-            if new_ie.revision == oldrevid:
-                if repository.weave_store.get_weave_or_empty(new_ie.file_id, 
-                        transact).has_version(newrevid):
-                    new_ie.revision = newrevid
-                else:
-                    new_ie.revision = None
-
-            builder.record_entry_contents(new_ie, 
+            builder.record_entry_contents(ie, 
                     parent_invs,
                    path, oldtree)
     finally:
@@ -389,8 +429,9 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     oldtree = repository.revision_tree(oldrevid)
     basetree = repository.revision_tree(oldrev.parent_ids[0])
     if map_ids:
-        oldtree = MapTree(repository, oldtree, oldrev.parent_ids, new_parents)
-        basetree = MapTree(repository, basetree, oldrev.parent_ids, new_parents)
+        fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
+        oldtree = MapTree(repository, oldtree, fileid_map)
+        basetree = MapTree(repository, basetree, fileid_map)
 
     write_active_rebase_revid(wt, oldrevid)
     merge = merge_type(working_tree=wt, this_tree=wt, 
@@ -408,17 +449,28 @@ def workingtree_replay(wt, map_ids=False, merge_type=None):
     """
     def replay(repository, oldrevid, newrevid, newparents):
         assert wt.branch.repository == repository
-        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents, merge_type=merge_type)
+        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
+                                        merge_type=merge_type)
     return replay
 
 
 def write_active_rebase_revid(wt, revid):
+    """Write the id of the revision that is currently being rebased. 
+
+    :param wt: Working Tree that is being used for the rebase.
+    :param revid: Revision id to write
+    """
     if revid is None:
         revid = NULL_REVISION
     wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, revid)
 
 
 def read_active_rebase_revid(wt):
+    """Read the id of the revision that is currently being rebased.
+
+    :param wt: Working Tree that is being used for the rebase.
+    :return: Id of the revision that is being rebased.
+    """
     try:
         text = wt._control_files.get(REBASE_CURRENT_REVID_FILENAME).read().rstrip("\n")
         if text == NULL_REVISION:
@@ -429,9 +481,11 @@ def read_active_rebase_revid(wt):
 
 
 def complete_revert(wt, newparents):
-    """Simple helper that reverts to specified new 
-    parents and makes sure none of the extra files 
-    are left around.
+    """Simple helper that reverts to specified new parents and makes sure none 
+    of the extra files are left around.
+
+    :param wt: Working tree to use for rebase
+    :param newparents: New parents of the working tree
     """
     newtree = wt.branch.repository.revision_tree(newparents[0])
     delta = wt.changes_from(newtree)
