@@ -242,7 +242,7 @@ def rebase(repository, replace_map, replay_fn):
             i += 1
             revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
-            if not all(map(repository.has_revision, newparents)):
+            if filter(repository.has_revision, newparents) != newparents:
                 # Not all parents present yet, avoid for now
                 continue
             if repository.has_revision(newrevid):
@@ -257,8 +257,8 @@ def rebase(repository, replace_map, replay_fn):
     finally:
         pb.finished()
         
-    assert all(map(repository.has_revision, 
-               [replace_map[r][0] for r in replace_map]))
+    #assert all(map(repository.has_revision, 
+    #           [replace_map[r][0] for r in replace_map]))
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     """Replay a commit by simply commiting the same snapshot with different parents.

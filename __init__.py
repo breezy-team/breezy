@@ -24,12 +24,12 @@ class cmd_rebase(Command):
 
     """
     takes_args = ['upstream_location?']
-    takes_options = ['revision', 'merge-type', 
+    takes_options = ['revision', 'merge-type', 'verbose',
                      Option('onto', help='Different revision to replay onto')]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
-            merge_type=None):
+            merge_type=None, verbose=False):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -82,6 +82,10 @@ class cmd_rebase(Command):
 
             # Write plan file
             write_rebase_plan(wt, replace_map)
+
+            if verbose:
+                for revid in rebase_todo(wt.branch.repository, replace_map):
+                    info("%s -> %s" % (revid, replace_map[revid][0]))
 
             # Start executing plan
             try:
@@ -193,7 +197,7 @@ def test_suite():
 
     loader = TestUtil.TestLoader()
     suite = TestSuite()
-    testmod_names = ['test_rebase', 'test_maptree']
+    testmod_names = ['test_blackbox', 'test_rebase', 'test_maptree']
     suite.addTest(loader.loadTestsFromModuleNames(
                               ["%s.%s" % (__name__, i) for i in testmod_names]))
 
