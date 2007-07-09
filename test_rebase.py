@@ -18,7 +18,6 @@
 from bzrlib.errors import UnknownFormatError, NoSuchFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.treebuilder import TreeBuilder
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
                     replay_snapshot, generate_simple_plan,
@@ -233,16 +232,3 @@ class CurrentRevidFileTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         write_active_rebase_revid(wt, None)
         self.assertIs(None, read_active_rebase_revid(wt))
-
-
-class MapTreeTests(TestCaseWithTransport):
-    def setUp(self):
-        super(MapTreeTests, self).setUp()
-
-    def test_empty_map(self):
-        tree = self.make_branch_and_memory_tree('branch') 
-        builder = TreeBuilder()
-        builder.start_tree(tree)
-        builder.build(['foo'])
-        builder.finish_tree()
-        m = MapTree(tree, {})

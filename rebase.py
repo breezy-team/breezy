@@ -23,6 +23,8 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
+from maptree import MapTree, map_file_ids
+
 REBASE_PLAN_FILENAME = 'rebase-plan'
 REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
 REBASE_PLAN_VERSION = 1
@@ -257,90 +259,6 @@ def rebase(repository, replace_map, replay_fn):
         
     assert all(map(repository.has_revision, 
                [replace_map[r][0] for r in replace_map]))
-     
-
-def map_file_ids(repository, old_parents, new_parents):
-    ret = {}
-    for (oldp, newp) in zip(old_parents, new_parents):
-        oldinv = repository.get_revision_inventory(oldp)
-        newinv = repository.get_revision_inventory(newp)
-        for path, ie in oldinv.iter_entries():
-            if newinv.has_filename(path):
-                ret[ie.file_id] = newinv.path2id(path)
-    return ret
-
-
-class MapInventory:
-    def __init__(self, oldinv, maptree):
-        self.oldinv = oldinv
-        self.maptree = maptree
-
-    def map_ie(self, ie):
-        """Fix the references to old file ids in an inventory entry.
-
-        :param ie: Inventory entry to map
-        :return: New inventory entry
-        """
-        new_ie = ie.copy()
-        new_ie.file_id = self.maptree.new_id(new_ie.file_id)
-        new_ie.parent_id = self.maptree.new_id(new_ie.parent_id)
-        return new_ie
-
-    def __len__(self):
-        return len(self.oldinv)
-
-    def iter_entries(self):
-        for path, ie in self.oldinv.iter_entries():
-            yield path, self.map_ie(ie)
-
-
-class MapTree:
-    """Wrapper around a tree that translates file ids.
-    """
-    # TODO: Inventory
-    def __init__(self, oldtree, fileid_map):
-        """Create a new MapTree. 
-
-        :param oldtree: Old tree to map to.
-        :param fileid_map: Map with old -> new file ids.
-        """
-        self.oldtree = oldtree
-        self.map = fileid_map
-        self.inventory = MapInventory(self.oldtree.inventory, self)
-
-    def old_id(self, file_id):
-        """Look up the original file id of a file.
-
-        :param file_id: New file id
-        :return: Old file id if mapped, otherwise new file id
-        """
-        for x in self.map:
-            if self.map[x] == file_id:
-                return x
-        return file_id
-
-    def new_id(self, file_id):
-        """Look up the new file id of a file.
-
-        :param file_id: Old file id
-        :return: New file id
-        """
-        try:
-            return self.map[file_id]
-        except KeyError:
-            return file_id
-
-    def get_file_sha1(self, file_id, path=None):
-        return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
-                                          path=path)
-
-    def get_file(self, file_id):
-        return self.oldtree.get_file(self.old_id(file_id=file_id))
-
-    def is_executable(self, file_id, path=None):
-        return self.oldtree.is_executable(self.old_id(file_id=file_id), 
-                                          path=path)
-
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     """Replay a commit by simply commiting the same snapshot with different parents.
