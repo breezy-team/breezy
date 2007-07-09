@@ -30,6 +30,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Consistently treat property changes as actual changes (#122115)
 
+   * Be a bit less verbose when trying to connect (#124858)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

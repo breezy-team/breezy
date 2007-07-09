@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Simple transport for accessing Subversion smart servers."""
 
+from bzrlib import debug
 from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
                            FileExists, NotLocalUrl)
 from bzrlib.trace import mutter
@@ -103,7 +104,8 @@ class SvnRaTransport(Transport):
         self._client.config = svn_config
 
         try:
-            mutter('opening SVN RA connection to %r' % self.svn_url)
+            if 'transport' in debug.debug_flags:
+                mutter('opening SVN RA connection to %r' % self.svn_url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
         except SubversionException, (_, num):
