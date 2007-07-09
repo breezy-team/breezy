@@ -21,14 +21,74 @@ from bzrlib.treebuilder import TreeBuilder
 from maptree import MapTree
 
 
-class MapTreeTests(TestCaseWithTransport):
+class EmptyMapTreeTests(TestCaseWithTransport):
     def setUp(self):
-        super(MapTreeTests, self).setUp()
+        super(EmptyMapTreeTests, self).setUp()
+        tree = self.make_branch_and_tree('branch') 
+        self.oldtree = tree
 
-    def test_empty_map(self):
-        tree = self.make_branch_and_memory_tree('branch') 
+    def test_has_filename(self):
+        self.oldtree.lock_write()
         builder = TreeBuilder()
-        builder.start_tree(tree)
+        builder.start_tree(self.oldtree)
         builder.build(['foo'])
         builder.finish_tree()
-        m = MapTree(tree, {})
+        self.maptree = MapTree(self.oldtree, {})
+        self.oldtree.unlock()
+        self.assertTrue(self.maptree.has_filename('foo'))
+        self.assertTrue(self.oldtree.has_filename('foo'))
+        self.assertFalse(self.maptree.has_filename('bar'))
+
+    def test_inventory_len(self):
+        self.oldtree.lock_write()
+        builder = TreeBuilder()
+        builder.start_tree(self.oldtree)
+        builder.build(['foo'])
+        builder.build(['bar'])
+        builder.build(['bla'])
+        builder.finish_tree()
+        self.maptree = MapTree(self.oldtree, {})
+        self.oldtree.unlock()
+        self.oldtree.lock_read()
+        self.assertEquals(4, len(self.oldtree.inventory))
+        self.oldtree.unlock()
+        self.assertEquals(4, len(self.maptree.inventory))
+
+    def test_path2id(self):
+        self.oldtree.lock_write()
+        builder = TreeBuilder()
+        builder.start_tree(self.oldtree)
+        builder.build(['foo'])
+        builder.build(['bar'])
+        builder.build(['bla'])
+        builder.finish_tree()
+        self.maptree = MapTree(self.oldtree, {})
+        self.assertEquals(self.oldtree.inventory.path2id("foo"),
+                          self.maptree.inventory.path2id("foo"))
+
+    def test_id2path(self):
+        self.oldtree.lock_write()
+        builder = TreeBuilder()
+        builder.start_tree(self.oldtree)
+        builder.build(['foo'])
+        builder.build(['bar'])
+        builder.build(['bla'])
+        builder.finish_tree()
+        self.maptree = MapTree(self.oldtree, {})
+        self.assertEquals("foo",
+                          self.maptree.inventory.id2path(
+                              self.maptree.inventory.path2id("foo")))
+
+    def test_has_id(self):
+        self.oldtree.lock_write()
+        builder = TreeBuilder()
+        builder.start_tree(self.oldtree)
+        builder.build(['foo'])
+        builder.build(['bar'])
+        builder.build(['bla'])
+        builder.finish_tree()
+        self.maptree = MapTree(self.oldtree, {})
+        self.assertTrue(self.maptree.inventory.has_id(
+                              self.maptree.inventory.path2id("foo")))
+        self.assertFalse(self.maptree.inventory.has_id("bar"))
+

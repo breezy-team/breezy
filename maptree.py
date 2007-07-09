@@ -58,6 +58,14 @@ class MapInventory:
         for path, ie in self.oldinv.iter_entries():
             yield path, self.map_ie(ie)
 
+    def path2id(self, path):
+        return self.maptree.new_id(self.oldinv.path2id(path))
+
+    def id2path(self, id):
+        return self.oldinv.id2path(self.maptree.old_id(id))
+
+    def has_id(self, id):
+        return self.oldinv.has_id(self.maptree.old_id(id))
 
 class MapTree:
     """Wrapper around a tree that translates file ids.
@@ -105,3 +113,6 @@ class MapTree:
     def is_executable(self, file_id, path=None):
         return self.oldtree.is_executable(self.old_id(file_id=file_id), 
                                           path=path)
+
+    def has_filename(self, filename):
+        return self.oldtree.has_filename(filename)

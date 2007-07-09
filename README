@@ -8,6 +8,13 @@ Simply run ``bzr rebase``, optionally specifying an upstream branch. If no
 branch is specified, it will use the current parent branch (which is usually 
 what you want).
 
+If the rebase fails halfway through, perhaps because of conflicts 
+replaying a revision, it will abort. When it's aborted, you can either resolve
+the conflicts (using "bzr resolve") and run ``bzr rebase-continue`` or 
+abort the rebase and undo all changes it's done using ``bzr rebase-abort``. 
+The current state of the rebase can be viewed with the ``bzr rebase-todo`` 
+command.
+
 In the future, I hope it can also support rebasing on top of an unrelated 
 branch.
 

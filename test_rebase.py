@@ -22,10 +22,10 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
                     replay_snapshot, generate_simple_plan,
                     generate_transpose_plan, rebase_plan_exists,
-                    REBASE_PLAN_FILENAME, REBASE_CURRENT_REVID_FILENAME,
-                    read_rebase_plan, remove_rebase_plan, 
-                    read_active_rebase_revid, write_active_rebase_revid, 
-                    write_rebase_plan, MapTree)
+                    rebase_todo, REBASE_PLAN_FILENAME, 
+                    REBASE_CURRENT_REVID_FILENAME, read_rebase_plan, 
+                    remove_rebase_plan, read_active_rebase_revid, 
+                    write_active_rebase_revid, write_rebase_plan, MapTree)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -232,3 +232,26 @@ class CurrentRevidFileTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         write_active_rebase_revid(wt, None)
         self.assertIs(None, read_active_rebase_revid(wt))
+
+class RebaseTodoTests(TestCase):
+    def test_done(self):
+        class Repository:
+            def has_revision(self, revid):
+                return revid == "bloe"
+        self.assertEquals([], 
+                list(rebase_todo(Repository(), { "bla": ("bloe", [])})))
+
+    def test_notstarted(self):
+        class Repository:
+            def has_revision(self, revid):
+                return False
+        self.assertEquals(["bla"], 
+                list(rebase_todo(Repository(), { "bla": ("bloe", [])})))
+
+    def test_halfway(self):
+        class Repository:
+            def has_revision(self, revid):
+                return revid == "bloe"
+        self.assertEquals(["ha"], 
+                list(rebase_todo(Repository(), { "bla": ("bloe", []), 
+                                                 "ha": ("hee", [])})))
