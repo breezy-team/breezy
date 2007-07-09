@@ -330,8 +330,10 @@ class cmd_merge_upstream(Command):
       raise BzrCommandError("Merge upstream in native mode is not yet "
                             "supported")
     if config.export_upstream:
-      raise BzrCommandError("Merge upstream in export upstream is not yet "
+      raise BzrCommandError("Export upstream mode is not yet "
                             "supported")
+    if config.split:
+      raise BzrCommandError("Split mode is not yet supported")
 
     if package is None:
       try:
