@@ -4,13 +4,25 @@ bzr-builddeb (0.18) unstable; urgency=low
     so that the branch contains all of the files that will appear there.
   * Allow the changelog entries to have no author information.
   * Add a working-tree option to the configuration files that if set always
-    builds the working tree rather than the last revision in the branch. 
+    builds the working tree rather than the last revision in the branch.
   * uscan is now used to download an upstream tarball if the version required
     is not available and the user has a watch file. Thanks to Daniel Holbach
     for the insipration for how to implement this. This makes devscripts a
-    dependency.
+    dependency. Add a watch file to your package to take advantage of this.
+  * Add a user manual with some proper documentation. See
+    /use/share/doc/builddeb/user_manual/index.html
+  * Add an import-dsc command to import history from a series of source
+    packages.
+    - Currently only works for normal and native modes.
+    - Currently only does initial imports, incremental imports will come later
+      I hope.
+    - Can automatically grab any packages from snapshot.debian.net.
+  * Add a merge-upstream command that allows you to grab a new upstream
+    version and merge your packaging changes back in to it.
+    - Currently only supports normal mode.
+    - Doesn't integrate with uscan yet.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 10 Jul 2007 20:15:13 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 10 Jul 2007 22:04:44 +0100
 
 bzr-builddeb (0.17) unstable; urgency=low
 
