@@ -190,7 +190,7 @@ def _create_temp_file_with_commit_template(infotext,
     return (msgfilename, hasinfo)
 
 
-def make_commit_message_template(working_tree, specific_files):
+def make_commit_message_template(working_tree, specific_files, diff=False):
     """Prepare a template file for a commit into a branch.
 
     Returns a unicode string containing the template.
@@ -207,4 +207,11 @@ def make_commit_message_template(working_tree, specific_files):
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
+    if diff:
+        status_tmp.write("\n")
+        from bzrlib.diff import show_diff_trees
+        show_diff_trees(working_tree.basis_tree(), working_tree,
+                    status_tmp,
+                    specific_files)
+        
     return status_tmp.getvalue()

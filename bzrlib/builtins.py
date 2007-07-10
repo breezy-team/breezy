@@ -2113,6 +2113,8 @@ class cmd_commit(Command):
                                  "the master branch until a normal commit "
                                  "is performed."
                             ),
+                     Option('diff',
+                            help='show the diff in the bottom of the editor')
                      ]
     aliases = ['ci', 'checkin']
 
@@ -2139,7 +2141,7 @@ class cmd_commit(Command):
         return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None):
+            unchanged=False, strict=False, local=False, fixes=None, diff=False):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2172,7 +2174,7 @@ class cmd_commit(Command):
             """Callback to get commit message"""
             my_message = message
             if my_message is None and not file:
-                template = make_commit_message_template(tree, selected_list)
+                template = make_commit_message_template(tree, selected_list, diff)
                 my_message = edit_commit_message(template)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
