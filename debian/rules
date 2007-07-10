@@ -32,6 +32,8 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp install-all-stamp
+	rm -f $(html_docs)
+	rm -f README.html
 
 	python setup.py clean --all
 	dh_clean
