@@ -155,14 +155,10 @@ situations.
 Others
 ^^^^^^
 
-  * ``ignore-unknowns = True``
+  * ``working-tree = True``
 
-    Don't count unknown files in the tree as changes, and so allow the build
-    to proceed with them. Note that the unknown files will not be used in the
-    build and so you must ``bzr add`` them if you want to use them. If they
-    are not wanted in the build then a better solution is probably to add
-    an ignore for them or delete them. (Defaults to False, as I am forgetful,
-    and it helps to remind me to add files after I create them.)
+    Always build the working tree, rather than the last revision committed
+    to the branch.
 
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 

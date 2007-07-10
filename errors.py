@@ -40,18 +40,6 @@ class ChangedError(DebianError):
   def __init__(self):
     DebianError.__init__(self, None)
 
-class UnknownsInTree(DebianError):
-  _fmt = ("There are unknown files in the working tree. The build will not "
-         "continue as you may want these files included in the build. If you "
-         "do want them then use 'bzr add' to add them to the tree. If you do "
-         "not then use the '--ignore-unknowns' option to 'builddeb'. To disable "
-         "this check then see the documentation of the 'ignore-unkowns' "
-         "configuration option in the README."
-         )
- 
-  def __init__(self):
-    DebianError.__init__(self, None)
-
 class NoSourceDirError(DebianError):
   _fmt = """There is no existing source directory to use. Use --export-only or 
   --dont-purge to get one that can be used"""

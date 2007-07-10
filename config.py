@@ -215,9 +215,6 @@ class DebBuildConfig(object):
   source_builder = _opt_property('source-builder',
                           "The command to build source packages with", True)
 
-  ignore_unknowns = _bool_property('ignore-unknowns',
-                         "Build even when the tree has unknowns")
-
   working_tree = _bool_property('working-tree',
                          "Always build the working tree.")
 

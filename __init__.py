@@ -40,7 +40,6 @@ from builder import (DebBuild,
                      )
 from config import DebBuildConfig
 from errors import (ChangedError,
-                    UnknownsInTree,
                     StopBuild,
                     )
 from properties import BuildProperties
@@ -201,13 +200,6 @@ class cmd_builddeb(Command):
         if split:
           info("Running in split mode")
 
-    if not ignore_unknowns:
-      ignore_unknowns = config.ignore_unknowns
-
-    if ignore_unknowns:
-      info("Not stopping the build if there are any unknown files. If you "
-          +"have just created a file, make sure you have added it.")
-
     if result is None:
       result = config.result_dir
     if result is not None:
@@ -241,8 +233,6 @@ class cmd_builddeb(Command):
         if changes.has_changed():
           raise ChangedError
     else:
-      if not ignore_unknowns and len(list(tree.unknowns())) > 0:
-        raise UnknownsInTree
       info("Building using working tree")
       t = tree
 
