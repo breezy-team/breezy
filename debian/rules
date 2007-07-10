@@ -6,13 +6,26 @@
 
 PYVERS=$(shell pyversions -vr)
 
-build: $(PYVERS:%=build-python%)
+doc_dir=doc/user_manual/
+rst_docs=$(wildcard $(addsuffix /*.rst, $(doc_dir)))
+html_docs=$(patsubst %.rst, %.html, $(rst_docs))
+
+%.html: %.rst
+	rst2html --stylesheet-path=$(doc_dir)/user_manual.css $< > $@
+
+docs: $(html_docs)
+
+build: $(PYVERS:%=build-python%) docs
 	rst2html README > README.html
 	touch $@
 
 build-python%:
 	python$* setup.py build
+ifeq (,$(findstring nocheck,$(DEBBUILDOPTS)))
+ifeq (,$(findstring notest,$(DEBBUILDOPTS)))
 	python$* __init__.py
+endif
+endif
 	touch $@
 
 clean:
@@ -38,6 +51,7 @@ install-python%: install-all-stamp
 binary-indep: build install
 	dh_testdir
 	dh_testroot
+	dh_install
 	dh_installchangelogs
 	dh_installdocs
 	dh_installexamples

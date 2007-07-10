@@ -10,8 +10,9 @@ packages from a bzr branch.
 .. _bzr: http://bazaar-vcs.org/
 .. _Debian: http://www.debian.org/
 
-I apologies for the lack of information in this README, I promise I will
-provide proper documentation soon.
+Note that there is a user manual available at
+/usr/share/doc/bzr-builddeb/docs/user_manual/index.html that gives more
+information than this file.
 
 Installation
 ------------

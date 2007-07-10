@@ -1,1 +1,1 @@
-*.py /usr/lib/python2.4/site-packages/bzrlib/plugins/bzr-builddeb/
+doc/user_manual/*.html /usr/share/doc/bzr-builddeb/user_manual/
