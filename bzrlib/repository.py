@@ -498,6 +498,9 @@ class Repository(object):
         for revision in revisions:
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
+        if ('null:' in required_trees):
+            import pdb; pdb.set_trace()
+
         trees = dict((t.get_revision_id(), t) for 
                      t in self.revision_trees(required_trees))
         for revision in revisions:
@@ -827,7 +830,7 @@ class Repository(object):
         
         This is topologically sorted.
         """
-        if revision_id is None:
+        if _mod_revision.is_null(revision_id):
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):

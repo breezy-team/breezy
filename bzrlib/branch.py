@@ -457,7 +457,7 @@ class Branch(object):
         if ph:
             return ph[-1]
         else:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -505,7 +505,7 @@ class Branch(object):
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
-        if revision_id is None:
+        if _mod_revision.is_null(revision_id):
             return 0
         revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
@@ -701,8 +701,10 @@ class Branch(object):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
         new_history = self.revision_history()
-        if revision_id is not None:
+        if revision_id is not None and new_history != []:
             revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -1404,7 +1406,7 @@ class BzrBranch(Branch):
                           other_branch=None):
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
-        if last_rev is not None and last_rev not in stop_graph:
+        if not _mod_revision.is_null(last_rev) and last_rev not in stop_graph:
             # our previous tip is not merged into stop_revision
             raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
@@ -1780,11 +1782,11 @@ class BzrBranch5(BzrBranch):
         # other_last_rev is not in our history, and do it without pulling
         # history around
         last_rev = self.last_revision()
-        if last_rev is not None:
+        if not _mod_revision.is_null(last_rev):
             other.lock_read()
             try:
                 other_last_rev = other.last_revision()
-                if other_last_rev is not None:
+                if not _mod_revision.is_null(other_last_rev):
                     # neither branch is new, we have to do some work to
                     # ascertain diversion.
                     remote_graph = other.repository.get_revision_graph(
@@ -1934,8 +1936,6 @@ class BzrBranch6(BzrBranch5):
     def last_revision(self):
         """Return last revision id, or None"""
         revision_id = self.last_revision_info()[1]
-        if revision_id == _mod_revision.NULL_REVISION:
-            revision_id = None
         return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):

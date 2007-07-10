@@ -44,6 +44,7 @@ from bzrlib import (
     osutils,
     registry,
     repository,
+    revision as _mod_revision,
     revisionspec,
     symbol_versioning,
     transport,
@@ -1011,6 +1012,8 @@ class cmd_update(Command):
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
+            if last_rev is None:
+                last_rev = _mod_revision.NULL_REVISION
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()

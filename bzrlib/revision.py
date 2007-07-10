@@ -489,3 +489,6 @@ def ensure_null(revision_id):
         return NULL_REVISION
     else:
         return revision_id
+
+def is_null(revision_id):
+    return revision_id in (None, NULL_REVISION)

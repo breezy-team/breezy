@@ -22,7 +22,11 @@ See MemoryTree for more details.
 
 from copy import deepcopy
 
-from bzrlib import errors, mutabletree
+from bzrlib import (
+    errors,
+    mutabletree,
+    revision as _mod_revision,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import sha_file
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -63,7 +67,10 @@ class MemoryTree(mutabletree.MutableTree):
     @staticmethod
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
-        return MemoryTree(branch, branch.last_revision())
+        revision_id = branch.last_revision()
+        if _mod_revision.is_null(revision_id):
+            revision_id = None
+        return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.

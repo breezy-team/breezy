@@ -22,6 +22,7 @@ import warnings
 from bzrlib import (
     osutils,
     registry,
+    revision as _mod_revision,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -218,7 +219,7 @@ class Merger(object):
                                                   self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = self.other_branch.last_revision()
-            if self.other_rev_id is None:
+            if _mod_revision.is_null(self.other_rev_id):
                 raise NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
         elif other_revision[1] is not None:

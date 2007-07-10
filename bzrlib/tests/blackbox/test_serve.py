@@ -26,6 +26,7 @@ import threading
 from bzrlib import (
     errors,
     osutils,
+    revision as _mod_revision,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -107,7 +108,7 @@ class TestBzrServe(TestCaseWithTransport):
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
         branch.repository.get_revision_graph()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -128,7 +129,7 @@ class TestBzrServe(TestCaseWithTransport):
 
         # We get a working branch
         branch.repository.get_revision_graph()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
 
         self.assertServerFinishesCleanly(process)
 
@@ -207,7 +208,8 @@ class TestBzrServe(TestCaseWithTransport):
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
             
             branch.repository.get_revision_graph()
-            self.assertEqual(None, branch.last_revision())
+            self.assertEqual(_mod_revision.NULL_REVISION,
+                             branch.last_revision())
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
         finally:

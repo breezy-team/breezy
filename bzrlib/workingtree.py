@@ -65,6 +65,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    revision as _mod_revision,
     revisiontree,
     repository,
     textui,
@@ -1685,7 +1686,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         This is used to allow WorkingTree3 instances to not affect branch
         when their last revision is set.
         """
-        if new_revision is None:
+        if _mod_revision.is_null(new_revision):
             self.branch.set_revision_history([])
             return False
         try:
@@ -2031,7 +2032,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         try:
             last_rev = self.get_parent_ids()[0]
         except IndexError:
-            last_rev = None
+            last_rev = _mod_revision.NULL_REVISION
         if last_rev != self.branch.last_revision():
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
@@ -2061,7 +2062,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
-            if old_tip is not None:
+            if not _mod_revision.is_null(old_tip):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
@@ -2070,9 +2071,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the working tree had the same last-revision as the master
             # branch did. We may still have pivot local work from the local
             # branch into old_tip:
-            if old_tip is not None:
+            if not _mod_revision.is_null(old_tip):
                 self.add_parent_tree_id(old_tip)
-        if old_tip and old_tip != last_rev:
+        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
             # our last revision was not the prior branch last revision
             # and we have converted that last revision to a pending merge.
             # base is somewhere between the branch tip now
