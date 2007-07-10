@@ -47,18 +47,6 @@ def recursive_copy(fromdir, todir):
       shutil.copy(path, todir)
 
 
-def is_clean(oldtree, newtree, ignore_unknowns=False):
-  """Return True if there are no uncommited changes or unknown files.
-  
-  If ignore_unknowns is True then unknown files do not count as changes."""
-
-  changes = newtree.changes_from(oldtree)
-  if changes.has_changed():
-    return False
-  if not ignore_unknowns and len(list(newtree.unknowns())) > 0:
-    return False
-  return True
-
 def goto_branch(branch):
   """Changes to the specified branch dir if it is not None"""
   if branch is not None:

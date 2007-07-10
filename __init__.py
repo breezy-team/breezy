@@ -33,10 +33,11 @@ from builder import (DebBuild,
                      )
 from config import DebBuildConfig
 from errors import (ChangedError,
+                    UnknownsInTree,
                     StopBuild,
                     )
 from properties import BuildProperties
-from util import goto_branch, find_changelog, is_clean
+from util import goto_branch, find_changelog
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building")
@@ -221,13 +222,20 @@ class cmd_builddeb(Command):
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
+      working_tree = config.working_tree
+
+    if not working_tree:
       b = tree.branch
       rev_id = b.last_revision()
       info("Building branch from revision %s", rev_id)
       t = b.repository.revision_tree(rev_id)
-      if not ignore_changes and not is_clean(t, tree, ignore_unknowns):
-        raise ChangedError
+      if not ignore_changes:
+        changes = tree.changes_from(t)
+        if changes.has_changed():
+          raise ChangedError
     else:
+      if not ignore_unknowns and len(list(tree.unknowns())) > 0:
+        raise UnknownsInTree
       info("Building using working tree")
       t = tree
 

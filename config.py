@@ -219,6 +219,9 @@ class DebBuildConfig(object):
   ignore_unknowns = _bool_property('ignore-unknowns',
                          "Build even when the tree has unknowns")
 
+  working_tree = _bool_property('working-tree',
+                         "Always build the working tree.")
+
   native = _bool_property('native', "Build a native package")
 
   split = _bool_property('split', "Split a full source package")
