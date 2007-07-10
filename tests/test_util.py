@@ -21,7 +21,7 @@
 import os
 
 from errors import MissingChangelogError, AddChangelogError
-from util import (is_clean,
+from util import (
                   find_changelog,
                   recursive_copy,
                   )
@@ -55,84 +55,6 @@ class RecursiveCopyTests(TestCaseInTempDir):
     self.failUnlessExists('a/d')
     self.failUnlessExists('a/d/e')
     self.failUnlessExists('a/f')
-
-
-class IsCleanTests(TestCaseWithTransport):
-
-  def test_is_clean_empty(self):
-    tree = self.make_branch_and_tree('.')
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), True)
-
-  def test_is_clean_unknowns(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), False)
-
-  def test_is_clean_ignore_unknowns(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree, True), True)
-
-  def test_is_clean_added(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    tree.add(['dir'])
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), False)
-
-  def test_is_clean_committed(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    tree.add(['dir'])
-    tree.commit('message')
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), True)
-
-  def test_is_clean_removed(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    tree.add(['dir'])
-    tree.commit('message')
-    tree.remove(['dir'])
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), False)
-
-  def test_is_clean_modified(self):
-    tree = self.make_branch_and_tree('.')
-    f = open('file', 'wb')
-    try:
-      f.write('one')
-    finally:
-      f.close()
-    tree.add(['file'])
-    tree.commit('commit')
-    f = open('file', 'wb')
-    try:
-      f.write('two')
-    finally:
-      f.close()
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), False)
-
-  def test_is_clean_moved(self):
-    tree = self.make_branch_and_tree('.')
-    os.mkdir('dir')
-    tree.add(['dir'])
-    tree.commit('message')
-    tree.rename_one('dir', 'newdir')
-    branch = tree.branch
-    oldtree = branch.repository.revision_tree(branch.last_revision())
-    self.assertEqual(is_clean(oldtree, tree), False)
 
 
 cl_block1 = """\
