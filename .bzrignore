@@ -34,4 +34,4 @@ build
 ./html_docs
 ./pretty_docs
 ./api
-bzrlib/compiled/*.c
+bzrlib/_dirstate_helpers_c.c

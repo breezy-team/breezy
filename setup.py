@@ -159,16 +159,16 @@ except ImportError:
     from distutils.command.build_ext import build_ext
     from distutils.extension import Extension
     ext_modules.extend([
-        Extension("bzrlib.compiled.dirstate_helpers",
-                  ["bzrlib/compiled/dirstate_helpers.c"],
+        Extension("bzrlib._dirstate_helpers_c",
+                  ["bzrlib/_dirstate_helpers_c.c"],
                   libraries=[],
                   ),
     ])
 else:
     from distutils.extension import Extension
     ext_modules.extend([
-        Extension("bzrlib.compiled.dirstate_helpers",
-                  ["bzrlib/compiled/dirstate_helpers.pyx"],
+        Extension("bzrlib._dirstate_helpers_c",
+                  ["bzrlib/_dirstate_helpers_c.pyx"],
                   libraries=[],
                   ),
     ])
