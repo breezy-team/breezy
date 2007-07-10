@@ -29,11 +29,26 @@ class DebianError(BzrError):
     self.message = message
 
 class ChangedError(DebianError):
-  _fmt = """There are modified files in the working tree. Either commit the 
-  changes, use --working to build the working tree, or --ignore-changes
-  to override this and build the branch without the changes in the working 
-  tree. Use bzr status to see the changes"""
+  _fmt = ("There are modified files in the working tree. Either commit the "
+         "changes, use --working to build the working tree, or "
+         "--ignore-changes to override this and build the branch without "
+         "the changes in the working tree. Use bzr status to see the changes. "
+         "To disable this check and always build the working tree see the "
+         "documentation of the working-tree configuration option in the README. "
+         )
 
+  def __init__(self):
+    DebianError.__init__(self, None)
+
+class UnknownsInTree(DebianError):
+  _fmt = ("There are unknown files in the working tree. The build will not "
+         "continue as you may want these files included in the build. If you "
+         "do want them then use 'bzr add' to add them to the tree. If you do "
+         "not then use the '--ignore-unknowns' option to 'builddeb'. To disable "
+         "this check then see the documentation of the 'ignore-unkowns' "
+         "configuration option in the README."
+         )
+ 
   def __init__(self):
     DebianError.__init__(self, None)
 

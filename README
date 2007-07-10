@@ -204,6 +204,11 @@ situations.
 Others
 ######
 
+  * ``working-tree = True``
+
+    Always build the working tree, rather than the last revision committed
+    to the branch.
+
   * ``ignore-unknowns = True``
 
     Don't count unknown files in the tree as changes, and so allow the build

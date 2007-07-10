@@ -769,7 +769,8 @@ class TestMergeBuilder(BuilderTestCase):
 
   def test_export_handles_debian_in_upstream(self):
     """Make sure export can handle upstream shipping debian/ as well."""
-    self.upstream_files = self.upstream_files + ['debian/', 'debian/changelog']
+    self.upstream_files = self.upstream_files + ['debian/', 'debian/changelog',
+                                                 'debian/install']
     wt = self._make_branch()
     basedir = 'debian/'
     files = [basedir]
@@ -792,6 +793,7 @@ class TestMergeBuilder(BuilderTestCase):
     finally:
       f.close()
     self.assertEqual(contents, 'branch')
+    self.failIfExists(join(self.source_dir, basedir, 'install'))
 
 
 class TestMergeExportUpstreamBuilder(BuilderTestCase):
