@@ -56,7 +56,10 @@ class cmd_conflicts(commands.Command):
 
     See also bzr resolve.
     """
-    takes_options = [Option('text', help='list text conflicts by pathname')]
+    takes_options = [
+            Option('text',
+                   help='List paths of files with text conflicts.'),
+        ]
 
     def run(self, text=False):
         from bzrlib.workingtree import WorkingTree

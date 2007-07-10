@@ -376,12 +376,12 @@ _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
 
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
-               'overwrite unconditionally')
+               'overwrite unconditionally.')
 _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
-               help='show help message',
+               help='Show help message.',
                short_name='h')
 _global_option('file', type=unicode, short_name='F')
 _global_option('force')
@@ -391,43 +391,43 @@ _global_option('message', type=unicode,
                short_name='m')
 _global_option('no-recurse')
 _global_option('profile',
-               help='show performance profiling information')
+               help='Show performance profiling information.')
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
                help='See \'help revisionspec\' for details')
-_global_option('show-ids', 
-               help='show internal object ids')
-_global_option('timezone', 
+_global_option('show-ids',
+               help='Show internal object ids.')
+_global_option('timezone',
                type=str,
-               help='display timezone as local, original, or utc')
+               help='Display timezone as local, original, or utc.')
 _global_option('unbound')
 _global_option('verbose',
-               help='display more information',
+               help='Display more information.',
                short_name='v')
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_registry_option('log-format', "Use this log format",
+_global_registry_option('log-format', "Use specified log format.",
                         log.log_formatter_registry, value_switches=True,
                         title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
-_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
+_global_option('line', help='Use log format with one line per revision. Same as --log-format line.')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_registry_option('merge-type', 'Select a particular merge algorithm',
+_global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
-_global_option('reprocess', help='Reprocess to reduce spurious conflicts')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
 _global_option('kind', type=str)
 _global_option('dry-run',
-               help="show what would be done, but don't actually do anything")
+               help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
 
 
