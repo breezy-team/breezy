@@ -2,6 +2,29 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * None yet ...
+
+  IMPROVEMENTS:
+
+    * None yet ...
+
+  LIBRARY API BREAKS:
+
+    * None yet ...
+
+  INTERNALS:
+
+    * merge now uses iter_changes to calculate changes. (Aaron Bentley)
+
+  TESTING:
+
+    * None yet ...
+
+
+bzr 0.18rc1  2007-07-10
+
+  BUGFIXES:
+
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
 
@@ -15,6 +38,16 @@ IN DEVELOPMENT
     * Work around python-2.4.1 inhability to correctly parse the
       authentication header.
       (Vincent Ladeuil, #121889)
+
+    * Use exact encoding for merge directives. (Adeodato Simó, #120591)
+
+    * Fix tempfile permissions error in smart server tar bundling under
+      Windows. (Martin_, #119330)
+
+    * Fix detection of directory entries in the inventory. (James Westby)
+
+    * Fix handling of http code 400: Bad Request When issuing too many ranges.
+      (Vincent Ladeuil, #115209)
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
@@ -33,6 +66,10 @@ IN DEVELOPMENT
     * Warn when setting ``push_location`` to a value that will be masked by
       locations.conf.  (Aaron Bentley, #122286)
 
+    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+    *  Make annotate behave in a non-ASCII world (Adeodato Simó).
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -44,7 +81,7 @@ IN DEVELOPMENT
 
     * ``info`` now defaults to non-verbose mode, displaying only paths and
       abbreviated format info.  ``info -v`` displays all the information
-      formerly displayed by ``info``.  (Aaron Bentley)
+      formerly displayed by ``info``.  (Aaron Bentley, Adeodato Simó)
 
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
@@ -74,6 +111,8 @@ IN DEVELOPMENT
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
 
+    * Make merge directives robust against broken bundles. (Aaron Bentley)
+
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
@@ -92,6 +131,14 @@ IN DEVELOPMENT
 
     * Long log format reports deltas on merge revisions. 
       (John Arbash Meinel, Kent Gibson)
+
+    * Make initial push over ftp more resilient. (John Arbash Meinel)
+
+    * Print a summary of changes for update just like pull does.
+      (Daniel Watkins, #113990)
+
+    * Add a -Dhpss option to trace smart protocol requests and responses.
+      (Andrew Bennetts)
 
   LIBRARY API BREAKS:
 
@@ -115,6 +162,8 @@ IN DEVELOPMENT
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
+    * Relocate TestCaseWithRepository to be more central. (Robert Collins)
+
     * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
       win32. Callers of the function should do this and use the new
       ``MutableTree.smart_add`` method instead. (Robert Collins)
@@ -127,9 +176,36 @@ IN DEVELOPMENT
 
     * ``LockDir.wait`` removed.  (Martin Pool)
 
+    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
+      ``server_stopped`` hooks. The first parameter is now an iterable of
+      backing URLs rather than a single URL. This is to reflect that many
+      URLs may map to the external URL of the server. E.g. the server interally
+      may have a chrooted URL but also the local file:// URL will be at the 
+      same location. (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * Fix documentation of BzrError. (Adeodato Simó)
+
+    * Make BzrBadParameter an internal error. (Adeodato Simó)
+
+    * Remove use of 'assert False' to raise an exception unconditionally.
+      (Martin Pool)
+
+    * Give a cleaner error when failing to decode knit index entry.
+      (Martin Pool)
+
+    * TreeConfig would mistakenly search the top level when asked for options
+      from a section. It now respects the section argument and only
+      searches the specified section. (James Westby)
+
+    * Improve ``make api-docs`` output. (John Arbash Meinel)
+
+    * Use os.lstat rather than os.stat for osutils.make_readonly and
+      osutils.make_writeable. This makes the difftools plugin more
+      robust when dangling symlinks are found. (Elliot Murphy)
 
     * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
       lockdirs are taken or released.  (Martin Pool)
@@ -150,7 +226,11 @@ IN DEVELOPMENT
       deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
       Martin Pool)
 
-    * merge now uses iter_changes to calculate changes. (Aaron Bentley)
+    * New method ``external_url`` on Transport for obtaining the url to
+      hand to external processes. (Robert Collins)
+
+    * Teach windows installers to build pyrex/C extensions.
+      (Alexander Belchenko)
 
   TESTING:
 
