@@ -25,6 +25,13 @@ import bzrlib.ui as ui
 
 
 def map_file_ids(repository, old_parents, new_parents):
+    """Try to determine the equivalent file ids in two sets of parents.
+
+    :param repository: Repository to use
+    :param old_parents: List of revision ids of old parents
+    :param new_parents: List of revision ids of new parents
+    """
+    assert len(old_parents) == len(new_parents)
     ret = {}
     for (oldp, newp) in zip(old_parents, new_parents):
         oldinv = repository.get_revision_inventory(oldp)
@@ -66,6 +73,7 @@ class MapInventory:
 
     def has_id(self, id):
         return self.oldinv.has_id(self.maptree.old_id(id))
+
 
 class MapTree:
     """Wrapper around a tree that translates file ids.

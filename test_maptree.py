@@ -18,7 +18,7 @@
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.treebuilder import TreeBuilder
 
-from maptree import MapTree
+from maptree import MapTree, map_file_ids
 
 
 class EmptyMapTreeTests(TestCaseWithTransport):
@@ -92,3 +92,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
                               self.maptree.inventory.path2id("foo")))
         self.assertFalse(self.maptree.inventory.has_id("bar"))
 
+
+class MapFileIdTests(TestCase):
+    def test_empty(self):
+        self.assertEquals({}, map_file_ids(None, [], []))
