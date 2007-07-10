@@ -52,6 +52,18 @@ added:
   hell\u00d8
 """)
 
+    def test_commit_template_and_diff(self):
+        """Test building a commit message template"""
+        working_tree = self.make_uncommitted_tree()
+        template = bzrlib.msgeditor.make_commit_message_template(working_tree,
+                                                            None, diff=True)
+
+        self.assertTrue(u"""\
+@@ -0,0 +1,1 @@
++contents of hello
+""" in template)
+
+
     def setUp(self):
         super(MsgEditorTest, self).setUp()
         self._bzr_editor = os.environ.get('BZR_EDITOR', None)

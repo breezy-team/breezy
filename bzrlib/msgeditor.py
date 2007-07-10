@@ -208,10 +208,23 @@ def make_commit_message_template(working_tree, specific_files, diff=False):
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
     if diff:
-        status_tmp.write("\n")
+        class myUnicodeStringIO(StringIO):
+            def __init__(self, encode='utf8'):
+                StringIO.__init__(self)
+                self._myEncode = encode
+
+            def write(self, data):
+                if isinstance(data, unicode):
+                    StringIO.write(self, data)
+                else:
+                    StringIO.write(self, data.decode(self._myEncode))
+
+        status_tmp2 = myUnicodeStringIO()
+        status_tmp2.write(u"\n")
         from bzrlib.diff import show_diff_trees
         show_diff_trees(working_tree.basis_tree(), working_tree,
-                    status_tmp,
+                    status_tmp2,
                     specific_files)
-        
+
+        status_tmp.write(status_tmp2.getvalue())
     return status_tmp.getvalue()
