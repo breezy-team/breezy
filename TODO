@@ -1,3 +1,12 @@
+mandatory before 0.4.0:
+- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
+- splittree support
+- nestedtree support
+
+todo:
+- intelligent guessing of branching scheme
+- be able to create new branches
+- make has_revision() more efficient - just call logwalker.touches_path() ?
 - simplify find_branches by using Transport.list_dir() ?
 - fix autorealm repository
 - avoid extra connect in logwalker?
@@ -5,11 +14,10 @@
 - free memory!
 - report changes to delta editor in Branch.pull()
 - more blackbox tests
-- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
 - transform file ids in workingtree in svn-upgrade
 - more intelligent mechanism for finding branching scheme. Look at directory structure in current tree?
 
-Working trees:
+working trees:
 - custom implementation of WorkingTree.revert() / WorkingTree.merge()
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - what happened to WorkingTree.add() ?
@@ -18,3 +26,7 @@ Working trees:
   also commit the file property changes for the tree root (except 
   for pending merges).														   
 - faster "bzr status"
+
+for other things to do, see:
+
+* https://bugs.launchpad.net/bzr-svn
