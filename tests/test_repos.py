@@ -369,6 +369,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
         self.assertTrue(repository.has_revision(None))
 
+    def test_has_revision_future(self):
+        bzrdir = self.make_client_and_bzrdir('d', 'dc')
+        repository = bzrdir.find_repository()
+        self.assertFalse(repository.has_revision(
+            generate_svn_revision_id(repository.uuid, 5, "", "none")))
+
     def test_revision_parents(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo': "data"})

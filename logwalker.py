@@ -252,8 +252,11 @@ class LogWalker(object):
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
         path = path.strip("/")
-        if self.transport.check_path(path, revnum) == svn.core.svn_node_file:
+        ft = self.transport.check_path(path, revnum)
+        if ft == svn.core.svn_node_file:
             return []
+        assert ft == svn.core.svn_node_dir
+
         class TreeLister(svn.delta.Editor):
             def __init__(self, base):
                 self.files = []
@@ -296,12 +299,16 @@ class LogWalker(object):
         pool = Pool()
         editor = TreeLister(path)
         edit, baton = svn.delta.make_editor(editor, pool)
-        root_repos = self.transport.get_repos_root()
-        self.transport.reparent(os.path.join(root_repos, path))
-        reporter = self.transport.do_update(
-                        revnum, "", True, edit, baton, pool)
-        reporter.set_path("", revnum, True, None, pool)
-        reporter.finish_report(pool)
+        old_base = self.transport.base
+        try:
+            root_repos = self.transport.get_repos_root()
+            self.transport.reparent(os.path.join(root_repos, path))
+            reporter = self.transport.do_update(
+                            revnum, "", True, edit, baton, pool)
+            reporter.set_path("", revnum, True, None, pool)
+            reporter.finish_report(pool)
+        finally:
+            self.transport.reparent(old_base)
         return editor.files
 
     def get_previous(self, path, revnum):
