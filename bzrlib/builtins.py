@@ -1715,20 +1715,22 @@ class cmd_ls(Command):
     _see_also = ['status', 'cat']
     takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
-    takes_options = ['verbose', 'revision',
-                     Option('non-recursive',
-                            help='Don\'t recurse into subdirectories.'),
-                     Option('from-root',
-                            help='Print all paths from the root of the branch.'),
-                     Option('unknown', help='Print unknown files'),
-                     Option('versioned', help='Print versioned files'),
-                     Option('ignored', help='Print ignored files'),
-                     Option('null',
-                            help='Write an ascii NUL (\\0) separator '
-                            'between files rather than a newline.'),
-                     'kind',
-                     'show-ids',
-                    ]
+    takes_options = [
+            'verbose',
+            'revision',
+            Option('non-recursive',
+                   help='Don\'t recurse into subdirectories.'),
+            Option('from-root',
+                   help='Print all paths from the root of the branch.'),
+            Option('unknown', help='Print unknown files.'),
+            Option('versioned', help='Print versioned files.'),
+            Option('ignored', help='Print ignored files.'),
+            Option('null',
+                   help='Write an ascii NUL (\\0) separator '
+                   'between files rather than a newline.'),
+            'kind',
+            'show-ids',
+            ]
     @display_command
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
@@ -3515,15 +3517,17 @@ class cmd_merge_directive(Command):
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
             'The type of patch to include in the directive',
-            title='Patch type', value_switches=True, enum_switch=False,
-            bundle='Bazaar revision bundle (default)',
-            diff='Normal unified diff',
-            plain='No patch, just directive'),
-        Option('sign', help='GPG-sign the directive'), 'revision',
+            title='Patch type',
+            value_switches=True,
+            enum_switch=False,
+            bundle='Bazaar revision bundle (default).',
+            diff='Normal unified diff.',
+            plain='No patch, just directive.'),
+        Option('sign', help='GPG-sign the directive.'), 'revision',
         Option('mail-to', type=str,
-            help='Instead of printing the directive, email to this address'),
+            help='Instead of printing the directive, email to this address.'),
         Option('message', type=str, short_name='m',
-            help='Message to use when committing this merge')
+            help='Message to use when committing this merge.')
         ]
 
     encoding_type = 'exact'
@@ -3606,7 +3610,7 @@ class cmd_tag(Command):
             type=unicode,
             ),
         Option('force',
-            help='Replace existing tags',
+            help='Replace existing tags.',
             ),
         'revision',
         ]
@@ -3649,7 +3653,7 @@ class cmd_tags(Command):
     _see_also = ['tag']
     takes_options = [
         Option('directory',
-            help='Branch whose tags should be displayed',
+            help='Branch whose tags should be displayed.',
             short_name='d',
             type=unicode,
             ),

@@ -298,7 +298,10 @@ class TestOptionDefinitions(TestCase):
 
     def test_option_grammar(self):
         msgs = []
-        option_re = re.compile(r'^[A-Z]')
+        # Option help should be written in sentence form, and have a final
+        # period and be all on a single line, because the display code will
+        # wrap it.
+        option_re = re.compile(r'^[A-Z][^\n]+\.$')
         for scope, option in self.get_all_options():
             if not option.help:
                 # TODO: Also complain about options that have no help message?

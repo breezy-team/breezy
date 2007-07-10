@@ -395,7 +395,7 @@ _global_option('profile',
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
-               help='See \'help revisionspec\' for details')
+               help='See \'help revisionspec\' for details.')
 _global_option('show-ids',
                help='Show internal object ids.')
 _global_option('timezone',
