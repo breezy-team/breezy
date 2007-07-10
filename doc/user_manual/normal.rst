@@ -83,7 +83,7 @@ usinf the ``--package`` option. This means that once you have downloaded
 the tarball you should run::
 
   $ cd scruff/
-  $ bzr merge-upstream ../scruff-0.1.tar.gz 0.1 --package scruff
+  $ bzr merge-upstream ../scruff-0.1.tar.gz --version 0.1 --package scruff
 
 This command will work for upstream tarballs that are ``.tar.gz``, ``.tgz``,
 ``.tar`` or ``.tar.bz2``, or unpacked directories if you have one of those
@@ -225,7 +225,8 @@ tarball that represents this release. This tarball can be local or remote.
 For instance when the ``0.2`` version of ``scruff`` is released the command
 to update to the new version is::
 
-  $ bzr merge-upstream 0.2 http://scruff.org/releases/scruff-0.2.tar.gz
+  $ bzr merge-upstream --version 0.2 \
+       http://scruff.org/releases/scruff-0.2.tar.gz
 
 This command downloads the new version, and imports it in to the branch. It
 then merges in the packaging changes to the new version.

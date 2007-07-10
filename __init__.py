@@ -295,6 +295,7 @@ class cmd_builddeb(Command):
 
 register_command(cmd_builddeb)
 
+
 class cmd_merge_upstream(Command):
   """Merges a new upstream version into the current branch.
 
@@ -310,14 +311,16 @@ class cmd_merge_upstream(Command):
   will change the name of the source package then you can use this option
   to set the new name.
   """
-  takes_args = ['path', 'version']
+  takes_args = ['path']
   aliases = ['mu']
 
   package_opt = Option('package', help="The name of the source package.",
                        type=str)
-  takes_options = [package_opt]
+  version_opt = Option('version', help="The version number of the new "
+                       "upstream release. (Required).", type=str, short_name='v')
+  takes_options = [package_opt, version_opt]
 
-  def run(self, path, version, package=None):
+  def run(self, path, version=None, package=None):
 
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
@@ -325,6 +328,9 @@ class cmd_merge_upstream(Command):
     from errors import MissingChangelogError
     from merge_upstream import merge_upstream
     from repack_tarball import repack_tarball
+
+    if version is None:
+      raise BzrCommandError("You must supply the --version argument.")
 
     tree, relpath = WorkingTree.open_containing('.')
 
