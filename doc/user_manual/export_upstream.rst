@@ -61,7 +61,7 @@ is possible to use a local mirror. The value of ``export-upstream`` in
 ``.bzr-builddeb/default.conf`` should still be set to a public branch as
 above though, for people that wish to build the package, but do not have a
 local mirror.  What you should do instead is set ``export-upstream`` to your
-local mirror in ``.bzr/branch/branch.conf``, like::
+local mirror in ``.bzr-builddeb/local.conf``, like::
 
   [BUILDDEB]
   export-upstream = /home/user/work/scruff/trunk/

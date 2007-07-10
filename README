@@ -53,7 +53,7 @@ Configuration
 There are also configuration files that can be used, these are, in the order
 that values will be used if found::
 
-  * .bzr/branch/branch.conf (in the package directory)
+  * .bzr-builddeb/local.conf (in the package directory)
   * ~/.bazaar/builddeb.conf
   * .bzr-builddeb/default.conf (in the package directory)
 
@@ -219,7 +219,7 @@ Then the user can override this locally if they want for all of their packages
 ``~/.bazaar/builddeb.conf``. They can override it for the package if they want 
 (e.g. they have a different location for upstream tarballs of a package if
 they are involved with upstream as well, so they set ``orig_dir = 
-/home/.../releases/``), this can be done in ``.bzr/branch/branch.conf``).
+/home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``).
 
 
 Creating a package

@@ -165,15 +165,7 @@ class cmd_builddeb(Command):
     tree, relpath = WorkingTree.open_containing('.')
     
     config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)], branch=tree.branch)
-
-    tree.lock_read()
-    try:
-      if os.path.exists(local_conf):
-        warning('Please move the contents of %s ' % local_conf +
-                'to .bzr/branch/branch.conf, as the former is now deprecated')
-    finally:
-      tree.unlock()
+                             (default_conf, False)])
 
     if reuse:
       info("Reusing existing build dir")
@@ -325,7 +317,7 @@ class cmd_merge_upstream(Command):
     tree, relpath = WorkingTree.open_containing('.')
 
     config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)], branch=tree.branch)
+                             (default_conf, False)])
 
     if config.merge:
       raise BzrCommandError("Merge upstream in merge mode is not yet "
