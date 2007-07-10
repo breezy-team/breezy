@@ -2,6 +2,29 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * None yet ...
+
+  IMPROVEMENTS:
+
+    * None yet ...
+
+  LIBRARY API BREAKS:
+
+    * None yet ...
+
+  INTERNALS:
+
+    * None yet ...
+
+  TESTING:
+
+    * None yet ...
+
+
+bzr 0.18rc1  2007-07-10
+
+  BUGFIXES:
+
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
 
