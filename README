@@ -391,13 +391,13 @@ you do not want to unpack it at every build you can speed things up even more.
 This involves reusing the tarball each build, so saving the need to unpack it.
 To do this run::
 
-  $ bzr --export-only 
+  $ bzr bd --export-only 
 
 once to create a build-dir to use. (``-e`` is the short option for this). Then 
 on the next builds you can use the ``--reuse`` and ``--dont-purge`` options to
 keep using this build directory. **N.B. This may cause build problems, 
 especially if files are removed**, it is advisable to run a build without 
-``--dont-purge`` after removing any files.
+``--reuse`` after removing any files.
 
 
 Workflow
@@ -415,9 +415,7 @@ Copyright
 ---------
 
 This README is Copyright (C) 2006 James Westby <jw+debian@jameswestby.net> and
-is distributed under the following terms.
-
-..
+is distributed under the following terms::
 
    This file is part of bzr-builddeb.
 

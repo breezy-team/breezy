@@ -29,5 +29,13 @@ License:
 On Debian systems, the complete text of the GNU General
 Public License can be found in `/usr/share/common-licenses/GPL'.
 
+merge_upstream.py and import_dsc.py include code from bzrtools, which is
+
+# Copyright (C) 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>
+# Copyright (C) 2005, 2006 Canonical Limited.
+# Copyright (C) 2006 Michael Ellerman.
+
+and is also under the GPL, version 2 or later.
+
 The Debian packaging is (C) 2006 James Westby <jw+debian@jameswestby.net>,
 and is placed under the same license as the rest of the package.

@@ -1,7 +1,12 @@
 #    merge_upstream.py -- Merge new upstream versions of packages.
 #    Copyright (C) 2007 Reinhard Tartler <siretart@tauware.de>
 #                  2007 James Westby <jw+debian@jameswestby.net>
-#                  2007 Aaron Bentley <aaron.bentley@utoronto.ca>
+#
+#    Code is also taken from bzrtools, which is
+#             (C) 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>
+#             (C) 2005, 2006 Canonical Limited.
+#             (C) 2006 Michael Ellerman.
+#    and distributed under the GPL, version 2 or later.
 #
 #    This file is part of bzr-builddeb.
 #
