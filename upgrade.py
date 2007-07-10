@@ -80,16 +80,17 @@ def create_upgraded_revid(revid):
         return revid + suffix
 
 
-def upgrade_branch(branch, svn_repository, allow_changes=False):
+def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
     """Upgrade a branch to the current mapping version.
     
     :param branch: Branch to upgrade.
     :param svn_repository: Repository to fetch new revisions from
     :param allow_changes: Allow changes in mappings.
+    :param verbose: Whether to print verbose list of rewrites
     """
     revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, svn_repository, 
-              revid, allow_changes)
+              revid, allow_changes=allow_changes, verbose=verbose)
     mutter('renames %r' % renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
@@ -108,14 +109,15 @@ def check_revision_changed(oldrev, newrev):
 
 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
-                       allow_change=False):
+                       allow_changes=False, verbose=False):
     """Upgrade the revisions in repository until the specified stop revision.
 
     :param repository: Repository in which to upgrade.
     :param svn_repository: Repository to fetch new revisions from.
     :param revision_id: Revision id up until which to upgrade, or None for 
                         all revisions.
-    :param allow_change: Allow changes to mappings.
+    :param allow_changes: Allow changes to mappings.
+    :param verbose: Whether to print list of rewrites
     :return: Dictionary of mapped revisions
     """
     try:
@@ -153,7 +155,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                         mutter("Remote repository doesn't have %r" % newrevid)
                     continue
                 rename_map[revid] = newrevid
-                if not allow_change:
+                if not allow_changes:
                     oldrev = repository.get_revision(revid)
                     newrev = svn_repository.get_revision(newrevid)
                     check_revision_changed(oldrev, newrev)
@@ -166,8 +168,10 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 repository.fetch(svn_repository, revid)
 
         plan = generate_transpose_plan(repository, graph, rename_map, 
-                                       lambda rev: create_upgraded_revid(rev.revision_id))
-        mutter('rebase plan: %r' % plan)
+                           lambda rev: create_upgraded_revid(rev.revision_id))
+        if verbose:
+            for revid in rebase_todo(wt.branch.repository, replace_map):
+                info("%s -> %s" % (revid, replace_map[revid][0]))
         rebase(repository, plan, replay_snapshot)
         def remove_parents((oldrevid, (newrevid, parents))):
             return (oldrevid, newrevid)
