@@ -427,7 +427,28 @@ class Merge3Merger(object):
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
                  interesting_files=None):
-        """Initialize the merger object and perform the merge."""
+        """Initialize the merger object and perform the merge.
+
+        :param working_tree: The working tree to apply the merge to
+        :param this_tree: The local tree in the merge operation
+        :param base_tree: The common tree in the merge operation
+        :param other_tree: The other other tree to merge changes from
+        :param interesting_ids: The file_ids of files that should be
+            participate in the merge.  May not be combined with
+            interesting_files.
+        :param: reprocess If True, perform conflict-reduction processing.
+        :param show_base: If True, show the base revision in text conflicts.
+            (incompatible with reprocess)
+        :param pb: A Progress bar
+        :param pp: A ProgressPhase object
+        :param change_reporter: An object that should report changes made
+        :param interesting_files: The tree-relative paths of files that should
+            participate in the merge.  If these paths refer to directories,
+            the contents of those directories will also be included.  May not
+            be combined with interesting_ids.  If neither interesting_files nor
+            interesting_ids is specified, all files may participate in the
+            merge.
+        """
         object.__init__(self)
         if interesting_files is not None:
             assert interesting_ids is None
@@ -609,13 +630,13 @@ class Merge3Merger(object):
         #if base == other, either they all agree, or only THIS has changed.
         if base == other:
             return 'this'
-        if this not in (base, other):
+        elif this not in (base, other):
             return 'conflict'
-        # "Ambiguous clean merge"
+        # "Ambiguous clean merge" -- both sides have made the same change.
         elif this == other:
             return "this"
+        # this == base: only other has changed.
         else:
-            assert this == base
             return "other"
 
     @staticmethod
