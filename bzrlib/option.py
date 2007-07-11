@@ -369,28 +369,18 @@ _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
 
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally.')
-_global_option('diff-options', type=str)
-_global_option('force')
-_global_option('format', type=unicode)
-_global_option('message', type=unicode,
-               short_name='m')
-_global_option('no-recurse')
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
                help='See \'help revisionspec\' for details.')
 _global_option('show-ids',
                help='Show internal object ids.')
-_global_option('timezone',
-               type=str,
-               help='Display timezone as local, original, or utc.')
 _global_option('verbose',
                help='Display more information.',
                short_name='v')
 _global_registry_option('log-format', "Use specified log format.",
                         log.log_formatter_registry, value_switches=True,
                         title='Log format')
-_global_option('root', type=str)
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')
@@ -398,9 +388,6 @@ _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
 _global_option('kind', type=str)
-_global_option('dry-run',
-               help="Show what would be done, but don't actually do anything.")
-_global_option('name-from-revision', help='The path name in the old tree.')
 
 _help_option = Option('help',
                       help='Show help message.',
