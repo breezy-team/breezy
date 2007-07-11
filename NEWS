@@ -10,7 +10,11 @@ IN DEVELOPMENT
 
   LIBRARY API BREAKS:
 
-    * None yet ...
+    * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
+      Various globally-declared options removed.  Options are now required
+      to provide a help string and it must comply with the style guide
+      by being one or more sentences with an initial capital and final
+      period.  (Martin Pool)
 
   INTERNALS:
 

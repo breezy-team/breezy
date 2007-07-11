@@ -74,44 +74,10 @@ class OptionTests(TestCase):
         out, err = self.run_bzr('help -r', retcode=3)
         self.assertContainsRe(err, r'no such option')
 
-    def test_get_short_name(self):
-        file_opt = option.Option.OPTIONS['file']
-        self.assertEquals(file_opt.short_name(), 'F')
-        force_opt = option.Option.OPTIONS['force']
-        self.assertEquals(force_opt.short_name(), None)
-
     def test_set_short_name(self):
         o = option.Option('wiggle')
         o.set_short_name('w')
         self.assertEqual(o.short_name(), 'w')
-
-    def test_old_short_names(self):
-        # test the deprecated method for getting and setting short option
-        # names
-        expected_warning = (
-            "access to SHORT_OPTIONS was deprecated in version 0.14."
-            " Set the short option name when constructing the Option.",
-            DeprecationWarning, 2)
-        _warnings = []
-        def capture_warning(message, category, stacklevel=None):
-            _warnings.append((message, category, stacklevel))
-        old_warning_method = symbol_versioning.warn
-        try:
-            # an example of the kind of thing plugins might want to do through
-            # the old interface - make a new option and then give it a short
-            # name.
-            symbol_versioning.set_warning_method(capture_warning)
-            example_opt = option.Option('example', help='example option')
-            option.Option.SHORT_OPTIONS['w'] = example_opt
-            self.assertEqual(example_opt.short_name(), 'w')
-            self.assertEqual([expected_warning], _warnings)
-            # now check that it can actually be parsed with the registered
-            # value
-            opts, args = parse([example_opt], ['-w', 'foo'])
-            self.assertEqual(opts.example, True)
-            self.assertEqual(args, ['foo'])
-        finally:
-            symbol_versioning.set_warning_method(old_warning_method)
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
