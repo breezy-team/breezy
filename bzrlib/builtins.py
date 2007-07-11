@@ -1581,22 +1581,26 @@ class cmd_log(Command):
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['location?']
-    takes_options = [Option('forward',
-                            help='Show from oldest to newest.'),
-                     'timezone',
-                     Option('verbose',
-                             short_name='v',
-                             help='Show files changed in each revision.'),
-                     'show-ids', 'revision',
-                     'log-format',
-                     Option('message',
-                            short_name='m',
-                            help='Show revisions whose message matches this regexp.',
-                            type=str),
-                     Option('limit',
-                            help='Limit the output to the first N revisions.',
-                            type=_parse_limit),
-                     ]
+    takes_options = [
+            Option('forward',
+                   help='Show from oldest to newest.'),
+            'timezone',
+            Option('verbose',
+                   short_name='v',
+                   help='Show files changed in each revision.'),
+            'show-ids',
+            'revision',
+            'log-format',
+            Option('message',
+                   short_name='m',
+                   help='Show revisions whose message matches this '
+                        'regular expression.',
+                   type=str),
+            Option('limit',
+                   help='Limit the output to the first N revisions.',
+                   argname='N',
+                   type=_parse_limit),
+            ]
     encoding_type = 'replace'
 
     @display_command
@@ -1721,7 +1725,7 @@ class cmd_ls(Command):
             Option('non-recursive',
                    help='Don\'t recurse into subdirectories.'),
             Option('from-root',
-                   help='Print all paths from the root of the branch.'),
+                   help='Print paths relative to the root of the branch.'),
             Option('unknown', help='Print unknown files.'),
             Option('versioned', help='Print versioned files.'),
             Option('ignored', help='Print ignored files.'),
