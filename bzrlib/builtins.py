@@ -340,7 +340,7 @@ class cmd_add(Command):
     takes_args = ['file*']
     takes_options = [
         Option('no-recurse',
-               ),
+               help="Don't recursively add the contents of directories."),
         Option('dry-run',
                help="Show what would be done, but don't actually do anything."),
         'verbose',
@@ -443,7 +443,12 @@ class cmd_inventory(Command):
 
     hidden = True
     _see_also = ['ls']
-    takes_options = ['revision', 'show-ids', 'kind']
+    takes_options = [
+        'revision',
+        'show-ids',
+        Option('kind',
+               help='List entries of a particular kind: file, directory, symlink.'),
+        ]
     takes_args = ['file*']
 
     @display_command
@@ -1394,12 +1399,13 @@ class cmd_diff(Command):
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
-        'revision',
-        Option('diff-options', type=str),
+        Option('diff-options', type=str,
+               help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
+        'revision',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1743,7 +1749,8 @@ class cmd_ls(Command):
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
                    'between files rather than a newline.'),
-            'kind',
+            Option('kind',
+                   help='List entries of a particular kind: file, directory, symlink.'),
             'show-ids',
             ]
     @display_command

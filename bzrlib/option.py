@@ -387,7 +387,6 @@ _global_registry_option('merge-type', 'Select a particular merge algorithm.',
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
-_global_option('kind', type=str)
 
 _help_option = Option('help',
                       help='Show help message.',

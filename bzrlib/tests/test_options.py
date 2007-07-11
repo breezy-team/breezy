@@ -299,9 +299,8 @@ class TestOptionDefinitions(TestCase):
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
         for scope, option in self.get_all_options():
             if not option.help:
-                # msgs.append('%-16s %-16s %s' %
-                #        ((scope or 'GLOBAL'), option.name, 'NO HELP'))
-                pass
+                msgs.append('%-16s %-16s %s' %
+                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
             elif not option_re.match(option.help):
                 msgs.append('%-16s %-16s %s' %
                         ((scope or 'GLOBAL'), option.name, option.help))
