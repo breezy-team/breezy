@@ -199,7 +199,6 @@ desired.
 
 """
 
-
 import bisect
 import binascii
 import errno
@@ -423,12 +422,14 @@ class DirState(object):
         if self._id_index:
             self._id_index.setdefault(entry_key[2], set()).add(entry_key)
 
-    def _bisect(self, dir_name_list):
+    def _bisect(self, paths):
         """Bisect through the disk structure for specific rows.
 
-        :param dir_name_list: A list of (dir, name) pairs.
-        :return: A dict mapping (dir, name) => entry for found entries. Missing
+        :param paths: A list of paths to find
+        :return: A dict mapping path => entries for found entries. Missing
                  entries will not be in the map.
+                 The list is not sorted, and entries will be populated
+                 based on when they were read.
         """
         self._requires_lock()
         # We need the file pointer to be right after the initial header block
@@ -454,7 +455,7 @@ class DirState(object):
         found = {}
 
         # Avoid infinite seeking
-        max_count = 30*len(dir_name_list)
+        max_count = 30*len(paths)
         count = 0
         # pending is a list of places to look.
         # each entry is a tuple of low, high, dir_names
@@ -462,7 +463,7 @@ class DirState(object):
         #   high -> the last byte offset (inclusive)
         #   dir_names -> The list of (dir, name) pairs that should be found in
         #                the [low, high] range
-        pending = [(low, high, dir_name_list)]
+        pending = [(low, high, paths)]
 
         page_size = self._bisect_page_size
 
@@ -521,8 +522,11 @@ class DirState(object):
                 # Find what entries we are looking for, which occur before and
                 # after this first record.
                 after = start
-                first_dir_name = (first_fields[1], first_fields[2])
-                first_loc = bisect.bisect_left(cur_files, first_dir_name)
+                if first_fields[1]:
+                    first_path = first_fields[1] + '/' + first_fields[2]
+                else:
+                    first_path = first_fields[2]
+                first_loc = bisect_path_left(cur_files, first_path)
 
                 # These exist before the current location
                 pre = cur_files[:first_loc]
@@ -545,8 +549,11 @@ class DirState(object):
                 else:
                     after = mid + len(block)
 
-                last_dir_name = (last_fields[1], last_fields[2])
-                last_loc = bisect.bisect_right(post, last_dir_name)
+                if last_fields[1]:
+                    last_path = last_fields[1] + '/' + last_fields[2]
+                else:
+                    last_path = last_fields[2]
+                last_loc = bisect_path_right(post, last_path)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -557,33 +564,36 @@ class DirState(object):
                     # Either we will find them here, or we can mark them as
                     # missing.
 
-                    if middle_files[0] == first_dir_name:
+                    if middle_files[0] == first_path:
                         # We might need to go before this location
-                        pre.append(first_dir_name)
-                    if middle_files[-1] == last_dir_name:
-                        post.insert(0, last_dir_name)
+                        pre.append(first_path)
+                    if middle_files[-1] == last_path:
+                        post.insert(0, last_path)
 
                     # Find out what paths we have
-                    paths = {first_dir_name:[first_fields]}
-                    # last_dir_name might == first_dir_name so we need to be
+                    paths = {first_path:[first_fields]}
+                    # last_path might == first_path so we need to be
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
-                        paths.setdefault(last_dir_name, []).append(last_fields)
+                        paths.setdefault(last_path, []).append(last_fields)
                     for num in xrange(first_entry_num+1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
                         fields = entries[num].split('\0')
-                        dir_name = (fields[1], fields[2])
-                        paths.setdefault(dir_name, []).append(fields)
+                        if fields[1]:
+                            path = fields[1] + '/' + fields[2]
+                        else:
+                            path = fields[2]
+                        paths.setdefault(path, []).append(fields)
 
-                    for dir_name in middle_files:
-                        for fields in paths.get(dir_name, []):
+                    for path in middle_files:
+                        for fields in paths.get(path, []):
                             # offset by 1 because of the opening '\0'
                             # consider changing fields_to_entry to avoid the
                             # extra list slice
                             entry = fields_to_entry(fields[1:])
-                            found.setdefault(dir_name, []).append(entry)
+                            found.setdefault(path, []).append(entry)
 
             # Now we have split up everything into pre, middle, and post, and
             # we have handled everything that fell in 'middle'.
@@ -705,7 +715,7 @@ class DirState(object):
                 # after this first record.
                 after = start
                 first_dir = first_fields[1]
-                first_loc = bisect.bisect_left(cur_dirs, first_dir)
+                first_loc = bisect_path_left(cur_dirs, first_dir)
 
                 # These exist before the current location
                 pre = cur_dirs[:first_loc]
@@ -729,7 +739,7 @@ class DirState(object):
                     after = mid + len(block)
 
                 last_dir = last_fields[1]
-                last_loc = bisect.bisect_right(post, last_dir)
+                last_loc = bisect_path_right(post, last_dir)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -779,7 +789,7 @@ class DirState(object):
 
         return found
 
-    def _bisect_recursive(self, dir_name_list):
+    def _bisect_recursive(self, paths):
         """Bisect for entries for all paths and their children.
 
         This will use bisect to find all records for the supplied paths. It
@@ -798,7 +808,7 @@ class DirState(object):
         # Directories that have been read
         processed_dirs = set()
         # Get the ball rolling with the first bisect for all entries.
-        newly_found = self._bisect(dir_name_list)
+        newly_found = self._bisect(paths)
 
         while newly_found:
             # Directories that need to be read
@@ -2267,11 +2277,15 @@ try:
     from bzrlib._dirstate_helpers_c import (
         _read_dirblocks_c as _read_dirblocks,
         bisect_dirblock_c as bisect_dirblock,
+        bisect_path_left_c as bisect_path_left,
+        bisect_path_right_c as bisect_path_right,
         cmp_by_dirs_c as cmp_by_dirs,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks_py as _read_dirblocks,
         bisect_dirblock_py as bisect_dirblock,
+        bisect_path_left_py as bisect_path_left,
+        bisect_path_right_py as bisect_path_right,
         cmp_by_dirs_py as cmp_by_dirs,
         )

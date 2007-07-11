@@ -16,6 +16,88 @@
 
 """Python implementations of Dirstate Helper functions."""
 
+import os
+
+
+def bisect_path_left_py(paths, path):
+    """Return the index where to insert path into paths.
+
+    This uses the dirblock sorting. So all children in a directory come before
+    the children of children. For example::
+
+        a/
+          b/
+            c
+          d/
+            e
+          b-c
+          d-e
+        a-a
+        a=c
+
+    Will be sorted as::
+
+        a
+        a-a
+        a=c
+        a/b
+        a/b-c
+        a/d
+        a/d-e
+        a/b/c
+        a/d/e
+
+    :param paths: A list of paths to search through
+    :param path: A single path to insert
+    :return: An offset where 'path' can be inserted.
+    :seealso: bisect.bisect_left
+    """
+    hi = len(paths)
+    lo = 0
+    while lo < hi:
+        mid = (lo + hi) // 2
+        # Grab the dirname for the current dirblock
+        cur = paths[mid]
+        cmp_val = cmp_path_by_dirblock_py(cur, path)
+        print 'py_left mid: %d, cmp_val %d, cur_str %r, path_str %r' % (
+            mid, cmp_val, cur, path)
+        if cmp_val < 0:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def bisect_path_right_py(paths, path):
+    """Return the index where to insert path into paths.
+
+    This uses a path-wise comparison so we get::
+        a
+        a-b
+        a=b
+        a/b
+    Rather than::
+        a
+        a-b
+        a/b
+        a=b
+    :param paths: A list of paths to search through
+    :param path: A single path to insert
+    :return: An offset where 'path' can be inserted.
+    :seealso: bisect.bisect_right
+    """
+    hi = len(paths)
+    lo = 0
+    while lo < hi:
+        mid = (lo+hi)//2
+        # Grab the dirname for the current dirblock
+        cur = paths[mid]
+        if cmp_path_by_dirblock_py(path, cur) < 0:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
 
 def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
     """Return the index where to insert dirname into the dirblocks.
@@ -35,7 +117,7 @@ def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
         dirname_split = dirname.split('/')
         cache[dirname] = dirname_split
     while lo < hi:
-        mid = (lo+hi)//2
+        mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = dirblocks[mid][0]
         try:
@@ -43,7 +125,7 @@ def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
         except KeyError:
             cur_split = cur.split('/')
             cache[cur] = cur_split
-        if cur_split < dirname_split: lo = mid+1
+        if cur_split < dirname_split: lo = mid + 1
         else: hi = mid
     return lo
 
@@ -169,3 +251,23 @@ def cmp_by_dirs_py(path1, path2):
         and negative number if ``path2`` sorts first
     """
     return cmp(path1.split('/'), path2.split('/'))
+
+
+def cmp_path_by_dirblock_py(path1, path2):
+    """Compare two paths based on what directory they are in.
+
+    This generates a sort order, such that all children of a directory are
+    sorted together, and grandchildren are in the same order as the
+    children appear. But all grandchildren come after all children.
+
+    :param path1: first path
+    :param path2: the second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal
+        and a negative number if ``path2`` sorts first
+    """
+    dirname1, basename1 = os.path.split(path1)
+    key1 = (dirname1.split('/'), basename1)
+    dirname2, basename2 = os.path.split(path2)
+    key2 = (dirname2.split('/'), basename2)
+    return cmp(key1, key2)

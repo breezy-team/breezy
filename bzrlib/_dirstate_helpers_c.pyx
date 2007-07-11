@@ -50,6 +50,51 @@ cdef extern from "string.h":
     char *strchr(char *s1, char c)
     int strncmp(char *s1, char *s2, int len)
     int strcmp(char *s1, char *s2)
+    void *memchr(void *s, int c, size_t len)
+    int memcmp(void *b1, void *b2, size_t len)
+    # ??? memrchr is a GNU extension :(
+    # void *memrchr(void *s, int c, size_t len)
+
+
+cdef void* _my_memrchr(void *s, int c, size_t n):
+    # memrchr seems to be a GNU extension, so we have to implement it ourselves
+    # We semi-cheat, and just call memchr repeatedly until we run out of path.
+    # And then return the last match.
+    cdef void *pos
+    cdef void *end
+    cdef void *last_pos
+
+    last_pos = NULL
+    end = <void*>((<char*>s) + n)
+    pos = memchr(s, c, n)
+    while pos != NULL and pos < end:
+        last_pos = pos
+        pos = memchr(pos+1, c, end-pos)
+    return last_pos
+
+
+def _py_memrchr(s, c):
+    """Just to expose _my_memrchr for testing.
+
+    :param s: The Python string to search
+    :param c: The character to search for
+    :return: The offset to the last instance of 'c' in s
+    """
+    cdef void *_s
+    cdef void *found
+    cdef int length
+    cdef char *_c
+
+    _s = PyString_AsString(s)
+    length = PyString_Size(s)
+
+    _c = PyString_AsString(c)
+    assert PyString_Size(c) == 1,\
+        'Must be a single character string, not %s' % (c,)
+    found = _my_memrchr(_s, _c[0], length)
+    if found == NULL:
+        return None
+    return found - _s
 
 
 cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
@@ -135,6 +180,202 @@ def cmp_by_dirs_c(path1, path2):
                         PyString_Size(path2))
 
 
+def cmp_path_by_dirblock_c(path1, path2):
+    """Compare two paths based on what directory they are in.
+
+    This generates a sort order, such that all children of a directory are
+    sorted together, and grandchildren are in the same order as the
+    children appear. But all grandchildren come after all children.
+
+    :param path1: first path
+    :param path2: the second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal
+        and a negative number if ``path2`` sorts first
+    """
+    return _cmp_path_by_dirblock(PyString_AsString(path1),
+                                 PyString_Size(path1),
+                                 PyString_AsString(path2),
+                                 PyString_Size(path2))
+
+
+cdef _cmp_path_by_dirblock(char *path1, int path1_len,
+                           char *path2, int path2_len):
+    cdef char *dirname1
+    cdef int dirname1_len
+    cdef char *dirname2
+    cdef int dirname2_len
+    cdef char *basename1
+    cdef int basename1_len
+    cdef char *basename2
+    cdef int basename2_len
+    cdef int cur_len
+    cdef int cmp_val
+
+    dirname1 = path1
+    dirname1_len = path1_len
+
+    dirname2 = path2
+    dirname2_len = path2_len
+
+    if path1_len == 0 and path2_len == 0:
+        return 0
+
+    if path1_len == 0:
+        return -1
+
+    if path2_len == 0:
+        return 1
+
+    basename1 = <char*>_my_memrchr(dirname1, c'/', dirname1_len)
+
+    if basename1 == NULL:
+        basename1 = dirname1
+        dirname1 = ''
+        dirname1_len = 0
+    else:
+        cur_len = basename1 - dirname1
+        basename1 = basename1 + 1
+        basename1_len = dirname1_len - cur_len - 1
+        dirname1_len = cur_len
+
+    basename2 = <char*>_my_memrchr(dirname2, c'/', dirname2_len)
+
+    if basename2 == NULL:
+        basename2 = dirname2
+        dirname2 = ''
+        dirname2_len = 0
+    else:
+        cur_len = basename2 - dirname2
+        basename2 = basename2 + 1
+        basename2_len = dirname2_len - cur_len - 1
+        dirname2_len = cur_len
+
+    cmp_val = _cmp_by_dirs(dirname1, dirname1_len,
+                           dirname2, dirname2_len)
+    if cmp_val != 0:
+        return cmp_val
+
+    cur_len = basename1_len
+    if basename2_len < basename1_len:
+        cur_len = basename2_len
+
+    cmp_val = memcmp(basename1, basename2, cur_len)
+    if cmp_val != 0:
+        return cmp_val
+    if basename1_len == basename2_len:
+        return 0
+    if basename1_len < basename2_len:
+        return -1
+    return 1
+
+
+def bisect_path_left_c(paths, path):
+    """Return the index where to insert path into paths.
+
+    This uses a path-wise comparison so we get::
+        a
+        a-b
+        a=b
+        a/b
+    Rather than::
+        a
+        a-b
+        a/b
+        a=b
+    :param paths: A list of paths to search through
+    :param path: A single path to insert
+    :return: An offset where 'path' can be inserted.
+    :seealso: bisect.bisect_left
+    """
+    cdef int _lo
+    cdef int _hi
+    cdef int _mid
+    cdef char *path_str
+    cdef int path_size
+    cdef char *cur_str
+    cdef int cur_size
+    cdef void *cur
+
+    if not PyList_CheckExact(paths):
+        raise TypeError('you must pass a python list for paths')
+    if not PyString_CheckExact(path):
+        raise TypeError('you must pass a string for path')
+
+    _hi = len(paths)
+    _lo = 0
+
+    path_str = PyString_AsString(path)
+    path_size = PyString_Size(path)
+
+    while _lo < _hi:
+        _mid = (_lo + _hi) / 2
+        cur = PyList_GetItem_object_void(paths, _mid)
+        cur_str = PyString_AS_STRING_void(cur)
+        cur_size = PyString_GET_SIZE_void(cur)
+        if _cmp_path_by_dirblock(cur_str, cur_size, path_str, path_size) < 0:
+            _lo = _mid + 1
+        else:
+            _hi = _mid
+    return _lo
+
+
+def bisect_path_right_c(paths, path):
+    """Return the index where to insert path into paths.
+
+    This uses a path-wise comparison so we get::
+        a
+        a-b
+        a=b
+        a/b
+    Rather than::
+        a
+        a-b
+        a/b
+        a=b
+    :param paths: A list of paths to search through
+    :param path: A single path to insert
+    :return: An offset where 'path' can be inserted.
+    :seealso: bisect.bisect_right
+    """
+    cdef int _lo
+    cdef int _hi
+    cdef int _mid
+    cdef char *path_str
+    cdef int path_size
+    cdef char *cur_str
+    cdef int cur_size
+    cdef void *cur
+    cdef int cmp_val
+
+    if not PyList_CheckExact(paths):
+        raise TypeError('you must pass a python list for paths')
+    if not PyString_CheckExact(path):
+        raise TypeError('you must pass a string for path')
+
+    _hi = len(paths)
+    _lo = 0
+
+    path_str = PyString_AsString(path)
+    path_size = PyString_Size(path)
+
+    while _lo < _hi:
+        _mid = (_lo + _hi) / 2
+        cur = PyList_GetItem_object_void(paths, _mid)
+        cur_str = PyString_AS_STRING_void(cur)
+        cur_size = PyString_GET_SIZE_void(cur)
+        cmp_val = _cmp_path_by_dirblock(path_str, path_size, cur_str, cur_size)
+        print 'c_left mid: %d, cmp_val %d, cur_str %r, path_str %r' % (
+            _mid, cmp_val,
+            PyString_FromStringAndSize(cur_str, cur_size),
+            PyString_FromStringAndSize(path_str, path_size))
+        if cmp_val < 0:
+            _hi = _mid
+        else:
+            _lo = _mid + 1
+    return _lo
+
+
 def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
@@ -168,7 +409,7 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
     dirname_size = PyString_Size(dirname)
 
     while _lo < _hi:
-        _mid = (_lo+_hi)/2
+        _mid = (_lo + _hi) / 2
         # Grab the dirname for the current dirblock
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
@@ -176,7 +417,7 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
         cur_str = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
         if _cmp_by_dirs(cur_str, cur_size, dirname_str, dirname_size) < 0:
-            _lo = _mid+1
+            _lo = _mid + 1
         else:
             _hi = _mid
     return _lo
@@ -204,6 +445,7 @@ cdef class Reader:
         """Return a pointer to the start of the next field."""
         cdef char *next
         next = self.cur
+        # XXX: Change this to not use 'memchr' instead of 'strchr'
         self.cur = strchr(next, c'\0')
         size[0] = self.cur - next
         self.cur = self.cur + 1
