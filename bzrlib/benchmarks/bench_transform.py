@@ -23,7 +23,9 @@ from bzrlib.osutils import pathjoin
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
+
 class TransformBenchmark(Benchmark):
+    """Benchmarks for `bzrlib.transform`"""
 
     def test_canonicalize_path(self):
         """Canonicalizing paths should be fast.""" 

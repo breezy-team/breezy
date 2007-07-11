@@ -32,6 +32,9 @@ from bzrlib.errors import (ConnectionError,
                            NoSuchFile,
                            PathNotChild,
                            TransportNotPossible,
+                           ConnectionError,
+                           DependencyNotPresent,
+                           ReadError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
@@ -40,6 +43,7 @@ from bzrlib.transport import (_CoalescedOffset,
                               _set_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
+                              LateReadError,
                               register_lazy_transport,
                               register_transport_proto,
                               _clear_protocol_handlers,
@@ -116,6 +120,16 @@ class TestTransport(TestCase):
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
             _set_protocol_handlers(saved_handlers)
+
+    def test_LateReadError(self):
+        """The LateReadError helper should raise on read()."""
+        a_file = LateReadError('a path')
+        try:
+            a_file.read()
+        except ReadError, error:
+            self.assertEqual('a path', error.path)
+        self.assertRaises(ReadError, a_file.read, 40)
+        a_file.close()
 
     def test__combine_paths(self):
         t = Transport('/')
@@ -540,15 +554,19 @@ class TestTransportImplementation(TestCaseInTempDir):
         self._server.setUp()
         self.addCleanup(self._server.tearDown)
 
-    def get_transport(self):
-        """Return a connected transport to the local directory."""
+    def get_transport(self, relpath=None):
+        """Return a connected transport to the local directory.
+
+        :param relpath: a path relative to the base url.
+        """
         base_url = self._server.get_url()
+        url = self._adjust_url(base_url, relpath)
         # try getting the transport via the regular interface:
-        t = get_transport(base_url)
+        t = get_transport(url)
         if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
-            t = self.transport_class(base_url)
+            t = self.transport_class(url)
         return t
 
 
@@ -592,3 +610,13 @@ class TestWin32LocalTransport(TestCase):
         # make sure we reach the root
         t = t.clone('..')
         self.assertEquals(t.base, 'file://HOST/')
+
+
+def get_test_permutations():
+    """Return transport permutations to be used in testing.
+
+    This module registers some transports, but they're only for testing
+    registration.  We don't really want to run all the transport tests against
+    them.
+    """
+    return []

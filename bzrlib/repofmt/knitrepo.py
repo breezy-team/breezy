@@ -16,8 +16,8 @@
 
 from bzrlib import (
     bzrdir,
+    deprecated_graph,
     errors,
-    graph,
     knit,
     lockable_files,
     lockdir,
@@ -37,6 +37,31 @@ from bzrlib.repository import (
 import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
+
+
+class _KnitParentsProvider(object):
+
+    def __init__(self, knit):
+        self._knit = knit
+
+    def __repr__(self):
+        return 'KnitParentsProvider(%r)' % self._knit
+
+    def get_parents(self, revision_ids):
+        parents_list = []
+        for revision_id in revision_ids:
+            if revision_id == _mod_revision.NULL_REVISION:
+                parents = []
+            else:
+                try:
+                    parents = self._knit.get_parents_with_ghosts(revision_id)
+                except errors.RevisionNotPresent:
+                    parents = None
+                else:
+                    if len(parents) == 0:
+                        parents = [_mod_revision.NULL_REVISION]
+            parents_list.append(parents)
+        return parents_list
 
 
 class KnitRepository(MetaDirRepository):
@@ -86,17 +111,18 @@ class KnitRepository(MetaDirRepository):
         return self._fileid_involved_by_set(changed)
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
         
-        This is topologically sorted.
+        This is topologically sorted, unless 'topo_sorted' is specified as
+        False.
         """
         if revision_id is None:
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()
         try:
-            return [None] + vf.get_ancestry(revision_id)
+            return [None] + vf.get_ancestry(revision_id, topo_sorted)
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
 
@@ -144,7 +170,7 @@ class KnitRepository(MetaDirRepository):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
-        result = graph.Graph()
+        result = deprecated_graph.Graph()
         vf = self._get_revision_vf()
         versions = set(vf.versions())
         if not revision_ids:
@@ -201,6 +227,9 @@ class KnitRepository(MetaDirRepository):
     def revision_parents(self, revision_id):
         revision_id = osutils.safe_revision_id(revision_id)
         return self._get_revision_vf().get_parents(revision_id)
+
+    def _make_parents_provider(self):
+        return _KnitParentsProvider(self._get_revision_vf())
 
 
 class KnitRepository3(KnitRepository):

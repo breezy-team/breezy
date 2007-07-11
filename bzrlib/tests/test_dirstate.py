@@ -201,7 +201,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         tree.commit('initial', rev_id='rev-1')
         revision_id = 'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
-        t = self.get_transport().clone('tree')
+        t = self.get_transport('tree')
         a_text = t.get_bytes('a')
         a_sha = osutils.sha_string(a_text)
         a_len = len(a_text)
@@ -567,6 +567,9 @@ class TestDirStateOnFile(TestCaseWithDirState):
             self.assertEqual('', entry[1][0][1])
             # We should have a real entry.
             self.assertNotEqual((None, None), entry)
+            # Make sure everything is old enough
+            state._sha_cutoff_time()
+            state._cutoff_time += 10
             sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
             # We should have gotten a real sha1
             self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
@@ -696,6 +699,47 @@ class TestDirStateManipulations(TestCaseWithDirState):
         else:
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_inventory_mixed_paths(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
+                         'tree1/a/b/foo', 'tree1/a-b/bar'])
+        tree1.lock_write()
+        try:
+            tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
+                      ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
+            tree1.commit('rev1', rev_id='rev1')
+            root_id = tree1.get_root_id()
+            inv = tree1.inventory
+        finally:
+            tree1.unlock()
+        expected_result1 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a', 'b', 'b-id', 'd'),
+                            ('a/b', 'foo', 'foo-id', 'f'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        expected_result2 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result1, values)
+            del inv['b-id']
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result2, values)
+        finally:
+            state.unlock()
 
     def test_set_path_id_no_parents(self):
         """The id of a path can be changed trivally with no parents."""
@@ -1430,8 +1474,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
 
-        # The dirblock entry should be updated with the new info
-        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+        # The dirblock entry should not cache the file's sha1
+        self.assertEqual([('f', '', 14, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
@@ -1456,32 +1500,35 @@ class TestUpdateEntry(TestCaseWithDirState):
                          link_or_sha1)
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
+        self.assertEqual([('f', '', 14, False, dirstate.DirState.NULLSTAT)],
+                         entry[1])
         state.save()
 
         # However, if we move the clock forward so the file is considered
-        # "stable", it should just returned the cached value.
-        state.adjust_time(20)
+        # "stable", it should just cache the value.
+        state.adjust_time(+20)
         link_or_sha1 = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
                           ('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
                          ], state._log)
+        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+                         entry[1])
 
-    def test_update_entry_no_stat_value(self):
-        """Passing the stat_value is optional."""
-        state, entry = self.get_state_with_a()
-        state.adjust_time(-10) # Make sure the file looks new
-        self.build_tree(['a'])
-        # Add one where we don't provide the stat or sha already
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        # Subsequent calls will just return the cached value
+        link_or_sha1 = state.update_entry(entry, abspath='a',
+                                          stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
-        stat_value = os.lstat('a')
-        self.assertEqual([('lstat', 'a'), ('sha1', 'a'),
-                          ('is_exec', stat_value.st_mode, False),
+        self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
                          ], state._log)
+        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+                         entry[1])
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
@@ -1501,8 +1548,8 @@ class TestUpdateEntry(TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
         self.assertEqual([('read_link', 'a', '')], state._log)
-        # Dirblock is updated
-        self.assertEqual([('l', link_or_sha1, 6, False, packed_stat)],
+        # Dirblock is not updated (the link is too new)
+        self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
@@ -1512,23 +1559,70 @@ class TestUpdateEntry(TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
         self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', 'target'),
+                          ('read_link', 'a', ''),
                          ], state._log)
+        self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
+                         entry[1])
         state.adjust_time(+20) # Skip into the future, all files look old
         link_or_sha1 = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
-        # There should not be a new read_link call.
-        # (this is a weak assertion, because read_link is fairly inexpensive,
-        # versus the number of symlinks that we would have)
+        # We need to re-read the link because only now can we cache it
         self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', 'target'),
+                          ('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
                          ], state._log)
+        self.assertEqual([('l', 'target', 6, False, packed_stat)],
+                         entry[1])
+
+        # Another call won't re-read the link
+        self.assertEqual([('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
+                         ], state._log)
+        link_or_sha1 = state.update_entry(entry, abspath='a',
+                                          stat_value=stat_value)
+        self.assertEqual('target', link_or_sha1)
+        self.assertEqual([('l', 'target', 6, False, packed_stat)],
+                         entry[1])
+
+    def do_update_entry(self, state, entry, abspath):
+        stat_value = os.lstat(abspath)
+        return state.update_entry(entry, abspath, stat_value)
 
     def test_update_entry_dir(self):
         state, entry = self.get_state_with_a()
         self.build_tree(['a/'])
-        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+
+    def test_update_entry_dir_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a/'])
+        state.adjust_time(+20)
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+    def test_update_entry_file_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a'])
+        sha1sum = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        state.adjust_time(+20)
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
     def create_and_test_file(self, state, entry):
         """Create a file at 'a' and verify the state finds it.
@@ -1540,7 +1634,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
@@ -1557,7 +1651,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertIs(None, link_or_sha1)
         self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
 
@@ -1578,50 +1672,19 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('path/to/foo', link_or_sha1)
         self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
                          entry[1])
         return packed_stat
-
-    def test_update_missing_file(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_file(state, entry)
-        # Now if we delete the file, update_entry should recover and
-        # return None.
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
-        self.assertEqual([('f', digest, 14, False, packed_stat)],
-                         entry[1])
-
-    def test_update_missing_dir(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_dir(state, entry)
-        # Now if we delete the directory, update_entry should recover and
-        # return None.
-        os.rmdir('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
-
-    def test_update_missing_symlink(self):
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_symlink(state, entry)
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
-                         entry[1])
 
     def test_update_file_to_dir(self):
         """If a file changes to a directory we return None for the sha.
         We also update the inventory record.
         """
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_file(state, entry)
         os.remove('a')
         self.create_and_test_dir(state, entry)
@@ -1632,6 +1695,8 @@ class TestUpdateEntry(TestCaseWithDirState):
             # PlatformDeficiency / TestSkipped
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_file(state, entry)
         os.remove('a')
         self.create_and_test_symlink(state, entry)
@@ -1639,6 +1704,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_dir_to_file(self):
         """Directory becoming a file updates the entry."""
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
         self.create_and_test_file(state, entry)
@@ -1649,6 +1716,8 @@ class TestUpdateEntry(TestCaseWithDirState):
             # PlatformDeficiency / TestSkipped
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink target won't be cached if it isn't old
+        state.adjust_time(+10)
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
         self.create_and_test_symlink(state, entry)
@@ -1658,6 +1727,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink and file info won't be cached unless old
+        state.adjust_time(+10)
         self.create_and_test_symlink(state, entry)
         os.remove('a')
         self.create_and_test_file(state, entry)
@@ -1667,6 +1738,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink target won't be cached if it isn't old
+        state.adjust_time(+10)
         self.create_and_test_symlink(state, entry)
         os.remove('a')
         self.create_and_test_dir(state, entry)
@@ -1686,11 +1759,16 @@ class TestUpdateEntry(TestCaseWithDirState):
         packed_stat = dirstate.pack_stat(stat_value)
 
         state.adjust_time(-10) # Make sure everything is new
-        # Make sure it wants to kkkkkkkk
         state.update_entry(entry, abspath='a', stat_value=stat_value)
 
         # The row is updated, but the executable bit stays set.
+        self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
+                         entry[1])
+
+        # Make the disk object look old enough to cache
+        state.adjust_time(+20)
         digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        state.update_entry(entry, abspath='a', stat_value=stat_value)
         self.assertEqual([('f', digest, 14, True, packed_stat)], entry[1])
 
 

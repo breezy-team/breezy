@@ -39,12 +39,12 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def test_join(self):
         base_tree, sub_tree = self.make_trees()
-        self.run_bzr('join', 'tree/subtree')
+        self.run_bzr('join tree/subtree')
         self.check_success('tree')
 
     def test_join_dot(self):
         base_tree, sub_tree = self.make_trees()
-        self.run_bzr('join', '.', working_dir='tree/subtree')
+        self.run_bzr('join .', working_dir='tree/subtree')
         self.check_success('tree')
 
     def test_join_error(self):
@@ -53,18 +53,18 @@ class TestJoin(tests.TestCaseWithTransport):
         os.rename('tree/subtree', 'tree/subtree2/subtree')
         self.run_bzr_error(
             ('Cannot join .*subtree.  Parent directory is not versioned',),
-             'join', 'tree/subtree2/subtree')
+             'join tree/subtree2/subtree')
         # disabled because this gives an ugly error at present -- mbp 20070306
         ## self.run_bzr_error(
         ##     ('Cannot join .*subtree.  Parent directory is not versioned',),
         ##      'join', '--reference', 'tree/subtree2/subtree')
-        self.run_bzr_error(('Not a branch:.*subtree2',), 'join',
-                            'tree/subtree2')
+        self.run_bzr_error(('Not a branch:.*subtree2',),
+                           'join tree/subtree2')
 
     def test_join_reference(self):
         """Join can add a reference if --reference is supplied"""
         base_tree, sub_tree = self.make_trees()
-        self.run_bzr('join', '.', '--reference', working_dir='tree/subtree')
+        self.run_bzr('join . --reference', working_dir='tree/subtree')
         sub_tree.lock_read()
         self.addCleanup(sub_tree.unlock)
         self.assertEqual('file1-id', sub_tree.path2id('file1'))
@@ -85,11 +85,9 @@ class TestJoin(tests.TestCaseWithTransport):
         # cannot.
         tree = self.make_branch_and_tree('tree', format='dirstate')
         tree2 = self.make_branch_and_tree('tree/subtree')
-        out, err = self.run_bzr('join', '--reference', 'tree/subtree',
-            retcode=3)
-        self.assertContainsRe(err,
-            r"Can't join trees")
-        self.assertContainsRe(err,
-            r"use bzr upgrade")
+        out, err = self.run_bzr('join --reference tree/subtree',
+                                retcode=3)
+        self.assertContainsRe(err, r"Can't join trees")
+        self.assertContainsRe(err, r"use bzr upgrade")
 
 

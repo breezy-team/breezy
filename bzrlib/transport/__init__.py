@@ -34,7 +34,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from collections import deque
-from copy import deepcopy
 from stat import S_ISDIR
 import unittest
 import urllib
@@ -215,6 +214,32 @@ class _CoalescedOffset(object):
                    (other.start, other.length, other.ranges))
 
 
+class LateReadError(object):
+    """A helper for transports which pretends to be a readable file.
+
+    When read() is called, errors.ReadError is raised.
+    """
+
+    def __init__(self, path):
+        self._path = path
+
+    def close(self):
+        """a no-op - do nothing."""
+
+    def _fail(self):
+        """Raise ReadError."""
+        raise errors.ReadError(self._path)
+
+    def __iter__(self):
+        self._fail()
+
+    def read(self, count=-1):
+        self._fail()
+
+    def readlines(self):
+        self._fail()
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -291,6 +316,28 @@ class Transport(object):
             return False
         else:
             return True
+
+    def external_url(self):
+        """Return a URL for self that can be given to an external process.
+
+        There is no guarantee that the URL can be accessed from a different
+        machine - e.g. file:/// urls are only usable on the local machine,
+        sftp:/// urls when the server is only bound to localhost are only
+        usable from localhost etc.
+
+        NOTE: This method may remove security wrappers (e.g. on chroot
+        transports) and thus should *only* be used when the result will not
+        be used to obtain a new transport within bzrlib. Ideally chroot
+        transports would know enough to cause the external url to be the exact
+        one used that caused the chrooting in the first place, but that is not
+        currently the case.
+
+        :return: A URL that can be given to another process.
+        :raises InProcessTransport: If the transport is one that cannot be
+            accessed out of the current process (e.g. a MemoryTransport)
+            then InProcessTransport is raised.
+        """
+        raise NotImplementedError(self.external_url)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -473,6 +520,17 @@ class Transport(object):
     def get(self, relpath):
         """Get the file at the given relative path.
 
+        This may fail in a number of ways:
+         - HTTP servers may return content for a directory. (unexpected
+           content failure)
+         - FTP servers may indicate NoSuchFile for a directory.
+         - SFTP servers may give a file handle for a directory that will
+           fail on read().
+
+        For correct use of the interface, be sure to catch errors.PathError
+        when calling it and catch errors.ReadError when reading from the
+        returned object.
+
         :param relpath: The relative path to the file
         :rtype: File-like object.
         """
@@ -575,7 +633,7 @@ class Transport(object):
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
-        :return: yield _CoalescedOffset objects, which have members for wher
+        :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
         """
@@ -1177,50 +1235,6 @@ class Server(object):
         raise NotImplementedError
 
 
-class TransportTestProviderAdapter(object):
-    """A tool to generate a suite testing all transports for a single test.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_class and transport_server classes into each copy. Each copy
-    is also given a new id() to make it easy to identify.
-    """
-
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for klass, server_factory in self._test_permutations():
-            new_test = deepcopy(test)
-            new_test.transport_class = klass
-            new_test.transport_server = server_factory
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), server_factory.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    def get_transport_test_permutations(self, module):
-        """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) is None:
-            warning("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            return []
-        return module.get_test_permutations()
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        for module in _get_transport_modules():
-            try:
-                result.extend(self.get_transport_test_permutations(reduce(getattr, 
-                    (module).split('.')[1:],
-                     __import__(module))))
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us 
-                # from running this test
-                pass
-        return result
-
-
 class TransportLogger(object):
     """Adapt a transport to get clear logging data on api calls.
     
@@ -1302,8 +1316,14 @@ register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+
+register_transport_proto('brokenrename+')
+register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
+        'BrokenRenameTransportDecorator')
+
 register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',

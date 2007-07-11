@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     osutils,
     urlutils,
+    trace,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -413,6 +414,43 @@ class TestBranchConfig(TestCaseWithTransport):
         b = self.make_branch('!repo')
         self.assertEqual('!repo', b.get_config().get_nickname())
 
+    def test_warn_if_masked(self):
+        _warning = trace.warning
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+
+        def set_option(store, warn_masked=True):
+            warnings[:] = []
+            conf.set_user_option('example_option', repr(store), store=store,
+                                 warn_masked=warn_masked)
+        def assertWarning(warning):
+            if warning is None:
+                self.assertEqual(0, len(warnings))
+            else:
+                self.assertEqual(1, len(warnings))
+                self.assertEqual(warning, warnings[0])
+        trace.warning = warning
+        try:
+            branch = self.make_branch('.')
+            conf = branch.get_config()
+            set_option(config.STORE_GLOBAL)
+            assertWarning(None)
+            set_option(config.STORE_BRANCH)
+            assertWarning(None)
+            set_option(config.STORE_GLOBAL)
+            assertWarning('Value "4" is masked by "3" from branch.conf')
+            set_option(config.STORE_GLOBAL, warn_masked=False)
+            assertWarning(None)
+            set_option(config.STORE_LOCATION)
+            assertWarning(None)
+            set_option(config.STORE_BRANCH)
+            assertWarning('Value "3" is masked by "0" from locations.conf')
+            set_option(config.STORE_BRANCH, warn_masked=False)
+            assertWarning(None)
+        finally:
+            trace.warning = _warning
+
 
 class TestGlobalConfigItems(TestCase):
 
@@ -776,7 +814,6 @@ class TestLocationConfig(TestCaseInTempDir):
             self.my_location_config._get_option_policy(
             'http://www.example.com/norecurse', 'normal_option'),
             config.POLICY_NORECURSE)
-        
 
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
@@ -976,3 +1013,31 @@ class TestMailAddressExtraction(TestCase):
                          config.extract_email_address('Jane <jane@test.com>'))
         self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
+
+
+class TestTreeConfig(TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        branch = self.make_branch('.')
+        tree_config = config.TreeConfig(branch)
+        tree_config.set_option('value', 'key', 'SECTION')
+        tree_config.set_option('value2', 'key2')
+        tree_config.set_option('value3-top', 'key3')
+        tree_config.set_option('value3-section', 'key3', 'SECTION')
+        value = tree_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = tree_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(tree_config.get_option('non-existant'), None)
+        value = tree_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = tree_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(tree_config.get_option('key2', 'NOSECTION'), None)
+        value = tree_config.get_option('key2', 'NOSECTION', default='default')
+        self.assertEqual(value, 'default')
+        value = tree_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = tree_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')

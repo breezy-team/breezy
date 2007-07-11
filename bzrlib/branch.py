@@ -19,8 +19,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
-from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
@@ -174,7 +172,7 @@ class Branch(object):
         return self.get_config().get_nickname()
 
     def _set_nick(self, nick):
-        self.get_config().set_user_option('nickname', nick)
+        self.get_config().set_user_option('nickname', nick, warn_masked=True)
 
     nick = property(_get_nick, _set_nick)
 
@@ -586,7 +584,7 @@ class Branch(object):
             url = ''
         elif make_relative:
             url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url)
+        config.set_user_option(name, url, warn_masked=True)
 
     def _get_config_location(self, name, config=None):
         if config is None:
@@ -612,7 +610,8 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        self.get_config().set_user_option('submit_branch', location)
+        self.get_config().set_user_option('submit_branch', location,
+            warn_masked=True)
 
     def get_public_branch(self):
         """Return the public location of the branch.
@@ -847,6 +846,12 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    def __eq__(self, other):
+        return self.__class__ is other.__class__
+
+    def __ne__(self, other):
+        return not (self == other)
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the branch object in a_bzrdir."""
@@ -997,7 +1002,7 @@ class BranchHooks(Hooks):
         # (push_result)
         # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target 
+        # where local is the local target branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
         # is read locked and the target branches write locked. Source will
         # be the local low-latency branch.
@@ -1448,7 +1453,8 @@ class BzrBranch(Branch):
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev)
+            my_ancestry = self.repository.get_ancestry(last_rev,
+                                                       topo_sorted=False)
             if stop_revision in my_ancestry:
                 # last_revision is a descendant of stop_revision
                 return
@@ -1473,13 +1479,14 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+             _hook_master=None, run_hooks=True):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
             be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         result = PullResult()
         result.source_branch = source
@@ -1504,7 +1511,7 @@ class BzrBranch(Branch):
             else:
                 result.master_branch = self
                 result.local_branch = None
-            if _run_hooks:
+            if run_hooks:
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
         finally:
@@ -1522,40 +1529,91 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+             _override_hook_source_branch=None):
         """See Branch.push.
+
+        This is the basic concrete implementation of push()
+
+        :param _override_hook_source_branch: If specified, run
+        the hooks passing this Branch as the source, rather than self.  
+        This is for use of RemoteBranch, where push is delegated to the
+        underlying vfs-based Branch. 
+        """
+        # TODO: Public option to disable running hooks - should be trivial but
+        # needs tests.
+        target.lock_write()
+        try:
+            result = self._push_with_bound_branches(target, overwrite,
+                    stop_revision,
+                    _override_hook_source_branch=_override_hook_source_branch)
+            return result
+        finally:
+            target.unlock()
+
+    def _push_with_bound_branches(self, target, overwrite,
+            stop_revision,
+            _override_hook_source_branch=None):
+        """Push from self into target, and into target's master if any.
         
-        :param _hook_master: Private parameter - set the branch to 
-            be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        This is on the base BzrBranch class even though it doesn't support 
+        bound branches because the *target* might be bound.
+        """
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
+
+        bound_location = target.get_bound_location()
+        if bound_location and target.base != bound_location:
+            # there is a master branch.
+            #
+            # XXX: Why the second check?  Is it even supported for a branch to
+            # be bound to itself? -- mbp 20070507
+            master_branch = target.get_master_branch()
+            master_branch.lock_write()
+            try:
+                # push into the master from this branch.
+                self._basic_push(master_branch, overwrite, stop_revision)
+                # and push into the target branch from this. Note that we push from
+                # this branch again, because its considered the highest bandwidth
+                # repository.
+                result = self._basic_push(target, overwrite, stop_revision)
+                result.master_branch = master_branch
+                result.local_branch = target
+                _run_hooks()
+                return result
+            finally:
+                master_branch.unlock()
+        else:
+            # no master branch
+            result = self._basic_push(target, overwrite, stop_revision)
+            # TODO: Why set master_branch and local_branch if there's no
+            # binding?  Maybe cleaner to just leave them unset? -- mbp
+            # 20070504
+            result.master_branch = target
+            result.local_branch = None
+            _run_hooks()
+            return result
+
+    def _basic_push(self, target, overwrite, stop_revision):
+        """Basic implementation of push without bound branches or hooks.
+
+        Must be called with self read locked and target write locked.
         """
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
-        target.lock_write()
+        result.old_revno, result.old_revid = target.last_revision_info()
         try:
-            result.old_revno, result.old_revid = target.last_revision_info()
-            try:
-                target.update_revisions(self, stop_revision)
-            except DivergedBranches:
-                if not overwrite:
-                    raise
-            if overwrite:
-                target.set_revision_history(self.revision_history())
-            result.tag_conflicts = self.tags.merge_to(target.tags)
-            result.new_revno, result.new_revid = target.last_revision_info()
-            if _hook_master:
-                result.master_branch = _hook_master
-                result.local_branch = target
-            else:
-                result.master_branch = target
-                result.local_branch = None
-            if _run_hooks:
-                for hook in Branch.hooks['post_push']:
-                    hook(result)
-        finally:
-            target.unlock()
+            target.update_revisions(self, stop_revision)
+        except DivergedBranches:
+            if not overwrite:
+                raise
+        if overwrite:
+            target.set_revision_history(self.revision_history())
+        result.tag_conflicts = self.tags.merge_to(target.tags)
+        result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
     def get_parent(self):
@@ -1631,11 +1689,12 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _run_hooks=True):
-        """Extends branch.pull to be bound branch aware.
+             run_hooks=True):
+        """Pull from source into self, updating my master if any.
         
-        :param _run_hooks: Private parameter used to force hook running
-            off during bound branch double-pushing.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         bound_location = self.get_bound_location()
         master_branch = None
@@ -1647,33 +1706,10 @@ class BzrBranch5(BzrBranch):
             if master_branch:
                 # pull from source into master.
                 master_branch.pull(source, overwrite, stop_revision,
-                    _run_hooks=False)
+                    run_hooks=False)
             return super(BzrBranch5, self).pull(source, overwrite,
                 stop_revision, _hook_master=master_branch,
-                _run_hooks=_run_hooks)
-        finally:
-            if master_branch:
-                master_branch.unlock()
-
-    @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
-        """Updates branch.push to be bound branch aware."""
-        bound_location = target.get_bound_location()
-        master_branch = None
-        if bound_location and target.base != bound_location:
-            # not pushing to master, so we need to update master.
-            master_branch = target.get_master_branch()
-            master_branch.lock_write()
-        try:
-            if master_branch:
-                # push into the master from this branch.
-                super(BzrBranch5, self).push(master_branch, overwrite,
-                    stop_revision, _run_hooks=False)
-            # and push into the target branch from this. Note that we push from
-            # this branch again, because its considered the highest bandwidth
-            # repository.
-            return super(BzrBranch5, self).push(target, overwrite,
-                stop_revision, _hook_master=master_branch)
+                run_hooks=run_hooks)
         finally:
             if master_branch:
                 master_branch.unlock()
@@ -1777,7 +1813,8 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision()):
+            if old_tip in self.repository.get_ancestry(self.last_revision(),
+                                                       topo_sorted=False):
                 return None
             return old_tip
         return None
@@ -1995,12 +2032,12 @@ class BzrBranch6(BzrBranch5):
             if config.get_user_option('bound') != 'True':
                 return False
             else:
-                config.set_user_option('bound', 'False')
+                config.set_user_option('bound', 'False', warn_masked=True)
                 return True
         else:
             self._set_config_location('bound_location', location,
                                       config=config)
-            config.set_user_option('bound', 'True')
+            config.set_user_option('bound', 'True', warn_masked=True)
         return True
 
     def _get_bound_location(self, bound):
@@ -2026,7 +2063,8 @@ class BzrBranch6(BzrBranch5):
             value = 'True'
         else:
             value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value)
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2047,45 +2085,18 @@ class BzrBranch6(BzrBranch5):
         if revision_id is None:
             revno, revision_id = self.last_revision_info()
         else:
-            revno = self.revision_id_to_revno(revision_id)
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
         destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):
         return BasicTags(self)
-
-
-class BranchTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple branch formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and branch_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = TestSuite()
-        for branch_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.branch_format = branch_format
-            def make_new_test_id():
-                # the format can be either a class or an instance
-                name = getattr(branch_format, '__name__',
-                        branch_format.__class__.__name__)
-                new_id = "%s(%s)" % (new_test.id(), name)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
 
 
 ######################################################################

@@ -23,7 +23,6 @@ from bzrlib import (
     generate_ids,
     osutils,
     )
-from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
 from bzrlib.errors import (NotBranchError, NotVersionedError,
@@ -426,7 +425,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree(("original/", "original/file1", "original/file2"))
         tree = self.make_branch_and_tree('original')
         branch = tree.branch
-        smart_add_tree(tree, ["original"])
+        tree.smart_add(["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
@@ -522,7 +521,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('contents\n')
         wta.add('file')
         wta.commit('a_revision', allow_pointless=False)
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         os.remove('a/file')
         wta.commit('removed file', allow_pointless=False)
         file('b/file', 'wb').write('changed contents\n')
@@ -537,7 +536,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('contents\n')
         a_wt.add('file')
         a_wt.commit('r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.chmod('b/file', 0755)
         os.remove('a/file')
@@ -555,7 +554,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.add('un', 'un-id')
         a_wt.add('deux', 'deux-id')
         a_wt.commit('r0', rev_id='r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('un','tmp')
         b_wt.rename_one('deux','un')
@@ -573,7 +572,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('THIS')
         a_wt.add('file')
         a_wt.commit('r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.remove('b/file')
         b_wt.commit('r1')
@@ -602,7 +601,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/foo', 'wb').write('A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('foo', 'bar')
         file('b/foo', 'wb').write('B/FOO')
@@ -630,7 +629,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/foo', 'wb').write('A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.mkdir('b/bar')
         b_wt.add('bar')
@@ -659,7 +658,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.add('foo')
         a_wt.add('foo/bar')
         a_wt.commit('added foo/bar')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('foo/bar', 'bar')
         os.rmdir('b/foo')
@@ -688,7 +687,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.add('foo')
         a_wt.add('bar')
         a_wt.commit('added foo and bar')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.unlink('b/foo')
         b_wt.remove('foo')

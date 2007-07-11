@@ -34,7 +34,7 @@ class TestRevisionHistory(TestCaseWithTransport):
         return tree
 
     def _check_revision_history(self, location=''):
-        rh = self.capture('revision-history ' + location)
+        rh = self.run_bzr(['revision-history', location])[0]
         self.assertEqual(rh, 'revision_1\nrevision_2\nrevision_3\n')
 
     def test_revision_history(self):
@@ -52,24 +52,24 @@ class TestRevisionHistory(TestCaseWithTransport):
         """Tests 'revision_history' command with a location that is a
         repository branch."""
         self._build_branch()
-        self.run_bzr('init-repo', 'repo')
-        self.run_bzr('branch', 'test', 'repo/test')
+        self.run_bzr('init-repo repo')
+        self.run_bzr('branch test repo/test')
         self._check_revision_history('repo/test')
 
     def test_revision_history_with_checkout(self):
         """Tests 'revision_history' command with a location that is a
         checkout of a repository branch."""
         self._build_branch()
-        self.run_bzr('init-repo', 'repo')
-        self.run_bzr('branch', 'test', 'repo/test')
-        self.run_bzr('checkout', 'repo/test', 'test-checkout')
+        self.run_bzr('init-repo repo')
+        self.run_bzr('branch test repo/test')
+        self.run_bzr('checkout repo/test test-checkout')
         self._check_revision_history('test-checkout')
 
     def test_revision_history_with_lightweight_checkout(self):
         """Tests 'revision_history' command with a location that is a
         lightweight checkout of a repository branch."""
         self._build_branch()
-        self.run_bzr('init-repo', 'repo')
-        self.run_bzr('branch', 'test', 'repo/test')
-        self.run_bzr('checkout', '--lightweight', 'repo/test', 'test-checkout')
+        self.run_bzr('init-repo repo')
+        self.run_bzr('branch test repo/test')
+        self.run_bzr('checkout --lightweight repo/test test-checkout')
         self._check_revision_history('test-checkout')

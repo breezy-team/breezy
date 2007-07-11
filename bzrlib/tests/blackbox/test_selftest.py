@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +34,9 @@ from bzrlib.tests import (
                           TestUIFactory,
                           TestSkipped,
                           )
+from bzrlib.symbol_versioning import (
+    zero_eighteen,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -73,13 +76,14 @@ class TestOptions(TestCase):
         TestCaseWithMemoryTransport.TEST_ROOT = None
         try:
             TestOptions.current_test = "test_transport_set_to_sftp"
-            stdout = self.capture('selftest --transport=sftp test_transport_set_to_sftp')
-            
+            stdout = self.run_bzr(
+                'selftest --transport=sftp test_transport_set_to_sftp')[0]
             self.assertContainsRe(stdout, 'Ran 1 test')
             self.assertEqual(old_transport, bzrlib.tests.default_transport)
 
             TestOptions.current_test = "test_transport_set_to_memory"
-            stdout = self.capture('selftest --transport=memory test_transport_set_to_memory')
+            stdout = self.run_bzr(
+                'selftest --transport=memory test_transport_set_to_memory')[0]
             self.assertContainsRe(stdout, 'Ran 1 test')
             self.assertEqual(old_transport, bzrlib.tests.default_transport)
         finally:
@@ -90,15 +94,17 @@ class TestOptions(TestCase):
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
+    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
-        """Override run_bzr_captured to test how it is invoked by run_bzr.
+        """Override _run_bzr_core to test how it is invoked by run_bzr.
 
-        We test how run_bzr_captured actually invokes bzr in another location.
+        Attempts to run bzr from inside this class don't actually run it.
+
+        We test how run_bzr actually invokes bzr in another location.
         Here we only need to test that it is run_bzr passes the right
-        parameters to run_bzr_captured.
+        parameters to run_bzr.
         """
-        self.argv = argv
+        self.argv = list(argv)
         self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
@@ -106,62 +112,65 @@ class TestRunBzr(ExternalBase):
         return '', ''
 
     def test_args(self):
-        """Test that run_bzr passes args correctly to run_bzr_captured"""
-        self.run_bzr('arg1', 'arg2', 'arg3', retcode=1)
-        self.assertEqual(('arg1', 'arg2', 'arg3'), self.argv)
+        """Test that run_bzr passes args correctly to _run_bzr_core"""
+        self.callDeprecated(
+                ['passing varargs to run_bzr was deprecated in version 0.18.'],
+                self.run_bzr,
+                'arg1', 'arg2', 'arg3', retcode=1)
+        self.assertEqual(['arg1', 'arg2', 'arg3'], self.argv)
 
     def test_encoding(self):
-        """Test that run_bzr passes encoding to run_bzr_captured"""
-        self.run_bzr('foo', 'bar')
+        """Test that run_bzr passes encoding to _run_bzr_core"""
+        self.run_bzr('foo bar')
         self.assertEqual(None, self.encoding)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', encoding='baz')
+        self.run_bzr('foo bar', encoding='baz')
         self.assertEqual('baz', self.encoding)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_retcode(self):
-        """Test that run_bzr passes retcode to run_bzr_captured"""
+        """Test that run_bzr passes retcode to _run_bzr_core"""
         # Default is retcode == 0
-        self.run_bzr('foo', 'bar')
+        self.run_bzr('foo bar')
         self.assertEqual(0, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=1)
+        self.run_bzr('foo bar', retcode=1)
         self.assertEqual(1, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=None)
+        self.run_bzr('foo bar', retcode=None)
         self.assertEqual(None, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=3)
+        self.run_bzr(['foo', 'bar'], retcode=3)
         self.assertEqual(3, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_stdin(self):
         # test that the stdin keyword to run_bzr is passed through to
-        # run_bzr_captured as-is. We do this by overriding
-        # run_bzr_captured in this class, and then calling run_bzr,
-        # which is a convenience function for run_bzr_captured, so 
+        # _run_bzr_core as-is. We do this by overriding
+        # _run_bzr_core in this class, and then calling run_bzr,
+        # which is a convenience function for _run_bzr_core, so 
         # should invoke it.
-        self.run_bzr('foo', 'bar', stdin='gam')
+        self.run_bzr('foo bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', stdin='zippy')
+        self.run_bzr('foo bar', stdin='zippy')
         self.assertEqual('zippy', self.stdin)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_working_dir(self):
-        """Test that run_bzr passes working_dir to run_bzr_captured"""
-        self.run_bzr('foo', 'bar')
+        """Test that run_bzr passes working_dir to _run_bzr_core"""
+        self.run_bzr('foo bar')
         self.assertEqual(None, self.working_dir)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', working_dir='baz')
+        self.run_bzr('foo bar', working_dir='baz')
         self.assertEqual('baz', self.working_dir)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
 
 class TestBenchmarkTests(TestCaseWithTransport):
@@ -173,7 +182,8 @@ class TestBenchmarkTests(TestCaseWithTransport):
         old_root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
-            out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
+            out, err = self.run_bzr('selftest --benchmark'
+                                    ' workingtree_implementations')
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
@@ -202,24 +212,24 @@ class TestRunBzrCaptured(ExternalBase):
         return 0
 
     def test_stdin(self):
-        # test that the stdin keyword to run_bzr_captured is passed through to
+        # test that the stdin keyword to _run_bzr_core is passed through to
         # apply_redirected as a StringIO. We do this by overriding
-        # apply_redirected in this class, and then calling run_bzr_captured,
+        # apply_redirected in this class, and then calling _run_bzr_core,
         # which calls apply_redirected. 
-        self.run_bzr_captured(['foo', 'bar'], stdin='gam')
+        self.run_bzr(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)
-        self.run_bzr_captured(['foo', 'bar'], stdin='zippy')
+        self.run_bzr(['foo', 'bar'], stdin='zippy')
         self.assertEqual('zippy', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)
 
     def test_ui_factory(self):
-        # each invocation of self.run_bzr_captured should get its
+        # each invocation of self.run_bzr should get its
         # own UI factory, which is an instance of TestUIFactory,
         # with stdin, stdout and stderr attached to the stdin,
-        # stdout and stderr of the invoked run_bzr_captured
+        # stdout and stderr of the invoked run_bzr
         current_factory = bzrlib.ui.ui_factory
-        self.run_bzr_captured(['foo'])
+        self.run_bzr(['foo'])
         self.failIf(current_factory is self.factory)
         self.assertNotEqual(sys.stdout, self.factory.stdout)
         self.assertNotEqual(sys.stderr, self.factory.stderr)
@@ -232,20 +242,20 @@ class TestRunBzrCaptured(ExternalBase):
         cwd = osutils.getcwd()
 
         # Default is to work in the current directory
-        self.run_bzr_captured(['foo', 'bar'])
+        self.run_bzr(['foo', 'bar'])
         self.assertEqual(cwd, self.working_dir)
 
-        self.run_bzr_captured(['foo', 'bar'], working_dir=None)
+        self.run_bzr(['foo', 'bar'], working_dir=None)
         self.assertEqual(cwd, self.working_dir)
 
         # The function should be run in the alternative directory
         # but afterwards the current working dir shouldn't be changed
-        self.run_bzr_captured(['foo', 'bar'], working_dir='one')
+        self.run_bzr(['foo', 'bar'], working_dir='one')
         self.assertNotEqual(cwd, self.working_dir)
         self.assertEndsWith(self.working_dir, 'one')
         self.assertEqual(cwd, osutils.getcwd())
 
-        self.run_bzr_captured(['foo', 'bar'], working_dir='two')
+        self.run_bzr(['foo', 'bar'], working_dir='two')
         self.assertNotEqual(cwd, self.working_dir)
         self.assertEndsWith(self.working_dir, 'two')
         self.assertEqual(cwd, osutils.getcwd())
@@ -423,7 +433,7 @@ class TestBzrSubprocess(TestCaseWithTransport):
         """
         process = self.start_bzr_subprocess(['--versionn'])
         self.assertRaises(self.failureException, self.finish_bzr_subprocess,
-                          process, retcode=0)
+                          process)
         
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
@@ -451,11 +461,15 @@ class TestBzrSubprocess(TestCaseWithTransport):
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
+        # retcode=0 is specially needed here because run_bzr_error expects
+        # an error (oddly enough) but we want to test the case of not
+        # actually getting one
+        out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=0)
         self.assertEqual(out, 'It sure does!\n')
-
-        out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
-                                      'file-id', 'foobarbaz')
+        # now test actually getting an error
+        out, err = self.run_bzr_error(
+                ["bzr: ERROR: foobarbaz is not versioned"],
+                ['file-id', 'foobarbaz'])
 
 
 class TestSelftestCleanOutput(TestCaseInTempDir):
@@ -480,8 +494,8 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
                            'test9999.tmp','tests'],
                            before)
 
-        out,err = self.run_bzr_captured(['selftest','--clean-output'],
-                                        working_dir=root)
+        out, err = self.run_bzr('selftest --clean-output',
+                                working_dir=root)
 
         self.assertEquals(['delete directory: test0000.tmp',
                           'delete directory: test0001.tmp'],
@@ -529,8 +543,7 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only(self):
         # check that bzr selftest --list-only works correctly
-        out,err = self.run_bzr_captured(['selftest', 'selftest',
-            '--list-only'])
+        out,err = self.run_bzr('selftest selftest --list-only')
         self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
         num_tests = len(body)
@@ -538,14 +551,13 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only_filtered(self):
         # check that a filtered --list-only works, both include and exclude
-        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only'])
+        out_all,err_all = self.run_bzr('selftest --list-only')
         tests_all = self._parse_test_list(out_all.splitlines())[1]
-        out_incl,err_incl = self.run_bzr_captured(['selftest', '--list-only',
-          'selftest'])
+        out_incl,err_incl = self.run_bzr('selftest --list-only selftest')
         tests_incl = self._parse_test_list(out_incl.splitlines())[1]
         self.assertSubset(tests_incl, tests_all)
-        out_excl,err_excl = self.run_bzr_captured(['selftest', '--list-only',
-          '--exclude', 'selftest'])
+        out_excl,err_excl = self.run_bzr(['selftest', '--list-only',
+                                          '--exclude', 'selftest'])
         tests_excl = self._parse_test_list(out_excl.splitlines())[1]
         self.assertSubset(tests_excl, tests_all)
         set_incl = set(tests_incl)
@@ -556,11 +568,14 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only_random(self):
         # check that --randomize works correctly
-        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only',
-            'selftest'])
+        out_all,err_all = self.run_bzr('selftest --list-only selftest')
         tests_all = self._parse_test_list(out_all.splitlines())[1]
-        out_rand,err_rand = self.run_bzr_captured(['selftest', '--list-only',
-            'selftest', '--randomize', 'now'])
+        # XXX: It looks like there are some orders for generating tests that
+        # fail as of 20070504 - maybe because of import order dependencies.
+        # So unfortunately this will rarely intermittently fail at the moment.
+        # -- mbp 20070504
+        out_rand,err_rand = self.run_bzr(['selftest', '--list-only',
+                                          'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
             out_rand.splitlines(), 2)
         self.assertNotEqual(tests_all, tests_rand)
@@ -569,8 +584,8 @@ class TestSelftestListOnly(TestCase):
         seed_re = re.compile('Randomizing test order using seed (\w+)')
         match_obj = seed_re.search(header_rand[-1])
         seed = match_obj.group(1)
-        out_rand2,err_rand2 = self.run_bzr_captured(['selftest', '--list-only',
-            'selftest', '--randomize', seed])
+        out_rand2,err_rand2 = self.run_bzr(['selftest', '--list-only',
+                                            'selftest', '--randomize', seed])
         (header_rand2,tests_rand2,dummy) = self._parse_test_list(
             out_rand2.splitlines(), 2)
         self.assertEqual(tests_rand, tests_rand2)

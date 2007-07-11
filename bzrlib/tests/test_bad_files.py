@@ -70,8 +70,7 @@ class TestBadFiles(TestCaseWithTransport):
                            ])
 
         # We should raise an error if we are adding a bogus file
-        self.assertRaises(errors.BadFileKindError,
-                          add.smart_add_tree, wt, ['a-fifo'])
+        self.assertRaises(errors.BadFileKindError, wt.smart_add, ['a-fifo'])
 
         # And the list of files shouldn't have been modified
         verify_status(self, wt,
@@ -82,7 +81,7 @@ class TestBadFiles(TestCaseWithTransport):
 
         # Make sure smart_add can handle having a bogus
         # file in the way
-        add.smart_add_tree(wt, ['.'])
+        wt.smart_add([])
         verify_status(self, wt,
                           ['added:\n',
                            '  six\n',

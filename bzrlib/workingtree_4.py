@@ -413,6 +413,14 @@ class WorkingTree4(WorkingTree3):
 
         file_abspath = self.abspath(path)
         state = self.current_dirstate()
+        if stat_value is None:
+            try:
+                stat_value = os.lstat(file_abspath)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    return None
+                else:
+                    raise
         link_or_sha1 = state.update_entry(entry, file_abspath,
                                           stat_value=stat_value)
         if entry[1][0][0] == 'f':
@@ -464,6 +472,7 @@ class WorkingTree4(WorkingTree3):
 
     @needs_read_lock
     def id2path(self, file_id):
+        "Convert a file-id to a path."
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
@@ -473,16 +482,22 @@ class WorkingTree4(WorkingTree3):
         return path_utf8.decode('utf8')
 
     if not osutils.supports_executable():
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
     else:
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             if not path:
                 file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
@@ -522,12 +537,13 @@ class WorkingTree4(WorkingTree3):
                 # path is missing on disk.
                 continue
 
-    @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
 
         This is always the actual kind that's on disk, regardless of what it
         was added as.
+
+        Note: The caller is expected to take a read-lock before calling this.
         """
         relpath = self.id2path(file_id)
         assert relpath != None, \
@@ -1052,10 +1068,8 @@ class WorkingTree4(WorkingTree3):
             except (errors.NoSuchRevision, errors.RevisionNotPresent):
                 revtree = None
             trees.append((revision_id, revtree))
-        self.current_dirstate()._validate()
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-        self.current_dirstate()._validate()
 
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
@@ -1066,7 +1080,6 @@ class WorkingTree4(WorkingTree3):
             parent tree - i.e. a ghost.
         """
         dirstate = self.current_dirstate()
-        dirstate._validate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
@@ -1082,11 +1095,8 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
-        dirstate._validate()
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        dirstate._validate()
         self._make_dirty(reset_inventory=False)
-        dirstate._validate()
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
@@ -1275,7 +1285,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
-        wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 if branch.repository.supports_rich_root():
@@ -1283,7 +1292,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-                wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)
             wt.flush()
             basis = wt.basis_tree()
@@ -1666,7 +1674,7 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        utf8_decode_or_none = cache_utf8._utf8_decode_with_None
+        utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
         cmp_by_dirs = dirstate.cmp_by_dirs
         # NB: show_status depends on being able to pass in non-versioned files
@@ -1801,10 +1809,20 @@ class InterDirStateTree(InterTree):
         NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
-        last_source_parent = [None, None, None]
-        last_target_parent = [None, None, None]
+        last_source_parent = [None, None]
+        last_target_parent = [None, None]
 
         use_filesystem_for_exec = (sys.platform != 'win32')
+
+        # Just a sentry, so that _process_entry can say that this
+        # record is handled, but isn't interesting to process (unchanged)
+        uninteresting = object()
+
+
+        old_dirname_to_file_id = {}
+        new_dirname_to_file_id = {}
+        # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
+        #       keeping a cache of directories that we have seen.
 
         def _process_entry(entry, path_info):
             """Compare an entry and real disk to generate delta information.
@@ -1815,6 +1833,10 @@ class InterDirStateTree(InterTree):
                 Basename is returned as a utf8 string because we expect this
                 tuple will be ignored, and don't want to take the time to
                 decode.
+            :return: None if these don't match
+                     A tuple of information about the change, or
+                     the object 'uninteresting' if these match, but are
+                     basically identical.
             """
             if source_index is None:
                 source_details = NULL_PARENT_DETAILS
@@ -1831,6 +1853,7 @@ class InterDirStateTree(InterTree):
                 target_minikind = target_details[0]
             else:
                 link_or_sha1 = None
+            file_id = entry[0][2]
             source_minikind = source_details[0]
             if source_minikind in 'fdltr' and target_minikind in 'fdlt':
                 # claimed content in both: diff
@@ -1858,7 +1881,7 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    old_path = path = pathjoin(old_dirname, old_basename)
+                    old_path = path = None
                 if path_info is None:
                     # the file is missing on disk, show as removed.
                     content_change = True
@@ -1868,6 +1891,9 @@ class InterDirStateTree(InterTree):
                     # source and target are both versioned and disk file is present.
                     target_kind = path_info[2]
                     if target_kind == 'directory':
+                        if path is None:
+                            old_path = path = pathjoin(old_dirname, old_basename)
+                        new_dirname_to_file_id[path] = file_id
                         if source_minikind != 'd':
                             content_change = True
                         else:
@@ -1902,47 +1928,76 @@ class InterDirStateTree(InterTree):
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
+                if source_minikind == 'd':
+                    if path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                    old_dirname_to_file_id[old_path] = file_id
                 # parent id is the entry for the path in the target tree
                 if old_dirname == last_source_parent[0]:
                     source_parent_id = last_source_parent[1]
                 else:
-                    source_parent_entry = state._get_entry(source_index,
-                                                           path_utf8=old_dirname)
-                    source_parent_id = source_parent_entry[0][2]
+                    try:
+                        source_parent_id = old_dirname_to_file_id[old_dirname]
+                    except KeyError:
+                        source_parent_entry = state._get_entry(source_index,
+                                                               path_utf8=old_dirname)
+                        source_parent_id = source_parent_entry[0][2]
                     if source_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         source_parent_id = None
                     else:
                         last_source_parent[0] = old_dirname
                         last_source_parent[1] = source_parent_id
-                        last_source_parent[2] = source_parent_entry
                 new_dirname = entry[0][0]
                 if new_dirname == last_target_parent[0]:
                     target_parent_id = last_target_parent[1]
                 else:
-                    # TODO: We don't always need to do the lookup, because the
-                    #       parent entry will be the same as the source entry.
-                    target_parent_entry = state._get_entry(target_index,
-                                                           path_utf8=new_dirname)
-                    assert target_parent_entry != (None, None), (
-                        "Could not find target parent in wt: %s\nparent of: %s"
-                        % (new_dirname, entry))
-                    target_parent_id = target_parent_entry[0][2]
+                    try:
+                        target_parent_id = new_dirname_to_file_id[new_dirname]
+                    except KeyError:
+                        # TODO: We don't always need to do the lookup, because the
+                        #       parent entry will be the same as the source entry.
+                        target_parent_entry = state._get_entry(target_index,
+                                                               path_utf8=new_dirname)
+                        assert target_parent_entry != (None, None), (
+                            "Could not find target parent in wt: %s\nparent of: %s"
+                            % (new_dirname, entry))
+                        target_parent_id = target_parent_entry[0][2]
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         target_parent_id = None
                     else:
                         last_target_parent[0] = new_dirname
                         last_target_parent[1] = target_parent_id
-                        last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                return ((entry[0][2], (old_path, path), content_change,
-                        (True, True),
-                        (source_parent_id, target_parent_id),
-                        (old_basename, entry[0][1]),
-                        (_minikind_to_kind[source_minikind], target_kind),
-                        (source_exec, target_exec)),)
+                if (include_unchanged
+                    or content_change
+                    or source_parent_id != target_parent_id
+                    or old_basename != entry[0][1]
+                    or source_exec != target_exec
+                    ):
+                    if old_path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                        old_path_u = utf8_decode(old_path)[0]
+                        path_u = old_path_u
+                    else:
+                        old_path_u = utf8_decode(old_path)[0]
+                        if old_path == path:
+                            path_u = old_path_u
+                        else:
+                            path_u = utf8_decode(path)[0]
+                    source_kind = _minikind_to_kind[source_minikind]
+                    return (entry[0][2],
+                           (old_path_u, path_u),
+                           content_change,
+                           (True, True),
+                           (source_parent_id, target_parent_id),
+                           (utf8_decode(old_basename)[0], utf8_decode(entry[0][1])[0]),
+                           (source_kind, target_kind),
+                           (source_exec, target_exec))
+                else:
+                    return uninteresting
             elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
                 if path_info is not None:
@@ -1961,12 +2016,14 @@ class InterDirStateTree(InterTree):
                             and stat.S_IEXEC & path_info[3].st_mode)
                     else:
                         target_exec = target_details[3]
-                    return ((entry[0][2], (None, path), True,
-                            (False, True),
-                            (None, parent_id),
-                            (None, entry[0][1]),
-                            (None, path_info[2]),
-                            (None, target_exec)),)
+                    return (entry[0][2],
+                           (None, utf8_decode(path)[0]),
+                           True,
+                           (False, True),
+                           (None, parent_id),
+                           (None, utf8_decode(entry[0][1])[0]),
+                           (None, path_info[2]),
+                           (None, target_exec))
                 else:
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
@@ -1981,12 +2038,14 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                return ((entry[0][2], (old_path, None), True,
-                        (True, False),
-                        (parent_id, None),
-                        (entry[0][1], None),
-                        (_minikind_to_kind[source_minikind], None),
-                        (source_details[3], None)),)
+                return (entry[0][2],
+                       (utf8_decode(old_path)[0], None),
+                       True,
+                       (True, False),
+                       (parent_id, None),
+                       (utf8_decode(entry[0][1])[0], None),
+                       (_minikind_to_kind[source_minikind], None),
+                       (source_details[3], None))
             elif source_minikind in 'fdlt' and target_minikind in 'r':
                 # a rename; could be a true rename, or a rename inherited from
                 # a renamed parent. TODO: handle this efficiently. Its not
@@ -2004,7 +2063,7 @@ class InterDirStateTree(InterTree):
                     "source_minikind=%r, target_minikind=%r"
                     % (source_minikind, target_minikind))
                 ## import pdb;pdb.set_trace()
-            return ()
+            return None
 
         while search_specific_files:
             # TODO: the pending list should be lexically sorted?  the
@@ -2040,30 +2099,11 @@ class InterDirStateTree(InterTree):
                 continue
             path_handled = False
             for entry in root_entries:
-                for result in _process_entry(entry, root_dir_info):
-                    # this check should probably be outside the loop: one
-                    # 'iterate two trees' api, and then _iter_changes filters
-                    # unchanged pairs. - RBC 20070226
+                result = _process_entry(entry, root_dir_info)
+                if result is not None:
                     path_handled = True
-                    if (include_unchanged
-                        or result[2]                    # content change
-                        or result[3][0] != result[3][1] # versioned status
-                        or result[4][0] != result[4][1] # parent id
-                        or result[5][0] != result[5][1] # name
-                        or result[6][0] != result[6][1] # kind
-                        or result[7][0] != result[7][1] # executable
-                        ):
-                        yield (result[0],
-                               (utf8_decode_or_none(result[1][0]),
-                                utf8_decode_or_none(result[1][1])),
-                               result[2],
-                               result[3],
-                               result[4],
-                               (utf8_decode_or_none(result[5][0]),
-                                utf8_decode_or_none(result[5][1])),
-                               result[6],
-                               result[7],
-                              )
+                    if result is not uninteresting:
+                        yield result
             if want_unversioned and not path_handled and root_dir_info:
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
@@ -2146,11 +2186,11 @@ class InterDirStateTree(InterTree):
                                         stat.S_ISREG(current_path_info[3].st_mode)
                                         and stat.S_IEXEC & current_path_info[3].st_mode)
                                     yield (None,
-                                        (None, utf8_decode_or_none(current_path_info[0])),
+                                        (None, utf8_decode(current_path_info[0])[0]),
                                         True,
                                         (False, False),
                                         (None, None),
-                                        (None, utf8_decode_or_none(current_path_info[1])),
+                                        (None, utf8_decode(current_path_info[1])[0]),
                                         (None, current_path_info[2]),
                                         (None, new_executable))
                                 # dont descend into this unversioned path if it is
@@ -2177,29 +2217,10 @@ class InterDirStateTree(InterTree):
                         for current_entry in current_block[1]:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            for result in _process_entry(current_entry, None):
-                                # this check should probably be outside the loop: one
-                                # 'iterate two trees' api, and then _iter_changes filters
-                                # unchanged pairs. - RBC 20070226
-                                if (include_unchanged
-                                    or result[2]                    # content change
-                                    or result[3][0] != result[3][1] # versioned status
-                                    or result[4][0] != result[4][1] # parent id
-                                    or result[5][0] != result[5][1] # name
-                                    or result[6][0] != result[6][1] # kind
-                                    or result[7][0] != result[7][1] # executable
-                                    ):
-                                    yield (result[0],
-                                           (utf8_decode_or_none(result[1][0]),
-                                            utf8_decode_or_none(result[1][1])),
-                                           result[2],
-                                           result[3],
-                                           result[4],
-                                           (utf8_decode_or_none(result[5][0]),
-                                            utf8_decode_or_none(result[5][1])),
-                                           result[6],
-                                           result[7],
-                                          )
+                            result = _process_entry(current_entry, None)
+                            if result is not None:
+                                if result is not uninteresting:
+                                    yield result
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
                             osutils.is_inside(current_root,
@@ -2234,29 +2255,10 @@ class InterDirStateTree(InterTree):
                         pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
-                        for result in _process_entry(current_entry, current_path_info):
-                            # this check should probably be outside the loop: one
-                            # 'iterate two trees' api, and then _iter_changes filters
-                            # unchanged pairs. - RBC 20070226
-                            if (include_unchanged
-                                or result[2]                    # content change
-                                or result[3][0] != result[3][1] # versioned status
-                                or result[4][0] != result[4][1] # parent id
-                                or result[5][0] != result[5][1] # name
-                                or result[6][0] != result[6][1] # kind
-                                or result[7][0] != result[7][1] # executable
-                                ):
-                                yield (result[0],
-                                       (utf8_decode_or_none(result[1][0]),
-                                        utf8_decode_or_none(result[1][1])),
-                                       result[2],
-                                       result[3],
-                                       result[4],
-                                       (utf8_decode_or_none(result[5][0]),
-                                        utf8_decode_or_none(result[5][1])),
-                                       result[6],
-                                       result[7],
-                                      )
+                        result = _process_entry(current_entry, current_path_info)
+                        if result is not None:
+                            if result is not uninteresting:
+                                yield result
                     elif (current_entry[0][1] != current_path_info[1]
                           or current_entry[1][target_index][0] in 'ar'):
                         # The current path on disk doesn't match the dirblock
@@ -2264,62 +2266,27 @@ class InterDirStateTree(InterTree):
                         # the file on disk is not present at all in the
                         # dirblock. Either way, report about the dirblock
                         # entry, and let other code handle the filesystem one.
-                        if cmp_by_dirs(current_path_info[1], current_entry[0][1]) < 0:
+
+                        # Compare the basename for these files to determine
+                        # which comes first
+                        if current_path_info[1] < current_entry[0][1]:
                             # extra file on disk: pass for now, but only
                             # increment the path, not the entry
                             advance_entry = False
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            for result in _process_entry(current_entry, None):
-                                # this check should probably be outside the loop: one
-                                # 'iterate two trees' api, and then _iter_changes filters
-                                # unchanged pairs. - RBC 20070226
-                                if (include_unchanged
-                                    or result[2]                    # content change
-                                    or result[3][0] != result[3][1] # versioned status
-                                    or result[4][0] != result[4][1] # parent id
-                                    or result[5][0] != result[5][1] # name
-                                    or result[6][0] != result[6][1] # kind
-                                    or result[7][0] != result[7][1] # executable
-                                    ):
-                                    yield (result[0],
-                                           (utf8_decode_or_none(result[1][0]),
-                                            utf8_decode_or_none(result[1][1])),
-                                           result[2],
-                                           result[3],
-                                           result[4],
-                                           (utf8_decode_or_none(result[5][0]),
-                                            utf8_decode_or_none(result[5][1])),
-                                           result[6],
-                                           result[7],
-                                          )
+                            result = _process_entry(current_entry, None)
+                            if result is not None:
+                                if result is not uninteresting:
+                                    yield result
                             advance_path = False
                     else:
-                        for result in _process_entry(current_entry, current_path_info):
-                            # this check should probably be outside the loop: one
-                            # 'iterate two trees' api, and then _iter_changes filters
-                            # unchanged pairs. - RBC 20070226
+                        result = _process_entry(current_entry, current_path_info)
+                        if result is not None:
                             path_handled = True
-                            if (include_unchanged
-                                or result[2]                    # content change
-                                or result[3][0] != result[3][1] # versioned status
-                                or result[4][0] != result[4][1] # parent id
-                                or result[5][0] != result[5][1] # name
-                                or result[6][0] != result[6][1] # kind
-                                or result[7][0] != result[7][1] # executable
-                                ):
-                                yield (result[0],
-                                       (utf8_decode_or_none(result[1][0]),
-                                        utf8_decode_or_none(result[1][1])),
-                                       result[2],
-                                       result[3],
-                                       result[4],
-                                       (utf8_decode_or_none(result[5][0]),
-                                        utf8_decode_or_none(result[5][1])),
-                                       result[6],
-                                       result[7],
-                                      )
+                            if result is not uninteresting:
+                                yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
                         if entry_index < len(current_block[1]):
@@ -2336,11 +2303,11 @@ class InterDirStateTree(InterTree):
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 yield (None,
-                                    (None, utf8_decode_or_none(current_path_info[0])),
+                                    (None, utf8_decode(current_path_info[0])[0]),
                                     True,
                                     (False, False),
                                     (None, None),
-                                    (None, utf8_decode_or_none(current_path_info[1])),
+                                    (None, utf8_decode(current_path_info[1])[0]),
                                     (None, current_path_info[2]),
                                     (None, new_executable))
                             # dont descend into this unversioned path if it is

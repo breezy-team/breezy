@@ -25,57 +25,13 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
-import unittest
-
 from bzrlib import (
     errors,
     osutils,
     xml5,
     )
-""")
-
 from bzrlib.trace import mutter
-
-
-class RevisionStoreTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple repository stores.
-
-    This is done by copying the test once for each repository store
-    and injecting the transport_server, transport_readonly_server,
-    and revision-store-factory into each copy.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, factories):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._factories = factories
-    
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for factory in self._factories:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.store_factory = factory
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), factory)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of revision store permutations to test."""
-        from bzrlib.store.revision.text import TextRevisionStoreTestFactory
-        from bzrlib.store.revision.knit import KnitRevisionStoreFactory
-        result = []
-        # test the fallback InterVersionedFile from weave to annotated knits
-        result.append(TextRevisionStoreTestFactory())
-        result.append(KnitRevisionStoreFactory())
-        return result
+""")
 
 
 class RevisionStore(object):

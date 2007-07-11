@@ -393,7 +393,8 @@ class SFTPTransport(SFTPUrlHandling):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path, ': error retrieving')
+            self._translate_io_exception(e, path, ': error retrieving',
+                failure_exc=errors.ReadError)
 
     def readv(self, relpath, offsets):
         """See Transport.readv()"""
@@ -682,7 +683,7 @@ class SFTPTransport(SFTPUrlHandling):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
 
-    def _translate_io_exception(self, e, path, more_info='', 
+    def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
@@ -763,6 +764,11 @@ class SFTPTransport(SFTPUrlHandling):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
             
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # the external path for SFTP is the base
+        return self.base
+
     def listable(self):
         """Return True if this store supports listing."""
         return True

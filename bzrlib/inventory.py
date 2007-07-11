@@ -181,7 +181,7 @@ class InventoryEntry(object):
         :param entry_vf: The entry versioned file, if its already available.
         """
         def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision))
+            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
         # revision:ie mapping for each ie found in previous_inventories.
         candidates = {}
         # revision:ie mapping with one revision for each head.
@@ -1046,6 +1046,10 @@ class Inventory(object):
                     if parents is None or child_ie.file_id in parents:
                         child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
+
+    def make_entry(self, kind, name, parent_id, file_id=None):
+        """Simple thunk to bzrlib.inventory.make_entry."""
+        return make_entry(kind, name, parent_id, file_id)
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.

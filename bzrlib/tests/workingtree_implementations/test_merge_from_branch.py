@@ -19,6 +19,7 @@
 
 import os
 
+from bzrlib import errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -66,3 +67,13 @@ class TestMergeFromBranch(TestCaseWithWorkingTree):
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         list(tree_a._iter_changes(tree_a.basis_tree()))
+
+    def test_merge_empty(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'text-a')])
+        tree_a.add('file')
+        tree_a.commit('added file')
+        tree_b = self.make_branch_and_tree('treeb')
+        self.assertRaises(errors.NoCommits, tree_a.merge_from_branch,
+                          tree_b.branch)
+        tree_b.merge_from_branch(tree_a.branch)

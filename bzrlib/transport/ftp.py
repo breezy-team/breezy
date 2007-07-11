@@ -166,6 +166,7 @@ class FtpTransport(Transport):
             or 'could not open' in s
             or 'no such dir' in s
             or 'could not create file' in s # vsftpd
+            or 'file doesn\'t exist' in s
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
@@ -329,7 +330,8 @@ class FtpTransport(Transport):
                     raise e
                 raise
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='could not store')
+            self._translate_perm_error(e, abspath, extra='could not store',
+                                       unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP temporary error during PUT %s. Aborting."
@@ -487,6 +489,11 @@ class FtpTransport(Transport):
             self._translate_perm_error(e, abspath, 'error deleting',
                 unknown_exc=errors.NoSuchFile)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # FTP URL's are externally usable.
+        return self.base
+
     def listable(self):
         """See Transport.listable."""
         return True
@@ -557,7 +564,7 @@ class FtpTransport(Transport):
 
 
 class FtpServer(Server):
-    """Common code for SFTP server facilities."""
+    """Common code for FTP server facilities."""
 
     def __init__(self):
         self._root = None

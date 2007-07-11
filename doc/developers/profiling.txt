@@ -1,0 +1,48 @@
+Profiling
+=========
+
+Bazaar has some built-in support for collecting and saving profiling
+information. In the simpliest case, the --lsprof option can be used as
+shown below::
+
+  bzr --lsprof ...
+
+This will dump the profiling information to stdout before exiting.
+Alternatively, the --lsprof-file option can be used to specify a filename
+to save the profiling data into to. By default, profiling data saved to a
+file is a pickled Python object making it possible to reload the data and
+do with it what you will. For convenience though:
+
+* if the filename ends in ".txt", it will be dumped in a text format.
+
+* if the filename ends in ".callgrind", it will be converted to a format
+  loadable by the KCacheGrind visualization tool.
+
+Here is an example of how to use the --lsprof-file option in combination
+with KCacheGrind to visualize what the "status" command is doing::
+
+  bzr --lsprof-file status001.callgrind status
+  kcachegrind status001.callgrind &
+
+.. Note:: bzr also has a --profile option that uses the hotshot profiler
+   instead of the lsprof profiler. The hotshot profiler can be useful
+   though the lsprof one is generally recommended. See
+   http://docs.python.org/lib/node795.html.
+
+Note that to use --lsprof you must install the lsprof module, which you
+can get with::
+
+  svn co http://codespeak.net/svn/user/arigo/hack/misc/lsprof
+
+
+Profiling locks
+---------------
+
+Bazaar can log when locks are taken or released, which can help in
+identifying unnecessary lock traffic.  This is activated by the ``-Dlock``
+global option.
+
+This writes messages into ~/.bzr.log.
+At present this only logs actions relating to the on-disk lockdir.  It 
+doesn't describe actions on in-memory lock counters, or OS locks (which
+are used for dirstate.)

@@ -69,18 +69,23 @@ from bzrlib.trace import mutter
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
+# On posix, use lstat instead of stat so that we can
+# operate on broken symlinks. On Windows revert to stat.
+lstat = getattr(os, 'lstat', os.stat)
 
 def make_readonly(filename):
     """Make a filename read-only."""
-    mod = os.stat(filename).st_mode
-    mod = mod & 0777555
-    os.chmod(filename, mod)
+    mod = lstat(filename).st_mode
+    if not stat.S_ISLNK(mod):
+        mod = mod & 0777555
+        os.chmod(filename, mod)
 
 
 def make_writable(filename):
-    mod = os.stat(filename).st_mode
-    mod = mod | 0200
-    os.chmod(filename, mod)
+    mod = lstat(filename).st_mode
+    if not stat.S_ISLNK(mod):
+        mod = mod | 0200
+        os.chmod(filename, mod)
 
 
 _QUOTE_RE = None
@@ -1149,7 +1154,7 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = sys.getfilesystemencoding()
+    fs_encoding = _fs_enc.upper()
     if (sys.platform == 'win32' or
         fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)

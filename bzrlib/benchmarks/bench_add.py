@@ -21,6 +21,7 @@ from bzrlib.benchmarks import Benchmark
 
 
 class AddBenchmark(Benchmark):
+    """Benchmarks for 'bzr add'"""
 
     def test_one_add_kernel_like_tree(self):
         """Adding a kernel sized tree should be bearable (<5secs) fast.""" 

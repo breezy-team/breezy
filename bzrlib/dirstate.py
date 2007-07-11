@@ -204,6 +204,7 @@ import binascii
 import errno
 import os
 from stat import S_IEXEC
+import stat
 import struct
 import sys
 import time
@@ -216,6 +217,29 @@ from bzrlib import (
     osutils,
     trace,
     )
+
+
+def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
+    """Convert stat values into a packed representation."""
+    # jam 20060614 it isn't really worth removing more entries if we
+    # are going to leave it in packed form.
+    # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
+    # With all entries filesize is 5.9M and read time is mabye 280ms
+    # well within the noise margin
+
+    # base64 encoding always adds a final newline, so strip it off
+    # The current version
+    return _encode(_pack('>LLLLLL'
+        , st.st_size, int(st.st_mtime), int(st.st_ctime)
+        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
+    # This is 0.060s / 1.520s faster by not encoding as much information
+    # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
+    # This is not strictly faster than _encode(_pack())[:-1]
+    # return '%X.%X.%X.%X.%X.%X' % (
+    #      st.st_size, int(st.st_mtime), int(st.st_ctime),
+    #      st.st_dev, st.st_ino, st.st_mode)
+    # Similar to the _encode(_pack('>LL'))
+    # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
 class DirState(object):
@@ -250,6 +274,11 @@ class DirState(object):
             'r': 'relocated',
             't': 'tree-reference',
         }
+    _stat_to_minikind = {
+        stat.S_IFDIR:'d',
+        stat.S_IFREG:'f',
+        stat.S_IFLNK:'l',
+    }
     _to_yesno = {True:'y', False: 'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
@@ -1056,7 +1085,9 @@ class DirState(object):
             raise
         return result
 
-    def update_entry(self, entry, abspath, stat_value=None):
+    def update_entry(self, entry, abspath, stat_value,
+                     _stat_to_minikind=_stat_to_minikind,
+                     _pack_stat=pack_stat):
         """Update the entry based on what is actually on disk.
 
         :param entry: This is the dirblock entry for the file in question.
@@ -1066,46 +1097,24 @@ class DirState(object):
         :return: The sha1 hexdigest of the file (40 bytes) or link target of a
                 symlink.
         """
-        # This code assumes that the entry passed in is directly held in one of
-        # the internal _dirblocks. So the dirblock state must have already been
-        # read.
-        assert self._dirblock_state != DirState.NOT_IN_MEMORY
-        if stat_value is None:
-            try:
-                # We could inline os.lstat but the common case is that
-                # stat_value will be passed in, not read here.
-                stat_value = self._lstat(abspath, entry)
-            except (OSError, IOError), e:
-                if e.errno in (errno.ENOENT, errno.EACCES,
-                               errno.EPERM):
-                    # The entry is missing, consider it gone
-                    return None
-                raise
-
-        kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
         try:
-            minikind = DirState._kind_to_minikind[kind]
-        except KeyError: # Unknown kind
+            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        except KeyError:
+            # Unhandled kind
             return None
-        packed_stat = pack_stat(stat_value)
+        packed_stat = _pack_stat(stat_value)
         (saved_minikind, saved_link_or_sha1, saved_file_size,
          saved_executable, saved_packed_stat) = entry[1][0]
 
         if (minikind == saved_minikind
-            and packed_stat == saved_packed_stat
-            # size should also be in packed_stat
-            and saved_file_size == stat_value.st_size):
-            # The stat hasn't changed since we saved, so we can potentially
-            # re-use the saved sha hash.
+            and packed_stat == saved_packed_stat):
+            # The stat hasn't changed since we saved, so we can re-use the
+            # saved sha hash.
             if minikind == 'd':
                 return None
 
-            if self._cutoff_time is None:
-                self._sha_cutoff_time()
-
-            if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
-                # Return the existing fingerprint
+            # size should also be in packed_stat
+            if saved_file_size == stat_value.st_size:
                 return saved_link_or_sha1
 
         # If we have gotten this far, that means that we need to actually
@@ -1115,8 +1124,15 @@ class DirState(object):
             link_or_sha1 = self._sha1_file(abspath, entry)
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
-            entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
-                           executable, packed_stat)
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
+                               executable, packed_stat)
+            else:
+                entry[1][0] = ('f', '', stat_value.st_size,
+                               executable, DirState.NULLSTAT)
         elif minikind == 'd':
             link_or_sha1 = None
             entry[1][0] = ('d', '', 0, False, packed_stat)
@@ -1130,8 +1146,15 @@ class DirState(object):
                                    osutils.pathjoin(entry[0][0], entry[0][1]))
         elif minikind == 'l':
             link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
-            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
-                           False, packed_stat)
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+                               False, packed_stat)
+            else:
+                entry[1][0] = ('l', '', stat_value.st_size,
+                               False, DirState.NULLSTAT)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return link_or_sha1
 
@@ -1674,7 +1697,6 @@ class DirState(object):
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
         """ 
-        self._validate()
         # TODO: generate a list of parent indexes to preserve to save 
         # processing specific parent trees. In the common case one tree will
         # be preserved - the left most parent.
@@ -1805,7 +1827,6 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = id_index
-        self._validate()
 
     def _sort_entries(self, entry_list):
         """Given a list of entries, sort them into the right order.
@@ -1891,7 +1912,8 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif new_entry_key < current_old[0]:
+            elif (new_entry_key[0].split('/') < current_old[0][0].split('/')
+                  and new_entry_key[1:] < current_old[0][1:]):
                 # new comes before:
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
@@ -2253,20 +2275,6 @@ class DirState(object):
         """Checks that a lock is currently held by someone on the dirstate"""
         if not self._lock_token:
             raise errors.ObjectNotLocked(self)
-
-
-def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
-    """Convert stat values into a packed representation."""
-    # jam 20060614 it isn't really worth removing more entries if we
-    # are going to leave it in packed form.
-    # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
-    # With all entries filesize is 5.9M and read time is mabye 280ms
-    # well within the noise margin
-
-    # base64.encode always adds a final newline, so strip it off
-    return _encode(_pack('>LLLLLL'
-        , st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
 
 
 # Try to load the compiled form if possible

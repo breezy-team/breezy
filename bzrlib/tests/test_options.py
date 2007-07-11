@@ -14,9 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import re
+
 from bzrlib import (
     builtins,
     bzrdir,
+    commands,
     errors,
     option,
     repository,
@@ -51,24 +54,24 @@ class OptionTests(TestCase):
 
     def test_option_help(self):
         """Options have help strings."""
-        out, err = self.run_bzr_captured(['commit', '--help'])
-        self.assertContainsRe(out, r'--file(.|\n)*file containing commit'
-                                   ' message')
+        out, err = self.run_bzr('commit --help')
+        self.assertContainsRe(out,
+                r'--file(.|\n)*Take commit message from this file\.')
         self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
         """Global options have help strings."""
-        out, err = self.run_bzr_captured(['help', 'status'])
-        self.assertContainsRe(out, r'--show-ids.*show internal object')
+        out, err = self.run_bzr('help status')
+        self.assertContainsRe(out, r'--show-ids.*Show internal object.')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
-        out, err = self.run_bzr_captured(['help', 'commit'])
+        out, err = self.run_bzr('help commit')
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
     def test_unknown_short_opt(self):
-        out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
+        out, err = self.run_bzr('help -r', retcode=3)
         self.assertContainsRe(err, r'no such option')
 
     def test_get_short_name(self):
@@ -267,3 +270,49 @@ class TestListOptions(TestCase):
         opts, args = self.parse(
             options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
         self.assertEqual(['c'], opts.hello)
+
+
+class TestOptionDefinitions(TestCase):
+    """Tests for options in the Bazaar codebase."""
+
+    def get_all_options(self):
+        """Return a list of all options used by Bazaar, both global and command.
+        
+        The list returned contains elements of (scope, option) where 'scope' 
+        is either None for global options, or a command name.
+
+        This includes options provided by plugins.
+        """
+        g = [(None, opt) for name, opt
+             in sorted(option.Option.OPTIONS.items())]
+        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
+            cmd = cmd_class()
+            for opt_name, opt in sorted(cmd.options().items()):
+                g.append((cmd_name, opt))
+        return g
+
+    def test_get_all_options(self):
+        all = self.get_all_options()
+        self.assertTrue(len(all) > 100,
+                "too few options found: %r" % all)
+
+    def test_option_grammar(self):
+        msgs = []
+        # Option help should be written in sentence form, and have a final
+        # period and be all on a single line, because the display code will
+        # wrap it.
+        option_re = re.compile(r'^[A-Z][^\n]+\.$')
+        for scope, option in self.get_all_options():
+            if not option.help:
+                # TODO: Also complain about options that have no help message?
+                continue
+            if not option_re.match(option.help):
+                msgs.append('%-16s %-16s %s' %
+                        ((scope or 'GLOBAL'), option.name, option.help))
+        if msgs:
+            self.fail("The following options don't match the style guide:\n"
+                    + '\n'.join(msgs))
+
+    # TODO: Scan for global options that aren't used by any command?
+    #
+    # TODO: Check that there are two spaces between sentences.

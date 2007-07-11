@@ -27,9 +27,9 @@ lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
+    revision as _mod_revision,
     urlutils,
     )
-from bzrlib.revision import common_ancestor
 """)
 
 from bzrlib.commands import Command
@@ -97,8 +97,10 @@ class cmd_bundle_revisions(Command):
         - Bundle to transform A into B
     """
     takes_options = ['revision', 'remember',
-                     Option("output", help="write bundle to specified file",
-                            type=unicode)]
+                     Option("output",
+                            help="Write bundle to specified file.",
+                            type=unicode),
+                     ]
     takes_args = ['base?']
     aliases = ['bundle']
     encoding_type = 'exact'
@@ -155,10 +157,10 @@ class cmd_bundle_revisions(Command):
                                                  ' to be specified.')
             target_branch.repository.fetch(base_branch.repository, 
                                            base_branch.last_revision())
-            base_revision = common_ancestor(base_branch.last_revision(),
-                                            target_revision,
-                                            target_branch.repository)
-
+            graph = target_branch.repository.get_graph()
+            base_revision = graph.find_unique_lca(
+                _mod_revision.ensure_null(base_branch.last_revision()),
+                _mod_revision.ensure_null(target_revision))
 
         if output is not None:
             fileobj = file(output, 'wb')

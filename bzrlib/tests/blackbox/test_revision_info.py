@@ -29,46 +29,53 @@ class TestRevisionInfo(ExternalBase):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertContainsRe(self.run_bzr_captured(args, retcode=3)[1], output)
+        self.assertContainsRe(self.run_bzr(args, retcode=3)[1], output)
 
     def test_revision_info(self):
         """Test that 'bzr revision-info' reports the correct thing."""
         wt = self.make_branch_and_tree('.')
 
+        # Make history with a non-mainline rev
         wt.commit('Commit one', rev_id='a@r-0-1')
-        wt.commit('Commit two', rev_id='a@r-0-2')
-        wt.commit('Commit three', rev_id='a@r-0-3')
+        wt.commit('Commit two', rev_id='a@r-0-1.1.1')
+        wt.set_parent_ids(['a@r-0-1', 'a@r-0-1.1.1'])
+        wt.branch.set_last_revision_info(1, 'a@r-0-1')
+        wt.commit('Commit three', rev_id='a@r-0-2')
 
-        # Make sure revision-info without any arguments throws an exception
-        self.check_error('bzr: ERROR: '
-                         'You must supply a revision identifier\n',
-                         'revision-info')
+        # This is expected to work even if the working tree is removed
+        wt.bzrdir.destroy_workingtree()
 
+        # Expected return values
         values = {
-            1:'   1 a@r-0-1\n',
-            2:'   2 a@r-0-2\n',
-            3:'   3 a@r-0-3\n'
+            '1'    : '   1 a@r-0-1\n',
+            '1.1.1': '1.1.1 a@r-0-1.1.1\n',
+            '2'    : '   2 a@r-0-2\n'
         }
 
+        # Make sure with no arg it defaults to the head
+        self.check_output(values['2'], 'revision-info')
+
         # Check the results of just specifying a numeric revision
-        self.check_output(values[1], 'revision-info', '1')
-        self.check_output(values[2], 'revision-info', '2')
-        self.check_output(values[3], 'revision-info', '3')
-        self.check_output(values[1]+values[2], 'revision-info', '1', '2')
-        self.check_output(values[1]+values[2]+values[3], 'revision-info', '1', '2', '3')
-        self.check_output(values[2]+values[1], 'revision-info', '2', '1')
+        self.check_output(values['1'], 'revision-info 1')
+        self.check_output(values['1.1.1'], 'revision-info 1.1.1')
+        self.check_output(values['2'], 'revision-info 2')
+        self.check_output(values['1']+values['2'], 'revision-info 1 2')
+        self.check_output(values['1']+values['1.1.1']+values['2'],
+                          'revision-info 1 1.1.1 2')
+        self.check_output(values['2']+values['1'], 'revision-info 2 1')
 
         # Check as above, only using the '--revision' syntax
-        
-        self.check_output('   1 a@r-0-1\n', 'revision-info', '-r', '1')
-        self.check_output('   2 a@r-0-2\n', 'revision-info', '--revision', '2')
-        self.check_output('   3 a@r-0-3\n', 'revision-info', '-r', '3')
-        self.check_output('   1 a@r-0-1\n   2 a@r-0-2\n', 'revision-info', '-r', '1..2')
-        self.check_output('   1 a@r-0-1\n   2 a@r-0-2\n   3 a@r-0-3\n'
-                , 'revision-info', '-r', '1..2..3')
-        self.check_output('   2 a@r-0-2\n   1 a@r-0-1\n', 'revision-info', '-r', '2..1')
+
+        self.check_output(values['1'], 'revision-info -r 1')
+        self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
+        self.check_output(values['2'], 'revision-info -r 2')
+        self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
+        self.check_output(values['1']+values['1.1.1']+values['2'],
+                          'revision-info -r 1..1.1.1..2')
+        self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
 
         # Now try some more advanced revision specifications
-        
-        self.check_output('   1 a@r-0-1\n', 'revision-info', '-r', 'revid:a@r-0-1')
-        self.check_output('   2 a@r-0-2\n', 'revision-info', '--revision', 'revid:a@r-0-2')
+
+        self.check_output(values['1'], 'revision-info -r revid:a@r-0-1')
+        self.check_output(values['1.1.1'],
+                          'revision-info --revision revid:a@r-0-1.1.1')

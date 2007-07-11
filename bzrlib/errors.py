@@ -48,8 +48,8 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar internal_error: if true (or absent) this was probably caused by a
-    bzr bug and should be displayed with a traceback; if False this was
+    :cvar internal_error: if True this was probably caused by a bzr bug and
+    should be displayed with a traceback; if False (or absent) this was
     probably a user or environment error and they don't need the gory details.
     (That can be overridden by -Derror on the command line.)
 
@@ -184,6 +184,27 @@ class DisabledMethod(BzrError):
     def __init__(self, class_name):
         BzrError.__init__(self)
         self.class_name = class_name
+
+
+class IncompatibleAPI(BzrError):
+
+    _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
+        'It supports versions "%(minimum)s" to "%(current)s".'
+
+    def __init__(self, api, wanted, minimum, current):
+        self.api = api
+        self.wanted = wanted
+        self.minimum = minimum
+        self.current = current
+
+
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
 
 
 class InvalidEntryName(BzrError):
@@ -337,6 +358,10 @@ class StrictCommitFailed(BzrError):
 
 # XXX: Should be unified with TransportError; they seem to represent the
 # same thing
+# RBC 20060929: I think that unifiying with TransportError would be a mistake
+# - this is finer than a TransportError - and more useful as such. It 
+# differentiates between 'transport has failed' and 'operation on a transport
+# has failed.'
 class PathError(BzrError):
     
     _fmt = "Generic path error: %(path)r%(extra)s)"
@@ -443,6 +468,11 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ReadError(PathError):
+    
+    _fmt = """Error reading from %(path)r."""
 
 
 class ShortReadvError(PathError):
@@ -843,6 +873,16 @@ class TokenMismatch(LockBroken):
 class PointlessCommit(BzrError):
 
     _fmt = "No changes to commit"
+
+
+class CannotCommitSelectedFileMerge(BzrError):
+
+    _fmt = 'Selected-file commit of merges is not supported yet:'\
+        ' files %(files_str)s'
+
+    def __init__(self, files):
+        files_str = ', '.join(files)
+        BzrError.__init__(self, files=files, files_str=files_str)
 
 
 class UpgradeReadonly(BzrError):
@@ -1569,6 +1609,8 @@ class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
 
+    internal_error = True
+
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
 
@@ -2124,3 +2166,69 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class ContainerError(BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+    
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+    internal_error = False
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+
+
+class NoDestinationAddress(BzrError):
+
+    _fmt = "Message does not have a destination address."
+
+    internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error

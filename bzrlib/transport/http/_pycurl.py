@@ -136,10 +136,10 @@ class PyCurlTransport(HttpTransportBase):
         else:
             self._raise_curl_http_error(curl)
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         # This just switches based on the type of request
-        if ranges is not None or tail_amount not in (0, None):
-            return self._get_ranged(relpath, ranges, tail_amount=tail_amount)
+        if offsets is not None or tail_amount not in (0, None):
+            return self._get_ranged(relpath, offsets, tail_amount=tail_amount)
         else:
             return self._get_full(relpath)
 
@@ -189,19 +189,17 @@ class PyCurlTransport(HttpTransportBase):
 
         return code, data
 
-    def _get_ranged(self, relpath, ranges, tail_amount):
+    def _get_ranged(self, relpath, offsets, tail_amount):
         """Make a request for just part of the file."""
         curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
 
-        range_header = self.attempted_range_header(ranges, tail_amount)
+        range_header = self._attempted_range_header(offsets, tail_amount)
         if range_header is None:
             # Forget ranges, the server can't handle them
             return self._get_full(relpath)
 
-        self._curl_perform(curl, header,
-                           ['Range: bytes=%s'
-                            % self.range_header(ranges, tail_amount)])
+        self._curl_perform(curl, header, ['Range: bytes=%s' % range_header])
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)

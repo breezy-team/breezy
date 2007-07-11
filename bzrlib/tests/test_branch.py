@@ -27,7 +27,9 @@ from StringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     errors,
+    trace,
     urlutils,
     )
 from bzrlib.branch import (
@@ -281,6 +283,22 @@ class TestBranch6(TestCaseWithTransport):
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
 
+    def test_set_push(self):
+        branch = self.make_branch('source', format='dirstate-tags')
+        branch.get_config().set_user_option('push_location', 'old',
+            store=config.STORE_LOCATION)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        _warning = trace.warning
+        trace.warning = warning
+        try:
+            branch.set_push_location('new')
+        finally:
+            trace.warning = _warning
+        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
+                         'locations.conf')
+
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
@@ -325,17 +343,6 @@ class TestHooks(TestCase):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
-
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = BranchHooks()
-        self.assertRaises(UnknownHook, hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = BranchHooks()
-        hooks.install_hook('set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
 
 
 class TestPullResult(TestCase):
