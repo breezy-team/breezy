@@ -62,7 +62,7 @@ class cmd_register_branch(Command):
                 'One-sentence description of the branch.',
                 unicode),
          Option('branch-description',
-                'Longer description of the purpose or contents of the branch',
+                'Longer description of the purpose or contents of the branch.',
                 unicode),
          Option('author',
                 "Branch author's email address, if not yourself.",
