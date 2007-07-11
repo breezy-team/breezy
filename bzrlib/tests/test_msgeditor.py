@@ -62,7 +62,10 @@ added:
 @@ -0,0 +1,1 @@
 +contents of hello
 """ in template)
-
+        self.assertTrue(u"""\
+added:
+  hell\u00d8
+""" in template)
 
     def setUp(self):
         super(MsgEditorTest, self).setUp()
