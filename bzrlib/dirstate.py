@@ -715,7 +715,7 @@ class DirState(object):
                 # after this first record.
                 after = start
                 first_dir = first_fields[1]
-                first_loc = bisect_path_left(cur_dirs, first_dir)
+                first_loc = bisect.bisect_left(cur_dirs, first_dir)
 
                 # These exist before the current location
                 pre = cur_dirs[:first_loc]
@@ -739,7 +739,7 @@ class DirState(object):
                     after = mid + len(block)
 
                 last_dir = last_fields[1]
-                last_loc = bisect_path_right(post, last_dir)
+                last_loc = bisect.bisect_right(post, last_dir)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -838,11 +838,8 @@ class DirState(object):
                             if dir_name[0] in pending_dirs:
                                 # This entry will be found in the dir search
                                 continue
-                            # TODO: We need to check if this entry has
-                            #       already been found. Otherwise we might be
-                            #       hitting infinite recursion.
                             if dir_name not in found_dir_names:
-                                paths_to_search.add(dir_name)
+                                paths_to_search.add(tree_info[1])
             # Now we have a list of paths to look for directly, and
             # directory blocks that need to be read.
             # newly_found is mixing the keys between (dir, name) and path

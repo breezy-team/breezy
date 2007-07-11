@@ -1843,11 +1843,10 @@ class TestBisect(TestCaseWithDirState):
         # Bisect should be capable of finding multiple entries at the same time
         self.assertBisect(expected, [['a'], ['b'], ['f']],
                           state, ['a', 'b', 'f'])
-        # ('', 'f') sorts before the others
         self.assertBisect(expected, [['f'], ['b/d'], ['b/d/e']],
-                          state, ['b/d', 'b/d/e', 'f'])
-        self.assertBisect(expected, [['b'], ['b/c'], ['b-c']],
-                          state, ['b', 'b/c', 'b-c'])
+                          state, ['f', 'b/d', 'b/d/e'])
+        self.assertBisect(expected, [['b'], ['b-c'], ['b/c']],
+                          state, ['b', 'b-c', 'b/c'])
 
     def test_bisect_one_page(self):
         """Test bisect when there is only 1 page to read"""
@@ -1863,8 +1862,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected,[['f']], state, ['f'])
         self.assertBisect(expected,[['a'], ['b'], ['f']],
                           state, ['a', 'b', 'f'])
-        # ('', 'f') sorts before the others
-        self.assertBisect(expected, [['f'], ['b/d'], ['b/d/e']],
+        self.assertBisect(expected, [['b/d'], ['b/d/e'], ['f']],
                           state, ['b/d', 'b/d/e', 'f'])
         self.assertBisect(expected, [['b'], ['b/c'], ['b-c']],
                           state, ['b', 'b/c', 'b-c'])
@@ -1958,7 +1956,7 @@ class TestBisect(TestCaseWithDirState):
                                    state, ['b/d'])
         self.assertBisectRecursive(expected, ['b', 'b/c', 'b/d', 'b/d/e'],
                                    state, ['b'])
-        self.assertBisectRecursive(expected, ['', 'a', 'b', 'f', 'b/c',
+        self.assertBisectRecursive(expected, ['', 'a', 'b', 'b-c', 'f', 'b/c',
                                               'b/d', 'b/d/e'],
                                    state, [''])
 
