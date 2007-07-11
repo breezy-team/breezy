@@ -268,7 +268,7 @@ class TestOptionDefinitions(TestCase):
         # are used very widely with the exact same meaning.  So this checks
         # for any that should be garbage collected.
         g = dict(option.Option.OPTIONS.items())
-        used_globals = set()
+        used_globals = {}
         msgs = []
         for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
             for option_or_name in sorted(cmd_class.takes_options):
@@ -279,10 +279,14 @@ class TestOptionDefinitions(TestCase):
                         "global option %r from %r"
                         % (option_or_name, cmd_class))
                 else:
-                    used_globals.add(option_or_name)
-        unused_globals = set(g.keys()) - used_globals
+                    used_globals.setdefault(option_or_name, []).append(cmd_name)
+        unused_globals = set(g.keys()) - set(used_globals.keys())
         for option_name in sorted(unused_globals):
             msgs.append("unused global option %r" % option_name)
+        for option_name, cmds in sorted(used_globals.items()):
+            if len(cmds) <= 1:
+                msgs.append("global option %r is only used by %r"
+                        % (option_name, cmds))
         if msgs:
             self.fail("problems with global option definitions:\n"
                     + '\n'.join(msgs))
