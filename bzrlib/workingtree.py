@@ -503,7 +503,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = self._last_revision()
+        last_rev = _mod_revision.ensure_null(self._last_revision())
         if _mod_revision.is_null(last_rev):
             parents = []
         else:
@@ -741,7 +741,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if len(revision_ids) > 0:
             self.set_last_revision(revision_ids[0])
         else:
-            self.set_last_revision(None)
+            self.set_last_revision(_mod_revision.NULL_REVISION)
 
         self._set_merges_from_parent_ids(revision_ids)
 
@@ -756,7 +756,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
         if len(parent_ids) == 0:
-            leftmost_parent_id = None
+            leftmost_parent_id = _mod_revision.NULL_REVISION
             leftmost_parent_tree = None
         else:
             leftmost_parent_id, leftmost_parent_tree = parents_list[0]
@@ -2066,7 +2066,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
-            if not _mod_revision.is_null(old_tip):
+            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
@@ -2075,9 +2075,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the working tree had the same last-revision as the master
             # branch did. We may still have pivot local work from the local
             # branch into old_tip:
-            if not _mod_revision.is_null(old_tip):
+            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
                 self.add_parent_tree_id(old_tip)
-        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+        if (old_tip is not None and not _mod_revision.is_null(old_tip)
+            and old_tip != last_rev):
             # our last revision was not the prior branch last revision
             # and we have converted that last revision to a pending merge.
             # base is somewhere between the branch tip now

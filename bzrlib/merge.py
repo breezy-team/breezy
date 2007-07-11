@@ -282,9 +282,10 @@ class Merger(object):
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
-                self.base_rev_id = None
+                self.base_rev_id = _mod_revision.NULL_REVISION
             else:
-                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
+                self.base_rev_id = _mod_revision.ensure_null(
+                    base_branch.get_rev_id(base_revision[1]))
             if self.this_branch.base != base_branch.base:
                 self.this_branch.fetch(base_branch)
             self.base_is_ancestor = is_ancestor(self.this_basis, 

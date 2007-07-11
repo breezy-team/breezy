@@ -37,7 +37,8 @@ class TestParents(TestCaseWithWorkingTree):
         """
         self.assertEqual(expected, tree.get_parent_ids())
         if expected == []:
-            self.assertTrue(_mod_revision.is_null(tree.last_revision()))
+            self.assertTrue(_mod_revision.is_null(
+                            _mod_revision.ensure_null(tree.last_revision())))
         else:
             self.assertEqual(expected[0], tree.last_revision())
         self.assertEqual(expected[1:],

@@ -1406,7 +1406,8 @@ class BzrBranch(Branch):
                           other_branch=None):
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
-        if not _mod_revision.is_null(last_rev) and last_rev not in stop_graph:
+        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
+            and last_rev not in stop_graph):
             # our previous tip is not merged into stop_revision
             raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph

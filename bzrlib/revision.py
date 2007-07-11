@@ -124,6 +124,8 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
+    if is_null(candidate_id):
+        return True
     return (candidate_id in branch.repository.get_ancestry(revision_id,
             topo_sorted=False))
 
@@ -493,4 +495,5 @@ def ensure_null(revision_id):
 
 
 def is_null(revision_id):
+    assert revision_id is not None
     return revision_id in (None, NULL_REVISION)
