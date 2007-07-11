@@ -457,7 +457,7 @@ class Branch(object):
         if ph:
             return ph[-1]
         else:
-            return _mod_revision.NULL_REVISION
+            return None
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -1452,7 +1452,7 @@ class BzrBranch(Branch):
                 stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = self.last_revision()
+            last_rev = _mod_revision.ensure_null(self.last_revision())
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
@@ -1782,7 +1782,7 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = self.last_revision()
+        last_rev = _mod_revision.ensure_null(self.last_revision())
         if not _mod_revision.is_null(last_rev):
             other.lock_read()
             try:
@@ -1816,8 +1816,9 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision(),
-                                                       topo_sorted=False):
+            if old_tip in self.repository.get_ancestry(
+                _mod_revision.ensure_null(self.last_revision()),
+                topo_sorted=False):
                 return None
             return old_tip
         return None
@@ -1937,6 +1938,8 @@ class BzrBranch6(BzrBranch5):
     def last_revision(self):
         """Return last revision id, or None"""
         revision_id = self.last_revision_info()[1]
+        if revision_id == _mod_revision.NULL_REVISION:
+            revision_id = None
         return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):
@@ -1962,7 +1965,7 @@ class BzrBranch6(BzrBranch5):
         self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
-        last_revision = self.last_revision()
+        last_revision = _mod_revision.ensure_null(self.last_revision())
         if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):

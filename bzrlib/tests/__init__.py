@@ -100,7 +100,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
 # shown frame is the test code, not our assertXYZ.
-__unittest = 1
+#__unittest = 1
 
 default_transport = LocalURLServer
 

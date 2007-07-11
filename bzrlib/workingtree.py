@@ -812,7 +812,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # local alterations
             merger.check_basis(check_clean=True, require_commits=False)
             if to_revision is None:
-                to_revision = branch.last_revision()
+                to_revision = _mod_revision.ensure_null(branch.last_revision())
             else:
                 to_revision = osutils.safe_revision_id(to_revision)
             merger.other_rev_id = to_revision
@@ -2037,7 +2037,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = self.get_parent_ids()[0]
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
-        if last_rev != self.branch.last_revision():
+        if last_rev != _mod_revision.ensure_null(self.branch.last_revision()):
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             basis.lock_read()
@@ -2600,19 +2600,15 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         branch = a_bzrdir.open_branch()
-        if revision_id is not None:
+        if revision_id is None:
+            revision_id = _mod_revision.ensure_null(branch.last_revision())
+        else:
             revision_id = osutils.safe_revision_id(revision_id)
-            branch.lock_write()
-            try:
-                revision_history = branch.revision_history()
-                try:
-                    position = revision_history.index(revision_id)
-                except ValueError:
-                    raise errors.NoSuchRevision(branch, revision_id)
-                branch.set_revision_history(revision_history[:position + 1])
-            finally:
-                branch.unlock()
-        revision = branch.last_revision()
+        branch.lock_write()
+        try:
+            branch.generate_revision_history(revision_id)
+        finally:
+            branch.unlock()
         inv = Inventory()
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
@@ -2620,14 +2616,14 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _internal=True,
                          _format=self,
                          _bzrdir=a_bzrdir)
-        basis_tree = branch.repository.revision_tree(revision)
+        basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.inventory.root is not None:
             wt.set_root_id(basis_tree.inventory.root.file_id)
         # set the parent list and cache the basis tree.
-        if _mod_revision.is_null(revision):
+        if _mod_revision.is_null(revision_id):
             parent_trees = []
         else:
-            parent_trees = [(revision, basis_tree)]
+            parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
         transform.build_tree(basis_tree, wt)
         return wt
@@ -2727,7 +2723,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             # only set an explicit root id if there is one to set.
             if basis_tree.inventory.root is not None:
                 wt.set_root_id(basis_tree.inventory.root.file_id)
-            if revision_id == NULL_REVISION:
+            if revision_id is None or revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])

@@ -30,7 +30,8 @@ class TestUpdate(TestCaseWithBranch):
     def test_update_unbound_works(self):
         b = self.make_branch('.')
         b.update()
-        self.assertEqual(_mod_revision.NULL_REVISION, b.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         _mod_revision.ensure_null(b.last_revision()))
 
     def test_update_prefix_returns_none(self):
         # update in a branch when its a prefix of the master should

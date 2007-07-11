@@ -77,7 +77,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             if master is not None:
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
-            new_tip = branch.last_revision()
+            new_tip = _mod_revision.ensure_null(branch.last_revision())
             if master is None:
                 hook_local = None
                 hook_master = branch

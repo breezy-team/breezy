@@ -67,7 +67,7 @@ class MemoryTree(mutabletree.MutableTree):
     @staticmethod
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
-        revision_id = branch.last_revision()
+        revision_id = _mod_revision.ensure_null(branch.last_revision())
         if _mod_revision.is_null(revision_id):
             revision_id = None
         return MemoryTree(branch, revision_id)

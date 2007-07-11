@@ -1011,19 +1011,20 @@ class cmd_update(Command):
             tree.lock_tree_write()
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
-            last_rev = tree.last_revision()
-            if last_rev is None:
-                last_rev = _mod_revision.NULL_REVISION
-            if last_rev == tree.branch.last_revision():
+            last_rev = _mod_revision.ensure_null(tree.last_revision())
+            if last_rev == _mod_revision.ensure_null(
+                tree.branch.last_revision()):
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or last_rev == master.last_revision():
+                if master is None or last_rev == _mod_revision.ensure_null(
+                    master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
             conflicts = tree.update(delta._ChangeReporter(
                                         unversioned_filter=tree.is_ignored))
-            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            revno = tree.branch.revision_id_to_revno(
+                _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '

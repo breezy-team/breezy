@@ -108,7 +108,8 @@ class TestBzrServe(TestCaseWithTransport):
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
         branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         _mod_revision.ensure_null(branch.last_revision()))
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -129,7 +130,8 @@ class TestBzrServe(TestCaseWithTransport):
 
         # We get a working branch
         branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         _mod_revision.ensure_null(branch.last_revision()))
 
         self.assertServerFinishesCleanly(process)
 
@@ -209,7 +211,7 @@ class TestBzrServe(TestCaseWithTransport):
             
             branch.repository.get_revision_graph()
             self.assertEqual(_mod_revision.NULL_REVISION,
-                             branch.last_revision())
+                             _mod_revision.ensure_null(branch.last_revision()))
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
         finally:

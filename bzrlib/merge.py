@@ -104,7 +104,8 @@ class Merger(object):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
-        self.this_basis = this_branch.last_revision()
+        self.this_basis = _mod_revision.ensure_null(
+            this_branch.last_revision())
         self.this_rev_id = None
         self.this_tree = this_tree
         self.this_revision_tree = None
@@ -218,7 +219,8 @@ class Merger(object):
         self.other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
-            self.other_rev_id = self.other_branch.last_revision()
+            self.other_rev_id = _mod_revision.ensure_null(
+                self.other_branch.last_revision())
             if _mod_revision.is_null(self.other_rev_id):
                 raise NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id

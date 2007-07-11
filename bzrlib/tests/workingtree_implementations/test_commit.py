@@ -160,7 +160,8 @@ class TestCommit(TestCaseWithWorkingTree):
             return
         tree.commit('foo', rev_id='foo', local=True)
         self.failIf(master.repository.has_revision('foo'))
-        self.assertTrue(_mod_revision.is_null(master.last_revision()))
+        self.assertTrue(_mod_revision.is_null(_mod_revision.ensure_null(
+                        master.last_revision())))
 
     def test_record_initial_ghost(self):
         """The working tree needs to record ghosts during commit."""
