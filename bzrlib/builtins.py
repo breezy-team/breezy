@@ -2864,7 +2864,10 @@ class cmd_revert(Command):
     """
 
     _see_also = ['cat', 'export']
-    takes_options = ['revision', 'no-backup']
+    takes_options = [
+            'revision',
+            Option('no-backup', "Do not save backups of reverted files."),
+            ]
     takes_args = ['file*']
 
     def run(self, revision=None, no_backup=False, file_list=None):
