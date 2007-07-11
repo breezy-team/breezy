@@ -447,14 +447,15 @@ class cmd_inventory(Command):
         'revision',
         'show-ids',
         Option('kind',
-               help='List entries of a particular kind: file, directory, symlink.'),
+               help='List entries of a particular kind: file, directory, symlink.',
+               type=unicode),
         ]
     takes_args = ['file*']
 
     @display_command
     def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
-            raise errors.BzrCommandError('invalid kind specified')
+            raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
@@ -1750,11 +1751,12 @@ class cmd_ls(Command):
                    help='Write an ascii NUL (\\0) separator '
                    'between files rather than a newline.'),
             Option('kind',
-                   help='List entries of a particular kind: file, directory, symlink.'),
+                   help='List entries of a particular kind: file, directory, symlink.',
+                   type=unicode),
             'show-ids',
             ]
     @display_command
-    def run(self, revision=None, verbose=False, 
+    def run(self, revision=None, verbose=False,
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None):
