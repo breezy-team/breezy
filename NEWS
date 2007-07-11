@@ -6,7 +6,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * None yet ...
+    * Don't show "dots" progress indicators when run non-interactively, such
+      as from cron.  (Martin Pool)
 
   LIBRARY API BREAKS:
 
