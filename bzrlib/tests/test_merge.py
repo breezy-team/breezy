@@ -54,14 +54,14 @@ class TestMerge(TestCaseWithTransport):
     def test_nocommits(self):
         self.test_pending()
         wt2 = self.make_branch_and_tree('branch2')
-        self.assertRaises(NoCommits, _merge_helper, ['branch2', -1], 
+        self.assertRaises(NoCommits, _merge_helper, ['branch2', -1],
                           [None, None])
         return wt2
 
     def test_unrelated(self):
         wt2 = self.test_nocommits()
         wt2.commit("blah")
-        self.assertRaises(UnrelatedBranches, _merge_helper, ['branch2', -1], 
+        self.assertRaises(UnrelatedBranches, _merge_helper, ['branch2', -1],
                           [None, None])
         return wt2
 
