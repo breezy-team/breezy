@@ -47,9 +47,7 @@ cdef extern from "Python.h":
 
 
 cdef extern from "string.h":
-    char *strchr(char *s1, char c)
     int strncmp(char *s1, char *s2, int len)
-    int strcmp(char *s1, char *s2)
     void *memchr(void *s, int c, size_t len)
     int memcmp(void *b1, void *b2, size_t len)
     # ??? memrchr is a GNU extension :(
@@ -445,8 +443,7 @@ cdef class Reader:
         """Return a pointer to the start of the next field."""
         cdef char *next
         next = self.cur
-        # XXX: Change this to not use 'memchr' instead of 'strchr'
-        self.cur = strchr(next, c'\0')
+        self.cur = <char*>memchr(next, c'\0', self.end_str-next)
         size[0] = self.cur - next
         self.cur = self.cur + 1
         return next
