@@ -18,7 +18,10 @@
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    symbol_versioning
+    )
 from bzrlib.deprecated_graph import (
     all_descendants,
     Graph,
@@ -495,5 +498,8 @@ def ensure_null(revision_id):
 
 
 def is_null(revision_id):
-    assert revision_id is not None
+    if revision_id is None:
+        symbol_versioning.warn('NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.19.',
+            DeprecationWarning, stacklevel=2)
     return revision_id in (None, NULL_REVISION)
