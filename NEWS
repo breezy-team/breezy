@@ -6,7 +6,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * None yet ...
+    * Add the option "--diff" to the commit command in order to display
+      the diff during the commit log creation. (Goffredo Baroncelli)
 
   LIBRARY API BREAKS:
 
