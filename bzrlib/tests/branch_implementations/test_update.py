@@ -15,7 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    )
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -27,7 +30,7 @@ class TestUpdate(TestCaseWithBranch):
     def test_update_unbound_works(self):
         b = self.make_branch('.')
         b.update()
-        self.assertEqual(None, b.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION, b.last_revision())
 
     def test_update_prefix_returns_none(self):
         # update in a branch when its a prefix of the master should

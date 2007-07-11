@@ -18,7 +18,11 @@
 
 import os
 
-from bzrlib import errors, symbol_versioning
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    symbol_versioning,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -33,12 +37,19 @@ class TestParents(TestCaseWithWorkingTree):
         """
         self.assertEqual(expected, tree.get_parent_ids())
         if expected == []:
-            self.assertEqual(None, tree.last_revision())
+            self.assertTrue(_mod_revision.is_null(tree.last_revision()))
         else:
             self.assertEqual(expected[0], tree.last_revision())
         self.assertEqual(expected[1:],
             self.applyDeprecated(symbol_versioning.zero_eleven,
                 tree.pending_merges))
+
+
+class TestGetParents(TestParents):
+
+    def test_get_parents(self):
+        t = self.make_branch_and_tree('.')
+        self.assertEqual([], t.get_parent_ids())
 
 
 class TestSetParents(TestParents):
@@ -51,6 +62,13 @@ class TestSetParents(TestParents):
         t.commit('first post')
         t.set_parent_trees([])
         self.assertConsistentParents([], t)
+
+    def test_set_null_parent(self):
+        t = self.make_branch_and_tree('.')
+        self.assertRaises(errors.ReservedId, t.set_parent_ids, ['null:'],
+                          allow_leftmost_as_ghost=True)
+        self.assertRaises(errors.ReservedId, t.set_parent_trees,
+                          [('null:', None)], allow_leftmost_as_ghost=True)
 
     def test_set_one_ghost_parent_rejects(self):
         t = self.make_branch_and_tree('.')

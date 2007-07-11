@@ -1962,7 +1962,7 @@ class BzrBranch6(BzrBranch5):
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()
-        if last_revision is None:
+        if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):
             raise errors.AppendRevisionsOnlyViolation(self.base)

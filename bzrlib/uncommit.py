@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib import revision as _mod_revision
 from bzrlib.branch import Branch
 from bzrlib.errors import BoundBranchOutOfDate
 
@@ -84,10 +85,13 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
                 hook_local = branch
                 hook_master = master
             for hook in Branch.hooks['post_uncommit']:
+                hook_new_tip = new_tip
+                if hook_new_tip == _mod_revision.NULL_REVISION:
+                    hook_new_tip = None
                 hook(hook_local, hook_master, old_revno, old_tip, new_revno,
-                    new_tip)
+                     hook_new_tip)
             if tree is not None:
-                if new_tip is not None:
+                if not _mod_revision.is_null(new_tip):
                     parents = [new_tip]
                 else:
                     parents = []

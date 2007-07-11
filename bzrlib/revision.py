@@ -483,12 +483,14 @@ def check_not_reserved_id(revision_id):
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
 
+
 def ensure_null(revision_id):
     """Ensure only NULL_REVISION is used to represent the null revisionn"""
     if revision_id is None:
         return NULL_REVISION
     else:
         return revision_id
+
 
 def is_null(revision_id):
     return revision_id in (None, NULL_REVISION)

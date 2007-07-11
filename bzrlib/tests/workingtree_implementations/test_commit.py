@@ -18,7 +18,15 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import branch, bzrdir, errors, ui, workingtree
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    revision as _mod_revision,
+    ui,
+    uncommit,
+    workingtree,
+    )
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
@@ -152,7 +160,7 @@ class TestCommit(TestCaseWithWorkingTree):
             return
         tree.commit('foo', rev_id='foo', local=True)
         self.failIf(master.repository.has_revision('foo'))
-        self.assertEqual(None, master.last_revision())
+        self.assertTrue(_mod_revision.is_null(master.last_revision()))
 
     def test_record_initial_ghost(self):
         """The working tree needs to record ghosts during commit."""
@@ -383,3 +391,14 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ],
             factory._calls
            )
+
+
+class TestUncommit(TestCaseWithWorkingTree):
+
+    def test_uncommit_to_null(self):
+        tree = self.make_branch_and_tree('branch')
+        tree.lock_write()
+        revid = tree.commit('a revision')
+        tree.unlock()
+        uncommit.uncommit(tree.branch, tree=tree)
+        self.assertEqual([], tree.get_parent_ids())

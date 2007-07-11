@@ -504,7 +504,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if last_rev is None:
+        if _mod_revision.is_null(last_rev):
             parents = []
         else:
             parents = [last_rev]
@@ -735,6 +735,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         self._check_parents_for_ghosts(revision_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        for revision_id in revision_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
 
         if len(revision_ids) > 0:
             self.set_last_revision(revision_ids[0])
@@ -747,6 +749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
         parent_ids = [osutils.safe_revision_id(rev) for (rev, tree) in parents_list]
+        for revision_id in parent_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
 
         self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -812,7 +816,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 to_revision = osutils.safe_revision_id(to_revision)
             merger.other_rev_id = to_revision
-            if merger.other_rev_id is None:
+            if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
             self.branch.fetch(branch, last_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
@@ -2619,7 +2623,11 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         if basis_tree.inventory.root is not None:
             wt.set_root_id(basis_tree.inventory.root.file_id)
         # set the parent list and cache the basis tree.
-        wt.set_parent_trees([(revision, basis_tree)])
+        if _mod_revision.is_null(revision):
+            parent_trees = []
+        else:
+            parent_trees = [(revision, basis_tree)]
+        wt.set_parent_trees(parent_trees)
         transform.build_tree(basis_tree, wt)
         return wt
 

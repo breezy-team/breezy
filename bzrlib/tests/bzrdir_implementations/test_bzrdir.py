@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision as _mod_revision,
     transactions,
     transport,
     ui,
@@ -586,7 +587,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
         try:
-            self.assertIs(dir.open_branch().last_revision(), None)
+            self.assertTrue(
+                _mod_revision.is_null(dir.open_branch().last_revision()))
         except errors.NotBranchError:
             pass
         target = self.sproutOrSkip(dir, self.get_url('target'))
