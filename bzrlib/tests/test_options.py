@@ -55,14 +55,14 @@ class OptionTests(TestCase):
     def test_option_help(self):
         """Options have help strings."""
         out, err = self.run_bzr('commit --help')
-        self.assertContainsRe(out, r'--file(.|\n)*file containing commit'
-                                   ' message')
+        self.assertContainsRe(out,
+                r'--file(.|\n)*Take commit message from this file\.')
         self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
         """Global options have help strings."""
         out, err = self.run_bzr('help status')
-        self.assertContainsRe(out, r'--show-ids.*show internal object')
+        self.assertContainsRe(out, r'--show-ids.*Show internal object.')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
