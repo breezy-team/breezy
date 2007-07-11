@@ -418,7 +418,6 @@ _global_option('short',
         help='Use moderately short log format. Same as --log-format short.')
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line.')
 _global_option('root', type=str)
-_global_option('no-backup')
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')

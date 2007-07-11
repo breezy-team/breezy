@@ -296,6 +296,31 @@ class TestOptionDefinitions(TestCase):
         self.assertTrue(len(all) > 100,
                 "too few options found: %r" % all)
 
+    def test_global_options_used(self):
+        # In the distant memory, options could only be declared globally.  Now
+        # we prefer to declare them in the command, unless like -r they really
+        # are used very widely with the exact same meaning.  So this checks
+        # for any that should be garbage collected.
+        g = dict(option.Option.OPTIONS.items())
+        used_globals = set()
+        msgs = []
+        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
+            for option_or_name in sorted(cmd_class.takes_options):
+                if not isinstance(option_or_name, basestring):
+                    self.assertIsInstance(option_or_name, option.Option)
+                elif not option_or_name in g:
+                    msgs.append("apparent reference to undefined "
+                        "global option %r from %r"
+                        % (option_or_name, cmd_class))
+                else:
+                    used_globals.add(option_or_name)
+        unused_globals = set(g.keys()) - used_globals
+        for option_name in sorted(unused_globals):
+            msgs.append("unused global option %r" % option_name)
+        if msgs:
+            self.fail("problems with global option definitions:\n"
+                    + '\n'.join(msgs))
+
     def test_option_grammar(self):
         msgs = []
         # Option help should be written in sentence form, and have a final
@@ -304,9 +329,10 @@ class TestOptionDefinitions(TestCase):
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
         for scope, option in self.get_all_options():
             if not option.help:
-                # TODO: Also complain about options that have no help message?
-                continue
-            if not option_re.match(option.help):
+                # msgs.append('%-16s %-16s %s' %
+                #        ((scope or 'GLOBAL'), option.name, 'NO HELP'))
+                pass
+            elif not option_re.match(option.help):
                 msgs.append('%-16s %-16s %s' %
                         ((scope or 'GLOBAL'), option.name, option.help))
         if msgs:
