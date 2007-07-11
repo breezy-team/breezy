@@ -2360,18 +2360,14 @@ class cmd_selftest(Command):
     modified by plugins will not be tested, and tests provided by plugins will
     not be run.
 
+    Tests that need working space on disk use a common temporary directory, 
+    typically inside $TMPDIR or /tmp.
+
     examples::
         bzr selftest ignore
             run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
             disable plugins and list tests as they're run
-
-    For each test, that needs actual disk access, bzr create their own
-    subdirectory in the temporary testing directory (testXXXX.tmp).
-    By default the name of such subdirectory is based on the name of the test.
-    If option '--numbered-dirs' is given, bzr will use sequent numbers
-    of running tests to create such subdirectories. This is default behavior
-    on Windows because of path length limitation.
     """
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
@@ -2397,8 +2393,6 @@ class cmd_selftest(Command):
                              help='stop when one test fails',
                              short_name='1',
                              ),
-                     Option('keep-output',
-                            help='keep output directories when tests fail'),
                      Option('transport',
                             help='Use a different transport by default '
                                  'throughout the test suite.',
@@ -2410,15 +2404,10 @@ class cmd_selftest(Command):
                      Option('cache-dir', type=str,
                             help='a directory to cache intermediate'
                                  ' benchmark steps'),
-                     Option('clean-output',
-                            help='clean temporary tests directories'
-                                 ' without running tests'),
                      Option('first',
                             help='run all tests, but run specified tests first',
                             short_name='f',
                             ),
-                     Option('numbered-dirs',
-                            help='use numbered dirs for TestCaseInTempDir'),
                      Option('list-only',
                             help='list the tests instead of running them'),
                      Option('randomize', type=str, argname="SEED",
@@ -2432,26 +2421,14 @@ class cmd_selftest(Command):
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
-            keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None, list_only=False,
+            transport=None, benchmark=None,
+            lsprof_timed=None, cache_dir=None,
+            first=False, list_only=False,
             randomize=None, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
-
-        if clean_output:
-            from bzrlib.tests import clean_selftest_output
-            clean_selftest_output()
-            return 0
-        if keep_output:
-            warning("notice: selftest --keep-output "
-                    "is no longer supported; "
-                    "test output is always removed")
-
-        if numbered_dirs is None and sys.platform == 'win32':
-            numbered_dirs = True
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2474,15 +2451,14 @@ class cmd_selftest(Command):
                 verbose = False
             benchfile = None
         try:
-            result = selftest(verbose=verbose, 
+            result = selftest(verbose=verbose,
                               pattern=pattern,
-                              stop_on_failure=one, 
+                              stop_on_failure=one,
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
                               bench_history=benchfile,
                               matching_tests_first=first,
-                              numbered_dirs=numbered_dirs,
                               list_only=list_only,
                               random_seed=randomize,
                               exclude_pattern=exclude

@@ -18,7 +18,9 @@ IN DEVELOPMENT
 
   TESTING:
 
-    * None yet ...
+    * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
+      ``--keep-output`` options, which are obsolete now that tests
+      are done within directories in $TMPDIR.  (Martin Pool)
 
 
 bzr 0.18rc1  2007-07-10
