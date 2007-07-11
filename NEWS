@@ -6,6 +6,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``info`` now formats locations more nicely and lists "submit" and
+      "public" branches (Aaron Bentley)
+
     * None yet ...
 
   LIBRARY API BREAKS:
