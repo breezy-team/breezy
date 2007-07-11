@@ -199,8 +199,8 @@ def cmp_path_by_dirblock_c(path1, path2):
                                  PyString_Size(path2))
 
 
-cdef _cmp_path_by_dirblock(char *path1, int path1_len,
-                           char *path2, int path2_len):
+cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
+                               char *path2, int path2_len):
     cdef char *dirname1
     cdef int dirname1_len
     cdef char *dirname2
@@ -212,12 +212,6 @@ cdef _cmp_path_by_dirblock(char *path1, int path1_len,
     cdef int cur_len
     cdef int cmp_val
 
-    dirname1 = path1
-    dirname1_len = path1_len
-
-    dirname2 = path2
-    dirname2_len = path2_len
-
     if path1_len == 0 and path2_len == 0:
         return 0
 
@@ -227,29 +221,31 @@ cdef _cmp_path_by_dirblock(char *path1, int path1_len,
     if path2_len == 0:
         return 1
 
-    basename1 = <char*>_my_memrchr(dirname1, c'/', dirname1_len)
+    basename1 = <char*>_my_memrchr(path1, c'/', path1_len)
 
     if basename1 == NULL:
-        basename1 = dirname1
+        basename1 = path1
+        basename1_len = path1_len
         dirname1 = ''
         dirname1_len = 0
     else:
-        cur_len = basename1 - dirname1
+        dirname1 = path1
+        dirname1_len = basename1 - path1
         basename1 = basename1 + 1
-        basename1_len = dirname1_len - cur_len - 1
-        dirname1_len = cur_len
+        basename1_len = path1_len - dirname1_len - 1
 
-    basename2 = <char*>_my_memrchr(dirname2, c'/', dirname2_len)
+    basename2 = <char*>_my_memrchr(path2, c'/', path2_len)
 
     if basename2 == NULL:
-        basename2 = dirname2
+        basename2 = path2
+        basename2_len = path2_len
         dirname2 = ''
         dirname2_len = 0
     else:
-        cur_len = basename2 - dirname2
+        dirname2 = path2
+        dirname2_len = basename2 - path2
         basename2 = basename2 + 1
-        basename2_len = dirname2_len - cur_len - 1
-        dirname2_len = cur_len
+        basename2_len = path2_len - dirname2_len - 1
 
     cmp_val = _cmp_by_dirs(dirname1, dirname1_len,
                            dirname2, dirname2_len)
@@ -268,6 +264,16 @@ cdef _cmp_path_by_dirblock(char *path1, int path1_len,
     if basename1_len < basename2_len:
         return -1
     return 1
+
+
+cdef object _pystr(char *s, int length):
+    if s == NULL:
+        if length == 0:
+            return ''
+        else:
+            return None
+    else:
+        return PyString_FromStringAndSize(s, length)
 
 
 def bisect_path_left_c(paths, path):
@@ -346,7 +352,6 @@ def bisect_path_right_c(paths, path):
     cdef char *cur_str
     cdef int cur_size
     cdef void *cur
-    cdef int cmp_val
 
     if not PyList_CheckExact(paths):
         raise TypeError('you must pass a python list for paths')
@@ -364,12 +369,7 @@ def bisect_path_right_c(paths, path):
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_str = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        cmp_val = _cmp_path_by_dirblock(path_str, path_size, cur_str, cur_size)
-        print 'c_left mid: %d, cmp_val %d, cur_str %r, path_str %r' % (
-            _mid, cmp_val,
-            PyString_FromStringAndSize(cur_str, cur_size),
-            PyString_FromStringAndSize(path_str, path_size))
-        if cmp_val < 0:
+        if _cmp_path_by_dirblock(path_str, path_size, cur_str, cur_size) < 0:
             _hi = _mid
         else:
             _lo = _mid + 1

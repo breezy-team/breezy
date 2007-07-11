@@ -58,10 +58,7 @@ def bisect_path_left_py(paths, path):
         mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        cmp_val = cmp_path_by_dirblock_py(cur, path)
-        print 'py_left mid: %d, cmp_val %d, cur_str %r, path_str %r' % (
-            mid, cmp_val, cur, path)
-        if cmp_val < 0:
+        if cmp_path_by_dirblock_py(cur, path) < 0:
             lo = mid + 1
         else:
             hi = mid
