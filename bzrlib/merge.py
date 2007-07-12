@@ -110,8 +110,6 @@ class Merger(object):
             revision_id = branch.last_revision()
         else:
             revision_id = branch.get_rev_id(revno)
-        if revision_id is None:
-            revision_id = NULL_REVISION
         revision_id = ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
