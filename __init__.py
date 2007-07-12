@@ -22,6 +22,35 @@ from bzrlib.trace import info
 class cmd_rebase(Command):
     """Re-base a branch.
 
+    Rebasing is the process of taking a branch and modifying the history so
+    that it appears to start from a different point. This can be useful
+    to clean up the history before submitting your changes. The tree at the
+    end of the process will be the same as if you had merged the other branch,
+    but the history will be different.
+
+    The command takes the location of another branch on to which the branch in
+    the current working directory will be rebased. If a branch is not specified
+    then the parent branch is used, and this is usually the desired result.
+
+    The first step identifies the revisions that are in the current branch that
+    are not in the parent branch. The current branch is then set to be at the
+    same revision as the target branch, and each revision is replayed on top
+    of the branch. At the end of the process it will appear as though your
+    current branch was branched off the current last revision of the target.
+
+    Each revision that is replayed may cause conflicts in the tree. If this
+    happens the command will stop and allow you to fix them up. Resolve the
+    commits as you would for a merge, and then run 'bzr resolve' to marked
+    them as resolved. Once you have resolved all the conflicts you should
+    run 'bzr rebase-continue' to continue the rebase operation.
+
+    If conflicts are encountered and you decide that you do not wish to continue
+    you can run 'bzr rebase-abort'.
+
+    The '--onto' option allows you to specify a different revision in the
+    target branch to start at when replaying the revisions. This means that
+    you can change the point at which the current branch will appear to be
+    branched from when the operation completes.
     """
     takes_args = ['upstream_location?']
     takes_options = ['revision', 'merge-type', 'verbose',
