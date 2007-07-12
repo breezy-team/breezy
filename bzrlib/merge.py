@@ -160,13 +160,7 @@ class Merger(object):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor:
-            return
-        if self.other_rev_id is None:
-            return
-        ancestry = set(self.this_branch.repository.get_ancestry(
-            self.this_basis, topo_sorted=False))
-        if self.other_rev_id in ancestry:
+        if not self.base_is_ancestor or not self.base_is_other_ancestor:
             return
         self._add_parent()
 
@@ -240,6 +234,7 @@ class Merger(object):
             raise UnrelatedBranches()
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
+        self.base_is_other_ancestor = True
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
@@ -262,6 +257,9 @@ class Merger(object):
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)
+            self.base_is_other_ancestor = is_ancestor(self.other_basis,
+                                                      self.base_rev_id,
+                                                      self.this_branch)
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
