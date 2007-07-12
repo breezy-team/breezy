@@ -1783,7 +1783,7 @@ class BzrBranch5(BzrBranch):
         # other_last_rev is not in our history, and do it without pulling
         # history around
         last_rev = _mod_revision.ensure_null(self.last_revision())
-        if not _mod_revision.is_null(last_rev):
+        if last_rev != _mod_revision.NULL_REVISION:
             other.lock_read()
             try:
                 other_last_rev = other.last_revision()

@@ -504,7 +504,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         value and uses that to decide what the parents list should be.
         """
         last_rev = _mod_revision.ensure_null(self._last_revision())
-        if _mod_revision.is_null(last_rev):
+        if _mod_revision.NULL_REVISION == last_rev:
             parents = []
         else:
             parents = [last_rev]
@@ -2701,7 +2701,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
-            revision_id = branch.last_revision()
+            revision_id = _mod_revision.ensure_null(branch.last_revision())
         else:
             revision_id = osutils.safe_revision_id(revision_id)
         # WorkingTree3 can handle an inventory which has a unique root id.
@@ -2723,7 +2723,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             # only set an explicit root id if there is one to set.
             if basis_tree.inventory.root is not None:
                 wt.set_root_id(basis_tree.inventory.root.file_id)
-            if revision_id is None or revision_id == NULL_REVISION:
+            if revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])

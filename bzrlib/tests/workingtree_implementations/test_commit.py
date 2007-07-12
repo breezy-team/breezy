@@ -160,8 +160,8 @@ class TestCommit(TestCaseWithWorkingTree):
             return
         tree.commit('foo', rev_id='foo', local=True)
         self.failIf(master.repository.has_revision('foo'))
-        self.assertTrue(_mod_revision.is_null(_mod_revision.ensure_null(
-                        master.last_revision())))
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         (_mod_revision.ensure_null(master.last_revision())))
 
     def test_record_initial_ghost(self):
         """The working tree needs to record ghosts during commit."""
@@ -394,12 +394,4 @@ class TestCommitProgress(TestCaseWithWorkingTree):
            )
 
 
-class TestUncommit(TestCaseWithWorkingTree):
 
-    def test_uncommit_to_null(self):
-        tree = self.make_branch_and_tree('branch')
-        tree.lock_write()
-        revid = tree.commit('a revision')
-        tree.unlock()
-        uncommit.uncommit(tree.branch, tree=tree)
-        self.assertEqual([], tree.get_parent_ids())

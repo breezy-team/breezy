@@ -498,9 +498,6 @@ class Repository(object):
         for revision in revisions:
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
-        if ('null:' in required_trees):
-            import pdb; pdb.set_trace()
-
         trees = dict((t.get_revision_id(), t) for 
                      t in self.revision_trees(required_trees))
         for revision in revisions:
