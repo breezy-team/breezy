@@ -54,6 +54,10 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))
 
+    def test_iter_nothing_empty(self):
+        index = self.make_index()
+        self.assertEqual([], list(index.iter_entries([])))
+
     def test_iter_missing_entry_empty(self):
         index = self.make_index()
         self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
