@@ -741,7 +741,6 @@ class cmd_push(Command):
                         "\nYou may supply --create-prefix to create all"
                         " leading parent directories."
                         % location)
-
                 _create_prefix(to_transport)
 
             # Now the target directory exists, but doesn't have a .bzr
@@ -3751,9 +3750,9 @@ def _create_prefix(cur_transport):
     while True:
         new_transport = cur_transport.clone('..')
         if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError("Failed to create path"
-                                         " prefix for %s."
-                                         % location)
+            raise errors.BzrCommandError(
+                "Failed to create path prefix for %s."
+                % cur_transport.base)
         try:
             new_transport.mkdir('.')
         except errors.NoSuchFile:
@@ -3761,11 +3760,11 @@ def _create_prefix(cur_transport):
             cur_transport = new_transport
         else:
             break
-
     # Now we only need to create child directories
     while needed:
         cur_transport = needed.pop()
         cur_transport.ensure_base()
+
 
 # Compatibility
 merge = _merge_helper
