@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Checkouts and working trees (working copies)."""
 
+import bzrlib
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
@@ -22,7 +23,7 @@ from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import fingerprint_file
+from bzrlib.osutils import file_kind, fingerprint_file
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
@@ -469,8 +470,48 @@ class SvnWorkingTree(WorkingTree):
 
         return revid
 
+    def smart_add(self, file_list, recurse=True, action=None, save=True):
+        assert isinstance(recurse, bool)
+        if action is None:
+            action = bzrlib.add.AddAction()
+        # TODO: use action
+        if not file_list:
+            # no paths supplied: add the entire tree.
+            file_list = [u'.']
+        ignored = {}
+        added = []
+
+        for file_path in file_list:
+            todo = []
+            file_path = os.path.abspath(file_path)
+            f = self.relpath(file_path)
+            wc = self._get_wc(os.path.dirname(f), write_lock=True)
+            try:
+                if not self.inventory.has_filename(f):
+                    if save:
+                        mutter('adding %r' % file_path)
+                        svn.wc.add2(file_path, wc, None, 0, None, None, None)
+                    added.append(file_path)
+                if recurse and file_kind(file_path) == 'directory':
+                    # Filter out ignored files and update ignored
+                    for c in os.listdir(file_path):
+                        if self.is_control_filename(c):
+                            continue
+                        c_path = os.path.join(file_path, c)
+                        ignore_glob = self.is_ignored(c)
+                        if ignore_glob is not None:
+                            ignored.setdefault(ignore_glob, []).append(c_path)
+                        todo.append(c_path)
+            finally:
+                svn.wc.adm_close(wc)
+            if todo != []:
+                cadded, cignored = self.smart_add(todo, recurse, action, save)
+                added.extend(cadded)
+                ignored.update(cignored)
+        return added, ignored
+
     def add(self, files, ids=None, kinds=None):
-        # FIXME: Use kinds
+        # TODO: Use kinds
         if isinstance(files, str):
             files = [files]
             if isinstance(ids, str):
@@ -480,8 +521,8 @@ class SvnWorkingTree(WorkingTree):
             ids.reverse()
         assert isinstance(files, list)
         for f in files:
+            wc = self._get_wc(os.path.dirname(f), write_lock=True)
             try:
-                wc = self._get_wc(os.path.dirname(f), write_lock=True)
                 try:
                     svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
                             None, None, None)

@@ -56,15 +56,83 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
 
-    def test_smart_add(self):
+    def test_smart_add_file(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
         tree = self.open_checkout("dc")
-        tree.smart_add(["bl"])
+        tree.smart_add(["dc/bl"])
 
         inv = tree.read_working_inventory()
         self.assertIsInstance(inv, Inventory)
         self.assertTrue(inv.has_filename("bl"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_smart_add_recurse(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/foo": "data"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["dc/bl"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("bl/foo"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_smart_add_recurse_more(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/foo/da": "data"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["dc/bl"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("bl/foo"))
+        self.assertTrue(inv.has_filename("bl/foo/da"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_smart_add_more(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/foo/da": "data", "dc/ha": "contents"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["dc/bl", "dc/ha"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("bl/foo"))
+        self.assertTrue(inv.has_filename("bl/foo/da"))
+        self.assertTrue(inv.has_filename("ha"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_smart_add_ignored(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/.bzrignore": "bl/ha"})
+        self.build_tree({"dc/bl/foo/da": "data", "dc/bl/ha": "contents"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["dc/bl"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("bl/foo"))
+        self.assertTrue(inv.has_filename("bl/foo/da"))
+        self.assertFalse(inv.has_filename("ha"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_smart_add_toplevel(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/foo/da": "data", "dc/ha": "contents"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["dc"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("bl/foo"))
+        self.assertTrue(inv.has_filename("bl/foo/da"))
+        self.assertTrue(inv.has_filename("ha"))
         self.assertFalse(inv.has_filename("aa"))
 
     def test_add_nolist(self):
@@ -123,6 +191,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_unlock(self):
         self.make_client('a', 'dc')
         tree = self.open_checkout("dc")
+        tree.lock_read()
         tree.unlock()
 
     def test_get_ignore_list_empty(self):

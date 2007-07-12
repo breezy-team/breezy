@@ -50,6 +50,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Implement SvnRemoteAccess.create_branch().
 
+   * Implement SvnWorkingTree.smart_add()
+
 bzr-svn 0.3.4	2007-06-15
 
   BUG FIXES
