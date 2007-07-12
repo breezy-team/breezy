@@ -240,7 +240,7 @@ def get_host_name_unicode():
     return _ensure_unicode(get_host_name())
 
 
-def glob_expand_for_win32(file_list):
+def glob_expand(file_list):
     """Replacement for glob expansion by the shell.
 
     Win32's cmd.exe does not do glob expansion (eg ``*.py``), so we do our own
