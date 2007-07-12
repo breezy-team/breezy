@@ -151,8 +151,11 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = self.this_tree.changes_from(self.revision_tree(
-            self.this_tree.last_revision()))
+        try:
+            basis_tree = self.revision_tree(self.this_tree.last_revision())
+        except errors.RevisionNotPresent:
+            basis_tree = self.this_tree.basis_tree()
+        changes = self.this_tree.changes_from(basis_tree)
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
@@ -166,14 +169,22 @@ class Merger(object):
 
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
-        new_parent_trees = [(r, self.revision_tree(r)) for r in new_parents]
-        for _revision_id, tree in new_parent_trees:
-            tree.lock_read()
+        new_parent_trees = []
+        for revision_id in new_parents:
+            try:
+                tree = self.revision_tree(revision_id)
+            except errors.RevisionNotPresent:
+                tree = None
+            else:
+                tree.lock_read()
+            new_parent_trees.append((revision_id, tree))
         try:
-            self.this_tree.set_parent_trees(new_parent_trees)
+            self.this_tree.set_parent_trees(new_parent_trees,
+                                            allow_leftmost_as_ghost=True)
         finally:
             for _revision_id, tree in new_parent_trees:
-                tree.unlock()
+                if tree is not None:
+                    tree.unlock()
 
     def set_other(self, other_revision):
         """Set the revision and tree to merge from.
