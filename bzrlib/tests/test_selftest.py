@@ -50,7 +50,6 @@ from bzrlib.tests import (
                           TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
-                          clean_selftest_output,
                           iter_suite_tests,
                           filter_suite_by_re,
                           sort_suite_by_re,
@@ -1510,40 +1509,6 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
-
-
-class TestSelftestCleanOutput(TestCaseInTempDir):
-
-    def test_clean_output(self):
-        # test functionality of clean_selftest_output()
-        self.build_tree(['test0000.tmp/', 'test0001.tmp/',
-                         'bzrlib/', 'tests/',
-                         'bzr', 'setup.py', 'test9999.tmp'])
-
-        root = os.getcwdu()
-        before = os.listdir(root)
-        before.sort()
-        self.assertEquals(['bzr','bzrlib','setup.py',
-                           'test0000.tmp','test0001.tmp',
-                           'test9999.tmp','tests'],
-                           before)
-        clean_selftest_output(root, quiet=True)
-        after = os.listdir(root)
-        after.sort()
-        self.assertEquals(['bzr','bzrlib','setup.py',
-                           'test9999.tmp','tests'],
-                           after)
-
-    def test_clean_readonly(self):
-        # test for delete read-only files
-        self.build_tree(['test0000.tmp/', 'test0000.tmp/foo'])
-        osutils.make_readonly('test0000.tmp/foo')
-        root = os.getcwdu()
-        before = os.listdir(root);  before.sort()
-        self.assertEquals(['test0000.tmp'], before)
-        clean_selftest_output(root, quiet=True)
-        after = os.listdir(root);   after.sort()
-        self.assertEquals([], after)
 
 
 class TestKnownFailure(TestCase):
