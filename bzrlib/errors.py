@@ -343,6 +343,16 @@ class BzrOptionError(BzrCommandError):
     _fmt = "Error in command line options"
 
 
+class BadIndexFormatSignature(BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
 class BadOptionValue(BzrError):
 
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""

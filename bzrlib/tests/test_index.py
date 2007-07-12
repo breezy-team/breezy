@@ -45,6 +45,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_file('index', stream)
         return GraphIndex(trans, 'index')
 
+    def test_open_bad_index_no_error(self):
+        trans = self.get_transport()
+        trans.put_bytes('name', "not an index\n")
+        index = GraphIndex(trans, 'name')
+
     def test_iter_all_entries_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))
@@ -52,3 +57,9 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_iter_missing_entry_empty(self):
         index = self.make_index()
         self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+
+    def test_validate_bad_index_errors(self):
+        trans = self.get_transport()
+        trans.put_bytes('name', "not an index\n")
+        index = GraphIndex(trans, 'name')
+        self.assertRaises(errors.BadIndexFormatSignature, index.validate)

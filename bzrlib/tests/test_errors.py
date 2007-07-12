@@ -183,6 +183,10 @@ class TestErrors(TestCaseWithTransport):
         error = errors.ReadError(path)
         self.assertEqualDiff("Error reading from u'a path'.", str(error))
 
+    def test_bad_index_format_signature(self):
+        error = errors.BadIndexFormatSignature("foo", "bar")
+        self.assertEqual("foo is not an index of type bar.",
+            str(error))
 
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):

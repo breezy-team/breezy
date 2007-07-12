@@ -78,3 +78,7 @@ class GraphIndex(object):
         if False:
             yield None
         raise errors.MissingKey(self, keys[0])
+
+    def validate(self):
+        """Validate that everything in the index can be accessed."""
+        raise errors.BadIndexFormatSignature(self._name, GraphIndex)
