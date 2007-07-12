@@ -22,6 +22,7 @@ import warnings
 from bzrlib import (
     osutils,
     registry,
+    revision as _mod_revision,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -103,7 +104,8 @@ class Merger(object):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
-        self.this_basis = this_branch.last_revision()
+        self.this_basis = _mod_revision.ensure_null(
+            this_branch.last_revision())
         self.this_rev_id = None
         self.this_tree = this_tree
         self.this_revision_tree = None
@@ -214,8 +216,9 @@ class Merger(object):
         self.other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
-            self.other_rev_id = self.other_branch.last_revision()
-            if self.other_rev_id is None:
+            self.other_rev_id = _mod_revision.ensure_null(
+                self.other_branch.last_revision())
+            if _mod_revision.is_null(self.other_rev_id):
                 raise NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
         elif other_revision[1] is not None:
@@ -278,9 +281,10 @@ class Merger(object):
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
-                self.base_rev_id = None
+                self.base_rev_id = _mod_revision.NULL_REVISION
             else:
-                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
+                self.base_rev_id = _mod_revision.ensure_null(
+                    base_branch.get_rev_id(base_revision[1]))
             if self.this_branch.base != base_branch.base:
                 self.this_branch.fetch(base_branch)
             self.base_is_ancestor = is_ancestor(self.this_basis, 

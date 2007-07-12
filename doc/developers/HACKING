@@ -633,6 +633,16 @@ happened. But it requires accessing a member more than once from the new
 variable, so some bugs are not detected right away.
 
 
+The Null revision
+-----------------
+
+The null revision is the ancestor of all revisions.  Its revno is 0, its
+revision-id is ``null:``, and its tree is the empty tree.  When referring
+to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
+code sometimes uses ``None`` for the null revision, but this practice is
+being phased out.
+
+
 Getting Input
 =============
 

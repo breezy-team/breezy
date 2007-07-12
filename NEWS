@@ -26,6 +26,10 @@ IN DEVELOPMENT
       operations that perform comparisons, and reduces reliance on
       Tree.inventory.  (Aaron Bentley)
 
+    * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
+      the null revision, and consider using ``None`` for this purpose
+      deprecated.  (Aaron Bentley)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
