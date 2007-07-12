@@ -118,4 +118,5 @@ class TestHelp(ExternalBase):
         self.assertEquals(help, qmark)
         for line in help.split('\n'):
             if '--long' in line:
-                self.assertTrue('show help on all commands' in line)
+                self.assertContainsRe(line,
+                    r'Show help on all commands\.')

@@ -693,6 +693,24 @@ The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
 
 
+
+Displaying help
+===============
+
+Bazaar has online help for various topics through ``bzr help COMMAND`` or
+equivalently ``bzr command -h``.  We also have help on command options,
+and on other help topics.  (See ``help_topics.py``.)
+
+As for python docstrings, the first paragraph should be a single-sentence
+synopsis of the command.
+
+The help for options should be one or more proper sentences, starting with
+a capital letter and finishing with a full stop (period).
+
+All help messages and documentation should have two spaces between
+sentences.
+
+
 Writing tests
 =============
 
