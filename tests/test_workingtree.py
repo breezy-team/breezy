@@ -19,6 +19,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import Inventory
+from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -31,6 +32,7 @@ from fileids import generate_svn_file_id
 from repository import MAPPING_VERSION
 from transport import svn_config
 from tests import TestCaseWithSubversionRepository, RENAMES
+from workingtree import generate_ignore_list
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):
@@ -612,3 +614,19 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.commit("message")
         self.assertEqual(None, tree.branch.nick)
 
+
+class IgnoreListTests(TestCase):
+    def test_empty(self):
+        self.assertEquals([], generate_ignore_list({}))
+
+    def test_simple(self):
+        self.assertEquals(["./twin/peaks"], 
+                generate_ignore_list({"twin": "peaks"}))
+
+    def test_toplevel(self):
+        self.assertEquals(["./twin*"], 
+                generate_ignore_list({"": "twin*"}))
+
+    def test_multiple(self):
+        self.assertEquals(["./twin*", "./twin/peaks"], 
+                generate_ignore_list({"twin": "peaks", "": "twin*"}))

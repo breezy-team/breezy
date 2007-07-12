@@ -7,6 +7,7 @@ Updated December 2006.
 Updated January 2007.
 Updated February 2007.
 Updated June 2007.
+Updated July 2007.
 
 ============
 Branch paths
@@ -150,7 +151,14 @@ of these properties.
 
 "svn:executable" is mapped to bzr's executable bit. 
 
-"svn:ignore" is currently ignored.
+A fake .bzrignore file is generated containing the contents of the "svn:ignore"
+properties. If a .bzrignore file already exists in the tree, 
+the file already in the tree is used. 
+
+The .bzrignore file contains the directories in which the ignores are 
+set, ordered alphabetically by directory path. 
+
+Ignores are only recognized on directories.
 
 "svn:mime-type" is currently ignored.
 

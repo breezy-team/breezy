@@ -53,6 +53,20 @@ from svn.core import SubversionException, Pool
 from errors import NoCheckoutSupport
 from format import get_rich_root_format
 
+def generate_ignore_list(ignore_map):
+    """Create a list of ignores, ordered by directory.
+    
+    :param ignore_map: Dictionary with paths as keys, patterns as values.
+    :return: list of ignores
+    """
+    ignores = []
+    keys = ignore_map.keys()
+    keys.sort()
+    for k in keys:
+        ignores.append("./" + os.path.join(k.strip("/"), ignore_map[k].strip("/")))
+    return ignores
+
+
 class WorkingTreeInconsistent(BzrError):
     _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
 
@@ -108,18 +122,21 @@ class SvnWorkingTree(WorkingTree):
         ignores = set([svn.wc.get_adm_dir()])
         ignores.update(svn.wc.get_default_ignores(svn_config))
 
+        ignore_map = {}
+
         def dir_add(wc, prefix):
             ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
-                for pat in ignorestr.splitlines():
-                    ignores.add("./"+os.path.join(prefix, pat))
+                assert not ignore_map.has_key(prefix)
+                ignore_map[prefix] = ignorestr
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
                 if entry == "":
                     continue
 
+                # Ignore ignores on things that aren't directories
                 if entries[entry].kind != svn.core.svn_node_dir:
                     continue
 
@@ -137,6 +154,8 @@ class SvnWorkingTree(WorkingTree):
             dir_add(wc, "")
         finally:
             svn.wc.adm_close(wc)
+
+        set.extend(generate_ignore_list(ignore_map))
 
         return ignores
 
