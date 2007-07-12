@@ -3023,6 +3023,22 @@ class cmd_missing(Command):
         return status_code
 
 
+class cmd_pack(Command):
+    """Compress the data within a repository."""
+
+    _see_also = ['repositories']
+    takes_args = ['branch_or_repo?']
+
+    def run(self, branch_or_repo='.'):
+        dir = bzrdir.BzrDir.open_containing(branch_or_repo)[0]
+        try:
+            branch = dir.open_branch()
+            repository = branch.repository
+        except errors.NotBranchError:
+            repository = dir.open_repository()
+        repository.pack()
+
+
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True

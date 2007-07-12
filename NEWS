@@ -9,7 +9,8 @@ IN DEVELOPMENT
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
 
-    * None yet ...
+    * New ``pack`` command that will trigger database compression within
+      the repository (Robert Collins)
 
   LIBRARY API BREAKS:
 
