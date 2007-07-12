@@ -36,7 +36,8 @@ class cmd_rebase(Command):
         from bzrlib.workingtree import WorkingTree
         from rebase import (generate_simple_plan, rebase, rebase_plan_exists, 
                             read_rebase_plan, remove_rebase_plan, 
-                            workingtree_replay, write_rebase_plan)
+                            workingtree_replay, write_rebase_plan,
+                            rebase_todo)
         wt = WorkingTree.open('.')
         wt.lock_write()
         if upstream_location is None:
