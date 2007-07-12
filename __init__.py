@@ -22,10 +22,40 @@ from bzrlib.trace import info
 class cmd_rebase(Command):
     """Re-base a branch.
 
+    Rebasing is the process of taking a branch and modifying the history so
+    that it appears to start from a different point. This can be useful
+    to clean up the history before submitting your changes. The tree at the
+    end of the process will be the same as if you had merged the other branch,
+    but the history will be different.
+
+    The command takes the location of another branch on to which the branch in
+    the current working directory will be rebased. If a branch is not specified
+    then the parent branch is used, and this is usually the desired result.
+
+    The first step identifies the revisions that are in the current branch that
+    are not in the parent branch. The current branch is then set to be at the
+    same revision as the target branch, and each revision is replayed on top
+    of the branch. At the end of the process it will appear as though your
+    current branch was branched off the current last revision of the target.
+
+    Each revision that is replayed may cause conflicts in the tree. If this
+    happens the command will stop and allow you to fix them up. Resolve the
+    commits as you would for a merge, and then run 'bzr resolve' to marked
+    them as resolved. Once you have resolved all the conflicts you should
+    run 'bzr rebase-continue' to continue the rebase operation.
+
+    If conflicts are encountered and you decide that you do not wish to continue
+    you can run 'bzr rebase-abort'.
+
+    The '--onto' option allows you to specify a different revision in the
+    target branch to start at when replaying the revisions. This means that
+    you can change the point at which the current branch will appear to be
+    branched from when the operation completes.
     """
     takes_args = ['upstream_location?']
     takes_options = ['revision', 'merge-type', 'verbose',
-                     Option('onto', help='Different revision to replay onto')]
+                     Option('onto', help='Different revision to replay onto',
+                            type=str)]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
@@ -35,7 +65,8 @@ class cmd_rebase(Command):
         from bzrlib.workingtree import WorkingTree
         from rebase import (generate_simple_plan, rebase, rebase_plan_exists, 
                             read_rebase_plan, remove_rebase_plan, 
-                            workingtree_replay, write_rebase_plan)
+                            workingtree_replay, write_rebase_plan,
+                            rebase_todo)
         wt = WorkingTree.open('.')
         wt.lock_write()
         if upstream_location is None:
@@ -54,7 +85,8 @@ class cmd_rebase(Command):
             if onto is None:
                 onto = upstream.last_revision()
             else:
-                onto = RevisionSpec.from_string(onto)
+                rev_spec = RevisionSpec.from_string(onto)
+                onto = rev_spec.in_history(upstream).rev_id
 
             wt.branch.repository.fetch(upstream_repository, onto)
 
@@ -138,7 +170,9 @@ class cmd_rebase_continue(Command):
         try:
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
-                raise BzrCommandError("There are still conflicts present")
+                raise BzrCommandError("There are still conflicts present. "
+                                      "Resolve the conflicts and then run "
+                                      "'bzr resolve' and try again.")
             # Read plan file
             try:
                 replace_map = read_rebase_plan(wt)[1]
