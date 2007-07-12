@@ -243,7 +243,25 @@ class Merger(object):
         self.other_basis = revision_id
 
     def find_base(self):
-        self.set_base([None, None])
+        try:
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                this_repo = self.this_branch.repository
+                graph = this_repo.get_graph()
+                revisions = [ensure_null(self.this_basis),
+                             ensure_null(self.other_basis)]
+                if NULL_REVISION in revisions:
+                    self.base_rev_id = NULL_REVISION
+                else:
+                    self.base_rev_id = graph.find_unique_lca(*revisions)
+                    if self.base_rev_id == NULL_REVISION:
+                        raise UnrelatedBranches()
+            finally:
+                pb.finished()
+        except NoCommonAncestor:
+            raise UnrelatedBranches()
+        self.base_tree = self.revision_tree(self.base_rev_id)
+        self.base_is_ancestor = True
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
@@ -252,25 +270,7 @@ class Merger(object):
         """
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
-            try:
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
-                    this_repo = self.this_branch.repository
-                    graph = this_repo.get_graph()
-                    revisions = [ensure_null(self.this_basis),
-                                 ensure_null(self.other_basis)]
-                    if NULL_REVISION in revisions:
-                        self.base_rev_id = NULL_REVISION
-                    else:
-                        self.base_rev_id = graph.find_unique_lca(*revisions)
-                        if self.base_rev_id == NULL_REVISION:
-                            raise UnrelatedBranches()
-                finally:
-                    pb.finished()
-            except NoCommonAncestor:
-                raise UnrelatedBranches()
-            self.base_tree = self.revision_tree(self.base_rev_id)
-            self.base_is_ancestor = True
+            self.find_base()
         else:
             base_branch, self.base_tree = self._get_tree(base_revision)
             if base_revision[1] == -1:
