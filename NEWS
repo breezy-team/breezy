@@ -9,7 +9,14 @@ IN DEVELOPMENT
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
 
-    * None yet ...
+    * ``DirState._read_dirblocks`` now has an optional Pyrex
+      implementation. This improves the speed of any command that has to
+      read the entire DirState (atm, all commands that effect the working
+      tree, ``diff``, ``status``, etc).
+      ``bisect_dirblocks`` has also been improved, which helps all
+      ``_get_entry`` type calls (whenever we are searching for a
+      particular entry in the in-memory DirState).
+      (John Arbash Meinel)
 
   LIBRARY API BREAKS:
 
@@ -17,7 +24,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * None yet ...
+    * ``bzrlib.dirstate.cmp_by_dirs`` can be used to compare two paths by
+      their directory sections. This is equivalent to comparing
+      ``path.split('/')``, only without having to split the paths.
+      This has a Pyrex implementation available.
+      (John Arbash Meinel)
 
   TESTING:
 
