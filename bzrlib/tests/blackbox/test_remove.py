@@ -64,9 +64,9 @@ class TestRemove(ExternalBase):
             ' or --force to delete them regardless.'
             ])
         self.run_bzr_error(error_regexes,
-            ['remove'] + files_to_remove)
+            ['remove'] + list(files_to_remove))
         #see if we can force it now
-        self.run_bzr(['remove', '--force'] + files_to_remove)
+        self.run_bzr(['remove', '--force'] + list(files_to_remove))
 
     def test_remove_no_files_specified(self):
         tree = self._make_add_and_assert_tree([])
@@ -142,7 +142,7 @@ class TestRemove(ExternalBase):
     def test_remove_force_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr(['remove', '--force'] + files,
+        self.run_bzr(['remove', '--force'] + list(files),
                      error_regexes=["deleted a", "deleted b",
                                     "deleted b/c", "deleted d"])
         self.assertFilesDeleted(files)
