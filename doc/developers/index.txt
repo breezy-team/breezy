@@ -39,3 +39,6 @@ Specifications
 
   Notes on a container format for streaming and storing Bazaar data.
 
+* `Repositories <repository.htm>`_
+
+  What repositories do and are used for.

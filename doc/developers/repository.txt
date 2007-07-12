@@ -1,0 +1,180 @@
+============
+Repositories
+============
+
+Status
+======
+
+:Date: 2007-07-08
+
+This document describes the services repositories offer and need to offer
+within brlib.
+
+
+.. contents::
+
+
+Motivation
+==========
+
+To provide clarity to API and performance tradeoff decisions by
+centralising the requirements placed upon repositories.
+
+
+Terminology
+===========
+
+A **repository** is a store of historical data for bzr.
+
+
+Command Requirements
+====================
+
+==================  ====================
+Command             Needed services
+==================  ====================
+Add                 None
+Annotate            Annotated file texts, revision details
+Branch              Fetch, Revision parents, Inventory contents, All file texts
+Bundle              Maximally compact diffs (file and inventory), Revision graph
+                    difference, Revision texts.
+Commit              Insert new texts, insert new inventory via delta, insert
+                    revision, insert signature
+Fetching            Revision graph difference, ghost identification, stream data
+                    introduced by a set of revisions in some cheap form, insert
+                    data from a stream, validate data during insertion.
+Garbage Collection  Exclusive lock the repository preventing readers.
+Revert              Revision graph access, Inventory extraction, file text
+                    access.
+Uncommit            Revision graph access.
+Status              Revision graph access, revision text access, file
+                    fingerprint information, inventory differencing.
+Diff                As status but also file text access.
+Merge               As diff but needs up to twice as many file texts -
+                    base and other for each changed file. Also an initial
+                    fetch is needed.
+Log                 Revision graph (entire at the moment) access,
+                    sometimes status between adjacent revisions. Log of a
+                    file needs per-file-graph.
+Missing             Revision graph access.
+Update              As for merge, but twice.
+==================  ====================
+
+Data access patterns
+====================
+
+Ideally we can make our data access for commands such as branch to
+dovetail well with the native storage in the repository, in the common
+case. Doing this may require the commands to operate in predictable
+manners.
+
+===================  ===================================================
+Command              Data access pattern
+===================  ===================================================
+Annotate-cached      Find text name in an inventory, Recreate one text,
+                     recreate annotation regions
+Annotate-on demand   Find file id from name, then breadth-first pre-order
+                     traversal of versions-of-the-file until the annotation
+                     is complete.
+Branch               Fetch, possibly taking a copy of any file present in a
+                     nominated revision when it is validated during fetch.
+Bundle               Revision-graph as for fetch; then inventories for
+                     selected revision_ids to determine file texts, then
+                     mp-parent deltas for all determined file texts.
+Commit               Something like basis-inventories read to determine
+                     per-file graphs, insertion of new texts (which may
+                     be delta compressed), generation of annotation
+                     regions if the repository is configured to do so,
+                     finalisation of the inventory pointing at all the new
+                     texts and finally a revision and possibly signature.
+Fetching             Revision-graph searching to find the graph difference.
+                     Scan the inventory data introduced during the selected
+                     revisions, and grab the on disk data for the found
+                     file texts, annotation region data, per-file-graph
+                     data, piling all this into a stream. 
+Garbage Collection   Basically a mass fetch of all the revisions which
+                     branches point at, then a bait and switch with the old
+                     repository thus removing unreferenced data.
+Revert               Revision graph access for the revision being reverted
+                     to, inventory extraction of that revision,
+                     dirblock-order file text extract for files that were
+                     different.
+Uncommit             Revision graph access to synthesise pending-merges 
+                     linear access down left-hand-side, with is_ancestor
+                     checks between all the found non-left-hand-side
+                     parents.
+Status               Lookup the revisions added by pending merges and their
+                     commit messages. Then an inventory difference between
+                     the trees involved, which may include a working tree.
+                     If there is a working tree involved then the file 
+                     fingerprint for cache-misses on files will be needed.
+                     Note that dirstate caches most of this making
+                     repository performance largely irrelevant: but if it
+                     was fast enough dirstate might be able to be simpler/
+Diff                 As status but also file text access for every file
+                     that is different - either one text (working tree
+                     diff) or a diff of two (revision to revision diff).
+Merge                As diff but needs up to twice as many file texts -
+                     base and other for each changed file. Also an initial
+                     fetch is needed. Note that the access pattern is
+                     probably id-based at the moment, but that may be
+                     'fixed' with the iter_changes based merge. Also note
+                     that while the texts from OTHER are the ones accessed,
+                     this is equivalent to the **newest** form of each text
+                     changed from BASE to OTHER. And as the repository
+                     looks at when data is introduced, this should be the
+                     pattern we focus on for merge.
+Log                  Revision graph (entire at the moment) access, log of a
+                     file wants a per-file-graph. Log -v will want
+                     newest-first inventory deltas between revisions.
+Missing              Revision graph access, breadth-first pre-order.
+Update               As for merge, but twice.
+===================  ===================================================
+
+Patterns used
+-------------
+
+=========================================== =========
+Pattern                                     Commands
+=========================================== =========
+Single file text                            annotate, diff
+Files present in one revision               branch
+Newest form of files altered by revisions   merge, update?
+Topological access to file versions/deltas  annotate-uncached
+Stream all data required to recreate revs   branch (lightweight)
+Stream file texts in topological order      bundle
+Write full versions of files, inv, rev, sig commit
+Write deltas of files, inv for one tree     commit
+Stream all data introduced by revs          fetch
+Regenerate/combine deltas of many trees     fetch, pack
+Reconstruct all texts and validate trees    check, fetch
+Revision graph walk                         fetch, pack, uncommit,
+                                            annotate-uncached,
+                                            merge, log, missing
+Top down access multiple invs concurrently  status, diff, merge?, update?
+Concurrent access to N file texts           diff, merge
+Iteration of inventory deltas               log -v, fetch?
+=========================================== =========
+
+Facilities to scale well
+========================
+
+Indices
+-------
+
+We want < linear access to all data in the repository. This suggests
+everything is indexed to some degree.
+
+Often we know the kind of data we are accessing; which allows us to
+partition our indices if that will help (e.g. by reducing the total index
+size for queries that only care about the revision graph).
+
+Indices that support our data access patterns will usually display
+increased locality of reference, reducing the impact of a large indices
+without needing careful page size management or other tricks.
+
+Data 
+
+..
+   vim: ft=rst tw=74 ai
+
