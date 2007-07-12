@@ -30,7 +30,7 @@ from bzrlib import (
 from bzrlib.branch import Branch
 
 
-def show_version():
+def show_version(show_config=True, show_copyright=False):
     print "Bazaar (bzr) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
     src_tree = _get_bzr_source_tree()
@@ -41,24 +41,26 @@ def show_version():
         print "    revision:", revno
         print "    revid:", src_revision_id
         print "    branch nick:", src_tree.branch.nick
-    print "Using Python interpreter:", sys.executable
-    print "Using Python standard library:", os.path.dirname(os.__file__)
-    print "Using bzrlib:",
+    print "  Python interpreter:", sys.executable, '.'.join(map(str, sys.version_info))
+    print "  Python standard library:", os.path.dirname(os.__file__)
+    print "  bzrlib:",
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
         # more than one element (eg ['/foo/bar', '/foo/bzr'])
         print repr(bzrlib.__path__)
     else:
         print bzrlib.__path__[0]
-    print "Using Bazaar configuration:", config.config_dir()
-    print "Using Bazaar log file:", trace._bzr_log_filename
-    print
-    print bzrlib.__copyright__
-    print "http://bazaar-vcs.org/"
-    print
-    print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
-    print "you may use, modify and redistribute it under the terms of the GNU"
-    print "General Public License version 2 or later."
+    if show_config:
+        print
+        print "  Bazaar configuration:", config.config_dir()
+        print "  Bazaar log file:", trace._bzr_log_filename
+    if show_copyright:
+        print bzrlib.__copyright__
+        print "http://bazaar-vcs.org/"
+        print
+        print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
+        print "you may use, modify and redistribute it under the terms of the GNU"
+        print "General Public License version 2 or later."
 
 
 def _get_bzr_source_tree():
