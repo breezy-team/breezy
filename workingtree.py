@@ -103,15 +103,6 @@ class SvnWorkingTree(WorkingTree):
                                                    svn.wc.get_adm_dir(), 'bzr'))
         self._control_files = LockableFiles(control_transport, 'lock', LockDir)
 
-    def lock_write(self):
-        pass
-
-    def lock_read(self):
-        pass
-
-    def unlock(self):
-        pass
-
     def get_ignore_list(self):
         ignores = set([svn.wc.get_adm_dir()])
         ignores.update(svn.wc.get_default_ignores(svn_config))

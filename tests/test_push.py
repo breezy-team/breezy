@@ -22,7 +22,6 @@ from bzrlib.workingtree import WorkingTree
 
 import os
 import format
-import checkout
 import svn.core
 from commit import push_as_merged
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID

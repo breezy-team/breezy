@@ -26,7 +26,7 @@ import bzrlib
 from bzrlib.trace import warning, mutter
 
 __version__ = '0.4.0'
-COMPATIBLE_BZR_VERSIONS = [(0, 15), (0, 16), (0, 17), (0, 18)]
+COMPATIBLE_BZR_VERSIONS = [(0, 18)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -67,7 +67,7 @@ import branch
 import convert
 import format
 import transport
-import checkout
+import workingtree
 
 from bzrlib.transport import register_transport
 register_transport('svn://', transport.SvnRaTransport)
@@ -85,7 +85,7 @@ BzrDirFormat.register_control_format(format.SvnFormat)
 import svn.core
 _subr_version = svn.core.svn_subr_version()
 
-BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
+BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterFromSvnRepository)
 InterRepository.register_optimiser(InterToSvnRepository)

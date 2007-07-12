@@ -56,6 +56,17 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
 
+    def test_smart_add(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        tree = self.open_checkout("dc")
+        tree.smart_add(["bl"])
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertFalse(inv.has_filename("aa"))
+
     def test_add_nolist(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
