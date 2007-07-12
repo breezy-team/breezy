@@ -79,6 +79,13 @@ class GraphIndex(object):
             yield None
         raise errors.MissingKey(self, keys[0])
 
+    def _signature(self):
+        """The file signature for this index type."""
+        return _SIGNATURE
+
     def validate(self):
         """Validate that everything in the index can be accessed."""
-        raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+        stream = self._transport.get(self._name)
+        signature = stream.read(len(self._signature()))
+        if not signature == self._signature():
+            raise errors.BadIndexFormatSignature(self._name, GraphIndex)

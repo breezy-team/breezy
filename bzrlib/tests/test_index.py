@@ -63,3 +63,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('name', "not an index\n")
         index = GraphIndex(trans, 'name')
         self.assertRaises(errors.BadIndexFormatSignature, index.validate)
+
+    def test_validate_empty(self):
+        index = self.make_index()
+        index.validate()
