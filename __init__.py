@@ -140,7 +140,9 @@ class cmd_rebase_continue(Command):
         try:
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
-                raise BzrCommandError("There are still conflicts present")
+                raise BzrCommandError("There are still conflicts present. "
+                                      "Resolve the conflicts and then run "
+                                      "'bzr resolve' and try again.")
             # Read plan file
             try:
                 replace_map = read_rebase_plan(wt)[1]
