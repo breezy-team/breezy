@@ -20,8 +20,10 @@ import bisect
 import os
 
 from bzrlib import (
+    dirstate,
     tests,
     )
+from bzrlib.tests import test_dirstate
 
 
 class _CompiledDirstateHelpersFeature(tests.Feature):
@@ -611,3 +613,31 @@ class TestMemRChr(tests.TestCase):
         self.assertMemRChr(22, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'm')
         self.assertMemRChr(22, 'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', 'a')
         self.assertMemRChr(9, '\0\0\0\0\0\0\0\0\0\0', '\0')
+
+
+class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
+
+    def get_read_dirblocks(self):
+        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
+        return _read_dirblocks_py
+
+    def test_smoketest(self):
+        """Make sure that we can create and read back a simple file."""
+        tree, state, expected = self.create_basic_dirstate()
+        del tree
+        state._read_header_if_needed()
+        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                         state._dirblock_state)
+        read_dirblocks = self.get_read_dirblocks()
+        read_dirblocks(state)
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+
+class TestCompiledReadDirblocks(TestReadDirblocks):
+
+    _test_needs_features = [CompiledDirstateHelpersFeature]
+
+    def get_read_dirblocks(self):
+        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
+        return _read_dirblocks_c

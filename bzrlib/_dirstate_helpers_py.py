@@ -18,6 +18,10 @@
 
 import os
 
+from bzrlib import (
+    dirstate,
+    )
+
 
 def bisect_path_left_py(paths, path):
     """Return the index where to insert path into paths.
@@ -227,7 +231,7 @@ def _read_dirblocks_py(state):
     #                          key=lambda blk:blk[0].split('/'))
     # To convert from format 3 => format 2
     # state._dirblocks = sorted(state._dirblocks)
-    state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+    state._dirblock_state = dirstate.DirState.IN_MEMORY_UNMODIFIED
 
 
 def cmp_by_dirs_py(path1, path2):
