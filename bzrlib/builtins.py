@@ -338,9 +338,16 @@ class cmd_add(Command):
     into a subdirectory of this one.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run', 'verbose',
-                     Option('file-ids-from', type=unicode,
-                            help='Lookup file ids from this tree.')]
+    takes_options = [
+        Option('no-recurse',
+               help="Don't recursively add the contents of directories."),
+        Option('dry-run',
+               help="Show what would be done, but don't actually do anything."),
+        'verbose',
+        Option('file-ids-from',
+               type=unicode,
+               help='Lookup file ids from this tree.'),
+        ]
     encoding_type = 'replace'
     _see_also = ['remove']
 
@@ -436,13 +443,19 @@ class cmd_inventory(Command):
 
     hidden = True
     _see_also = ['ls']
-    takes_options = ['revision', 'show-ids', 'kind']
+    takes_options = [
+        'revision',
+        'show-ids',
+        Option('kind',
+               help='List entries of a particular kind: file, directory, symlink.',
+               type=unicode),
+        ]
     takes_args = ['file*']
 
     @display_command
     def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
-            raise errors.BzrCommandError('invalid kind specified')
+            raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
@@ -1386,11 +1399,14 @@ class cmd_diff(Command):
 
     _see_also = ['status']
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options',
+    takes_options = [
+        Option('diff-options', type=str,
+               help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
+        'revision',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1584,7 +1600,9 @@ class cmd_log(Command):
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
-            'timezone',
+            Option('timezone',
+                   type=str,
+                   help='Display timezone as local, original, or utc.'),
             Option('verbose',
                    short_name='v',
                    help='Show files changed in each revision.'),
@@ -1732,11 +1750,13 @@ class cmd_ls(Command):
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
                    'between files rather than a newline.'),
-            'kind',
+            Option('kind',
+                   help='List entries of a particular kind: file, directory, symlink.',
+                   type=unicode),
             'show-ids',
             ]
     @display_command
-    def run(self, revision=None, verbose=False, 
+    def run(self, revision=None, verbose=False,
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None):
@@ -1975,7 +1995,15 @@ class cmd_export(Command):
          zip                          .zip
     """
     takes_args = ['dest', 'branch?']
-    takes_options = ['revision', 'format', 'root']
+    takes_options = [
+        Option('format',
+               help="Type of file to export to.",
+               type=unicode),
+        'revision',
+        Option('root',
+               type=str,
+               help="Name of the root directory inside the exported file."),
+        ]
     def run(self, dest, branch=None, revision=None, format=None, root=None):
         from bzrlib.export import export
 
@@ -2009,7 +2037,10 @@ class cmd_cat(Command):
     """
 
     _see_also = ['ls']
-    takes_options = ['revision', 'name-from-revision']
+    takes_options = [
+        Option('name-from-revision', help='The path name in the old tree.'),
+        'revision',
+        ]
     takes_args = ['filename']
     encoding_type = 'exact'
 
@@ -2103,7 +2134,9 @@ class cmd_commit(Command):
     _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
-            'message',
+            Option('message', type=unicode,
+                   short_name='m',
+                   help="Description of the new revision."),
             'verbose',
              Option('unchanged',
                     help='Commit even if nothing has changed.'),
@@ -2571,7 +2604,13 @@ class cmd_merge(Command):
 
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
+    takes_options = [
+        'revision',
+        Option('force',
+               help='Merge even if the destination tree has uncommitted changes.'),
+        'merge-type',
+        'reprocess',
+        'remember',
         Option('show-base', help="Show base revision text in "
                "conflicts."),
         Option('uncommitted', help='Apply uncommitted changes'
@@ -2581,11 +2620,11 @@ class cmd_merge(Command):
                 ' source rather than merging.  When this happens,'
                 ' you do not need to commit the result.'),
         Option('directory',
-            help='Branch to merge into, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
+               help='Branch to merge into, '
+                    'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
@@ -2840,7 +2879,10 @@ class cmd_revert(Command):
     """
 
     _see_also = ['cat', 'export']
-    takes_options = ['revision', 'no-backup']
+    takes_options = [
+            'revision',
+            Option('no-backup', "Do not save backups of reverted files."),
+            ]
     takes_args = ['file*']
 
     def run(self, revision=None, no_backup=False, file_list=None):
