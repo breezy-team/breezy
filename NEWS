@@ -2,7 +2,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
-    * None yet ...
+    * ``bzr rm`` now does not insist on ``--force`` to delete files that
+      have been renamed but not otherwise modified.  (Marius Kruger,
+      #111664)
 
   IMPROVEMENTS:
 
