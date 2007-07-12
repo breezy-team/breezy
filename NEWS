@@ -32,6 +32,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Be a bit less verbose when trying to connect (#124858)
 
+   * Fix locking issues (#125212)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

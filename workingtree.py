@@ -628,6 +628,17 @@ class SvnWorkingTree(WorkingTree):
 
         return []
 
+    def _reset_data(self):
+        pass
+
+    def unlock(self):
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
+
+
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     """Subversion working copy format."""
