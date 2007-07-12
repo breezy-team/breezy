@@ -449,6 +449,11 @@ class FtpTransport(ConnectedTransport):
             self._translate_perm_error(e, abspath, 'error deleting',
                 unknown_exc=errors.NoSuchFile)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # FTP URL's are externally usable.
+        return self.base
+
     def listable(self):
         """See Transport.listable."""
         return True
@@ -519,7 +524,7 @@ class FtpTransport(ConnectedTransport):
 
 
 class FtpServer(Server):
-    """Common code for SFTP server facilities."""
+    """Common code for FTP server facilities."""
 
     def __init__(self):
         self._root = None

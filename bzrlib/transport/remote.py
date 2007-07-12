@@ -288,6 +288,11 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2('delete', self._remote_path(relpath))
         self._translate_error(resp)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # the external path for RemoteTransports is the base
+        return self.base
+
     def readv(self, relpath, offsets):
         if not offsets:
             return
@@ -386,6 +391,12 @@ class RemoteTransport(transport.ConnectedTransport):
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
         elif what == "ReadOnlyError":
             raise errors.TransportNotPossible('readonly transport')
+        elif what == "ReadError":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.ReadError(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 

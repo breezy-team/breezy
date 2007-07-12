@@ -216,6 +216,32 @@ class _CoalescedOffset(object):
                    (other.start, other.length, other.ranges))
 
 
+class LateReadError(object):
+    """A helper for transports which pretends to be a readable file.
+
+    When read() is called, errors.ReadError is raised.
+    """
+
+    def __init__(self, path):
+        self._path = path
+
+    def close(self):
+        """a no-op - do nothing."""
+
+    def _fail(self):
+        """Raise ReadError."""
+        raise errors.ReadError(self._path)
+
+    def __iter__(self):
+        self._fail()
+
+    def read(self, count=-1):
+        self._fail()
+
+    def readlines(self):
+        self._fail()
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -292,6 +318,28 @@ class Transport(object):
             return False
         else:
             return True
+
+    def external_url(self):
+        """Return a URL for self that can be given to an external process.
+
+        There is no guarantee that the URL can be accessed from a different
+        machine - e.g. file:/// urls are only usable on the local machine,
+        sftp:/// urls when the server is only bound to localhost are only
+        usable from localhost etc.
+
+        NOTE: This method may remove security wrappers (e.g. on chroot
+        transports) and thus should *only* be used when the result will not
+        be used to obtain a new transport within bzrlib. Ideally chroot
+        transports would know enough to cause the external url to be the exact
+        one used that caused the chrooting in the first place, but that is not
+        currently the case.
+
+        :return: A URL that can be given to another process.
+        :raises InProcessTransport: If the transport is one that cannot be
+            accessed out of the current process (e.g. a MemoryTransport)
+            then InProcessTransport is raised.
+        """
+        raise NotImplementedError(self.external_url)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -468,6 +516,17 @@ class Transport(object):
 
     def get(self, relpath):
         """Get the file at the given relative path.
+
+        This may fail in a number of ways:
+         - HTTP servers may return content for a directory. (unexpected
+           content failure)
+         - FTP servers may indicate NoSuchFile for a directory.
+         - SFTP servers may give a file handle for a directory that will
+           fail on read().
+
+        For correct use of the interface, be sure to catch errors.PathError
+        when calling it and catch errors.ReadError when reading from the
+        returned object.
 
         :param relpath: The relative path to the file
         :rtype: File-like object.

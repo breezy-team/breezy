@@ -40,7 +40,7 @@ class TestRemoveTree(ExternalBase):
         self.failIfExists('foo')
     
     def test_remove_tree_original_branch_explicit(self):
-        self.run_bzr('remove-tree', 'branch1')
+        self.run_bzr('remove-tree branch1')
         self.failIfExists('branch1/foo')
 
     def test_remove_tree_sprouted_branch(self):
@@ -53,7 +53,7 @@ class TestRemoveTree(ExternalBase):
     def test_remove_tree_sprouted_branch_explicit(self):
         self.tree.bzrdir.sprout('branch2')
         self.failUnlessExists('branch2/foo')
-        self.run_bzr('remove-tree', 'branch2')
+        self.run_bzr('remove-tree branch2')
         self.failIfExists('branch2/foo')
 
     def test_remove_tree_checkout(self):
@@ -68,7 +68,7 @@ class TestRemoveTree(ExternalBase):
     def test_remove_tree_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=False)
         self.failUnlessExists('branch2/foo')
-        self.run_bzr('remove-tree', 'branch2')
+        self.run_bzr('remove-tree branch2')
         self.failIfExists('branch2/foo')
         self.failUnlessExists('branch1/foo')
 
@@ -88,23 +88,23 @@ class TestRemoveTree(ExternalBase):
     def test_remove_tree_lightweight_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=True)
         self.failUnlessExists('branch2/foo')
-        output = self.run_bzr(
-            ["Cannot remove working tree from lightweight checkout"],
-            'remove-tree', 'branch2', retcode=3)
+        output = self.run_bzr_error(
+            ["You cannot remove the working tree from a lightweight checkout"],
+            'remove-tree branch2', retcode=3)
         self.failUnlessExists('branch2/foo')
         self.failUnlessExists('branch1/foo')
 
     def test_remove_tree_empty_dir(self):
         os.mkdir('branch2')
         os.chdir('branch2')
-        output = self.run_bzr(["Not a branch"],
-                              'remove-tree', retcode=3)
+        output = self.run_bzr_error(["Not a branch"],
+                                    'remove-tree', retcode=3)
 
     def test_remove_tree_repeatedly(self):
-        self.run_bzr('remove-tree', 'branch1')
+        self.run_bzr('remove-tree branch1')
         self.failIfExists('branch1/foo')
         output = self.run_bzr_error(["No working tree to remove"],
-                                    'remove-tree', 'branch1', retcode=3)
+                                    'remove-tree branch1', retcode=3)
 
     def test_remove_tree_remote_path(self):
         # TODO: I can't think of a way to implement this...

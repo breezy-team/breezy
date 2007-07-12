@@ -15,6 +15,7 @@ strict digraph performance {
   status_analysis[label="Work required analysis for status"];
   uncommit_analysis[label="Work required analysis for uncommit"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
+  iter_merge[label="iter_changes based merge\n2 days"];
 
   /* uncompleted node list - add new tasks here */
   node[color="blue"];
@@ -62,7 +63,6 @@ strict digraph performance {
   repo_disk_order[label="Repository disk ordering\n1 month"];
   pack_repository[label="Pack based repository format"];
   graph_api[label="Network-efficient revision-graph API\n3 week"];
-  iter_merge[label="iter_changes based merge\n2 days"];
   validators[label="Build new validators for revisions and trees."];
 
   /* under discussion/optional */

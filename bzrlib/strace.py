@@ -33,16 +33,27 @@ def strace(function, *args, **kwargs):
 
     :return: a tuple: function-result, a StraceResult.
     """
+    return strace_detailed(function, args, kwargs)
+
+
+def strace_detailed(function, args, kwargs, follow_children=True):
+    # FIXME: strace is buggy
+    # (https://bugs.launchpad.net/ubuntu/+source/strace/+bug/103133) and the
+    # test suite hangs if the '-f' is given to strace *and* more than one
+    # thread is running. Using follow_children=False allows the test suite to
+    # disable fork following to work around the bug.
+
     # capture strace output to a file
     log_file = tempfile.NamedTemporaryFile()
     log_file_fd = log_file.fileno()
     pid = os.getpid()
     # start strace
-    proc = subprocess.Popen(['strace',
-        '-f', '-r', '-tt', '-p', str(pid), '-o', log_file.name
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
+    strace_cmd = ['strace', '-r', '-tt', '-p', str(pid), '-o', log_file.name]
+    if follow_children:
+        strace_args.append('-f')
+    proc = subprocess.Popen(strace_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     # Wait for strace to attach
     attached_notice = proc.stdout.readline()
     # Run the function to strace

@@ -81,7 +81,7 @@ class TestBranch(ExternalBase):
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
-        self.run_bzr('branch', 'repo/b', 'branch-b')
+        self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
         self.assertFalse(pushed_repo.has_revision('a-1'))

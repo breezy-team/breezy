@@ -198,6 +198,15 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -349,6 +358,10 @@ class StrictCommitFailed(BzrError):
 
 # XXX: Should be unified with TransportError; they seem to represent the
 # same thing
+# RBC 20060929: I think that unifiying with TransportError would be a mistake
+# - this is finer than a TransportError - and more useful as such. It 
+# differentiates between 'transport has failed' and 'operation on a transport
+# has failed.'
 class PathError(BzrError):
     
     _fmt = "Generic path error: %(path)r%(extra)s)"
@@ -455,6 +468,11 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ReadError(PathError):
+    
+    _fmt = """Error reading from %(path)r."""
 
 
 class ShortReadvError(PathError):

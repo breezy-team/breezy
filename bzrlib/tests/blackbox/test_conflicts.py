@@ -55,25 +55,25 @@ class TestConflicts(ExternalBase):
         self.run_bzr('merge ../b', retcode=1)
 
     def test_conflicts(self):
-        conflicts, errs = self.run_bzr(['conflicts'])
+        conflicts, errs = self.run_bzr('conflicts')
         self.assertEqual(3, len(conflicts.splitlines()))
 
     def test_conflicts_text(self):
-        conflicts = self.run_bzr('conflicts', '--text')[0].splitlines()
+        conflicts = self.run_bzr('conflicts --text')[0].splitlines()
         self.assertEqual(['my_other_file', 'myfile'], conflicts)
 
     def test_resolve(self):
         self.run_bzr('resolve myfile')
-        conflicts, errs = self.run_bzr(['conflicts'])
+        conflicts, errs = self.run_bzr('conflicts')
         self.assertEqual(2, len(conflicts.splitlines()))
         self.run_bzr('resolve my_other_file')
         self.run_bzr('resolve mydir2')
-        conflicts, errs = self.run_bzr(['conflicts'])
+        conflicts, errs = self.run_bzr('conflicts')
         self.assertEqual(len(conflicts.splitlines()), 0)
 
     def test_resolve_all(self):
         self.run_bzr('resolve --all')
-        conflicts, errs = self.run_bzr(['conflicts'])
+        conflicts, errs = self.run_bzr('conflicts')
         self.assertEqual(len(conflicts.splitlines()), 0)
 
     def test_resolve_in_subdir(self):
