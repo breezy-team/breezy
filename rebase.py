@@ -235,10 +235,11 @@ def rebase(repository, replace_map, replay_fn):
             dependencies[p].append(revid)
 
     pb = ui.ui_factory.nested_progress_bar()
+    total = len(todo)
     i = 0
     try:
         while len(todo) > 0:
-            pb.update('rebase revisions', i, len(replace_map))
+            pb.update('rebase revisions', i, total)
             i += 1
             revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
