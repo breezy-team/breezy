@@ -410,7 +410,7 @@ class Merge3Merger(object):
             for conflict in self.cooked_conflicts:
                 warning(conflict)
             self.pp.next_phase()
-            results = self.tt.apply()
+            results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
             try:
                 working_tree.add_conflicts(self.cooked_conflicts)
