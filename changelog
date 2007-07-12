@@ -9,24 +9,8 @@ bzr (0.18~rc1-1) unstable; urgency=low
 bzr (0.17-1) unstable; urgency=low
 
   * Final release of 0.17
-  * add ubuntu changelog entries, since we have merged a lot during the
-    preparations of the 0.16 version of bzr.
-  * review of http://patches.ubuntu.com/b/bzr/bzr_0.17-0ubuntu2.patch
 
  -- Reinhard Tartler <siretart@tauware.de>  Mon, 18 Jun 2007 11:23:17 +0100
-
-bzr (0.17-0ubuntu2) gutsy; urgency=low
-
-  * Add debian/patches/no-python-2.4.patch: Remove hashbangs that are Python
-    2.4 specific, so that we get rid of python2.4 from the CDs. (LP: #120659)
-
- -- Martin Pitt <martin.pitt@ubuntu.com>  Mon, 25 Jun 2007 10:40:25 +0200
-
-bzr (0.17-0ubuntu1) gutsy; urgency=low
-
-  * New upstream release 
-
- -- Etienne Goyer <etienne.goyer@ubuntu.com>  Mon, 18 Jun 2007 08:56:21 -0400
 
 bzr (0.17~rc1-1) unstable; urgency=low
 
@@ -42,28 +26,6 @@ bzr (0.17~rc1-1) unstable; urgency=low
   * Add XS-VCS-Bzr header.
 
  -- Adeodato Simó <dato@net.com.org.es>  Tue, 12 Jun 2007 16:08:46 +0100
-
-bzr (0.17~rc1-0ubuntu2) gutsy; urgency=low
-
-  * Removed python-celementtree, python-medusa and python-paramiko from the
-    Build-Depend-Indep
-
- -- Etienne Goyer <etienne.goyer@ubuntu.com>  Fri, 15 Jun 2007 08:41:47 -0400
-
-bzr (0.17~rc1-0ubuntu1) gutsy; urgency=low
-
-  * New upstream development release
-  * debian/control: Setted Maintainer to ubuntu-dev, added Original-Maitainer 
-  * debian/rules: also remove man1/* and doc/developers/*.htm in the clean
-    target
-
- -- Etienne Goyer <etienne.goyer@ubuntu.com>  Thu, 14 Jun 2007 16:20:21 -0400
-
-bzr (0.16-1ubuntu1) gutsy; urgency=low
-
-  * Make python-celementtree a recommends (again).
-
- -- Matthias Klose <doko@ubuntu.com>  Wed, 06 Jun 2007 10:48:57 +0200
 
 bzr (0.16-1) unstable; urgency=low
 
