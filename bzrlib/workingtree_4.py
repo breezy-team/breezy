@@ -1488,6 +1488,10 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
+    def get_weave(self, file_id):
+        return self._repository.weave_store.get_weave(file_id,
+                self._repository.get_transaction())
+
     def get_file(self, file_id):
         return StringIO(self.get_file_text(file_id))
 

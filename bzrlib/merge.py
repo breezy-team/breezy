@@ -20,6 +20,7 @@ import errno
 import warnings
 
 from bzrlib import (
+    errors,
     osutils,
     registry,
     )
@@ -52,44 +53,6 @@ from bzrlib import ui
 
 # TODO: Report back as changes are merged in
 
-def _get_tree(treespec, local_branch=None):
-    from bzrlib import workingtree
-    location, revno = treespec
-    if revno is None:
-        tree = workingtree.WorkingTree.open_containing(location)[0]
-        return tree.branch, tree
-    branch = Branch.open_containing(location)[0]
-    if revno == -1:
-        revision_id = branch.last_revision()
-    else:
-        revision_id = branch.get_rev_id(revno)
-    if revision_id is None:
-        revision_id = NULL_REVISION
-    return branch, _get_revid_tree(branch, revision_id, local_branch)
-
-
-def _get_revid_tree(branch, revision_id, local_branch):
-    if revision_id is None:
-        base_tree = branch.bzrdir.open_workingtree()
-    else:
-        if local_branch is not None:
-            if local_branch.base != branch.base:
-                local_branch.fetch(branch, revision_id)
-            base_tree = local_branch.repository.revision_tree(revision_id)
-        else:
-            base_tree = branch.repository.revision_tree(revision_id)
-    return base_tree
-
-
-def _get_revid_tree_from_tree(tree, revision_id, local_branch):
-    if revision_id is None:
-        return tree
-    if local_branch is not None:
-        if local_branch.base != tree.branch.base:
-            local_branch.fetch(tree.branch, revision_id)
-        return local_branch.repository.revision_tree(revision_id)
-    return tree.branch.repository.revision_tree(revision_id)
-
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
@@ -121,14 +84,38 @@ class Merger(object):
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
+        self._cached_trees = {}
 
-    def revision_tree(self, revision_id):
-        return self.this_branch.repository.revision_tree(revision_id)
+    def revision_tree(self, revision_id, branch=None):
+        if revision_id not in self._cached_trees:
+            if branch is None:
+                branch = self.this_branch
+            try:
+                tree = self.this_tree.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                tree = branch.repository.revision_tree(revision_id)
+            self._cached_trees[revision_id] = tree
+        return self._cached_trees[revision_id]
+
+    def _get_tree(self, treespec):
+        from bzrlib import workingtree
+        location, revno = treespec
+        if revno is None:
+            tree = workingtree.WorkingTree.open_containing(location)[0]
+            return tree.branch, tree
+        branch = Branch.open_containing(location)[0]
+        if revno == -1:
+            revision_id = branch.last_revision()
+        else:
+            revision_id = branch.get_rev_id(revno)
+        if revision_id is None:
+            revision_id = NULL_REVISION
+        revision_id = ensure_null(revision_id)
+        return branch, self.revision_tree(revision_id, branch)
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            self.this_basis_tree = self.this_branch.repository.revision_tree(
-                self.this_basis)
+            self.this_basis_tree = self.revision_tree(self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
 
@@ -164,7 +151,8 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = self.this_tree.changes_from(self.this_tree.basis_tree())
+        changes = self.this_tree.changes_from(self.revision_tree(
+            self.this_tree.last_revision()))
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
@@ -202,7 +190,18 @@ class Merger(object):
             self.this_basis, topo_sorted=False))
         if self.other_rev_id in ancestry:
             return
-        self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
+        self._add_parent()
+
+    def _add_parent(self):
+        new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
+        new_parent_trees = [(r, self.revision_tree(r)) for r in new_parents]
+        for _revision_id, tree in new_parent_trees:
+            tree.lock_read()
+        try:
+            self.this_tree.set_parent_trees(new_parent_trees)
+        finally:
+            for _revision_id, tree in new_parent_trees:
+                tree.unlock()
 
     def set_other(self, other_revision):
         """Set the revision and tree to merge from.
@@ -211,8 +210,7 @@ class Merger(object):
 
         :param other_revision: The [path, revision] list to merge from.
         """
-        self.other_branch, self.other_tree = _get_tree(other_revision,
-                                                  self.this_branch)
+        self.other_branch, self.other_tree = self._get_tree(other_revision)
         if other_revision[1] == -1:
             self.other_rev_id = self.other_branch.last_revision()
             if self.other_rev_id is None:
@@ -226,6 +224,8 @@ class Merger(object):
             self.other_basis = self.other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(self.other_branch)
+        if self.other_rev_id is not None:
+            self._cached_trees[self.other_rev_id] = self.other_tree
         if self.other_branch.base != self.this_branch.base:
             self.this_branch.fetch(self.other_branch,
                                    last_revision=self.other_basis)
@@ -269,12 +269,10 @@ class Merger(object):
                     pb.finished()
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            self.base_tree = _get_revid_tree_from_tree(self.this_tree,
-                                                       self.base_rev_id,
-                                                       None)
+            self.base_tree = self.revision_tree(self.base_rev_id)
             self.base_is_ancestor = True
         else:
-            base_branch, self.base_tree = _get_tree(base_revision)
+            base_branch, self.base_tree = self._get_tree(base_revision)
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
