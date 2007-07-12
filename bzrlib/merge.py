@@ -198,9 +198,7 @@ class Merger(object):
                 raise NoCommits(self.other_branch)
         if self.other_rev_id is not None:
             self._cached_trees[self.other_rev_id] = self.other_tree
-        if self.other_branch.base != self.this_branch.base:
-            self.this_branch.fetch(self.other_branch,
-                                   last_revision=self.other_basis)
+        self._maybe_fetch(self.other_branch,self.this_branch, self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
         """Set 'other' based on a branch and revision id
@@ -210,9 +208,14 @@ class Merger(object):
         """
         self.other_rev_id = revision_id
         self.other_branch = other_branch
-        self.this_branch.fetch(other_branch, self.other_rev_id)
+        self._maybe_fetch(other_branch, self.this_branch, self.other_rev_id)
         self.other_tree = self.revision_tree(revision_id)
         self.other_basis = revision_id
+
+    def _maybe_fetch(self, source, target, revision_id):
+        if (source.repository.bzrdir.root_transport.base !=
+            target.repository.bzrdir.root_transport.base):
+            target.fetch(source, revision_id)
 
     def find_base(self):
         try:
@@ -252,8 +255,7 @@ class Merger(object):
                 self.base_rev_id = None
             else:
                 self.base_rev_id = base_branch.get_rev_id(base_revision[1])
-            if self.this_branch.base != base_branch.base:
-                self.this_branch.fetch(base_branch)
+            self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)
