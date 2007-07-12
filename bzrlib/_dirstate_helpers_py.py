@@ -18,9 +18,9 @@
 
 import os
 
-from bzrlib import (
-    dirstate,
-    )
+# We cannot import the dirstate module, because it loads this module
+# All we really need is the IN_MEMORY_MODIFIED constant
+from bzrlib.dirstate import DirState
 
 
 def bisect_path_left_py(paths, path):
@@ -231,7 +231,7 @@ def _read_dirblocks_py(state):
     #                          key=lambda blk:blk[0].split('/'))
     # To convert from format 3 => format 2
     # state._dirblocks = sorted(state._dirblocks)
-    state._dirblock_state = dirstate.DirState.IN_MEMORY_UNMODIFIED
+    state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
 
 def cmp_by_dirs_py(path1, path2):
