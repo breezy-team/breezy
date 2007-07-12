@@ -86,6 +86,54 @@ def bzr_to_svn_url(url):
     return url.rstrip('/')
 
 
+class Editor:
+    """Simple object wrapper around the Subversion delta editor interface."""
+    def __init__(self, (editor, editor_baton)):
+        self.editor = editor
+        self.editor_baton = editor_baton
+
+    def open_root(self, base_revnum):
+        return svn.delta.editor_invoke_open_root(self.editor, 
+                self.editor_baton, base_revnum)
+
+    def close_directory(self, *args, **kwargs):
+        svn.delta.editor_invoke_close_directory(self.editor, *args, **kwargs)
+
+    def close(self):
+        svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
+
+    def apply_textdelta(self, *args, **kwargs):
+        return svn.delta.editor_invoke_apply_textdelta(self.editor, 
+                *args, **kwargs)
+
+    def change_dir_prop(self, *args, **kwargs):
+        return svn.delta.editor_invoke_change_dir_prop(self.editor, *args, 
+                                                       **kwargs)
+
+    def delete_entry(self, *args, **kwargs):
+        return svn.delta.editor_invoke_delete_entry(self.editor, *args, **kwargs)
+
+    def add_file(self, *args, **kwargs):
+        return svn.delta.editor_invoke_add_file(self.editor, *args, **kwargs)
+
+    def open_file(self, *args, **kwargs):
+        return svn.delta.editor_invoke_open_file(self.editor, *args, **kwargs)
+
+    def change_file_prop(self, *args, **kwargs):
+        svn.delta.editor_invoke_change_file_prop(self.editor, *args, **kwargs)
+
+    def close_file(self, *args, **kwargs):
+        svn.delta.editor_invoke_close_file(self.editor, *args, **kwargs)
+
+    def add_directory(self, *args, **kwargs):
+        return svn.delta.editor_invoke_add_directory(self.editor, *args, 
+                                                     **kwargs)
+
+    def open_directory(self, *args, **kwargs):
+        return svn.delta.editor_invoke_open_directory(self.editor, *args, 
+                                                      **kwargs)
+
+
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
     
@@ -269,7 +317,7 @@ class SvnRaTransport(Transport):
     @need_lock
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
-        return svn.ra.get_commit_editor(self._ra, *args, **kwargs)
+        return Editor(svn.ra.get_commit_editor(self._ra, *args, **kwargs))
 
     def listable(self):
         """See Transport.listable().

@@ -101,7 +101,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
 
-        upgrade_repository(newrepos, oldrepos, allow_change=True)
+        upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
 
@@ -124,7 +124,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", 'w').write("moredata")
         wt.commit(message='fix moredata', rev_id="customrev")
 
-        upgrade_repository(newrepos, oldrepos, allow_change=True)
+        upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
@@ -152,7 +152,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.add(["a"], ["specificid"])
         wt.commit(message='fix moredata', rev_id="customrev")
 
-        upgrade_repository(newrepos, oldrepos, allow_change=True)
+        upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
         tree = newrepos.revision_tree("customrev-svn%d-upgrade" % MAPPING_VERSION)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
@@ -188,7 +188,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         vf.clone_text("customrev-svn%d-upgrade" % MAPPING_VERSION,
                 "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
 
-        upgrade_repository(newrepos, oldrepos, allow_change=True)
+        upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
@@ -215,7 +215,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", 'w').write("blackfield")
         wt.commit(message='fix it again', rev_id="anotherrev")
 
-        renames = upgrade_repository(newrepos, oldrepos, allow_change=True)
+        renames = upgrade_repository(newrepos, oldrepos, allow_changes=True)
         self.assertEqual({
             "svn-v1:1@%s-" % oldrepos.uuid: oldrepos.generate_revision_id(1, "", "none"),
             "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
