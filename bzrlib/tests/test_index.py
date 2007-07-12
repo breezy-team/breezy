@@ -27,7 +27,13 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder = GraphIndexBuilder()
         stream = builder.finish()
         contents = stream.read()
-        self.assertEqual("Bazaar Graph Index 1\n\n", contents)
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n\n", contents)
+
+    def test_build_index_one_reference_list_empty(self):
+        builder = GraphIndexBuilder(reference_lists=1)
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n\n", contents)
 
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
@@ -36,7 +42,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         builder = GraphIndexBuilder()
         stream = builder.finish()
         trans = self.get_transport()
-        trans.put('index', stream.read())
+        trans.put_file('index', stream)
         return GraphIndex(trans, 'index')
 
     def test_iter_all_entries_empty(self):

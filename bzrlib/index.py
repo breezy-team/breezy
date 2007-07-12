@@ -20,14 +20,26 @@ from cStringIO import StringIO
 
 from bzrlib import errors
 
+_OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
 
 class GraphIndexBuilder(object):
     """A builder that can build a GraphIndex."""
 
+    def __init__(self, reference_lists=0):
+        """Create a GraphIndex builder.
+
+        :param reference_lists: The number of node references lists for each
+            entry.
+        """
+        self.reference_lists = reference_lists
+
     def finish(self):
-        return StringIO(_SIGNATURE + '\n')
+        lines = [_SIGNATURE]
+        lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
+        lines.append('\n')
+        return StringIO(''.join(lines))
 
 
 class GraphIndex(object):
