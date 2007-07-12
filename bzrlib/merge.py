@@ -232,23 +232,16 @@ class Merger(object):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        try:
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                this_repo = self.this_branch.repository
-                graph = this_repo.get_graph()
-                revisions = [ensure_null(self.this_basis),
-                             ensure_null(self.other_basis)]
-                if NULL_REVISION in revisions:
-                    self.base_rev_id = NULL_REVISION
-                else:
-                    self.base_rev_id = graph.find_unique_lca(*revisions)
-                    if self.base_rev_id == NULL_REVISION:
-                        raise UnrelatedBranches()
-            finally:
-                pb.finished()
-        except NoCommonAncestor:
-            raise UnrelatedBranches()
+        this_repo = self.this_branch.repository
+        graph = this_repo.get_graph()
+        revisions = [ensure_null(self.this_basis),
+                     ensure_null(self.other_basis)]
+        if NULL_REVISION in revisions:
+            self.base_rev_id = NULL_REVISION
+        else:
+            self.base_rev_id = graph.find_unique_lca(*revisions)
+            if self.base_rev_id == NULL_REVISION:
+                raise UnrelatedBranches()
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
