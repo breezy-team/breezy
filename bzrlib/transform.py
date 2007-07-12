@@ -717,6 +717,8 @@ class TreeTransform(object):
     def _duplicate_entries(self, by_parent):
         """No directory may have two entries with the same name."""
         conflicts = []
+        if (self._new_name, self._new_parent) == ({}, {}):
+            return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
             name_ids.sort()
