@@ -17,7 +17,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * None yet ...
+    * merge now uses iter_changes to calculate changes, which makes room for
+      future performance increases.  It is also more consistent with other
+      operations that perform comparisons, and reduces reliance on
+      Tree.inventory.  (Aaron Bentley)
 
   TESTING:
 
