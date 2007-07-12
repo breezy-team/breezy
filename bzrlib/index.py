@@ -17,11 +17,16 @@
 """Indexing facilities."""
 
 from cStringIO import StringIO
+import re
 
 from bzrlib import errors
 
 _OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
+
+
+_whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
+_newline_null_re = re.compile('[\n\0]')
 
 
 class GraphIndexBuilder(object):
@@ -34,10 +39,29 @@ class GraphIndexBuilder(object):
             entry.
         """
         self.reference_lists = reference_lists
+        self._nodes = []
+
+    def add_node(self, key, references, value):
+        """Add a node to the index.
+
+        :param key: The key. keys must be whitespace free utf8.
+        :param references: An iterable of iterables of keys. Each is a
+            reference to another key.
+        :param value: The value to associate with the key. It may be any
+            bytes as long as it does not contain \0 or \n.
+        """
+        if _whitespace_re.search(key) is not None:
+            raise errors.BadIndexKey(key)
+        if _newline_null_re.search(value) is not None:
+            raise errors.BadIndexValue(value)
+        self._nodes.append((key, references, value))
 
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
+        for key, references, value in self._nodes:
+            flattened_references = ''
+            lines.append("%s\0%s\0%s\n" % (key, flattened_references, value))
         lines.append('\n')
         return StringIO(''.join(lines))
 
@@ -48,7 +72,7 @@ class GraphIndex(object):
     The index maps keys to a list of key reference lists, and a value.
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
-    terminated string.
+    terminated string without any newlines.
     """
 
     def __init__(self, transport, name):

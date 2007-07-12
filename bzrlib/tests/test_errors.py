@@ -193,9 +193,19 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("Error in data for index foo.",
             str(error))
 
+    def test_bad_index_key(self):
+        error = errors.BadIndexKey("foo")
+        self.assertEqual("The key 'foo' is not a valid key.",
+            str(error))
+
     def test_bad_index_options(self):
         error = errors.BadIndexOptions("foo")
         self.assertEqual("Could not parse options for index foo.",
+            str(error))
+
+    def test_bad_index_value(self):
+        error = errors.BadIndexValue("foo")
+        self.assertEqual("The value 'foo' is not a valid value.",
             str(error))
 
     def test_bzrnewerror_is_deprecated(self):

@@ -362,9 +362,27 @@ class BadIndexData(BzrError):
         self.value = value
 
 
+class BadIndexKey(BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        BzrError.__init__(self)
+        self.key = key
+
+
 class BadIndexOptions(BzrError):
 
     _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
 
     def __init__(self, value):
         BzrError.__init__(self)

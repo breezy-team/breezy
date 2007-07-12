@@ -41,11 +41,33 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n\n", contents)
 
+    def test_build_index_one_node(self):
+        builder = GraphIndexBuilder()
+        builder.add_node('akey', (), 'data')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
+            "akey\0\0data\n\n", contents)
+
+    def test_build_index_bad_key(self):
+        builder = GraphIndexBuilder()
+        self.assertRaises(errors.BadIndexKey, builder.add_node, 'a key',
+            (), 'data')
+
+    def test_build_index_bad_data(self):
+        builder = GraphIndexBuilder()
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            (), 'data\naa')
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            (), 'data\0aa')
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
-    def make_index(self, ref_lists=0):
+    def make_index(self, ref_lists=0, nodes=[]):
         builder = GraphIndexBuilder()
+        for node, references, value in nodes:
+            builder.add_node(node, references, value)
         stream = builder.finish()
         trans = self.get_transport()
         trans.put_file('index', stream)
@@ -93,4 +115,8 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def test_validate_empty(self):
         index = self.make_index()
+        index.validate()
+
+    def test_validate_no_refs_content(self):
+        index = self.make_index(nodes=[('key', (), 'value')])
         index.validate()
