@@ -23,7 +23,7 @@ import os
 from bzrlib.dirstate import DirState
 
 
-def bisect_path_left_py(paths, path):
+def _bisect_path_left_py(paths, path):
     """Return the index where to insert path into paths.
 
     This uses the dirblock sorting. So all children in a directory come before
@@ -62,14 +62,14 @@ def bisect_path_left_py(paths, path):
         mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if cmp_path_by_dirblock_py(cur, path) < 0:
+        if _cmp_path_by_dirblock_py(cur, path) < 0:
             lo = mid + 1
         else:
             hi = mid
     return lo
 
 
-def bisect_path_right_py(paths, path):
+def _bisect_path_right_py(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
@@ -93,7 +93,7 @@ def bisect_path_right_py(paths, path):
         mid = (lo+hi)//2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if cmp_path_by_dirblock_py(path, cur) < 0:
+        if _cmp_path_by_dirblock_py(path, cur) < 0:
             hi = mid
         else:
             lo = mid + 1
@@ -129,6 +129,46 @@ def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
         if cur_split < dirname_split: lo = mid + 1
         else: hi = mid
     return lo
+
+
+def cmp_by_dirs_py(path1, path2):
+    """Compare two paths directory by directory.
+
+    This is equivalent to doing::
+
+       cmp(path1.split('/'), path2.split('/'))
+
+    The idea is that you should compare path components separately. This
+    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
+    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+
+    :param path1: first path
+    :param path2: second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal,
+        and negative number if ``path2`` sorts first
+    """
+    return cmp(path1.split('/'), path2.split('/'))
+
+
+def _cmp_path_by_dirblock_py(path1, path2):
+    """Compare two paths based on what directory they are in.
+
+    This generates a sort order, such that all children of a directory are
+    sorted together, and grandchildren are in the same order as the
+    children appear. But all grandchildren come after all children.
+
+    :param path1: first path
+    :param path2: the second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal
+        and a negative number if ``path2`` sorts first
+    """
+    dirname1, basename1 = os.path.split(path1)
+    key1 = (dirname1.split('/'), basename1)
+    dirname2, basename2 = os.path.split(path2)
+    key2 = (dirname2.split('/'), basename2)
+    return cmp(key1, key2)
 
 
 def _read_dirblocks_py(state):
@@ -233,42 +273,3 @@ def _read_dirblocks_py(state):
     # state._dirblocks = sorted(state._dirblocks)
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
-
-def cmp_by_dirs_py(path1, path2):
-    """Compare two paths directory by directory.
-
-    This is equivalent to doing::
-
-       cmp(path1.split('/'), path2.split('/'))
-
-    The idea is that you should compare path components separately. This
-    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
-    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
-
-    :param path1: first path
-    :param path2: second path
-    :return: positive number if ``path1`` comes first,
-        0 if paths are equal,
-        and negative number if ``path2`` sorts first
-    """
-    return cmp(path1.split('/'), path2.split('/'))
-
-
-def cmp_path_by_dirblock_py(path1, path2):
-    """Compare two paths based on what directory they are in.
-
-    This generates a sort order, such that all children of a directory are
-    sorted together, and grandchildren are in the same order as the
-    children appear. But all grandchildren come after all children.
-
-    :param path1: first path
-    :param path2: the second path
-    :return: positive number if ``path1`` comes first,
-        0 if paths are equal
-        and a negative number if ``path2`` sorts first
-    """
-    dirname1, basename1 = os.path.split(path1)
-    key1 = (dirname1.split('/'), basename1)
-    dirname2, basename2 = os.path.split(path2)
-    key2 = (dirname2.split('/'), basename2)
-    return cmp(key1, key2)

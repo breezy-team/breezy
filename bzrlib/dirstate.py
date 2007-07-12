@@ -555,7 +555,7 @@ class DirState(object):
                     first_path = first_fields[1] + '/' + first_fields[2]
                 else:
                     first_path = first_fields[2]
-                first_loc = bisect_path_left(cur_files, first_path)
+                first_loc = _bisect_path_left(cur_files, first_path)
 
                 # These exist before the current location
                 pre = cur_files[:first_loc]
@@ -582,7 +582,7 @@ class DirState(object):
                     last_path = last_fields[1] + '/' + last_fields[2]
                 else:
                     last_path = last_fields[2]
-                last_loc = bisect_path_right(post, last_path)
+                last_loc = _bisect_path_right(post, last_path)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -2282,15 +2282,15 @@ try:
     from bzrlib._dirstate_helpers_c import (
         _read_dirblocks_c as _read_dirblocks,
         bisect_dirblock_c as bisect_dirblock,
-        bisect_path_left_c as bisect_path_left,
-        bisect_path_right_c as bisect_path_right,
+        _bisect_path_left_c as _bisect_path_left,
+        _bisect_path_right_c as _bisect_path_right,
         cmp_by_dirs_c as cmp_by_dirs,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks_py as _read_dirblocks,
         bisect_dirblock_py as bisect_dirblock,
-        bisect_path_left_py as bisect_path_left,
-        bisect_path_right_py as bisect_path_right,
+        _bisect_path_left_py as _bisect_path_left,
+        _bisect_path_right_py as _bisect_path_right,
         cmp_by_dirs_py as cmp_by_dirs,
         )

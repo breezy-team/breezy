@@ -178,12 +178,15 @@ def cmp_by_dirs_c(path1, path2):
                         PyString_Size(path2))
 
 
-def cmp_path_by_dirblock_c(path1, path2):
+def _cmp_path_by_dirblock_c(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
     sorted together, and grandchildren are in the same order as the
     children appear. But all grandchildren come after all children.
+
+    In other words, all entries in a directory are sorted together, and
+    directorys are sorted in cmp_by_dirs order.
 
     :param path1: first path
     :param path2: the second path
@@ -274,7 +277,7 @@ cdef object _pystr(char *s, int length):
         return PyString_FromStringAndSize(s, length)
 
 
-def bisect_path_left_c(paths, path):
+def _bisect_path_left_c(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
@@ -324,7 +327,7 @@ def bisect_path_left_c(paths, path):
     return _lo
 
 
-def bisect_path_right_c(paths, path):
+def _bisect_path_right_c(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
