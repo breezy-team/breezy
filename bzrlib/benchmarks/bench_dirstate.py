@@ -25,7 +25,7 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests.compiled.test_dirstate_helpers import (
+from bzrlib.tests.test__dirstate_helpers import (
     CompiledDirstateHelpersFeature,
     )
 
@@ -194,19 +194,20 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_0_parents_py(self):
+        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(dirstate._read_dirblocks_py, state)
+            self.time(_read_dirblocks_py, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_0_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
@@ -218,19 +219,20 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_1_parent_py(self):
+        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(dirstate._read_dirblocks_py, state)
+            self.time(_read_dirblocks_py, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_1_parent_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
         try:
@@ -242,19 +244,20 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_2_parents_py(self):
+        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(dirstate._read_dirblocks_py, state)
+            self.time(_read_dirblocks_py, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_2_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
@@ -310,30 +313,32 @@ class BenchmarkDirState(benchmarks.Benchmark):
         self.assertEqualDiff(expected_str, offset_str)
 
     def test_bisect_dirblock_py(self):
+        from bzrlib._dirstate_helpers_py import bisect_dirblock_py
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
             offsets = self.time(self.do_bisect_list,
-                                dirstate.bisect_dirblock_py)
+                                bisect_dirblock_py)
             self.checkOffsets(offsets)
         finally:
             state.unlock()
 
     def test_bisect_dirblock_cached_py(self):
+        from bzrlib._dirstate_helpers_py import bisect_dirblock_py
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
             offsets = self.time(self.do_bisect_list_cached,
-                                dirstate.bisect_dirblock_py)
+                                bisect_dirblock_py)
             self.checkOffsets(offsets)
         finally:
             state.unlock()
 
     def test_bisect_dirblock_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import bisect_dirblock_c
+        from bzrlib._dirstate_helpers_c import bisect_dirblock_c
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
@@ -410,11 +415,12 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test_cmp_by_dirs_py(self):
         """Benchmark 103041 comparisons."""
-        self.compareAllPaths(dirstate.cmp_by_dirs_py,
+        from bzrlib._dirstate_helpers_py import cmp_by_dirs_py
+        self.compareAllPaths(cmp_by_dirs_py,
                              [(3, 1), (3, 1), (3, 1), (3, 2)])
 
     def test_cmp_by_dirs_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import cmp_by_dirs_c
+        from bzrlib._dirstate_helpers_c import cmp_by_dirs_c
         self.compareAllPaths(cmp_by_dirs_c,
                              [(3, 1), (3, 1), (3, 1), (3, 2)])
