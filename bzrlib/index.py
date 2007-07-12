@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 
+from bzrlib import errors
 
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
@@ -27,3 +28,41 @@ class GraphIndexBuilder(object):
 
     def finish(self):
         return StringIO(_SIGNATURE + '\n')
+
+
+class GraphIndex(object):
+    """An index for data with embedded graphs.
+    
+    """
+
+    def __init__(self, transport, name):
+        """Open an index called name on transport.
+
+        :param transport: A bzrlib.transport.Transport.
+        :param name: A path to provide to transport API calls.
+        """
+        self._transport = transport
+        self._name = name
+
+    def iter_all_entries(self):
+        """Iterate over all keys within the index.
+
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index.
+        """
+        return []
+
+    def iter_entries(self, keys):
+        """Iterate over keys within the index.
+
+        :param keys: An iterable providing the keys to be retrieved.
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index.
+        """
+        if not keys:
+            return
+        if False:
+            yield None
+        raise errors.MissingKey(self, keys[0])

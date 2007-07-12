@@ -1552,6 +1552,16 @@ class BundleNotSupported(BzrError):
         self.msg = msg
 
 
+class MissingKey(BzrError):
+
+    _fmt = "The key %(key)s is not present in %(thing)s."
+
+    def __init__(self, thing, key):
+        BzrError.__init__(self)
+        self.thing = thing
+        self.key = key
+
+
 class MissingText(BzrError):
 
     _fmt = ("Branch %(base)s is missing revision"
@@ -1563,7 +1573,6 @@ class MissingText(BzrError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
-
 
 class DuplicateFileId(BzrError):
 

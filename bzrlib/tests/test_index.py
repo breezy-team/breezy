@@ -16,7 +16,8 @@
 
 """Tests for indices."""
 
-from bzrlib.index import GraphIndexBuilder
+from bzrlib import errors
+from bzrlib.index import GraphIndexBuilder, GraphIndex
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -28,3 +29,20 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\n\n", contents)
 
+
+class TestGraphIndex(TestCaseWithMemoryTransport):
+
+    def make_index(self):
+        builder = GraphIndexBuilder()
+        stream = builder.finish()
+        trans = self.get_transport()
+        trans.put('index', stream.read())
+        return GraphIndex(trans, 'index')
+
+    def test_iter_all_entries_empty(self):
+        index = self.make_index()
+        self.assertEqual([], list(index.iter_all_entries()))
+
+    def test_iter_missing_entry_empty(self):
+        index = self.make_index()
+        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
