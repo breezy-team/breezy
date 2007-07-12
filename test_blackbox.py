@@ -93,3 +93,18 @@ class TestRebaseSimple(ExternalBase):
     def test_todo_nothing(self):
         self.run_bzr_error('bzr: ERROR: No rebase in progress', 
                            'rebase-todo')
+
+    def test_onto(self):
+        self.make_file('hello', '42')
+        self.run_bzr('add')
+        self.run_bzr('commit -m that')
+        self.make_file('other', '43')
+        self.run_bzr('add')
+        self.run_bzr('commit -m that_other')
+        os.chdir('../feature')
+        self.make_file('hoi', "my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.check_output('', 'rebase --onto -2 ../main')
+        self.check_output('3\n', 'revno')
+

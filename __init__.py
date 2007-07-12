@@ -55,7 +55,8 @@ class cmd_rebase(Command):
             if onto is None:
                 onto = upstream.last_revision()
             else:
-                onto = RevisionSpec.from_string(onto)
+                rev_spec = RevisionSpec.from_string(onto)
+                onto = rev_spec.in_history(upstream).rev_id
 
             wt.branch.repository.fetch(upstream_repository, onto)
 
