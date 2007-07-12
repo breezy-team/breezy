@@ -25,7 +25,8 @@ class cmd_rebase(Command):
     """
     takes_args = ['upstream_location?']
     takes_options = ['revision', 'merge-type', 'verbose',
-                     Option('onto', help='Different revision to replay onto')]
+                     Option('onto', help='Different revision to replay onto',
+                            type=str)]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
