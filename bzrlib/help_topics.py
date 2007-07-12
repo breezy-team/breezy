@@ -284,11 +284,19 @@ Related commands:
 _repositories = \
 """Repositories
 
-Repositories in Bazaar are where committed information is stored. It is
-possible to create a shared repository which allows multiple branches to
-share their information in the same location. When a new branch is
-created it will first look to see if there is a containing repository it
-can share.
+Repositories in Bazaar are where committed information is stored. There is
+a repository associated with every branch.
+
+Repositories are a form of database. Bzr will usually maintain this for
+good performance automatically, but in some situations (e.g. when doing
+very many commits in a short time period) you may want to ask bzr to 
+optimise the database indices. This can be done by the 'bzr pack' command.
+
+By default just running 'bzr init' will create a repository within the new
+branch but it is possible to create a shared repository which allows multiple
+branches to share their information in the same location. When a new branch is
+created it will first look to see if there is a containing shared repository it
+can use.
 
 When two branches of the same project share a repository, there is
 generally a large space saving. For some operations (e.g. branching
