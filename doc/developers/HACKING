@@ -372,6 +372,34 @@ appropriate to use them if you've committed a test for a bug but not the
 fix for it, or if something works on Unix but not on Windows.
 
 
+Testing Bazaar
+--------------
+
+It's important to test handling of errors and exceptions.  Because this
+code is often not hit in ad-hoc testing it can often have hidden bugs --
+it's particularly common to get NameError because the exception code
+references a variable that has since been renamed.
+
+.. TODO: Something about how to provoke errors in the right way?
+
+In general we want to test errors at two levels:
+
+1. A test in ``test_errors.py`` checking that when the exception object is
+   constructed with known parameters it produces an expected string form.
+   This guards against mistakes in writing the format string, or in the
+   ``str`` representations of its parameters.  There should be one for
+   each exception class.
+
+2. Tests that when an api is called in a particular situation, it raises
+   an error of the expected class.  You should typically use
+   ``assertRaises``, which in the Bazaar test suite returns the exception
+   object to allow you to examine its parameters.  
+
+In some cases blackbox tests will also want to check error reporting.  But
+it can be difficult to provoke every error through the commandline
+interface, so those tests are only done as needed -- eg in response to a
+particular bug or if the error is reported in an unusual way(?)
+
 
 Essential Domain Classes
 ########################

@@ -4,6 +4,10 @@ Bazaar configuration
 
 Information on how to configure Bazaar.
 
+
+.. TODO: Should have some explanation of why you'd want things in
+.. branch.conf.
+
 Location of configuration file
 ==============================
 Each user gets a pair of configurations files in ``$HOME/.bazaar``. The first
