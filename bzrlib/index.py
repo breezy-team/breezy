@@ -100,3 +100,10 @@ class GraphIndex(object):
             node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
         except ValueError:
             raise errors.BadIndexOptions(self)
+        line_count = 0
+        for line in stream.readlines():
+            # validate the line
+            line_count += 1
+        if line_count < 1:
+            # there must be one line - the empty trailer line.
+            raise errors.BadIndexData(self)

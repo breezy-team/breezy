@@ -83,6 +83,14 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('index', new_content)
         self.assertRaises(errors.BadIndexOptions, index.validate)
 
+    def test_validate_missing_end_line(self):
+        index = self.make_index(2)
+        trans = self.get_transport()
+        content = trans.get_bytes('index')
+        # truncate the last byte
+        trans.put_bytes('index', content[:-1])
+        self.assertRaises(errors.BadIndexData, index.validate)
+
     def test_validate_empty(self):
         index = self.make_index()
         index.validate()

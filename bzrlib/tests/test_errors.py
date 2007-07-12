@@ -188,6 +188,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("foo is not an index of type bar.",
             str(error))
 
+    def test_bad_index_data(self):
+        error = errors.BadIndexData("foo")
+        self.assertEqual("Error in data for index foo.",
+            str(error))
+
     def test_bad_index_options(self):
         error = errors.BadIndexOptions("foo")
         self.assertEqual("Could not parse options for index foo.",
