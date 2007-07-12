@@ -44,7 +44,11 @@ class GraphIndexBuilder(object):
 
 class GraphIndex(object):
     """An index for data with embedded graphs.
-    
+ 
+    The index maps keys to a list of key reference lists, and a value.
+    Each node has the same number of key reference lists. Each key reference
+    list can be empty or an arbitrary length. The value is an opaque NULL
+    terminated string.
     """
 
     def __init__(self, transport, name):
@@ -89,3 +93,10 @@ class GraphIndex(object):
         signature = stream.read(len(self._signature()))
         if not signature == self._signature():
             raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+        options_line = stream.readline()
+        if not options_line.startswith(_OPTION_NODE_REFS):
+            raise errors.BadIndexOptions(self)
+        try:
+            node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
+        except ValueError:
+            raise errors.BadIndexOptions(self)

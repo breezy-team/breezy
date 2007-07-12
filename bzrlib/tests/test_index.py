@@ -35,10 +35,16 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n\n", contents)
 
+    def test_build_index_two_reference_list_empty(self):
+        builder = GraphIndexBuilder(reference_lists=2)
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n\n", contents)
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
-    def make_index(self):
+    def make_index(self, ref_lists=0):
         builder = GraphIndexBuilder()
         stream = builder.finish()
         trans = self.get_transport()
@@ -67,6 +73,15 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('name', "not an index\n")
         index = GraphIndex(trans, 'name')
         self.assertRaises(errors.BadIndexFormatSignature, index.validate)
+
+    def test_validate_bad_node_refs(self):
+        index = self.make_index(2)
+        trans = self.get_transport()
+        content = trans.get_bytes('index')
+        # change the options line to end with a rather than a parseable number
+        new_content = content[:-2] + 'a\n\n'
+        trans.put_bytes('index', new_content)
+        self.assertRaises(errors.BadIndexOptions, index.validate)
 
     def test_validate_empty(self):
         index = self.make_index()

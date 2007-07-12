@@ -353,6 +353,15 @@ class BadIndexFormatSignature(BzrError):
         self._type = _type
 
 
+class BadIndexOptions(BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
 class BadOptionValue(BzrError):
 
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
