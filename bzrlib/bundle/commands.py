@@ -97,8 +97,10 @@ class cmd_bundle_revisions(Command):
         - Bundle to transform A into B
     """
     takes_options = ['revision', 'remember',
-                     Option("output", help="write bundle to specified file",
-                            type=unicode)]
+                     Option("output",
+                            help="Write bundle to specified file.",
+                            type=unicode),
+                     ]
     takes_args = ['base?']
     aliases = ['bundle']
     encoding_type = 'exact'

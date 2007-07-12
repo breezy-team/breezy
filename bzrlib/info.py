@@ -16,12 +16,14 @@
 
 __all__ = ['show_bzrdir_info']
 
+import os
 import time
-
+import sys
 
 from bzrlib import (
     bzrdir,
     diff,
+    errors,
     osutils,
     urlutils,
     )
@@ -41,41 +43,39 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_rel_url(repo_url, inner_url):
-    """Return path with common prefix of repository path removed.
+class LocationList(object):
 
-    If path is not part of the repository, the original path is returned.
-    If path is equal to the repository, the current directory marker '.' is
-    returned.
-    Otherwise, a relative path is returned, with trailing '/' stripped.
-    """
-    inner_url = urlutils.normalize_url(inner_url)
-    repo_url = urlutils.normalize_url(repo_url)
-    if inner_url == repo_url:
-        return '.'
-    result = urlutils.relative_url(repo_url, inner_url)
-    if result != inner_url:
-        result = result.rstrip('/')
-    return result
-
-class _UrlList(object):
-
-    def __init__(self):
-        self.urls = []
+    def __init__(self, base_path):
+        self.locs = []
+        self.base_path = base_path
 
     def add_url(self, label, url):
-        self.add_path(label, urlutils.unescape_for_display(url, 'ascii'))
-
-    def add_url(self, label, url):
-        self.add_path(label, url)
+        """Add a URL to the list, converting it to a path if possible"""
+        if url is None:
+            return
+        try:
+            path = urlutils.local_path_from_url(url)
+        except errors.InvalidURL:
+            self.locs.append((label, url))
+        else:
+            self.add_path(label, path)
 
     def add_path(self, label, path):
-        self.urls.append((label, path))
+        """Add a path, converting it to a relative path if possible"""
+        try:
+            path = osutils.relpath(self.base_path, path)
+        except errors.PathNotChild:
+            pass
+        else:
+            if path == '':
+                path = '.'
+        if path != '/':
+            path = path.rstrip('/')
+        self.locs.append((label, path))
 
-    def print_lines(self):
-        max_len = max(len(l) for l, u in self.urls)
-        for label, url in self.urls:
-            print "  %*s: %s" % (max_len, label, url)
+    def get_lines(self):
+        max_len = max(len(l) for l, u in self.locs)
+        return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs ]
 
 
 def gather_location_info(repository, branch=None, working=None):
@@ -101,8 +101,7 @@ def gather_location_info(repository, branch=None, working=None):
         if working_path != master_path:
             locs['checkout of branch'] = master_path
         elif repository.is_shared():
-            locs['repository branch'] = _repo_rel_url(repository_path,
-                branch_path)
+            locs['repository branch'] = branch_path
         elif branch_path is not None:
             # standalone
             locs['branch root'] = branch_path
@@ -111,8 +110,7 @@ def gather_location_info(repository, branch=None, working=None):
         if repository.is_shared():
             # lightweight checkout of branch in shared repository
             if branch_path is not None:
-                locs['repository branch'] = _repo_rel_url(repository_path,
-                                                          branch_path)
+                locs['repository branch'] = branch_path
         elif branch_path is not None:
             # standalone
             locs['branch root'] = branch_path
@@ -133,24 +131,26 @@ def gather_location_info(repository, branch=None, working=None):
 def _show_location_info(locs):
     """Show known locations for working, branch and repository."""
     print 'Location:'
-    path_list = _UrlList()
+    path_list = LocationList(os.getcwd())
     for name, loc in locs:
         path_list.add_url(name, loc)
-    path_list.print_lines()
+    sys.stdout.writelines(path_list.get_lines())
 
+def _gather_related_branches(branch):
+    locs = LocationList(os.getcwd())
+    locs.add_url('public branch', branch.get_public_branch())
+    locs.add_url('push branch', branch.get_push_location())
+    locs.add_url('parent branch', branch.get_parent())
+    locs.add_url('submit branch', branch.get_submit_branch())
+    return locs
 
-def _show_related_info(branch):
+def _show_related_info(branch, outfile):
     """Show parent and push location of branch."""
-    if branch.get_parent() or branch.get_push_location():
-        print
-        print 'Related branches:'
-        if branch.get_parent():
-            if branch.get_push_location():
-                print '      parent branch: %s' % branch.get_parent()
-            else:
-                print '  parent branch: %s' % branch.get_parent()
-        if branch.get_push_location():
-            print '  publish to branch: %s' % branch.get_push_location()
+    locs = _gather_related_branches(branch)
+    if len(locs.locs) > 0:
+        print >> outfile
+        print >> outfile, 'Related branches:'
+        outfile.writelines(locs.get_lines())
 
 
 def _show_format_info(control=None, repository=None, branch=None, working=None):
@@ -344,7 +344,7 @@ def show_component_info(control, repository, branch=None, working=None,
     print "%s (format: %s)" % (layout, format)
     _show_location_info(gather_location_info(repository, branch, working))
     if branch is not None:
-        _show_related_info(branch)
+        _show_related_info(branch, sys.stdout)
     if verbose == 0:
         return
     _show_format_info(control, repository, branch, working)

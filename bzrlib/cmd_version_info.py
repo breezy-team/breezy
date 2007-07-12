@@ -48,13 +48,13 @@ class cmd_version_info(Command):
     """Show version information about this tree."""
 
     takes_options = [Option('format', type=_parse_version_info_format,
-                            help='Select the output format'),
-                     Option('all', help='include all possible information'),
-                     Option('check-clean', help='check if tree is clean'),
+                            help='Select the output format.'),
+                     Option('all', help='Include all possible information.'),
+                     Option('check-clean', help='Check if tree is clean.'),
                      Option('include-history',
-                            help='Include the revision-history'),
+                            help='Include the revision-history.'),
                      Option('include-file-revisions',
-                            help='Include the last revision for each file')
+                            help='Include the last revision for each file.')
                      ]
     takes_args = ['location?']
 
