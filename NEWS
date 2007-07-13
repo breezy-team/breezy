@@ -8,6 +8,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Don't show "dots" progress indicators when run non-interactively, such
+      as from cron.  (Martin Pool)
+
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
 
