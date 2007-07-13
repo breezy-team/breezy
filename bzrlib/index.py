@@ -25,7 +25,7 @@ _OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
 
-_whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
+_whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
 _newline_null_re = re.compile('[\n\0]')
 
 
@@ -56,6 +56,10 @@ class GraphIndexBuilder(object):
             raise errors.BadIndexValue(value)
         if len(references) != self.reference_lists:
             raise errors.BadIndexValue(references)
+        for reference_list in references:
+            for reference in reference_list:
+                if _whitespace_re.search(reference) is not None:
+                    raise errors.BadIndexKey(reference)
         self._nodes.append((key, references, value))
 
     def finish(self):

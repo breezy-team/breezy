@@ -51,8 +51,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
 
     def test_add_node_bad_key(self):
         builder = GraphIndexBuilder()
-        self.assertRaises(errors.BadIndexKey, builder.add_node, 'a key',
-            (), 'data')
+        for bad_char in '\t\n\x0b\x0c\r\x00 ':
+            self.assertRaises(errors.BadIndexKey, builder.add_node,
+                'a%skey' % bad_char, (), 'data')
 
     def test_add_node_bad_data(self):
         builder = GraphIndexBuilder()
@@ -77,6 +78,20 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             ([], ), 'data aa')
         self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
             ([], [], []), 'data aa')
+
+    def test_add_node_bad_key_in_reference_lists(self):
+        # first list, first key - trivial
+        builder = GraphIndexBuilder(reference_lists=1)
+        self.assertRaises(errors.BadIndexKey, builder.add_node, 'akey',
+            (['a key'], ), 'data aa')
+        # need to check more than the first key in the list
+        self.assertRaises(errors.BadIndexKey, builder.add_node, 'akey',
+            (['agoodkey', 'this is a bad key'], ), 'data aa')
+        # and if there is more than one list it should be getting checked
+        # too
+        builder = GraphIndexBuilder(reference_lists=2)
+        self.assertRaises(errors.BadIndexKey, builder.add_node, 'akey',
+            ([], ['a bad key']), 'data aa')
 
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
