@@ -2,6 +2,48 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr rm`` now does not insist on ``--force`` to delete files that
+      have been renamed but not otherwise modified.  (Marius Kruger,
+      #111664)
+
+  IMPROVEMENTS:
+
+    * ``info`` now formats locations more nicely and lists "submit" and
+      "public" branches (Aaron Bentley)
+
+    * New ``pack`` command that will trigger database compression within
+      the repository (Robert Collins)
+
+  LIBRARY API BREAKS:
+
+    * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
+      Various globally-declared options removed.  Options are now required
+      to provide a help string and it must comply with the style guide
+      by being one or more sentences with an initial capital and final
+      period.  (Martin Pool)
+
+  INTERNALS:
+
+    * merge now uses iter_changes to calculate changes, which makes room for
+      future performance increases.  It is also more consistent with other
+      operations that perform comparisons, and reduces reliance on
+      Tree.inventory.  (Aaron Bentley)
+
+    * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
+      the null revision, and consider using ``None`` for this purpose
+      deprecated.  (Aaron Bentley)
+
+  TESTING:
+
+    * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
+      ``--keep-output`` options, which are obsolete now that tests
+      are done within directories in $TMPDIR.  (Martin Pool)
+
+
+bzr 0.18rc1  2007-07-10
+
+  BUGFIXES:
+
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
 
@@ -11,6 +53,41 @@ IN DEVELOPMENT
 
     * Commands that use status flags now have a reference to 'help
       status-flags'.  (Daniel Watkins, #113436)
+
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
+
+    * Use exact encoding for merge directives. (Adeodato Simó, #120591)
+
+    * Fix tempfile permissions error in smart server tar bundling under
+      Windows. (Martin_, #119330)
+
+    * Fix detection of directory entries in the inventory. (James Westby)
+
+    * Fix handling of http code 400: Bad Request When issuing too many ranges.
+      (Vincent Ladeuil, #115209)
+
+    * Issue a CONNECT request when connecting to an https server
+      via a proxy to enable SSL tunneling.
+     (Vincent Ladeuil, #120678)
+
+    * Fix ``bzr log -r`` to support selecting merge revisions, both 
+      individually and as part of revision ranges.
+      (Kent Gibson, #4663)
+ 
+    * Don't leave cruft behind when failing to acquire a lockdir.
+      (Martin Pool, #109169)
+
+    * Don't use the '-f' strace option during tests.
+      (Vincent Ladeuil, #102019).
+
+    * Warn when setting ``push_location`` to a value that will be masked by
+      locations.conf.  (Aaron Bentley, #122286)
+
+    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+    *  Make annotate behave in a non-ASCII world (Adeodato Simó).
 
   IMPROVEMENTS:
 
@@ -23,7 +100,7 @@ IN DEVELOPMENT
 
     * ``info`` now defaults to non-verbose mode, displaying only paths and
       abbreviated format info.  ``info -v`` displays all the information
-      formerly displayed by ``info``.  (Aaron Bentley)
+      formerly displayed by ``info``.  (Aaron Bentley, Adeodato Simó)
 
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
@@ -53,12 +130,17 @@ IN DEVELOPMENT
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
 
+    * Make merge directives robust against broken bundles. (Aaron Bentley)
+
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
     * ``bzrlib`` now exports explicit API compatibility information to assist
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
+
+    * Remove unnecessary lock probes when acquiring a lockdir.
+      (Martin Pool)
 
     * ``bzr --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
@@ -68,6 +150,14 @@ IN DEVELOPMENT
 
     * Long log format reports deltas on merge revisions. 
       (John Arbash Meinel, Kent Gibson)
+
+    * Make initial push over ftp more resilient. (John Arbash Meinel)
+
+    * Print a summary of changes for update just like pull does.
+      (Daniel Watkins, #113990)
+
+    * Add a -Dhpss option to trace smart protocol requests and responses.
+      (Andrew Bennetts)
 
   LIBRARY API BREAKS:
 
@@ -91,13 +181,75 @@ IN DEVELOPMENT
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
+    * Relocate TestCaseWithRepository to be more central. (Robert Collins)
+
+    * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
+      win32. Callers of the function should do this and use the new
+      ``MutableTree.smart_add`` method instead. (Robert Collins)
+
+    * ``bzrlib.add.glob_expand_for_win32`` is now
+      ``bzrlib.win32utils.glob_expand``.  (Robert Collins)
+
+    * ``bzrlib.add.FastPath`` is now private and moved to 
+      ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
+
+    * ``LockDir.wait`` removed.  (Martin Pool)
+
+    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
+      ``server_stopped`` hooks. The first parameter is now an iterable of
+      backing URLs rather than a single URL. This is to reflect that many
+      URLs may map to the external URL of the server. E.g. the server interally
+      may have a chrooted URL but also the local file:// URL will be at the 
+      same location. (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
+    * Fix documentation of BzrError. (Adeodato Simó)
+
+    * Make BzrBadParameter an internal error. (Adeodato Simó)
+
+    * Remove use of 'assert False' to raise an exception unconditionally.
+      (Martin Pool)
+
+    * Give a cleaner error when failing to decode knit index entry.
+      (Martin Pool)
+
+    * TreeConfig would mistakenly search the top level when asked for options
+      from a section. It now respects the section argument and only
+      searches the specified section. (James Westby)
+
+    * Improve ``make api-docs`` output. (John Arbash Meinel)
+
+    * Use os.lstat rather than os.stat for osutils.make_readonly and
+      osutils.make_writeable. This makes the difftools plugin more
+      robust when dangling symlinks are found. (Elliot Murphy)
+
+    * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
+      lockdirs are taken or released.  (Martin Pool)
+
     * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
       allows a nicer UI when hooks are running as the current hook can
       be displayed. (Robert Collins)
+
+    * ``Transport.get`` has had its interface made more clear for ease of use.
+      Retrieval of a directory must now fail with either 'PathError' at open
+      time, or raise 'ReadError' on a read. (Robert Collins)
+
+    * New method ``_maybe_expand_globs`` on the ``Command`` class for 
+      dealing with unexpanded glob lists - e.g. on the win32 platform. This
+      was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)
+
+    * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
+      deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
+      Martin Pool)
+
+    * New method ``external_url`` on Transport for obtaining the url to
+      hand to external processes. (Robert Collins)
+
+    * Teach windows installers to build pyrex/C extensions.
+      (Alexander Belchenko)
 
   TESTING:
 
@@ -132,12 +284,6 @@ IN DEVELOPMENT
     * Add a relpath parameter to get_transport methods in test framework to
       avoid useless cloning.
       (Vincent Ladeuil, #110448)
-
-  BUGFIXES:
-
-    * Work around python-2.4.1 inhability to correctly parse the
-      authentication header.
-      (Vincent Ladeuil, #121889)
 
 
 bzr 0.17  2007-06-18

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,20 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import tests
-from bzrlib.tests import test_lsprof
+"""Tests of the parent related functions of WorkingTrees."""
+
+import os
+
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    symbol_versioning,
+    uncommit,
+    )
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
-class TestLSProf(tests.TestCaseInTempDir):
+class TestUncommit(TestCaseWithWorkingTree):
 
-    _test_needs_features = [test_lsprof.LSProfFeature]
-
-    def test_file(self):
-        out, err = self.run_bzr('--lsprof-file output.callgrind rocks')
-        self.assertNotContainsRe(out, 'Profile data written to')
-        self.assertContainsRe(err, 'Profile data written to')
-
-    def test_stdout(self):
-        out, err = self.run_bzr('--lsprof rocks')
-        self.assertContainsRe(out, 'CallCount')
-        self.assertNotContainsRe(err, 'Profile data written to')
+    def test_uncommit_to_null(self):
+        tree = self.make_branch_and_tree('branch')
+        tree.lock_write()
+        revid = tree.commit('a revision')
+        tree.unlock()
+        uncommit.uncommit(tree.branch, tree=tree)
+        self.assertEqual([], tree.get_parent_ids())

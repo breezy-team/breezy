@@ -33,21 +33,24 @@ class TestInventory(TestCaseWithTransport):
         tree.commit('init', rev_id='one')
         self.tree = tree
 
-    def assertInventoryEqual(self, expected, *args, **kwargs):
+    def assertInventoryEqual(self, expected, args=None, **kwargs):
         """Test that the output of 'bzr inventory' is as expected.
 
         Any arguments supplied will be passed to run_bzr.
         """
-        out, err = self.run_bzr('inventory', *args, **kwargs)
+        command = 'inventory'
+        if args is not None:
+            command += ' ' + args
+        out, err = self.run_bzr(command, **kwargs)
         self.assertEqual(expected, out)
         self.assertEqual('', err)
-        
+
     def test_inventory(self):
         self.assertInventoryEqual('a\nb\nb/c\n')
 
     def test_inventory_kind(self):
-        self.assertInventoryEqual('a\nb/c\n', '--kind', 'file')
-        self.assertInventoryEqual('b\n', '--kind', 'directory')
+        self.assertInventoryEqual('a\nb/c\n', '--kind file')
+        self.assertInventoryEqual('b\n', '--kind directory')
 
     def test_inventory_show_ids(self):
         expected = ''.join(('%-50s %s\n' % (path, file_id))
@@ -61,7 +64,7 @@ class TestInventory(TestCaseWithTransport):
 
     def test_inventory_specific_files(self):
         self.assertInventoryEqual('a\n', 'a')
-        self.assertInventoryEqual('b\nb/c\n', 'b', 'b/c')
+        self.assertInventoryEqual('b\nb/c\n', 'b b/c')
         # 'bzr inventory' recurses into subdirectories
         self.assertInventoryEqual('b\nb/c\n', 'b')
 
@@ -71,11 +74,9 @@ class TestInventory(TestCaseWithTransport):
         b_line = '%-50s %s\n' % ('b', 'b-id')
         c_line = '%-50s %s\n' % ('b/c', 'c-id')
 
-        self.assertInventoryEqual('', '--kind', 'directory', 'a')
-        self.assertInventoryEqual(a_line + c_line, '--kind', 'file',
-                                                   '--show-ids')
-        self.assertInventoryEqual(c_line, '--kind', 'file', '--show-ids',
-                                          'b', 'b/c')
+        self.assertInventoryEqual('', '--kind directory a')
+        self.assertInventoryEqual(a_line + c_line, '--kind file --show-ids')
+        self.assertInventoryEqual(c_line, '--kind file --show-ids b b/c')
 
     def test_in_subdir(self):
         os.chdir('b')
@@ -97,20 +98,20 @@ class TestInventory(TestCaseWithTransport):
         self.tree.commit('rename b/d => d')
 
         # Passing just -r returns the inventory of that revision
-        self.assertInventoryEqual('a\nb\nb/c\n', '-r', '1')
-        self.assertInventoryEqual('a\nb\nb/c\nb/d\ne\n', '-r', '2')
+        self.assertInventoryEqual('a\nb\nb/c\n', '-r 1')
+        self.assertInventoryEqual('a\nb\nb/c\nb/d\ne\n', '-r 2')
 
         # Passing a path will lookup the path in the old and current locations
-        self.assertInventoryEqual('b/d\n', '-r', '2', 'b/d')
-        self.assertInventoryEqual('b/d\n', '-r', '2', 'd')
+        self.assertInventoryEqual('b/d\n', '-r 2 b/d')
+        self.assertInventoryEqual('b/d\n', '-r 2 d')
 
         self.tree.rename_one('e', 'b/e')
         self.tree.commit('rename e => b/e')
 
         # When supplying just a directory paths that are now,
         # or used to be, in that directory are shown
-        self.assertInventoryEqual('b\nb/c\nb/d\ne\n', '-r', '2', 'b')
+        self.assertInventoryEqual('b\nb/c\nb/d\ne\n', '-r 2 b')
 
     def test_missing_file(self):
         self.run_bzr_error([r'Path\(s\) are not versioned: no-such-file'],
-                           'inventory', 'no-such-file')
+                           'inventory no-such-file')

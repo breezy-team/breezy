@@ -105,4 +105,3 @@ class TestUncommitHook(TestCaseWithBranch):
              1, revid, None, True)
             ],
             self.hook_calls)
-

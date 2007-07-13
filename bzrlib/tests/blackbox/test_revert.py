@@ -43,14 +43,14 @@ class TestRevert(ExternalBase):
         f.close()
 
         # check status
-        self.assertEquals('modified:\n  dir/file\n', self.run_bzr(['status'])[0])
+        self.assertEquals('modified:\n  dir/file\n', self.run_bzr('status')[0])
 
     def _prepare_rename_mod_tree(self):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
                          'f/h', 'f/i'])
         self.run_bzr('init')
         self.run_bzr('add')
-        self.run_bzr('commit', '-m', '1')
+        self.run_bzr('commit -m 1')
         wt = WorkingTree.open('.')
         wt.rename_one('a/b', 'f/b')
         wt.rename_one('a/d/e', 'f/e')
@@ -66,7 +66,7 @@ class TestRevert(ExternalBase):
         os.chdir('dir')
         mutter('cd dir\n')
 
-        self.assertEquals('1\n', self.run_bzr(['revno'])[0])
+        self.assertEquals('1\n', self.run_bzr('revno')[0])
         self.run_bzr('revert %s file' % param)
         self.assertEquals('spam', open('file', 'rb').read())
 
@@ -85,20 +85,20 @@ class TestRevert(ExternalBase):
         self.run_bzr('checkout --lightweight . ../sprach')
         self.run_bzr('commit -m more')
         os.chdir('../sprach')
-        self.assertEqual('', self.run_bzr(['status'])[0])
+        self.assertEqual('', self.run_bzr('status')[0])
         self.run_bzr('revert')
-        self.assertEqual('', self.run_bzr(['status'])[0])
+        self.assertEqual('', self.run_bzr('status')[0])
 
     def test_revert_dirname(self):
         """Test that revert DIRECTORY does what's expected"""
         self._prepare_rename_mod_tree()
-        self.run_bzr('revert', 'a')
+        self.run_bzr('revert a')
         self.failUnlessExists('a/b')
         self.failUnlessExists('a/d')
         self.failIfExists('a/g')
         self.failUnlessExists('j')
         self.failUnlessExists('h')
-        self.run_bzr('revert', 'f')
+        self.run_bzr('revert f')
         self.failIfExists('j')
         self.failIfExists('h')
         self.failUnlessExists('a/d/e')
@@ -119,31 +119,31 @@ class TestRevert(ExternalBase):
         self.run_bzr('init')
 
         file('hello', 'wt').write('foo')
-        self.run_bzr('add', 'hello')
-        self.run_bzr('commit', '-m', 'setup', 'hello')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup hello')
 
         file('goodbye', 'wt').write('baz')
-        self.run_bzr('add', 'goodbye')
-        self.run_bzr('commit', '-m', 'setup', 'goodbye')
+        self.run_bzr('add goodbye')
+        self.run_bzr('commit -m setup goodbye')
 
         file('hello', 'wt').write('bar')
         file('goodbye', 'wt').write('qux')
-        self.run_bzr('revert', 'hello')
+        self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
         self.run_bzr('revert')
         self.check_file_contents('goodbye', 'baz')
 
         os.mkdir('revertdir')
-        self.run_bzr('add', 'revertdir')
-        self.run_bzr('commit', '-m', 'f')
+        self.run_bzr('add revertdir')
+        self.run_bzr('commit -m f')
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
         if bzrlib.osutils.has_symlinks():
             os.symlink('/unlikely/to/exist', 'symlink')
-            self.run_bzr('add', 'symlink')
-            self.run_bzr('commit', '-m', 'f')
+            self.run_bzr('add symlink')
+            self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
             self.failUnlessExists('symlink')
@@ -156,10 +156,10 @@ class TestRevert(ExternalBase):
             self.log("skipping revert symlink tests")
         
         file('hello', 'wt').write('xyz')
-        self.run_bzr('commit', '-m', 'xyz', 'hello')
-        self.run_bzr('revert', '-r', '1', 'hello')
+        self.run_bzr('commit -m xyz hello')
+        self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')
-        self.run_bzr('revert', 'hello')
+        self.run_bzr('revert hello')
         self.check_file_contents('hello', 'xyz')
         os.chdir('revertdir')
         self.run_bzr('revert')
@@ -183,6 +183,6 @@ class TestRevert(ExternalBase):
         self.build_tree(['file'])
         tree.add(['file'])
         tree.commit('add file')
-        out, err = self.run_bzr('revert', '-r', '-2')
+        out, err = self.run_bzr('revert -r -2')
         self.assertEqual('', out)
         self.assertEqual('-D  file\n', err)

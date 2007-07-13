@@ -53,6 +53,12 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
+    def test_in_process_transport(self):
+        error = errors.InProcessTransport('fpp')
+        self.assertEqualDiff(
+            "The transport 'fpp' is only accessible within this process.",
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -173,6 +179,13 @@ class TestErrors(TestCaseWithTransport):
                              repo.bzrdir.root_transport.base,
                              str(error))
 
+    def test_read_error(self):
+        # a unicode path to check that %r is being used.
+        path = u'a path'
+        error = errors.ReadError(path)
+        self.assertEqualDiff("Error reading from u'a path'.", str(error))
+
+
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):
             pass
@@ -212,9 +225,9 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_transport_not_possible(self):
-        e = errors.TransportNotPossible('readonly', 'original error')
-        self.assertEqual('Transport operation not possible:'
-                         ' readonly original error', str(e))
+        error = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqualDiff('Transport operation not possible:'
+                         ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
         """Check the formatting of a SocketConnectionError exception"""
@@ -367,4 +380,3 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat')
-

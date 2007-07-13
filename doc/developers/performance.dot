@@ -12,17 +12,18 @@ strict digraph performance {
   gc_analysis[label="Work required analysis for gc"];
   revert_analysis[label="Work required analysis for revert"];
   revert_path_analysis[label="Work required analysis for revert of selected paths"];
+  status_analysis[label="Work required analysis for status"];
+  uncommit_analysis[label="Work required analysis for uncommit"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
+  iter_merge[label="iter_changes based merge\n2 days"];
 
   /* uncompleted node list - add new tasks here */
   node[color="blue"];
-  status_analysis[label="Work required analysis for status"];
   log_analysis[label="Work required analysis for log"];
   log_path_analysis[label="Work required analysis for log of selected paths."];
   diff_analysis[label="Work required analysis for diff"];
   diff_path_analysis[label="Work required analysis for diff of selected paths"];
   merge_analysis[label="Work required analysis for merge"];
-  uncommit_analysis[label="Work required analysis for uncommit"];
   missing_analysis[label="Work required analysis for missing"];
   update_analysis[label="Work required analysis for update"];
   cbranch_analysis[label="Work required analysis for cbranch"];
@@ -62,7 +63,6 @@ strict digraph performance {
   repo_disk_order[label="Repository disk ordering\n1 month"];
   pack_repository[label="Pack based repository format"];
   graph_api[label="Network-efficient revision-graph API\n3 week"];
-  iter_merge[label="iter_changes based merge\n2 days"];
   validators[label="Build new validators for revisions and trees."];
 
   /* under discussion/optional */

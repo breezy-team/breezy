@@ -158,7 +158,7 @@ class BranchStatus(TestCaseWithTransport):
     def test_tree_status_ignores(self):
         """Tests branch status with ignores"""
         wt = self.make_branch_and_tree('.')
-        self.run_bzr('ignore', '*~')
+        self.run_bzr('ignore *~')
         wt.commit('commit .bzrignore')
         self.build_tree(['foo.c', 'foo.c~'])
         self.assertStatus([
@@ -231,7 +231,7 @@ class BranchStatus(TestCaseWithTransport):
         # files that don't exist in either the basis tree or working tree
         # should give an error
         wt = self.make_branch_and_tree('.')
-        out, err = self.run_bzr('status', 'does-not-exist', retcode=3)
+        out, err = self.run_bzr('status does-not-exist', retcode=3)
         self.assertContainsRe(err, r'do not exist.*does-not-exist')
 
     def test_status_out_of_date(self):
@@ -275,68 +275,68 @@ class TestStatus(TestCaseWithTransport):
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add", "hello.txt")
+        self.run_bzr("add hello.txt")
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit", "-m", "added")
-        result = self.run_bzr("status", "-r", "0..1")[0]
+        self.run_bzr("commit -m added")
+        result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
-        result = self.run_bzr("status", "-r", "0")[0]
+        result = self.run_bzr("status -r 0")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n" \
                                       "unknown:\n  world.txt\n")
-        result2 = self.run_bzr("status", "-r", "0..")[0]
+        result2 = self.run_bzr("status -r 0..")[0]
         self.assertEquals(result2, result)
 
     def test_status_short(self):
         self.run_bzr("init")
 
         self.build_tree(['hello.txt'])
-        result = self.run_bzr("status","--short")[0]
+        result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[?]   hello.txt\n")
 
-        self.run_bzr("add", "hello.txt")
-        result = self.run_bzr("status","--short")[0]
+        self.run_bzr("add hello.txt")
+        result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
-        self.run_bzr("commit", "-m", "added")
-        result = self.run_bzr("status", "--short", "-r", "0..1")[0]
+        self.run_bzr("commit -m added")
+        result = self.run_bzr("status --short -r 0..1")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
-        result = self.run_bzr("status", "--short", "-r", "0")[0]
+        result = self.run_bzr("status --short -r 0")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
-        result2 = self.run_bzr("status", "--short", "-r", "0..")[0]
+        result2 = self.run_bzr("status --short -r 0..")[0]
         self.assertEquals(result2, result)
 
     def test_status_versioned(self):
         self.run_bzr("init")
 
         self.build_tree(['hello.txt'])
-        result = self.run_bzr("status", "--versioned")[0]
+        result = self.run_bzr("status --versioned")[0]
         self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add", "hello.txt")
-        result = self.run_bzr("status", "--versioned")[0]
+        self.run_bzr("add hello.txt")
+        result = self.run_bzr("status --versioned")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit", "-m", "added")
-        result = self.run_bzr("status", "--versioned", "-r", "0..1")[0]
+        self.run_bzr("commit -m added")
+        result = self.run_bzr("status --versioned -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
-        result = self.run_bzr("status", "--versioned", "-r", "0")[0]
+        result = self.run_bzr("status --versioned -r 0")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
         self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
-        result2 = self.run_bzr("status", "--versioned", "-r", "0..")[0]
+        result2 = self.run_bzr("status --versioned -r 0..")[0]
         self.assertEquals(result2, result)
 
     def assertStatusContains(self, pattern):
         """Run status, and assert it contains the given pattern"""
-        result = self.run_bzr("status", "--short")[0]
+        result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, pattern)
 
     def test_kind_change_short(self):

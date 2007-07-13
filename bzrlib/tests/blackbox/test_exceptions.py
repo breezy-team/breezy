@@ -48,7 +48,7 @@ class TestDeprecationWarning(TestCaseInTempDir):
         try:
             os.mkdir('foo')
             bzrdir.BzrDirFormat5().initialize('foo')
-            out, err = self.run_bzr("status", "foo")
+            out, err = self.run_bzr("status foo")
             self.assertContainsRe(self._get_log(keep_log_file=True),
                                   "bzr upgrade")
         finally:

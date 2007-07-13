@@ -67,11 +67,11 @@ class ReSign(TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign', '-r', 'revid:A')
+        self.run_bzr('re-sign -r revid:A')
 
         self.assertEqualSignature(repo, 'A')
 
-        self.run_bzr('re-sign', 'B')
+        self.run_bzr('re-sign B')
         self.assertEqualSignature(repo, 'B')
             
     def test_resign_range(self):
@@ -79,7 +79,7 @@ class ReSign(TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign', '-r', '1..')
+        self.run_bzr('re-sign -r 1..')
         self.assertEqualSignature(repo, 'A')
         self.assertEqualSignature(repo, 'B')
         self.assertEqualSignature(repo, 'C')
@@ -89,7 +89,7 @@ class ReSign(TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign', 'A', 'B', 'C')
+        self.run_bzr('re-sign A B C')
         self.assertEqualSignature(repo, 'A')
         self.assertEqualSignature(repo, 'B')
         self.assertEqualSignature(repo, 'C')

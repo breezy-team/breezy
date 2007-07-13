@@ -161,12 +161,13 @@ class TestShowLog(TestCaseWithTransport):
         wt.add('file1')
         wt.add('file2')
         wt.commit(message='add file1 and file2')
-        self.run_bzr('branch', 'parent', 'child')
+        self.run_bzr('branch parent child')
         os.unlink('child/file1')
         print >> file('child/file2', 'wb'), 'hello'
-        self.run_bzr('commit', '-m', 'remove file1 and modify file2', 'child')
+        self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
+            'child'])
         os.chdir('parent')
-        self.run_bzr('merge', '../child')
+        self.run_bzr('merge ../child')
         wt.commit('merge child branch')
         os.chdir('..')
         b = wt.branch
@@ -288,15 +289,16 @@ added:
     def test_merges_are_indented_by_level(self):
         wt = self.make_branch_and_tree('parent')
         wt.commit('first post')
-        self.run_bzr('branch', 'parent', 'child')
-        self.run_bzr('commit', '-m', 'branch 1', '--unchanged', 'child')
-        self.run_bzr('branch', 'child', 'smallerchild')
-        self.run_bzr('commit', '-m', 'branch 2', '--unchanged', 'smallerchild')
+        self.run_bzr('branch parent child')
+        self.run_bzr(['commit', '-m', 'branch 1', '--unchanged', 'child'])
+        self.run_bzr('branch child smallerchild')
+        self.run_bzr(['commit', '-m', 'branch 2', '--unchanged',
+            'smallerchild'])
         os.chdir('child')
-        self.run_bzr('merge', '../smallerchild')
-        self.run_bzr('commit', '-m', 'merge branch 2')
+        self.run_bzr('merge ../smallerchild')
+        self.run_bzr(['commit', '-m', 'merge branch 2'])
         os.chdir('../parent')
-        self.run_bzr('merge', '../child')
+        self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
         sio = StringIO()
@@ -346,12 +348,13 @@ message:
         self.build_tree(['parent/f1', 'parent/f2'])
         wt.add(['f1','f2'])
         wt.commit('first post')
-        self.run_bzr('branch', 'parent', 'child')
+        self.run_bzr('branch parent child')
         os.unlink('child/f1')
         print >> file('child/f2', 'wb'), 'hello'
-        self.run_bzr('commit', '-m', 'removed f1 and modified f2', 'child')
+        self.run_bzr(['commit', '-m', 'removed f1 and modified f2',
+            'child'])
         os.chdir('parent')
-        self.run_bzr('merge', '../child')
+        self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
         sio = StringIO()
@@ -710,9 +713,9 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         self.assertEqual([], delta.removed)
 
     def assertAllRevisionsForFileID(self, tree, file_id, revisions):
-        """Make sure _get_revisions_touching_file_id returns the right values.
+        """Make sure _filter_revisions_touching_file_id returns the right values.
 
-        Get the return value from _get_revisions_touching_file_id and make
+        Get the return value from _filter_revisions_touching_file_id and make
         sure they are correct.
         """
         # The api for _get_revisions_touching_file_id is a little crazy,
@@ -722,9 +725,11 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
         view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
                                                 'reverse', True)
-        actual_revs = log._get_revisions_touching_file_id(tree.branch, file_id,
-                                                          mainline,
-                                                          view_revs_iter)
+        actual_revs = log._filter_revisions_touching_file_id(
+                            tree.branch, 
+                            file_id,
+                            mainline,
+                            list(view_revs_iter))
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):

@@ -47,7 +47,7 @@ def _next_id_suffix():
     give a highly probably globally unique number. Then each call in the same
     process adds 1 to a serial number we append to that unique value.
     """
-    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
+    # XXX TODO: change bzrlib.add.smart_add_tree to call workingtree.add() rather 
     # than having to move the id randomness out of the inner loop like this.
     # XXX TODO: for the global randomness this uses we should add the thread-id
     # before the serial #.

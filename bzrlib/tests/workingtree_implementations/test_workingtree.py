@@ -301,11 +301,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # set last-revision to one not in the history
         wt.set_last_revision('A')
         # set it back to None for an empty tree.
-        wt.set_last_revision(None)
+        wt.set_last_revision('null:')
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertEqual(['A'], wt.get_parent_ids())
         # None is aways in the branch
-        wt.set_last_revision(None)
+        wt.set_last_revision('null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree

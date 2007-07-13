@@ -44,6 +44,7 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    win32utils,
     )
 """)
 
@@ -240,6 +241,19 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def _maybe_expand_globs(self, file_list):
+        """Glob expand file_list if the platform does not do that itself.
+        
+        :return: A possibly empty list of unicode paths.
+
+        Introduced in bzrlib 0.18.
+        """
+        if not file_list:
+            file_list = []
+        if sys.platform == 'win32':
+            file_list = win32utils.glob_expand(file_list)
+        return list(file_list)
+
     def _usage(self):
         """Return single-line grammar for this command.
 
@@ -318,7 +332,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = dict()
-        r['help'] = option.Option.OPTIONS['help']
+        r['help'] = option._help_option
         for o in self.takes_options:
             if isinstance(o, basestring):
                 o = option.Option.OPTIONS[o]
