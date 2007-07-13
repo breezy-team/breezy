@@ -358,7 +358,9 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(2, index.num_versions())
-        self.assertEqual(1, index.lookup("version"))
+        # check that the index used is the first one written. (Specific
+        # to KnitIndex style indices.
+        self.assertEqual("1", index._version_list_to_index(["version"]))
         self.assertEqual((3, 4), index.get_position("version"))
         self.assertEqual(["options3"], index.get_options("version"))
         self.assertEqual(["parent", "other"],
@@ -499,17 +501,6 @@ class LowLevelKnitIndexTests(TestCase):
 
         index.add_version("b", ["option"], 0, 1, [])
         self.assertEqual(["a", "b"], index.get_versions())
-
-    def test_lookup(self):
-        transport = MockTransport([
-            _KnitIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 :"
-            ])
-        index = self.get_knit_index(transport, "filename", "r")
-
-        self.assertEqual(0, index.lookup("a"))
-        self.assertEqual(1, index.lookup("b"))
 
     def test_add_version(self):
         transport = MockTransport([
