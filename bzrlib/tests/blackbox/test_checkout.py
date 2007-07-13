@@ -80,11 +80,11 @@ class TestCheckout(ExternalBase):
             format=bzrdir.BzrDirMetaFormat1())
         # check no tree was created
         self.assertRaises(errors.NoWorkingTree, branch.bzrdir.open_workingtree)
-        out, err = self.run_bzr('checkout', 'treeless-branch')
+        out, err = self.run_bzr('checkout treeless-branch')
         # we should have a tree now
         branch.bzrdir.open_workingtree()
         # with no diff
-        out, err = self.run_bzr('diff', 'treeless-branch')
+        out, err = self.run_bzr('diff treeless-branch')
 
         # now test with no parameters
         branch = bzrdir.BzrDir.create_branch_convenience(

@@ -29,7 +29,6 @@ from bzrlib import (
     tests,
     )
 from bzrlib.branch import (BranchFormat,
-                           BranchTestProviderAdapter,
                            _legacy_formats,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
@@ -39,6 +38,42 @@ from bzrlib.smart.server import (
     )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
+
+
+class BranchTestProviderAdapter(tests.TestScenarioApplier):
+    """A tool to generate a suite testing multiple branch formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and branch_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self.scenarios = self.formats_to_scenarios(formats)
+    
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (branch_format, bzrdir_format).
+        """
+        result = []
+        for branch_format, bzrdir_format in formats:
+            # some branches don't have separate format objects.
+            # so we have a conditional here to handle them.
+            scenario_name = getattr(branch_format, '__name__',
+                branch_format.__class__.__name__)
+            scenario = (scenario_name, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "bzrdir_format":bzrdir_format,
+                "branch_format":branch_format,
+                    })
+            result.append(scenario)
+        return result
 
 
 class TestCaseWithBranch(TestCaseWithBzrDir):

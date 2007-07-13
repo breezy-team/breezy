@@ -44,7 +44,7 @@ from bzrlib import (
     )
 
 
-class _base_Lock(object):
+class _OSLock(object):
 
     def __init__(self):
         self.f = None
@@ -109,7 +109,7 @@ if have_fcntl:
     lock_EX = fcntl.LOCK_EX
 
 
-    class _fcntl_FileLock(_base_Lock):
+    class _fcntl_FileLock(_OSLock):
 
         def _unlock(self):
             fcntl.lockf(self.f, fcntl.LOCK_UN)
@@ -196,7 +196,7 @@ if have_fcntl:
             return True, wlock
 
 
-    class _fcntl_TemporaryWriteLock(_base_Lock):
+    class _fcntl_TemporaryWriteLock(_OSLock):
         """A token used when grabbing a temporary_write_lock.
 
         Call restore_read_lock() when you are done with the write lock.
@@ -258,7 +258,7 @@ if have_pywin32 and sys.platform == 'win32':
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
 
 
-    class _w32c_FileLock(_base_Lock):
+    class _w32c_FileLock(_OSLock):
 
         def _lock(self, filename, openmode, lockmode):
             self._open(filename, openmode)
@@ -374,7 +374,7 @@ if have_ctypes and sys.platform == 'win32':
                     ('hEvent', ctypes.c_void_p), # HANDLE
                    ]
 
-    class _ctypes_FileLock(_base_Lock):
+    class _ctypes_FileLock(_OSLock):
 
         def _lock(self, filename, openmode, lockmode):
             self._open(filename, openmode)

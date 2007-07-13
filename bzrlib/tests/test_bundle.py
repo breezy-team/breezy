@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     inventory,
     repository,
+    revision as _mod_revision,
     treebuilder,
     )
 from bzrlib.builtins import _merge_helper
@@ -336,7 +337,7 @@ class BundleTester1(TestCaseWithTransport):
         source.commit('one', rev_id='one-id')
         source.commit('two', rev_id='two-id')
         text = StringIO()
-        write_bundle(source.branch.repository, 'two-id', None, text, 
+        write_bundle(source.branch.repository, 'two-id', 'null:', text,
                      format='0.9')
         text.seek(0)
 
@@ -456,7 +457,7 @@ class V08BundleTester(TestCaseWithTransport):
                 os.mkdir(checkout_dir)
         tree = self.make_branch_and_tree(checkout_dir)
         s = StringIO()
-        ancestors = write_bundle(self.b1.repository, rev_id, None, s,
+        ancestors = write_bundle(self.b1.repository, rev_id, 'null:', s,
                                  format=self.format)
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
@@ -482,7 +483,7 @@ class V08BundleTester(TestCaseWithTransport):
                     continue
                 self.assertEqual(old_file.read(),
                                  new.get_file(inventory_id).read())
-        if rev_id is not None:
+        if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
@@ -549,7 +550,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.tree1.add('one')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
-        bundle = self.get_valid_bundle(None, 'a@cset-0-1')
+        bundle = self.get_valid_bundle('null:', 'a@cset-0-1')
         # FIXME: The current write_bundle api no longer supports
         #        setting a custom summary message
         #        We should re-introduce the ability, and update
@@ -591,7 +592,7 @@ class V08BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle('a@cset-0-1', 'a@cset-0-2')
 
         # Check a rollup bundle 
-        bundle = self.get_valid_bundle(None, 'a@cset-0-2')
+        bundle = self.get_valid_bundle('null:', 'a@cset-0-2')
 
         # Now delete entries
         self.tree1.remove(
@@ -609,7 +610,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertRaises(TestamentMismatch, self.get_invalid_bundle, 
                           'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle 
-        bundle = self.get_valid_bundle(None, 'a@cset-0-3')
+        bundle = self.get_valid_bundle('null:', 'a@cset-0-3')
 
         # Now move the directory
         self.tree1.rename_one('dir', 'sub/dir')
@@ -617,7 +618,7 @@ class V08BundleTester(TestCaseWithTransport):
 
         bundle = self.get_valid_bundle('a@cset-0-3', 'a@cset-0-4')
         # Check a rollup bundle 
-        bundle = self.get_valid_bundle(None, 'a@cset-0-4')
+        bundle = self.get_valid_bundle('null:', 'a@cset-0-4')
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
@@ -656,7 +657,7 @@ class V08BundleTester(TestCaseWithTransport):
         tt.new_symlink('link', tt.root, 'bar/foo', 'link-1')
         tt.apply()
         self.tree1.commit('add symlink', rev_id='l@cset-0-1')
-        self.get_valid_bundle(None, 'l@cset-0-1')
+        self.get_valid_bundle('null:', 'l@cset-0-1')
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('link-1')
         tt.adjust_path('link2', tt.root, trans_id)
@@ -689,7 +690,7 @@ class V08BundleTester(TestCaseWithTransport):
         tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff', 'binary-2')
         tt.apply()
         self.tree1.commit('add binary', rev_id='b@cset-0-1')
-        self.get_valid_bundle(None, 'b@cset-0-1')
+        self.get_valid_bundle('null:', 'b@cset-0-1')
 
         # Delete
         tt = TreeTransform(self.tree1)
@@ -719,7 +720,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.get_valid_bundle('b@cset-0-3', 'b@cset-0-4')
 
         # Rollup
-        self.get_valid_bundle(None, 'b@cset-0-4')
+        self.get_valid_bundle('null:', 'b@cset-0-4')
 
     def test_last_modified(self):
         self.tree1 = self.make_branch_and_tree('b1')
@@ -799,7 +800,7 @@ class V08BundleTester(TestCaseWithTransport):
                               " combining characters.")
 
         # Add
-        bundle = self.get_valid_bundle(None, 'i18n-1')
+        bundle = self.get_valid_bundle('null:', 'i18n-1')
 
         # Modified
         f = open(u'b1/with Dod\xe9', 'wb')
@@ -823,7 +824,7 @@ class V08BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
 
         # Rollup
-        bundle = self.get_valid_bundle(None, 'i18n-4')
+        bundle = self.get_valid_bundle('null:', 'i18n-4')
 
 
     def test_whitespace_bundle(self):
@@ -841,7 +842,7 @@ class V08BundleTester(TestCaseWithTransport):
         # Added
         self.tree1.commit('funky whitespace', rev_id='white-1')
 
-        bundle = self.get_valid_bundle(None, 'white-1')
+        bundle = self.get_valid_bundle('null:', 'white-1')
 
         # Modified
         open('b1/trailing space ', 'ab').write('add some text\n')
@@ -862,7 +863,7 @@ class V08BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle('white-3', 'white-4')
         
         # Now test a complet roll-up
-        bundle = self.get_valid_bundle(None, 'white-4')
+        bundle = self.get_valid_bundle('null:', 'white-4')
 
     def test_alt_timezone_bundle(self):
         self.tree1 = self.make_branch_and_memory_tree('b1')
@@ -878,7 +879,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.tree1.commit('non-hour offset timezone', rev_id='tz-1',
                           timezone=19800, timestamp=1152544886.0)
 
-        bundle = self.get_valid_bundle(None, 'tz-1')
+        bundle = self.get_valid_bundle('null:', 'tz-1')
         
         rev = bundle.revisions[0]
         self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
@@ -890,7 +891,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         self.tree1.commit('message', rev_id='revid1')
-        bundle = self.get_valid_bundle(None, 'revid1')
+        bundle = self.get_valid_bundle('null:', 'revid1')
         tree = bundle.revision_tree(self.b1.repository, 'revid1')
         self.assertEqual('revid1', tree.inventory.root.revision)
 
@@ -898,7 +899,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         self.tree1.commit('message', rev_id='rev2a')
-        bundle = self.get_valid_bundle(None, 'rev2a')
+        bundle = self.get_valid_bundle('null:', 'rev2a')
         branch2 = self.make_branch('b2')
         self.assertFalse(branch2.repository.has_revision('rev2a'))
         target_revision = bundle.install_revisions(branch2.repository)
@@ -913,7 +914,7 @@ class V08BundleTester(TestCaseWithTransport):
         tree.add([''], ['TREE_ROOT'])
         tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
                               '#   branch-nick: tree\n'
@@ -941,7 +942,7 @@ class V08BundleTester(TestCaseWithTransport):
         tree.add([''], ['TREE_ROOT'])
         tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
         txt = bundle_sio.getvalue()
         loc = txt.find('#   empty: ') + len('#   empty:')
         # Create a new bundle, which strips the trailing space after empty
@@ -970,7 +971,7 @@ class V08BundleTester(TestCaseWithTransport):
         tree.commit('One', rev_id='rev1',
                     revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
                               '#   a: 4\n'
@@ -1001,7 +1002,7 @@ class V08BundleTester(TestCaseWithTransport):
         tree.commit('One', rev_id='rev1',
                     revprops={'omega':u'\u03a9', 'alpha':u'\u03b1'})
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
                               '#   alpha: \xce\xb1\n'

@@ -24,6 +24,7 @@ from bzrlib.transport import get_transport
 
 
 class CommitBenchmark(Benchmark):
+    """Benchmarks for ``bzr commit``"""
 
     def test_commit_kernel_like_tree(self):
         """Commit of a fresh import of a clean kernel sized tree."""

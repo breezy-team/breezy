@@ -70,7 +70,11 @@ class HasRequest(VfsRequest):
 class GetRequest(VfsRequest):
 
     def do(self, relpath):
-        backing_bytes = self._backing_transport.get_bytes(relpath)
+        try:
+            backing_bytes = self._backing_transport.get_bytes(relpath)
+        except errors.ReadError:
+            # cannot read the file
+            return request.FailedSmartServerResponse(('ReadError', ))
         return request.SuccessfulSmartServerResponse(('ok',), backing_bytes)
 
 

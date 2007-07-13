@@ -41,7 +41,7 @@ class TrivialTest(TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
-        (out, err) = self.run_bzr(['reconcile'])
+        (out, err) = self.run_bzr('reconcile')
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Inventory ok.\n"
                                   "Reconciliation complete.\n" %
@@ -55,7 +55,7 @@ class TrivialTest(TestCaseWithTransport):
         inv = Inventory(revision_id='missing')
         inv.root.revision='missing'
         repo.add_inventory('missing', inv, [])
-        (out, err) = self.run_bzr(['reconcile'])
+        (out, err) = self.run_bzr('reconcile')
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Backup Inventory created.\n"
                                   "Inventory regenerated.\n"

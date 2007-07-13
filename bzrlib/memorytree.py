@@ -22,7 +22,11 @@ See MemoryTree for more details.
 
 from copy import deepcopy
 
-from bzrlib import errors, mutabletree
+from bzrlib import (
+    errors,
+    mutabletree,
+    revision as _mod_revision,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import sha_file
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -63,7 +67,10 @@ class MemoryTree(mutabletree.MutableTree):
     @staticmethod
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
-        return MemoryTree(branch, branch.last_revision())
+        revision_id = _mod_revision.ensure_null(branch.last_revision())
+        if _mod_revision.is_null(revision_id):
+            revision_id = None
+        return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.
@@ -236,6 +243,8 @@ class MemoryTree(mutabletree.MutableTree):
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
+        for revision_id in revision_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(None)
@@ -255,7 +264,8 @@ class MemoryTree(mutabletree.MutableTree):
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
-            if parents_list[0][1] is None:
+            if parents_list[0][1] is None or parents_list[0][1] == 'null:':
+                import pdb; pdb.set_trace()
                 self._basis_tree = self.branch.repository.revision_tree(None)
             else:
                 self._basis_tree = parents_list[0][1]

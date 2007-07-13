@@ -27,6 +27,7 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    transport,
     )
 from bzrlib.errors import (
         LockBreakMismatch,
@@ -266,33 +267,6 @@ class TestLockDir(TestCaseWithTransport):
         self.assertStartsWith(args[3], 'locked ')
         self.assertEndsWith(args[3], ' ago')
         self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
-
-    def test_33_wait(self):
-        """Succeed when waiting on a lock that gets released
-
-        The difference from test_32_lock_wait_succeed is that the second 
-        caller does not actually acquire the lock, but just waits for it
-        to be released.  This is done over a readonly transport.
-        """
-        t = self.get_transport()
-        lf1 = LockDir(t, 'test_lock')
-        lf1.create()
-        lf1.attempt_lock()
-
-        def wait_and_unlock():
-            time.sleep(0.1)
-            lf1.unlock()
-        unlocker = Thread(target=wait_and_unlock)
-        unlocker.start()
-        try:
-            lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
-            before = time.time()
-            # wait but don't lock
-            lf2.wait(timeout=0.4, poll=0.1)
-            after = time.time()
-            self.assertTrue(after - before <= 1.0)
-        finally:
-            unlocker.join()
 
     def test_34_lock_write_waits(self):
         """LockDir.lock_write() will wait for the lock.""" 
@@ -625,3 +599,45 @@ class TestLockDir(TestCaseWithTransport):
         os.mkdir(lock_path)
         osutils.make_readonly(lock_path)
         self.assertRaises(errors.PermissionDenied, ld1.attempt_lock)
+
+    def test_lock_by_token(self):
+        ld1 = self.get_lock()
+        token = ld1.lock_write()
+        self.assertNotEqual(None, token)
+        ld2 = self.get_lock()
+        t2 = ld2.lock_write(token)
+        self.assertEqual(token, t2)
+
+    def test_lock_with_buggy_rename(self):
+        # test that lock acquisition handles servers which pretend they
+        # renamed correctly but that actually fail
+        t = transport.get_transport('brokenrename+' + self.get_url())
+        ld1 = LockDir(t, 'test_lock')
+        ld1.create()
+        ld1.attempt_lock()
+        ld2 = LockDir(t, 'test_lock')
+        # we should fail to lock
+        e = self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        # now the original caller should succeed in unlocking
+        ld1.unlock()
+        # and there should be nothing left over
+        self.assertEquals([], t.list_dir('test_lock'))
+
+    def test_failed_lock_leaves_no_trash(self):
+        # if we fail to acquire the lock, we don't leave pending directories
+        # behind -- https://bugs.launchpad.net/bzr/+bug/109169
+        ld1 = self.get_lock()
+        ld2 = self.get_lock()
+        # should be nothing before we start
+        ld1.create()
+        t = self.get_transport().clone('test_lock')
+        def check_dir(a):
+            self.assertEquals(a, t.list_dir('.'))
+        check_dir([])
+        # when held, that's all we see
+        ld1.attempt_lock()
+        check_dir(['held'])
+        # second guy should fail
+        self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        # no kibble
+        check_dir(['held'])

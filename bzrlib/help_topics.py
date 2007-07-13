@@ -284,11 +284,19 @@ Related commands:
 _repositories = \
 """Repositories
 
-Repositories in Bazaar are where committed information is stored. It is
-possible to create a shared repository which allows multiple branches to
-share their information in the same location. When a new branch is
-created it will first look to see if there is a containing repository it
-can share.
+Repositories in Bazaar are where committed information is stored. There is
+a repository associated with every branch.
+
+Repositories are a form of database. Bzr will usually maintain this for
+good performance automatically, but in some situations (e.g. when doing
+very many commits in a short time period) you may want to ask bzr to 
+optimise the database indices. This can be done by the 'bzr pack' command.
+
+By default just running 'bzr init' will create a repository within the new
+branch but it is possible to create a shared repository which allows multiple
+branches to share their information in the same location. When a new branch is
+created it will first look to see if there is a containing shared repository it
+can use.
 
 When two branches of the same project share a repository, there is
 generally a large space saving. For some operations (e.g. branching
@@ -357,6 +365,32 @@ Useful commands:
                this will update the tree to match the branch.
 """
 
+_status_flags = \
+"""Status Flags
+
+Status flags are used to summarise changes to the working tree in a concise
+manner.  They are in the form:
+   xxx   <filename>
+where the columns' meanings are as follows.
+
+Column 1: versioning / renames
+  + File versioned
+  - File unversioned
+  R File renamed
+  ? File unknown
+  C File has conflicts
+  P Entry for a pending merge (not a file)
+
+Column 2: Contents
+  N File created
+  D File deleted
+  K File kind changed
+  M File modified
+
+Column 3: Execute
+  * The execute bit was changed
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
@@ -372,6 +406,8 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
+topic_registry.register('status-flags', _status_flags,
+                        "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return bugtracker.tracker_registry.help_topic(topic)

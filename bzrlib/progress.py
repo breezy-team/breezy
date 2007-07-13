@@ -50,6 +50,11 @@ from bzrlib.trace import mutter
 
 
 def _supports_progress(f):
+    """Detect if we can use pretty progress bars on the output stream f.
+
+    If this returns true we expect that a human may be looking at that 
+    output, and that we can repaint a line to update it.
+    """
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
         return False
@@ -74,7 +79,7 @@ def ProgressBar(to_file=None, **kwargs):
         if _supports_progress(to_file):
             return TTYProgressBar(to_file=to_file, **kwargs)
         else:
-            return DotsProgressBar(to_file=to_file, **kwargs)
+            return DummyProgress(to_file=to_file, **kwargs)
     else:
         # Minor sanitation to prevent spurious errors
         requested_bar_type = requested_bar_type.lower().strip()

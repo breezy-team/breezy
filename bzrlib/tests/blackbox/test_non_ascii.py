@@ -100,32 +100,32 @@ class TestNonAscii(TestCaseWithTransport):
     def test_cat(self):
         # bzr cat shouldn't change the contents
         # using run_bzr since that doesn't decode
-        txt = self.run_bzr('cat', 'b')[0]
+        txt = self.run_bzr('cat b')[0]
         self.assertEqual('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n', txt)
 
-        txt = self.run_bzr('cat', self.info['filename'])[0]
+        txt = self.run_bzr(['cat', self.info['filename']])[0]
         self.assertEqual('unicode filename\n', txt)
 
     def test_cat_revision(self):
         bzr = self.run_bzr_decode
 
         committer = self.info['committer']
-        txt = bzr('cat-revision', '-r', '1')
+        txt = bzr('cat-revision -r 1')
         self.failUnless(committer in txt,
                         'failed to find %r in %r' % (committer, txt))
 
         msg = self.info['message']
-        txt = bzr('cat-revision', '-r', '2')
+        txt = bzr('cat-revision -r 2')
         self.failUnless(msg in txt, 'failed to find %r in %r' % (msg, txt))
 
     def test_mkdir(self):
         bzr = self.run_bzr_decode
 
-        txt = bzr('mkdir', self.info['directory'])
+        txt = bzr(['mkdir', self.info['directory']])
         self.assertEqual(u'added %s\n' % self.info['directory'], txt)
 
         # The text should be garbled, but the command should succeed
-        txt = bzr('mkdir', self.info['directory'] + '2', encoding='ascii')
+        txt = bzr(['mkdir', self.info['directory'] + '2'], encoding='ascii')
         expected = u'added %s2\n' % (self.info['directory'],)
         expected = expected.encode('ascii', 'replace')
         self.assertEqual(expected, txt)
@@ -133,10 +133,10 @@ class TestNonAscii(TestCaseWithTransport):
     def test_relpath(self):
         bzr = self.run_bzr_decode
 
-        txt = bzr('relpath', self.info['filename'])
+        txt = bzr(['relpath', self.info['filename']])
         self.assertEqual(self.info['filename'] + '\n', txt)
 
-        bzr('relpath', self.info['filename'], encoding='ascii', retcode=3)
+        bzr(['relpath', self.info['filename']], encoding='ascii', retcode=3)
 
     def test_inventory(self):
         bzr = self.run_bzr_decode
@@ -150,7 +150,7 @@ class TestNonAscii(TestCaseWithTransport):
 
         # We don't really care about the ids themselves,
         # but the command shouldn't fail
-        txt = bzr('inventory', '--show-ids')
+        txt = bzr('inventory --show-ids')
 
     def test_revno(self):
         # There isn't a lot to test here, since revno should always
@@ -163,11 +163,11 @@ class TestNonAscii(TestCaseWithTransport):
     def test_revision_info(self):
         bzr = self.run_bzr_decode
 
-        bzr('revision-info', '-r', '1')
+        bzr('revision-info -r 1')
 
         # TODO: jam 20060105 If we support revisions with non-ascii characters,
         # this should be strict and fail.
-        bzr('revision-info', '-r', '1', encoding='ascii')
+        bzr('revision-info -r 1', encoding='ascii')
 
     def test_mv(self):
         bzr = self.run_bzr_decode
@@ -177,9 +177,9 @@ class TestNonAscii(TestCaseWithTransport):
         dirname = self.info['directory']
 
         # fname1 already exists
-        bzr('mv', 'a', fname1, retcode=3)
+        bzr(['mv', 'a', fname1], retcode=3)
 
-        txt = bzr('mv', 'a', fname2)
+        txt = bzr(['mv', 'a', fname2])
         self.assertEqual(u'a => %s\n' % fname2, txt)
         self.failIfExists('a')
         self.failUnlessExists(fname2)
@@ -190,14 +190,14 @@ class TestNonAscii(TestCaseWithTransport):
 
         os.mkdir(dirname)
         self.wt.add(dirname)
-        txt = bzr('mv', fname1, fname2, dirname)
+        txt = bzr(['mv', fname1, fname2, dirname])
         self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
                           u'%s => %s/%s' % (fname2, dirname, fname2)]
                          , txt.splitlines())
 
         # The rename should still succeed
         newpath = u'%s/%s' % (dirname, fname2)
-        txt = bzr('mv', newpath, 'a', encoding='ascii')
+        txt = bzr(['mv', newpath, 'a'], encoding='ascii')
         self.failUnlessExists('a')
         self.assertEqual(newpath.encode('ascii', 'replace') + ' => a\n', txt)
 
@@ -205,8 +205,8 @@ class TestNonAscii(TestCaseWithTransport):
         # We should be able to branch into a directory that
         # has a unicode name, even if we can't display the name
         bzr = self.run_bzr_decode
-        bzr('branch', u'.', self.info['directory'])
-        bzr('branch', u'.', self.info['directory'] + '2', encoding='ascii')
+        bzr(['branch', u'.', self.info['directory']])
+        bzr(['branch', u'.', self.info['directory'] + '2'], encoding='ascii')
 
     def test_pull(self):
         # Make sure we can pull from paths that can't be encoded
@@ -237,7 +237,7 @@ class TestNonAscii(TestCaseWithTransport):
 
         os.chdir('../' + dirname2)
         # We should be able to pull, even if our encoding is bad
-        bzr('pull', '--verbose', encoding='ascii')
+        bzr('pull --verbose', encoding='ascii')
 
     def test_push(self):
         # TODO: Test push to an SFTP location
@@ -249,7 +249,7 @@ class TestNonAscii(TestCaseWithTransport):
         #       the files around as much.
 
         dirname = self.info['directory']
-        bzr('push', dirname)
+        bzr(['push', dirname])
 
         open('a', 'ab').write('adding more text\n')
         self.wt.commit('added some stuff')
@@ -266,20 +266,22 @@ class TestNonAscii(TestCaseWithTransport):
             f.close()
 
         self.wt.commit('Added some ' + dirname)
-        bzr('push', '--verbose', encoding='ascii')
+        bzr('push --verbose', encoding='ascii')
 
-        bzr('push', '--verbose', dirname + '2')
+        bzr(['push', '--verbose', dirname + '2'])
 
-        bzr('push', '--verbose', dirname + '3', encoding='ascii')
+        bzr(['push', '--verbose', dirname + '3'], encoding='ascii')
 
-        bzr('push', '--verbose', '--create-prefix', dirname + '4/' + dirname + '5')
-        bzr('push', '--verbose', '--create-prefix', dirname + '6/' + dirname + '7', encoding='ascii')
+        bzr(['push', '--verbose', '--create-prefix',
+             dirname + '4/' + dirname + '5'])
+        bzr(['push', '--verbose', '--create-prefix',
+             dirname + '6/' + dirname + '7'], encoding='ascii')
 
     def test_renames(self):
         bzr = self.run_bzr_decode
 
         fname = self.info['filename'] + '2'
-        bzr('mv', 'a', fname)
+        bzr(['mv', 'a', fname])
         txt = bzr('renames')
         self.assertEqual(u'a => %s\n' % fname, txt)
 
@@ -289,24 +291,24 @@ class TestNonAscii(TestCaseWithTransport):
         bzr = self.run_bzr_decode
 
         fname = self.info['filename']
-        txt = bzr('remove', fname, encoding='ascii')
+        txt = bzr(['remove', fname], encoding='ascii')
 
     def test_remove_verbose(self):
         bzr = self.run_bzr_decode
 
         fname = self.info['filename']
-        txt = bzr('remove', '--verbose', fname, encoding='ascii')
+        txt = bzr(['remove', '--verbose', fname], encoding='ascii')
 
     def test_file_id(self):
         bzr = self.run_bzr_decode
 
         fname = self.info['filename']
-        txt = bzr('file-id', fname)
+        txt = bzr(['file-id', fname])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = bzr('file-id', fname, encoding='ascii')
+        txt = bzr(['file-id', fname], encoding='ascii')
 
     def test_file_path(self):
         bzr = self.run_bzr_decode
@@ -322,12 +324,12 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt.rename_one(fname, path)
         self.wt.commit('moving things around')
 
-        txt = bzr('file-path', path)
+        txt = bzr(['file-path', path])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = bzr('file-path', path, encoding='ascii')
+        txt = bzr(['file-path', path], encoding='ascii')
 
     def test_revision_history(self):
         bzr = self.run_bzr_decode
@@ -360,7 +362,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('deleted')
         self.assertEqual(fname+'\n', txt)
 
-        txt = bzr('deleted', '--show-ids')
+        txt = bzr('deleted --show-ids')
         self.failUnless(txt.startswith(fname))
 
         # Deleted should fail if cannot decode
@@ -416,11 +418,11 @@ class TestNonAscii(TestCaseWithTransport):
         self.assertNotEqual(-1, txt.find(self.info['committer']))
         self.assertNotEqual(-1, txt.find(self.info['message']))
 
-        txt = bzr('log', '--verbose')
+        txt = bzr('log --verbose')
         self.assertNotEqual(-1, txt.find(fname))
 
         # Make sure log doesn't fail even if we can't write out
-        txt = bzr('log', '--verbose', encoding='ascii')
+        txt = bzr('log --verbose', encoding='ascii')
         self.assertEqual(-1, txt.find(fname))
         self.assertNotEqual(-1, txt.find(fname.encode('ascii', 'replace')))
 
@@ -428,20 +430,20 @@ class TestNonAscii(TestCaseWithTransport):
         bzr = self.run_bzr_decode
 
         fname = self.info['filename']
-        txt = bzr('touching-revisions', fname)
+        txt = bzr(['touching-revisions', fname])
         self.assertEqual(u'     3 added %s\n' % (fname,), txt)
 
         fname2 = self.info['filename'] + '2'
         self.wt.rename_one(fname, fname2)
         self.wt.commit(u'Renamed %s => %s' % (fname, fname2))
 
-        txt = bzr('touching-revisions', fname2)
+        txt = bzr(['touching-revisions', fname2])
         expected_txt = (u'     3 added %s\n' 
                         u'     4 renamed %s => %s\n'
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
-        bzr('touching-revisions', fname2, encoding='ascii', retcode=3)
+        bzr(['touching-revisions', fname2], encoding='ascii', retcode=3)
 
     def test_ls(self):
         bzr = self.run_bzr_decode
@@ -449,12 +451,12 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('ls')
         self.assertEqual(sorted(['a', 'b', self.info['filename']]),
                          sorted(txt.splitlines()))
-        txt = bzr('ls', '--null')
+        txt = bzr('ls --null')
         self.assertEqual(sorted(['', 'a', 'b', self.info['filename']]),
                          sorted(txt.split('\0')))
 
         txt = bzr('ls', encoding='ascii', retcode=3)
-        txt = bzr('ls', '--null', encoding='ascii', retcode=3)
+        txt = bzr('ls --null', encoding='ascii', retcode=3)
 
     def test_unknowns(self):
         bzr = self.run_bzr_decode
@@ -480,7 +482,7 @@ class TestNonAscii(TestCaseWithTransport):
 
         check_unknowns([fname2])
 
-        bzr('ignore', './' + fname2)
+        bzr(['ignore', './' + fname2])
         # After 'ignore' you must re-open the working tree
         self.wt = self.wt.bzrdir.open_workingtree()
         check_unknowns([])
@@ -491,20 +493,20 @@ class TestNonAscii(TestCaseWithTransport):
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
-        bzr('ignore', fname3, encoding='ascii')
+        bzr(['ignore', fname3], encoding='ascii')
         self.wt = self.wt.bzrdir.open_workingtree()
         check_unknowns([])
 
         # Now try a wildcard match
         fname4 = self.info['filename'] + '4.txt'
         open(fname4, 'wb').write('unknown 4\n')
-        bzr('ignore', '*.txt')
+        bzr('ignore *.txt')
         self.wt = self.wt.bzrdir.open_workingtree()
         check_unknowns([])
 
         # and a different wildcard that matches everything
         os.remove('.bzrignore')
-        bzr('ignore', self.info['filename'] + '*')
+        bzr(['ignore', self.info['filename'] + '*'])
         self.wt = self.wt.bzrdir.open_workingtree()
         check_unknowns([])
 
@@ -512,15 +514,15 @@ class TestNonAscii(TestCaseWithTransport):
         bzr = self.run_bzr_decode
 
         # create empty tree as reference for missing
-        self.run_bzr('init', 'empty-tree')
+        self.run_bzr('init empty-tree')
 
         msg = self.info['message']
 
-        txt = bzr('missing', 'empty-tree', retcode=1)
+        txt = bzr('missing empty-tree', retcode=1)
         self.assertNotEqual(-1, txt.find(self.info['committer']))
         self.assertNotEqual(-1, txt.find(msg))
 
         # Make sure missing doesn't fail even if we can't write out
-        txt = bzr('missing', 'empty-tree', encoding='ascii', retcode=1)
+        txt = bzr('missing empty-tree', encoding='ascii', retcode=1)
         self.assertEqual(-1, txt.find(msg))
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
