@@ -500,19 +500,6 @@ class LowLevelKnitIndexTests(TestCase):
         index.add_version("b", ["option"], 0, 1, [])
         self.assertEqual(["a", "b"], index.get_versions())
 
-    def test_idx_to_name(self):
-        transport = MockTransport([
-            _KnitIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 :"
-            ])
-        index = self.get_knit_index(transport, "filename", "r")
-
-        self.assertEqual("a", index.idx_to_name(0))
-        self.assertEqual("b", index.idx_to_name(1))
-        self.assertEqual("b", index.idx_to_name(-1))
-        self.assertEqual("a", index.idx_to_name(-2))
-
     def test_lookup(self):
         transport = MockTransport([
             _KnitIndex.HEADER,

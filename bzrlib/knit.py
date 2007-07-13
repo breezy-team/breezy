@@ -1219,9 +1219,6 @@ class _KnitIndex(_KnitComponentFile):
         """Get all the versions in the file. not topologically sorted."""
         return self._history
 
-    def idx_to_name(self, idx):
-        return self._history[idx]
-
     def lookup(self, version_id):
         assert version_id in self._cache
         return self._cache[version_id][5]
