@@ -215,6 +215,19 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node('key', (['reference'], ), 'data')
         builder.add_node('reference', ([],), 'data')
 
+    def test_absent_has_no_reference_overhead(self):
+        # the offsets after an absent record should be correct when there are
+        # >1 reference lists.
+        builder = GraphIndexBuilder(reference_lists=2)
+        builder.add_node('parent', (['tail', 'other'], []), '')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
+            "tail\x00a\x00\x00\n"
+            "parent\x00\x0038\r63\t\x00\n"
+            "other\x00a\x00\x00\n"
+            "\n", contents)
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
