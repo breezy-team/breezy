@@ -1390,6 +1390,12 @@ class KnitGraphIndex(object):
         """True if the version is in the index."""
         return len(list(self._graph_index.iter_entries([version_id]))) == 1
 
+    def get_position(self, version_id):
+        """Return data position and size of specified version."""
+        node = list(self._graph_index.iter_entries([version_id]))[0]
+        bits = node[2][1:].split(' ')
+        return int(bits[0]), int(bits[1])
+
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""

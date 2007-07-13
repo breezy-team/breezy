@@ -1522,10 +1522,10 @@ class TestGraphIndexKnit(KnitTests):
     def two_graph_index(self):
         # build a complex graph across several indices.
         index1 = self.make_g_index('1', 1, [
-            ('tip', (['parent'], ), ''),
+            ('tip', (['parent'], ), ' 0 100'),
             ('tail', ([], ), '')])
         index2 = self.make_g_index('2', 1, [
-            ('parent', (['tail', 'ghost'], ), ''),
+            ('parent', (['tail', 'ghost'], ), ' 100 78'),
             ('separate', ([], ), '')])
         combined_index = CombinedGraphIndex([index1, index2])
         return KnitGraphIndex(combined_index)
@@ -1612,6 +1612,11 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index()
         self.assertTrue(index.has_version('tail'))
         self.assertFalse(index.has_version('ghost'))
+
+    def test_get_position(self):
+        index = self.two_graph_index()
+        self.assertEqual((0, 100), index.get_position('tip'))
+        self.assertEqual((100, 78), index.get_position('parent'))
 
 ## --- mutating tests for later ---
 #
