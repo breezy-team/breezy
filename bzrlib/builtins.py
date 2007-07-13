@@ -2879,6 +2879,10 @@ class cmd_revert(Command):
     from the target revision.  So you can use revert to "undelete" a file by
     name.  If you name a directory, all the contents of that directory will be
     reverted.
+
+    Any files that have been newly added since that revision will be deleted,
+    with a backup kept if appropriate.  Directories containing unknown files
+    will not be deleted.
     """
 
     _see_also = ['cat', 'export']
