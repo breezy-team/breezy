@@ -65,8 +65,7 @@ from bzrlib.branch import Branch
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
-                           StrictCommitFailed,
-                           NoSuchId
+                           StrictCommitFailed
                            )
 from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
                             is_inside_or_parent_of_any,
@@ -292,7 +291,7 @@ class Commit(object):
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             
             # Collect the changes
-            self._emit_progress_set_stage("Collecting changes",
+            self._set_progress_stage("Collecting changes",
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
@@ -303,7 +302,7 @@ class Commit(object):
             # ADHB 2006-08-08: If this is done, populate_new_inv should not add
             # weave lines, because nothing should be recorded until it is known
             # that commit will succeed.
-            self._emit_progress_set_stage("Saving data locally")
+            self._set_progress_stage("Saving data locally")
             self.builder.finish_inventory()
 
             # Prompt the user for a commit message if none provided
@@ -318,7 +317,7 @@ class Commit(object):
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
-                self._emit_progress_set_stage("Uploading data to master branch")
+                self._set_progress_stage("Uploading data to master branch")
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
                 # now the master has the revision data
@@ -331,7 +330,7 @@ class Commit(object):
             self.branch.set_last_revision_info(new_revno, self.rev_id)
 
             # Make the working tree up to date with the branch
-            self._emit_progress_set_stage("Updating the working tree")
+            self._set_progress_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
@@ -464,7 +463,7 @@ class Commit(object):
     def _process_hooks(self, old_revno, new_revno):
         """Process any registered commit hooks."""
         # Process the post commit hooks, if any
-        self._emit_progress_set_stage("Running post commit hooks")
+        self._set_progress_stage("Running post commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15)
         if self.config.post_commit() is not None:
@@ -598,14 +597,8 @@ class Commit(object):
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             root_added_already = True
 
-        # Build the new inventory. _populate_from_tree() is the preferred
-        # direction here but it doesn't support multiple parents yet,
-        # it triggers a unicode normalisation issue in the test suite and
-        # it needs more testing.
-        populator = self._populate_from_inventory
-        #if len(self.parents) == 1:
-        #    populator = self._populate_from_tree
-        populator(specific_files, root_added_already)
+        # Build the new inventory
+        self._populate_from_inventory(specific_files, root_added_already)
 
         # If specific files/directories were nominated, it is possible
         # that some data from outside those needs to be preserved from
@@ -651,7 +644,7 @@ class Commit(object):
             parent_id = new_ie.parent_id
             kind = new_ie.kind
             if kind == 'directory':
-                self._emit_progress_next_entry()
+                self._next_progress_entry()
 
             # Skip files that have been deleted from the working tree.
             # The deleted files/directories are also recorded so they
@@ -668,7 +661,7 @@ class Commit(object):
                     continue
             try:
                 kind = self.work_tree.kind(file_id)
-                # TODO: specific_files filtering before nested tree processing?
+                # TODO: specific_files filtering before nested tree processing
                 if kind == 'tree-reference' and self.recursive == 'down':
                     self._commit_nested_tree(path)
             except errors.NoSuchFile:
@@ -684,76 +677,6 @@ class Commit(object):
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
-
-    def _populate_from_tree(self, specific_files, root_added_already):
-        """Populate the CommitBuilder by walking the working tree."""
-        # Until trees supports an "iter_commitable" iterator that
-        # understand multiple parents, this assertion is required.
-        assert len(self.parents) == 1
-
-        deleted_ids = []
-        deleted_paths = set()
-        entries = self.work_tree._iter_changes(self.basis_tree,
-            include_unchanged=True, want_unversioned=True,
-            require_versioned=False)
-        if root_added_already:
-            entries.next()
-        for entry in entries:
-            (file_id, paths, changed_content, versioned_flags, parents, names,
-                kinds, executables) = entry
-            kind = kinds[1]
-            if kind == 'directory':
-                self._emit_progress_next_entry()
-
-            # Skip unknowns unless strict mode
-            if versioned_flags == (False,False):
-                if self.strict:
-                    raise StrictCommitFailed()
-                else:
-                    continue
-
-            # Skip missing files (may auto-delete these one day)
-            # Note that when a filter of specific files is given, we must
-            # only skip/record deleted files matching that filter.
-            if kind is None:
-                path = paths[0]
-                if is_inside_any(deleted_paths, path):
-                    continue
-                if not specific_files or is_inside_any(specific_files, path):
-                    deleted_paths.add(path)
-                    self.reporter.missing(path)
-                    deleted_ids.append(file_id)
-                    continue
-                # It's missing but still needs to be recorded
-                index = 0
-            else:
-                index = 1
-            path = paths[index]
-            kind = kinds[index]
-            path = paths[index]
-            parent = parents[index]
-            name = names[index]
-
-            # TODO: specific_files filtering before nested tree processing?
-            # TODO: keep track of nested trees and don't recurse into them?
-            if kind == 'tree-reference' and self.recursive == 'down':
-                self._commit_nested_tree(path)
-
-            # Record an entry for this item
-            self._record_entry(path, file_id, specific_files, kind,
-                name, parent, changed_content, None)
-            # Note: If the iterator passed back the sha here we could
-            # set it and the executable info *now* into the inventory entry
-            # saving look ups later
-
-        # Unversion IDs that were found to be deleted
-        # Note: the logic above collects some IDs already gone so
-        # we walk the list and trap the exception
-        for id in deleted_ids:
-            try:
-                self.work_tree.unversion([id])
-            except NoSuchId:
-                pass
 
     def _commit_nested_tree(self, path):
         "Commit a nested tree."
@@ -824,7 +747,7 @@ class Commit(object):
         else:
             self.reporter.snapshot_change(change, path)
 
-    def _emit_progress_set_stage(self, name, entries_title=None):
+    def _set_progress_stage(self, name, entries_title=None):
         """Set the progress stage and emit an update to the progress bar."""
         self.pb_stage_name = name
         self.pb_stage_count += 1
@@ -834,8 +757,8 @@ class Commit(object):
             self.pb_entries_total = '?'
         self._emit_progress()
 
-    def _emit_progress_next_entry(self):
-        """Emit an update to the progress bar and increment the file count."""
+    def _next_progress_entry(self):
+        """Emit an update to the progress bar and increment the entry count."""
         self.pb_entries_count += 1
         self._emit_progress()
 
