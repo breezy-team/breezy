@@ -54,6 +54,8 @@ class GraphIndexBuilder(object):
             raise errors.BadIndexKey(key)
         if _newline_null_re.search(value) is not None:
             raise errors.BadIndexValue(value)
+        if len(references) != self.reference_lists:
+            raise errors.BadIndexValue(references)
         self._nodes.append((key, references, value))
 
     def finish(self):

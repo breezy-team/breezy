@@ -49,17 +49,34 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
             "akey\0\0data\n\n", contents)
 
-    def test_build_index_bad_key(self):
+    def test_add_node_bad_key(self):
         builder = GraphIndexBuilder()
         self.assertRaises(errors.BadIndexKey, builder.add_node, 'a key',
             (), 'data')
 
-    def test_build_index_bad_data(self):
+    def test_add_node_bad_data(self):
         builder = GraphIndexBuilder()
         self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
             (), 'data\naa')
         self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
             (), 'data\0aa')
+
+    def test_add_node_bad_mismatched_ref_lists_length(self):
+        builder = GraphIndexBuilder()
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            ([], ), 'data aa')
+        builder = GraphIndexBuilder(reference_lists=1)
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            (), 'data aa')
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            ([], []), 'data aa')
+        builder = GraphIndexBuilder(reference_lists=2)
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            (), 'data aa')
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            ([], ), 'data aa')
+        self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
+            ([], [], []), 'data aa')
 
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
