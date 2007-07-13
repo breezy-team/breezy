@@ -1167,6 +1167,7 @@ class _KnitIndex(_KnitComponentFile):
                     self._filename, self.HEADER, mode=self._file_mode)
 
     def get_graph(self):
+        """Return a list of the node:parents lists from this knit index."""
         return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
 
     def get_ancestry(self, versions, topo_sorted=True):
@@ -1316,6 +1317,22 @@ class _KnitIndex(_KnitComponentFile):
         for version_id in version_ids:
             if version_id not in cache:
                 raise RevisionNotPresent(version_id, self._filename)
+
+
+class KnitGraphIndex(object):
+    """A knit index that builds on GraphIndex."""
+
+    def __init__(self, graph_index):
+        """Construct a KnitGraphIndex on a graph_index.
+
+        :param graph_index: An implementation of bzrlib.index.GraphIndex.
+        """
+        self._graph_index = graph_index
+
+    def get_graph(self):
+        """Return a list of the node:parents lists from this knit index."""
+        return [(key, refs[0]) for (key, refs, value) in 
+            self._graph_index.iter_all_entries()]
 
 
 class _KnitData(_KnitComponentFile):

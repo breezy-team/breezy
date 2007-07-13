@@ -36,6 +36,7 @@ from bzrlib.errors import (
 from bzrlib.index import *
 from bzrlib.knit import (
     KnitContent,
+    KnitGraphIndex,
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
@@ -846,14 +847,14 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
-    def make_test_knit(self, annotate=False, delay_create=False):
+    def make_test_knit(self, annotate=False, delay_create=False, index=None):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
         return KnitVersionedFile('test', get_transport('.'), access_mode='w',
                                  factory=factory, create=True,
-                                 delay_create=delay_create)
+                                 delay_create=delay_create, index=index)
 
 
 class BasicKnitTests(KnitTests):
@@ -1526,3 +1527,33 @@ class TestKnitIndex(KnitTests):
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
 
         self.assertRaises(KnitHeaderError, self.make_test_knit)
+
+
+class TestGraphIndexKnit(KnitTests):
+    """Tests for knits using a GraphIndex rather than a KnitIndex."""
+
+    def make_g_index(self, name, ref_lists=0, nodes=[]):
+        builder = GraphIndexBuilder(ref_lists)
+        for node, references, value in nodes:
+            builder.add_node(node, references, value)
+        stream = builder.finish()
+        trans = self.get_transport()
+        trans.put_file(name, stream)
+        return GraphIndex(trans, name)
+
+    def test_get_graph(self):
+        # build a complex graph across several indices.
+        index1 = self.make_g_index('1', 1, [
+            ('tip', (['parent'], ), ''),
+            ('tail', ([], ), '')])
+        index2 = self.make_g_index('2', 1, [
+            ('parent', (['tail', 'ghost'], ), ''),
+            ('separate', ([], ), '')])
+        combined_index = CombinedGraphIndex([index1, index2])
+        index = KnitGraphIndex(combined_index)
+        self.assertEqual(set([
+            ('tip', ('parent', )),
+            ('tail', ()),
+            ('parent', ('tail', 'ghost')),
+            ('separate', ()),
+            ]), set(index.get_graph()))
