@@ -199,9 +199,24 @@ class GraphIndex(object):
                 trailers += 1
                 continue
             key, absent, references, value = line[:-1].split('\0')
-            keys_by_offset[pos] = (key, absent, references, value)
+            ref_lists = []
+            for ref_string in references.split('\t'):
+                ref_lists.append(tuple([
+                    int(ref) for ref in ref_string.split('\r') if ref
+                    ]))
+            ref_lists = tuple(ref_lists)
+            keys_by_offset[pos] = (key, absent, ref_lists, value)
+            pos += len(line)
         for key, absent, references, value in keys_by_offset.values():
-            yield (key, (), value)
+            # resolve references:
+            if self.node_ref_lists:
+                node_refs = []
+                for ref_list in references:
+                    node_refs.append(tuple([keys_by_offset[ref][0] for ref in ref_list]))
+                node_refs = tuple(node_refs)
+            else:
+                node_refs = ()
+            yield (key, node_refs, value)
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)

@@ -241,6 +241,14 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([('name', (), 'data')],
             list(index.iter_all_entries()))
 
+    def test_iter_all_entries_references_resolved(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data'),
+            ('ref', ([], ), 'refdata')])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_all_entries()))
+
     def test_iter_nothing_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_entries([])))
