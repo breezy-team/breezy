@@ -1653,6 +1653,15 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual('fulltext,no-eol', index.get_options('tip'))
         self.assertEqual('fulltext', index.get_options('parent'))
 
+    def test_get_parents(self):
+        # get_parents ignores ghosts
+        index = self.two_graph_index()
+        self.assertEqual(['tail'], index.get_parents('parent'))
+
+    def test_get_parents_with_ghosts(self):
+        index = self.two_graph_index()
+        self.assertEqual(('tail', 'ghost'), index.get_parents_with_ghosts('parent'))
+
 
 ## --- mutating tests for later ---
 #

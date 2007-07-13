@@ -1431,6 +1431,17 @@ class KnitGraphIndex(object):
             options.append('no-eol')
         return ','.join(options)
 
+    def get_parents(self, version_id):
+        """Return parents of specified version ignoring ghosts."""
+        parents = self.get_parents_with_ghosts(version_id)
+        present_parents = set([
+            parent[0] for parent in self._graph_index.iter_entries(parents)])
+        return [key for key in parents if key in present_parents]
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return parents of specified version with ghosts."""
+        return self._get_node(version_id)[1][0]
+
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
