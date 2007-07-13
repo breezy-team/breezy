@@ -87,11 +87,6 @@ class TestErrors(TestCaseWithTransport):
                          " known method in options: ['bad', 'no-eol']",
                          str(error))
 
-    def test_missing_key(self):
-        error = errors.MissingKey('container', 'a key')
-        self.assertEqualDiff("The key a key is not present in container.",
-            str(error))
-
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(

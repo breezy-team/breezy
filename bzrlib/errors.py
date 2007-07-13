@@ -1599,16 +1599,6 @@ class BundleNotSupported(BzrError):
         self.msg = msg
 
 
-class MissingKey(BzrError):
-
-    _fmt = "The key %(key)s is not present in %(thing)s."
-
-    def __init__(self, thing, key):
-        BzrError.__init__(self)
-        self.thing = thing
-        self.key = key
-
-
 class MissingText(BzrError):
 
     _fmt = ("Branch %(base)s is missing revision"
