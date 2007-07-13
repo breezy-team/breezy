@@ -89,6 +89,8 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
             self.assertRaises(errors.BadIndexKey, builder.add_node,
                 'a%skey' % bad_char, (), 'data')
+        self.assertRaises(errors.BadIndexKey, builder.add_node,
+                '', (), 'data')
 
     def test_add_node_bad_data(self):
         builder = GraphIndexBuilder()

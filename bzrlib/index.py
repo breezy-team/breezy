@@ -66,7 +66,7 @@ class GraphIndexBuilder(object):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        if _whitespace_re.search(key) is not None:
+        if not key or _whitespace_re.search(key) is not None:
             raise errors.BadIndexKey(key)
         if _newline_null_re.search(value) is not None:
             raise errors.BadIndexValue(value)
