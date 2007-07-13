@@ -23,7 +23,10 @@ from bzrlib.dirstate import DirState
 
 
 cdef extern from *:
-    ctypedef int size_t
+    ctypedef unsigned size_t
+
+cdef extern from "stdint.h":
+    ctypedef int intptr_t
 
 
 cdef extern from "stdlib.h":
@@ -56,19 +59,16 @@ cdef extern from "string.h":
 
 cdef void* _my_memrchr(void *s, int c, size_t n):
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
-    # We semi-cheat, and just call memchr repeatedly until we run out of path.
-    # And then return the last match.
-    cdef void *pos
-    cdef void *end
-    cdef void *last_pos
+    cdef char *pos
+    cdef char *start
 
-    last_pos = NULL
-    end = <void*>((<char*>s) + n)
-    pos = memchr(s, c, n)
-    while pos != NULL and pos < end:
-        last_pos = pos
-        pos = memchr(pos+1, c, end-pos)
-    return last_pos
+    start = <char*>s
+    pos = start + n - 1
+    while pos >= start:
+        if pos[0] == c:
+            return <void*>pos
+        pos = pos - 1
+    return NULL
 
 
 def _py_memrchr(s, c):
@@ -95,6 +95,14 @@ def _py_memrchr(s, c):
     return found - _s
 
 
+cdef int _is_aligned(void *ptr):
+    """Is this pointer aligned to an integer size offset?
+
+    :return: 1 if this pointer is aligned, 0 otherwise.
+    """
+    return ((<intptr_t>ptr) & ((sizeof(int))-1)) == 0
+
+
 cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     cdef char *cur1
     cdef char *cur2
@@ -108,27 +116,31 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     if path1 == path2:
         return 0
 
-    cur_int1 = <int*>path1
-    cur_int2 = <int*>path2
-    end_int1 = <int*>(path1 + size1 - (size1%4))
-    end_int2 = <int*>(path2 + size2 - (size2%4))
     end1 = path1+size1
     end2 = path2+size2
 
     # Use 32-bit comparisons for the matching portion of the string.
     # Almost all CPU's are faster at loading and comparing 32-bit integers,
     # than they are at 8-bit integers.
-    # TODO: jam 2007-05-07 Do we need to change this so we always start at an
-    #       integer offset in memory? I seem to remember that being done in
-    #       some C libraries for strcmp()
-    while cur_int1 < end_int1 and cur_int2 < end_int2:
-        if cur_int1[0] != cur_int2[0]:
-            break
-        cur_int1 = cur_int1 + 1
-        cur_int2 = cur_int2 + 1
+    # 99% of the time, these will be aligned, but in case they aren't just skip
+    # this loop
+    if _is_aligned(path1) and _is_aligned(path2):
+        cur_int1 = <int*>path1
+        cur_int2 = <int*>path2
+        end_int1 = <int*>(path1 + size1 - (size1%4))
+        end_int2 = <int*>(path2 + size2 - (size2%4))
 
-    cur1 = <char*>cur_int1
-    cur2 = <char*>cur_int2
+        while cur_int1 < end_int1 and cur_int2 < end_int2:
+            if cur_int1[0] != cur_int2[0]:
+                break
+            cur_int1 = cur_int1 + 1
+            cur_int2 = cur_int2 + 1
+
+        cur1 = <char*>cur_int1
+        cur2 = <char*>cur_int2
+    else:
+        cur1 = path1
+        cur2 = path2
 
     while cur1 < end1 and cur2 < end2:
         if cur1[0] == cur2[0]:
