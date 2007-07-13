@@ -33,6 +33,7 @@ from bzrlib.errors import (
     RevisionNotPresent,
     NoSuchFile,
     )
+from bzrlib.index import *
 from bzrlib.knit import (
     KnitContent,
     KnitVersionedFile,
@@ -864,6 +865,12 @@ class BasicKnitTests(KnitTests):
     def test_knit_constructor(self):
         """Construct empty k"""
         self.make_test_knit()
+
+    def test_make_explicit_index(self):
+        """We can supply an index to use."""
+        knit = KnitVersionedFile('test', get_transport('.'),
+            index='strangelove')
+        self.assertEqual(knit._index, 'strangelove')
 
     def test_knit_add(self):
         """Store one text in knit and retrieve"""

@@ -333,7 +333,7 @@ class KnitVersionedFile(VersionedFile):
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
                  create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None):
+                 dir_mode=None, index=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -342,6 +342,7 @@ class KnitVersionedFile(VersionedFile):
             hash-prefixes that may not exist yet)
         :param delay_create: The calling code is aware that the knit won't 
             actually be created until the first data is stored.
+        :param index: An index to use for the knit.
         """
         if deprecated_passed(basis_knit):
             warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
@@ -359,10 +360,13 @@ class KnitVersionedFile(VersionedFile):
 
         self._max_delta_chain = 200
 
-        self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            access_mode, create=create, file_mode=file_mode,
-            create_parent_dir=create_parent_dir, delay_create=delay_create,
-            dir_mode=dir_mode)
+        if index is None:
+            self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
+                access_mode, create=create, file_mode=file_mode,
+                create_parent_dir=create_parent_dir, delay_create=delay_create,
+                dir_mode=dir_mode)
+        else:
+            self._index = index
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=create and not len(self), file_mode=file_mode,
             create_parent_dir=create_parent_dir, delay_create=delay_create,
