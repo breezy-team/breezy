@@ -2248,6 +2248,7 @@ def test_suite():
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bencode',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
                    'bzrlib.tests.test_bugtracker',
