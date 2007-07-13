@@ -138,6 +138,26 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "key\0\x0053\r38\0data\n"
             "\n", contents)
 
+    def test_node_references_three_digits(self):
+        # test the node digit expands as needed.
+        builder = GraphIndexBuilder(reference_lists=1)
+        references = map(str, range(9))
+        builder.add_node('5-key', (references, ), '')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
+            "8\x00a\x00\x00\n"
+            "7\x00a\x00\x00\n"
+            "6\x00a\x00\x00\n"
+            "5-key\x00\x00130\r124\r118\r112\r106\r100\r050\r044\r038\x00\n"
+            "5\x00a\x00\x00\n"
+            "4\x00a\x00\x00\n"
+            "3\x00a\x00\x00\n"
+            "2\x00a\x00\x00\n"
+            "1\x00a\x00\x00\n"
+            "0\x00a\x00\x00\n"
+            "\n", contents)
+
     def test_add_node_bad_key(self):
         builder = GraphIndexBuilder()
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
