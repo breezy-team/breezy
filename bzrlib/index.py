@@ -16,6 +16,8 @@
 
 """Indexing facilities."""
 
+__all__ = ['CombinedGraphIndex', 'GraphIndex', 'GraphIndexBuilder']
+
 from cStringIO import StringIO
 import re
 
