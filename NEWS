@@ -34,6 +34,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Fix locking issues (#125212)
 
+   * Warn when used with experimental version of mappings. (#117198)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

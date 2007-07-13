@@ -15,17 +15,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
-Support for foreign branches (Subversion)
+Support for Subversion branches
 """
-import os
-import sys
-import tempfile
-import unittest
-import bzrlib
-
+from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.commands import Command, register_command, display_command, Option
+from bzrlib.lazy_import import lazy_import
 from bzrlib.trace import warning, mutter
+from bzrlib.transport import register_lazy_transport, register_transport_proto
+from bzrlib.repository import InterRepository
 
-__version__ = '0.4.0dev'
+lazy_import(globals(), """
+import commit
+import fetch 
+import format
+import workingtree
+""")
+
+__version__ = '0.4.0exp'
 COMPATIBLE_BZR_VERSIONS = [(0, 18)]
 
 def check_bzrlib_version(desired):
@@ -35,6 +41,7 @@ def check_bzrlib_version(desired):
     If version is compatible version + 1, assume compatible, with deprecations
     Otherwise, assume incompatible.
     """
+    import bzrlib
     bzrlib_version = bzrlib.version_info[:2]
     if (bzrlib_version in desired or 
         ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
@@ -52,6 +59,11 @@ def check_bzrlib_version(desired):
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise Exception, 'Version mismatch'
 
+def check_bzrsvn_version():
+    """Warn about use of experimental mappings."""
+    if __version__.endswith("exp"):
+        warning('version of bzr-svn is experimental; output may change between revisions')
+
 def check_subversion_version():
     """Check that Subversion is compatible.
 
@@ -62,46 +74,36 @@ def check_subversion_version():
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
-check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
-check_subversion_version()
+def check_versions():
+    check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
+    check_subversion_version()
+    check_bzrsvn_version()
 
-import branch
-import convert
-import format
-import transport
-import workingtree
+check_versions()
 
-from bzrlib.transport import register_transport
-register_transport('svn://', transport.SvnRaTransport)
-register_transport('svn+', transport.SvnRaTransport)
-
-from bzrlib.bzrdir import BzrDirFormat
-
-from bzrlib.repository import InterRepository
-
-from fetch import InterFromSvnRepository
-from commit import InterToSvnRepository
+register_transport_proto('svn://', help="Access using the Subversion smart server.")
+register_transport_proto('svn+ssh://', 
+    help="Access using the Subversion smart server tunneled over SSH.")
+register_transport_proto('svn+file://', 
+    help="Access of local Subversion repositories.")
+register_transport_proto('svn+http://',
+    help="Access of Subversion smart servers over HTTP.")
+register_transport_proto('svn+https://',
+    help="Access of Subversion smart servers over secure HTTP.")
+register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
+register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
 
 BzrDirFormat.register_control_format(format.SvnFormat)
-
-import svn.core
-_subr_version = svn.core.svn_subr_version()
-
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 
-InterRepository.register_optimiser(InterFromSvnRepository)
-InterRepository.register_optimiser(InterToSvnRepository)
-
-from bzrlib.branch import Branch
-from bzrlib.commands import Command, register_command, display_command, Option
-from bzrlib.errors import BzrCommandError
-from bzrlib.repository import Repository
-import bzrlib.urlutils as urlutils
+InterRepository.register_optimiser(fetch.InterFromSvnRepository)
+InterRepository.register_optimiser(commit.InterToSvnRepository)
 
 
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""
     from scheme import BranchingScheme
+    from bzrlib.errors import BzrCommandError
     
     ret = BranchingScheme.find_scheme(schemename)
     if ret is None:
@@ -125,7 +127,9 @@ class cmd_svn_import(Command):
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
             standalone=False, scheme=None, all=False):
+        from bzrlib.repository import Repository
         from convert import convert_repository
+        import os
         from scheme import TrunkBranchingScheme
 
         if to_location is None:
@@ -136,6 +140,7 @@ class cmd_svn_import(Command):
 
         if os.path.isfile(from_location):
             from convert import load_dumpfile
+            import tempfile
             tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
             mutter('loading dumpfile %r to %r' % (from_location, tmp_repos))
             load_dumpfile(from_location, tmp_repos)
@@ -167,7 +172,9 @@ class cmd_svn_upgrade(Command):
     @display_command
     def run(self, svn_repository=None, verbose=False):
         from upgrade import upgrade_branch
-        from bzrlib.errors import NoWorkingTree
+        from bzrlib.branch import Branch
+        from bzrlib.errors import NoWorkingTree, BzrCommandError
+        from bzrlib.repository import Repository
         from bzrlib.workingtree import WorkingTree
         try:
             wt_to = WorkingTree.open(".")
@@ -182,6 +189,7 @@ class cmd_svn_upgrade(Command):
                 raise BzrCommandError("No pull location known or"
                                              " specified.")
             else:
+                import bzrlib.urlutils as urlutils
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
@@ -208,7 +216,9 @@ def test_suite():
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
           "to use it.\n")
-    runner = unittest.TextTestRunner()
-    runner.run(test_suite())
+elif __name__ != 'bzrlib.plugins.svn':
+    raise ImportError('The Subversion plugin must be installed as'
+                      ' bzrlib.plugins.svn not %s' % __name__)
 else:
+    import os, sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
