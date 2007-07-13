@@ -664,30 +664,6 @@ class TestConnectedTransport(TestCase):
         t = ConnectedTransport('sftp://host.com/dev/%path')
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
-    def test_connection_sharing(self):
-        # Note: this is not sufficient to ensure that daughter classes will
-        # respect the contract (RemoteTransport share its _medium attribute
-        # with other objects which evades the connection sharing ensured by
-        # ConnectedTransport).
-        t = ConnectedTransport('foo://user@host.com/abs/path')
-        self.assertIs(None, t._get_connection())
-
-        c = t.clone('subdir')
-        self.assertIs(None, c._get_connection())
-
-        # But as soon as one transport connects, the other get
-        # the connection too
-        connection = object()
-        t._set_connection(connection)
-        self.assertIs(connection, t._get_connection())
-        self.assertIs(connection, c._get_connection())
-
-        # Temporary failure, we need to create a new connection
-        new_connection = object()
-        t._set_connection(new_connection)
-        self.assertIs(new_connection, t._get_connection())
-        self.assertIs(new_connection, c._get_connection())
-
     def test_connection_sharing_propagate_credentials(self):
         t = ConnectedTransport('foo://user@host.com/abs/path')
         self.assertIs(None, t._get_connection())

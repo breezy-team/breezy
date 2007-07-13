@@ -1153,13 +1153,13 @@ class TransportTests(TestTransportImplementation):
 
             Only the parameters different from None will be changed.
             """
-            if scheme is None: scheme = t._scheme
-            if user is None: user = t._user
+            if scheme   is None: scheme   = t._scheme
+            if user     is None: user     = t._user
             if password is None: password = t._password
-            if user is None: user = t._user
-            if host is None: host = t._host
-            if port is None: port = t._port
-            if path is None: path = t._path
+            if user     is None: user     = t._user
+            if host     is None: host     = t._host
+            if port     is None: port     = t._port
+            if path     is None: path     = t._path
             return t._unsplit_url(scheme, user, password, host, port, path)
 
         self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
@@ -1186,6 +1186,27 @@ class TransportTests(TestTransportImplementation):
         else:
             port = 1234
         self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+
+    def test_connection_sharing(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        self.assertIs(None, t._get_connection())
+
+        c = t.clone('subdir')
+        self.assertIs(None, c._get_connection())
+
+        # But as soon as one transport connects, the other get
+        # the connection too
+        t.has('surely_not') # Force connection
+        self.assertIs(t._get_connection(), c._get_connection())
+
+        # Temporary failure, we need to create a new connection
+        new_connection = object()
+        t._set_connection(new_connection)
+        self.assertIs(new_connection, t._get_connection())
+        self.assertIs(new_connection, c._get_connection())
 
     def test_reuse_connection_for_various_paths(self):
         t = self.get_transport()
