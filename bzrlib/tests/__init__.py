@@ -2354,6 +2354,7 @@ def test_suite():
                    'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
+                   'bzrlib.tests.test_win32utils',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
