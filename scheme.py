@@ -179,6 +179,15 @@ class NoBranchingScheme(BranchingScheme):
         return False
 
 
+def parse_list_scheme_text(text):
+    branches = []
+    for l in text.splitlines():
+        if l.startswith("#"):
+            continue
+        branches.append(l.strip("/"))
+    return branches
+
+
 class ListBranchingScheme(BranchingScheme):
     def __init__(self, branch_list):
         """Create new ListBranchingScheme instance.
@@ -206,8 +215,8 @@ class ListBranchingScheme(BranchingScheme):
         for i in self.branch_list:
             if (path+"/").startswith(i+"/"):
                 return (i, path[len(i):].strip("/"))
-
         raise NotBranchError(path=path)
+
 
 class UnknownBranchingScheme(BzrError):
     _fmt = "Branching scheme could not be found: %(name)s"

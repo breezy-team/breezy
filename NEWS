@@ -44,6 +44,8 @@ bzr-svn 0.4	UNRELEASED
    
    * add -v option to svn-upgrade
 
+   * store and allow setting the branching scheme in subversion.conf
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)
