@@ -1329,6 +1329,55 @@ class KnitGraphIndex(object):
         """
         self._graph_index = graph_index
 
+    def get_ancestry(self, versions, topo_sorted=True):
+        """See VersionedFile.get_ancestry."""
+        # XXX: This will do len(history) index calls - perhaps
+        # it should be altered to be a index core feature?
+        # get a graph of all the mentioned versions:
+        graph = {}
+        pending = set(versions)
+        while pending:
+            # get all pending nodes
+            this_iteration = pending
+            new_nodes = self._graph_index.iter_entries(this_iteration)
+            pending = set()
+            for (key, node_refs, value) in new_nodes:
+                graph[key] = node_refs[0]
+                # queue parents 
+                pending.update(graph[key])
+            missing_versions = this_iteration.difference(graph)
+            if missing_versions:
+                raise RevisionNotPresent(missing_versions.pop(), self)
+            # dont examine known nodes
+            pending.difference_update(graph)
+        if not topo_sorted:
+            return graph.keys()
+        return topo_sort(graph.items())
+
+    def get_ancestry_with_ghosts(self, versions):
+        """See VersionedFile.get_ancestry."""
+        # XXX: This will do len(history) index calls - perhaps
+        # it should be altered to be a index core feature?
+        # get a graph of all the mentioned versions:
+        graph = {}
+        pending = set(versions)
+        while pending:
+            # get all pending nodes
+            this_iteration = pending
+            new_nodes = self._graph_index.iter_entries(this_iteration)
+            pending = set()
+            for (key, node_refs, value) in new_nodes:
+                graph[key] = node_refs[0]
+                # queue parents 
+                pending.update(graph[key])
+            missing_versions = this_iteration.difference(graph)
+            for missing_version in missing_versions:
+                # add a key, no parents
+                graph[missing_version] = []
+            # dont examine known nodes
+            pending.difference_update(graph)
+        return topo_sort(graph.items())
+
     def get_graph(self):
         """Return a list of the node:parents lists from this knit index."""
         return [(key, refs[0]) for (key, refs, value) in 

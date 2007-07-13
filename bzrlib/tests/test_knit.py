@@ -1541,7 +1541,7 @@ class TestGraphIndexKnit(KnitTests):
         trans.put_file(name, stream)
         return GraphIndex(trans, name)
 
-    def test_get_graph(self):
+    def two_graph_index(self):
         # build a complex graph across several indices.
         index1 = self.make_g_index('1', 1, [
             ('tip', (['parent'], ), ''),
@@ -1550,10 +1550,73 @@ class TestGraphIndexKnit(KnitTests):
             ('parent', (['tail', 'ghost'], ), ''),
             ('separate', ([], ), '')])
         combined_index = CombinedGraphIndex([index1, index2])
-        index = KnitGraphIndex(combined_index)
+        return KnitGraphIndex(combined_index)
+
+    def two_graph_index_no_ghosts(self):
+        # build a complex graph across several indices.
+        index1 = self.make_g_index('1', 1, [
+            ('tip', (['parent'], ), ''),
+            ('tail', ([], ), '')])
+        index2 = self.make_g_index('2', 1, [
+            ('parent', (['tail'], ), ''),
+            ('separate', ([], ), '')])
+        combined_index = CombinedGraphIndex([index1, index2])
+        return KnitGraphIndex(combined_index)
+
+    def test_get_graph(self):
+        index = self.two_graph_index()
         self.assertEqual(set([
             ('tip', ('parent', )),
             ('tail', ()),
             ('parent', ('tail', 'ghost')),
             ('separate', ()),
             ]), set(index.get_graph()))
+
+    def test_get_ancestry(self):
+        index = self.two_graph_index_no_ghosts()
+        self.assertEqual([], index.get_ancestry([]))
+        self.assertEqual(['separate'], index.get_ancestry(['separate']))
+        self.assertEqual(['tail'], index.get_ancestry(['tail']))
+        self.assertEqual(['tail', 'parent'], index.get_ancestry(['parent']))
+        self.assertEqual(['tail', 'parent', 'tip'], index.get_ancestry(['tip']))
+        self.assertTrue(index.get_ancestry(['tip', 'separate']) in
+            (['tail', 'parent', 'tip', 'separate'],
+             ['separate', 'tail', 'parent', 'tip'],
+            ))
+        # and without topo_sort
+        self.assertEqual(set(['separate']),
+            set(index.get_ancestry(['separate'], topo_sorted=False)))
+        self.assertEqual(set(['tail']),
+            set(index.get_ancestry(['tail'], topo_sorted=False)))
+        self.assertEqual(set(['tail', 'parent']),
+            set(index.get_ancestry(['parent'], topo_sorted=False)))
+        self.assertEqual(set(['tail', 'parent', 'tip']),
+            set(index.get_ancestry(['tip'], topo_sorted=False)))
+        self.assertEqual(set(['separate', 'tail', 'parent', 'tip']),
+            set(index.get_ancestry(['tip', 'separate'])))
+        # with ghosts it blows up early
+        index = self.two_graph_index()
+        self.assertEqual([], index.get_ancestry([]))
+        self.assertEqual(['separate'], index.get_ancestry(['separate']))
+        self.assertEqual(['tail'], index.get_ancestry(['tail']))
+        self.assertRaises(errors.RevisionNotPresent, index.get_ancestry, ['parent'])
+
+    def test_get_ancestry_with_ghosts(self):
+        index = self.two_graph_index()
+        self.assertEqual([], index.get_ancestry_with_ghosts([]))
+        self.assertEqual(['separate'], index.get_ancestry_with_ghosts(['separate']))
+        self.assertEqual(['tail'], index.get_ancestry_with_ghosts(['tail']))
+        self.assertTrue(index.get_ancestry_with_ghosts(['parent']) in
+            (['tail', 'ghost', 'parent'],
+             ['ghost', 'tail', 'parent'],
+            ))
+        self.assertTrue(index.get_ancestry_with_ghosts(['tip']) in
+            (['tail', 'ghost', 'parent', 'tip'],
+             ['ghost', 'tail', 'parent', 'tip'],
+            ))
+        self.assertTrue(index.get_ancestry_with_ghosts(['tip', 'separate']) in
+            (['tail', 'ghost', 'parent', 'tip', 'separate'],
+             ['ghost', 'tail', 'parent', 'tip', 'separate'],
+             ['separate', 'tail', 'ghost', 'parent', 'tip'],
+             ['separate', 'ghost', 'tail', 'parent', 'tip'],
+            ))
