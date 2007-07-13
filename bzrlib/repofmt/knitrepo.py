@@ -160,7 +160,6 @@ class KnitRepository(MetaDirRepository):
             for version, options, length, parents in data_list:
                 options = ','.join(options)
                 bytes += '%s %s %s\n' % (version, options, ' '.join(parents))
-                print repr(bytes)
                 bytes += callable(length)
             # end serialise
             pack.add_bytes_record(bytes, [name])
