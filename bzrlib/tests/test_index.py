@@ -249,6 +249,15 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             ('ref', ((), ), 'refdata')]),
             set(index.iter_all_entries()))
 
+    def test_iteration_absent_skipped(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data')])
+        self.assertEqual(set([('name', (('ref',),), 'data')]),
+            set(index.iter_all_entries()))
+        self.assertEqual(set([('name', (('ref',),), 'data')]),
+            set(index.iter_entries(['name'])))
+        self.assertRaises(errors.MissingKey, list, index.iter_entries(['ref']))
+
     def test_iter_nothing_empty(self):
         index = self.make_index(1, nodes=[
             ('name', (['ref'], ), 'data'),

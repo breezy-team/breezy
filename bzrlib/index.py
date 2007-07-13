@@ -170,6 +170,8 @@ class GraphIndex(object):
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
     terminated string without any newlines.
+
+    It is presumed that the index will not be mutated - it is static data.
     """
 
     def __init__(self, transport, name):
@@ -191,7 +193,7 @@ class GraphIndex(object):
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
         line_count = 0
-        keys_by_offset = {}
+        self.keys_by_offset = {}
         trailers = 0
         pos = stream.tell()
         for line in stream.readlines():
@@ -205,14 +207,16 @@ class GraphIndex(object):
                     int(ref) for ref in ref_string.split('\r') if ref
                     ]))
             ref_lists = tuple(ref_lists)
-            keys_by_offset[pos] = (key, absent, ref_lists, value)
+            self.keys_by_offset[pos] = (key, absent, ref_lists, value)
             pos += len(line)
-        for key, absent, references, value in keys_by_offset.values():
+        for key, absent, references, value in self.keys_by_offset.values():
+            if absent:
+                continue
             # resolve references:
             if self.node_ref_lists:
                 node_refs = []
                 for ref_list in references:
-                    node_refs.append(tuple([keys_by_offset[ref][0] for ref in ref_list]))
+                    node_refs.append(tuple([self.keys_by_offset[ref][0] for ref in ref_list]))
                 node_refs = tuple(node_refs)
             else:
                 node_refs = ()
