@@ -1620,3 +1620,7 @@ class TestGraphIndexKnit(KnitTests):
              ['separate', 'tail', 'ghost', 'parent', 'tip'],
              ['separate', 'ghost', 'tail', 'parent', 'tip'],
             ))
+
+    def test_num_versions(self):
+        index = self.two_graph_index()
+        self.assertEqual(4, index.num_versions())

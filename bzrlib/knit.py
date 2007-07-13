@@ -1383,6 +1383,8 @@ class KnitGraphIndex(object):
         return [(key, refs[0]) for (key, refs, value) in 
             self._graph_index.iter_all_entries()]
 
+    def num_versions(self):
+        return len(list(self._graph_index.iter_all_entries()))
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
