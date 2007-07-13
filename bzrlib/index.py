@@ -67,7 +67,7 @@ class GraphIndexBuilder(object):
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        for key, (references, value) in self._nodes.items():
+        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
             flattened_references = ''
             lines.append("%s\0%s\0%s\n" % (key, flattened_references, value))
         lines.append('\n')

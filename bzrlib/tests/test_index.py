@@ -49,6 +49,23 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
             "akey\0\0data\n\n", contents)
 
+    def test_build_index_two_nodes_sorted_reverse(self):
+        # the highest sorted node comes first.
+        builder = GraphIndexBuilder()
+        # use three to have a good chance of glitching dictionary hash
+        # lookups etc. Insert in randomish order that is not correct
+        # and not the reverse of the correct order.
+        builder.add_node('2001', (), 'data')
+        builder.add_node('2000', (), 'data')
+        builder.add_node('2002', (), 'data')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
+            "2002\0\0data\n"
+            "2001\0\0data\n"
+            "2000\0\0data\n"
+            "\n", contents)
+
     def test_add_node_bad_key(self):
         builder = GraphIndexBuilder()
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
