@@ -23,6 +23,9 @@ IN DEVELOPMENT
       read from the repository, such as a 1s => 0.75s improvement in
       ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
 
+    * Merge is now faster.  Depending on the scenario, it can be more than 2x
+      faster. (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
