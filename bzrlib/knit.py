@@ -1216,6 +1216,7 @@ class _KnitIndex(_KnitComponentFile):
     __len__ = num_versions
 
     def get_versions(self):
+        """Get all the versions in the file. not topologically sorted."""
         return self._history
 
     def idx_to_name(self, idx):
@@ -1385,6 +1386,14 @@ class KnitGraphIndex(object):
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
+
+    __len__ = num_versions
+
+    def get_versions(self):
+        """Get all the versions in the file. not topologically sorted."""
+        return [node[0] for node in self._graph_index.iter_all_entries()]
+    
+
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
