@@ -16,6 +16,7 @@
 """Branching scheme implementations."""
 
 from bzrlib.errors import NotBranchError, BzrError
+from bzrlib.osutils import sha_strings
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -53,10 +54,9 @@ class BranchingScheme:
 
     @staticmethod
     def find_scheme(name):
-        if name == "trunk":
-            return TrunkBranchingScheme()
-
         if name.startswith("trunk"):
+            if name == "trunk":
+                return TrunkBranchingScheme()
             try:
                 return TrunkBranchingScheme(level=int(name[len("trunk"):]))
             except ValueError:
@@ -90,6 +90,7 @@ class BranchingScheme:
 
     def is_tag(self, path):
         raise NotImplementedError
+
 
 class TrunkBranchingScheme(BranchingScheme):
     """Standard Subversion repository layout. Each project contains three 
@@ -181,6 +182,9 @@ class ListBranchingScheme(BranchingScheme):
         self.branch_list = []
         for p in branch_list:
             self.branch_list.append(p.strip("/"))
+
+    def __str__(self):
+        return "list-%s" % sha_strings(self.branch_list)
 
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""

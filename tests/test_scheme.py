@@ -210,6 +210,9 @@ class ListScheme(TestCase):
     def test_unprefix_nested_branch(self):
         self.assertEqual(self.scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
 
+    def test_str(self):
+        self.assertEqual("list-ffcc22c56739f8d862c2a7578274dd2649565451", str(self.scheme))
+
 class TrunkScheme(TestCase):
     def test_is_branch_empty(self):
         self.assertFalse(TrunkBranchingScheme().is_branch(""))
