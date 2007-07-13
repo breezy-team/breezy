@@ -23,6 +23,9 @@ IN DEVELOPMENT
       read from the repository, such as a 1s => 0.75s improvement in
       ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
 
+    * Commit now only shows the progress in terms of directories instead of
+      entries. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -125,7 +128,7 @@ bzr 0.18rc1  2007-07-10
     * Progress reporting in ``commit`` has been improved. The various logical
       stages are now reported on as follows, namely:
 
-      * Collecting changes [Directory x] - Stage n/m
+      * Collecting changes [Entry x/y] - Stage n/m
       * Saving data locally - Stage n/m
       * Uploading data to master branch - Stage n/m
       * Updating the working tree - Stage n/m
