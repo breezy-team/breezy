@@ -41,8 +41,10 @@ class GraphIndexBuilder(object):
     NODE           := KEY NULL ABSENT? NULL REFERENCES NULL VALUE NEWLINE
     KEY            := Not-whitespace-utf8
     ABSENT         := 'a'
-    REFERENCES     := (REFERENCE_LIST TAB) {node_ref_lists}
-    REFERENCE_LIST := (KEY (CR KEY)*)?
+    REFERENCES     := REFERENCE_LIST (TAB REFERENCE_LIST){node_ref_lists - 1}
+    REFERENCE_LIST := (REFERENCE (CR REFERENCE)*)?
+    REFERENCE      := DIGITS  ; digits is the byte offset in the index of the
+                              ; referenced key.
     VALUE          := no-newline-no-null-bytes
     """
 
@@ -82,8 +84,11 @@ class GraphIndexBuilder(object):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         for key, (references, value) in sorted(self._nodes.items(),reverse=True):
-            flattened_references = ''
-            lines.append("%s\0\0%s\0%s\n" % (key, flattened_references, value))
+            flattened_references = []
+            for ref_list in references:
+                flattened_references.append('')
+            lines.append("%s\0\0%s\0%s\n" % (key,
+                '\t'.join(flattened_references), value))
         lines.append('\n')
         return StringIO(''.join(lines))
 
