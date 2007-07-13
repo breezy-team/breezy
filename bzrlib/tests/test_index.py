@@ -17,7 +17,7 @@
 """Tests for indices."""
 
 from bzrlib import errors
-from bzrlib.index import GraphIndexBuilder, GraphIndex
+from bzrlib.index import CombinedGraphIndex, GraphIndexBuilder, GraphIndex
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -258,7 +258,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             set(index.iter_entries(['name'])))
         self.assertRaises(errors.MissingKey, list, index.iter_entries(['ref']))
 
-    def test_iter_nothing_empty(self):
+    def test_iter_all_keys(self):
         index = self.make_index(1, nodes=[
             ('name', (['ref'], ), 'data'),
             ('ref', ([], ), 'refdata')])
@@ -266,7 +266,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             ('ref', ((), ), 'refdata')]),
             set(index.iter_entries(['name', 'ref'])))
 
-    def test_iter_all_keys(self):
+    def test_iter_nothing_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_entries([])))
 
@@ -311,4 +311,118 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def test_validate_no_refs_content(self):
         index = self.make_index(nodes=[('key', (), 'value')])
+        index.validate()
+
+
+class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
+
+    def make_index(self, name, ref_lists=0, nodes=[]):
+        builder = GraphIndexBuilder(ref_lists)
+        for node, references, value in nodes:
+            builder.add_node(node, references, value)
+        stream = builder.finish()
+        trans = self.get_transport()
+        trans.put_file(name, stream)
+        return GraphIndex(trans, name)
+
+    def test_open_missing_index_no_error(self):
+        trans = self.get_transport()
+        index1 = GraphIndex(trans, 'missing')
+        index = CombinedGraphIndex([index1])
+
+    def test_iter_all_entries_empty(self):
+        index = CombinedGraphIndex([])
+        self.assertEqual([], list(index.iter_all_entries()))
+
+    def test_iter_all_entries_children_empty(self):
+        index1 = self.make_index('name')
+        index = CombinedGraphIndex([index1])
+        self.assertEqual([], list(index.iter_all_entries()))
+
+    def test_iter_all_entries_simple(self):
+        index1 = self.make_index('name', nodes=[('name', (), 'data')])
+        index = CombinedGraphIndex([index1])
+        self.assertEqual([('name', (), 'data')],
+            list(index.iter_all_entries()))
+
+    def test_iter_all_entries_two_indices(self):
+        index1 = self.make_index('name1', nodes=[('name', (), 'data')])
+        index2 = self.make_index('name2', nodes=[('2', (), '')])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual([('name', (), 'data'),
+            ('2', (), '')],
+            list(index.iter_all_entries()))
+
+    def test_iter_all_entries_two_indices_dup_key(self):
+        index1 = self.make_index('name1', nodes=[('name', (), 'data')])
+        index2 = self.make_index('name2', nodes=[('name', (), 'data')])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual([('name', (), 'data')],
+            list(index.iter_all_entries()))
+
+    def test_iter_nothing_empty(self):
+        index = CombinedGraphIndex([])
+        self.assertEqual([], list(index.iter_entries([])))
+
+    def test_iter_nothing_children_empty(self):
+        index1 = self.make_index('name')
+        index = CombinedGraphIndex([index1])
+        self.assertEqual([], list(index.iter_entries([])))
+
+    def test_iter_all_keys(self):
+        index1 = self.make_index('1', 1, nodes=[
+            ('name', (['ref'], ), 'data')])
+        index2 = self.make_index('2', 1, nodes=[
+            ('ref', ([], ), 'refdata')])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_entries(['name', 'ref'])))
+ 
+    def test_iter_all_keys_dup_entry(self):
+        index1 = self.make_index('1', 1, nodes=[
+            ('name', (['ref'], ), 'data'),
+            ('ref', ([], ), 'refdata')])
+        index2 = self.make_index('2', 1, nodes=[
+            ('ref', ([], ), 'refdata')])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_entries(['name', 'ref'])))
+ 
+    def test_iter_missing_entry_empty(self):
+        index = CombinedGraphIndex([])
+        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+
+    def test_iter_missing_entry_one_index(self):
+        index1 = self.make_index('1')
+        index = CombinedGraphIndex([index1])
+        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+
+    def test_iter_missing_entry_two_index(self):
+        index1 = self.make_index('1')
+        index2 = self.make_index('2')
+        index = CombinedGraphIndex([index1, index2])
+        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+ 
+    def test_iter_entry_present_one_index_only(self):
+        index1 = self.make_index('1', nodes=[('key', (), '')])
+        index2 = self.make_index('2', nodes=[])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual([('key', (), '')],
+            list(index.iter_entries(['key'])))
+        # and in the other direction
+        index = CombinedGraphIndex([index2, index1])
+        self.assertEqual([('key', (), '')],
+            list(index.iter_entries(['key'])))
+
+    def test_validate_bad_child_index_errors(self):
+        trans = self.get_transport()
+        trans.put_bytes('name', "not an index\n")
+        index1 = GraphIndex(trans, 'name')
+        index = CombinedGraphIndex([index1])
+        self.assertRaises(errors.BadIndexFormatSignature, index.validate)
+
+    def test_validate_empty(self):
+        index = CombinedGraphIndex([])
         index.validate()

@@ -264,3 +264,55 @@ class GraphIndex(object):
         # iter_all validates completely at the moment, so just do that.
         for node in self.iter_all_entries():
             pass
+
+
+class CombinedGraphIndex(object):
+    """A GraphIndex made up from smaller GraphIndices.
+    
+    The backing indices must implement GraphIndex, and are presumed to be
+    static data.
+    """
+
+    def __init__(self, indices):
+        """Create a CombinedGraphIndex backed by indices.
+
+        :param indices: The indices to query for data.
+        """
+        self._indices = indices
+        
+    def iter_all_entries(self):
+        """Iterate over all keys within the index
+
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index.
+        """
+        seen_keys = set()
+        for index in self._indices:
+            for node in index.iter_all_entries():
+                if node[0] not in seen_keys:
+                    yield node
+                    seen_keys.add(node[0])
+
+    def iter_entries(self, keys):
+        """Iterate over keys within the index.
+
+        :param keys: An iterable providing the keys to be retrieved.
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index.
+        """
+        found = set()
+        keys = set(keys)
+        for node in self.iter_all_entries():
+            if node[0] in keys:
+                yield node
+                found.add(node[0])
+        missing = keys.difference(found)
+        if missing:
+            raise errors.MissingKey(self, missing.pop())
+
+    def validate(self):
+        """Validate that everything in the index can be accessed."""
+        for index in self._indices:
+            index.validate()
