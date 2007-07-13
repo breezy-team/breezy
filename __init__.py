@@ -25,7 +25,7 @@ import bzrlib
 
 from bzrlib.trace import warning, mutter
 
-__version__ = '0.4.0'
+__version__ = '0.4.0dev'
 COMPATIBLE_BZR_VERSIONS = [(0, 18)]
 
 def check_bzrlib_version(desired):
@@ -36,7 +36,9 @@ def check_bzrlib_version(desired):
     Otherwise, assume incompatible.
     """
     bzrlib_version = bzrlib.version_info[:2]
-    if bzrlib_version in desired:
+    if (bzrlib_version in desired or 
+        ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
+         bzrlib.version_info[3] == 'dev')):
         return
     if bzrlib_version < desired[0]:
         warning('Installed bzr version %s is too old to be used with bzr-svn'
