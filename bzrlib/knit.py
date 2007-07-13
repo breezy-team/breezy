@@ -1386,6 +1386,9 @@ class KnitGraphIndex(object):
         """Get all the versions in the file. not topologically sorted."""
         return [node[0] for node in self._graph_index.iter_all_entries()]
     
+    def has_version(self, version_id):
+        """True if the version is in the index."""
+        return len(list(self._graph_index.iter_entries([version_id]))) == 1
 
 
 class _KnitData(_KnitComponentFile):

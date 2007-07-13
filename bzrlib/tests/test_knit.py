@@ -1608,3 +1608,13 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(set(['tail', 'tip', 'parent', 'separate']),
             set(index.get_versions()))
 
+    def test_has_version(self):
+        index = self.two_graph_index()
+        self.assertTrue(index.has_version('tail'))
+        self.assertFalse(index.has_version('ghost'))
+
+## --- mutating tests for later ---
+#
+#  def test_add_version
+#  def test_add_versions
+#  
