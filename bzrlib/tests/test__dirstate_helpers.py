@@ -46,6 +46,10 @@ class TestBisectPathMixin(object):
     _bisect_path_* is intended to work like bisect.bisect_*() except it
     knows it is working on paths that are sorted by ('path', 'to', 'foo')
     chunks rather than by raw 'path/to/foo'.
+
+    Test Cases should inherit from this and override ``get_bisect_path`` return
+    their implementation, and ``get_bisect`` to return the matching
+    bisect.bisect_* function.
     """
 
     def get_bisect_path(self):
@@ -192,6 +196,7 @@ class TestBisectPathMixin(object):
 
 
 class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
+    """Run all Bisect Path tests against _bisect_path_left_py."""
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_py import _bisect_path_left_py
@@ -202,11 +207,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
 
 
 class TestCompiledBisectPathLeft(TestBisectPathLeft):
-    """Test that _bisect_path_left() returns the expected values.
-
-    This runs all the normal tests that TestBisectDirblock did, but uses the
-    compiled version.
-    """
+    """Run all Bisect Path tests against _bisect_path_right_c"""
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
@@ -216,6 +217,7 @@ class TestCompiledBisectPathLeft(TestBisectPathLeft):
 
 
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
+    """Run all Bisect Path tests against _bisect_path_right_py"""
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_py import _bisect_path_right_py
@@ -226,11 +228,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
 
 
 class TestCompiledBisectPathRight(TestBisectPathRight):
-    """Test that _bisect_path_right() returns the expected values.
-
-    This runs all the normal tests that TestBisectDirblock did, but uses the
-    compiled version.
-    """
+    """Run all Bisect Path tests against _bisect_path_right_c"""
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
@@ -245,6 +243,10 @@ class TestBisectDirblock(tests.TestCase):
     bisect_dirblock is intended to work like bisect.bisect_left() except it
     knows it is working on dirblocks and that dirblocks are sorted by ('path',
     'to', 'foo') chunks rather than by raw 'path/to/foo'.
+
+    This test is parameterized by calling get_bisect_dirblock(). Child test
+    cases can override this function to test against a different
+    implementation.
     """
 
     def get_bisect_dirblock(self):
@@ -348,19 +350,19 @@ class TestCompiledBisectDirblock(TestBisectDirblock):
 
 
 class TestCmpByDirs(tests.TestCase):
+    """Test an implementation of cmp_by_dirs()
+
+    cmp_by_dirs() compares 2 paths by their directory sections, rather than as
+    plain strings.
+
+    Child test cases can override ``get_cmp_by_dirs`` to test a specific
+    implementation.
+    """
 
     def get_cmp_by_dirs(self):
         """Get a specific implementation of cmp_by_dirs."""
         from bzrlib._dirstate_helpers_py import cmp_by_dirs_py
         return cmp_by_dirs_py
-
-    def assertPositive(self, val):
-        """Assert that val is greater than 0."""
-        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
-
-    def assertNegative(self, val):
-        """Assert that val is less than 0."""
-        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -457,6 +459,14 @@ class TestCompiledCmpByDirs(TestCmpByDirs):
 
 
 class TestCmpPathByDirblock(tests.TestCase):
+    """Test an implementation of _cmp_path_by_dirblock()
+
+    _cmp_path_by_dirblock() compares two paths using the sort order used by
+    DirState. All paths in the same directory are sorted together.
+
+    Child test cases can override ``get_cmp_path_by_dirblock`` to test a specific
+    implementation.
+    """
 
     def get_cmp_path_by_dirblock(self):
         """Get a specific implementation of _cmp_path_by_dirblock."""
@@ -616,6 +626,14 @@ class TestMemRChr(tests.TestCase):
 
 
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
+    """Test an implementation of _read_dirblocks()
+
+    _read_dirblocks() reads in all of the dirblock information from the disk
+    file.
+
+    Child test cases can override ``get_read_dirblocks`` to test a specific
+    implementation.
+    """
 
     def get_read_dirblocks(self):
         from bzrlib._dirstate_helpers_py import _read_dirblocks_py
@@ -635,6 +653,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
 
 class TestCompiledReadDirblocks(TestReadDirblocks):
+    """Test the pyrex implementation of _read_dirblocks"""
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 

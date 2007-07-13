@@ -835,6 +835,14 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
