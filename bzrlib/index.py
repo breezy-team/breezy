@@ -113,7 +113,7 @@ class GraphIndexBuilder(object):
                 # one byte for absent if set.
                 if absent:
                     non_ref_bytes += 1
-                if self.reference_lists:
+                elif self.reference_lists:
                     # (ref_lists -1) tabs
                     non_ref_bytes += self.reference_lists - 1
                     # (ref-1 cr's per ref_list)
@@ -138,8 +138,8 @@ class GraphIndexBuilder(object):
                 current_offset += len(key) + len(value) + 3 + 1
                 # one byte for absent if set.
                 if absent:
-                    current_offset+= 1
-                if self.reference_lists:
+                    current_offset += 1
+                elif self.reference_lists:
                     # (ref_lists -1) tabs
                     current_offset += self.reference_lists - 1
                     # (ref-1 cr's per ref_list)
