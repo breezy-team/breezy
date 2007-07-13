@@ -14,58 +14,60 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.win32utils import glob_expand
+import sys
 
 
 class Win32UtilsGlobExpand(TestCaseInTempDir):
+
+    def setUp(self):
+        super(Win32UtilsGlobExpand, self).setUp()
+        if sys.platform != 'win32':
+             raise TestSkipped('just for the Win32 platform')
    
     def test_empty_tree(self):
         self.build_tree([])
-        
-        testset = [[['a'], ['a']],
-                   [['?'], ['?']],
-                   [['*'], ['*']],
-                   [['a', 'a'], ['a', 'a']]]
-                   
-        self._run_testset(testset)
+        self._run_testset([
+            [['a'], ['a']],
+            [['?'], ['?']],
+            [['*'], ['*']],
+            [['a', 'a'], ['a', 'a']]])
         
     def test_tree1(self):
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
                          'b', 'b1', 'b2', 'b3',
                          'c/', 'c/c1', 'c/c2', 
                          'd/', 'd/d1', 'd/d2'])
+        self._run_testset([
+            # no wildcards
+            [['a'], ['a']],
+            [['a', 'a' ], ['a', 'a']],
+            [['A'], ['A']],
+                
+            [['d'], ['d']],
+            [['d/'], ['d/']],
+            [['d\\'], ['d\\']],
+               
+            # wildcards
+            [['a*'], ['a', 'a1', 'a2', 'a11', 'a.1']],
+            [['?'], ['a', 'b', 'c', 'd']],
+            [['a?'], ['a1', 'a2']],
+            [['a??'], ['a11', 'a.1']],
+            [['b[1-2]'], ['b1', 'b2']],
+            [['A?'], ['a1', 'a2']],
+               
+            [['d/*'], ['d\\d1', 'd\\d2']],
+            [['d\\*'], ['d\\d1', 'd\\d2']],
+            [['?\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
+            [['*\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
+            [['*/'], ['c\\', 'd\\']],
+            [['*\\'], ['c\\', 'd\\']]])
         
-        testset = [# no wildcards
-                   [['a'], ['a']],
-                   [['a', 'a' ], ['a', 'a']],
-                   [['A'], ['A']],
-
-                   [['d'], ['d']],
-                   [['d/'], ['d/']],
-                   [['d\\'], ['d\\']],
-                   
-                   # wildcards
-                   [['a*'], ['a', 'a1', 'a2', 'a11', 'a.1']],
-                   [['?'], ['a', 'b', 'c', 'd']],
-                   [['a?'], ['a1', 'a2']],
-                   [['a??'], ['a11', 'a.1']],
-                   [['b[1-2]'], ['b1', 'b2']],
-                   [['A?'], ['a1', 'a2']],
-                   
-                   [['d/*'], ['d\\d1', 'd\\d2']],
-                   [['d\\*'], ['d\\d1', 'd\\d2']],
-                   [['?\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
-                   [['*\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
-                   [['*/'], ['c\\', 'd\\']],
-                   [['*\\'], ['c\\', 'd\\']]]
-
-        self._run_testset(testset)                   
-                      
     def _run_testset(self, testset):
         for pattern, expected in testset:
             result = glob_expand(pattern)
             expected.sort()
             result.sort()
             self.assertEqual(expected, result, 'pattern %s' % pattern)
-        
+
