@@ -76,9 +76,11 @@ class GraphIndexBuilder(object):
             for reference in reference_list:
                 if _whitespace_re.search(reference) is not None:
                     raise errors.BadIndexKey(reference)
-        if key in self._nodes:
+                if reference not in self._nodes:
+                    self._nodes[reference] = ('a', [], '')
+        if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = (references, value)
+        self._nodes[key] = ('', references, value)
 
     def finish(self):
         lines = [_SIGNATURE]
@@ -95,45 +97,67 @@ class GraphIndexBuilder(object):
         # one to pad all the data with reference-length and determine entry
         # addresses.
         # One to serialise.
-        non_ref_bytes = prefix_length
-        total_references = 0
-        # XXX: support 'a' field here.
-        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
-            # key is literal, value is literal, there are 3 null's, 1 NL
-            # (ref_lists -1) tabs, (ref-1 cr's per ref_list)
-            non_ref_bytes += len(key) + 3 + 1 + self.reference_lists - 1
-            for ref_list in references:
-                # how many references across the whole file?
-                total_references += len(ref_list)
-                # accrue reference separators
-                non_ref_bytes += len(ref_list) - 1
-        # how many digits are needed to represent the total byte count?
-        digits = 1
-        possible_total_bytes = non_ref_bytes + total_references*digits
-        while 10 ** digits < possible_total_bytes:
-            digits += 1
+        nodes = sorted(self._nodes.items(),reverse=True)
+        # we only need to pre-pass if we have reference lists at all.
+        if self.reference_lists:
+            non_ref_bytes = prefix_length
+            total_references = 0
+            # TODO use simple multiplication for the constants in this loop.
+            # TODO: factor out the node length calculations so this loop 
+            #       and the next have less (no!) duplicate code.
+            for key, (absent, references, value) in nodes:
+                # key is literal, value is literal, there are 3 null's, 1 NL
+                non_ref_bytes += len(key) + len(value) + 3 + 1
+                # one byte for absent if set.
+                if absent:
+                    non_ref_bytes += 1
+                if self.reference_lists:
+                    # (ref_lists -1) tabs
+                    non_ref_bytes += self.reference_lists - 1
+                    # (ref-1 cr's per ref_list)
+                    for ref_list in references:
+                        # how many references across the whole file?
+                        total_references += len(ref_list)
+                        # accrue reference separators
+                        if ref_list:
+                            non_ref_bytes += len(ref_list) - 1
+            # how many digits are needed to represent the total byte count?
+            digits = 1
             possible_total_bytes = non_ref_bytes + total_references*digits
-        # resolve key addresses.
-        key_addresses = {}
-        current_offset = prefix_length
-        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
-            key_addresses[key] = current_offset
-            current_offset += len(key) + 3 + 1 + self.reference_lists - 1
-            for ref_list in references:
-                # accrue reference separators
-                current_offset += len(ref_list) - 1
-                # accrue reference bytes
-                current_offset += digits * len(ref_list)
-        # serialise
-        format_string = '%%0%sd' % digits
-        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
+            while 10 ** digits < possible_total_bytes:
+                digits += 1
+                possible_total_bytes = non_ref_bytes + total_references*digits
+            # resolve key addresses.
+            key_addresses = {}
+            current_offset = prefix_length
+            for key, (absent, references, value) in nodes:
+                key_addresses[key] = current_offset
+                # key is literal, value is literal, there are 3 null's, 1 NL
+                current_offset += len(key) + len(value) + 3 + 1
+                # one byte for absent if set.
+                if absent:
+                    current_offset+= 1
+                if self.reference_lists:
+                    # (ref_lists -1) tabs
+                    current_offset += self.reference_lists - 1
+                    # (ref-1 cr's per ref_list)
+                    for ref_list in references:
+                        # accrue reference bytes
+                        current_offset += digits * len(ref_list)
+                        # accrue reference separators
+                        if ref_list:
+                            # accrue reference separators
+                            current_offset += len(ref_list) - 1
+            # serialise
+            format_string = '%%0%sd' % digits
+        for key, (absent, references, value) in nodes:
             flattened_references = []
             for ref_list in references:
                 ref_addresses = []
                 for reference in ref_list:
                     ref_addresses.append(format_string % key_addresses[reference])
                 flattened_references.append('\r'.join(ref_addresses))
-            lines.append("%s\0\0%s\0%s\n" % (key,
+            lines.append("%s\0%s\0%s\0%s\n" % (key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
         return StringIO(''.join(lines))

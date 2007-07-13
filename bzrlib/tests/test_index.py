@@ -113,7 +113,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
             "reference2\0\0\0data\n"
             "reference\0\0\0data\n"
-            "key\0\x0051\r38\0data\n"
+            "key\0\x0056\r38\0data\n"
             "\n", contents)
 
     def test_multiple_reference_lists_are_tab_delimited(self):
@@ -125,6 +125,17 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
             "reference\0\0\t\0data\n"
             "key\0\x0038\t38\0data\n"
+            "\n", contents)
+
+    def test_add_node_referencing_missing_key_makes_absent(self):
+        builder = GraphIndexBuilder(reference_lists=1)
+        builder.add_node('key', (['reference', 'reference2'], ), 'data')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
+            "reference2\0a\0\0\n"
+            "reference\0a\0\0\n"
+            "key\0\x0053\r38\0data\n"
             "\n", contents)
 
     def test_add_node_bad_key(self):
@@ -181,7 +192,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
 
     def test_add_key_after_referencing_key(self):
         builder = GraphIndexBuilder(reference_lists=1)
-        builder.add_node('key', (['reference']), 'data')
+        builder.add_node('key', (['reference'], ), 'data')
         builder.add_node('reference', ([],), 'data')
 
 
