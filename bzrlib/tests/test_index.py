@@ -219,7 +219,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def make_index(self, ref_lists=0, nodes=[]):
-        builder = GraphIndexBuilder()
+        builder = GraphIndexBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
         stream = builder.finish()
@@ -235,6 +235,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_iter_all_entries_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))
+
+    def test_iter_all_entries_simple(self):
+        index = self.make_index(nodes=[('name', (), 'data')])
+        self.assertEqual([('name', (), 'data')],
+            list(index.iter_all_entries()))
 
     def test_iter_nothing_empty(self):
         index = self.make_index()
@@ -259,8 +264,16 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('index', new_content)
         self.assertRaises(errors.BadIndexOptions, index.validate)
 
-    def test_validate_missing_end_line(self):
+    def test_validate_missing_end_line_empty(self):
         index = self.make_index(2)
+        trans = self.get_transport()
+        content = trans.get_bytes('index')
+        # truncate the last byte
+        trans.put_bytes('index', content[:-1])
+        self.assertRaises(errors.BadIndexData, index.validate)
+
+    def test_validate_missing_end_line_nonempty(self):
+        index = self.make_index(2, [('key', ([], []), '')])
         trans = self.get_transport()
         content = trans.get_bytes('index')
         # truncate the last byte

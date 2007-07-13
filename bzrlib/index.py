@@ -188,7 +188,35 @@ class GraphIndex(object):
             defined order for the result iteration - it will be in the most
             efficient order for the index.
         """
-        return []
+        stream = self._transport.get(self._name)
+        self._read_prefix(stream)
+        line_count = 0
+        keys_by_offset = {}
+        trailers = 0
+        pos = stream.tell()
+        for line in stream.readlines():
+            if line == '\n':
+                trailers += 1
+                continue
+            key, absent, references, value = line[:-1].split('\0')
+            keys_by_offset[pos] = (key, absent, references, value)
+        for key, absent, references, value in keys_by_offset.values():
+            yield (key, (), value)
+        if trailers != 1:
+            # there must be one line - the empty trailer line.
+            raise errors.BadIndexData(self)
+
+    def _read_prefix(self, stream):
+        signature = stream.read(len(self._signature()))
+        if not signature == self._signature():
+            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+        options_line = stream.readline()
+        if not options_line.startswith(_OPTION_NODE_REFS):
+            raise errors.BadIndexOptions(self)
+        try:
+            self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
+        except ValueError:
+            raise errors.BadIndexOptions(self)
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -210,21 +238,6 @@ class GraphIndex(object):
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
-        stream = self._transport.get(self._name)
-        signature = stream.read(len(self._signature()))
-        if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
-        options_line = stream.readline()
-        if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
-        try:
-            node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
-        except ValueError:
-            raise errors.BadIndexOptions(self)
-        line_count = 0
-        for line in stream.readlines():
-            # validate the line
-            line_count += 1
-        if line_count < 1:
-            # there must be one line - the empty trailer line.
-            raise errors.BadIndexData(self)
+        # iter_all validates completely at the moment, so just do that.
+        for node in self.iter_all_entries():
+            pass
