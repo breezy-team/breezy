@@ -20,6 +20,8 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists
 
 import os
 
+from scheme import BranchingScheme
+
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
 # was seen at.
@@ -39,11 +41,11 @@ class SvnRepositoryConfig(IniBasedConfig):
             self._get_parser()[self.uuid] = {}
 
     def set_branching_scheme(self, scheme):
-        self.set_user_option('branching-scheme', scheme)
+        self.set_user_option('branching-scheme', str(scheme))
 
     def get_branching_scheme(self):
         try:
-            return self._get_parser()[self.uuid]['branching-scheme']
+            return BranchingScheme.find_scheme(self._get_parser()[self.uuid]['branching-scheme'])
         except KeyError:
             return None
 
