@@ -764,11 +764,6 @@ class SFTPTransport(SFTPUrlHandling):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
             
-    def external_url(self):
-        """See bzrlib.transport.Transport.external_url."""
-        # the external path for SFTP is the base
-        return self.base
-
     def listable(self):
         """Return True if this store supports listing."""
         return True

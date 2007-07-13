@@ -2475,11 +2475,12 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+        from bzrlib.version import show_version
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        if not list_only:
+            show_version(show_config=False, show_copyright=False)
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -3066,6 +3067,22 @@ class cmd_missing(Command):
             finally:
                 local_branch.unlock()
         return status_code
+
+
+class cmd_pack(Command):
+    """Compress the data within a repository."""
+
+    _see_also = ['repositories']
+    takes_args = ['branch_or_repo?']
+
+    def run(self, branch_or_repo='.'):
+        dir = bzrdir.BzrDir.open_containing(branch_or_repo)[0]
+        try:
+            branch = dir.open_branch()
+            repository = branch.repository
+        except errors.NotBranchError:
+            repository = dir.open_repository()
+        repository.pack()
 
 
 class cmd_plugins(Command):

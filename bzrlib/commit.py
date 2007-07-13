@@ -599,7 +599,7 @@ class Commit(object):
         self.pb_entries_total = len(work_inv)
 
         # Check and warn about old CommitBuilders
-        entries = work_inv.iter_entries_by_dir()
+        entries = work_inv.iter_entries()
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
                 ' the root entry as of bzr 0.10.', DeprecationWarning, 
