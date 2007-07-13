@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+from cStringIO import StringIO
 import os
 import sys
 import tempfile
@@ -23,6 +24,7 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
+from bzrlib.pack import ContainerWriter
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -241,8 +243,29 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-#class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest)
-#
-#    def do_repository_request(self, repository, *revision_ids):
-#        stream = repository.get_data_stream(revision_ids)
-#        return SuccessfulSmartServerResponse((), 
+class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *revision_ids):
+        stream = repository.get_data_stream(revision_ids)
+        filelike = StringIO()
+        pack = ContainerWriter(filelike.write)
+        pack.begin()
+        for name, versioned_file in stream:
+            knit_stream = versioned_file.get_data_stream(revision_ids)
+            # serialise knit_stream to bytes
+            #  * format signature + CR
+            #  * version + SPC
+            #  * options (comma-separated) + SPC
+            #  * parents (space-separated) + CR
+            #  * bytes
+
+            format_signature, data_list, callable = knit_stream
+            bytes = format_signature + '\n'
+            for version, options, length, parents in data_list:
+                options = ','.join(options)
+                bytes += '%s %s %s\n' % (version, options, ' '.join(parents))
+                bytes += callable(length)
+            ## end serialise
+            pack.add_bytes_record(bytes, [name])
+        pack.end()
+        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())

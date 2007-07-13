@@ -128,11 +128,8 @@ class KnitRepository(MetaDirRepository):
 
     @needs_read_lock
     def get_data_stream(self, revision_ids):
-        from bzrlib.pack import ContainerWriter
-        from cStringIO import StringIO
-        filelike = StringIO()
-        pack = ContainerWriter(filelike.write)
-        pack.begin()
+        """See Repository.get_data_stream."""
+        # XXX: is this generic enough to move to the Repository base class?
         for knit_kind, file_id, versions in self.get_data_about_revision_ids(revision_ids):
             if knit_kind == 'file':
                 name = 'file:' + file_id
@@ -147,25 +144,7 @@ class KnitRepository(MetaDirRepository):
                     'revisions', self.get_transaction())
             else:
                 raise AssertionError('Unknown knit kind %r' % (knit_kind,))
-            knit_stream = knit.get_data_stream(versions)
-            # serialise knit_stream to bytes
-            #  * format signature + CR
-            #  * version + SPC
-            #  * options (comma-separated) + SPC
-            #  * parents (space-separated) + CR
-            #  * bytes
-
-            format_signature, data_list, callable = knit_stream
-            bytes = format_signature + '\n'
-            for version, options, length, parents in data_list:
-                options = ','.join(options)
-                bytes += '%s %s %s\n' % (version, options, ' '.join(parents))
-                bytes += callable(length)
-            # end serialise
-            pack.add_bytes_record(bytes, [name])
-        pack.end()
-        filelike.seek(0)
-        return filelike
+            yield name, knit
 
     @needs_read_lock
     def get_revision(self, revision_id):

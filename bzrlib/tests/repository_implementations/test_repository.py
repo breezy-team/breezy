@@ -428,23 +428,29 @@ class TestRepository(TestCaseWithRepository):
         try:
             stream = repo.get_data_stream(['rev_id'])
         except NotImplementedError:
-            # Not all repositories suppor streaming.
+            # Not all repositories support streaming.
             return
 
-        # The data stream is a valid pack file with records for:
-        #   * the file knit
+        # The data stream is a iterator that yields (name, versioned_file)
+        # pairs for:
+        #   * the file knit (or knits; if this repo has rich roots there will be
+        #     a file knit for that as well as for 'file1').
         #   * the inventory knit
         #   * the revisions knit
         # in that order.
-        from bzrlib import pack
         expected_record_names = ['file:file1', 'inventory', 'revisions']
         streamed_names = []
-        for names, read_bytes in pack.ContainerReader(stream).iter_records():
-            read_bytes(None) # XXX: should be unnecessary; pack should automatically skip unread records.
-            [name] = names
+        for name, versioned_file in stream:
             streamed_names.append(name)
+            # The versioned_file will have a get_data_stream method.
+            versioned_file.get_data_stream(['rev_id'])
 
         if repo.supports_rich_root():
+            # Check for the root versioned file in the stream, then remove it
+            # from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file knits can be in any order, so this test is
+            # written to allow that.
             inv = repo.get_inventory('rev_id')
             expected_record_name = 'file:' + inv.root.file_id
             self.assertTrue(expected_record_name in streamed_names)

@@ -20,7 +20,7 @@ from StringIO import StringIO
 import tempfile
 import tarfile
 
-from bzrlib import bzrdir, errors, smart, tests
+from bzrlib import bzrdir, errors, pack, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
@@ -766,22 +766,36 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
             "extraneous file present in tar file")
 
 
-#class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
-#
-#    def test_fetch_revisions(self):
-#        backing = self.get_transport()
-#        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
-#        tree = self.make_branch_and_memory_tree('.')
-#        tree.lock_write()
-#        tree.add('')
-#        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-#        rev_id2_utf8 = u'\xc9'.encode('utf-8')
-#        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
-#        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
-#        tree.unlock()
-#
-#        self.assertEqual(SmartServerResponse(('ok', ), 'pack XXX of both revisions'),
-#            request.execute(backing.local_abspath(''), rev_id2_utf8))
+class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
+
+    def test_fetch_revisions(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        rev_id2_utf8 = u'\xc9'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
+        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.unlock()
+
+        response = request.execute(backing.local_abspath(''), rev_id2_utf8)
+        self.assertEqual(('ok',), response.args)
+        from cStringIO import StringIO
+        unpacker = pack.ContainerReader(StringIO(response.body))
+        names = []
+        for [name], read_bytes in unpacker.iter_records():
+            names.append(name)
+            read_bytes(None) # XXX: to skip the record, really the iter_records
+                             # iterator should do this automatically.
+
+            # XXX: assert that the bytes for each pack record are valid?
+        
+        # XXX: test inserting the pack into a repo, and asserting things about
+        # the repo?
+
+    # test: no such revision error
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
