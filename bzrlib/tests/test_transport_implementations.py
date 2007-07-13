@@ -25,6 +25,7 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
+import unittest
 
 from bzrlib import (
     errors,
@@ -45,10 +46,51 @@ from bzrlib.errors import (ConnectionError,
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, remote
+from bzrlib.transport import memory, remote, _get_transport_modules
 import bzrlib.transport
+
+
+class TransportTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing all transports for a single test.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_class and transport_server classes into each copy. Each copy
+    is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self):
+        self.scenarios = self._test_permutations()
+
+    def get_transport_test_permutations(self, module):
+        """Get the permutations module wants to have tested."""
+        if getattr(module, 'get_test_permutations', None) is None:
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
+                    % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
+            return []
+        return module.get_test_permutations()
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        result = []
+        for module in _get_transport_modules():
+            try:
+                permutations = self.get_transport_test_permutations(
+                    reduce(getattr, (module).split('.')[1:], __import__(module)))
+                for (klass, server_factory) in permutations:
+                    scenario = (server_factory.__name__,
+                        {"transport_class":klass,
+                         "transport_server":server_factory})
+                    result.append(scenario)
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from running this test
+                pass
+        return result
+
 
 
 class TransportTests(TestTransportImplementation):
@@ -138,6 +180,26 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile, t.get, 'c')
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
+
+    def test_get_directory_read_gives_ReadError(self):
+        """consistent errors for read() on a file returned by get()."""
+        t = self.get_transport()
+        if t.is_readonly():
+            self.build_tree(['a directory/'])
+        else:
+            t.mkdir('a%20directory')
+        # getting the file must either work or fail with a PathError
+        try:
+            a_file = t.get('a%20directory')
+        except (errors.PathError, errors.RedirectRequested):
+            # early failure return immediately.
+            return
+        # having got a file, read() must either work (i.e. http reading a dir listing) or
+        # fail with ReadError
+        try:
+            a_file.read()
+        except errors.ReadError:
+            pass
 
     def test_get_bytes(self):
         t = self.get_transport()

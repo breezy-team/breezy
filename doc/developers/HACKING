@@ -372,6 +372,37 @@ appropriate to use them if you've committed a test for a bug but not the
 fix for it, or if something works on Unix but not on Windows.
 
 
+Testing exceptions and errors
+-----------------------------
+
+It's important to test handling of errors and exceptions.  Because this
+code is often not hit in ad-hoc testing it can often have hidden bugs --
+it's particularly common to get NameError because the exception code
+references a variable that has since been renamed.
+
+.. TODO: Something about how to provoke errors in the right way?
+
+In general we want to test errors at two levels:
+
+1. A test in ``test_errors.py`` checking that when the exception object is
+   constructed with known parameters it produces an expected string form.
+   This guards against mistakes in writing the format string, or in the
+   ``str`` representations of its parameters.  There should be one for
+   each exception class.
+
+2. Tests that when an api is called in a particular situation, it raises
+   an error of the expected class.  You should typically use
+   ``assertRaises``, which in the Bazaar test suite returns the exception
+   object to allow you to examine its parameters.  
+
+In some cases blackbox tests will also want to check error reporting.  But
+it can be difficult to provoke every error through the commandline
+interface, so those tests are only done as needed -- eg in response to a
+particular bug or if the error is reported in an unusual way(?)  Blackbox
+tests should mostly be testing how the command-line interface works, so
+should only test errors if there is something particular to the cli in how
+they're displayed or handled.
+
 
 Essential Domain Classes
 ########################
@@ -633,6 +664,16 @@ happened. But it requires accessing a member more than once from the new
 variable, so some bugs are not detected right away.
 
 
+The Null revision
+-----------------
+
+The null revision is the ancestor of all revisions.  Its revno is 0, its
+revision-id is ``null:``, and its tree is the empty tree.  When referring
+to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
+code sometimes uses ``None`` for the null revision, but this practice is
+being phased out.
+
+
 Getting Input
 =============
 
@@ -691,6 +732,24 @@ structured data, we should make it so.
 
 The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
+
+
+
+Displaying help
+===============
+
+Bazaar has online help for various topics through ``bzr help COMMAND`` or
+equivalently ``bzr command -h``.  We also have help on command options,
+and on other help topics.  (See ``help_topics.py``.)
+
+As for python docstrings, the first paragraph should be a single-sentence
+synopsis of the command.
+
+The help for options should be one or more proper sentences, starting with
+a capital letter and finishing with a full stop (period).
+
+All help messages and documentation should have two spaces between
+sentences.
 
 
 Writing tests

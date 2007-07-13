@@ -23,7 +23,7 @@ from bzrlib import (
     option,
     )
 from bzrlib.branch import Branch
-from bzrlib.builtins import merge
+from bzrlib.builtins import _merge_helper
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
@@ -41,7 +41,7 @@ class TestMerge(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         rev_a = wt.commit("lala!")
         self.assertEqual([rev_a], wt.get_parent_ids())
-        merge([u'.', -1], [None, None])
+        _merge_helper([u'.', -1], [None, None])
         self.assertEqual([rev_a], wt.get_parent_ids())
 
     def test_undo(self):
@@ -49,19 +49,19 @@ class TestMerge(TestCaseWithTransport):
         wt.commit("lala!")
         wt.commit("haha!")
         wt.commit("blabla!")
-        merge([u'.', 2], [u'.', 1])
+        _merge_helper([u'.', 2], [u'.', 1])
 
     def test_nocommits(self):
         self.test_pending()
         wt2 = self.make_branch_and_tree('branch2')
-        self.assertRaises(NoCommits, merge, ['branch2', -1], 
+        self.assertRaises(NoCommits, _merge_helper, ['branch2', -1],
                           [None, None])
         return wt2
 
     def test_unrelated(self):
         wt2 = self.test_nocommits()
         wt2.commit("blah")
-        self.assertRaises(UnrelatedBranches, merge, ['branch2', -1], 
+        self.assertRaises(UnrelatedBranches, _merge_helper, ['branch2', -1],
                           [None, None])
         return wt2
 
@@ -92,9 +92,9 @@ class TestMerge(TestCaseWithTransport):
         br1.fetch(wt2.branch)
         # merge all of branch 2 into branch 1 even though they 
         # are not related.
-        self.assertRaises(BzrCommandError, merge, ['branch2', -1],
+        self.assertRaises(BzrCommandError, _merge_helper, ['branch2', -1],
                           ['branch2', 0], reprocess=True, show_base=True)
-        merge(['branch2', -1], ['branch2', 0], reprocess=True)
+        _merge_helper(['branch2', -1], ['branch2', 0], reprocess=True)
         self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
             wt1.get_parent_ids())
         return (wt1, wt2.branch)

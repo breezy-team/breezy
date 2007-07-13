@@ -40,7 +40,7 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text()
         self.assertEndsWith(
             helptext,
-            '  -h, --help  show help message\n'
+            '  -h, --help  Show help message.\n'
             '\n'
             'See also: bar, foo\n')
 
@@ -51,7 +51,7 @@ class TestCommandHelp(tests.TestCase):
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext, 'usage: bzr Demo')
-        self.assertEndsWith(helptext, 'show help message\n')
+        self.assertEndsWith(helptext, 'Show help message.\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -61,7 +61,7 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -h, --help  show help message\n'
+            '  -h, --help  Show help message.\n'
             '\n'
             'See also: bar, foo, gam\n')
 
@@ -72,7 +72,7 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -h, --help  show help message\n'
+            '  -h, --help  Show help message.\n'
             '\n'
             'See also: gam\n')
 

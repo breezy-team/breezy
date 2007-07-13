@@ -44,15 +44,15 @@ class TestAncestry(TestCaseWithMemoryTransport):
 
     def test_none_is_ancestor_empty_branch(self):
         branch = self.make_branch('.')
-        self.assertTrue(is_ancestor(None, None, branch))
+        self.assertTrue(is_ancestor('null:', 'null:', branch))
 
     def test_none_is_ancestor_non_empty_branch(self):
         builder = BranchBuilder(self.get_transport())
         rev_id = builder.build_commit()
         branch = builder.get_branch()
-        self.assertTrue(is_ancestor(None, None, branch))
-        self.assertTrue(is_ancestor(rev_id, None, branch))
-        self.assertFalse(is_ancestor(None, rev_id, branch))
+        self.assertTrue(is_ancestor('null:', 'null:', branch))
+        self.assertTrue(is_ancestor(rev_id, 'null:',  branch))
+        self.assertFalse(is_ancestor('null:', rev_id, branch))
 
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

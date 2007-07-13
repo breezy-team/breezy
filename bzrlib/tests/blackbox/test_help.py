@@ -35,7 +35,7 @@ class TestHelp(ExternalBase):
 
     def test_help_topics(self):
         """Smoketest for 'bzr help topics'"""
-        out, err = self.run_bzr('help', 'topics')
+        out, err = self.run_bzr('help topics')
         self.assertContainsRe(out, 'basic')
         self.assertContainsRe(out, 'topics')
         self.assertContainsRe(out, 'commands')
@@ -43,7 +43,7 @@ class TestHelp(ExternalBase):
 
     def test_help_revisionspec(self):
         """Smoke test for 'bzr help revisionspec'"""
-        out, err = self.run_bzr('help', 'revisionspec')
+        out, err = self.run_bzr('help revisionspec')
         self.assertContainsRe(out, 'revno:')
         self.assertContainsRe(out, 'date:')
         self.assertContainsRe(out, 'revid:')
@@ -60,7 +60,7 @@ class TestHelp(ExternalBase):
         
     def test_help_urlspec(self):
         """Smoke test for 'bzr help urlspec'"""
-        out, err = self.run_bzr('help', 'urlspec')
+        out, err = self.run_bzr('help urlspec')
         self.assertContainsRe(out, 'aftp://')
         self.assertContainsRe(out, 'bzr://')
         self.assertContainsRe(out, 'bzr\+ssh://')
@@ -79,6 +79,11 @@ class TestHelp(ExternalBase):
         """Smoke test for 'bzr help working-trees'"""
         out, err = self.run_bzr('help working-trees')
         self.assertEqual(bzrlib.help_topics._working_trees, out)
+
+    def test_help_status_flags(self):
+        """Smoke test for 'bzr help status-flags'"""
+        out, err = self.run_bzr('help status-flags')
+        self.assertEqual(bzrlib.help_topics._status_flags, out)
 
     def test_help_commands(self):
         dash_help  = self.run_bzr('--help commands')[0]
@@ -113,4 +118,5 @@ class TestHelp(ExternalBase):
         self.assertEquals(help, qmark)
         for line in help.split('\n'):
             if '--long' in line:
-                self.assertTrue('show help on all commands' in line)
+                self.assertContainsRe(line,
+                    r'Show help on all commands\.')

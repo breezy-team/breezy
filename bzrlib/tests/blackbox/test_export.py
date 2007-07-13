@@ -39,11 +39,11 @@ class TestExport(ExternalBase):
         tree.add('a')
 
         os.chdir('tar')
-        self.run_bzr('ignore', 'something')
+        self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
-        self.run_bzr('export', 'test.tar.gz')
+        self.run_bzr('export test.tar.gz')
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
         # '.bzrignore'.
@@ -60,7 +60,7 @@ class TestExport(ExternalBase):
         tree.commit('first')
 
         os.chdir('tar')
-        self.run_bzr('export', 'test.tar')
+        self.run_bzr('export test.tar')
         ball = tarfile.open('test.tar')
         # all paths are prefixed with the base name of the tarball
         self.assertEqual(['test/' + fname.encode('utf8')],
@@ -72,11 +72,11 @@ class TestExport(ExternalBase):
         tree.add('a')
 
         os.chdir('zip')
-        self.run_bzr('ignore', 'something')
+        self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
-        self.run_bzr('export', 'test.zip')
+        self.run_bzr('export test.zip')
 
         zfile = zipfile.ZipFile('test.zip')
         # Make sure the zipfile contains 'a', but does not contain
@@ -94,7 +94,7 @@ class TestExport(ExternalBase):
         tree.commit('first')
 
         os.chdir('zip')
-        self.run_bzr('export', 'test.zip')
+        self.run_bzr('export test.zip')
         zfile = zipfile.ZipFile('test.zip')
         # all paths are prefixed with the base name of the zipfile
         self.assertEqual(['test/' + fname.encode('utf8')],
@@ -107,7 +107,7 @@ class TestExport(ExternalBase):
         tree.commit('init')
 
         os.chdir('zip')
-        self.run_bzr('export', 'test.zip')
+        self.run_bzr('export test.zip')
         zfile = zipfile.ZipFile('test.zip')
         names = sorted(zfile.namelist())
 
@@ -136,11 +136,11 @@ class TestExport(ExternalBase):
         tree.add('a')
 
         os.chdir('dir')
-        self.run_bzr('ignore', 'something')
+        self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
-        self.run_bzr('export', 'direxport')
+        self.run_bzr('export direxport')
 
         files = sorted(os.listdir('direxport'))
         # Make sure the exported directory contains 'a', but does not contain
@@ -163,24 +163,24 @@ class TestExport(ExternalBase):
         os.chdir('branch')
 
         # Directory exports
-        self.run_bzr('export', '../latest')
+        self.run_bzr('export ../latest')
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('../latest')))
         self.check_file_contents('../latest/goodbye', 'baz')
-        self.run_bzr('export', '../first', '-r', '1')
+        self.run_bzr('export ../first -r 1')
         self.assertEqual(['hello'], sorted(os.listdir('../first')))
         self.check_file_contents('../first/hello', 'foo')
 
         # Even with .gz and .bz2 it is still a directory
-        self.run_bzr('export', '../first.gz', '-r', '1')
+        self.run_bzr('export ../first.gz -r 1')
         self.check_file_contents('../first.gz/hello', 'foo')
-        self.run_bzr('export', '../first.bz2', '-r', '1')
+        self.run_bzr('export ../first.bz2 -r 1')
         self.check_file_contents('../first.bz2/hello', 'foo')
 
     def test_basic_tarfile_export(self):
         self.example_branch()
         os.chdir('branch')
 
-        self.run_bzr('export', '../first.tar', '-r', '1')
+        self.run_bzr('export ../first.tar -r 1')
         self.failUnless(os.path.isfile('../first.tar'))
         tf = tarfile.open('../first.tar')
         try:
@@ -189,13 +189,13 @@ class TestExport(ExternalBase):
         finally:
             tf.close()
 
-        self.run_bzr('export', '../first.tar.gz', '-r', '1')
+        self.run_bzr('export ../first.tar.gz -r 1')
         self.failUnless(os.path.isfile('../first.tar.gz'))
-        self.run_bzr('export', '../first.tbz2', '-r', '1')
+        self.run_bzr('export ../first.tbz2 -r 1')
         self.failUnless(os.path.isfile('../first.tbz2'))
-        self.run_bzr('export', '../first.tar.bz2', '-r', '1')
+        self.run_bzr('export ../first.tar.bz2 -r 1')
         self.failUnless(os.path.isfile('../first.tar.bz2'))
-        self.run_bzr('export', '../first.tar.tbz2', '-r', '1')
+        self.run_bzr('export ../first.tar.tbz2 -r 1')
         self.failUnless(os.path.isfile('../first.tar.tbz2'))
 
         tf = tarfile.open('../first.tar.tbz2', 'r:bz2')
@@ -204,7 +204,7 @@ class TestExport(ExternalBase):
             self.assertEqual('foo', tf.extractfile('first.tar/hello').read())
         finally:
             tf.close()
-        self.run_bzr('export', '../first2.tar', '-r', '1', '--root', 'pizza')
+        self.run_bzr('export ../first2.tar -r 1 --root pizza')
         tf = tarfile.open('../first2.tar')
         try:
             self.assertEqual(['pizza/hello'], sorted(tf.getnames()))
@@ -216,7 +216,7 @@ class TestExport(ExternalBase):
         self.example_branch()
         os.chdir('branch')
 
-        self.run_bzr('export', '../first.zip', '-r', '1')
+        self.run_bzr('export ../first.zip -r 1')
         self.failUnlessExists('../first.zip')
         zf = zipfile.ZipFile('../first.zip')
         try:
@@ -225,7 +225,7 @@ class TestExport(ExternalBase):
         finally:
             zf.close()
 
-        self.run_bzr('export', '../first2.zip', '-r', '1', '--root', 'pizza')
+        self.run_bzr('export ../first2.zip -r 1 --root pizza')
         zf = zipfile.ZipFile('../first2.zip')
         try:
             self.assertEqual(['pizza/hello'], sorted(zf.namelist()))
@@ -233,7 +233,7 @@ class TestExport(ExternalBase):
         finally:
             zf.close()
         
-        self.run_bzr('export', '../first-zip', '--format=zip', '-r', '1')
+        self.run_bzr('export ../first-zip --format=zip -r 1')
         zf = zipfile.ZipFile('../first-zip')
         try:
             self.assertEqual(['first-zip/hello'], sorted(zf.namelist()))
@@ -245,9 +245,9 @@ class TestExport(ExternalBase):
         self.example_branch()
 
         # Use directory exports to test stating the branch location
-        self.run_bzr('export', 'latest', 'branch')
+        self.run_bzr('export latest branch')
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
         self.check_file_contents('latest/goodbye', 'baz')
-        self.run_bzr('export', 'first', '-r', '1', 'branch')
+        self.run_bzr('export first -r 1 branch')
         self.assertEqual(['hello'], sorted(os.listdir('first')))
         self.check_file_contents('first/hello', 'foo')

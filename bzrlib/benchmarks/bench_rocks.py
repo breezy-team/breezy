@@ -21,6 +21,7 @@ from bzrlib.benchmarks import Benchmark
 
 
 class RocksBenchmark(Benchmark):
+    """Benchmarks for ``'bzr rocks'``"""
 
     def test_rocks(self):
         """Test the startup overhead by running a do-nothing command"""

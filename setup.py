@@ -148,7 +148,7 @@ class bzr_build(build):
 ########################
 
 command_classes = {'install_scripts': my_install_scripts,
-                  'build': bzr_build}
+                   'build': bzr_build}
 ext_modules = []
 try:
     from Pyrex.Distutils import build_ext
@@ -177,10 +177,13 @@ if 'bdist_wininst' in sys.argv:
     dev_docs = glob.glob('doc/developers/*.htm')
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
+            'ext_modules': ext_modules,
             # help pages
             'data_files': [('Doc/Bazaar', docs),
                            ('Doc/Bazaar/developers', dev_docs),
                           ],
+            # for building pyrex extensions
+            'cmdclass': {'build_ext': build_ext},
            }
 
     ARGS.update(META_INFO)
@@ -227,6 +230,9 @@ elif 'py2exe' in sys.argv:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
+    # email package from std python library use lazy import,
+    # so we need to explicitly add all package
+    additional_packages.append('email')
 
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,

@@ -52,6 +52,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    revision as _mod_revision,
     revisiontree,
     textui,
     transform,
@@ -1089,6 +1090,7 @@ class WorkingTree4(WorkingTree3):
         # missing on access.
         for rev_id, tree in parents_list:
             rev_id = osutils.safe_revision_id(rev_id)
+            _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
             else:
@@ -2265,7 +2267,10 @@ class InterDirStateTree(InterTree):
                         # the file on disk is not present at all in the
                         # dirblock. Either way, report about the dirblock
                         # entry, and let other code handle the filesystem one.
-                        if current_path_info[1].split('/') < current_entry[0][1].split('/'):
+
+                        # Compare the basename for these files to determine
+                        # which comes first
+                        if current_path_info[1] < current_entry[0][1]:
                             # extra file on disk: pass for now, but only
                             # increment the path, not the entry
                             advance_entry = False

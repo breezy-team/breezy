@@ -37,42 +37,36 @@ class TestOutsideWT(ChrootedTestCase):
 
     def test_url_log(self):
         url = self.get_readonly_url() + 'subdir/'
-        out, err = self.run_bzr('log', 
-                                url, retcode=3)
+        out, err = self.run_bzr(['log', url], retcode=3)
         self.assertEqual(u'bzr: ERROR: Not a branch:'
                          u' %s\n' % url, err)
 
     def test_diff_ouside_tree(self):
         os.chdir(tempfile.mkdtemp())
-        self.run_bzr(['init', 'branch1'])
-        self.run_bzr(['commit', '-m', 'nothing', 
+        self.run_bzr('init branch1')
+        self.run_bzr(['commit', '-m', 'nothing',
                                '--unchanged', 'branch1'])
-        self.run_bzr(['commit', '-m', 'nothing', 
+        self.run_bzr(['commit', '-m', 'nothing',
                                '--unchanged', 'branch1'])
         # -r X..Y
-        out, err = self.run_bzr(['diff', 
-                                          '-r', 'revno:2:branch2..revno:1'],
-                                         retcode=3)
+        out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3)
         self.assertEquals('', out)
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
                          err)
         # -r X
-        out, err = self.run_bzr(['diff', '-r', 'revno:2:branch2'],
-                                         retcode=3)
+        out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3)
         self.assertEquals('', out)
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
                          err)
         # -r X..
-        out, err = self.run_bzr(['diff', '-r', 'revno:2:branch2..'],
-                                         retcode=3)
+        out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3)
         self.assertEquals('', out)
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
                          err)
         # no -r at all.
-        out, err = self.run_bzr(['diff'],
-                                         retcode=3)
+        out, err = self.run_bzr('diff', retcode=3)
         self.assertEquals('', out)
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
                          err)
-        
+
 

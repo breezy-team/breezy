@@ -349,6 +349,10 @@ class StrictCommitFailed(BzrError):
 
 # XXX: Should be unified with TransportError; they seem to represent the
 # same thing
+# RBC 20060929: I think that unifiying with TransportError would be a mistake
+# - this is finer than a TransportError - and more useful as such. It 
+# differentiates between 'transport has failed' and 'operation on a transport
+# has failed.'
 class PathError(BzrError):
     
     _fmt = "Generic path error: %(path)r%(extra)s)"
@@ -455,6 +459,11 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ReadError(PathError):
+    
+    _fmt = """Error reading from %(path)r."""
 
 
 class ShortReadvError(PathError):
@@ -2148,6 +2157,57 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class ContainerError(BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+    
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+    internal_error = False
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
 
 
 class NoDestinationAddress(BzrError):
