@@ -53,12 +53,6 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
-    def test_in_process_transport(self):
-        error = errors.InProcessTransport('fpp')
-        self.assertEqualDiff(
-            "The transport 'fpp' is only accessible within this process.",
-            str(error))
-
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
