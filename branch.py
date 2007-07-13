@@ -29,7 +29,6 @@ from svn.core import SubversionException
 from commit import push
 from format import get_rich_root_format
 from repository import SvnRepository
-from scheme import BranchingScheme
 from transport import bzr_to_svn_url, svn_config
 
 
@@ -50,12 +49,15 @@ class FakeControlFiles(object):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, base, repository, branch_path, revnum=None):
+    def __init__(self, base, repository, branch_path, scheme, revnum=None):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
         :param branch_path: Relative path inside the repository this
             branch is located at.
+        :param revnum: Subversion revision number of the branch to 
+            look at; none for latest.
+        :param scheme: Branching scheme used for this branch.
         """
         super(SvnBranch, self).__init__()
         self.repository = repository
@@ -65,7 +67,7 @@ class SvnBranch(Branch):
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
         self._revision_history = None
-        self.scheme = BranchingScheme.guess_scheme(branch_path)
+        self.scheme = scheme
         self.revnum = revnum
         try:
             if self.repository.transport.check_path(self.branch_path.strip("/"), self.get_revnum()) != \

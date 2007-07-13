@@ -88,8 +88,7 @@ class SvnWorkingTree(WorkingTree):
 
         self.base_revnum = status.max_rev
         self.base_tree = SvnBasisTree(self)
-        self.base_revid = branch.repository.generate_revision_id(
-                    self.base_revnum, branch.branch_path, bzrdir.scheme)
+        self.base_revid = branch.generate_revision_id(self.base_revnum)
 
         self.read_working_inventory()
 
@@ -712,11 +711,7 @@ class SvnCheckout(BzrDir):
         self.root_transport = self.transport = transport
 
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
-        self.scheme = BranchingScheme.guess_scheme(self.branch_path)
-        mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
-        if not self.scheme.is_branch(self.branch_path) and not self.scheme.is_tag(self.branch_path):
-            raise NotBranchError(path=self.transport.base)
-
+        
     def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
 
@@ -739,7 +734,9 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        return SvnRepository(self, self.svn_root_transport)
+        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
+        return SvnRepository(self, self.svn_root_transport, 
+                             guess_scheme)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().
@@ -758,7 +755,8 @@ class SvnCheckout(BzrDir):
         repos = self.find_repository()
 
         try:
-            branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
+            branch = SvnBranch(self.root_transport.base, repos, self.branch_path,
+                               repos.scheme)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)

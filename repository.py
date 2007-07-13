@@ -166,7 +166,7 @@ class SvnRepository(Repository):
     Provides a simplified interface to a Subversion repository 
     by using the RA (remote access) API from subversion
     """
-    def __init__(self, bzrdir, transport):
+    def __init__(self, bzrdir, transport, guessed_scheme):
         from fileids import SimpleFileIdMap
         _revision_store = None
 
@@ -178,16 +178,18 @@ class SvnRepository(Repository):
 
         self.transport = transport
         self.uuid = transport.get_uuid()
+        assert self.uuid is not None
         self.base = transport.base
+        assert self.base is not None
         self._serializer = None
         self.dir_cache = {}
-        self.scheme = bzrdir.scheme
         self.pool = Pool()
         self.config = SvnRepositoryConfig(self.uuid)
         self.config.add_location(self.base)
-
-        assert self.base
-        assert self.uuid
+        if self.config.get_branching_scheme() is not None:
+            self.scheme = self.get_scheme(self.config.get_branching_scheme())
+        else:
+            self.scheme = guessed_scheme
 
         cache_file = os.path.join(self.create_cache_dir(), 
                                   'cache-v%d' % MAPPING_VERSION)
@@ -507,7 +509,7 @@ class SvnRepository(Repository):
         except NoSuchRevision:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
-                scheme = self.scheme # FIXME
+                scheme = self.scheme
             for (branch, revno, exists) in self.find_branches(scheme):
                 # Look at their bzr:revision-id-vX
                 revids = []
@@ -730,7 +732,7 @@ class SvnRepository(Repository):
             return {}
 
         if revision_id is None:
-            return self._full_revision_graph(self.scheme) # FIXME
+            return self._full_revision_graph(self.scheme)
 
         (path, revnum, scheme) = self.lookup_revision_id(revision_id)
 

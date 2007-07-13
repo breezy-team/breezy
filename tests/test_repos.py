@@ -479,6 +479,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(None, rev.timezone)
         self.assertEqual(0.0, rev.timestamp)
 
+    def test_store_branching_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open(repos_url)
+        repository.set_branching_scheme(TrunkBranchingScheme(42))
+        repository = Repository.open(repos_url)
+        self.assertEquals("trunk42", str(repository.scheme))
+
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)

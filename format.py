@@ -56,16 +56,6 @@ class SvnRemoteAccess(BzrDir):
         assert svn_url.startswith(self.svn_root_url)
         self.branch_path = svn_url[len(self.svn_root_url):]
 
-        if scheme is None:
-            self.scheme = BranchingScheme.guess_scheme(self.branch_path)
-        else:
-            self.scheme = scheme
-
-        if (not self.scheme.is_branch(self.branch_path) and 
-            not self.scheme.is_tag(self.branch_path) and 
-                self.branch_path != ""):
-            raise NotBranchError(path=self.root_transport.base)
-
     def clone(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.clone().
 
@@ -88,7 +78,6 @@ class SvnRemoteAccess(BzrDir):
                 result_repo.fetch(repo, revision_id=revision_id)
             except NoRepositoryPresent:
                 result_repo = repo.clone(result, revision_id)
-
         branch = self.open_branch()
         result_branch = branch.sprout(result, revision_id)
         if result_branch.repository.make_working_trees():
@@ -100,8 +89,9 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
+        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
         if self.branch_path == "":
-            return SvnRepository(self, self.root_transport)
+            return SvnRepository(self, self.root_transport, guess_scheme)
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
@@ -109,10 +99,11 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
+        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
         transport = self.root_transport
         if self.svn_root_url != transport.base:
             transport = SvnRaTransport(self.svn_root_url)
-        return SvnRepository(self, transport)
+        return SvnRepository(self, transport, guess_scheme)
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
@@ -151,7 +142,8 @@ class SvnRemoteAccess(BzrDir):
         else:
             # TODO: Check if there are any revisions in this repository yet
             pass
-        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path, 
+                           repos.scheme)
         branch.bzrdir = self
         return branch
 
@@ -159,7 +151,8 @@ class SvnRemoteAccess(BzrDir):
         """See BzrDir.open_branch()."""
         from branch import SvnBranch
         repos = self.find_repository()
-        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path,
+                           repos.scheme)
         branch.bzrdir = self
         return branch
 
