@@ -241,11 +241,15 @@ class GraphIndex(object):
             defined order for the result iteration - it will be in the most
             efficient order for the index.
         """
-        if not keys:
-            return
-        if False:
-            yield None
-        raise errors.MissingKey(self, keys[0])
+        found = set()
+        keys = set(keys)
+        for node in self.iter_all_entries():
+            if node[0] in keys:
+                yield node
+                found.add(node[0])
+        missing = keys.difference(found)
+        if missing:
+            raise errors.MissingKey(self, missing.pop())
 
     def _signature(self):
         """The file signature for this index type."""

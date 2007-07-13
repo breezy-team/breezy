@@ -250,6 +250,14 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             set(index.iter_all_entries()))
 
     def test_iter_nothing_empty(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data'),
+            ('ref', ([], ), 'refdata')])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_entries(['name', 'ref'])))
+
+    def test_iter_all_keys(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_entries([])))
 
