@@ -362,6 +362,16 @@ class BadIndexData(BzrError):
         self.value = value
 
 
+class BadIndexDuplicateKey(BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
 class BadIndexKey(BzrError):
 
     _fmt = "The key '%(key)s' is not a valid key."

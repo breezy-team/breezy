@@ -39,7 +39,7 @@ class GraphIndexBuilder(object):
             entry.
         """
         self.reference_lists = reference_lists
-        self._nodes = []
+        self._nodes = {}
 
     def add_node(self, key, references, value):
         """Add a node to the index.
@@ -60,12 +60,14 @@ class GraphIndexBuilder(object):
             for reference in reference_list:
                 if _whitespace_re.search(reference) is not None:
                     raise errors.BadIndexKey(reference)
-        self._nodes.append((key, references, value))
+        if key in self._nodes:
+            raise errors.BadIndexDuplicateKey(key, self)
+        self._nodes[key] = (references, value)
 
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        for key, references, value in self._nodes:
+        for key, (references, value) in self._nodes.items():
             flattened_references = ''
             lines.append("%s\0%s\0%s\n" % (key, flattened_references, value))
         lines.append('\n')

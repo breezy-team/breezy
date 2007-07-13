@@ -93,6 +93,12 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertRaises(errors.BadIndexKey, builder.add_node, 'akey',
             ([], ['a bad key']), 'data aa')
 
+    def test_add_duplicate_key(self):
+        builder = GraphIndexBuilder()
+        builder.add_node('key', (), 'data')
+        self.assertRaises(errors.BadIndexDuplicateKey, builder.add_node, 'key',
+            (), 'data')
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 

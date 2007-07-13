@@ -193,6 +193,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("Error in data for index foo.",
             str(error))
 
+    def test_bad_index_duplicate_key(self):
+        error = errors.BadIndexDuplicateKey("foo", "bar")
+        self.assertEqual("The key 'foo' is already in index 'bar'.",
+            str(error))
+
     def test_bad_index_key(self):
         error = errors.BadIndexKey("foo")
         self.assertEqual("The key 'foo' is not a valid key.",
