@@ -1392,9 +1392,20 @@ class KnitGraphIndex(object):
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
-        node = list(self._graph_index.iter_entries([version_id]))[0]
-        bits = node[2][1:].split(' ')
+        bits = self._get_node(version_id)[2][1:].split(' ')
         return int(bits[0]), int(bits[1])
+
+    def get_method(self, version_id):
+        """Return compression method of specified version."""
+        fulltext = self._get_node(version_id)[2][0] == 'F'
+        if fulltext:
+            return 'fulltext'
+        else:
+            return 'line-delta'
+
+    def _get_node(self, version_id):
+        return list(self._graph_index.iter_entries([version_id]))[0]
+
 
 
 class _KnitData(_KnitComponentFile):
