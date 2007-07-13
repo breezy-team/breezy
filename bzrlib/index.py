@@ -83,10 +83,56 @@ class GraphIndexBuilder(object):
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
+        prefix_length = len(lines[0]) + len(lines[1])
+        # references are byte offsets. To avoid having to do nasty
+        # polynomial work to resolve offsets (references to later in the 
+        # file cannot be determined until all the inbetween references have
+        # been calculated too) we pad the offsets with 0's to make them be
+        # of consistent length. Using binary offsets would break the trivial
+        # file parsing.
+        # to calculate the width of zero's needed we do three passes:
+        # one to gather all the non-reference data and the number of references.
+        # one to pad all the data with reference-length and determine entry
+        # addresses.
+        # One to serialise.
+        non_ref_bytes = prefix_length
+        total_references = 0
+        # XXX: support 'a' field here.
+        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
+            # key is literal, value is literal, there are 3 null's, 1 NL
+            # (ref_lists -1) tabs, (ref-1 cr's per ref_list)
+            non_ref_bytes += len(key) + 3 + 1 + self.reference_lists - 1
+            for ref_list in references:
+                # how many references across the whole file?
+                total_references += len(ref_list)
+                # accrue reference separators
+                non_ref_bytes += len(ref_list) - 1
+        # how many digits are needed to represent the total byte count?
+        digits = 1
+        possible_total_bytes = non_ref_bytes + total_references*digits
+        while 10 ** digits < possible_total_bytes:
+            digits += 1
+            possible_total_bytes = non_ref_bytes + total_references*digits
+        # resolve key addresses.
+        key_addresses = {}
+        current_offset = prefix_length
+        for key, (references, value) in sorted(self._nodes.items(),reverse=True):
+            key_addresses[key] = current_offset
+            current_offset += len(key) + 3 + 1 + self.reference_lists - 1
+            for ref_list in references:
+                # accrue reference separators
+                current_offset += len(ref_list) - 1
+                # accrue reference bytes
+                current_offset += digits * len(ref_list)
+        # serialise
+        format_string = '%%0%sd' % digits
         for key, (references, value) in sorted(self._nodes.items(),reverse=True):
             flattened_references = []
             for ref_list in references:
-                flattened_references.append('')
+                ref_addresses = []
+                for reference in ref_list:
+                    ref_addresses.append(format_string % key_addresses[reference])
+                flattened_references.append('\r'.join(ref_addresses))
             lines.append("%s\0\0%s\0%s\n" % (key,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
