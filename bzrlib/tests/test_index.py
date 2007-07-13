@@ -103,6 +103,19 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "key\0\x0038\0data\n"
             "\n", contents)
 
+    def test_node_references_are_cr_delimited(self):
+        builder = GraphIndexBuilder(reference_lists=1)
+        builder.add_node('reference', ([], ), 'data')
+        builder.add_node('reference2', ([], ), 'data')
+        builder.add_node('key', (['reference', 'reference2'], ), 'data')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
+            "reference2\0\0\0data\n"
+            "reference\0\0\0data\n"
+            "key\0\x0051\r38\0data\n"
+            "\n", contents)
+
     def test_add_node_bad_key(self):
         builder = GraphIndexBuilder()
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
