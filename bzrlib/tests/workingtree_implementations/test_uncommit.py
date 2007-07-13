@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests of the parent related functions of WorkingTrees."""
 
-debug_flags = set()
-"""Set of flags that enable different debug behaviour.
+import os
 
-These are set with eg ``-Dlock`` on the bzr command line.
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    symbol_versioning,
+    uncommit,
+    )
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
-Options include:
-    
- * error - show stack traces for all top level exceptions
- * hooks 
- * hpss - trace smart protocol requests and responses
- * lock - trace when lockdir locks are taken or released
 
-"""
+class TestUncommit(TestCaseWithWorkingTree):
+
+    def test_uncommit_to_null(self):
+        tree = self.make_branch_and_tree('branch')
+        tree.lock_write()
+        revid = tree.commit('a revision')
+        tree.unlock()
+        uncommit.uncommit(tree.branch, tree=tree)
+        self.assertEqual([], tree.get_parent_ids())

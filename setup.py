@@ -160,10 +160,14 @@ except ImportError:
     from distutils.extension import Extension
     #ext_modules.append(
     #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
+    ext_modules.append(
+        Extension("bzrlib._knit_load_data_c", ["bzrlib/_knit_load_data_c.c"]))
 else:
     from distutils.extension import Extension
     #ext_modules.append(
     #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+    ext_modules.append(
+        Extension("bzrlib._knit_load_data_c", ["bzrlib/_knit_load_data_c.pyx"]))
 command_classes['build_ext'] = build_ext
 
 if 'bdist_wininst' in sys.argv:

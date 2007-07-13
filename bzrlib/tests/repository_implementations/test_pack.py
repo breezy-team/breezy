@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests for repository packing."""
 
-debug_flags = set()
-"""Set of flags that enable different debug behaviour.
+from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
-These are set with eg ``-Dlock`` on the bzr command line.
 
-Options include:
-    
- * error - show stack traces for all top level exceptions
- * hooks 
- * hpss - trace smart protocol requests and responses
- * lock - trace when lockdir locks are taken or released
+class TestPack(TestCaseWithRepository):
 
-"""
+    def test_pack_empty_does_not_error(self):
+        repo = self.make_repository('.')
+        repo.pack()

@@ -50,28 +50,28 @@ class cmd_register_branch(Command):
                 --product fooproduct
     """
     takes_args = ['branch_url']
-    takes_options = \
-        [Option('product', 
-                'launchpad product short name to associate with the branch',
+    takes_options = [
+         Option('product',
+                'Launchpad product short name to associate with the branch.',
                 unicode),
          Option('branch-name',
-                'short name for the branch; '
-                'by default taken from the last component of the url',
+                'Short name for the branch; '
+                'by default taken from the last component of the url.',
                 unicode),
          Option('branch-title',
-                'one-sentence description of the branch',
+                'One-sentence description of the branch.',
                 unicode),
          Option('branch-description',
-                'longer description of the purpose or contents of the branch',
+                'Longer description of the purpose or contents of the branch.',
                 unicode),
-         Option('author', 
-                'email of the branch\'s author, if not yourself',
+         Option('author',
+                "Branch author's email address, if not yourself.",
                 unicode),
          Option('link-bug',
-                'the bug this branch fixes',
+                'The bug this branch fixes.',
                 int),
          Option('dry-run',
-                'prepare the request but don\'t actually send it')
+                'Prepare the request but don\'t actually send it.')
         ]
 
 

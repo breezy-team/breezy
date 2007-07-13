@@ -14,9 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import re
+
 from bzrlib import (
     builtins,
     bzrdir,
+    commands,
     errors,
     option,
     repository,
@@ -52,14 +55,14 @@ class OptionTests(TestCase):
     def test_option_help(self):
         """Options have help strings."""
         out, err = self.run_bzr('commit --help')
-        self.assertContainsRe(out, r'--file(.|\n)*file containing commit'
-                                   ' message')
+        self.assertContainsRe(out,
+                r'--file(.|\n)*Take commit message from this file\.')
         self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
         """Global options have help strings."""
         out, err = self.run_bzr('help status')
-        self.assertContainsRe(out, r'--show-ids.*show internal object')
+        self.assertContainsRe(out, r'--show-ids.*Show internal object.')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
@@ -71,44 +74,10 @@ class OptionTests(TestCase):
         out, err = self.run_bzr('help -r', retcode=3)
         self.assertContainsRe(err, r'no such option')
 
-    def test_get_short_name(self):
-        file_opt = option.Option.OPTIONS['file']
-        self.assertEquals(file_opt.short_name(), 'F')
-        force_opt = option.Option.OPTIONS['force']
-        self.assertEquals(force_opt.short_name(), None)
-
     def test_set_short_name(self):
         o = option.Option('wiggle')
         o.set_short_name('w')
         self.assertEqual(o.short_name(), 'w')
-
-    def test_old_short_names(self):
-        # test the deprecated method for getting and setting short option
-        # names
-        expected_warning = (
-            "access to SHORT_OPTIONS was deprecated in version 0.14."
-            " Set the short option name when constructing the Option.",
-            DeprecationWarning, 2)
-        _warnings = []
-        def capture_warning(message, category, stacklevel=None):
-            _warnings.append((message, category, stacklevel))
-        old_warning_method = symbol_versioning.warn
-        try:
-            # an example of the kind of thing plugins might want to do through
-            # the old interface - make a new option and then give it a short
-            # name.
-            symbol_versioning.set_warning_method(capture_warning)
-            example_opt = option.Option('example', help='example option')
-            option.Option.SHORT_OPTIONS['w'] = example_opt
-            self.assertEqual(example_opt.short_name(), 'w')
-            self.assertEqual([expected_warning], _warnings)
-            # now check that it can actually be parsed with the registered
-            # value
-            opts, args = parse([example_opt], ['-w', 'foo'])
-            self.assertEqual(opts.example, True)
-            self.assertEqual(args, ['foo'])
-        finally:
-            symbol_versioning.set_warning_method(old_warning_method)
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
@@ -267,3 +236,78 @@ class TestListOptions(TestCase):
         opts, args = self.parse(
             options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
         self.assertEqual(['c'], opts.hello)
+
+
+class TestOptionDefinitions(TestCase):
+    """Tests for options in the Bazaar codebase."""
+
+    def get_all_options(self):
+        """Return a list of all options used by Bazaar, both global and command.
+        
+        The list returned contains elements of (scope, option) where 'scope' 
+        is either None for global options, or a command name.
+
+        This includes options provided by plugins.
+        """
+        g = [(None, opt) for name, opt
+             in sorted(option.Option.OPTIONS.items())]
+        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
+            cmd = cmd_class()
+            for opt_name, opt in sorted(cmd.options().items()):
+                g.append((cmd_name, opt))
+        return g
+
+    def test_get_all_options(self):
+        all = self.get_all_options()
+        self.assertTrue(len(all) > 100,
+                "too few options found: %r" % all)
+
+    def test_global_options_used(self):
+        # In the distant memory, options could only be declared globally.  Now
+        # we prefer to declare them in the command, unless like -r they really
+        # are used very widely with the exact same meaning.  So this checks
+        # for any that should be garbage collected.
+        g = dict(option.Option.OPTIONS.items())
+        used_globals = {}
+        msgs = []
+        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
+            for option_or_name in sorted(cmd_class.takes_options):
+                if not isinstance(option_or_name, basestring):
+                    self.assertIsInstance(option_or_name, option.Option)
+                elif not option_or_name in g:
+                    msgs.append("apparent reference to undefined "
+                        "global option %r from %r"
+                        % (option_or_name, cmd_class))
+                else:
+                    used_globals.setdefault(option_or_name, []).append(cmd_name)
+        unused_globals = set(g.keys()) - set(used_globals.keys())
+        for option_name in sorted(unused_globals):
+            msgs.append("unused global option %r" % option_name)
+        for option_name, cmds in sorted(used_globals.items()):
+            if len(cmds) <= 1:
+                msgs.append("global option %r is only used by %r"
+                        % (option_name, cmds))
+        if msgs:
+            self.fail("problems with global option definitions:\n"
+                    + '\n'.join(msgs))
+
+    def test_option_grammar(self):
+        msgs = []
+        # Option help should be written in sentence form, and have a final
+        # period and be all on a single line, because the display code will
+        # wrap it.
+        option_re = re.compile(r'^[A-Z][^\n]+\.$')
+        for scope, option in self.get_all_options():
+            if not option.help:
+                msgs.append('%-16s %-16s %s' %
+                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
+            elif not option_re.match(option.help):
+                msgs.append('%-16s %-16s %s' %
+                        ((scope or 'GLOBAL'), option.name, option.help))
+        if msgs:
+            self.fail("The following options don't match the style guide:\n"
+                    + '\n'.join(msgs))
+
+    # TODO: Scan for global options that aren't used by any command?
+    #
+    # TODO: Check that there are two spaces between sentences.

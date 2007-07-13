@@ -27,13 +27,7 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
-from bzrlib.errors import (
-    FileExists,
-    LockError,
-    InProcessTransport,
-    NoSuchFile,
-    TransportError,
-    )
+from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     LateReadError,
@@ -127,12 +121,6 @@ class MemoryTransport(Transport):
         if not _abspath in self._files:
             raise NoSuchFile(relpath)
         del self._files[_abspath]
-
-    def external_url(self):
-        """See bzrlib.transport.Transport.external_url."""
-        # MemoryTransport's are only accessible in-process
-        # so we raise here
-        raise InProcessTransport(self)
 
     def get(self, relpath):
         """See Transport.get()."""

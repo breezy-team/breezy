@@ -827,7 +827,7 @@ class Repository(object):
         
         This is topologically sorted.
         """
-        if revision_id is None:
+        if _mod_revision.is_null(revision_id):
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):
@@ -835,6 +835,17 @@ class Repository(object):
         w = self.get_inventory_weave()
         candidates = w.get_ancestry(revision_id, topo_sorted)
         return [None] + candidates # self._eliminate_revisions_not_present(candidates)
+
+    def pack(self):
+        """Compress the data within the repository.
+
+        This operation only makes sense for some repository types. For other
+        types it should be a no-op that just returns.
+
+        This stub method does not require a lock, but subclasses should use
+        @needs_write_lock as this is a long running call its reasonable to 
+        implicitly lock for the user.
+        """
 
     @needs_read_lock
     def print_file(self, file, revision_id):
