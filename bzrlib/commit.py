@@ -663,7 +663,7 @@ class Commit(object):
                 kind = self.work_tree.kind(file_id)
                 # TODO: specific_files filtering before nested tree processing
                 if kind == 'tree-reference' and self.recursive == 'down':
-                    self._commit_nested_tree(path)
+                    self._commit_nested_tree(file_id, path)
             except errors.NoSuchFile:
                 pass
 
@@ -678,9 +678,9 @@ class Commit(object):
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
 
-    def _commit_nested_tree(self, path):
+    def _commit_nested_tree(self, file_id, path):
         "Commit a nested tree."
-        sub_tree = WorkingTree.open(self.work_tree.abspath(path))
+        sub_tree = self.work_tree.get_nested_tree(file_id, path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,
         # but when both are bound to a different repository,
