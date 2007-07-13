@@ -3086,8 +3086,23 @@ class cmd_pack(Command):
 
 
 class cmd_plugins(Command):
-    """List plugins"""
-    hidden = True
+    """List the installed plugins.
+    
+    This command displays the list of installed plugins including the
+    path where each one is located and a short description of each.
+
+    A plugin is an external component for Bazaar that extends the
+    revision control system, by adding or replacing code in Bazaar.
+    Plugins can do a variety of things, including overriding commands,
+    adding new commands, providing additional network transports and
+    customizing log output.
+
+    See the Bazaar web site, http://bazaar-vcs.org, for further
+    information on plugins including where to find them and how to
+    install them. Instructions are also provided there on how to
+    write new plugins using the Python programming language.
+    """
+    hidden = False
     @display_command
     def run(self):
         import bzrlib.plugin

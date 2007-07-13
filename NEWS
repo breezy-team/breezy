@@ -26,6 +26,9 @@ IN DEVELOPMENT
     * Merge is now faster.  Depending on the scenario, it can be more than 2x
       faster. (Aaron Bentley)
 
+    * The ``plugins`` command is now public with improved help.
+      (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
