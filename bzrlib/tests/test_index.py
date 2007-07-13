@@ -256,7 +256,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             set(index.iter_all_entries()))
         self.assertEqual(set([('name', (('ref',),), 'data')]),
             set(index.iter_entries(['name'])))
-        self.assertRaises(errors.MissingKey, list, index.iter_entries(['ref']))
+        self.assertEqual([], list(index.iter_entries(['ref'])))
 
     def test_iter_all_keys(self):
         index = self.make_index(1, nodes=[
@@ -272,7 +272,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def test_iter_missing_entry_empty(self):
         index = self.make_index()
-        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+        self.assertEqual([], list(index.iter_entries(['a'])))
 
     def test_validate_bad_index_errors(self):
         trans = self.get_transport()
@@ -392,18 +392,18 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
  
     def test_iter_missing_entry_empty(self):
         index = CombinedGraphIndex([])
-        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+        self.assertEqual([], list(index.iter_entries(['a'])))
 
     def test_iter_missing_entry_one_index(self):
         index1 = self.make_index('1')
         index = CombinedGraphIndex([index1])
-        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+        self.assertEqual([], list(index.iter_entries(['a'])))
 
     def test_iter_missing_entry_two_index(self):
         index1 = self.make_index('1')
         index2 = self.make_index('2')
         index = CombinedGraphIndex([index1, index2])
-        self.assertRaises(errors.MissingKey, list, index.iter_entries(['a']))
+        self.assertEqual([], list(index.iter_entries(['a'])))
  
     def test_iter_entry_present_one_index_only(self):
         index1 = self.make_index('1', nodes=[('key', (), '')])
