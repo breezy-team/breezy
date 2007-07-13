@@ -118,16 +118,13 @@ class cmd_svn_import(Command):
                          help='Convert all revisions, even those not in '
                               'current branch history (forbids --standalone)'),
                      Option('scheme', type=get_scheme,
-                         help='Branching scheme (none, trunk, or trunk-INT)')]
+                         help='Branching scheme (none, trunk, ...)')]
 
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
             standalone=False, scheme=None, all=False):
         from convert import convert_repository
         from scheme import TrunkBranchingScheme
-
-        if scheme is None:
-            scheme = TrunkBranchingScheme()
 
         if to_location is None:
             to_location = os.path.basename(from_location.rstrip("/\\"))

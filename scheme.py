@@ -89,6 +89,12 @@ class BranchingScheme:
         raise NotImplementedError
 
     def is_tag(self, path):
+        """Check whether the specified path is a tag 
+        according to this branching scheme.
+
+        :param path: path to check
+        :return: boolean
+        """
         raise NotImplementedError
 
 

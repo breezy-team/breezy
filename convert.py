@@ -97,7 +97,8 @@ def convert_repository(source_repos, output_url, scheme=None,
             dirs[path] = format.initialize_on_transport(nt)
         return dirs[path]
 
-    source_repos.set_branching_scheme(scheme)
+    if scheme is not None:
+        source_repos.set_branching_scheme(scheme)
 
     if create_shared_repo:
         try:
