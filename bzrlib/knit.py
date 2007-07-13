@@ -1329,6 +1329,14 @@ class KnitGraphIndex(object):
         self._graph_index = graph_index
         self._deltas = deltas
 
+    def _get_entries(self, version_ids):
+        """Get the entries for version_ids."""
+        return self._graph_index.iter_entries(version_ids)
+
+    def _present_keys(self, version_ids):
+        return set([
+            node[0] for node in self._get_entries(version_ids)])
+
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         # XXX: This will do len(history) index calls - perhaps
@@ -1339,7 +1347,7 @@ class KnitGraphIndex(object):
         while pending:
             # get all pending nodes
             this_iteration = pending
-            new_nodes = self._graph_index.iter_entries(this_iteration)
+            new_nodes = self._get_entries(this_iteration)
             pending = set()
             for (key, node_refs, value) in new_nodes:
                 graph[key] = node_refs[0]
@@ -1364,7 +1372,7 @@ class KnitGraphIndex(object):
         while pending:
             # get all pending nodes
             this_iteration = pending
-            new_nodes = self._graph_index.iter_entries(this_iteration)
+            new_nodes = self._get_entries(this_iteration)
             pending = set()
             for (key, node_refs, value) in new_nodes:
                 graph[key] = node_refs[0]
@@ -1394,7 +1402,7 @@ class KnitGraphIndex(object):
     
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return len(list(self._graph_index.iter_entries([version_id]))) == 1
+        return len(list(self._get_entries([version_id]))) == 1
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
@@ -1415,7 +1423,7 @@ class KnitGraphIndex(object):
             return 'fulltext'
 
     def _get_node(self, version_id):
-        return list(self._graph_index.iter_entries([version_id]))[0]
+        return list(self._get_entries([version_id]))[0]
 
     def get_options(self, version_id):
         """Return a string represention options.
@@ -1437,10 +1445,6 @@ class KnitGraphIndex(object):
         present_parents = self._present_keys(parents)
         return [key for key in parents if key in present_parents]
 
-    def _present_keys(self, version_ids):
-        return set([
-            node[0] for node in self._graph_index.iter_entries(version_ids)])
-
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
         return self._get_node(version_id)[1][0]
@@ -1453,6 +1457,53 @@ class KnitGraphIndex(object):
         if missing:
             raise RevisionNotPresent(missing.pop, self)
 
+    def add_version(self, version_id, options, pos, size, parents):
+        """Add a version record to the index."""
+        return self.add_versions(((version_id, options, pos, size, parents),))
+
+    def add_versions(self, versions):
+        """Add multiple versions to the index.
+        
+        This function does not insert data into the Immutable GraphIndex
+        backing the KnitGraphIndex, instead it prepares data for insertion by
+        the caller and checks that it is safe to insert.
+
+        :param versions: a list of tuples:
+                         (version_id, options, pos, size, parents).
+        :return: A list of (key, node_refs, value) tuples for insertion
+            into a GraphIndex.
+        """
+        # we hope there are no repositories with inconsistent parentage
+        # anymore.
+        # check for dups
+
+        keys = {}
+        for (version_id, options, pos, size, parents) in versions:
+            if 'no-eol' in options:
+                value = 'N'
+            else:
+                value = ' '
+            value += "%d %d" % (pos, size)
+            if self._deltas:
+                if 'line-delta' in options:
+                    node_refs = (tuple(parents), (parents[0],))
+                else:
+                    node_refs = (tuple(parents), ())
+            else:
+                if 'line-delta' in options:
+                    raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
+                node_refs = (tuple(parents), )
+            keys[version_id] = (node_refs, value)
+        present_nodes = self._get_entries(keys)
+        for (key, node_refs, value) in present_nodes:
+            if (node_refs, value) != keys[key]:
+                raise KnitCorrupt(self, "inconsistent details in add_versions")
+            del keys[key]
+        result = []
+        for key, (node_refs, value) in keys.iteritems():
+            result.append((key, node_refs, value))
+        return result
+        
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
