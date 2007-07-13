@@ -174,6 +174,11 @@ class GraphIndex(object):
     terminated string without any newlines.
 
     It is presumed that the index will not be mutated - it is static data.
+
+    Currently successive iter_entries/iter_all_entries calls will read the
+    entire index each time. Additionally iter_entries calls will read the
+    entire index always. XXX: This must be fixed before the index is 
+    suitable for production use. :XXX
     """
 
     def __init__(self, transport, name):

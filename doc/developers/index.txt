@@ -39,6 +39,10 @@ Specifications
 
   Notes on a container format for streaming and storing Bazaar data.
 
+* `Indices <indices.txt>`_
+
+  The index facilities available within bzrlib.
+
 * `Repositories <repository.htm>`_
 
   What repositories do and are used for.
