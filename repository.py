@@ -52,6 +52,7 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d:' % MAPPING_VERSION
+SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 def parse_revid_property(line):
     """Parse a (revnum, revid) tuple as set in revision id properties.
