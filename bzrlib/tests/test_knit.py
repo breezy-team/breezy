@@ -43,6 +43,7 @@ from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.util import bencode
 from bzrlib.weave import Weave
 
 
@@ -1232,6 +1233,62 @@ class BasicKnitTests(KnitTests):
         for version_id, options, length, parents in expected_data_list:
             bytes = reader_callable(length)
             self.assertRecordContentEqual(k1, version_id, bytes)
+
+    def test_get_data_stream(self):
+        # Make a simple knit
+        k1 = self.make_test_knit()
+        k1.add_lines('text-a', [], split_lines(TEXT_1))
+        
+        # Serialise it, check the output.
+        bytes = k1.get_stream_as_bytes(['text-a'])
+        data = bencode.bdecode(bytes)
+        format, record = data
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(['text-a', ['fulltext'], []], record[:3])
+        self.assertRecordContentEqual(k1, 'text-a', record[3])
+
+    def test_get_stream_as_bytes_all(self):
+        """Get a serialised data stream for all the records in a knit.
+
+        Much like test_get_stream_all, except for get_stream_as_bytes.
+        """
+        k1 = self.make_test_knit()
+        # Insert the same data as test_knit_join, as they seem to cover a range
+        # of cases (no parents, one parent, multiple parents).
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+           ]
+        expected_data_list = [
+            # version, options, parents
+            ('text-a', ['fulltext'], []),
+            ('text-b', ['line-delta'], ['text-a']),
+            ('text-c', ['fulltext'], []),
+            ('text-d', ['line-delta'], ['text-c']),
+            ('text-m', ['line-delta'], ['text-b', 'text-d']),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        bytes = k1.get_stream_as_bytes(
+            ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
+
+        data = bencode.bdecode(bytes)
+        format = data.pop(0)
+        self.assertEqual('knit-delta-plain', format)
+
+        for expected, actual in zip(expected_data_list, data):
+            expected_version = expected[0]
+            expected_options = expected[1]
+            expected_parents = expected[2]
+            version, options, parents, bytes = actual
+            self.assertEqual(expected_version, version)
+            self.assertEqual(expected_options, options)
+            self.assertEqual(expected_parents, parents)
+            self.assertRecordContentEqual(k1, version, bytes)
 
 
     # permutations left to explicitly test:

@@ -669,8 +669,18 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.get_data_stream(revision_ids)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.fetch_revisions', path, *revision_ids)
+        if response[0] == 'ok':
+            buffer = StringIO(protocol.read_body_bytes())
+            reader = ContainerReader(buffer)
+            # XXX: what if server sends pack with multiple names per record?
+            for [name], read_bytes in reader.iter_records():
+                yield name, read_bytes(None)
+        else:
+            raise errors.SmartServerError(error_code=response)
+
 
 
 class RemoteBranchLockableFiles(LockableFiles):

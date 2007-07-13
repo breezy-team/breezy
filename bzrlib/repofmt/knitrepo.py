@@ -144,7 +144,7 @@ class KnitRepository(MetaDirRepository):
                     'revisions', self.get_transaction())
             else:
                 raise AssertionError('Unknown knit kind %r' % (knit_kind,))
-            yield name, knit
+            yield name, knit.get_stream_as_bytes(revision_ids)
 
     @needs_read_lock
     def get_revision(self, revision_id):

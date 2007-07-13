@@ -440,10 +440,8 @@ class TestRepository(TestCaseWithRepository):
         # in that order.
         expected_record_names = ['file:file1', 'inventory', 'revisions']
         streamed_names = []
-        for name, versioned_file in stream:
+        for name, bytes in stream:
             streamed_names.append(name)
-            # The versioned_file will have a get_data_stream method.
-            versioned_file.get_data_stream(['rev_id'])
 
         if repo.supports_rich_root():
             # Check for the root versioned file in the stream, then remove it

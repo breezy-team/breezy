@@ -25,6 +25,7 @@ from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
+from bzrlib.util import bencode
 
 
 class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
@@ -787,14 +788,12 @@ class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
         names = []
         for [name], read_bytes in unpacker.iter_records():
             names.append(name)
-            read_bytes(None) # XXX: to skip the record, really the iter_records
-                             # iterator should do this automatically.
-
-            # XXX: assert that the bytes for each pack record are valid?
+            bytes = read_bytes(None)
+            # The bytes should be a valid bencoded string.
+            bencode.bdecode(bytes)
+            # XXX: assert that the bencoded knit records have the right
+            # contents?
         
-        # XXX: test inserting the pack into a repo, and asserting things about
-        # the repo?
-
     # test: no such revision error
 
 
