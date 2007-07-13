@@ -211,4 +211,4 @@ Node-copyfrom-path: x
         self.client_add("dc/bla")
         self.client_commit("dc", "Msg")
         self.assertEquals(
-                "Repository branch (format: unnamed)\nLocation:\n  shared repository: a/\n  repository branch: a\n\nRelated branches:\n\tparent branch: a\n", self.runbzr(['info', "a"])[0])
+                "Repository branch (format: unnamed)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n\tparent branch: a\n", self.runbzr(['info', "a"])[0])

@@ -46,6 +46,9 @@ bzr-svn 0.4	UNRELEASED
 
    * store and allow setting the branching scheme in subversion.conf
 
+   * allow setting the branching scheme from a file property 
+     on the repository root
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)

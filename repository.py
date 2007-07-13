@@ -41,7 +41,7 @@ import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION, RevidMap)
-from scheme import BranchingScheme
+from scheme import BranchingScheme, ListBranchingScheme, parse_list_scheme_text
 from tree import SvnRevisionTree
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
@@ -187,11 +187,6 @@ class SvnRepository(Repository):
         self.pool = Pool()
         self.config = SvnRepositoryConfig(self.uuid)
         self.config.add_location(self.base)
-        if self.config.get_branching_scheme() is not None:
-            self.scheme = self.config.get_branching_scheme()
-        else:
-            self.scheme = guessed_scheme
-
         cache_file = os.path.join(self.create_cache_dir(), 
                                   'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
@@ -206,6 +201,16 @@ class SvnRepository(Repository):
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
         self.revmap = RevidMap(self.cachedb)
+        if self.config.get_branching_scheme() is not None:
+            self.scheme = self.config.get_branching_scheme()
+        else:
+            text = self.branchprop_list.get_property("", self._latest_revnum, 
+                                             SVN_PROP_BZR_BRANCHING_SCHEME, None)
+            if text is not None:
+                self.set_branching_scheme(
+                        ListBranchingScheme(parse_list_scheme_text(text)))
+            else:
+                self.scheme = guessed_scheme
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme

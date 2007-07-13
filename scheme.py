@@ -217,6 +217,9 @@ class ListBranchingScheme(BranchingScheme):
                 return (i, path[len(i):].strip("/"))
         raise NotBranchError(path=path)
 
+    def __eq__(self, other):
+        return self.branch_list == other.branch_list
+
 
 class UnknownBranchingScheme(BzrError):
     _fmt = "Branching scheme could not be found: %(name)s"
