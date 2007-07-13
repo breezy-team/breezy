@@ -47,7 +47,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "akey\0\0data\n\n", contents)
+            "akey\0\0\0data\n\n", contents)
 
     def test_build_index_two_nodes_sorted_reverse(self):
         # the highest sorted node comes first.
@@ -61,9 +61,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "2002\0\0data\n"
-            "2001\0\0data\n"
-            "2000\0\0data\n"
+            "2002\0\0\0data\n"
+            "2001\0\0\0data\n"
+            "2000\0\0\0data\n"
             "\n", contents)
 
     def test_add_node_bad_key(self):

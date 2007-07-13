@@ -30,7 +30,21 @@ _newline_null_re = re.compile('[\n\0]')
 
 
 class GraphIndexBuilder(object):
-    """A builder that can build a GraphIndex."""
+    """A builder that can build a GraphIndex.
+    
+    The resulting graph has the structure:
+    
+    _SIGNATURE OPTIONS NODES NEWLINE
+    _SIGNATURE     := 'Bazaar Graph Index 1' NEWLINE
+    OPTIONS        := 'node_ref_lists=' DIGITS NEWLINE
+    NODES          := NODE*
+    NODE           := KEY NULL ABSENT? NULL REFERENCES NULL VALUE NEWLINE
+    KEY            := Not-whitespace-utf8
+    ABSENT         := 'a'
+    REFERENCES     := (REFERENCE_LIST TAB) {node_ref_lists}
+    REFERENCE_LIST := (KEY (CR KEY)*)?
+    VALUE          := no-newline-no-null-bytes
+    """
 
     def __init__(self, reference_lists=0):
         """Create a GraphIndex builder.
@@ -69,7 +83,7 @@ class GraphIndexBuilder(object):
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         for key, (references, value) in sorted(self._nodes.items(),reverse=True):
             flattened_references = ''
-            lines.append("%s\0%s\0%s\n" % (key, flattened_references, value))
+            lines.append("%s\0\0%s\0%s\n" % (key, flattened_references, value))
         lines.append('\n')
         return StringIO(''.join(lines))
 
