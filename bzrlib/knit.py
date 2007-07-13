@@ -1316,12 +1316,14 @@ class _KnitIndex(_KnitComponentFile):
 class KnitGraphIndex(object):
     """A knit index that builds on GraphIndex."""
 
-    def __init__(self, graph_index):
+    def __init__(self, graph_index, deltas=False):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
+        :param deltas: Allow delta-compressed records.
         """
         self._graph_index = graph_index
+        self._deltas = deltas
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1397,11 +1399,12 @@ class KnitGraphIndex(object):
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        fulltext = self._get_node(version_id)[2][0] == 'F'
-        if fulltext:
+        if not self._deltas:
             return 'fulltext'
-        else:
+        if len(self._get_node(version_id)[1][1]):
             return 'line-delta'
+        else:
+            return 'fulltext'
 
     def _get_node(self, version_id):
         return list(self._graph_index.iter_entries([version_id]))[0]

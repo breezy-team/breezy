@@ -1519,16 +1519,29 @@ class TestGraphIndexKnit(KnitTests):
         trans.put_file(name, stream)
         return GraphIndex(trans, name)
 
-    def two_graph_index(self):
+    def two_graph_index(self, deltas=False):
+        """Build a two-graph index.
+
+        :param deltas: If true, use underlying indices with two node-ref
+            lists and 'parent' set to a delta-compressed against tail.
+        """
         # build a complex graph across several indices.
-        index1 = self.make_g_index('1', 1, [
-            ('tip', (['parent'], ), 'F0 100'),
-            ('tail', ([], ), '')])
-        index2 = self.make_g_index('2', 1, [
-            ('parent', (['tail', 'ghost'], ), 'L100 78'),
-            ('separate', ([], ), '')])
+        if deltas:
+            index1 = self.make_g_index('1', 2, [
+                ('tip', (['parent'], [], ), ' 0 100'),
+                ('tail', ([], []), '')])
+            index2 = self.make_g_index('2', 2, [
+                ('parent', (['tail', 'ghost'], ['tail']), ' 100 78'),
+                ('separate', ([], []), '')])
+        else:
+            index1 = self.make_g_index('1', 1, [
+                ('tip', (['parent'], ), ' 0 100'),
+                ('tail', ([], ), '')])
+            index2 = self.make_g_index('2', 1, [
+                ('parent', (['tail', 'ghost'], ), ' 100 78'),
+                ('separate', ([], ), '')])
         combined_index = CombinedGraphIndex([index1, index2])
-        return KnitGraphIndex(combined_index)
+        return KnitGraphIndex(combined_index, deltas=deltas)
 
     def two_graph_index_no_ghosts(self):
         # build a complex graph across several indices.
@@ -1618,10 +1631,16 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual((0, 100), index.get_position('tip'))
         self.assertEqual((100, 78), index.get_position('parent'))
 
-    def test_get_method(self):
-        index = self.two_graph_index()
+    def test_get_method_deltas(self):
+        index = self.two_graph_index(deltas=True)
         self.assertEqual('fulltext', index.get_method('tip'))
         self.assertEqual('line-delta', index.get_method('parent'))
+
+    def test_get_method_no_deltas(self):
+        # check that the parent-history lookup is ignored with deltas=False.
+        index = self.two_graph_index(deltas=False)
+        self.assertEqual('fulltext', index.get_method('tip'))
+        self.assertEqual('fulltext', index.get_method('parent'))
 
 ## --- mutating tests for later ---
 #
