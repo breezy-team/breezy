@@ -1528,14 +1528,14 @@ class TestGraphIndexKnit(KnitTests):
         # build a complex graph across several indices.
         if deltas:
             index1 = self.make_g_index('1', 2, [
-                ('tip', (['parent'], [], ), ' 0 100'),
+                ('tip', (['parent'], [], ), 'N0 100'),
                 ('tail', ([], []), '')])
             index2 = self.make_g_index('2', 2, [
                 ('parent', (['tail', 'ghost'], ['tail']), ' 100 78'),
                 ('separate', ([], []), '')])
         else:
             index1 = self.make_g_index('1', 1, [
-                ('tip', (['parent'], ), ' 0 100'),
+                ('tip', (['parent'], ), 'N0 100'),
                 ('tail', ([], ), '')])
             index2 = self.make_g_index('2', 1, [
                 ('parent', (['tail', 'ghost'], ), ' 100 78'),
@@ -1641,6 +1641,18 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=False)
         self.assertEqual('fulltext', index.get_method('tip'))
         self.assertEqual('fulltext', index.get_method('parent'))
+
+    def test_get_options_deltas(self):
+        index = self.two_graph_index(deltas=True)
+        self.assertEqual('fulltext,no-eol', index.get_options('tip'))
+        self.assertEqual('line-delta', index.get_options('parent'))
+
+    def test_get_options_no_deltas(self):
+        # check that the parent-history lookup is ignored with deltas=False.
+        index = self.two_graph_index(deltas=False)
+        self.assertEqual('fulltext,no-eol', index.get_options('tip'))
+        self.assertEqual('fulltext', index.get_options('parent'))
+
 
 ## --- mutating tests for later ---
 #

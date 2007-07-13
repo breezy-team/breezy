@@ -1294,6 +1294,10 @@ class _KnitIndex(_KnitComponentFile):
             return 'line-delta'
 
     def get_options(self, version_id):
+        """Return a string represention options.
+
+        e.g. foo,bar
+        """
         return self._cache[version_id][1]
 
     def get_parents(self, version_id):
@@ -1401,7 +1405,11 @@ class KnitGraphIndex(object):
         """Return compression method of specified version."""
         if not self._deltas:
             return 'fulltext'
-        if len(self._get_node(version_id)[1][1]):
+        return self._parent_compression(self._get_node(version_id)[1][1])
+
+    def _parent_compression(self, reference_list):
+        # use the second reference list to decide if this is delta'd or not.
+        if len(reference_list):
             return 'line-delta'
         else:
             return 'fulltext'
@@ -1409,6 +1417,19 @@ class KnitGraphIndex(object):
     def _get_node(self, version_id):
         return list(self._graph_index.iter_entries([version_id]))[0]
 
+    def get_options(self, version_id):
+        """Return a string represention options.
+
+        e.g. foo,bar
+        """
+        node = self._get_node(version_id)
+        if not self._deltas:
+            options = ['fulltext']
+        else:
+            options = [self._parent_compression(node[1][1])]
+        if node[2][0] == 'N':
+            options.append('no-eol')
+        return ','.join(options)
 
 
 class _KnitData(_KnitComponentFile):
