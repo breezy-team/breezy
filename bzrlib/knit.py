@@ -1434,13 +1434,24 @@ class KnitGraphIndex(object):
     def get_parents(self, version_id):
         """Return parents of specified version ignoring ghosts."""
         parents = self.get_parents_with_ghosts(version_id)
-        present_parents = set([
-            parent[0] for parent in self._graph_index.iter_entries(parents)])
+        present_parents = self._present_keys(parents)
         return [key for key in parents if key in present_parents]
+
+    def _present_keys(self, version_ids):
+        return set([
+            node[0] for node in self._graph_index.iter_entries(version_ids)])
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
         return self._get_node(version_id)[1][0]
+
+    def check_versions_present(self, version_ids):
+        """Check that all specified versions are present."""
+        version_ids = set(version_ids)
+        present = self._present_keys(version_ids)
+        missing = version_ids.difference(present)
+        if missing:
+            raise RevisionNotPresent(missing.pop, self)
 
 
 class _KnitData(_KnitComponentFile):

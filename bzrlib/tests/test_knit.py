@@ -1662,6 +1662,14 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index()
         self.assertEqual(('tail', 'ghost'), index.get_parents_with_ghosts('parent'))
 
+    def test_check_versions_present(self):
+        # ghosts should not be considered present
+        index = self.two_graph_index()
+        self.assertRaises(RevisionNotPresent, index.check_versions_present,
+            ['ghost'])
+        self.assertRaises(RevisionNotPresent, index.check_versions_present,
+            ['tail', 'ghost'])
+        index.check_versions_present(['tail', 'separate'])
 
 ## --- mutating tests for later ---
 #
