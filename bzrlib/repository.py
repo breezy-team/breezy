@@ -1343,9 +1343,9 @@ format_registry.register_lazy(
     'bzrlib.repofmt.weaverepo',
     'RepositoryFormat7'
     )
+
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
-
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
@@ -1357,6 +1357,20 @@ format_registry.register_lazy(
     'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit3',
+    )
+
+# Experimental formats. These make no guarantee about data stability.
+# There is one format for pre-subtrees, and one for post-subtrees to
+# allow ease of testing.
+format_registry.register_lazy(
+    'Bazaar Experimental no-subtrees\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatGraphKnit1',
+    )
+format_registry.register_lazy(
+    'Bazaar Experimental subtrees\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatGraphKnit3',
     )
 
 

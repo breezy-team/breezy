@@ -2428,4 +2428,24 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
+format_registry.register_metadir('experimental',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatGraphKnit1',
+    help='New in XXX: Experimental format with data compatible with dirstate '
+        'format repositories. Cannot be read except with bzr.dev. '
+        'WARNING: This format is unstable and data in it will not be upgradable'
+        ' to release formats of bzr.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    )
+format_registry.register_metadir('experimental-subtree',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatGraphKnit3',
+    help='New in XXX: Experimental format with data compatible with '
+        'dirstate-with-subtree format repositories. Cannot be read except with'
+        ' bzr.dev. WARNING: This format is unstable and data in it will not be'
+        ' upgradable to release formats of bzr.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    )
 format_registry.set_default('dirstate')

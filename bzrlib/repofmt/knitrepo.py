@@ -279,6 +279,14 @@ class KnitRepository3(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class GraphKnitRepository1(KnitRepository):
+    """Experimental graph-knit using repository."""
+
+
+class GraphKnitRepository3(KnitRepository3):
+    """Experimental graph-knit using subtrees repository."""
+
+
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
     """Bzr repository knit format (generalized). 
 
@@ -379,7 +387,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository(_format=self,
+        return self.repository_class(_format=self,
                               a_bzrdir=a_bzrdir,
                               control_files=control_files,
                               _revision_store=_revision_store,
@@ -402,6 +410,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     This format was introduced in bzr 0.8.
     """
+
+    repository_class = KnitRepository
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -462,28 +472,80 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 3"
 
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
-        """See RepositoryFormat.open().
-        
-        :param _override_transport: INTERNAL USE ONLY. Allows opening the
-                                    repository at a slightly different url
-                                    than normal. I.e. during 'upgrade'.
-        """
-        if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
-        if _override_transport is not None:
-            repo_transport = _override_transport
-        else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport, 'lock',
-                                                     lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return self.repository_class(_format=self,
-                                     a_bzrdir=a_bzrdir,
-                                     control_files=control_files,
-                                     _revision_store=_revision_store,
-                                     control_store=control_store,
-                                     text_store=text_store)
+
+class RepositoryFormatGraphKnit1(RepositoryFormatKnit):
+    """Experimental repository with knit1 style data.
+
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - uses a GraphKnitIndex for revisions.knit.
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+
+    This format was introduced in bzr.dev.
+    """
+
+    repository_class = GraphKnitRepository1
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('experimental')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def __ne__(self, other):
+        return self.__class__ is not other.__class__
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Experimental no-subtrees\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Experimental no-subtrees"
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatGraphKnit3(RepositoryFormatKnit3):
+    """Experimental repository with knit3 style data.
+
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - uses a GraphKnitIndex for revisions.knit.
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+     - support for recording full info about the tree root
+     - support for recording tree-references
+    """
+
+    repository_class = GraphKnitRepository3
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('experimental-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Experimental subtrees\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Experimental no-subtrees\n"
