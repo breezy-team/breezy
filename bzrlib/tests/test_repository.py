@@ -590,3 +590,14 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_databases(t)
+
+
+class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir('experimental-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff('Bazaar Experimental subtrees\n',
+                             t.get('format').read())
+
