@@ -320,8 +320,9 @@ class CombinedGraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
-        for node in self.iter_all_entries():
-            if node[0] in keys:
+        for index in self._indices:
+            for node in index.iter_entries(keys):
+                keys.remove(node[0])
                 yield node
 
     def validate(self):
