@@ -64,6 +64,15 @@ class TestFileCollection(TestCaseWithMemoryTransport):
         collection.load()
         self.assertEqual(set(['0', '1']), collection.names())
 
+    def test_load_empty(self):
+        t = self.get_transport()
+        collection = FileCollection(t, 'index')
+        collection.initialise()
+        collection.save()
+        collection = FileCollection(t, 'index')
+        collection.load()
+        self.assertEqual(set(), collection.names())
+
     def test_names(self):
         t = self.get_transport()
         collection = FileCollection(t, 'index')
@@ -83,3 +92,12 @@ class TestFileCollection(TestCaseWithMemoryTransport):
             get_transport('unlistable+' + self.get_url()), 'index')
         collection.load()
         self.assertEqual(set(['0', '1']), collection.names())
+
+    def test_remove(self):
+        t = self.get_transport()
+        collection = FileCollection(t, 'index')
+        collection.initialise()
+        name1 = collection.allocate()
+        name2 = collection.allocate()
+        collection.remove(name1)
+        self.assertEqual(set([name2]), collection.names())

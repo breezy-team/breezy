@@ -65,10 +65,16 @@ class FileCollection(object):
         """Load the names from the transport."""
         self._names = set(self._transport.get_bytes(
             self._index_name).split('\n'))
+        if '' in self._names:
+            self._names.remove('')
 
     def names(self):
         """What are the names in this collection?"""
         return frozenset(self._names)
+
+    def remove(self, name):
+        """Remove name from the collection."""
+        self._names.remove(name)
 
     def save(self):
         """Save the set of names."""
