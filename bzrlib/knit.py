@@ -1320,14 +1320,18 @@ class _KnitIndex(_KnitComponentFile):
 class KnitGraphIndex(object):
     """A knit index that builds on GraphIndex."""
 
-    def __init__(self, graph_index, deltas=False):
+    def __init__(self, graph_index, deltas=False, add_callback=None):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
         :param deltas: Allow delta-compressed records.
+        :param add_callback: If not None, allow additions to the index and call
+            this callback with a list of added GraphIndex nodes:
+            [(node, node_refs, value), ...]
         """
         self._graph_index = graph_index
         self._deltas = deltas
+        self._add_callback = add_callback
 
     def _get_entries(self, version_ids):
         """Get the entries for version_ids."""
@@ -1455,7 +1459,7 @@ class KnitGraphIndex(object):
         present = self._present_keys(version_ids)
         missing = version_ids.difference(present)
         if missing:
-            raise RevisionNotPresent(missing.pop, self)
+            raise RevisionNotPresent(missing.pop(), self)
 
     def add_version(self, version_id, options, pos, size, parents):
         """Add a version record to the index."""
@@ -1466,13 +1470,16 @@ class KnitGraphIndex(object):
         
         This function does not insert data into the Immutable GraphIndex
         backing the KnitGraphIndex, instead it prepares data for insertion by
-        the caller and checks that it is safe to insert.
+        the caller and checks that it is safe to insert then calls
+        self._add_callback with the prepared GraphIndex nodes.
 
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
         :return: A list of (key, node_refs, value) tuples for insertion
             into a GraphIndex.
         """
+        if not self._add_callback:
+            raise errors.ReadOnlyError(self)
         # we hope there are no repositories with inconsistent parentage
         # anymore.
         # check for dups
@@ -1502,7 +1509,7 @@ class KnitGraphIndex(object):
         result = []
         for key, (node_refs, value) in keys.iteritems():
             result.append((key, node_refs, value))
-        return result
+        self._add_callback(result)
         
 
 class _KnitData(_KnitComponentFile):
