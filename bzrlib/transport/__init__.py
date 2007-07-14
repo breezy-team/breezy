@@ -1295,8 +1295,8 @@ register_transport_proto('readonly+',
             )
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 
-register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_transport_proto('unlistable+')
+register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
 
 register_transport_proto('brokenrename+')
 register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
