@@ -19,6 +19,9 @@ lazy_import(globals(), """
 from bzrlib import (
         file_collection,
         )
+from bzrlib.index import InMemoryGraphIndex, GraphIndex, CombinedGraphIndex
+from bzrlib.knit import KnitGraphIndex
+from bzrlib.store import revision
 """)
 from bzrlib import (
     bzrdir,
@@ -41,6 +44,7 @@ from bzrlib.repository import (
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
+from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
 
@@ -285,12 +289,120 @@ class KnitRepository3(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class GraphKnitRevisionStore(KnitRevisionStore):
+    """An object to adapt access from RevisionStore's to use GraphKnits.
+
+    This should not live through to production: by production time we should
+    have fully integrated the new indexing and have new data for the
+    repository classes; also we may choose not to do a Knit1 compatible
+    new repository, just a Knit3 one. If neither of these happen, this 
+    should definately be cleaned up before merging.
+
+    This class works by replacing the original RevisionStore.
+    We need to do this because the GraphKnitRevisionStore is less
+    isolated in its layering - it uses services from the repo.
+    """
+
+    def __init__(self, repo, revisionstore):
+        """Create a GraphKnitRevisionStore on repo with revisionstore.
+
+        This will store its state in the Repository, use the
+        revision-indices FileCollection to provide a KnitGraphIndex,
+        and at the end of transactions write new indices.
+        """
+        KnitRevisionStore.__init__(self, revisionstore.versioned_file_store)
+        self.repo = repo
+        self._serializer = revisionstore._serializer
+
+    def _add_revision(self, revision, revision_as_file, transaction):
+        """Template method helper to store revision in this store."""
+        # FIXME: make this ghost aware at the knit level
+        rf = self.get_revision_file(transaction)
+        self.get_revision_file(transaction).add_lines_with_ghosts(
+            revision.revision_id,
+            revision.parent_ids,
+            osutils.split_lines(revision_as_file.read()))
+
+    def get_indices_transport(self):
+        return self.versioned_file_store._transport.clone('revision-indices')
+
+    def get_revision_file(self, transaction):
+        """Get the revision versioned file object."""
+        if getattr(self.repo, '_revision_knit', None):
+            return self.repo._revision_knit
+        index_transport = self.get_indices_transport()
+        self.repo._revision_indices = file_collection.FileCollection(
+            index_transport, 'index')
+        self.repo._revision_indices.load()
+        indices = []
+        for name in self.repo._revision_indices.names():
+            # TODO: maybe this should expose size to us  to allow
+            # sorting of the indices for better performance ?
+            indices.append(GraphIndex(index_transport, name))
+        if self.repo.control_files._lock_mode == 'w':
+            # allow writing: queue writes to a new index
+            indices.append(InMemoryGraphIndex(1))
+            self.repo._revision_write_index = indices[-1]
+            add_callback = self.repo._revision_write_index.add_nodes
+        else:
+            add_callback = None # no data-adding permitted.
+        all_indices = CombinedGraphIndex(indices)
+        knit_index = KnitGraphIndex(all_indices, add_callback=add_callback)
+        self.repo._revision_knit = knit.KnitVersionedFile(
+            'revisions', index_transport.clone('..'),
+            self.repo.control_files._file_mode,
+            create=False, access_mode=self.repo.control_files._lock_mode,
+            index=knit_index, delta=False, factory=knit.KnitPlainFactory())
+        return self.repo._revision_knit
+
+    def flush(self):
+        """Write out pending indices."""
+        # have we done anything?
+        if getattr(self.repo, '_revision_knit', None):
+            index_transport = self.get_indices_transport()
+            index_transport.put_file(self.repo._revision_indices.allocate(),
+                self.repo._revision_write_index.finish())
+            self.repo._revision_indices.save()
+
+    def reset(self):
+        """Clear all cached data."""
+        self.repo._revision_knit = None
+        self.repo._revision_indices = None
+        self.repo._revision_write_index = None
+
+
 class GraphKnitRepository1(KnitRepository):
     """Experimental graph-knit using repository."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+                 control_store, text_store):
+        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
+                              _revision_store, control_store, text_store)
+        self._revision_store = GraphKnitRevisionStore(self, self._revision_store)
+
+    def unlock(self):
+        if self.control_files._lock_count == 1:
+            if self.control_files._lock_mode == 'w':
+                self._revision_store.flush()
+            self._revision_store.reset()
+        self.control_files.unlock()
 
 
 class GraphKnitRepository3(KnitRepository3):
     """Experimental graph-knit using subtrees repository."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+                 control_store, text_store):
+        KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
+                              _revision_store, control_store, text_store)
+        self._revision_store = GraphKnitRevisionStore(self, self._revision_store)
+
+    def unlock(self):
+        if self.control_files._lock_count == 1:
+            if self.control_files._lock_mode == 'w':
+                self._revision_store.flush()
+            self._revision_store.reset()
+        self.control_files.unlock()
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -319,7 +431,6 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
-        from bzrlib.store.revision.knit import KnitRevisionStore
         versioned_file_store = VersionedFileStore(
             repo_transport,
             file_mode=control_files._file_mode,
