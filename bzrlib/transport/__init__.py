@@ -1103,6 +1103,21 @@ class Transport(object):
         return None
 
 
+class _SharedConnection(object):
+    """A connection shared between several transports."""
+
+    def __init__(self, connection=None, credentials=None):
+        """Constructor.
+
+        :param connection: An opaque object specific to each transport.
+
+        :param credentials: An opaque object containing the credentials used to
+            create the connection.
+        """
+        self.connection = connection
+        self.credentials = credentials
+
+
 class ConnectedTransport(Transport):
     """A transport connected to a remote server.
 
@@ -1141,10 +1156,8 @@ class ConnectedTransport(Transport):
 
         super(ConnectedTransport, self).__init__(base)
         if from_transport is None:
-            self._set_shared_connection()
+            self._shared_connection = _SharedConnection()
         else:
-            # set_connection MUST not be used here, see set_connection for an
-            # explanation
             self._shared_connection = from_transport._shared_connection
 
     def clone(self, offset=None):
@@ -1279,21 +1292,6 @@ class ConnectedTransport(Transport):
         remote_path = self._combine_paths(self._path, relative)
         return remote_path
 
-    def  _set_shared_connection(self, connection=None, credentials=None):
-        """Initializes the structure shared amongst cloned transports.
-
-
-        Note: What we share is really the connection itself and any credentials
-        that may be needed to create a new one.
-
-        We use a list as a container for the connection and its associated
-        credentials so that the connection will be shared if a transport needs
-        to reconnect after a temporary failure. It also quarantee that the
-        connection will still be shared even if a transport is cloned before
-        the first effective connection (generally the first request) is made.
-        """
-        self._shared_connection = [(connection, credentials)]
-
     def _get_shared_connection(self):
         """Get the object shared amongst cloned transports.
 
@@ -1318,15 +1316,16 @@ class ConnectedTransport(Transport):
         :param credentials: An opaque object representing the credentials
             needed to create the connection.
         """
-        self._get_shared_connection()[0] = (connection, credentials)
+        self._shared_connection.connection = connection
+        self._shared_connection.credentials = credentials
 
     def _get_connection(self):
         """Returns the transport specific connection object."""
-        return self._get_shared_connection()[0][0]
+        return self._shared_connection.connection
 
     def _get_credentials(self):
         """Returns the credentials used to establish the connection."""
-        return self._get_shared_connection()[0][1]
+        return self._shared_connection.credentials
 
     def _update_credentials(self, credentials):
         """Update the credentials of the current connection.
@@ -1338,8 +1337,7 @@ class ConnectedTransport(Transport):
         """
         # We don't want to call _set_connection here as we are only updating
         # the credentials not creating a new connection.
-        (connection, old_credentials) = self._get_shared_connection()[0]
-        self._get_shared_connection()[0] = (connection, credentials)
+        self._shared_connection.credentials = credentials
 
     def _reuse_for(self, other_base):
         """Returns a transport sharing the same connection if possible.

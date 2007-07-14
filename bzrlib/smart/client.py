@@ -26,7 +26,7 @@ class _SmartClient(object):
         self._shared_medium = shared_medium
 
     def get_smart_medium(self):
-        return self._shared_medium[0][0]
+        return self._shared_medium.connection
 
     def call(self, method, *args):
         """Call a method on the remote server."""

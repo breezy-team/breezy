@@ -104,7 +104,8 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-            self._set_shared_connection(medium, credentials)
+            self._shared_connection= transport._SharedConnection(medium,
+                                                                 credentials)
 
         if _client is None:
             self._client = client._SmartClient(self.get_shared_medium())
