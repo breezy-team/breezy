@@ -50,6 +50,9 @@ IN DEVELOPMENT
     * New transport decorator 'unlistable+' which disables the list_dir
       functionality for testing.
 
+    * New ``file_collection.FileCollection`` support class which mananges names
+      for unlistable transport situations. (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
