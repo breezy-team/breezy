@@ -1,4 +1,4 @@
-# Copyright (C) 2007 by Jelmer Vernooij
+# Copyright (C) 2007 by Jelmer Vernooij <jelmer@samba.org>
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,11 +13,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Rebase support.
+
+The Bazaar rebase plugin adds support for rebasing branches to Bazaar.
+It adds the command 'rebase' to Bazaar. When conflicts occur when replaying
+patches, the user can resolve the conflict and continue the rebase using the
+'rebase-continue' command or abort using the 'rebase-abort' command.
+"""
 
 from bzrlib.commands import Command, Option, display_command, register_command
 from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
                            UnrelatedBranches)
 from bzrlib.trace import info
+
+__version__ = '0.1'
+__author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
 class cmd_rebase(Command):
     """Re-base a branch.
