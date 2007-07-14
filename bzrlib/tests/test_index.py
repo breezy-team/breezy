@@ -17,7 +17,7 @@
 """Tests for indices."""
 
 from bzrlib import errors
-from bzrlib.index import CombinedGraphIndex, GraphIndexBuilder, GraphIndex
+from bzrlib.index import *
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -445,3 +445,73 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
     def test_validate_empty(self):
         index = CombinedGraphIndex([])
         index.validate()
+
+
+class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
+
+    def make_index(self, ref_lists=0, nodes=[]):
+        result = InMemoryGraphIndex(ref_lists)
+        result.add_nodes(nodes)
+        return result
+
+    def test_add_nodes(self):
+        index = self.make_index(1)
+        index.add_nodes([('name', ([],), 'data')])
+        index.add_nodes([('name2', ([],), ''), ('name3', (['r'],), '')])
+        self.assertEqual(set([
+            ('name', ((),), 'data'),
+            ('name2', ((),), ''),
+            ('name3', (('r',),), ''),
+            ]), set(index.iter_all_entries()))
+
+    def test_iter_all_entries_empty(self):
+        index = self.make_index()
+        self.assertEqual([], list(index.iter_all_entries()))
+
+    def test_iter_all_entries_simple(self):
+        index = self.make_index(nodes=[('name', (), 'data')])
+        self.assertEqual([('name', (), 'data')],
+            list(index.iter_all_entries()))
+
+    def test_iter_all_entries_references(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data'),
+            ('ref', ([], ), 'refdata')])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_all_entries()))
+
+    def test_iteration_absent_skipped(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data')])
+        self.assertEqual(set([('name', (('ref',),), 'data')]),
+            set(index.iter_all_entries()))
+        self.assertEqual(set([('name', (('ref',),), 'data')]),
+            set(index.iter_entries(['name'])))
+        self.assertEqual([], list(index.iter_entries(['ref'])))
+
+    def test_iter_all_keys(self):
+        index = self.make_index(1, nodes=[
+            ('name', (['ref'], ), 'data'),
+            ('ref', ([], ), 'refdata')])
+        self.assertEqual(set([('name', (('ref',),), 'data'),
+            ('ref', ((), ), 'refdata')]),
+            set(index.iter_entries(['name', 'ref'])))
+
+    def test_iter_nothing_empty(self):
+        index = self.make_index()
+        self.assertEqual([], list(index.iter_entries([])))
+
+    def test_iter_missing_entry_empty(self):
+        index = self.make_index()
+        self.assertEqual([], list(index.iter_entries(['a'])))
+
+    def test_validate_empty(self):
+        index = self.make_index()
+        index.validate()
+
+    def test_validate_no_refs_content(self):
+        index = self.make_index(nodes=[('key', (), 'value')])
+        index.validate()
+
+

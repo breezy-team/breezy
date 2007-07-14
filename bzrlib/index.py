@@ -16,7 +16,12 @@
 
 """Indexing facilities."""
 
-__all__ = ['CombinedGraphIndex', 'GraphIndex', 'GraphIndexBuilder']
+__all__ = [
+    'CombinedGraphIndex',
+    'GraphIndex',
+    'GraphIndexBuilder',
+    'InMemoryGraphIndex',
+    ]
 
 from cStringIO import StringIO
 import re
@@ -74,15 +79,17 @@ class GraphIndexBuilder(object):
             raise errors.BadIndexValue(value)
         if len(references) != self.reference_lists:
             raise errors.BadIndexValue(references)
+        node_refs = []
         for reference_list in references:
             for reference in reference_list:
                 if _whitespace_re.search(reference) is not None:
                     raise errors.BadIndexKey(reference)
                 if reference not in self._nodes:
-                    self._nodes[reference] = ('a', [], '')
+                    self._nodes[reference] = ('a', (), '')
+            node_refs.append(tuple(reference_list))
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = ('', references, value)
+        self._nodes[key] = ('', tuple(node_refs), value)
 
     def finish(self):
         lines = [_SIGNATURE]
@@ -321,3 +328,48 @@ class CombinedGraphIndex(object):
         """Validate that everything in the index can be accessed."""
         for index in self._indices:
             index.validate()
+
+
+class InMemoryGraphIndex(GraphIndexBuilder):
+    """A GraphIndex which operates entirely out of memory and is mutable.
+
+    This is designed to allow the accumulation of GraphIndex entries during a
+    single write operation, where the accumulated entries need to be immediately
+    available - for example via a CombinedGraphIndex.
+    """
+
+    def add_nodes(self, nodes):
+        """Add nodes to the index.
+
+        :param nodes: An iterable of (key, node_refs, value) entries to add.
+        """
+        for (key, node_refs, value) in nodes:
+            self.add_node(key, node_refs, value)
+
+    def iter_all_entries(self):
+        """Iterate over all keys within the index
+
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index (in this case dictionary hash order).
+        """
+        for key, (absent, references, value) in self._nodes.iteritems():
+            if not absent:
+                yield key, references, value
+
+    def iter_entries(self, keys):
+        """Iterate over keys within the index.
+
+        :param keys: An iterable providing the keys to be retrieved.
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index (keys iteration order in this case).
+        """
+        keys = set(keys)
+        for key in keys.intersection(self._nodes):
+            node = self._nodes[key]
+            if not node[0]:
+                yield key, node[1], node[2]
+
+    def validate(self):
+        """In memory index's have no known corruption at the moment."""
