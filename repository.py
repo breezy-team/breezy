@@ -16,12 +16,12 @@
 """Subversion repository access."""
 
 import bzrlib
+from bzrlib import osutils
 from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
                            NotBranchError, UninitializableFormat, BzrError)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
-import bzrlib.osutils as osutils
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
@@ -48,7 +48,6 @@ SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
-SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d:' % MAPPING_VERSION
@@ -329,11 +328,18 @@ class SvnRepository(Repository):
         return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
-        """Check which files were renamed in a particular revision."""
+        """Check which files were renamed in a particular revision.
+        
+        :param revid: Id of revision to look up.
+        :return: dictionary with paths as keys, file ids as values
+        """
         (path, revnum, scheme) = self.lookup_revision_id(revid)
-        items = self.branchprop_list.get_property_diff(path, revnum, 
-                                  SVN_PROP_BZR_FILEIDS).splitlines()
-        return dict(map(lambda x: x.split("\t"), items))
+        ret = {}
+        for line in self.branchprop_list.get_property_diff(path, revnum, 
+                SVN_PROP_BZR_FILEIDS).splitlines():
+            (path, key) = line.split("\t", 2)
+            ret[path] = osutils.safe_file_id(key)
+        return ret
 
     def _mainline_revision_parent(self, path, revnum, scheme):
         """Find the mainline parent of the specified revision.

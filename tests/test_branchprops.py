@@ -43,6 +43,17 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data", bp.get_property("", 1, "myprop"))
 
+    def test_get_property_multiple(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", "aprop", "foo")
+        self.client_set_prop("dc", "myprop", "data")
+        self.client_commit("dc", "My Message")
+
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEqual("data", bp.get_property("", 1, "myprop"))
+
     def test_get_property_norev(self):
         repos_url = self.make_client('d', 'dc')
         self.client_set_prop("dc", "myprop", "data")
