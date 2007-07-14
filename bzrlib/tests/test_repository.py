@@ -34,6 +34,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib.file_collection import FileCollection
 from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
@@ -494,3 +495,98 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree('dull2')
         self.assertEqual('dull', revision_tree.inventory.root.revision)
 
+
+class TestExperimentalNoSubtrees(TestCaseWithTransport):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir('experimental')
+
+    def test_disk_layout(self):
+        format = self.get_format()
+        repo =self.make_repository('.', format=format)
+        # in case of side effects of locking.
+        repo.lock_write()
+        repo.unlock()
+        # we want:
+        # format 'Bazaar Experimental'
+        # lock: is a directory
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        t = repo.bzrdir.get_repository_transport(None)
+        self.check_format(t)
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_databases(t)
+
+    def check_format(self, t):
+        self.assertEqualDiff('Bazaar Experimental no-subtrees\n',
+                             t.get('format').read())
+
+    def assertHasKndx(self, t, knit_name):
+        """Assert that knit_name exists on t."""
+        self.assertEqualDiff('# bzr knit index 8\n',
+                             t.get(knit_name + '.kndx').read())
+
+    def assertHasNoKndx(self, t, knit_name):
+        """Assert that knit_name has no index on t."""
+        self.assertFalse(t.has(knit_name + '.kndx'))
+
+    def assertHasKnit(self, t, knit_name):
+        """Assert that knit_name exists on t."""
+        # no default content
+        self.assertTrue(t.has(knit_name + '.knit'))
+
+    def check_databases(self, t):
+        """check knit content for a repository."""
+        self.assertHasKndx(t, 'inventory')
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasNoKndx(t, 'revisions')
+        self.assertHasKndx(t, 'signatures')
+        self.assertHasKnit(t, 'signatures')
+        # revision-indexes file-container directory
+        collection = FileCollection(t.clone('revision-indices'), 'index')
+        collection.load()
+        self.assertEqual(set(), collection.names())
+
+    def test_shared_disk_layout(self):
+        format = self.get_format()
+        repo =self.make_repository('.', shared=True, format=format)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock: is a directory
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = repo.bzrdir.get_repository_transport(None)
+        self.check_format(t)
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_databases(t)
+
+    def test_shared_no_tree_disk_layout(self):
+        format = self.get_format()
+        repo =self.make_repository('.', shared=True, format=format)
+        repo.set_make_working_trees(False)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = repo.bzrdir.get_repository_transport(None)
+        self.check_format(t)
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff('', t.get('no-working-trees').read())
+        repo.set_make_working_trees(True)
+        self.assertFalse(t.has('no-working-trees'))
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_databases(t)

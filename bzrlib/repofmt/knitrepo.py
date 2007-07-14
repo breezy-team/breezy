@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+        file_collection,
+        )
+""")
 from bzrlib import (
     bzrdir,
     deprecated_graph,
@@ -513,6 +519,27 @@ class RepositoryFormatGraphKnit1(RepositoryFormatKnit):
 
     def check_conversion_target(self, target_format):
         pass
+
+    def initialize(self, a_bzrdir, shared=False):
+        """Create an experimental repository.
+
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
+        """
+        # setup a basic Knit1 repository.
+        result = RepositoryFormatKnit.initialize(self, a_bzrdir, shared)
+        # and adapt it to a GraphKnit repo
+        mutter('changing to GraphKnit1 repository in %s.', a_bzrdir.transport.base)
+        repo_transport = a_bzrdir.get_repository_transport(None)
+        repo_transport.mkdir('revision-indices')
+        collection = file_collection.FileCollection(
+            repo_transport.clone('revision-indices'), 'index')
+        collection.initialise()
+        collection.save()
+        repo_transport.delete('revisions.kndx')
+        return self.open(a_bzrdir=a_bzrdir, _found=True)
 
 
 class RepositoryFormatGraphKnit3(RepositoryFormatKnit3):
