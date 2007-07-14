@@ -53,6 +53,9 @@ IN DEVELOPMENT
       ``--keep-output`` options, which are obsolete now that tests
       are done within directories in $TMPDIR.  (Martin Pool)
 
+    * The SSH_AUTH_SOCK environment variable is now reset to avoid 
+      interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
+
 
 bzr 0.18rc1  2007-07-10
 
