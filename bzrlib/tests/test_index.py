@@ -372,6 +372,13 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
             ('2', (), '')],
             list(index.iter_all_entries()))
 
+    def test_iter_entries_two_indices_dup_key(self):
+        index1 = self.make_index('name1', nodes=[('name', (), 'data')])
+        index2 = self.make_index('name2', nodes=[('name', (), 'data')])
+        index = CombinedGraphIndex([index1, index2])
+        self.assertEqual([('name', (), 'data')],
+            list(index.iter_entries(['name'])))
+
     def test_iter_all_entries_two_indices_dup_key(self):
         index1 = self.make_index('name1', nodes=[('name', (), 'data')])
         index2 = self.make_index('name2', nodes=[('name', (), 'data')])
