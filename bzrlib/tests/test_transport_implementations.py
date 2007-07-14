@@ -1192,19 +1192,15 @@ class TransportTests(TestTransportImplementation):
         if not isinstance(t, ConnectedTransport):
             raise TestSkipped("not a connected transport")
 
-        self.assertIs(None, t._get_connection())
-
         c = t.clone('subdir')
-        self.assertIs(None, c._get_connection())
-
-        # But as soon as one transport connects, the other get
-        # the connection too
+        # Some transports will create the connection  only when needed
         t.has('surely_not') # Force connection
         self.assertIs(t._get_connection(), c._get_connection())
 
-        # Temporary failure, we need to create a new connection
+        # Temporary failure, we need to create a new dummy connection
         new_connection = object()
         t._set_connection(new_connection)
+        # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())
         self.assertIs(new_connection, c._get_connection())
 

@@ -52,11 +52,11 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._medium = transport.get_smart_client()
-            self._client = client._SmartClient(self._medium)
+            self._shared_medium = transport.get_shared_medium()
+            self._client = client._SmartClient(self._shared_medium)
         else:
             self._client = _client
-            self._medium = None
+            self._shared_medium = None
             return
 
         path = self._path_for_remote_call(self._client)
@@ -240,7 +240,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         else:
             self._client = _client
         self._format = format
@@ -750,7 +750,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch

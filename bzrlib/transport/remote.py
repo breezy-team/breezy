@@ -94,51 +94,31 @@ class RemoteTransport(transport.ConnectedTransport):
         """
         super(RemoteTransport, self).__init__(url, from_transport)
 
-        if medium is None:
-            medium = self._build_medium(from_transport)
-        else:
-            self._set_connection(medium, None)
-        self._medium = medium
-        assert self._medium is not None
-        # ConnectedTransport provides the connection sharing by requiring
-        # daughter classes to always access the connection via _get_connection
-        # and guarantee that the connection wil be shared across all transports
-        # even if the server force a reconnection (i.e. the connection object
-        # should be built again).
+        # The medium is the connection, except when we need to share it with
+        # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
+        # what we want to share is really the shared connection.
 
-        # For RemoteTransport objects, the medium is the connection. But using
-        # _get_connection is not enough because:
-        # - self._client needs a medium to be built (and keep an internal
-        #   copy).
-        # - RemoteBzrDir RemoteRepository, RemoteRepositoryFormat RemoteBranch
-        #   keep internal copies of _SmartClient objects.
+        if from_transport is None:
+            # If no from_transport is specified, we need to intialize the
+            # shared medium.
+            credentials = None
+            if medium is None:
+                medium, credentials = self._build_medium()
+            self._set_shared_connection(medium, credentials)
 
-        # Therefore, the needed refactoring (enhancing _SmartClient and its
-        # users so that connection are still shared even in cases or
-        # reconnections) is too much for this round -- vila20070607
-
-        # On the other hand, except for the reconnection part, the sharing will
-        # already reduce the number of connections.
         if _client is None:
-            self._client = client._SmartClient(self._medium)
+            self._client = client._SmartClient(self.get_shared_medium())
         else:
             self._client = _client
 
-    def _build_medium(self, from_transport=None):
+    def _build_medium(self):
         """Create the medium if from_transport does not provide one.
 
         The medium is analogous to the connection for ConnectedTransport: it
         allows connection sharing.
-        
-        :param from_transport: provide the medium to reuse if not None
         """
-        if from_transport is not None:
-            _medium = from_transport._medium
-        else:
-            _medium = None
-            # No credentials
-            self._set_connection(_medium, None)
-        return _medium
+        # No credentials
+        return None, None
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -164,6 +144,9 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get_smart_medium(self):
         return self._get_connection()
+
+    def get_shared_medium(self):
+        return self._get_shared_connection()
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
@@ -203,7 +186,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call('get', remote)
         resp = smart_protocol.read_response_tuple(True)
@@ -307,7 +290,7 @@ class RemoteTransport(transport.ConnectedTransport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_readv_array(
             ('readv', self._remote_path(relpath)),
@@ -401,7 +384,7 @@ class RemoteTransport(transport.ConnectedTransport):
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
     def disconnect(self):
-        self._medium.disconnect()
+        self.get_smart_medium().disconnect()
 
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
@@ -454,16 +437,11 @@ class RemoteTCPTransport(RemoteTransport):
     def __init__(self, base, from_transport=None):
         assert base.startswith('bzr://')
         super(RemoteTCPTransport, self).__init__(base, from_transport)
+
+    def _build_medium(self):
         if self._port is None:
             self._port = BZR_DEFAULT_PORT
-
-    def _build_medium(self, from_transport=None):
-        if from_transport is not None:
-            _medium = from_transport._medium
-        else:
-            _medium = medium.SmartTCPClientMedium(self._host, self._port)
-            self._set_connection(_medium, None)
-        return _medium
+        return medium.SmartTCPClientMedium(self._host, self._port), None
 
 
 class RemoteSSHTransport(RemoteTransport):
@@ -473,18 +451,13 @@ class RemoteSSHTransport(RemoteTransport):
         SmartSSHClientMedium).
     """
 
-    def _build_medium(self, from_transport=None):
+    def _build_medium(self):
         assert self.base.startswith('bzr+ssh://')
-        if from_transport is not None:
-            _medium = from_transport._medium
-        else:
-            _medium = medium.SmartSSHClientMedium(self._host, self._port,
-                                                  self._user, self._password)
-            # ssh will prompt the user for a password if needed and if none is
-            # provided but it will not give it back, so no credentials can be
-            # stored.
-            self._set_connection(_medium, None)
-        return _medium
+        # ssh will prompt the user for a password if needed and if none is
+        # provided but it will not give it back, so no credentials can be
+        # stored.
+        return medium.SmartSSHClientMedium(self._host, self._port,
+                                           self._user, self._password), None
 
 
 class RemoteHTTPTransport(RemoteTransport):
@@ -511,14 +484,9 @@ class RemoteHTTPTransport(RemoteTransport):
             self._http_transport = http_transport
         super(RemoteHTTPTransport, self).__init__(base, from_transport)
 
-    def _build_medium(self, from_transport=None):
-        if from_transport is not None:
-            _medium = from_transport._medium
-        else:
-            _medium = self._http_transport.get_smart_medium()
-            # We let http_transport take care of the credentials
-            self._set_connection(_medium, None)
-        return _medium
+    def _build_medium(self):
+        # We let http_transport take care of the credentials
+        return self._http_transport.get_smart_medium(), None
 
     def _remote_path(self, relpath):
         """After connecting, HTTP Transport only deals in relative URLs."""
