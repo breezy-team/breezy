@@ -929,6 +929,24 @@ class BasicKnitTests(KnitTests):
         k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
+    def test_add_delta_knit_graph_index(self):
+        """Does adding work with a KnitGraphIndex."""
+        index = InMemoryGraphIndex(2)
+        knit_index = KnitGraphIndex(index, add_callback=index.add_nodes,
+            deltas=True)
+        k = KnitVersionedFile('test', get_transport('.'),
+            delta=True, create=True, index=knit_index)
+        self.add_stock_one_and_one_a(k)
+        k.clear_cache()
+        self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
+        # check the index had the right data added.
+        self.assertEqual(set([
+            ('text-1', ((), ()), ' 0 127'),
+            ('text-1a', (('text-1',), ('text-1',)), ' 127 140'),
+            ]), set(index.iter_all_entries()))
+        # we should not have a .kndx file
+        self.assertFalse(get_transport('.').has('test.kndx'))
+
     def test_annotate(self):
         """Annotations"""
         k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
