@@ -281,7 +281,15 @@ class CombinedGraphIndex(object):
         :param indices: The indices to query for data.
         """
         self._indices = indices
-        
+
+    def insert_index(self, pos, index):
+        """Insert a new index in the list of indices to query.
+
+        :param pos: The position to insert the index.
+        :param index: The index to insert.
+        """
+        self._indices.insert(pos, index)
+
     def iter_all_entries(self):
         """Iterate over all keys within the index
 

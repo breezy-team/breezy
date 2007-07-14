@@ -343,6 +343,12 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1 = GraphIndex(trans, 'missing')
         index = CombinedGraphIndex([index1])
 
+    def test_add_index(self):
+        index = CombinedGraphIndex([])
+        index1 = self.make_index('name', nodes=[('key', (), '')])
+        index.insert_index(0, index1)
+        self.assertEqual([('key', (), '')], list(index.iter_all_entries()))
+
     def test_iter_all_entries_empty(self):
         index = CombinedGraphIndex([])
         self.assertEqual([], list(index.iter_all_entries()))
