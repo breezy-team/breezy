@@ -116,13 +116,13 @@ class cmd_svn_import(Command):
     
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = [Option('trees', help='Create working trees'),
-                     Option('standalone', help='Create standalone branches'),
+    takes_options = [Option('trees', help='Create working trees.'),
+                     Option('standalone', help='Create standalone branches.'),
                      Option('all', 
                          help='Convert all revisions, even those not in '
-                              'current branch history (forbids --standalone)'),
+                              'current branch history (forbids --standalone).'),
                      Option('scheme', type=get_scheme,
-                         help='Branching scheme (none, trunk, ...)')]
+                         help='Branching scheme (none, trunk, ...).')]
 
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
