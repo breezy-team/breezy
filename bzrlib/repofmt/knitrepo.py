@@ -335,7 +335,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             index_transport, 'index')
         self.repo._revision_indices.load()
         indices = []
-        for name in self.repo._revision_indices.names():
+        def _cmp(x, y): return cmp(int(x), int(y))
+        for name in sorted(self.repo._revision_indices.names(), cmp=_cmp, reverse=True):
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             indices.append(GraphIndex(index_transport, name))

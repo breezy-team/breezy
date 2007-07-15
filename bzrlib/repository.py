@@ -1433,6 +1433,15 @@ class InterRepository(InterObject):
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
 
+    @staticmethod
+    def _same_model(source, target):
+        """True if source and target have the same data representation."""
+        if source.supports_rich_root() != target.supports_rich_root():
+            return False
+        if source._serializer != target._serializer:
+            return False
+        return True
+
 
 class InterSameDataRepository(InterRepository):
     """Code for converting between repositories that represent the same data.
@@ -1447,11 +1456,7 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if source.supports_rich_root() != target.supports_rich_root():
-            return False
-        if source._serializer != target._serializer:
-            return False
-        return True
+        return InterRepository._same_model(source, target)
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -1630,12 +1635,13 @@ class InterKnitRepo(InterSameDataRepository):
         could lead to confusing results, and there is no need to be 
         overly general.
         """
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
         try:
-            return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit1)))
+            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
+                isinstance(target._format, RepositoryFormatKnit))
         except AttributeError:
             return False
+        return are_knits and InterRepository._same_model(source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
