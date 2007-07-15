@@ -161,6 +161,7 @@ except ImportError:
            " If the .c files are available,")
     print ("they will be built,"
            " but modifying the .pyx files will not rebuild them.")
+    print
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
