@@ -19,7 +19,14 @@ IN DEVELOPMENT
       fixed. See bzrlib/tests/commands directory.
       (Vincent Ladeuil)
 
+    * ``bzr rm`` now does not insist on ``--force`` to delete files that
+      have been renamed but not otherwise modified.  (Marius Kruger,
+      #111664)
+
   IMPROVEMENTS:
+
+    * Don't show "dots" progress indicators when run non-interactively, such
+      as from cron.  (Martin Pool)
 
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
@@ -27,9 +34,27 @@ IN DEVELOPMENT
     * Get rid of FTP connection cache.
      (Vincent Ladeuil)
 
+    * New ``pack`` command that will trigger database compression within
+      the repository (Robert Collins)
+
+    * Implement ``_KnitIndex._load_data`` in a pyrex extension. The pyrex
+      version is approximately 2-3x faster at parsing a ``.kndx`` file.
+      Which yields a measurable improvement for commands which have to
+      read from the repository, such as a 1s => 0.75s improvement in
+      ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
+
+    * Merge is now faster.  Depending on the scenario, it can be more than 2x
+      faster. (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
-    * None yet ...
+    * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
+      Various globally-declared options have been removed, so plugins
+      that previously said ``takes_options=['message']`` must now
+      construct an Option object and provide appropriate help. Options
+      are now required to provide a help string and it must comply with
+      the style guide by being one or more sentences with an initial
+      capital and final period. (Martin Pool)
 
   INTERNALS:
 
@@ -50,6 +75,10 @@ IN DEVELOPMENT
       If a newly requested transport can share a connection with one of the
       list, it will.
       (Vincent Ladeuil)
+
+    * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
+      the null revision, and consider using ``None`` for this purpose
+      deprecated.  (Aaron Bentley)
 
   TESTING:
 
@@ -212,13 +241,6 @@ bzr 0.18rc1  2007-07-10
       ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
     * ``LockDir.wait`` removed.  (Martin Pool)
-
-    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
-      ``server_stopped`` hooks. The first parameter is now an iterable of
-      backing URLs rather than a single URL. This is to reflect that many
-      URLs may map to the external URL of the server. E.g. the server interally
-      may have a chrooted URL but also the local file:// URL will be at the 
-      same location. (Robert Collins)
 
   INTERNALS:
 

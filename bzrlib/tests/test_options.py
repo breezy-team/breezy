@@ -74,44 +74,10 @@ class OptionTests(TestCase):
         out, err = self.run_bzr('help -r', retcode=3)
         self.assertContainsRe(err, r'no such option')
 
-    def test_get_short_name(self):
-        file_opt = option.Option.OPTIONS['file']
-        self.assertEquals(file_opt.short_name(), 'F')
-        force_opt = option.Option.OPTIONS['force']
-        self.assertEquals(force_opt.short_name(), None)
-
     def test_set_short_name(self):
         o = option.Option('wiggle')
         o.set_short_name('w')
         self.assertEqual(o.short_name(), 'w')
-
-    def test_old_short_names(self):
-        # test the deprecated method for getting and setting short option
-        # names
-        expected_warning = (
-            "access to SHORT_OPTIONS was deprecated in version 0.14."
-            " Set the short option name when constructing the Option.",
-            DeprecationWarning, 2)
-        _warnings = []
-        def capture_warning(message, category, stacklevel=None):
-            _warnings.append((message, category, stacklevel))
-        old_warning_method = symbol_versioning.warn
-        try:
-            # an example of the kind of thing plugins might want to do through
-            # the old interface - make a new option and then give it a short
-            # name.
-            symbol_versioning.set_warning_method(capture_warning)
-            example_opt = option.Option('example', help='example option')
-            option.Option.SHORT_OPTIONS['w'] = example_opt
-            self.assertEqual(example_opt.short_name(), 'w')
-            self.assertEqual([expected_warning], _warnings)
-            # now check that it can actually be parsed with the registered
-            # value
-            opts, args = parse([example_opt], ['-w', 'foo'])
-            self.assertEqual(opts.example, True)
-            self.assertEqual(args, ['foo'])
-        finally:
-            symbol_versioning.set_warning_method(old_warning_method)
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
@@ -296,6 +262,35 @@ class TestOptionDefinitions(TestCase):
         self.assertTrue(len(all) > 100,
                 "too few options found: %r" % all)
 
+    def test_global_options_used(self):
+        # In the distant memory, options could only be declared globally.  Now
+        # we prefer to declare them in the command, unless like -r they really
+        # are used very widely with the exact same meaning.  So this checks
+        # for any that should be garbage collected.
+        g = dict(option.Option.OPTIONS.items())
+        used_globals = {}
+        msgs = []
+        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
+            for option_or_name in sorted(cmd_class.takes_options):
+                if not isinstance(option_or_name, basestring):
+                    self.assertIsInstance(option_or_name, option.Option)
+                elif not option_or_name in g:
+                    msgs.append("apparent reference to undefined "
+                        "global option %r from %r"
+                        % (option_or_name, cmd_class))
+                else:
+                    used_globals.setdefault(option_or_name, []).append(cmd_name)
+        unused_globals = set(g.keys()) - set(used_globals.keys())
+        for option_name in sorted(unused_globals):
+            msgs.append("unused global option %r" % option_name)
+        for option_name, cmds in sorted(used_globals.items()):
+            if len(cmds) <= 1:
+                msgs.append("global option %r is only used by %r"
+                        % (option_name, cmds))
+        if msgs:
+            self.fail("problems with global option definitions:\n"
+                    + '\n'.join(msgs))
+
     def test_option_grammar(self):
         msgs = []
         # Option help should be written in sentence form, and have a final
@@ -304,9 +299,9 @@ class TestOptionDefinitions(TestCase):
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
         for scope, option in self.get_all_options():
             if not option.help:
-                # TODO: Also complain about options that have no help message?
-                continue
-            if not option_re.match(option.help):
+                msgs.append('%-16s %-16s %s' %
+                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
+            elif not option_re.match(option.help):
                 msgs.append('%-16s %-16s %s' %
                         ((scope or 'GLOBAL'), option.name, option.help))
         if msgs:

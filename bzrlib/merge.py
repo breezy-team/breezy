@@ -20,8 +20,10 @@ import errno
 import warnings
 
 from bzrlib import (
+    errors,
     osutils,
     registry,
+    revision as _mod_revision,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -52,44 +54,6 @@ from bzrlib import ui
 
 # TODO: Report back as changes are merged in
 
-def _get_tree(treespec, local_branch=None, possible_transports=None):
-    from bzrlib import workingtree
-    location, revno = treespec
-    if revno is None:
-        tree = workingtree.WorkingTree.open_containing(location)[0]
-        return tree.branch, tree
-    branch = Branch.open_containing(location, possible_transports)[0]
-    if revno == -1:
-        revision_id = branch.last_revision()
-    else:
-        revision_id = branch.get_rev_id(revno)
-    if revision_id is None:
-        revision_id = NULL_REVISION
-    return branch, _get_revid_tree(branch, revision_id, local_branch)
-
-
-def _get_revid_tree(branch, revision_id, local_branch):
-    if revision_id is None:
-        base_tree = branch.bzrdir.open_workingtree()
-    else:
-        if local_branch is not None:
-            if local_branch.base != branch.base:
-                local_branch.fetch(branch, revision_id)
-            base_tree = local_branch.repository.revision_tree(revision_id)
-        else:
-            base_tree = branch.repository.revision_tree(revision_id)
-    return base_tree
-
-
-def _get_revid_tree_from_tree(tree, revision_id, local_branch):
-    if revision_id is None:
-        return tree
-    if local_branch is not None:
-        if local_branch.base != tree.branch.base:
-            local_branch.fetch(tree.branch, revision_id)
-        return local_branch.repository.revision_tree(revision_id)
-    return tree.branch.repository.revision_tree(revision_id)
-
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
@@ -103,7 +67,8 @@ class Merger(object):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
-        self.this_basis = this_branch.last_revision()
+        self.this_basis = _mod_revision.ensure_null(
+            this_branch.last_revision())
         self.this_rev_id = None
         self.this_tree = this_tree
         self.this_revision_tree = None
@@ -121,14 +86,36 @@ class Merger(object):
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
+        self._cached_trees = {}
 
-    def revision_tree(self, revision_id):
-        return self.this_branch.repository.revision_tree(revision_id)
+    def revision_tree(self, revision_id, branch=None):
+        if revision_id not in self._cached_trees:
+            if branch is None:
+                branch = self.this_branch
+            try:
+                tree = self.this_tree.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                tree = branch.repository.revision_tree(revision_id)
+            self._cached_trees[revision_id] = tree
+        return self._cached_trees[revision_id]
+
+    def _get_tree(self, treespec, possible_transports=None):
+        from bzrlib import workingtree
+        location, revno = treespec
+        if revno is None:
+            tree = workingtree.WorkingTree.open_containing(location)[0]
+            return tree.branch, tree
+        branch = Branch.open_containing(location, possible_transports)[0]
+        if revno == -1:
+            revision_id = branch.last_revision()
+        else:
+            revision_id = branch.get_rev_id(revno)
+        revision_id = ensure_null(revision_id)
+        return branch, self.revision_tree(revision_id, branch)
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            self.this_basis_tree = self.this_branch.repository.revision_tree(
-                self.this_basis)
+            self.this_basis_tree = self.revision_tree(self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
 
@@ -164,45 +151,40 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = self.this_tree.changes_from(self.this_tree.basis_tree())
+        try:
+            basis_tree = self.revision_tree(self.this_tree.last_revision())
+        except errors.RevisionNotPresent:
+            basis_tree = self.this_tree.basis_tree()
+        changes = self.this_tree.changes_from(basis_tree)
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
         self.interesting_files = file_list
 
-    def _set_interesting_files(self, file_list):
-        """Set the list of interesting ids from a list of files."""
-        if file_list is None:
-            self.interesting_ids = None
-            return
-
-        interesting_ids = set()
-        for path in file_list:
-            found_id = False
-            # TODO: jam 20070226 The trees are not locked at this time,
-            #       wouldn't it make merge faster if it locks everything in the
-            #       beginning? It locks at do_merge time, but this happens
-            #       before that.
-            for tree in (self.this_tree, self.base_tree, self.other_tree):
-                file_id = tree.path2id(path)
-                if file_id is not None:
-                    interesting_ids.add(file_id)
-                    found_id = True
-            if not found_id:
-                raise NotVersionedError(path=path)
-        self.interesting_ids = interesting_ids
-
     def set_pending(self):
-        if not self.base_is_ancestor:
+        if not self.base_is_ancestor or not self.base_is_other_ancestor:
             return
-        if self.other_rev_id is None:
-            return
-        ancestry = set(self.this_branch.repository.get_ancestry(
-            self.this_basis, topo_sorted=False))
-        if self.other_rev_id in ancestry:
-            return
-        self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
+        self._add_parent()
+
+    def _add_parent(self):
+        new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
+        new_parent_trees = []
+        for revision_id in new_parents:
+            try:
+                tree = self.revision_tree(revision_id)
+            except errors.RevisionNotPresent:
+                tree = None
+            else:
+                tree.lock_read()
+            new_parent_trees.append((revision_id, tree))
+        try:
+            self.this_tree.set_parent_trees(new_parent_trees,
+                                            allow_leftmost_as_ghost=True)
+        finally:
+            for _revision_id, tree in new_parent_trees:
+                if tree is not None:
+                    tree.unlock()
 
     def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
@@ -211,12 +193,12 @@ class Merger(object):
 
         :param other_revision: The [path, revision] list to merge from.
         """
-        self.other_branch, self.other_tree = _get_tree(other_revision,
-                                                       self.this_branch,
-                                                       possible_transports)
+        self.other_branch, self.other_tree = self._get_tree(other_revision,
+                                                            possible_transports)
         if other_revision[1] == -1:
-            self.other_rev_id = self.other_branch.last_revision()
-            if self.other_rev_id is None:
+            self.other_rev_id = _mod_revision.ensure_null(
+                self.other_branch.last_revision())
+            if _mod_revision.is_null(self.other_rev_id):
                 raise NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
         elif other_revision[1] is not None:
@@ -227,9 +209,9 @@ class Merger(object):
             self.other_basis = self.other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(self.other_branch)
-        if self.other_branch.base != self.this_branch.base:
-            self.this_branch.fetch(self.other_branch,
-                                   last_revision=self.other_basis)
+        if self.other_rev_id is not None:
+            self._cached_trees[self.other_rev_id] = self.other_tree
+        self._maybe_fetch(self.other_branch,self.this_branch, self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
         """Set 'other' based on a branch and revision id
@@ -239,12 +221,29 @@ class Merger(object):
         """
         self.other_rev_id = revision_id
         self.other_branch = other_branch
-        self.this_branch.fetch(other_branch, self.other_rev_id)
+        self._maybe_fetch(other_branch, self.this_branch, self.other_rev_id)
         self.other_tree = self.revision_tree(revision_id)
         self.other_basis = revision_id
 
+    def _maybe_fetch(self, source, target, revision_id):
+        if (source.repository.bzrdir.root_transport.base !=
+            target.repository.bzrdir.root_transport.base):
+            target.fetch(source, revision_id)
+
     def find_base(self):
-        self.set_base([None, None])
+        this_repo = self.this_branch.repository
+        graph = this_repo.get_graph()
+        revisions = [ensure_null(self.this_basis),
+                     ensure_null(self.other_basis)]
+        if NULL_REVISION in revisions:
+            self.base_rev_id = NULL_REVISION
+        else:
+            self.base_rev_id = graph.find_unique_lca(*revisions)
+            if self.base_rev_id == NULL_REVISION:
+                raise UnrelatedBranches()
+        self.base_tree = self.revision_tree(self.base_rev_id)
+        self.base_is_ancestor = True
+        self.base_is_other_ancestor = True
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
@@ -253,40 +252,23 @@ class Merger(object):
         """
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
-            try:
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
-                    this_repo = self.this_branch.repository
-                    graph = this_repo.get_graph()
-                    revisions = [ensure_null(self.this_basis),
-                                 ensure_null(self.other_basis)]
-                    if NULL_REVISION in revisions:
-                        self.base_rev_id = NULL_REVISION
-                    else:
-                        self.base_rev_id = graph.find_unique_lca(*revisions)
-                        if self.base_rev_id == NULL_REVISION:
-                            raise UnrelatedBranches()
-                finally:
-                    pb.finished()
-            except NoCommonAncestor:
-                raise UnrelatedBranches()
-            self.base_tree = _get_revid_tree_from_tree(self.this_tree,
-                                                       self.base_rev_id,
-                                                       None)
-            self.base_is_ancestor = True
+            self.find_base()
         else:
-            base_branch, self.base_tree = _get_tree(base_revision)
+            base_branch, self.base_tree = self._get_tree(base_revision)
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
-                self.base_rev_id = None
+                self.base_rev_id = _mod_revision.NULL_REVISION
             else:
-                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
-            if self.this_branch.base != base_branch.base:
-                self.this_branch.fetch(base_branch)
+                self.base_rev_id = _mod_revision.ensure_null(
+                    base_branch.get_rev_id(base_revision[1]))
+            self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)
+            self.base_is_other_ancestor = is_ancestor(self.other_basis,
+                                                      self.base_rev_id,
+                                                      self.this_branch)
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
@@ -345,75 +327,6 @@ class Merger(object):
             note("%d conflicts encountered." % len(merge.cooked_conflicts))
 
         return len(merge.cooked_conflicts)
-
-    def regen_inventory(self, new_entries):
-        old_entries = self.this_tree.read_working_inventory()
-        new_inventory = {}
-        by_path = {}
-        new_entries_map = {} 
-        for path, file_id in new_entries:
-            if path is None:
-                continue
-            new_entries_map[file_id] = path
-
-        def id2path(file_id):
-            path = new_entries_map.get(file_id)
-            if path is not None:
-                return path
-            entry = old_entries[file_id]
-            if entry.parent_id is None:
-                return entry.name
-            return pathjoin(id2path(entry.parent_id), entry.name)
-            
-        for file_id in old_entries:
-            entry = old_entries[file_id]
-            path = id2path(file_id)
-            if file_id in self.base_tree.inventory:
-                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
-            else:
-                executable = getattr(entry, 'executable', False)
-            new_inventory[file_id] = (path, file_id, entry.parent_id, 
-                                      entry.kind, executable)
-                                      
-            by_path[path] = file_id
-        
-        deletions = 0
-        insertions = 0
-        new_path_list = []
-        for path, file_id in new_entries:
-            if path is None:
-                del new_inventory[file_id]
-                deletions += 1
-            else:
-                new_path_list.append((path, file_id))
-                if file_id not in old_entries:
-                    insertions += 1
-        # Ensure no file is added before its parent
-        new_path_list.sort()
-        for path, file_id in new_path_list:
-            if path == '':
-                parent = None
-            else:
-                parent = by_path[os.path.dirname(path)]
-            abspath = pathjoin(self.this_tree.basedir, path)
-            kind = osutils.file_kind(abspath)
-            if file_id in self.base_tree.inventory:
-                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
-            else:
-                executable = False
-            new_inventory[file_id] = (path, file_id, parent, kind, executable)
-            by_path[path] = file_id 
-
-        # Get a list in insertion order
-        new_inventory_list = new_inventory.values()
-        mutter ("""Inventory regeneration:
-    old length: %i insertions: %i deletions: %i new_length: %i"""\
-            % (len(old_entries), insertions, deletions, 
-               len(new_inventory_list)))
-        assert len(new_inventory_list) == len(old_entries) + insertions\
-            - deletions
-        new_inventory_list.sort()
-        return new_inventory_list
 
 
 class Merge3Merger(object):
@@ -504,7 +417,7 @@ class Merge3Merger(object):
             for conflict in self.cooked_conflicts:
                 warning(conflict)
             self.pp.next_phase()
-            results = self.tt.apply()
+            results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
             try:
                 working_tree.add_conflicts(self.cooked_conflicts)

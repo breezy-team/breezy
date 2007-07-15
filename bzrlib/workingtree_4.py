@@ -52,6 +52,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    revision as _mod_revision,
     revisiontree,
     textui,
     transform,
@@ -1089,6 +1090,7 @@ class WorkingTree4(WorkingTree3):
         # missing on access.
         for rev_id, tree in parents_list:
             rev_id = osutils.safe_revision_id(rev_id)
+            _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
             else:
@@ -1487,6 +1489,10 @@ class DirStateRevisionTree(Tree):
         if parent_details[0] == 'f':
             return parent_details[1]
         return None
+
+    def get_weave(self, file_id):
+        return self._repository.weave_store.get_weave(file_id,
+                self._repository.get_transaction())
 
     def get_file(self, file_id):
         return StringIO(self.get_file_text(file_id))

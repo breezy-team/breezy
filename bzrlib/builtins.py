@@ -44,6 +44,7 @@ from bzrlib import (
     osutils,
     registry,
     repository,
+    revision as _mod_revision,
     revisionspec,
     symbol_versioning,
     transport,
@@ -338,9 +339,16 @@ class cmd_add(Command):
     into a subdirectory of this one.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run', 'verbose',
-                     Option('file-ids-from', type=unicode,
-                            help='Lookup file ids from this tree.')]
+    takes_options = [
+        Option('no-recurse',
+               help="Don't recursively add the contents of directories."),
+        Option('dry-run',
+               help="Show what would be done, but don't actually do anything."),
+        'verbose',
+        Option('file-ids-from',
+               type=unicode,
+               help='Lookup file ids from this tree.'),
+        ]
     encoding_type = 'replace'
     _see_also = ['remove']
 
@@ -436,13 +444,19 @@ class cmd_inventory(Command):
 
     hidden = True
     _see_also = ['ls']
-    takes_options = ['revision', 'show-ids', 'kind']
+    takes_options = [
+        'revision',
+        'show-ids',
+        Option('kind',
+               help='List entries of a particular kind: file, directory, symlink.',
+               type=unicode),
+        ]
     takes_args = ['file*']
 
     @display_command
     def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
-            raise errors.BzrCommandError('invalid kind specified')
+            raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
@@ -756,7 +770,6 @@ class cmd_push(Command):
                         "\nYou may supply --create-prefix to create all"
                         " leading parent directories."
                         % location)
-
                 _create_prefix(to_transport)
 
             # Now the target directory exists, but doesn't have a .bzr
@@ -1026,17 +1039,20 @@ class cmd_update(Command):
             tree.lock_tree_write()
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
-            last_rev = tree.last_revision()
-            if last_rev == tree.branch.last_revision():
+            last_rev = _mod_revision.ensure_null(tree.last_revision())
+            if last_rev == _mod_revision.ensure_null(
+                tree.branch.last_revision()):
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or last_rev == master.last_revision():
+                if master is None or last_rev == _mod_revision.ensure_null(
+                    master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
             conflicts = tree.update(delta._ChangeReporter(
                                         unversioned_filter=tree.is_ignored))
-            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            revno = tree.branch.revision_id_to_revno(
+                _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
@@ -1403,11 +1419,14 @@ class cmd_diff(Command):
 
     _see_also = ['status']
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options',
+    takes_options = [
+        Option('diff-options', type=str,
+               help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
+        'revision',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1601,7 +1620,9 @@ class cmd_log(Command):
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
-            'timezone',
+            Option('timezone',
+                   type=str,
+                   help='Display timezone as local, original, or utc.'),
             Option('verbose',
                    short_name='v',
                    help='Show files changed in each revision.'),
@@ -1749,11 +1770,13 @@ class cmd_ls(Command):
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
                    'between files rather than a newline.'),
-            'kind',
+            Option('kind',
+                   help='List entries of a particular kind: file, directory, symlink.',
+                   type=unicode),
             'show-ids',
             ]
     @display_command
-    def run(self, revision=None, verbose=False, 
+    def run(self, revision=None, verbose=False,
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None):
@@ -1992,7 +2015,15 @@ class cmd_export(Command):
          zip                          .zip
     """
     takes_args = ['dest', 'branch?']
-    takes_options = ['revision', 'format', 'root']
+    takes_options = [
+        Option('format',
+               help="Type of file to export to.",
+               type=unicode),
+        'revision',
+        Option('root',
+               type=str,
+               help="Name of the root directory inside the exported file."),
+        ]
     def run(self, dest, branch=None, revision=None, format=None, root=None):
         from bzrlib.export import export
 
@@ -2026,7 +2057,10 @@ class cmd_cat(Command):
     """
 
     _see_also = ['ls']
-    takes_options = ['revision', 'name-from-revision']
+    takes_options = [
+        Option('name-from-revision', help='The path name in the old tree.'),
+        'revision',
+        ]
     takes_args = ['filename']
     encoding_type = 'exact'
 
@@ -2120,7 +2154,9 @@ class cmd_commit(Command):
     _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
-            'message',
+            Option('message', type=unicode,
+                   short_name='m',
+                   help="Description of the new revision."),
             'verbose',
              Option('unchanged',
                     help='Commit even if nothing has changed.'),
@@ -2456,11 +2492,12 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+        from bzrlib.version import show_version
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        if not list_only:
+            show_version(show_config=False, show_copyright=False)
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -2588,7 +2625,13 @@ class cmd_merge(Command):
 
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
+    takes_options = [
+        'revision',
+        Option('force',
+               help='Merge even if the destination tree has uncommitted changes.'),
+        'merge-type',
+        'reprocess',
+        'remember',
         Option('show-base', help="Show base revision text in "
                "conflicts."),
         Option('uncommitted', help='Apply uncommitted changes'
@@ -2598,11 +2641,11 @@ class cmd_merge(Command):
                 ' source rather than merging.  When this happens,'
                 ' you do not need to commit the result.'),
         Option('directory',
-            help='Branch to merge into, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
+               help='Branch to merge into, '
+                    'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
@@ -2878,7 +2921,10 @@ class cmd_revert(Command):
     """
 
     _see_also = ['cat', 'export']
-    takes_options = ['revision', 'no-backup']
+    takes_options = [
+            'revision',
+            Option('no-backup', "Do not save backups of reverted files."),
+            ]
     takes_args = ['file*']
 
     def run(self, revision=None, no_backup=False, file_list=None):
@@ -3063,6 +3109,22 @@ class cmd_missing(Command):
             finally:
                 local_branch.unlock()
         return status_code
+
+
+class cmd_pack(Command):
+    """Compress the data within a repository."""
+
+    _see_also = ['repositories']
+    takes_args = ['branch_or_repo?']
+
+    def run(self, branch_or_repo='.'):
+        dir = bzrdir.BzrDir.open_containing(branch_or_repo)[0]
+        try:
+            branch = dir.open_branch()
+            repository = branch.repository
+        except errors.NotBranchError:
+            repository = dir.open_repository()
+        repository.pack()
 
 
 class cmd_plugins(Command):
@@ -3793,9 +3855,9 @@ def _create_prefix(cur_transport):
     while True:
         new_transport = cur_transport.clone('..')
         if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError("Failed to create path"
-                                         " prefix for %s."
-                                         % location)
+            raise errors.BzrCommandError(
+                "Failed to create path prefix for %s."
+                % cur_transport.base)
         try:
             new_transport.mkdir('.')
         except errors.NoSuchFile:
@@ -3803,11 +3865,11 @@ def _create_prefix(cur_transport):
             cur_transport = new_transport
         else:
             break
-
     # Now we only need to create child directories
     while needed:
         cur_transport = needed.pop()
         cur_transport.ensure_base()
+
 
 # Compatibility
 merge = _merge_helper

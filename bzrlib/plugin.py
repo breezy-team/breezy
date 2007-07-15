@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ lazy_import(globals(), """
 import imp
 import re
 import types
-import zipimport
+import zipfile
 
 from bzrlib import (
     config,
@@ -194,29 +194,34 @@ def load_from_zip(zip_name):
     """Load all the plugins in a zip."""
     valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
                                                 # is allowed
-    if '.zip' not in zip_name:
-        return
+
     try:
-        ziobj = zipimport.zipimporter(zip_name)
-    except zipimport.ZipImportError:
-        # not a valid zip
+        index = zip_name.rindex('.zip')
+    except ValueError:
         return
+    archive = zip_name[:index+4]
+    prefix = zip_name[index+5:]
+
     mutter('Looking for plugins in %r', zip_name)
-    
-    import zipfile
 
     # use zipfile to get list of files/dirs inside zip
-    z = zipfile.ZipFile(ziobj.archive)
-    namelist = z.namelist()
-    z.close()
-    
-    if ziobj.prefix:
-        prefix = ziobj.prefix.replace('\\','/')
+    try:
+        z = zipfile.ZipFile(archive)
+        namelist = z.namelist()
+        z.close()
+    except zipfile.error:
+        # not a valid zip
+        return
+
+    if prefix:
+        prefix = prefix.replace('\\','/')
+        if prefix[-1] != '/':
+            prefix += '/'
         ix = len(prefix)
         namelist = [name[ix:]
                     for name in namelist
                     if name.startswith(prefix)]
-    
+
     mutter('Names in archive: %r', namelist)
     
     for name in namelist:
@@ -253,13 +258,8 @@ def load_from_zip(zip_name):
             continue
     
         try:
-            plugin = ziobj.load_module(plugin_name)
-            setattr(plugins, plugin_name, plugin)
+            exec "import bzrlib.plugins.%s" % plugin_name in {}
             mutter('Load plugin %s from zip %r', plugin_name, zip_name)
-        except zipimport.ZipImportError, e:
-            mutter('Unable to load plugin %r from %r: %s',
-                   plugin_name, zip_name, str(e))
-            continue
         except KeyboardInterrupt:
             raise
         except Exception, e:

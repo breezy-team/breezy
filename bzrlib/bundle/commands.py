@@ -117,7 +117,8 @@ class cmd_bundle_revisions(Command):
             base_specified = True
 
         if revision is None:
-            target_revision = target_branch.last_revision()
+            target_revision = _mod_revision.ensure_null(
+                target_branch.last_revision())
         elif len(revision) < 3:
             target_revision = revision[-1].in_history(target_branch).rev_id
             if len(revision) == 2:
@@ -155,12 +156,13 @@ class cmd_bundle_revisions(Command):
                 elif remember:
                     raise errors.BzrCommandError('--remember requires a branch'
                                                  ' to be specified.')
+            base_last_revision = _mod_revision.ensure_null(
+                base_branch.last_revision())
             target_branch.repository.fetch(base_branch.repository, 
-                                           base_branch.last_revision())
+                base_last_revision)
             graph = target_branch.repository.get_graph()
-            base_revision = graph.find_unique_lca(
-                _mod_revision.ensure_null(base_branch.last_revision()),
-                _mod_revision.ensure_null(target_revision))
+            base_revision = graph.find_unique_lca(base_last_revision,
+                                                  target_revision)
 
         if output is not None:
             fileobj = file(output, 'wb')

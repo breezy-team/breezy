@@ -14,20 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Black-box tests for bzr version."""
+"""Tests for repository packing."""
 
-import bzrlib
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
 
-class TestVersion(ExternalBase):
+class TestPack(TestCaseWithRepository):
 
-    def test_version(self):
-        out = self.run_bzr("version")[0]
-        self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count(bzrlib.__version__))
-        self.assertContainsRe(out, r"(?m)^  Python interpreter:")
-        self.assertContainsRe(out, r"(?m)^  Python standard library:")
-        self.assertContainsRe(out, r"(?m)^  bzrlib:")
-        self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
-        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*bzr\.log')
+    def test_pack_empty_does_not_error(self):
+        repo = self.make_repository('.')
+        repo.pack()
