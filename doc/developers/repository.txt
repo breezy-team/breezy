@@ -262,7 +262,7 @@ bit-errors in transfer (such as windows corruption).
 Discovery of files
 ~~~~~~~~~~~~~~~~~~
 
-With non listable transports how should the collection of pack/index files
+With non-listable transports how should the collection of pack/index files
 be found ? Initially record a list of all the pack/index files from
 write actions. (Require writable transports to be listable). We can then
 use a heuristic to statically combine pack/index files later.

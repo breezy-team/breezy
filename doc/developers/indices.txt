@@ -34,7 +34,7 @@ Overview
 ========
 
 bzr is moving to a write-once model for repository storage in order to
-achieve lock-free repositories eventually. In order to support this we are
+achieve lock-free repositories eventually. In order to support this, we are
 making our new index classes **immutable**. That is, one creates a new
 index in a single operation, and after that it is read only. To combine
 two indices a ``Combined*`` index may be used, or an **index merge** may

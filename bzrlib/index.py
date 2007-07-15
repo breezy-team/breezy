@@ -67,7 +67,7 @@ class GraphIndexBuilder(object):
     def add_node(self, key, references, value):
         """Add a node to the index.
 
-        :param key: The key. keys must be whitespace free utf8.
+        :param key: The key. keys must be whitespace-free utf8.
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
@@ -180,9 +180,9 @@ class GraphIndex(object):
 
     It is presumed that the index will not be mutated - it is static data.
 
-    Currently successive iter_entries/iter_all_entries calls will read the
-    entire index each time. Additionally iter_entries calls will read the
-    entire index always. XXX: This must be fixed before the index is 
+    Successive iter_all_entries calls will read the entire index each time.
+    Additionally, iter_entries calls will read the index linearly until the
+    desired keys are found. XXX: This must be fixed before the index is
     suitable for production use. :XXX
     """
 
@@ -259,9 +259,14 @@ class GraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
+        if not keys:
+            return
         for node in self.iter_all_entries():
+            if not keys:
+                return
             if node[0] in keys:
                 yield node
+                keys.remove(node[0])
 
     def _signature(self):
         """The file signature for this index type."""
@@ -299,6 +304,9 @@ class CombinedGraphIndex(object):
     def iter_all_entries(self):
         """Iterate over all keys within the index
 
+        Duplicate keys across child indices are presumed to have the same
+        value and are only reported once.
+
         :return: An iterable of (key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index.
@@ -313,6 +321,9 @@ class CombinedGraphIndex(object):
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
+        Duplicate keys across child indices are presumed to have the same
+        value and are only reported once.
+
         :param keys: An iterable providing the keys to be retrieved.
         :return: An iterable of (key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
@@ -320,6 +331,8 @@ class CombinedGraphIndex(object):
         """
         keys = set(keys)
         for index in self._indices:
+            if not keys:
+                return
             for node in index.iter_entries(keys):
                 keys.remove(node[0])
                 yield node
