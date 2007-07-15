@@ -176,7 +176,9 @@ class GraphIndex(object):
     The index maps keys to a list of key reference lists, and a value.
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
-    terminated string without any newlines.
+    terminated string without any newlines. The storage of the index is 
+    hidden in the interface: keys and key references are always bytestrings,
+    never the internal representation (e.g. dictionary offsets).
 
     It is presumed that the index will not be mutated - it is static data.
 
@@ -284,12 +286,18 @@ class CombinedGraphIndex(object):
     
     The backing indices must implement GraphIndex, and are presumed to be
     static data.
+
+    Queries against the combined index will be made against the first index,
+    and then the second and so on. The order of index's can thus influence
+    performance significantly. For example, if one index is on local disk and a
+    second on a remote server, the local disk index should be before the other
+    in the index list.
     """
 
     def __init__(self, indices):
         """Create a CombinedGraphIndex backed by indices.
 
-        :param indices: The indices to query for data.
+        :param indices: An ordered list of indices to query for data.
         """
         self._indices = indices
 

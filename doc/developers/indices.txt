@@ -44,10 +44,20 @@ writing them into a new index.
 General Index API
 =================
 
-While different indices will likely require different interfaces, we
-should keep these consistent to encourage easy adaption and reuse between
-indices. For instance a simple key-value index should be layerable on top
-of a more complex graph-aware index.
+We may end up with multiple different Index types (e.g. GraphIndex,
+Index, WhackyIndex). Even though these may require different method
+signatures to operate would strive to keep the signatures and return
+values as similar as possible. e.g.::
+
+    GraphIndexBuilder - add_node(key, references, value)
+    IndexBuilder - add_node(key, value)
+    WhackyIndexBuilder - add_node(key, whackiness, value)
+
+as opposed to something quite different like::
+
+    node = IncrementalBuilder.get_node()
+    node.key = 'foo'
+    node.value = 'bar'
 
 Services
 --------
