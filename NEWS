@@ -32,6 +32,10 @@ bzr-svn 0.4	UNRELEASED
 
    * Be a bit less verbose when trying to connect (#124858)
 
+   * Fix locking issues (#125212)
+
+   * Warn when used with experimental version of mappings. (#117198)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 
@@ -42,11 +46,18 @@ bzr-svn 0.4	UNRELEASED
    
    * add -v option to svn-upgrade
 
+   * store and allow setting the branching scheme in subversion.conf
+
+   * allow setting the branching scheme from a file property 
+     on the repository root
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)
 
    * Implement SvnRemoteAccess.create_branch().
+
+   * Implement SvnWorkingTree.smart_add() (#79336)
 
 bzr-svn 0.3.4	2007-06-15
 

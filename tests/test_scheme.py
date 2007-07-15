@@ -21,8 +21,8 @@ from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
-                    SingleBranchingScheme,
-                    UnknownBranchingScheme)
+                    SingleBranchingScheme, UnknownBranchingScheme,
+                    parse_list_scheme_text)
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
@@ -209,6 +209,18 @@ class ListScheme(TestCase):
 
     def test_unprefix_nested_branch(self):
         self.assertEqual(self.scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
+
+    def test_str(self):
+        self.assertEqual("list-ffcc22c56739f8d862c2a7578274dd2649565451", str(self.scheme))
+
+    def test_parse_text(self):
+        self.assertEqual(["bla/bloe"], parse_list_scheme_text("bla/bloe\n"))
+
+    def test_parse_text_no_newline(self):
+        self.assertEqual(["bla/bloe", "blie"], parse_list_scheme_text("bla/bloe\nblie"))
+
+    def test_parse_text_comment(self):
+        self.assertEqual(["bla/bloe", "blie"], parse_list_scheme_text("bla/bloe\n# comment\nblie"))
 
 class TrunkScheme(TestCase):
     def test_is_branch_empty(self):

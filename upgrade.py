@@ -16,7 +16,7 @@
 """Upgrading revisions made with older versions of the mapping."""
 
 from bzrlib.errors import BzrError, InvalidRevisionId
-from bzrlib.trace import mutter
+from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
@@ -91,7 +91,6 @@ def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
     revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, svn_repository, 
               revid, allow_changes=allow_changes, verbose=verbose)
-    mutter('renames %r' % renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
 
@@ -121,7 +120,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     :return: Dictionary of mapped revisions
     """
     try:
-        from bzrlib.plugins.rebase.rebase import replay_snapshot, generate_transpose_plan, rebase
+        from bzrlib.plugins.rebase.rebase import replay_snapshot, generate_transpose_plan, rebase, rebase_todo
     except ImportError, e:
         raise RebaseNotPresent(e)
     rename_map = {}
@@ -170,8 +169,8 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         plan = generate_transpose_plan(repository, graph, rename_map, 
                            lambda rev: create_upgraded_revid(rev.revision_id))
         if verbose:
-            for revid in rebase_todo(wt.branch.repository, replace_map):
-                info("%s -> %s" % (revid, replace_map[revid][0]))
+            for revid in rebase_todo(repository, plan):
+                info("%s -> %s" % (revid, plan[revid][0]))
         rebase(repository, plan, replay_snapshot)
         def remove_parents((oldrevid, (newrevid, parents))):
             return (oldrevid, newrevid)

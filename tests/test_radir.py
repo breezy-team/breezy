@@ -70,7 +70,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.build_tree({"dc/foo": None})
         self.client_add("dc/foo")
         self.client_commit("dc", "msg")
-        self.assertRaises(NotBranchError, BzrDir.open, repos_url+"/foo")
+        BzrDir.open(repos_url+"/foo")
 
     def test_create(self):
         repos_url = self.make_client("d", "dc")

@@ -34,6 +34,7 @@ import svn.core
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
+                SVN_PROP_BZR_BRANCHING_SCHEME,
                 SvnRepositoryFormat, parse_revision_metadata)
 from tree import apply_txdelta_handler
 
@@ -176,9 +177,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        if name == SVN_PROP_BZR_MERGE:
+        if name in (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_BRANCHING_SCHEME):
             if id != self.inventory.root.file_id:
-                mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
+                mutter('rogue %r on non-root directory' % name)
                 return
             
             self._parent_ids = value.splitlines()[-1]

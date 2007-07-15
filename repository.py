@@ -16,12 +16,12 @@
 """Subversion repository access."""
 
 import bzrlib
+from bzrlib import osutils
 from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
                            NotBranchError, UninitializableFormat, BzrError)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
-import bzrlib.osutils as osutils
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
@@ -41,17 +41,17 @@ import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION, RevidMap)
-from scheme import BranchingScheme
+from scheme import BranchingScheme, ListBranchingScheme, parse_list_scheme_text
 from tree import SvnRevisionTree
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
-SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d:' % MAPPING_VERSION
+SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 def parse_revid_property(line):
     """Parse a (revnum, revid) tuple as set in revision id properties.
@@ -166,7 +166,7 @@ class SvnRepository(Repository):
     Provides a simplified interface to a Subversion repository 
     by using the RA (remote access) API from subversion
     """
-    def __init__(self, bzrdir, transport):
+    def __init__(self, bzrdir, transport, guessed_scheme):
         from fileids import SimpleFileIdMap
         _revision_store = None
 
@@ -178,17 +178,14 @@ class SvnRepository(Repository):
 
         self.transport = transport
         self.uuid = transport.get_uuid()
+        assert self.uuid is not None
         self.base = transport.base
+        assert self.base is not None
         self._serializer = None
         self.dir_cache = {}
-        self.scheme = bzrdir.scheme
         self.pool = Pool()
         self.config = SvnRepositoryConfig(self.uuid)
         self.config.add_location(self.base)
-
-        assert self.base
-        assert self.uuid
-
         cache_file = os.path.join(self.create_cache_dir(), 
                                   'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
@@ -203,6 +200,16 @@ class SvnRepository(Repository):
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
         self.revmap = RevidMap(self.cachedb)
+        if self.config.get_branching_scheme() is not None:
+            self.scheme = self.config.get_branching_scheme()
+        else:
+            text = self.branchprop_list.get_property("", self._latest_revnum, 
+                                             SVN_PROP_BZR_BRANCHING_SCHEME, None)
+            if text is not None:
+                self.set_branching_scheme(
+                        ListBranchingScheme(parse_list_scheme_text(text)))
+            else:
+                self.scheme = guessed_scheme
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
@@ -321,11 +328,18 @@ class SvnRepository(Repository):
         return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
-        """Check which files were renamed in a particular revision."""
+        """Check which files were renamed in a particular revision.
+        
+        :param revid: Id of revision to look up.
+        :return: dictionary with paths as keys, file ids as values
+        """
         (path, revnum, scheme) = self.lookup_revision_id(revid)
-        items = self.branchprop_list.get_property_diff(path, revnum, 
-                                  SVN_PROP_BZR_FILEIDS).splitlines()
-        return dict(map(lambda x: x.split("\t"), items))
+        ret = {}
+        for line in self.branchprop_list.get_property_diff(path, revnum, 
+                SVN_PROP_BZR_FILEIDS).splitlines():
+            (path, key) = line.split("\t", 2)
+            ret[path] = osutils.safe_file_id(key)
+        return ret
 
     def _mainline_revision_parent(self, path, revnum, scheme):
         """Find the mainline parent of the specified revision.
@@ -483,13 +497,16 @@ class SvnRepository(Repository):
         :raises: NoSuchRevision
         :return: Tuple with branch path, revision number and scheme.
         """
+        def get_scheme(name):
+            assert isinstance(name, basestring)
+            return BranchingScheme.find_scheme(name)
 
         # Try a simple parse
         try:
             (uuid, branch_path, revnum, schemen) = parse_svn_revision_id(revid)
             assert isinstance(branch_path, str)
             if uuid == self.uuid:
-                return (branch_path, revnum, self.get_scheme(schemen))
+                return (branch_path, revnum, get_scheme(schemen))
             # If the UUID doesn't match, this may still be a valid revision
             # id; a revision from another SVN repository may be pushed into 
             # this one.
@@ -503,11 +520,11 @@ class SvnRepository(Repository):
             assert isinstance(branch_path, str)
             # Entry already complete?
             if min_revnum == max_revnum:
-                return (branch_path, min_revnum, self.get_scheme(scheme))
+                return (branch_path, min_revnum, get_scheme(scheme))
         except NoSuchRevision:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
-                scheme = self.scheme # FIXME
+                scheme = self.scheme
             for (branch, revno, exists) in self.find_branches(scheme):
                 # Look at their bzr:revision-id-vX
                 revids = []
@@ -534,7 +551,7 @@ class SvnRepository(Repository):
         # added revid
         i = min_revnum
         for (bp, rev) in self.follow_branch(branch_path, max_revnum, 
-                                            self.get_scheme(scheme)):
+                                            get_scheme(scheme)):
             try:
                 (entry_revno, entry_revid) = parse_revid_property(
                  self.branchprop_list.get_property_diff(bp, rev, 
@@ -546,7 +563,7 @@ class SvnRepository(Repository):
             if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
                                          entry_revno)
-                return (bp, rev, self.get_scheme(scheme))
+                return (bp, rev, get_scheme(scheme))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 
@@ -730,7 +747,7 @@ class SvnRepository(Repository):
             return {}
 
         if revision_id is None:
-            return self._full_revision_graph(self.scheme) # FIXME
+            return self._full_revision_graph(self.scheme)
 
         (path, revnum, scheme) = self.lookup_revision_id(revision_id)
 
@@ -815,8 +832,4 @@ class SvnRepository(Repository):
                 timezone, committer, revprops, revision_id)
 
 
-    def get_scheme(self, name):
-        assert isinstance(name, basestring)
-        # FIXME: Support other branching scheme
-        return BranchingScheme.find_scheme(name)
 

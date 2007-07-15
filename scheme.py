@@ -16,6 +16,7 @@
 """Branching scheme implementations."""
 
 from bzrlib.errors import NotBranchError, BzrError
+from bzrlib.osutils import sha_strings
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -53,10 +54,9 @@ class BranchingScheme:
 
     @staticmethod
     def find_scheme(name):
-        if name == "trunk":
-            return TrunkBranchingScheme()
-
         if name.startswith("trunk"):
+            if name == "trunk":
+                return TrunkBranchingScheme()
             try:
                 return TrunkBranchingScheme(level=int(name[len("trunk"):]))
             except ValueError:
@@ -89,7 +89,14 @@ class BranchingScheme:
         raise NotImplementedError
 
     def is_tag(self, path):
+        """Check whether the specified path is a tag 
+        according to this branching scheme.
+
+        :param path: path to check
+        :return: boolean
+        """
         raise NotImplementedError
+
 
 class TrunkBranchingScheme(BranchingScheme):
     """Standard Subversion repository layout. Each project contains three 
@@ -172,6 +179,15 @@ class NoBranchingScheme(BranchingScheme):
         return False
 
 
+def parse_list_scheme_text(text):
+    branches = []
+    for l in text.splitlines():
+        if l.startswith("#"):
+            continue
+        branches.append(l.strip("/"))
+    return branches
+
+
 class ListBranchingScheme(BranchingScheme):
     def __init__(self, branch_list):
         """Create new ListBranchingScheme instance.
@@ -181,6 +197,9 @@ class ListBranchingScheme(BranchingScheme):
         self.branch_list = []
         for p in branch_list:
             self.branch_list.append(p.strip("/"))
+
+    def __str__(self):
+        return "list-%s" % sha_strings(self.branch_list)
 
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""
@@ -196,8 +215,11 @@ class ListBranchingScheme(BranchingScheme):
         for i in self.branch_list:
             if (path+"/").startswith(i+"/"):
                 return (i, path[len(i):].strip("/"))
-
         raise NotBranchError(path=path)
+
+    def __eq__(self, other):
+        return self.branch_list == other.branch_list
+
 
 class UnknownBranchingScheme(BzrError):
     _fmt = "Branching scheme could not be found: %(name)s"

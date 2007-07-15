@@ -17,6 +17,7 @@
 """Config tests."""
 
 from config import SvnRepositoryConfig
+from scheme import TrunkBranchingScheme
 
 from bzrlib.tests import TestCaseInTempDir
 
@@ -45,5 +46,5 @@ class ReposConfigTests(TestCaseInTempDir):
 
     def test_get_scheme_set(self):
         c = SvnRepositoryConfig("blabla2")
-        c.set_branching_scheme("random")
-        self.assertEquals("random", c.get_branching_scheme())
+        c.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEquals("trunk0", str(c.get_branching_scheme()))

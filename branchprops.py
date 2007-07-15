@@ -60,7 +60,7 @@ class BranchPropertyList:
 
         proplist = {}
         for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):
-            proplist[name] = value
+            proplist[name] = value.encode("utf-8")
 
         if proplist != {}:
             return proplist

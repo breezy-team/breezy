@@ -28,11 +28,11 @@ from revids import generate_svn_revision_id
 class TestBranch(ExternalBase,TestCaseWithSubversionRepository):
     def test_branch_empty(self):
         repos_url = self.make_client('d', 'de')
-        self.runbzr(['branch', repos_url, 'dc'])
+        self.run_bzr("branch %s dc" % repos_url)
         
     def test_log_empty(self):
         repos_url = self.make_client('d', 'de')
-        self.assertEquals('', self.runbzr(['log', repos_url])[1])
+        self.run_bzr('log %s' % repos_url)
 
     def test_dumpfile(self):
         filename = os.path.join(self.test_dir, "dumpfile")
@@ -180,9 +180,7 @@ Node-copyfrom-path: x
 
 
 """)
-        self.assertEquals(('', ''), 
-                          self.runbzr(['svn-import', '--scheme=none', 
-                                       filename, 'dc']))
+        self.check_output("", 'svn-import --scheme=none %s dc' % filename)
         newrepos = Repository.open("dc")
         self.assertTrue(newrepos.has_revision(
             generate_svn_revision_id(uuid, 5, "", "none")))
@@ -201,8 +199,7 @@ Node-copyfrom-path: x
         self.client_add("dc/foo")
         self.client_add("dc/bla")
         self.client_commit("dc", "Msg")
-        self.assertEquals(('a/bla\na/foo\n', ''), 
-              self.runbzr(['ls', "a"]))
+        self.check_output("a/bla\na/foo\n", "ls a")
 
     def test_info_remote(self):
         repos_url = self.make_client("a", "dc")
@@ -210,5 +207,5 @@ Node-copyfrom-path: x
         self.client_add("dc/foo")
         self.client_add("dc/bla")
         self.client_commit("dc", "Msg")
-        self.assertEquals(
-              "Repository branch (format: unnamed)\nLocation:\n  shared repository: %s/\n  repository branch: .\n" % repos_url, self.runbzr(['info', "a"])[0])
+        self.check_output(
+                "Repository branch (format: unnamed)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n  parent branch: a\n", 'info a')
