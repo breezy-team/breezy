@@ -67,7 +67,7 @@ class GraphIndexBuilder(object):
     def add_node(self, key, references, value):
         """Add a node to the index.
 
-        :param key: The key. keys must be whitespace free utf8.
+        :param key: The key. keys must be whitespace-free utf8.
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
@@ -106,15 +106,24 @@ class GraphIndexBuilder(object):
         # one to pad all the data with reference-length and determine entry
         # addresses.
         # One to serialise.
-        nodes = sorted(self._nodes.items(),reverse=True)
+        
+        # forward sorted by key. In future we may consider topological sorting,
+        # at the cost of table scans for direct lookup, or a second index for
+        # direct lookup
+        nodes = sorted(self._nodes.items())
+        # if we do not prepass, we don't know how long it will be up front.
+        expected_bytes = None
         # we only need to pre-pass if we have reference lists at all.
         if self.reference_lists:
+            key_offset_info = []
             non_ref_bytes = prefix_length
             total_references = 0
             # TODO use simple multiplication for the constants in this loop.
-            # TODO: factor out the node length calculations so this loop 
-            #       and the next have less (no!) duplicate code.
             for key, (absent, references, value) in nodes:
+                # record the offset known *so far* for this key:
+                # the non reference bytes to date, and the total references to
+                # date - saves reaccumulating on the second pass
+                key_offset_info.append((key, non_ref_bytes, total_references))
                 # key is literal, value is literal, there are 3 null's, 1 NL
                 non_ref_bytes += len(key) + len(value) + 3 + 1
                 # one byte for absent if set.
@@ -136,27 +145,11 @@ class GraphIndexBuilder(object):
             while 10 ** digits < possible_total_bytes:
                 digits += 1
                 possible_total_bytes = non_ref_bytes + total_references*digits
+            expected_bytes = possible_total_bytes + 1 # terminating newline
             # resolve key addresses.
             key_addresses = {}
-            current_offset = prefix_length
-            for key, (absent, references, value) in nodes:
-                key_addresses[key] = current_offset
-                # key is literal, value is literal, there are 3 null's, 1 NL
-                current_offset += len(key) + len(value) + 3 + 1
-                # one byte for absent if set.
-                if absent:
-                    current_offset += 1
-                elif self.reference_lists:
-                    # (ref_lists -1) tabs
-                    current_offset += self.reference_lists - 1
-                    # (ref-1 cr's per ref_list)
-                    for ref_list in references:
-                        # accrue reference bytes
-                        current_offset += digits * len(ref_list)
-                        # accrue reference separators
-                        if ref_list:
-                            # accrue reference separators
-                            current_offset += len(ref_list) - 1
+            for key, non_ref_bytes, total_references in key_offset_info:
+                key_addresses[key] = non_ref_bytes + total_references*digits
             # serialise
             format_string = '%%0%sd' % digits
         for key, (absent, references, value) in nodes:
@@ -169,6 +162,11 @@ class GraphIndexBuilder(object):
             lines.append("%s\0%s\0%s\0%s\n" % (key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
+        result = StringIO(''.join(lines))
+        if expected_bytes and len(result.getvalue()) != expected_bytes:
+            raise errors.BzrError('Failed index creation. Internal error:'
+                ' mismatched output length and expected length: %d %d' %
+                (len(result.getvalue()), expected_bytes))
         return StringIO(''.join(lines))
 
 
@@ -178,13 +176,15 @@ class GraphIndex(object):
     The index maps keys to a list of key reference lists, and a value.
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
-    terminated string without any newlines.
+    terminated string without any newlines. The storage of the index is 
+    hidden in the interface: keys and key references are always bytestrings,
+    never the internal representation (e.g. dictionary offsets).
 
     It is presumed that the index will not be mutated - it is static data.
 
-    Currently successive iter_entries/iter_all_entries calls will read the
-    entire index each time. Additionally iter_entries calls will read the
-    entire index always. XXX: This must be fixed before the index is 
+    Successive iter_all_entries calls will read the entire index each time.
+    Additionally, iter_entries calls will read the index linearly until the
+    desired keys are found. XXX: This must be fixed before the index is
     suitable for production use. :XXX
     """
 
@@ -214,7 +214,8 @@ class GraphIndex(object):
             if line == '\n':
                 trailers += 1
                 continue
-            key, absent, references, value = line[:-1].split('\0')
+            key, absent, references, value = line.split('\0')
+            value = value[:-1] # remove the newline
             ref_lists = []
             for ref_string in references.split('\t'):
                 ref_lists.append(tuple([
@@ -223,7 +224,7 @@ class GraphIndex(object):
             ref_lists = tuple(ref_lists)
             self.keys_by_offset[pos] = (key, absent, ref_lists, value)
             pos += len(line)
-        for key, absent, references, value in self.keys_by_offset.values():
+        for key, absent, references, value in self.keys_by_offset.itervalues():
             if absent:
                 continue
             # resolve references:
@@ -260,9 +261,14 @@ class GraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
+        if not keys:
+            return
         for node in self.iter_all_entries():
+            if not keys:
+                return
             if node[0] in keys:
                 yield node
+                keys.remove(node[0])
 
     def _signature(self):
         """The file signature for this index type."""
@@ -280,12 +286,18 @@ class CombinedGraphIndex(object):
     
     The backing indices must implement GraphIndex, and are presumed to be
     static data.
+
+    Queries against the combined index will be made against the first index,
+    and then the second and so on. The order of index's can thus influence
+    performance significantly. For example, if one index is on local disk and a
+    second on a remote server, the local disk index should be before the other
+    in the index list.
     """
 
     def __init__(self, indices):
         """Create a CombinedGraphIndex backed by indices.
 
-        :param indices: The indices to query for data.
+        :param indices: An ordered list of indices to query for data.
         """
         self._indices = indices
 
@@ -299,6 +311,9 @@ class CombinedGraphIndex(object):
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
+
+        Duplicate keys across child indices are presumed to have the same
+        value and are only reported once.
 
         :return: An iterable of (key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
@@ -314,6 +329,9 @@ class CombinedGraphIndex(object):
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
+        Duplicate keys across child indices are presumed to have the same
+        value and are only reported once.
+
         :param keys: An iterable providing the keys to be retrieved.
         :return: An iterable of (key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
@@ -321,6 +339,8 @@ class CombinedGraphIndex(object):
         """
         keys = set(keys)
         for index in self._indices:
+            if not keys:
+                return
             for node in index.iter_entries(keys):
                 keys.remove(node[0])
                 yield node

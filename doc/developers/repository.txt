@@ -44,8 +44,9 @@ Fetching            Revision graph difference, ghost identification, stream data
                     introduced by a set of revisions in some cheap form, insert
                     data from a stream, validate data during insertion.
 Garbage Collection  Exclusive lock the repository preventing readers.
-Revert              Revision graph access, Inventory extraction, file text
-                    access.
+Revert              Delta from working tree to historical tree, and then 
+                    arbitrary file access to obtain the texts of differing
+                    files.
 Uncommit            Revision graph access.
 Status              Revision graph access, revision text access, file
                     fingerprint information, inventory differencing.
@@ -55,8 +56,11 @@ Merge               As diff but needs up to twice as many file texts -
                     fetch is needed.
 Log                 Revision graph (entire at the moment) access,
                     sometimes status between adjacent revisions. Log of a
-                    file needs per-file-graph.
-Missing             Revision graph access.
+                    file needs per-file-graph. Dominator caching or
+                    similar tools may be needed to prevent entire graph
+                    access.
+Missing             Revision graph access, and revision texts to show
+                    output.
 Update              As for merge, but twice.
 ==================  ====================
 
@@ -65,8 +69,11 @@ Data access patterns
 
 Ideally we can make our data access for commands such as branch to
 dovetail well with the native storage in the repository, in the common
-case. Doing this may require the commands to operate in predictable
-manners.
+case. Doing this may require choosing the behaviour of some commands to
+allow us to have a smaller range of access patterns which we can optimise
+more heavily. Alternatively if each command is very predicable in its
+data access pattern we may be able to hint to the low level layers which
+pattern is needed on a per command basis to get efficient behaviour.
 
 ===================  ===================================================
 Command              Data access pattern
@@ -133,6 +140,13 @@ Update               As for merge, but twice.
 
 Patterns used
 -------------
+
+Note that these are able to be changed by changing what we store. For
+instance if the repository satisfies mpdiff requests, then bundle can be
+defined in terms of mpdiff lookups rather than file text lookups
+appropriate to create mpdiffs. If the repository satisfies full text
+requests only, then you need the topological access to build up the
+desired mpdiffs.
 
 =========================================== =========
 Pattern                                     Commands
@@ -262,7 +276,7 @@ bit-errors in transfer (such as windows corruption).
 Discovery of files
 ~~~~~~~~~~~~~~~~~~
 
-With non listable transports how should the collection of pack/index files
+With non-listable transports how should the collection of pack/index files
 be found ? Initially record a list of all the pack/index files from
 write actions. (Require writable transports to be listable). We can then
 use a heuristic to statically combine pack/index files later.
