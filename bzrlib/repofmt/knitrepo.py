@@ -301,6 +301,11 @@ class GraphKnitRevisionStore(KnitRevisionStore):
     This class works by replacing the original RevisionStore.
     We need to do this because the GraphKnitRevisionStore is less
     isolated in its layering - it uses services from the repo.
+
+    DEFECTS:
+     - unlock writes an index even on error. This is fine while we are writing
+       data to knits, but we really should not use unlock to trigger writes,
+       rather operations should finish explicitly.
     """
 
     def __init__(self, repo, revisionstore):
