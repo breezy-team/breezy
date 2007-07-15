@@ -47,7 +47,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "akey\0\0\0data\n\n", contents)
+            "akey\x00\x00\x00data\n\n", contents)
 
     def test_add_node_empty_value(self):
         builder = GraphIndexBuilder()
@@ -55,7 +55,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "akey\0\0\0\n\n", contents)
+            "akey\x00\x00\x00\n\n", contents)
 
     def test_build_index_two_nodes_sorted(self):
         # the highest sorted node comes first.
@@ -69,9 +69,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "2000\0\0\0data\n"
-            "2001\0\0\0data\n"
-            "2002\0\0\0data\n"
+            "2000\x00\x00\x00data\n"
+            "2001\x00\x00\x00data\n"
+            "2002\x00\x00\x00data\n"
             "\n", contents)
 
     def test_build_index_reference_lists_are_included_one(self):
@@ -80,7 +80,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "key\0\0\0data\n"
+            "key\x00\x00\x00data\n"
             "\n", contents)
 
     def test_build_index_reference_lists_are_included_two(self):
@@ -89,7 +89,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
-            "key\0\0\t\0data\n"
+            "key\x00\x00\t\x00data\n"
             "\n", contents)
 
     def test_node_references_are_byte_offsets(self):
@@ -111,9 +111,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "key\0\x0054\r71\0data\n"
-            "reference\0\0\0data\n"
-            "reference2\0\0\0data\n"
+            "key\x00\x0054\r71\x00data\n"
+            "reference\x00\x00\x00data\n"
+            "reference2\x00\x00\x00data\n"
             "\n", contents)
 
     def test_multiple_reference_lists_are_tab_delimited(self):
@@ -123,8 +123,8 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
-            "keference\0\0\t\0data\n"
-            "rey\0\x0038\t38\0data\n"
+            "keference\x00\x00\t\x00data\n"
+            "rey\x00\x0038\t38\x00data\n"
             "\n", contents)
 
     def test_add_node_referencing_missing_key_makes_absent(self):
@@ -133,9 +133,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "aeference2\0a\0\0\n"
-            "beference\0a\0\0\n"
-            "rey\0\x0053\r38\0data\n"
+            "aeference2\x00a\x00\x00\n"
+            "beference\x00a\x00\x00\n"
+            "rey\x00\x0053\r38\x00data\n"
             "\n", contents)
 
     def test_node_references_three_digits(self):
@@ -184,7 +184,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
             (), 'data\naa')
         self.assertRaises(errors.BadIndexValue, builder.add_node, 'akey',
-            (), 'data\0aa')
+            (), 'data\x00aa')
 
     def test_add_node_bad_mismatched_ref_lists_length(self):
         builder = GraphIndexBuilder()

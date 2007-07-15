@@ -212,7 +212,8 @@ class GraphIndex(object):
             if line == '\n':
                 trailers += 1
                 continue
-            key, absent, references, value = line[:-1].split('\0')
+            key, absent, references, value = line.split('\0')
+            value = value[:-1] # remove the newline
             ref_lists = []
             for ref_string in references.split('\t'):
                 ref_lists.append(tuple([
@@ -221,7 +222,7 @@ class GraphIndex(object):
             ref_lists = tuple(ref_lists)
             self.keys_by_offset[pos] = (key, absent, ref_lists, value)
             pos += len(line)
-        for key, absent, references, value in self.keys_by_offset.values():
+        for key, absent, references, value in self.keys_by_offset.itervalues():
             if absent:
                 continue
             # resolve references:
