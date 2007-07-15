@@ -157,14 +157,17 @@ except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
     print
-    print ("Pyrex not available, while bzr will build, "
-           "you cannot modify the C extensions.")
+    print ("The python package 'Pyrex' is not available."
+           " If the .c files are available,")
+    print ("they will be built,"
+           " but modifying the .pyx files will not rebuild them.")
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
 # Override the build_ext if we have Pyrex available
 command_classes['build_ext'] = build_ext
 unavailable_files = []
+
 
 def add_pyrex_extension(module_name, **kwargs):
     """Add a pyrex module to build.
