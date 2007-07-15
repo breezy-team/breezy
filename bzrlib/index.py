@@ -64,7 +64,7 @@ class GraphIndexBuilder(object):
         self.reference_lists = reference_lists
         self._nodes = {}
 
-    def add_node(self, key, references, value):
+    def add_node(self, key, value, references=()):
         """Add a node to the index.
 
         :param key: The key. keys must be whitespace-free utf8.
@@ -200,9 +200,11 @@ class GraphIndex(object):
     def iter_all_entries(self):
         """Iterate over all keys within the index.
 
-        :return: An iterable of (key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
-            efficient order for the index.
+        :return: An iterable of (key, value) or (key, value, reference_lists).
+            The former tuple is used when there are no reference lists in the
+            index, making the API compatible with simple key:value index types.
+            There is no defined order for the result iteration - it will be in
+            the most efficient order for the index.
         """
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
@@ -232,10 +234,9 @@ class GraphIndex(object):
                 node_refs = []
                 for ref_list in references:
                     node_refs.append(tuple([self.keys_by_offset[ref][0] for ref in ref_list]))
-                node_refs = tuple(node_refs)
+                yield (key, value, tuple(node_refs))
             else:
-                node_refs = ()
-            yield (key, node_refs, value)
+                yield (key, value)
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
@@ -256,9 +257,9 @@ class GraphIndex(object):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
-            efficient order for the index.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys supplied. No additional keys will be returned, and every
+            key supplied that is in the index will be returned.
         """
         keys = set(keys)
         if not keys:
@@ -364,8 +365,8 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
         :param nodes: An iterable of (key, node_refs, value) entries to add.
         """
-        for (key, node_refs, value) in nodes:
-            self.add_node(key, node_refs, value)
+        for (key, value, node_refs) in nodes:
+            self.add_node(key, value, node_refs)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
@@ -374,9 +375,14 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        for key, (absent, references, value) in self._nodes.iteritems():
-            if not absent:
-                yield key, references, value
+        if self.reference_lists:
+            for key, (absent, references, value) in self._nodes.iteritems():
+                if not absent:
+                    yield key, value, references
+        else:
+            for key, (absent, references, value) in self._nodes.iteritems():
+                if not absent:
+                    yield key, value
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -387,10 +393,16 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
-        for key in keys.intersection(self._nodes):
-            node = self._nodes[key]
-            if not node[0]:
-                yield key, node[1], node[2]
+        if self.reference_lists:
+            for key in keys.intersection(self._nodes):
+                node = self._nodes[key]
+                if not node[0]:
+                    yield key, node[2], node[1]
+        else:
+            for key in keys.intersection(self._nodes):
+                node = self._nodes[key]
+                if not node[0]:
+                    yield key, node[2]
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""

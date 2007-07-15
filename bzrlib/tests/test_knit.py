@@ -941,8 +941,8 @@ class BasicKnitTests(KnitTests):
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
         # check the index had the right data added.
         self.assertEqual(set([
-            ('text-1', ((), ()), ' 0 127'),
-            ('text-1a', (('text-1',), ('text-1',)), ' 127 140'),
+            ('text-1', ' 0 127', ((), ())),
+            ('text-1a', ' 127 140', (('text-1',), ('text-1',))),
             ]), set(index.iter_all_entries()))
         # we should not have a .kndx file
         self.assertFalse(get_transport('.').has('test.kndx'))
@@ -1546,18 +1546,18 @@ class TestGraphIndexKnit(KnitTests):
         # build a complex graph across several indices.
         if deltas:
             index1 = self.make_g_index('1', 2, [
-                ('tip', (['parent'], [], ), 'N0 100'),
-                ('tail', ([], []), '')])
+                ('tip', 'N0 100', (['parent'], [], )),
+                ('tail', '', ([], []))])
             index2 = self.make_g_index('2', 2, [
-                ('parent', (['tail', 'ghost'], ['tail']), ' 100 78'),
-                ('separate', ([], []), '')])
+                ('parent', ' 100 78', (['tail', 'ghost'], ['tail'])),
+                ('separate', '', ([], []))])
         else:
             index1 = self.make_g_index('1', 1, [
-                ('tip', (['parent'], ), 'N0 100'),
-                ('tail', ([], ), '')])
+                ('tip', 'N0 100', (['parent'], )),
+                ('tail', '', ([], ))])
             index2 = self.make_g_index('2', 1, [
-                ('parent', (['tail', 'ghost'], ), ' 100 78'),
-                ('separate', ([], ), '')])
+                ('parent', ' 100 78', (['tail', 'ghost'], )),
+                ('separate', '', ([], ))])
         combined_index = CombinedGraphIndex([index1, index2])
         if catch_adds:
             self.combined_index = combined_index
@@ -1706,7 +1706,7 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_version_smoke(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_version('new', 'fulltext,no-eol', 50, 60, ['separate'])
-        self.assertEqual([[('new', (('separate',),), 'N50 60')]],
+        self.assertEqual([[('new', 'N50 60', (('separate',),))]],
             self.caught_entries)
 
     def test_add_version_delta_not_delta_index(self):
@@ -1748,8 +1748,8 @@ class TestGraphIndexKnit(KnitTests):
                 ('new', 'fulltext,no-eol', 50, 60, ['separate']),
                 ('new2', 'fulltext', 0, 6, ['new']),
                 ])
-        self.assertEqual([('new', (('separate',),), 'N50 60'),
-            ('new2', (('new',),), ' 0 6')],
+        self.assertEqual([('new', 'N50 60', (('separate',),)),
+            ('new2', ' 0 6', (('new',),))],
             sorted(self.caught_entries[0]))
         self.assertEqual(1, len(self.caught_entries))
 
@@ -1759,8 +1759,8 @@ class TestGraphIndexKnit(KnitTests):
                 ('new', 'fulltext,no-eol', 50, 60, ['separate']),
                 ('new2', 'line-delta', 0, 6, ['new']),
                 ])
-        self.assertEqual([('new', (('separate',), ()), 'N50 60'),
-            ('new2', (('new',), ('new',), ), ' 0 6')],
+        self.assertEqual([('new', 'N50 60', (('separate',), ())),
+            ('new2', ' 0 6', (('new',), ('new',), ))],
             sorted(self.caught_entries[0]))
         self.assertEqual(1, len(self.caught_entries))
 

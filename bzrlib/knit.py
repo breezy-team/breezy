@@ -1327,7 +1327,7 @@ class KnitGraphIndex(object):
         :param deltas: Allow delta-compressed records.
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
-            [(node, node_refs, value), ...]
+            [(node, value, node_refs), ...]
         """
         self._graph_index = graph_index
         self._deltas = deltas
@@ -1355,7 +1355,7 @@ class KnitGraphIndex(object):
             this_iteration = pending
             new_nodes = self._get_entries(this_iteration)
             pending = set()
-            for (key, node_refs, value) in new_nodes:
+            for (key, value, node_refs) in new_nodes:
                 # dont ask for ghosties - otherwise
                 # we we can end up looping with pending
                 # being entirely ghosted.
@@ -1384,7 +1384,7 @@ class KnitGraphIndex(object):
             this_iteration = pending
             new_nodes = self._get_entries(this_iteration)
             pending = set()
-            for (key, node_refs, value) in new_nodes:
+            for (key, value, node_refs) in new_nodes:
                 graph[key] = node_refs[0]
                 # queue parents 
                 pending.update(graph[key])
@@ -1398,7 +1398,7 @@ class KnitGraphIndex(object):
 
     def get_graph(self):
         """Return a list of the node:parents lists from this knit index."""
-        return [(key, refs[0]) for (key, refs, value) in 
+        return [(key, refs[0]) for (key, value, refs) in 
             self._graph_index.iter_all_entries()]
 
     def num_versions(self):
@@ -1416,14 +1416,14 @@ class KnitGraphIndex(object):
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
-        bits = self._get_node(version_id)[2][1:].split(' ')
+        bits = self._get_node(version_id)[1][1:].split(' ')
         return int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
         if not self._deltas:
             return 'fulltext'
-        return self._parent_compression(self._get_node(version_id)[1][1])
+        return self._parent_compression(self._get_node(version_id)[2][1])
 
     def _parent_compression(self, reference_list):
         # use the second reference list to decide if this is delta'd or not.
@@ -1444,8 +1444,8 @@ class KnitGraphIndex(object):
         if not self._deltas:
             options = ['fulltext']
         else:
-            options = [self._parent_compression(node[1][1])]
-        if node[2][0] == 'N':
+            options = [self._parent_compression(node[2][1])]
+        if node[1][0] == 'N':
             options.append('no-eol')
         return ','.join(options)
 
@@ -1457,7 +1457,7 @@ class KnitGraphIndex(object):
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        return self._get_node(version_id)[1][0]
+        return self._get_node(version_id)[2][0]
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1481,8 +1481,6 @@ class KnitGraphIndex(object):
 
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
-        :return: A list of (key, node_refs, value) tuples for insertion
-            into a GraphIndex.
         """
         if not self._add_callback:
             raise errors.ReadOnlyError(self)
@@ -1506,15 +1504,15 @@ class KnitGraphIndex(object):
                 if 'line-delta' in options:
                     raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
                 node_refs = (tuple(parents), )
-            keys[version_id] = (node_refs, value)
+            keys[version_id] = (value, node_refs)
         present_nodes = self._get_entries(keys)
-        for (key, node_refs, value) in present_nodes:
-            if (node_refs, value) != keys[key]:
+        for (key, value, node_refs) in present_nodes:
+            if (value, node_refs) != keys[key]:
                 raise KnitCorrupt(self, "inconsistent details in add_versions")
             del keys[key]
         result = []
-        for key, (node_refs, value) in keys.iteritems():
-            result.append((key, node_refs, value))
+        for key, (value, node_refs) in keys.iteritems():
+            result.append((key, value, node_refs))
         self._add_callback(result)
         
 

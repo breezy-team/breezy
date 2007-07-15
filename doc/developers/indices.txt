@@ -49,9 +49,9 @@ Index, WhackyIndex). Even though these may require different method
 signatures to operate would strive to keep the signatures and return
 values as similar as possible. e.g.::
 
-    GraphIndexBuilder - add_node(key, references, value)
+    GraphIndexBuilder - add_node(key, value, references)
     IndexBuilder - add_node(key, value)
-    WhackyIndexBuilder - add_node(key, whackiness, value)
+    WhackyIndexBuilder - add_node(key, value, whackiness)
 
 as opposed to something quite different like::
 
