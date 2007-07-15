@@ -746,7 +746,7 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               recurse='down'):
+               recurse='down', possible_transports=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -760,7 +760,7 @@ class BzrDir(object):
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
         """
-        target_transport = get_transport(url)
+        target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
@@ -787,21 +787,22 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            result_repo = source_repository.sprout(result, revision_id=revision_id)
+            result_repo = source_repository.sprout(result,
+                                                   revision_id=revision_id)
         else:
             # fetch needed content into target.
             if source_repository is not None:
                 # would rather do 
-                # source_repository.copy_content_into(result_repo, revision_id=revision_id)
+                # source_repository.copy_content_into(result_repo,
+                #                                     revision_id=revision_id)
                 # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        # TODO: jam 20060426 we probably need a test in here in the
-        #       case that the newly sprouted branch is a remote one
-        if result_repo is None or result_repo.make_working_trees():
+        if isinstance(target_transport, LocalTransport) and (
+            result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree()
             wt.lock_write()
             try:
@@ -961,7 +962,8 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def sprout(self, url, revision_id=None, force_new_repo=False):
+    def sprout(self, url, revision_id=None, force_new_repo=False,
+               possible_transports=None):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)

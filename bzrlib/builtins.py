@@ -883,7 +883,8 @@ class cmd_branch(Command):
                                              % to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base, revision_id)
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                            possible_transports=[to_transport])
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
