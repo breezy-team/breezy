@@ -57,21 +57,21 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
             "akey\0\0\0\n\n", contents)
 
-    def test_build_index_two_nodes_sorted_reverse(self):
+    def test_build_index_two_nodes_sorted(self):
         # the highest sorted node comes first.
         builder = GraphIndexBuilder()
         # use three to have a good chance of glitching dictionary hash
         # lookups etc. Insert in randomish order that is not correct
         # and not the reverse of the correct order.
-        builder.add_node('2001', (), 'data')
-        builder.add_node('2000', (), 'data')
         builder.add_node('2002', (), 'data')
+        builder.add_node('2000', (), 'data')
+        builder.add_node('2001', (), 'data')
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=0\n"
-            "2002\0\0\0data\n"
-            "2001\0\0\0data\n"
             "2000\0\0\0data\n"
+            "2001\0\0\0data\n"
+            "2002\0\0\0data\n"
             "\n", contents)
 
     def test_build_index_reference_lists_are_included_one(self):
@@ -99,8 +99,8 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "reference\0\0\0data\n"
-            "key\0\x0038\0data\n"
+            "key\x00\x0051\x00data\n"
+            "reference\x00\x00\x00data\n"
             "\n", contents)
 
     def test_node_references_are_cr_delimited(self):
@@ -111,51 +111,64 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "reference2\0\0\0data\n"
+            "key\0\x0054\r71\0data\n"
             "reference\0\0\0data\n"
-            "key\0\x0056\r38\0data\n"
+            "reference2\0\0\0data\n"
             "\n", contents)
 
     def test_multiple_reference_lists_are_tab_delimited(self):
         builder = GraphIndexBuilder(reference_lists=2)
-        builder.add_node('reference', ([], []), 'data')
-        builder.add_node('key', (['reference'], ['reference']), 'data')
+        builder.add_node('keference', ([], []), 'data')
+        builder.add_node('rey', (['keference'], ['keference']), 'data')
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
-            "reference\0\0\t\0data\n"
-            "key\0\x0038\t38\0data\n"
+            "keference\0\0\t\0data\n"
+            "rey\0\x0038\t38\0data\n"
             "\n", contents)
 
     def test_add_node_referencing_missing_key_makes_absent(self):
         builder = GraphIndexBuilder(reference_lists=1)
-        builder.add_node('key', (['reference', 'reference2'], ), 'data')
+        builder.add_node('rey', (['beference', 'aeference2'], ), 'data')
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "reference2\0a\0\0\n"
-            "reference\0a\0\0\n"
-            "key\0\x0053\r38\0data\n"
+            "aeference2\0a\0\0\n"
+            "beference\0a\0\0\n"
+            "rey\0\x0053\r38\0data\n"
             "\n", contents)
 
     def test_node_references_three_digits(self):
         # test the node digit expands as needed.
         builder = GraphIndexBuilder(reference_lists=1)
-        references = map(str, range(9))
-        builder.add_node('5-key', (references, ), '')
+        references = map(str, reversed(range(9)))
+        builder.add_node('2-key', (references, ), '')
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=1\n"
-            "8\x00a\x00\x00\n"
-            "7\x00a\x00\x00\n"
-            "6\x00a\x00\x00\n"
-            "5-key\x00\x00130\r124\r118\r112\r106\r100\r050\r044\r038\x00\n"
-            "5\x00a\x00\x00\n"
-            "4\x00a\x00\x00\n"
-            "3\x00a\x00\x00\n"
-            "2\x00a\x00\x00\n"
-            "1\x00a\x00\x00\n"
             "0\x00a\x00\x00\n"
+            "1\x00a\x00\x00\n"
+            "2\x00a\x00\x00\n"
+            "2-key\x00\x00130\r124\r118\r112\r106\r100\r050\r044\r038\x00\n"
+            "3\x00a\x00\x00\n"
+            "4\x00a\x00\x00\n"
+            "5\x00a\x00\x00\n"
+            "6\x00a\x00\x00\n"
+            "7\x00a\x00\x00\n"
+            "8\x00a\x00\x00\n"
+            "\n", contents)
+
+    def test_absent_has_no_reference_overhead(self):
+        # the offsets after an absent record should be correct when there are
+        # >1 reference lists.
+        builder = GraphIndexBuilder(reference_lists=2)
+        builder.add_node('parent', (['aail', 'zther'], []), '')
+        stream = builder.finish()
+        contents = stream.read()
+        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
+            "aail\x00a\x00\x00\n"
+            "parent\x00\x0038\r63\t\x00\n"
+            "zther\x00a\x00\x00\n"
             "\n", contents)
 
     def test_add_node_bad_key(self):
@@ -214,19 +227,6 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder = GraphIndexBuilder(reference_lists=1)
         builder.add_node('key', (['reference'], ), 'data')
         builder.add_node('reference', ([],), 'data')
-
-    def test_absent_has_no_reference_overhead(self):
-        # the offsets after an absent record should be correct when there are
-        # >1 reference lists.
-        builder = GraphIndexBuilder(reference_lists=2)
-        builder.add_node('parent', (['tail', 'other'], []), '')
-        stream = builder.finish()
-        contents = stream.read()
-        self.assertEqual("Bazaar Graph Index 1\nnode_ref_lists=2\n"
-            "tail\x00a\x00\x00\n"
-            "parent\x00\x0038\r63\t\x00\n"
-            "other\x00a\x00\x00\n"
-            "\n", contents)
 
 
 class TestGraphIndex(TestCaseWithMemoryTransport):

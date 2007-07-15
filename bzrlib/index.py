@@ -106,7 +106,11 @@ class GraphIndexBuilder(object):
         # one to pad all the data with reference-length and determine entry
         # addresses.
         # One to serialise.
-        nodes = sorted(self._nodes.items(),reverse=True)
+        
+        # forward sorted by key. In future we may consider topological sorting,
+        # at the cost of table scans for direct lookup, or a second index for
+        # direct lookup
+        nodes = sorted(self._nodes.items())
         # we only need to pre-pass if we have reference lists at all.
         if self.reference_lists:
             non_ref_bytes = prefix_length
