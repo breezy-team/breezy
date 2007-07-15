@@ -17,13 +17,11 @@
 
 """Commands behaviour tests for bzr.
 
-These test the behaviour of the commands.
+This tests the behaviour of the commands.
 The API is tested in the tests/blackbox files.
 """
 
-from bzrlib.tests import (
-                          TestLoader,
-                          )
+from bzrlib.tests import TestLoader
 
 
 def test_suite():

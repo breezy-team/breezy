@@ -27,6 +27,6 @@ class TestPush(TestCaseWithConnectionHookedTransport):
         self.addCleanup(self.reset_hooks)
 
         cmd = cmd_push()
-        cmd.run(self.get_url() + '/remote', directory='branch')
+        cmd.run(self.get_url() + 'remote', directory='branch')
         self.assertEquals(1, len(self.connections))
 

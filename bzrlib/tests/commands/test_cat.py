@@ -44,7 +44,7 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         self.addCleanup(self.reset_hooks)
 
         cmd = cmd_cat()
-        cmd.run(self.get_url() + '/branch/foo')
+        cmd.run(self.get_url() + 'branch/foo')
         self.assertEquals(1, len(self.connections))
         self.assertEquals('foo', self.outf.getvalue())
 

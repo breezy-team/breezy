@@ -34,6 +34,6 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
         cmd = cmd_missing()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = StringIOWrapper()
-        cmd.run(self.get_url() + '/branch2')
+        cmd.run(self.get_url() + 'branch2')
         self.assertEquals(1, len(self.connections))
 

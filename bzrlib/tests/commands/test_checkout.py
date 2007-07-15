@@ -27,6 +27,6 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.addCleanup(self.reset_hooks)
 
         cmd = cmd_checkout()
-        cmd.run(self.get_url() + '/branch1', 'local')
+        cmd.run(self.get_url() + 'branch1', 'local')
         self.assertEquals(1, len(self.connections))
 
