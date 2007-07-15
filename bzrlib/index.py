@@ -113,12 +113,15 @@ class GraphIndexBuilder(object):
         nodes = sorted(self._nodes.items())
         # we only need to pre-pass if we have reference lists at all.
         if self.reference_lists:
+            key_offset_info = []
             non_ref_bytes = prefix_length
             total_references = 0
             # TODO use simple multiplication for the constants in this loop.
-            # TODO: factor out the node length calculations so this loop 
-            #       and the next have less (no!) duplicate code.
             for key, (absent, references, value) in nodes:
+                # record the offset known *so far* for this key:
+                # the non reference bytes to date, and the total references to
+                # date - saves reaccumulating on the second pass
+                key_offset_info.append((key, non_ref_bytes, total_references))
                 # key is literal, value is literal, there are 3 null's, 1 NL
                 non_ref_bytes += len(key) + len(value) + 3 + 1
                 # one byte for absent if set.
@@ -142,25 +145,8 @@ class GraphIndexBuilder(object):
                 possible_total_bytes = non_ref_bytes + total_references*digits
             # resolve key addresses.
             key_addresses = {}
-            current_offset = prefix_length
-            for key, (absent, references, value) in nodes:
-                key_addresses[key] = current_offset
-                # key is literal, value is literal, there are 3 null's, 1 NL
-                current_offset += len(key) + len(value) + 3 + 1
-                # one byte for absent if set.
-                if absent:
-                    current_offset += 1
-                elif self.reference_lists:
-                    # (ref_lists -1) tabs
-                    current_offset += self.reference_lists - 1
-                    # (ref-1 cr's per ref_list)
-                    for ref_list in references:
-                        # accrue reference bytes
-                        current_offset += digits * len(ref_list)
-                        # accrue reference separators
-                        if ref_list:
-                            # accrue reference separators
-                            current_offset += len(ref_list) - 1
+            for key, non_ref_bytes, total_references in key_offset_info:
+                key_addresses[key] = non_ref_bytes + total_references*digits
             # serialise
             format_string = '%%0%sd' % digits
         for key, (absent, references, value) in nodes:
