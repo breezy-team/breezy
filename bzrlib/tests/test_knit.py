@@ -1589,7 +1589,8 @@ class TestGraphIndexKnit(KnitTests):
             ]), set(index.get_graph()))
 
     def test_get_ancestry(self):
-        index = self.two_graph_index_no_ghosts()
+        # get_ancestry is defined as eliding ghosts, not erroring.
+        index = self.two_graph_index()
         self.assertEqual([], index.get_ancestry([]))
         self.assertEqual(['separate'], index.get_ancestry(['separate']))
         self.assertEqual(['tail'], index.get_ancestry(['tail']))
@@ -1610,12 +1611,8 @@ class TestGraphIndexKnit(KnitTests):
             set(index.get_ancestry(['tip'], topo_sorted=False)))
         self.assertEqual(set(['separate', 'tail', 'parent', 'tip']),
             set(index.get_ancestry(['tip', 'separate'])))
-        # with ghosts it blows up early
-        index = self.two_graph_index()
-        self.assertEqual([], index.get_ancestry([]))
-        self.assertEqual(['separate'], index.get_ancestry(['separate']))
-        self.assertEqual(['tail'], index.get_ancestry(['tail']))
-        self.assertRaises(errors.RevisionNotPresent, index.get_ancestry, ['parent'])
+        # asking for a ghost makes it go boom.
+        self.assertRaises(errors.RevisionNotPresent, index.get_ancestry, ['ghost'])
 
     def test_get_ancestry_with_ghosts(self):
         index = self.two_graph_index()
@@ -1636,6 +1633,8 @@ class TestGraphIndexKnit(KnitTests):
              ['separate', 'tail', 'ghost', 'parent', 'tip'],
              ['separate', 'ghost', 'tail', 'parent', 'tip'],
             ))
+        # asking for a ghost makes it go boom.
+        self.assertRaises(errors.RevisionNotPresent, index.get_ancestry, ['ghost'])
 
     def test_num_versions(self):
         index = self.two_graph_index()

@@ -1347,6 +1347,8 @@ class KnitGraphIndex(object):
         # it should be altered to be a index core feature?
         # get a graph of all the mentioned versions:
         graph = {}
+        ghosts = set()
+        versions = set(versions)
         pending = set(versions)
         while pending:
             # get all pending nodes
@@ -1354,14 +1356,18 @@ class KnitGraphIndex(object):
             new_nodes = self._get_entries(this_iteration)
             pending = set()
             for (key, node_refs, value) in new_nodes:
-                graph[key] = node_refs[0]
+                # dont ask for ghosties - otherwise
+                # we we can end up looping with pending
+                # being entirely ghosted.
+                graph[key] = [parent for parent in node_refs[0]
+                    if parent not in ghosts]
                 # queue parents 
                 pending.update(graph[key])
-            missing_versions = this_iteration.difference(graph)
-            if missing_versions:
-                raise RevisionNotPresent(missing_versions.pop(), self)
+            ghosts.difference_update(graph)
             # dont examine known nodes
             pending.difference_update(graph)
+        if versions.difference(graph):
+            raise RevisionNotPresent(versions.difference(graph).pop(), self)
         if not topo_sorted:
             return graph.keys()
         return topo_sort(graph.items())

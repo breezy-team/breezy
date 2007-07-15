@@ -347,8 +347,9 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             add_callback = self.repo._revision_write_index.add_nodes
         else:
             add_callback = None # no data-adding permitted.
-        all_indices = CombinedGraphIndex(indices)
-        knit_index = KnitGraphIndex(all_indices, add_callback=add_callback)
+        self.repo._revision_all_indices = CombinedGraphIndex(indices)
+        knit_index = KnitGraphIndex(self.repo._revision_all_indices,
+            add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', index_transport.clone('..'),
             self.repo.control_files._file_mode,
@@ -361,15 +362,23 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         # have we done anything?
         if getattr(self.repo, '_revision_knit', None):
             index_transport = self.get_indices_transport()
-            index_transport.put_file(self.repo._revision_indices.allocate(),
+            new_index_name = self.repo._revision_indices.allocate()
+            index_transport.put_file(new_index_name,
                 self.repo._revision_write_index.finish())
             self.repo._revision_indices.save()
+            self.repo._revision_write_index = None
+            self.repo._revision_all_indices.insert_index(0,
+                GraphIndex(index_transport, new_index_name))
+            # remove the write buffering index. XXX: API break
+            # - clearly we need a remove_index call too.
+            del self.repo._revision_all_indices._indices[-1]
 
     def reset(self):
         """Clear all cached data."""
         self.repo._revision_knit = None
         self.repo._revision_indices = None
         self.repo._revision_write_index = None
+        self.repo._revision_all_indices = None
 
 
 class GraphKnitRepository1(KnitRepository):
