@@ -111,6 +111,8 @@ class GraphIndexBuilder(object):
         # at the cost of table scans for direct lookup, or a second index for
         # direct lookup
         nodes = sorted(self._nodes.items())
+        # if we do not prepass, we don't know how long it will be up front.
+        expected_bytes = None
         # we only need to pre-pass if we have reference lists at all.
         if self.reference_lists:
             key_offset_info = []
@@ -143,6 +145,7 @@ class GraphIndexBuilder(object):
             while 10 ** digits < possible_total_bytes:
                 digits += 1
                 possible_total_bytes = non_ref_bytes + total_references*digits
+            expected_bytes = possible_total_bytes + 1 # terminating newline
             # resolve key addresses.
             key_addresses = {}
             for key, non_ref_bytes, total_references in key_offset_info:
@@ -159,6 +162,11 @@ class GraphIndexBuilder(object):
             lines.append("%s\0%s\0%s\0%s\n" % (key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
+        result = StringIO(''.join(lines))
+        if expected_bytes and len(result.getvalue()) != expected_bytes:
+            raise errors.BzrError('Failed index creation. Internal error:'
+                ' mismatched output length and expected length: %d %d' %
+                (len(result.getvalue()), expected_bytes))
         return StringIO(''.join(lines))
 
 
