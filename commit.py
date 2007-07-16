@@ -143,7 +143,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _file_process(self, file_id, contents, baton):
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
-
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
     def _dir_process(self, path, file_id, baton):
@@ -199,7 +198,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
                 child_baton = self.editor.add_file(
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), baton, 
-                           urlutils.join(self.repository.transport.svn_url, self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location
@@ -267,7 +266,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 child_baton = self.editor.add_directory(
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
                            baton, 
-                           urlutils.join(self.repository.transport.svn_url, self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location and 
@@ -315,23 +314,31 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
+        # TODO: Locking
         mutter('obtaining commit editor')
         self.revnum = None
+        # TODO: Figure out which elements of branch_path exist yet
         self.editor = self.repository.transport.get_commit_editor(
             message.encode("utf-8"), done, None, False)
 
         if self.branch.last_revision() is None:
             self.base_revnum = 0
+            self.base_path = self.branch.branch_path
         else:
-            self.base_revnum = self.branch.lookup_revision_id(
-                          self.branch.last_revision())
+            (self.base_path, 
+                self.base_revnum, _) = self.repository.lookup_revision_id(
+                    self.branch.last_revision())
 
         root = self.editor.open_root(self.base_revnum)
         
+        # TODO: Accept overwrite argument
+        # TODO: Accept create_prefix argument
+        # TODO: Delete existing directory if it exists
         branch_batons = self.open_branch_batons(root,
                                 self.branch.branch_path.split("/"))
 
-        self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
+        self._dir_process("", self.new_inventory.root.file_id, 
+                          branch_batons[-1])
 
         branch_batons.reverse()
         for baton in branch_batons:
@@ -386,10 +393,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
             self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
 
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
+        previous_entries = ie.find_previous_heads(parent_invs, 
+            self.repository.weave_store, self.repository.get_transaction())
 
         # we are creating a new revision for ie in the history store
         # and inventory.
