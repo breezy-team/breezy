@@ -1320,7 +1320,7 @@ class _KnitIndex(_KnitComponentFile):
 class KnitGraphIndex(object):
     """A knit index that builds on GraphIndex."""
 
-    def __init__(self, graph_index, deltas=False, add_callback=None):
+    def __init__(self, graph_index, deltas=False, parents=True, add_callback=None):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1328,21 +1328,43 @@ class KnitGraphIndex(object):
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
             [(node, value, node_refs), ...]
+        :param parents: If True, record knits parents, if not do not record 
+            parents.
         """
         self._graph_index = graph_index
         self._deltas = deltas
         self._add_callback = add_callback
+        self._parents = parents
+        if deltas and not parents:
+            raise KnitCorrupt(self, "Cannot do delta compression without "
+                "parent tracking.")
 
     def _get_entries(self, version_ids):
         """Get the entries for version_ids."""
-        return self._graph_index.iter_entries(version_ids)
+        if self._parents:
+            for node in self._graph_index.iter_entries(version_ids):
+                yield node
+        else:
+            # adapt parentless index to the rest of the code.
+            for node in self._graph_index.iter_entries(version_ids):
+                yield node[0], node[1], ()
 
     def _present_keys(self, version_ids):
         return set([
             node[0] for node in self._get_entries(version_ids)])
 
+    def _parentless_ancestry(self, versions):
+        """Honour the get_ancestry API for parentless knit indices."""
+        present_keys = self._present_keys(versions)
+        missing = set(versions).difference(present_keys)
+        if missing:
+            raise RevisionNotPresent(missing.pop(), self)
+        return list(present_keys)
+
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
+        if not self._parents:
+            return self._parentless_ancestry(versions)
         # XXX: This will do len(history) index calls - perhaps
         # it should be altered to be a index core feature?
         # get a graph of all the mentioned versions:
@@ -1374,10 +1396,13 @@ class KnitGraphIndex(object):
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry."""
+        if not self._parents:
+            return self._parentless_ancestry(versions)
         # XXX: This will do len(history) index calls - perhaps
         # it should be altered to be a index core feature?
         # get a graph of all the mentioned versions:
         graph = {}
+        versions = set(versions)
         pending = set(versions)
         while pending:
             # get all pending nodes
@@ -1389,6 +1414,9 @@ class KnitGraphIndex(object):
                 # queue parents 
                 pending.update(graph[key])
             missing_versions = this_iteration.difference(graph)
+            missing_needed = versions.intersection(missing_versions)
+            if missing_needed:
+                raise RevisionNotPresent(missing_needed.pop(), self)
             for missing_version in missing_versions:
                 # add a key, no parents
                 graph[missing_version] = []
@@ -1398,6 +1426,8 @@ class KnitGraphIndex(object):
 
     def get_graph(self):
         """Return a list of the node:parents lists from this knit index."""
+        if not self._parents:
+            return [(key, ()) for key in self.get_versions()]
         return [(key, refs[0]) for (key, value, refs) in 
             self._graph_index.iter_all_entries()]
 
@@ -1451,12 +1481,16 @@ class KnitGraphIndex(object):
 
     def get_parents(self, version_id):
         """Return parents of specified version ignoring ghosts."""
+        if not self._parents:
+            return ()
         parents = self.get_parents_with_ghosts(version_id)
         present_parents = self._present_keys(parents)
         return [key for key in parents if key in present_parents]
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
+        if not self._parents:
+            return ()
         return self._get_node(version_id)[2][0]
 
     def check_versions_present(self, version_ids):
@@ -1495,24 +1529,36 @@ class KnitGraphIndex(object):
             else:
                 value = ' '
             value += "%d %d" % (pos, size)
-            if self._deltas:
-                if 'line-delta' in options:
-                    node_refs = (tuple(parents), (parents[0],))
-                else:
-                    node_refs = (tuple(parents), ())
-            else:
+            if not self._deltas:
                 if 'line-delta' in options:
                     raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
-                node_refs = (tuple(parents), )
+            if self._parents:
+                if self._deltas:
+                    if 'line-delta' in options:
+                        node_refs = (tuple(parents), (parents[0],))
+                    else:
+                        node_refs = (tuple(parents), ())
+                else:
+                    node_refs = (tuple(parents), )
+            else:
+                if parents:
+                    raise KnitCorrupt(self, "attempt to add node with parents "
+                        "in parentless index.")
+                node_refs = ()
             keys[version_id] = (value, node_refs)
         present_nodes = self._get_entries(keys)
         for (key, value, node_refs) in present_nodes:
             if (value, node_refs) != keys[key]:
-                raise KnitCorrupt(self, "inconsistent details in add_versions")
+                raise KnitCorrupt(self, "inconsistent details in add_versions"
+                    ": %s %s" % ((value, node_refs), keys[key]))
             del keys[key]
         result = []
-        for key, (value, node_refs) in keys.iteritems():
-            result.append((key, value, node_refs))
+        if self._parents:
+            for key, (value, node_refs) in keys.iteritems():
+                result.append((key, value, node_refs))
+        else:
+            for key, (value, node_refs) in keys.iteritems():
+                result.append((key, value))
         self._add_callback(result)
         
 
