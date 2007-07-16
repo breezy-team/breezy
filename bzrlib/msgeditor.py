@@ -81,7 +81,7 @@ DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
-                        start_message=None):
+                        start_message=None, user_encoding=bzrlib.user_encoding):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -97,12 +97,15 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                             This will not be removed from the message
                             after the user has edited it.
 
+    :user_encoding:     message encoding
+
     :return:    commit message or None.
     """
     msgfilename = None
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
-                                    infotext, ignoreline, start_message)
+                                    infotext, ignoreline, start_message,
+                                    user_encoding)
 
         if not msgfilename or not _run_editor(msgfilename):
             return None
@@ -113,7 +116,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         # codecs.open() ALWAYS opens file in binary mode but we need text mode
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
         f = file(msgfilename, 'rU')
-        for line in codecs.getreader(bzrlib.user_encoding)(f):
+        for line in codecs.getreader(user_encoding)(f):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
@@ -152,7 +155,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
 def _create_temp_file_with_commit_template(infotext,
                                            ignoreline=DEFAULT_IGNORE_LINE,
-                                           start_message=None):
+                                           start_message=None,
+                                           user_encoding=bzrlib.user_encoding):
     """Create temp file and write commit template in it.
 
     :param infotext:    Text to be displayed at bottom of message
@@ -165,6 +169,8 @@ def _create_temp_file_with_commit_template(infotext,
                             This will not be removed from the message
                             after the user has edited it.
 
+    :user_encoding:     message encoding
+
     :return:    2-tuple (temp file name, hasinfo)
     """
     import tempfile
@@ -175,12 +181,12 @@ def _create_temp_file_with_commit_template(infotext,
     try:
         if start_message is not None:
             msgfile.write("%s\n" % start_message.encode(
-                                       bzrlib.user_encoding, 'replace'))
+                                       user_encoding, 'replace'))
 
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile.write("\n\n%s\n\n%s" % (ignoreline,
-                          infotext.encode(bzrlib.user_encoding,
+                          infotext.encode(user_encoding,
                                                 'replace')))
         else:
             hasinfo = False
@@ -190,7 +196,8 @@ def _create_temp_file_with_commit_template(infotext,
     return (msgfilename, hasinfo)
 
 
-def make_commit_message_template(working_tree, specific_files, diff=False):
+def make_commit_message_template(working_tree, specific_files, diff=False,
+                                 user_encoding=bzrlib.user_encoding):
     """Prepare a template file for a commit into a branch.
 
     Returns a unicode string containing the template.
@@ -204,23 +211,23 @@ def make_commit_message_template(working_tree, specific_files, diff=False):
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
-    class UnicodeStringIO(StringIO):
-        def __init__(self, buf='', decoding='utf8'):
-                StringIO.__init__(self, buf)
-                self._usio_decoding = decoding
-
-        def write(self, s):
-            if not isinstance(s, unicode):
-                s = s.decode(self._usio_decoding, "replace")
-            StringIO.write(self, s)
-    status_tmp = UnicodeStringIO()
+    status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
     if diff:
-        status_tmp.write(u"\n")
         from bzrlib.diff import show_diff_trees
+        stream = StringIO()
+        status_tmp.write(u"\n")
         show_diff_trees(working_tree.basis_tree(), working_tree,
-                    status_tmp,
-                    specific_files)
+                    stream, specific_files)
+
+        stream.seek(0,0)
+        for l in stream.readlines():
+            if ( l.startswith("===") or l.startswith("---") or
+                 l.startswith("+++") ):
+                    # the header are utf8 encoded
+                    status_tmp.write(l.decode("utf8"))
+            else:
+                    status_tmp.write(l.decode(user_encoding, "replace"))
 
     return status_tmp.getvalue()

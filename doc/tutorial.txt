@@ -317,6 +317,20 @@ by the ``editor`` setting in ``~/.bazaar/bazaar.conf``; ``$BZR_EDITOR`` will
 override either of the above mentioned editor options.  If you quit the
 editor without making any changes, the commit will be cancelled.
 
+The file that is opened in the editor contains a horizontal line. The part
+of the file below this line is included for information only, and will not
+form part of the commit message. Below the separator is shown the list of
+files that are changed in the commit. You should write your message above
+the line, and then save the file and exit.
+
+If you would like to see the diff that will be committed as you edit the
+message you can use the ``--diff`` option to ``commit``. This will include
+the diff in the editor when it is opened, below the separator and the
+information about the files that will be committed. This means that you can
+read it as you write the message, but the diff itself wont be seen in the
+commit message when you have finished. If you would like parts to be
+included in the message you can copy and paste them above the separator.
+
 Selective commit
 ----------------
 
