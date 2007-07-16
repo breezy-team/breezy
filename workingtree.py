@@ -139,11 +139,11 @@ class SvnWorkingTree(WorkingTree):
 
         return ignores
 
-    def _write_inventory(self, inv):
-        pass
-
     def is_control_filename(self, path):
         return svn.wc.is_adm_dir(path)
+
+    def apply_inventory_delta(self, changes):
+        raise NotImplementedError(self.apply_inventory_delta)
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument

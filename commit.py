@@ -332,7 +332,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             branch_batons = self.open_branch_batons(root,
                                     self.branch.branch_path.split("/"))
 
-            self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
+            self._dir_process("", self.new_inventory.root.file_id, 
+                branch_batons[-1])
 
             branch_batons.reverse()
             for baton in branch_batons:
