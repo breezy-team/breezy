@@ -16,6 +16,7 @@
 
 """Remote access tests."""
 
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
                            NoWorkingTree)
@@ -85,8 +86,8 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         origb.add(["twin", "peaks"])
         origb.commit("Message")
         b = x.import_branch(source=origb.branch)
-        self.assertEquals(origb.revision_history(), b.revision_history())
-        self.assertEquals(origb.revision_history(), 
+        self.assertEquals(origb.branch.revision_history(), b.revision_history())
+        self.assertEquals(origb.branch.revision_history(), 
                 Branch.open(repos_url+"/trunk").revision_history())
 
     def test_open_repos_root(self):

@@ -73,8 +73,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                              parents)
 
         if self.branch.last_revision() is None:
-            self.base_revnum = 0
-            self.base_path = self.branch.branch_path
+            self.base_revnum = -1
+            self.base_path = None
             self.base_scheme = repository.scheme
         else:
             (self.base_path, self.base_revnum, self.base_scheme) = \
@@ -115,8 +115,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             else:
                 old = ""
 
-            self._svnprops[SVN_PROP_BZR_REVISION_ID+str(scheme)] = old + \
-                    "%d %s\n" % (previous_revno+1, revision_id)
+            self._svnprops[SVN_PROP_BZR_REVISION_ID+str(self.base_scheme)] = \
+                    old + "%d %s\n" % (previous_revno+1, revision_id)
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -341,10 +341,12 @@ class SvnCommitBuilder(RootCommitBuilder):
             # Already exists, old copy needs to be removed
             if len(existing_elements) == len(elements):
                 self.editor.delete_entry("/".join(elements), -1, ret[-1])
+            if base_path is not None:
+                base_url = urlutils.join(self.repository.transport.svn_url, base_path)
+            else:
+                base_url = None
             ret.append(self.editor.add_directory(
-                "/".join(elements), ret[-1], 
-                urlutils.join(self.repository.transport.svn_url, base_path), 
-                base_rev, self.pool))
+                "/".join(elements), ret[-1], base_url, base_rev, self.pool))
 
         return ret
 
@@ -355,7 +357,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
-        bp_parts = self.branch.branch_path.split("/")
+        bp_parts = self.branch.get_branch_path().split("/")
         lock = self.repository.transport.lock_write(".")
 
         existing_bp_parts =_check_dirs_exist(self.repository.transport, 
@@ -546,6 +548,7 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
     class ImaginaryBranch:
         def __init__(self, repository):
             self.repository = repository
+            self._revision_history = None
 
         def get_config(self):
             return None
@@ -556,8 +559,12 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
         def last_revision(self):
             return None
 
-        def get_branch(self, revnum):
+        def get_branch_path(self, revnum=None):
             return target_branch_path
+
+        def generate_revision_id(self, revnum):
+            return self.repository.generate_revision_id(
+                revnum, self.get_branch_path(revnum), self.repository.scheme)
 
     push(ImaginaryBranch(target_repository), source, start_revid)
 
