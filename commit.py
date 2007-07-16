@@ -36,6 +36,14 @@ from revids import escape_svn_path
 from copy import copy
 import os
 
+def _check_dirs_exist(transport, bp_parts, base_rev):
+    for i in range(len(bp_parts), 0, -1):
+        current = bp_parts[:i]
+        if transport.check_path("/".join(current).strip("/"), base_rev) == svn.core.svn_node_dir:
+            return current
+    return []
+
+
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
@@ -287,23 +295,47 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             self.editor.close_directory(child_baton, self.pool)
 
-    def open_branch_batons(self, root, elements):
+    def open_branch_batons(self, root, elements, existing_elements, 
+                           base_path, base_rev):
         """Open a specified directory given a baton for the repository root.
 
         :param root: Baton for the repository root
         :param elements: List of directory names to open
+        :param existing_elements: List of directory names that exist
+        :param base_path: Path to base top-level branch on
+        :param base_rev: Revision of path to base top-level branch on
         """
         ret = [root]
 
-        mutter('opening branch %r' % elements)
+        mutter('opening branch %r (base %r:%r)' % (elements, base_path, 
+                                                   base_rev))
 
-        for i in range(1, len(elements)):
-            if i == len(elements):
-                revnum = self.base_revnum
-            else:
-                revnum = -1
+        # Open paths leading up to branch
+        for i in range(1, len(elements)-1):
+            # Does directory already exist?
             ret.append(self.editor.open_directory(
-                "/".join(elements[0:i+1]), ret[-1], revnum, self.pool))
+                "/".join(existing_elements[0:i+1]), ret[-1], -1, self.pool))
+
+        assert (len(existing_elements) == len(elements) or 
+                len(existing_elements)+1 == len(elements))
+
+        # Branch already exists and stayed at the same location, open:
+        # TODO: What if the branch didn't change but the new revision 
+        # was based on an older revision of the branch?
+        # This needs to also check that base_rev was the latest version of 
+        # branch_path.
+        if (len(existing_elements) == len(elements) and 
+            base_path == "/".join(elements)):
+            ret.append(self.editor.open_directory(
+                "/".join(elements), ret[-1], base_rev, self.pool))
+        else: # Branch has to be created
+            # Already exists, old copy needs to be removed
+            if len(existing_elements) == len(elements):
+                self.editor.delete_entry("/".join(elements), -1, ret[-1])
+            ret.append(self.editor.add_directory(
+                "/".join(elements), ret[-1], 
+                urlutils.join(self.repository.transport.svn_url, base_path), 
+                base_rev, self.pool))
 
         return ret
 
@@ -314,29 +346,28 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
+        bp_parts = self.branch.branch_path.split("/")
         lock = self.repository.transport.lock_write(".")
-        # TODO: Figure out which elements of branch_path exist yet
+        if self.branch.last_revision() is None:
+            self.base_revnum = 0
+            self.base_path = self.branch.branch_path
+        else:
+            (self.base_path, 
+                self.base_revnum, _) = self.repository.lookup_revision_id(
+                    self.branch.last_revision())
+        existing_bp_parts =_check_dirs_exist(self.repository.transport, 
+                                              bp_parts, -1)
         try:
             mutter('obtaining commit editor')
             self.revnum = None
             self.editor = self.repository.transport.get_commit_editor(
                 message.encode("utf-8"), done, None, False)
 
-            if self.branch.last_revision() is None:
-                self.base_revnum = 0
-                self.base_path = self.branch.branch_path
-            else:
-                (self.base_path, 
-                    self.base_revnum, _) = self.repository.lookup_revision_id(
-                        self.branch.last_revision())
-
             root = self.editor.open_root(self.base_revnum)
             
-            # TODO: Accept overwrite argument
             # TODO: Accept create_prefix argument
-            # TODO: Delete existing directory if it exists
-            branch_batons = self.open_branch_batons(root,
-                                    self.branch.branch_path.split("/"))
+            branch_batons = self.open_branch_batons(root, bp_parts,
+                existing_bp_parts, self.base_path, self.base_revnum)
 
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])
@@ -555,7 +586,9 @@ def push(target, source, revision_id):
     replay_delta(builder, delta, old_tree)
     try:
         return builder.commit(rev.message)
-    except SubversionException, (_, num):
+    except SubversionException, (msg, num):
+        import pdb
+        pdb.set_trace()
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
