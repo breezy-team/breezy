@@ -344,7 +344,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         for name in sorted(self.repo._revision_indices.names(), cmp=_cmp, reverse=True):
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
-            indices.append(GraphIndex(index_transport, name))
+            index_name = self.name_to_index_name(name)
+            indices.append(GraphIndex(index_transport, index_name))
         if self.repo.control_files._lock_mode == 'w':
             # allow writing: queue writes to a new index
             indices.append(InMemoryGraphIndex(1))
@@ -367,7 +368,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         # have we done anything?
         if getattr(self.repo, '_revision_knit', None):
             index_transport = self.get_indices_transport()
-            new_index_name = self.repo._revision_indices.allocate()
+            new_name = self.repo._revision_indices.allocate()
+            new_index_name = self.name_to_index_name(new_name)
             index_transport.put_file(new_index_name,
                 self.repo._revision_write_index.finish())
             self.repo._revision_indices.save()
@@ -377,6 +379,10 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._revision_all_indices._indices[-1]
+
+    def name_to_index_name(self, name):
+        """The revision index is the name + .rix."""
+        return name + '.rix'
 
     def reset(self):
         """Clear all cached data."""

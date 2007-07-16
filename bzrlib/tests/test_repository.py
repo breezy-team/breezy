@@ -503,7 +503,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def test_disk_layout(self):
         format = self.get_format()
-        repo =self.make_repository('.', format=format)
+        repo = self.make_repository('.', format=format)
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
@@ -553,7 +553,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         format = self.get_format()
-        repo =self.make_repository('.', shared=True, format=format)
+        repo = self.make_repository('.', shared=True, format=format)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
         # lock: is a directory
@@ -571,7 +571,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         format = self.get_format()
-        repo =self.make_repository('.', shared=True, format=format)
+        repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
@@ -590,6 +590,15 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_databases(t)
+
+    def test_add_revision_creates_zero_dot_rix(self):
+        """Adding a revision makes a 0.rix (Revision IndeX) file."""
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        self.assertFalse(trans.has('indices/0.rix'))
+        tree.commit('foobarbaz')
+        self.assertTrue(trans.has('indices/0.rix'))
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
