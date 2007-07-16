@@ -226,7 +226,7 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
             if ( l.startswith("===") or l.startswith("---") or
                  l.startswith("+++") ):
                     # the header are utf8 encoded
-                    status_tmp.write(l.decode("utf8"))
+                    status_tmp.write(l.decode("utf8","replace"))
             else:
                     status_tmp.write(l.decode(user_encoding, "replace"))
 
