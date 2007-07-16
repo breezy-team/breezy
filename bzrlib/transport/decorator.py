@@ -79,13 +79,6 @@ class TransportDecorator(Transport):
         """See Transport.delete_tree()."""
         return self._decorated.delete_tree(relpath)
 
-    def external_url(self):
-        """See bzrlib.transport.Transport.external_url."""
-        # while decorators are in-process only, they
-        # can be handed back into bzrlib safely, so
-        # its just the base.
-        return self.base
-
     @classmethod
     def _get_url_prefix(self):
         """Return the URL prefix of this decorator."""

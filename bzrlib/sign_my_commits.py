@@ -41,10 +41,11 @@ class cmd_sign_my_commits(Command):
     # (both mainline and merged), but not other revisions that may be in the
     # repository
 
-    takes_options = [Option('dry-run'
-                            , help='Don\'t actually sign anything, just print'
-                                   ' the revisions that would be signed')
-                    ]
+    takes_options = [
+            Option('dry-run',
+                   help='Don\'t actually sign anything, just print'
+                        ' the revisions that would be signed.'),
+            ]
     takes_args = ['location?', 'committer?']
 
     def run(self, location=None, committer=None, dry_run=False):

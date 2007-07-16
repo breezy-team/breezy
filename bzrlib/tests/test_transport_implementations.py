@@ -135,14 +135,6 @@ class TransportTests(TestTransportImplementation):
         t_b = t_a.clone('b')
         self.assertRaises(NoSuchFile, t_b.ensure_base)
 
-    def test_external_url(self):
-        """.external_url either works or raises InProcessTransport."""
-        t = self.get_transport()
-        try:
-            t.external_url()
-        except errors.InProcessTransport:
-            pass
-
     def test_has(self):
         t = self.get_transport()
 

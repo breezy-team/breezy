@@ -332,7 +332,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = dict()
-        r['help'] = option.Option.OPTIONS['help']
+        r['help'] = option._help_option
         for o in self.takes_options:
             if isinstance(o, basestring):
                 o = option.Option.OPTIONS[o]

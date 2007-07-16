@@ -317,28 +317,6 @@ class Transport(object):
         else:
             return True
 
-    def external_url(self):
-        """Return a URL for self that can be given to an external process.
-
-        There is no guarantee that the URL can be accessed from a different
-        machine - e.g. file:/// urls are only usable on the local machine,
-        sftp:/// urls when the server is only bound to localhost are only
-        usable from localhost etc.
-
-        NOTE: This method may remove security wrappers (e.g. on chroot
-        transports) and thus should *only* be used when the result will not
-        be used to obtain a new transport within bzrlib. Ideally chroot
-        transports would know enough to cause the external url to be the exact
-        one used that caused the chrooting in the first place, but that is not
-        currently the case.
-
-        :return: A URL that can be given to another process.
-        :raises InProcessTransport: If the transport is one that cannot be
-            accessed out of the current process (e.g. a MemoryTransport)
-            then InProcessTransport is raised.
-        """
-        raise NotImplementedError(self.external_url)
-
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
         """

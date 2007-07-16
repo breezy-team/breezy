@@ -118,8 +118,6 @@ def _write_bundle(repository, revision_id, base_revision_id, out, format):
          applying the bundle.
     :param out: Output file.
     """
-    if base_revision_id is NULL_REVISION:
-        base_revision_id = None
     revision_ids = set(repository.get_ancestry(revision_id, topo_sorted=False))
     revision_ids.difference_update(repository.get_ancestry(base_revision_id,
                                    topo_sorted=False))
