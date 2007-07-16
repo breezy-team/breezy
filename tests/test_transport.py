@@ -46,6 +46,22 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t.reparent("%s/foo" % repos_url)
         self.assertEqual("%s/foo" % repos_url, t.base)
 
+    def test_lock_read(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertFalse(t.is_locked())
+        lock = t.lock_read(".")
+        self.assertTrue(t.is_locked())
+        lock.unlock()
+
+    def test_lock_write(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertFalse(t.is_locked())
+        lock = t.lock_write(".")
+        self.assertTrue(t.is_locked())
+        lock.unlock()
+
     def test_listable(self):
         repos_url = self.make_client('d', 'dc')
         t = SvnRaTransport(repos_url)

@@ -314,29 +314,33 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
-        mutter('obtaining commit editor')
-        self.revnum = None
-        self.editor = self.repository.transport.get_commit_editor(
-            message.encode("utf-8"), done, None, False)
+        lock = self.repository.transport.lock(".")
+        try:
+            mutter('obtaining commit editor')
+            self.revnum = None
+            self.editor = self.repository.transport.get_commit_editor(
+                message.encode("utf-8"), done, None, False)
 
-        if self.branch.last_revision() is None:
-            self.base_revnum = 0
-        else:
-            self.base_revnum = self.branch.lookup_revision_id(
-                          self.branch.last_revision())
+            if self.branch.last_revision() is None:
+                self.base_revnum = 0
+            else:
+                self.base_revnum = self.branch.lookup_revision_id(
+                              self.branch.last_revision())
 
-        root = self.editor.open_root(self.base_revnum)
-        
-        branch_batons = self.open_branch_batons(root,
-                                self.branch.branch_path.split("/"))
+            root = self.editor.open_root(self.base_revnum)
+            
+            branch_batons = self.open_branch_batons(root,
+                                    self.branch.branch_path.split("/"))
 
-        self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
+            self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
 
-        branch_batons.reverse()
-        for baton in branch_batons:
-            self.editor.close_directory(baton, self.pool)
+            branch_batons.reverse()
+            for baton in branch_batons:
+                self.editor.close_directory(baton, self.pool)
 
-        self.editor.close()
+            self.editor.close()
+        finally:
+            lock.unlock()
 
         assert self.revnum is not None
         revid = self.branch.generate_revision_id(self.revnum)

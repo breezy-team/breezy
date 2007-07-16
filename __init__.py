@@ -90,8 +90,10 @@ register_transport_proto('svn+http://',
     help="Access of Subversion smart servers over HTTP.")
 register_transport_proto('svn+https://',
     help="Access of Subversion smart servers over secure HTTP.")
-register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
-register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
+register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 
+                        'SvnRaTransport')
+register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
+                        'SvnRaTransport')
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)

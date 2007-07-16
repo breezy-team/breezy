@@ -32,18 +32,6 @@ from errors import convert_svn_error
 svn_config = svn.core.svn_config_get_config(None)
 
 
-def need_lock(unbound):
-    def locked(self, *args, **kwargs):
-        self.lock()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
-    locked.__doc__ = unbound.__doc__
-    locked.__name__ = unbound.__name__
-    return locked
-
-
 def _create_auth_baton(pool):
     """Create a Subversion authentication baton. """
     # Give the client context baton a suite of authentication
@@ -142,7 +130,6 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     def __init__(self, url=""):
         self.pool = Pool()
-        self.is_locked = False
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
         Transport.__init__(self, bzr_url)
@@ -190,14 +177,6 @@ class SvnRaTransport(Transport):
             svn.ra.reporter2_invoke_abort_report(self._reporter, 
                     self._baton, pool)
 
-    def lock(self):
-        assert (not self.is_locked)
-        self.is_locked = True
-
-    def unlock(self):
-        assert self.is_locked
-        self.is_locked = False
-
     def has(self, relpath):
         """See Transport.has()."""
         # TODO: Raise TransportNotPossible here instead and 
@@ -214,37 +193,31 @@ class SvnRaTransport(Transport):
         """See Transport.stat()."""
         raise TransportNotPossible('stat not supported on Subversion')
 
-    @need_lock
     @convert_svn_error
     def get_uuid(self):
         mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
-    @need_lock
     @convert_svn_error
     def get_repos_root(self):
         mutter("svn get-repos-root")
         return svn.ra.get_repos_root(self._ra)
 
-    @need_lock
     @convert_svn_error
     def get_latest_revnum(self):
         mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
-    @need_lock
     @convert_svn_error
     def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
         mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
         return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs))
 
-    @need_lock
     @convert_svn_error
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
         mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
-    @need_lock
     @convert_svn_error
     def reparent(self, url):
         url = url.rstrip("/")
@@ -258,7 +231,6 @@ class SvnRaTransport(Transport):
         else:
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
-    @need_lock
     @convert_svn_error
     def get_dir(self, path, revnum, pool=None, kind=False):
         mutter("svn ls -r %d '%r'" % (revnum, path))
@@ -288,14 +260,39 @@ class SvnRaTransport(Transport):
             raise
         return dirents.keys()
 
-    @need_lock
+    @convert_svn_error
+    def get_lock(self, path):
+        return svn.ra.get_lock(self._ra, path)
+
+    class SvnLock:
+        def __init__(self, transport, tokens):
+            self._tokens = tokens
+            self._transport = transport
+
+        def unlock(self):
+            self.transport.unlock(self.locks)
+
+
+    @convert_svn_error
+    def unlock(self, locks, break_lock=False):
+        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
+            pass
+        return svn.ra.unlock(self._ra, locks, break_lock, lock_cb)
+
+    @convert_svn_error
+    def lock_write(self, path_revs, comment=None, steal_lock=False):
+        tokens = {}
+        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
+            tokens[path] = lock
+        svn.ra.lock(self._ra, path_revs, comment, steal_lock, lock_cb)
+        return SvnLock(self, tokens)
+
     @convert_svn_error
     def check_path(self, path, revnum, *args, **kwargs):
         assert len(path) == 0 or path[0] != "/"
         mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
 
-    @need_lock
     @convert_svn_error
     def mkdir(self, relpath, mode=None):
         path = "%s/%s" % (self.svn_url, relpath)
@@ -308,13 +305,11 @@ class SvnRaTransport(Transport):
                 raise FileExists(path)
             raise
 
-    @need_lock
     @convert_svn_error
     def do_update(self, revnum, path, *args, **kwargs):
         mutter('svn update -r %r %r' % (revnum, path))
         return self.Reporter(svn.ra.do_update(self._ra, revnum, path, *args, **kwargs))
 
-    @need_lock
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
         return Editor(svn.ra.get_commit_editor(self._ra, *args, **kwargs))
@@ -330,10 +325,6 @@ class SvnRaTransport(Transport):
     class PhonyLock:
         def unlock(self):
             pass
-
-    def lock_write(self, relpath):
-        """See Transport.lock_write()."""
-        return self.PhonyLock()
 
     def lock_read(self, relpath):
         """See Transport.lock_read()."""

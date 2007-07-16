@@ -444,9 +444,9 @@ class InterFromSvnRepository(InterRepository):
                     # Report status of existing paths
                     reporter.set_path("", parent_revnum, False, None, pool)
 
-                transport.lock()
+                lock = transport.lock_read(".")
                 reporter.finish_report(pool)
-                transport.unlock()
+                lock.unlock()
 
                 prev_inv = editor.inventory
                 prev_revid = revid
