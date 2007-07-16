@@ -33,7 +33,7 @@ from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SvnRepository)
 from revids import escape_svn_path
 
-from copy import copy
+from copy import deepcopy
 import os
 
 def _check_dirs_exist(transport, bp_parts, base_rev):
@@ -72,17 +72,26 @@ class SvnCommitBuilder(RootCommitBuilder):
         self.merges = filter(lambda x: x != self.branch.last_revision(),
                              parents)
 
+        if self.branch.last_revision() is None:
+            self.base_revnum = 0
+            self.base_path = self.branch.branch_path
+            self.base_scheme = repository.scheme
+        else:
+            (self.base_path, self.base_revnum, self.base_scheme) = \
+                repository.lookup_revision_id(self.branch.last_revision())
+
         if len(self.merges) > 0:
             # Bazaar Parents
-            if branch.last_revision():
-                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
-                old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_BZR_MERGE, "")
+            if branch.last_revision() is not None:
+                old = repository.branchprop_list.get_property(
+                      self.base_path, self.base_revnum, SVN_PROP_BZR_MERGE, "")
             else:
                 old = ""
             self._svnprops[SVN_PROP_BZR_MERGE] = old + "\t".join(self.merges) + "\n"
 
             if branch.last_revision() is not None:
-                old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_SVK_MERGE)
+                old = repository.branchprop_list.get_property(
+                    self.base_path, self.base_revnum, SVN_PROP_SVK_MERGE)
             else:
                 old = ""
 
@@ -100,9 +109,9 @@ class SvnCommitBuilder(RootCommitBuilder):
         if revision_id is not None:
             (previous_revno, previous_revid) = branch.last_revision_info()
             if previous_revid is not None:
-                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
-                old = repository.branchprop_list.get_property(bp, revnum, 
-                            SVN_PROP_BZR_REVISION_ID+str(scheme), "")
+                old = repository.branchprop_list.get_property(
+                        self.base_path, self.base_revnum, 
+                            SVN_PROP_BZR_REVISION_ID+str(self.base_scheme), "")
             else:
                 old = ""
 
@@ -348,13 +357,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         
         bp_parts = self.branch.branch_path.split("/")
         lock = self.repository.transport.lock_write(".")
-        if self.branch.last_revision() is None:
-            self.base_revnum = 0
-            self.base_path = self.branch.branch_path
-        else:
-            (self.base_path, 
-                self.base_revnum, _) = self.repository.lookup_revision_id(
-                    self.branch.last_revision())
+
         existing_bp_parts =_check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
         try:
@@ -519,35 +522,44 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
 
     This will do a new commit in the target branch.
 
-    :param target: Branch to push to
+    :param target_branch_path: Path to create new branch at
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
     """
+    assert isinstance(source, Branch)
     if stop_revision is None:
         stop_revision = source.last_revision()
     history = source.revision_history()
-    revhistory = copy(history)
-    revhistory.reverse()
-    start_revid = None
-    for revid in revhistory:
-        if target_repository.has_revision(revid):
+    revhistory = deepcopy(history)
+    start_revid = NULL_REVISION
+    while len(revhistory) > 0:
+        revid = revhistory.pop()
+        # We've found the revision to push if there is a revision 
+        # which LHS parent is present or if this is the first revision.
+        if (len(revhistory) == 0 or 
+            target_repository.has_revision(revhistory[-1])):
             start_revid = revid
             break
 
-    if start_revid is not None:
-        (copy_path, copy_revnum, 
-            scheme) = target_repository.lookup_revision_id(start_revid)
-    else:
-        # None of the revisions are already present in the repository
-        copy_path = None
-        copy_revnum = None
-    
-    # TODO: Get commit builder but specify that target_branch_path should
+    # Get commit builder but specify that target_branch_path should
     # be created and copied from (copy_path, copy_revnum)
+    class ImaginaryBranch:
+        def __init__(self, repository):
+            self.repository = repository
 
-    branch = self.open_branch()
-    branch.pull(source)
-    return branch
+        def get_config(self):
+            return None
+
+        def last_revision_info(self):
+            return (0, None)
+
+        def last_revision(self):
+            return None
+
+        def get_branch(self, revnum):
+            return target_branch_path
+
+    push(ImaginaryBranch(target_repository), source, start_revid)
 
 
 def push(target, source, revision_id):
@@ -560,13 +572,13 @@ def push(target, source, revision_id):
     :param revision_id: Revision id of the revision to push
     """
     assert isinstance(source, Branch)
+    mutter('pushing %r' % (revision_id))
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
     # revision on top of which to commit
-    assert target.last_revision() in rev.parent_ids
-
-    mutter('pushing %r' % (revision_id))
+    assert (target.last_revision() in rev.parent_ids or 
+            target.last_revision() is None and rev.parent_ids == [])
 
     old_tree = source.repository.revision_tree(revision_id)
     new_tree = source.repository.revision_tree(target.last_revision())

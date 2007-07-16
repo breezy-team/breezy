@@ -136,10 +136,13 @@ class SvnRemoteAccess(BzrDir):
         with the specified history, optionally importing revisions.
         """
         from commit import push_new
-        return push_new(self.find_repository(), 
-                        self.branch_path,
-                        source,
-                        source.last_revision())
+        push_new(self.find_repository(), 
+                 self.branch_path,
+                 source,
+                 source.last_revision())
+        branch = self.open_branch()
+        branch.pull(source)
+        return branch
 
     def create_branch(self):
         """See BzrDir.create_branch()."""
