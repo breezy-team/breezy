@@ -15,19 +15,7 @@ bzr-svn 0.4	UNRELEASED
 
    * Remove branches when they are being replaced. Fixes DivergedBranches 
      error when using svn-import (#81908).
-
-   * Support true push (#80612).
-
-   * Support commits in heavy checkouts (#79330).
-   
-   * Use shared repositories by default in svn-import command.
-
-   * Put branching schemes in revision ids.
-
-   * Support using custom branching schemes.
-
-   * Add blackbox test for svn-import with dumpfile. (#123493)
-
+ 
    * Consistently treat property changes as actual changes (#122115)
 
    * Be a bit less verbose when trying to connect (#124858)
@@ -35,6 +23,14 @@ bzr-svn 0.4	UNRELEASED
    * Fix locking issues (#125212)
 
    * Warn when used with experimental version of mappings. (#117198)
+
+  BEHAVIOUR CHANGES
+
+   * Use shared repositories by default in svn-import command.
+
+  TESTS
+
+   * Add blackbox test for svn-import with dumpfile. (#123493)
 
   PERFORMANCE
 
@@ -50,6 +46,14 @@ bzr-svn 0.4	UNRELEASED
 
    * allow setting the branching scheme from a file property 
      on the repository root
+
+   * Support true push (#80612).
+
+   * Support commits in heavy checkouts (#79330).
+
+   * Support using custom branching schemes.
+
+   * Support pushing new branches.
 
   INTERNALS
 

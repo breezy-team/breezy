@@ -127,6 +127,36 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:merge", 1))
 
+    def test_commit_rename_file(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        wt = self.open_checkout("dc")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        wt.rename_one("foo", "bar")
+        wt.commit(message="doe")
+        paths = self.client_log("dc", 2, 0)[2][0]
+        self.assertEquals('D', paths["/foo"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/foo', paths["/bar"].copyfrom_path)
+        self.assertEquals(1, paths["/bar"].copyfrom_rev)
+
+    def test_commit_rename_file_from_directory(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/adir/foo': "data"})
+        self.client_add("dc/adir")
+        wt = self.open_checkout("dc")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        wt.rename_one("adir/foo", "bar")
+        wt.commit(message="doe")
+        paths = self.client_log("dc", 2, 0)[2][0]
+        self.assertEquals('D', paths["/adir/foo"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
+        self.assertEquals(1, paths["/bar"].copyfrom_rev)
+
     def test_commit_revision_id(self):
         repos_url = self.make_client('d', 'dc')
         wt = self.open_checkout("dc")
@@ -146,7 +176,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
+            self.client_get_prop("dc", 
+                "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
@@ -339,6 +370,38 @@ class TestPush(TestCaseWithSubversionRepository):
         repos = self.olddir.find_repository()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
             repos.generate_revision_id(2, "", "none")).message.decode("utf-8"))
+
+    def test_commit_rename_file(self):
+        self.build_tree({'dc/vla': "data"})
+        wt = self.newdir.open_workingtree()
+        wt.add("vla")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        wt.rename_one("vla", "bar")
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        self.assertEquals('D', paths["/vla"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/vla', paths["/bar"].copyfrom_path)
+        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+
+    def test_commit_rename_file_from_directory(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/adir/foo': "data"})
+        wt.add("adir")
+        wt.add("adir/foo")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        wt.rename_one("adir/foo", "bar")
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/adir/foo"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
+        self.assertEquals(2, paths["/bar"].copyfrom_rev)
 
 
 class TestPushNested(TestCaseWithSubversionRepository):

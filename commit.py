@@ -18,10 +18,10 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
+from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -33,7 +33,16 @@ from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SvnRepository)
 from revids import escape_svn_path
 
+from copy import deepcopy
 import os
+
+def _check_dirs_exist(transport, bp_parts, base_rev):
+    for i in range(len(bp_parts), 0, -1):
+        current = bp_parts[:i]
+        if transport.check_path("/".join(current).strip("/"), base_rev) == svn.core.svn_node_dir:
+            return current
+    return []
+
 
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
@@ -63,17 +72,26 @@ class SvnCommitBuilder(RootCommitBuilder):
         self.merges = filter(lambda x: x != self.branch.last_revision(),
                              parents)
 
+        if self.branch.last_revision() is None:
+            self.base_revnum = -1
+            self.base_path = None
+            self.base_scheme = repository.scheme
+        else:
+            (self.base_path, self.base_revnum, self.base_scheme) = \
+                repository.lookup_revision_id(self.branch.last_revision())
+
         if len(self.merges) > 0:
             # Bazaar Parents
-            if branch.last_revision():
-                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
-                old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_BZR_MERGE, "")
+            if branch.last_revision() is not None:
+                old = repository.branchprop_list.get_property(
+                      self.base_path, self.base_revnum, SVN_PROP_BZR_MERGE, "")
             else:
                 old = ""
             self._svnprops[SVN_PROP_BZR_MERGE] = old + "\t".join(self.merges) + "\n"
 
             if branch.last_revision() is not None:
-                old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_SVK_MERGE)
+                old = repository.branchprop_list.get_property(
+                    self.base_path, self.base_revnum, SVN_PROP_SVK_MERGE)
             else:
                 old = ""
 
@@ -91,14 +109,14 @@ class SvnCommitBuilder(RootCommitBuilder):
         if revision_id is not None:
             (previous_revno, previous_revid) = branch.last_revision_info()
             if previous_revid is not None:
-                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
-                old = repository.branchprop_list.get_property(bp, revnum, 
-                            SVN_PROP_BZR_REVISION_ID+str(scheme), "")
+                old = repository.branchprop_list.get_property(
+                        self.base_path, self.base_revnum, 
+                            SVN_PROP_BZR_REVISION_ID+str(self.base_scheme), "")
             else:
                 old = ""
 
-            self._svnprops[SVN_PROP_BZR_REVISION_ID+str(scheme)] = old + \
-                    "%d %s\n" % (previous_revno+1, revision_id)
+            self._svnprops[SVN_PROP_BZR_REVISION_ID+str(self.base_scheme)] = \
+                    old + "%d %s\n" % (previous_revno+1, revision_id)
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -113,7 +131,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                                    self.branch.last_revision())
         else:
             self.old_inv = old_inv
-            assert self.old_inv.revision_id == self.branch.last_revision()
 
         self.modified_files = {}
         self.modified_dirs = []
@@ -142,7 +159,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _file_process(self, file_id, contents, baton):
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
-
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
     def _dir_process(self, path, file_id, baton):
@@ -198,7 +214,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
                 child_baton = self.editor.add_file(
                            os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)), baton, 
-                           "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location
@@ -266,7 +282,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 child_baton = self.editor.add_directory(
                            os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)),
                            baton, 
-                           "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location and 
@@ -287,23 +303,49 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             self.editor.close_directory(child_baton, self.pool)
 
-    def open_branch_batons(self, root, elements):
+    def open_branch_batons(self, root, elements, existing_elements, 
+                           base_path, base_rev):
         """Open a specified directory given a baton for the repository root.
 
         :param root: Baton for the repository root
         :param elements: List of directory names to open
+        :param existing_elements: List of directory names that exist
+        :param base_path: Path to base top-level branch on
+        :param base_rev: Revision of path to base top-level branch on
         """
         ret = [root]
 
-        mutter('opening branch %r' % elements)
+        mutter('opening branch %r (base %r:%r)' % (elements, base_path, 
+                                                   base_rev))
 
-        for i in range(1, len(elements)):
-            if i == len(elements):
-                revnum = self.base_revnum
-            else:
-                revnum = -1
+        # Open paths leading up to branch
+        for i in range(1, len(elements)-1):
+            # Does directory already exist?
             ret.append(self.editor.open_directory(
-                "/".join(elements[0:i+1]), ret[-1], revnum, self.pool))
+                "/".join(existing_elements[0:i+1]), ret[-1], -1, self.pool))
+
+        assert (len(existing_elements) == len(elements) or 
+                len(existing_elements)+1 == len(elements))
+
+        # Branch already exists and stayed at the same location, open:
+        # TODO: What if the branch didn't change but the new revision 
+        # was based on an older revision of the branch?
+        # This needs to also check that base_rev was the latest version of 
+        # branch_path.
+        if (len(existing_elements) == len(elements) and 
+            base_path.strip("/") == "/".join(elements).strip("/")):
+            ret.append(self.editor.open_directory(
+                "/".join(elements), ret[-1], base_rev, self.pool))
+        else: # Branch has to be created
+            # Already exists, old copy needs to be removed
+            if len(existing_elements) == len(elements):
+                self.editor.delete_entry("/".join(elements), -1, ret[-1])
+            if base_path is not None:
+                base_url = urlutils.join(self.repository.transport.svn_url, base_path)
+            else:
+                base_url = None
+            ret.append(self.editor.add_directory(
+                "/".join(elements), ret[-1], base_url, base_rev, self.pool))
 
         return ret
 
@@ -314,23 +356,22 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
+        bp_parts = self.branch.get_branch_path().split("/")
         lock = self.repository.transport.lock_write(".")
+
+        existing_bp_parts =_check_dirs_exist(self.repository.transport, 
+                                              bp_parts, -1)
         try:
             mutter('obtaining commit editor')
             self.revnum = None
             self.editor = self.repository.transport.get_commit_editor(
                 message.encode("utf-8"), done, None, False)
 
-            if self.branch.last_revision() is None:
-                self.base_revnum = 0
-            else:
-                self.base_revnum = self.branch.lookup_revision_id(
-                              self.branch.last_revision())
-
             root = self.editor.open_root(self.base_revnum)
             
-            branch_batons = self.open_branch_batons(root,
-                                    self.branch.get_branch_path().split("/"))
+            # TODO: Accept create_prefix argument
+            branch_batons = self.open_branch_batons(root, bp_parts,
+                existing_bp_parts, self.base_path, self.base_revnum)
 
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])
@@ -344,20 +385,25 @@ class SvnCommitBuilder(RootCommitBuilder):
             lock.unlock()
 
         assert self.revnum is not None
-        revid = self.branch.generate_revision_id(self.revnum)
-
         self.repository._latest_revnum = self.revnum
-
-        #FIXME: Use public API:
-        if self.branch._revision_history is not None:
-            self.branch._revision_history.append(revid)
-
-        mutter('commit %d finished. author: %r, date: %r' % 
-               (self.revnum, self.author, self.date))
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
         self.repository._log.fetch_revisions(self.revnum)
+
+        revid = self.branch.generate_revision_id(self.revnum)
+
+        # TODO: for some reason, branch properties don't seem to be accessible 
+        # at this point!?
+        #assert self._new_revision_id is None or self._new_revision_id == revid
+        revid = self._new_revision_id
+
+        mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
+               (self.revnum, self.author, self.date, revid))
+
+        #FIXME: Use public API:
+        if self.branch._revision_history is not None:
+            self.branch._revision_history.append(revid)
 
         return revid
 
@@ -390,10 +436,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
             self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
 
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
+        previous_entries = ie.find_previous_heads(parent_invs, 
+            self.repository.weave_store, self.repository.get_transaction())
 
         # we are creating a new revision for ie in the history store
         # and inventory.
@@ -478,6 +522,57 @@ def push_as_merged(target, source, revision_id):
             raise DivergedBranches(source, target)
         raise
 
+
+def push_new(target_repository, target_branch_path, source, stop_revision=None):
+    """Push a revision into Subversion, creating a new branch.
+
+    This will do a new commit in the target branch.
+
+    :param target_branch_path: Path to create new branch at
+    :param source: Branch to pull the revision from
+    :param revision_id: Revision id of the revision to push
+    """
+    assert isinstance(source, Branch)
+    if stop_revision is None:
+        stop_revision = source.last_revision()
+    history = source.revision_history()
+    revhistory = deepcopy(history)
+    start_revid = NULL_REVISION
+    while len(revhistory) > 0:
+        revid = revhistory.pop()
+        # We've found the revision to push if there is a revision 
+        # which LHS parent is present or if this is the first revision.
+        if (len(revhistory) == 0 or 
+            target_repository.has_revision(revhistory[-1])):
+            start_revid = revid
+            break
+
+    # Get commit builder but specify that target_branch_path should
+    # be created and copied from (copy_path, copy_revnum)
+    class ImaginaryBranch:
+        def __init__(self, repository):
+            self.repository = repository
+            self._revision_history = None
+
+        def get_config(self):
+            return None
+
+        def last_revision_info(self):
+            return (0, None)
+
+        def last_revision(self):
+            return None
+
+        def get_branch_path(self, revnum=None):
+            return target_branch_path
+
+        def generate_revision_id(self, revnum):
+            return self.repository.generate_revision_id(
+                revnum, self.get_branch_path(revnum), self.repository.scheme)
+
+    push(ImaginaryBranch(target_repository), source, start_revid)
+
+
 def push(target, source, revision_id):
     """Push a revision into Subversion.
 
@@ -488,13 +583,13 @@ def push(target, source, revision_id):
     :param revision_id: Revision id of the revision to push
     """
     assert isinstance(source, Branch)
+    mutter('pushing %r' % (revision_id))
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
     # revision on top of which to commit
-    assert target.last_revision() in rev.parent_ids
-
-    mutter('pushing %r' % (revision_id))
+    assert (target.last_revision() in rev.parent_ids or 
+            target.last_revision() is None and rev.parent_ids == [])
 
     old_tree = source.repository.revision_tree(revision_id)
     new_tree = source.repository.revision_tree(target.last_revision())
@@ -514,7 +609,7 @@ def push(target, source, revision_id):
     replay_delta(builder, delta, old_tree)
     try:
         return builder.commit(rev.message)
-    except SubversionException, (_, num):
+    except SubversionException, (msg, num):
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise

@@ -281,6 +281,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def lock_write(self, path_revs, comment=None, steal_lock=False):
+        return self.PhonyLock() # FIXME
         tokens = {}
         def lock_cb(baton, path, do_lock, lock, ra_err, pool):
             tokens[path] = lock

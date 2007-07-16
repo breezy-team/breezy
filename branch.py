@@ -227,7 +227,7 @@ class SvnBranch(Branch):
                 self.get_branch_path(), self.get_revnum(), 
                 self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
-                                                            self.scheme)
+                                                            str(self.scheme))
             return None
 
         ph = self._revision_history
