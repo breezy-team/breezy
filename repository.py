@@ -210,6 +210,7 @@ class SvnRepository(Repository):
                         ListBranchingScheme(parse_list_scheme_text(text)))
             else:
                 self.scheme = guessed_scheme
+            assert self.scheme is not None
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
@@ -770,6 +771,7 @@ class SvnRepository(Repository):
         :param revnum: Revision to search for branches.
         :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
         """
+        assert scheme is not None
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
 

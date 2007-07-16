@@ -314,37 +314,40 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
-        # TODO: Locking
-        mutter('obtaining commit editor')
-        self.revnum = None
+        lock = self.repository.transport.lock_write(".")
         # TODO: Figure out which elements of branch_path exist yet
-        self.editor = self.repository.transport.get_commit_editor(
-            message.encode("utf-8"), done, None, False)
+        try:
+            mutter('obtaining commit editor')
+            self.revnum = None
+            self.editor = self.repository.transport.get_commit_editor(
+                message.encode("utf-8"), done, None, False)
 
-        if self.branch.last_revision() is None:
-            self.base_revnum = 0
-            self.base_path = self.branch.branch_path
-        else:
-            (self.base_path, 
-                self.base_revnum, _) = self.repository.lookup_revision_id(
-                    self.branch.last_revision())
+            if self.branch.last_revision() is None:
+                self.base_revnum = 0
+                self.base_path = self.branch.branch_path
+            else:
+                (self.base_path, 
+                    self.base_revnum, _) = self.repository.lookup_revision_id(
+                        self.branch.last_revision())
 
-        root = self.editor.open_root(self.base_revnum)
-        
-        # TODO: Accept overwrite argument
-        # TODO: Accept create_prefix argument
-        # TODO: Delete existing directory if it exists
-        branch_batons = self.open_branch_batons(root,
-                                self.branch.branch_path.split("/"))
+            root = self.editor.open_root(self.base_revnum)
+            
+            # TODO: Accept overwrite argument
+            # TODO: Accept create_prefix argument
+            # TODO: Delete existing directory if it exists
+            branch_batons = self.open_branch_batons(root,
+                                    self.branch.branch_path.split("/"))
 
-        self._dir_process("", self.new_inventory.root.file_id, 
-                          branch_batons[-1])
+            self._dir_process("", self.new_inventory.root.file_id, 
+                branch_batons[-1])
 
-        branch_batons.reverse()
-        for baton in branch_batons:
-            self.editor.close_directory(baton, self.pool)
+            branch_batons.reverse()
+            for baton in branch_batons:
+                self.editor.close_directory(baton, self.pool)
 
-        self.editor.close()
+            self.editor.close()
+        finally:
+            lock.unlock()
 
         assert self.revnum is not None
         revid = self.branch.generate_revision_id(self.revnum)

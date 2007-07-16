@@ -32,7 +32,7 @@ import workingtree
 """)
 
 __version__ = '0.4.0exp'
-COMPATIBLE_BZR_VERSIONS = [(0, 18)]
+COMPATIBLE_BZR_VERSIONS = [(0, 19)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -90,8 +90,10 @@ register_transport_proto('svn+http://',
     help="Access of Subversion smart servers over HTTP.")
 register_transport_proto('svn+https://',
     help="Access of Subversion smart servers over secure HTTP.")
-register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
-register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 'SvnRaTransport')
+register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 
+                        'SvnRaTransport')
+register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
+                        'SvnRaTransport')
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
