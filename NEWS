@@ -26,6 +26,10 @@ IN DEVELOPMENT
     * Merge is now faster.  Depending on the scenario, it can be more than 2x
       faster. (Aaron Bentley)
 
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
