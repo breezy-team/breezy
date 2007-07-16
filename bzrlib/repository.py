@@ -224,10 +224,18 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
+        self._write_group = None
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
+
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        :seealso: start_write_group.
+        """
+        return self._write_group is not None
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -353,6 +361,16 @@ class Repository(object):
         revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id)
 
+    def end_write_group(self):
+        """End a write group in the repository.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._write_group = None
+
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
@@ -384,6 +402,11 @@ class Repository(object):
                               committer, revprops, revision_id)
 
     def unlock(self):
+        if (self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'w'):
+            if self._write_group is not None:
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self.control_files.unlock()
 
     @needs_read_lock
@@ -400,6 +423,23 @@ class Repository(object):
         dest_repo = self._create_sprouting_repo(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(dest_repo, revision_id)
         return dest_repo
+
+    def start_write_group(self):
+        """Start a write group in the repository.
+
+        Write groups are used by repositories which do not have a 1:1 mapping
+        between file ids and backend store to manage the insertion of data from
+        both fetch and commit operations.
+
+        A write lock is required around the start_write_group/end_write_group
+        for the support of lock-requiring repository formats.
+        """
+        if not self.is_locked() or self.control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        if self._write_group:
+            raise errors.BzrError('already in a write group')
+        # so we can detect unlock/relock.
+        self._write_group = self.get_transaction()
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
