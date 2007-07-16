@@ -38,6 +38,18 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
+    def test_get_branch_path_root(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertEqual("", branch.get_branch_path())
+
+    def test_get_branch_path_subdir(self):
+        repos_url = self.make_client("a", "dc")
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "Add branch")
+        branch = Branch.open(repos_url+"/trunk")
+        self.assertEqual("trunk", branch.get_branch_path())
+
     def test_open_nonexistant(self):
         repos_url = self.make_client("a", "dc")
         self.assertRaises(NotBranchError, Branch.open, repos_url + "/trunk")
