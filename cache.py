@@ -34,7 +34,7 @@ def create_cache_dir():
 It is used for performance reasons only and can be removed 
 without losing data.
 
-See http://bazaar-vcs.org/BzrSvn for details.
+See http://bazaar-vcs.org/BzrForeignBranches/Subversion for details.
 """)
     return cache_dir
 
