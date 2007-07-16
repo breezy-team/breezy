@@ -198,10 +198,15 @@ class SvnWorkingTree(WorkingTree):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
         (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
+        if os.path.dirname(from_rel) == os.path.dirname(to_rel):
+            # Prevent lock contention
+            from_wc = to_wc
+        else:
+            (from_wc, _) = self._get_rel_wc(from_rel, write_lock=True)
         from_id = self.inventory.path2id(from_rel)
         try:
             svn.wc.copy(self.abspath(from_rel), to_wc, to_file, None, None)
-            svn.wc.delete2(self.abspath(from_rel), to_wc, None, None, None)
+            svn.wc.delete2(self.abspath(from_rel), from_wc, None, None, None)
         finally:
             svn.wc.adm_close(to_wc)
         self._change_fileid_mapping(None, from_rel)
