@@ -166,6 +166,27 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         svn.client.add3(relpath, recursive, False, False, self.client_ctx)
 
+    def revnum_to_opt_rev(self, revnum):
+        rev = svn.core.svn_opt_revision_t()
+        if revnum is None:
+            rev.kind = svn.core.svn_opt_revision_head
+        else:
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = revnum
+        return rev
+
+    def client_log(self, path, start_revnum=None, stop_revnum=None):
+        ret = {}
+        def rcvr(orig_paths, rev, author, date, message, pool):
+            ret[rev] = (orig_paths, author, date, message)
+        svn.client.log([path], self.revnum_to_opt_rev(start_revnum),
+                       self.revnum_to_opt_rev(stop_revnum),
+                       True,
+                       True,
+                       rcvr,
+                       self.client_ctx)
+        return ret
+
     def client_delete(self, relpath):
         """Remove specified files from working copy.
 

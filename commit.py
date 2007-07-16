@@ -18,10 +18,10 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
+from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -33,6 +33,7 @@ from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SvnRepository)
 from revids import escape_svn_path
 
+from copy import copy
 import os
 
 class SvnCommitBuilder(RootCommitBuilder):
@@ -198,7 +199,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
                 child_baton = self.editor.add_file(
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), baton, 
-                           "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location
@@ -266,7 +267,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 child_baton = self.editor.add_directory(
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
                            baton, 
-                           "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
+                           urlutils.join(self.repository.transport.svn_url, self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location and 
@@ -472,6 +473,43 @@ def push_as_merged(target, source, revision_id):
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
+
+
+def push_new(target_repository, target_branch_path, source, stop_revision=None):
+    """Push a revision into Subversion, creating a new branch.
+
+    This will do a new commit in the target branch.
+
+    :param target: Branch to push to
+    :param source: Branch to pull the revision from
+    :param revision_id: Revision id of the revision to push
+    """
+    if stop_revision is None:
+        stop_revision = source.last_revision()
+    history = source.revision_history()
+    revhistory = copy(history)
+    revhistory.reverse()
+    start_revid = None
+    for revid in revhistory:
+        if target_repository.has_revision(revid):
+            start_revid = revid
+            break
+
+    if start_revid is not None:
+        (copy_path, copy_revnum, 
+            scheme) = target_repository.lookup_revision_id(start_revid)
+    else:
+        # None of the revisions are already present in the repository
+        copy_path = None
+        copy_revnum = None
+    
+    # TODO: Get commit builder but specify that target_branch_path should
+    # be created and copied from (copy_path, copy_revnum)
+
+    branch = self.open_branch()
+    branch.pull(source)
+    return branch
+
 
 def push(target, source, revision_id):
     """Push a revision into Subversion.

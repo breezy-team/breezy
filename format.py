@@ -131,6 +131,16 @@ class SvnRemoteAccess(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
+    def import_branch(self, source):
+        """Create a new branch in this repository, possibly 
+        with the specified history, optionally importing revisions.
+        """
+        from commit import push_new
+        return push_new(self.find_repository(), 
+                        self.branch_path,
+                        source,
+                        source.last_revision())
+
     def create_branch(self):
         """See BzrDir.create_branch()."""
         from branch import SvnBranch

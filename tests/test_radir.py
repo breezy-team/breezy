@@ -77,6 +77,18 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         x = BzrDir.open(repos_url)
         self.assertTrue(hasattr(x, 'svn_root_url'))
 
+    def test_import_branch(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        origb = BzrDir.create_standalone_workingtree("origb")
+        self.build_tree({'origb/twin': 'bla', 'origb/peaks': 'bloe'})
+        origb.add(["twin", "peaks"])
+        origb.commit("Message")
+        b = x.import_branch(source=origb.branch)
+        self.assertEquals(origb.revision_history(), b.revision_history())
+        self.assertEquals(origb.revision_history(), 
+                Branch.open(repos_url+"/trunk").revision_history())
+
     def test_open_repos_root(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)
