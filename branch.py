@@ -300,7 +300,6 @@ class SvnBranch(Branch):
             raise NotImplementedError(self.pull)
         else:
             for rev_id in self.missing_revisions(other, stop_revision):
-                mutter('pushing %r to Svn branch' % rev_id)
                 push(self, other, rev_id)
 
     # The remote server handles all this for us
