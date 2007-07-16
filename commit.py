@@ -314,7 +314,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
-        lock = self.repository.transport.lock(".")
+        lock = self.repository.transport.lock_write(".")
         try:
             mutter('obtaining commit editor')
             self.revnum = None

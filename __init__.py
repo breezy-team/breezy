@@ -32,7 +32,7 @@ import workingtree
 """)
 
 __version__ = '0.4.0exp'
-COMPATIBLE_BZR_VERSIONS = [(0, 18)]
+COMPATIBLE_BZR_VERSIONS = [(0, 19)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
