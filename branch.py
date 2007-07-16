@@ -62,7 +62,7 @@ class SvnBranch(Branch):
         super(SvnBranch, self).__init__()
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
-        self.branch_path = branch_path
+        self._branch_path = branch_path
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
@@ -70,13 +70,23 @@ class SvnBranch(Branch):
         self.scheme = scheme
         self.revnum = revnum
         try:
-            if self.repository.transport.check_path(self.branch_path.strip("/"), self.get_revnum()) != \
+            if self.repository.transport.check_path(branch_path.strip("/"), self.get_revnum()) != \
                     svn.core.svn_node_dir:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
+
+    def get_branch_path(self, revnum=None):
+        """Find the branch path of this branch in the specified revnum.
+
+        :param revnum: Revnum to look for.
+        """
+        if revnum is None:
+            revnum = self.get_revnum()
+        # TODO: Use revnum - this branch may have been moved in the past 
+        return self._branch_path
 
     def get_revnum(self):
         if self.revnum is None:
@@ -110,8 +120,8 @@ class SvnBranch(Branch):
         """
         (bp, revnum, scheme) = self.repository.lookup_revision_id(revid, 
                                                              scheme=self.scheme)
-        assert bp.strip("/") == self.branch_path.strip("/"), \
-                "Got %r, expected %r" % (bp, self.branch_path)
+        assert bp.strip("/") == self.get_branch_path(revnum).strip("/"), \
+                "Got %r, expected %r" % (bp, self.get_branch_path(revnum))
         return revnum
 
     def _create_lightweight_checkout(self, to_location, revision_id=None):
@@ -144,14 +154,14 @@ class SvnBranch(Branch):
         """Generate a new revision id for a revision on this branch."""
         assert isinstance(revnum, int)
         # FIXME: What if this branch had a different name in the past?
-        return self.repository.generate_revision_id(revnum, self.branch_path, 
-                                                    str(self.scheme))
+        return self.repository.generate_revision_id(
+                revnum, self.get_branch_path(revnum), str(self.scheme))
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
         self._revision_history = []
         for (branch, rev) in self.repository.follow_branch(
-                self.branch_path, last_revnum, self.scheme):
+                self.get_branch_path(last_revnum), last_revnum, self.scheme):
             self._revision_history.append(
                 self.repository.generate_revision_id(rev, branch, str(self.scheme)))
         self._revision_history.reverse()
@@ -165,8 +175,8 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
-        bp = self.branch_path.strip("/")
-        if self.branch_path == "":
+        bp = self.get_branch_path().strip("/")
+        if self.get_branch_path() == "":
             return None
         return bp
 
@@ -214,7 +224,8 @@ class SvnBranch(Branch):
         # on large branches.
         if self._revision_history is None:
             for (branch, rev) in self.repository.follow_branch(
-                self.branch_path, self.get_revnum(), self.scheme):
+                self.get_branch_path(), self.get_revnum(), 
+                self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
                                                             self.scheme)
             return None

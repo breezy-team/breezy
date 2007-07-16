@@ -207,7 +207,8 @@ class SvnBasisTree(RevisionTree):
         self._revision_id = workingtree.branch.generate_revision_id(
                                       workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
-                workingtree.base_revnum, workingtree.branch.branch_path, 
+                workingtree.base_revnum, 
+                workingtree.branch.get_branch_path(workingtree.base_revnum), 
                 workingtree.branch.scheme)
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository

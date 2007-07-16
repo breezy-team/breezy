@@ -170,7 +170,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.new_inventory[child_ie.file_id].name != child_name):
                     mutter('removing %r' % child_ie.file_id)
                     self.editor.delete_entry(
-                            os.path.join(self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)), 
+                            os.path.join(self.branch.get_branch_path(), self.old_inv.id2path(child_ie.file_id)), 
                             self.base_revnum, baton, self.pool)
 
         # Loop over file members of file_id in self.new_inventory
@@ -186,7 +186,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 mutter('adding %s %r' % (child_ie.kind, self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = self.editor.add_file(
-                           os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
+                           os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)),
                            baton, None, -1, self.pool)
 
 
@@ -197,7 +197,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                   self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = self.editor.add_file(
-                           os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), baton, 
+                           os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)), baton, 
                            "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
@@ -207,7 +207,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                  self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = self.editor.open_file(
-                        os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), 
+                        os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)), 
                         baton, self.base_revnum, self.pool)
 
             else:
@@ -256,7 +256,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if not child_ie.file_id in self.old_inv:
                 mutter('adding dir %r' % child_ie.name)
                 child_baton = self.editor.add_directory(
-                           os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
+                           os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)),
                            baton, None, -1, self.pool)
 
             # copy if they existed at different location
@@ -264,7 +264,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 mutter('copy dir %r -> %r' % (self.old_inv.id2path(child_ie.file_id), 
                                          self.new_inventory.id2path(child_ie.file_id)))
                 child_baton = self.editor.add_directory(
-                           os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
+                           os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)),
                            baton, 
                            "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
@@ -275,7 +275,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 mutter('open dir %r' % self.new_inventory.id2path(child_ie.file_id))
 
                 child_baton = self.editor.open_directory(
-                        os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), 
+                        os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)), 
                         baton, self.base_revnum, self.pool)
             else:
                 continue
@@ -330,7 +330,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             root = self.editor.open_root(self.base_revnum)
             
             branch_batons = self.open_branch_batons(root,
-                                    self.branch.branch_path.split("/"))
+                                    self.branch.get_branch_path().split("/"))
 
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])

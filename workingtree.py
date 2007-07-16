@@ -260,7 +260,7 @@ class SvnWorkingTree(WorkingTree):
                         not (entry.schedule in (svn.wc.schedule_delete,
                                                 svn.wc.schedule_replace))):
                         yield os.path.join(
-                                self.branch.branch_path.strip("/"), 
+                                self.branch.get_branch_path().strip("/"), 
                                 subrelpath)
                 else:
                     find_copies(subrelpath)
@@ -447,7 +447,8 @@ class SvnWorkingTree(WorkingTree):
                              self._get_bzr_revids(), self.basedir, wc)
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
                 self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, self.base_revnum, 
+                self.branch.get_branch_path(self.base_revnum), 
+                self.base_revnum, 
                 SVN_PROP_BZR_REVISION_INFO, ""), 
                 self.basedir, wc)
             svn.wc.adm_close(wc)
@@ -558,7 +559,8 @@ class SvnWorkingTree(WorkingTree):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = self.branch.lookup_revision_id(stop_revision)
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
-        self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
+        self.base_revid = self.branch.repository.generate_revision_id(
+            fetched, self.branch.get_branch_path(fetched))
         result.new_revid = self.branch.generate_revision_id(fetched)
         result.new_revno = self.branch.revision_id_to_revno(result.new_revid)
         return result
@@ -581,7 +583,7 @@ class SvnWorkingTree(WorkingTree):
             assert isinstance(id, str)
             new_entries[path] = id
         committed = self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, 
+                self.branch.get_branch_path(self.base_revnum), 
                 self.base_revnum, 
                 SVN_PROP_BZR_FILEIDS, "")
         existing = committed + "".join(map(lambda (path, id): "%s\t%s\n" % (path, id), new_entries.items()))
@@ -592,7 +594,7 @@ class SvnWorkingTree(WorkingTree):
 
     def _get_new_file_ids(self, wc):
         committed = self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, self.base_revnum, 
+                self.branch.get_branch_path(self.base_revnum), self.base_revnum, 
                 SVN_PROP_BZR_FILEIDS, "")
         existing = svn.wc.prop_get(SVN_PROP_BZR_FILEIDS, self.basedir, wc)
         if existing is None:
@@ -603,18 +605,19 @@ class SvnWorkingTree(WorkingTree):
 
     def _get_bzr_revids(self):
         return self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, self.base_revnum, 
+                self.branch.get_branch_path(self.base_revnum), 
+                self.base_revnum, 
                 SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), "")
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, self.base_revnum, 
-                SVN_PROP_BZR_MERGE, "")
+                self.branch.get_branch_path(self.base_revnum), 
+                self.base_revnum, SVN_PROP_BZR_MERGE, "")
 
     def _get_svk_merges(self):
         return self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, self.base_revnum, 
-                SVN_PROP_SVK_MERGE, "")
+                self.branch.get_branch_path(self.base_revnum), 
+                self.base_revnum, SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
         wc = self._get_wc(write_lock=True)
