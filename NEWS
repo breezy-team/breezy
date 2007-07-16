@@ -29,12 +29,9 @@ IN DEVELOPMENT
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
-      Various globally-declared options have been removed, so plugins
-      that previously said ``takes_options=['message']`` must now
-      construct an Option object and provide appropriate help. Options
-      are now required to provide a help string and it must comply with
-      the style guide by being one or more sentences with an initial
-      capital and final period. (Martin Pool)
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
 
   INTERNALS:
 
