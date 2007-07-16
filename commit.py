@@ -131,7 +131,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                                    self.branch.last_revision())
         else:
             self.old_inv = old_inv
-            assert self.old_inv.revision_id == self.branch.last_revision()
 
         self.modified_files = {}
         self.modified_dirs = []
@@ -334,7 +333,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         # This needs to also check that base_rev was the latest version of 
         # branch_path.
         if (len(existing_elements) == len(elements) and 
-            base_path == "/".join(elements)):
+            base_path.strip("/") == "/".join(elements).strip("/")):
             ret.append(self.editor.open_directory(
                 "/".join(elements), ret[-1], base_rev, self.pool))
         else: # Branch has to be created
@@ -386,20 +385,25 @@ class SvnCommitBuilder(RootCommitBuilder):
             lock.unlock()
 
         assert self.revnum is not None
-        revid = self.branch.generate_revision_id(self.revnum)
-
         self.repository._latest_revnum = self.revnum
-
-        #FIXME: Use public API:
-        if self.branch._revision_history is not None:
-            self.branch._revision_history.append(revid)
-
-        mutter('commit %d finished. author: %r, date: %r' % 
-               (self.revnum, self.author, self.date))
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
         self.repository._log.fetch_revisions(self.revnum)
+
+        revid = self.branch.generate_revision_id(self.revnum)
+
+        # TODO: for some reason, branch properties don't seem to be accessible 
+        # at this point!?
+        #assert self._new_revision_id is None or self._new_revision_id == revid
+        revid = self._new_revision_id
+
+        mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
+               (self.revnum, self.author, self.date, revid))
+
+        #FIXME: Use public API:
+        if self.branch._revision_history is not None:
+            self.branch._revision_history.append(revid)
 
         return revid
 
@@ -606,8 +610,6 @@ def push(target, source, revision_id):
     try:
         return builder.commit(rev.message)
     except SubversionException, (msg, num):
-        import pdb
-        pdb.set_trace()
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
