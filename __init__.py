@@ -207,6 +207,22 @@ class cmd_svn_upgrade(Command):
 
 register_command(cmd_svn_upgrade)
 
+class cmd_svn_push_new_branch(Command):
+    """Create a new branch in Subversion.
+    
+    This command is experimental and will be removed in the future.
+    """
+    takes_args = ['location']
+
+    def run(self, location):
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.branch import Branch
+        bzrdir = BzrDir.open(location)
+        branch = Branch.open(".")
+        bzrdir.import_branch(branch)
+
+register_command(cmd_svn_push_new_branch)
+
 
 def test_suite():
     from unittest import TestSuite
