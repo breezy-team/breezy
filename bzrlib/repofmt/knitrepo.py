@@ -329,7 +329,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             osutils.split_lines(revision_as_file.read()))
 
     def get_indices_transport(self):
-        return self.versioned_file_store._transport.clone('revision-indices')
+        return self.versioned_file_store._transport.clone('indices')
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
@@ -665,9 +665,9 @@ def _knit_to_experimental(result, a_bzrdir):
     # and adapt it to a GraphKnit repo
     mutter('changing to GraphKnit1 repository in %s.', a_bzrdir.transport.base)
     repo_transport = a_bzrdir.get_repository_transport(None)
-    repo_transport.mkdir('revision-indices')
+    repo_transport.mkdir('indices')
     collection = file_collection.FileCollection(
-        repo_transport.clone('revision-indices'), 'index')
+        repo_transport.clone('indices'), 'index')
     collection.initialise()
     collection.save()
     repo_transport.delete('revisions.kndx')

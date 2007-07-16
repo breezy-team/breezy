@@ -547,7 +547,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertHasKndx(t, 'signatures')
         self.assertHasKnit(t, 'signatures')
         # revision-indexes file-container directory
-        collection = FileCollection(t.clone('revision-indices'), 'index')
+        collection = FileCollection(t.clone('indices'), 'index')
         collection.load()
         self.assertEqual(set(), collection.names())
 
