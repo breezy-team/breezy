@@ -172,6 +172,35 @@ class TestErrors(TestCaseWithTransport):
         error = errors.ReadError(path)
         self.assertEqualDiff("Error reading from u'a path'.", str(error))
 
+    def test_bad_index_format_signature(self):
+        error = errors.BadIndexFormatSignature("foo", "bar")
+        self.assertEqual("foo is not an index of type bar.",
+            str(error))
+
+    def test_bad_index_data(self):
+        error = errors.BadIndexData("foo")
+        self.assertEqual("Error in data for index foo.",
+            str(error))
+
+    def test_bad_index_duplicate_key(self):
+        error = errors.BadIndexDuplicateKey("foo", "bar")
+        self.assertEqual("The key 'foo' is already in index 'bar'.",
+            str(error))
+
+    def test_bad_index_key(self):
+        error = errors.BadIndexKey("foo")
+        self.assertEqual("The key 'foo' is not a valid key.",
+            str(error))
+
+    def test_bad_index_options(self):
+        error = errors.BadIndexOptions("foo")
+        self.assertEqual("Could not parse options for index foo.",
+            str(error))
+
+    def test_bad_index_value(self):
+        error = errors.BadIndexValue("foo")
+        self.assertEqual("The value 'foo' is not a valid value.",
+            str(error))
 
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):

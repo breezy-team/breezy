@@ -48,6 +48,14 @@ IN DEVELOPMENT
       the null revision, and consider using ``None`` for this purpose
       deprecated.  (Aaron Bentley)
 
+    * New ``index`` module with abstract index functionality. This will be
+      used during the planned changes in the repository layer. Currently the
+      index layer provides a graph aware immutable index, a builder for the
+      same index type to allow creating them, and finally a composer for
+      such indices to allow the use of many indices in a single query. The
+      index performance is not optimised, however the API is stable to allow
+      development on top of the index. (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
