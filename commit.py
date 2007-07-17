@@ -395,7 +395,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         # TODO: for some reason, branch properties don't seem to be accessible 
         # at this point!?
         #assert self._new_revision_id is None or self._new_revision_id == revid
-        revid = self._new_revision_id
+        if self._new_revision_id is not None:
+            revid = self._new_revision_id
 
         mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
                (self.revnum, self.author, self.date, revid))

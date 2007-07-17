@@ -1,4 +1,6 @@
 mandatory before 0.4.0:
+- commit still seems to have some issues with deletes
+- fix setting of bzr:file-ids property
 - integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
 - splittree support
 - nestedtree support
@@ -7,9 +9,9 @@ todo:
 - lookup_revision_id() needs to be able to quicklier prove that a revision id doesn't exist
 - branchprops should be able to 
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
-- more intelligent guessing of branching scheme. Look at directory structure in current tree?
-- be able to create new branches
-- make has_revision() more efficient - just call logwalker.touches_path() ?
+- more intelligent guessing of branching scheme. Look at directory structure in last revision?
+- make has_revision() more efficient - just call lookup_revision_id() and never add entries that don't exist 
+                                       in the repository?
 - fix autorealm repository
 - avoid extra connect in logwalker?
 - free memory!

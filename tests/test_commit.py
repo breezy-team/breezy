@@ -120,12 +120,13 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
         wt.set_pending_merges(["some-ghost-revision"])
+        self.assertEqual(["some-ghost-revision"], wt.pending_merges())
         wt.commit(message="data")
+        self.assertEqual("some-ghost-revision\n", 
+                self.client_get_prop(repos_url, "bzr:merge", 1))
         self.assertEqual([wt.branch.generate_revision_id(0), "some-ghost-revision"],
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
-        self.assertEqual("some-ghost-revision\n", 
-                self.client_get_prop(repos_url, "bzr:merge", 1))
 
     def test_commit_rename_file(self):
         repos_url = self.make_client('d', 'dc')

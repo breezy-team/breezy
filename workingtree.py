@@ -625,6 +625,7 @@ class SvnWorkingTree(WorkingTree):
                 self.base_revnum, SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
+        """See MutableTree.set_pending_merges()."""
         wc = self._get_wc(write_lock=True)
         try:
             # Set bzr:merge
