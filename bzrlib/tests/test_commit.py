@@ -525,9 +525,9 @@ class TestCommit(TestCaseWithTransport):
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
             ('renamed', 'renamed', 'dirtorename', 'renameddir'),
-            ('renamed', 'renamed', 'filetorename', 'renamedfile'),
             ('renamed', 'renamed', 'dirtoreparent', 'renameddir/reparenteddir'),
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
+            ('renamed', 'renamed', 'filetorename', 'renamedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
             ],
@@ -695,14 +695,3 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(['bar', 'baz'], err.files)
         self.assertEqual('Selected-file commit of merges is not supported'
                          ' yet: files bar, baz', str(err))
-
-    def test_commit_ordering(self):
-        """Test of corner-case commit ordering error"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
-        tree.add(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
-        tree.commit('setup')
-        self.build_tree(['a/c/d/'])
-        tree.add('a/c/d')
-        tree.rename_one('a/z/x', 'a/c/d/x')
-        tree.commit('test', specific_files=['a/z/y'])

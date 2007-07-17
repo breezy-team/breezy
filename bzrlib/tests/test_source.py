@@ -203,7 +203,7 @@ class TestSource(TestSourceHelper):
                          " bzrlib/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2006 Canonical Ltd' to these files:",
+                         " 2007 Canonical Ltd' to these files:",
                          "",
                         ]
             for fname, comment in incorrect:

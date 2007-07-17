@@ -14,12 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzrlib.pack."""
+"""Tests for bzrlib.container."""
 
 
 from cStringIO import StringIO
 
-from bzrlib import pack, errors, tests
+from bzrlib import container, errors, tests
 
 
 class TestContainerWriter(tests.TestCase):
@@ -30,53 +30,53 @@ class TestContainerWriter(tests.TestCase):
         This uses None as the output stream to show that the constructor doesn't
         try to use the output stream.
         """
-        writer = pack.ContainerWriter(None)
+        writer = container.ContainerWriter(None)
 
     def test_begin(self):
         """The begin() method writes the container format marker line."""
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
-        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\n',
+        self.assertEqual('Bazaar pack format 2 (introduced in 0.19)\n',
                          output.getvalue())
 
     def test_end(self):
         """The end() method writes an End Marker record."""
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
         writer.end()
-        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nE',
+        self.assertEqual('Bazaar pack format 2 (introduced in 0.19)\nE',
                          output.getvalue())
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=[])
-        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc',
+        self.assertEqual('Bazaar pack format 2 (introduced in 0.19)\nB3\n\nabc',
                          output.getvalue())
 
     def test_add_bytes_record_one_name(self):
         """Add a bytes record with one name."""
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1'])
         self.assertEqual(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'Bazaar pack format 2 (introduced in 0.19)\n'
             'B3\nname1\n\nabc',
             output.getvalue())
 
     def test_add_bytes_record_two_names(self):
         """Add a bytes record with two names."""
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1', 'name2'])
         self.assertEqual(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'Bazaar pack format 2 (introduced in 0.19)\n'
             'B3\nname1\nname2\n\nabc',
             output.getvalue())
 
@@ -85,18 +85,18 @@ class TestContainerWriter(tests.TestCase):
         InvalidRecordError.
         """
         output = StringIO()
-        writer = pack.ContainerWriter(output.write)
+        writer = container.ContainerWriter(output.write)
         writer.begin()
         self.assertRaises(
             errors.InvalidRecordError,
-            writer.add_bytes_record, 'abc', names=['bad name'])
+            writer.add_bytes_record, 'abc', names=['name with \n char'])
 
 
 class TestContainerReader(tests.TestCase):
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
-        reader = pack.ContainerReader(stream)
+        reader = container.ContainerReader(stream)
         return reader
 
     def test_construct(self):
@@ -105,12 +105,12 @@ class TestContainerReader(tests.TestCase):
         This uses None as the output stream to show that the constructor doesn't
         try to use the input stream.
         """
-        reader = pack.ContainerReader(None)
+        reader = container.ContainerReader(None)
 
     def test_empty_container(self):
         """Read an empty container."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nE")
+            "Bazaar pack format 2 (introduced in 0.19)\nE")
         self.assertEqual([], list(reader.iter_records()))
 
     def test_unknown_format(self):
@@ -124,7 +124,7 @@ class TestContainerReader(tests.TestCase):
         UnexpectedEndOfContainerError to be raised.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n")
+            "Bazaar pack format 2 (introduced in 0.19)\n")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, iterator.next)
@@ -132,7 +132,7 @@ class TestContainerReader(tests.TestCase):
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nX")
+            "Bazaar pack format 2 (introduced in 0.19)\nX")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnknownRecordTypeError, iterator.next)
@@ -145,7 +145,7 @@ class TestContainerReader(tests.TestCase):
         ContainerReader's integration with BytesRecordReader is working.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB5\n\naaaaaE")
+            "Bazaar pack format 2 (introduced in 0.19)\nB5\n\naaaaaE")
         expected_records = [([], 'aaaaa')]
         self.assertEqual(
             expected_records,
@@ -154,7 +154,7 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_empty_container(self):
         """validate does not raise an error for a container with no records."""
-        reader = self.get_reader_for("Bazaar pack format 1 (introduced in 0.18)\nE")
+        reader = self.get_reader_for("Bazaar pack format 2 (introduced in 0.19)\nE")
         # No exception raised
         reader.validate()
 
@@ -162,7 +162,7 @@ class TestContainerReader(tests.TestCase):
         """validate does not raise an error for a container with a valid record.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB3\nname\n\nabcE")
+            "Bazaar pack format 2 (introduced in 0.19)\nB3\nname\n\nabcE")
         # No exception raised
         reader.validate()
 
@@ -172,7 +172,7 @@ class TestContainerReader(tests.TestCase):
         It may raise either UnexpectedEndOfContainerError or
         UnknownContainerFormatError, depending on exactly what the string is.
         """
-        inputs = ["", "x", "Bazaar pack format 1 (introduced in 0.18)", "bad\n"]
+        inputs = ["", "x", "Bazaar pack format 2 (introduced in 0.19)", "bad\n"]
         for input in inputs:
             reader = self.get_reader_for(input)
             self.assertRaises(
@@ -185,7 +185,7 @@ class TestContainerReader(tests.TestCase):
         types.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nX")
+            "Bazaar pack format 2 (introduced in 0.19)\nX")
         self.assertRaises(errors.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
@@ -193,7 +193,7 @@ class TestContainerReader(tests.TestCase):
         after the end of the container.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nEcrud")
+            "Bazaar pack format 2 (introduced in 0.19)\nEcrud")
         self.assertRaises(
             errors.ContainerHasExcessDataError, reader.validate)
 
@@ -202,7 +202,7 @@ class TestContainerReader(tests.TestCase):
         container marker, even if the container up to this point has been valid.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n")
+            "Bazaar pack format 2 (introduced in 0.19)\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
@@ -211,7 +211,7 @@ class TestContainerReader(tests.TestCase):
         multiple times in the container.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n"
+            "Bazaar pack format 2 (introduced in 0.19)\n"
             "B0\nname\n\n"
             "B0\nname\n\n"
             "E")
@@ -220,7 +220,7 @@ class TestContainerReader(tests.TestCase):
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
+            "Bazaar pack format 2 (introduced in 0.19)\nB0\n\xcc\n\nE")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
         
 
@@ -229,7 +229,7 @@ class TestBytesRecordReader(tests.TestCase):
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
-        reader = pack.BytesRecordReader(stream)
+        reader = container.BytesRecordReader(stream)
         return reader
 
     def test_record_with_no_name(self):
@@ -305,25 +305,6 @@ class TestBytesRecordReader(tests.TestCase):
         """EOF during reading a name."""
         reader = self.get_reader_for("123\nname")
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
-
-    def test_read_invalid_name_whitespace(self):
-        """Names must have no whitespace."""
-        # A name with a space.
-        reader = self.get_reader_for("0\nbad name\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
-
-        # A name with a tab.
-        reader = self.get_reader_for("0\nbad\tname\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
-
-        # A name with a vertical tab.
-        reader = self.get_reader_for("0\nbad\vname\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
-
-    def test_validate_whitespace_in_name(self):
-        """Names must have no whitespace."""
-        reader = self.get_reader_for("0\nbad name\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.validate)
 
     def test_validate_interrupted_prelude(self):
         """EOF during reading a record's prelude causes validate to fail."""

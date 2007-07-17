@@ -169,7 +169,7 @@ def get_home_location():
     # at least return windows root directory
     windir = os.environ.get('windir')
     if windir:
-        return os.path.splitdrive(windir) + '/'
+        return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
     return 'C:/'
 

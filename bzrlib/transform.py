@@ -717,6 +717,8 @@ class TreeTransform(object):
     def _duplicate_entries(self, by_parent):
         """No directory may have two entries with the same name."""
         conflicts = []
+        if (self._new_name, self._new_parent) == ({}, {}):
+            return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
             name_ids.sort()
@@ -783,17 +785,21 @@ class TreeTransform(object):
             return True
         return False
             
-    def apply(self):
+    def apply(self, no_conflicts=False):
         """Apply all changes to the inventory and filesystem.
         
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
 
         If apply succeeds, finalize is not necessary.
+
+        :param no_conflicts: if True, the caller guarantees there are no
+            conflicts, so no check is made.
         """
-        conflicts = self.find_conflicts()
-        if len(conflicts) != 0:
-            raise MalformedTransform(conflicts=conflicts)
+        if not no_conflicts:
+            conflicts = self.find_conflicts()
+            if len(conflicts) != 0:
+                raise MalformedTransform(conflicts=conflicts)
         inv = self._tree.inventory
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()

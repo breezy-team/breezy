@@ -8,19 +8,34 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Don't show "dots" progress indicators when run non-interactively, such
+      as from cron.  (Martin Pool)
+
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
 
     * New ``pack`` command that will trigger database compression within
       the repository (Robert Collins)
 
+    * Implement ``_KnitIndex._load_data`` in a pyrex extension. The pyrex
+      version is approximately 2-3x faster at parsing a ``.kndx`` file.
+      Which yields a measurable improvement for commands which have to
+      read from the repository, such as a 1s => 0.75s improvement in
+      ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
+
+    * Merge is now faster.  Depending on the scenario, it can be more than 2x
+      faster. (Aaron Bentley)
+
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
-      Various globally-declared options removed.  Options are now required
-      to provide a help string and it must comply with the style guide
-      by being one or more sentences with an initial capital and final
-      period.  (Martin Pool)
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
 
   INTERNALS:
 
@@ -194,13 +209,6 @@ bzr 0.18rc1  2007-07-10
       ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
     * ``LockDir.wait`` removed.  (Martin Pool)
-
-    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
-      ``server_stopped`` hooks. The first parameter is now an iterable of
-      backing URLs rather than a single URL. This is to reflect that many
-      URLs may map to the external URL of the server. E.g. the server interally
-      may have a chrooted URL but also the local file:// URL will be at the 
-      same location. (Robert Collins)
 
   INTERNALS:
 

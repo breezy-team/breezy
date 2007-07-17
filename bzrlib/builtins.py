@@ -2475,11 +2475,12 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+        from bzrlib.version import show_version
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        if not list_only:
+            show_version(show_config=False, show_copyright=False)
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
