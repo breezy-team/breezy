@@ -107,6 +107,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         'bzrlib.tests.repository_implementations.test_statistics',
+        'bzrlib.tests.repository_implementations.test_write_group',
         ]
 
     from bzrlib.smart.server import (
