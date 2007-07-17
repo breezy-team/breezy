@@ -81,7 +81,7 @@ DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
-                        start_message=None, user_encoding=bzrlib.user_encoding):
+                        start_message=None, output_encoding=None):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -97,15 +97,17 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                             This will not be removed from the message
                             after the user has edited it.
 
-    :user_encoding:     message encoding
+    :output_encoding:   Messages encoding
 
     :return:    commit message or None.
     """
     msgfilename = None
+    if output_encoding is None:
+        output_encoding = bzrlib.user_encoding
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
                                     infotext, ignoreline, start_message,
-                                    user_encoding)
+                                    output_encoding)
 
         if not msgfilename or not _run_editor(msgfilename):
             return None
@@ -116,7 +118,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         # codecs.open() ALWAYS opens file in binary mode but we need text mode
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
         f = file(msgfilename, 'rU')
-        for line in codecs.getreader(user_encoding)(f):
+        for line in codecs.getreader(output_encoding)(f):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
@@ -156,7 +158,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 def _create_temp_file_with_commit_template(infotext,
                                            ignoreline=DEFAULT_IGNORE_LINE,
                                            start_message=None,
-                                           user_encoding=bzrlib.user_encoding):
+                                           output_encoding=None):
     """Create temp file and write commit template in it.
 
     :param infotext:    Text to be displayed at bottom of message
@@ -169,11 +171,13 @@ def _create_temp_file_with_commit_template(infotext,
                             This will not be removed from the message
                             after the user has edited it.
 
-    :user_encoding:     message encoding
+    :output_encoding:   Messages encoding
 
     :return:    2-tuple (temp file name, hasinfo)
     """
     import tempfile
+    if output_encoding is None:
+        output_encoding = bzrlib.user_encoding
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
                                                dir=u'.',
                                                text=True)
@@ -181,12 +185,12 @@ def _create_temp_file_with_commit_template(infotext,
     try:
         if start_message is not None:
             msgfile.write("%s\n" % start_message.encode(
-                                       user_encoding, 'replace'))
+                                       output_encoding, 'replace'))
 
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile.write("\n\n%s\n\n%s" % (ignoreline,
-                          infotext.encode(user_encoding,
+                          infotext.encode(output_encoding,
                                                 'replace')))
         else:
             hasinfo = False
@@ -197,7 +201,7 @@ def _create_temp_file_with_commit_template(infotext,
 
 
 def make_commit_message_template(working_tree, specific_files, diff=False,
-                                 user_encoding=bzrlib.user_encoding):
+                                 output_encoding=None):
     """Prepare a template file for a commit into a branch.
 
     Returns a unicode string containing the template.
@@ -211,6 +215,8 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
+    if output_encoding is None:
+        output_encoding = bzrlib.user_encoding
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
@@ -228,6 +234,6 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
                     # the header are utf8 encoded
                     status_tmp.write(l.decode("utf8","replace"))
             else:
-                    status_tmp.write(l.decode(user_encoding, "replace"))
+                    status_tmp.write(l.decode(output_encoding, "replace"))
 
     return status_tmp.getvalue()
