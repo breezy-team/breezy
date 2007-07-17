@@ -358,7 +358,7 @@ class SvnRepository(Repository):
         if not scheme.is_branch(path) and \
            not scheme.is_tag(path):
             raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, scheme))
+                    self.generate_revision_id(revnum, path, str(scheme)))
 
         it = self.follow_branch(path, revnum, scheme)
         # the first tuple returned should match the one specified. 
@@ -366,7 +366,7 @@ class SvnRepository(Repository):
         # revision and so it is invalid
         if (path, revnum) != it.next():
             raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, scheme))
+                    self.generate_revision_id(revnum, path, str(scheme)))
         try:
             (branch, rev) = it.next()
             return self.generate_revision_id(rev, branch, str(scheme))
@@ -523,7 +523,7 @@ class SvnRepository(Repository):
             # Entry already complete?
             if min_revnum == max_revnum:
                 return (branch_path, min_revnum, get_scheme(scheme))
-        except NoSuchRevision:
+        except NoSuchRevision, e:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
                 scheme = self.scheme
@@ -533,7 +533,7 @@ class SvnRepository(Repository):
                 # All revision ids in this repository for the current 
                 # scheme have already been discovered. No need to 
                 # check again.
-                raise
+                raise e
             found = False
             for (branch, revno, _) in self.find_branches(scheme, last_revnum):
                 # Look at their bzr:revision-id-vX
@@ -542,8 +542,8 @@ class SvnRepository(Repository):
                         SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
                     try:
                         revids.append(parse_revid_property(line))
-                    except errors.InvalidPropertyValue, e:
-                        mutter(str(e))
+                    except errors.InvalidPropertyValue, ie:
+                        mutter(str(ie))
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them
@@ -560,7 +560,7 @@ class SvnRepository(Repository):
                 # We've added all the revision ids for this scheme in the repository,
                 # so no need to check again unless new revisions got added
                 self._revids_seen[str(scheme)] = last_revnum
-                raise
+                raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)
 

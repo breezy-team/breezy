@@ -554,10 +554,15 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
 
         def last_revision_info(self):
             last_revid = self.last_revision()
+            if last_revid is None:
+                return (0, None)
             return (history.index(last_revid), last_revid)
 
         def last_revision(self):
-            return source.repository.revision_parents(start_revid)[0]
+            parents = source.repository.revision_parents(start_revid)
+            if parents == []:
+                return None
+            return parents[0]
 
         def get_branch_path(self, revnum=None):
             return target_branch_path
