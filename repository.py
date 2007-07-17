@@ -186,16 +186,15 @@ class SvnRepository(Repository):
         self.pool = Pool()
         self.config = SvnRepositoryConfig(self.uuid)
         self.config.add_location(self.base)
+        self._revids_seen = {}
         cache_file = os.path.join(self.create_cache_dir(), 
                                   'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        self._latest_revnum = transport.get_latest_revnum()
         self._log = logwalker.LogWalker(transport=transport, 
-                                        cache_db=self.cachedb, 
-                                        last_revnum=self._latest_revnum)
+                                        cache_db=self.cachedb)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
@@ -203,8 +202,9 @@ class SvnRepository(Repository):
         if self.config.get_branching_scheme() is not None:
             self.scheme = self.config.get_branching_scheme()
         else:
-            text = self.branchprop_list.get_property("", self._latest_revnum, 
-                                             SVN_PROP_BZR_BRANCHING_SCHEME, None)
+            text = self.branchprop_list.get_property("", 
+                transport.get_latest_revnum(), 
+                SVN_PROP_BZR_BRANCHING_SCHEME, None)
             if text is not None:
                 self.set_branching_scheme(
                         ListBranchingScheme(parse_list_scheme_text(text)))
@@ -368,7 +368,7 @@ class SvnRepository(Repository):
                     self.generate_revision_id(revnum, path, scheme))
         try:
             (branch, rev) = it.next()
-            return self.generate_revision_id(rev, branch, scheme)
+            return self.generate_revision_id(rev, branch, str(scheme))
         except StopIteration:
             # The specified revision was the first one in the branch
             return None
@@ -526,7 +526,15 @@ class SvnRepository(Repository):
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
                 scheme = self.scheme
-            for (branch, revno, exists) in self.find_branches(scheme):
+            last_revnum = self.transport.get_latest_revnum()
+            if (self._revids_seen.has_key(str(scheme)) and 
+                last_revnum <= self._revids_seen[str(scheme)]):
+                # All revision ids in this repository for the current 
+                # scheme have already been discovered. No need to 
+                # check again.
+                raise
+            found = False
+            for (branch, revno, _) in self.find_branches(scheme, last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 for line in self.branchprop_list.get_property(branch, revno, 
@@ -539,12 +547,19 @@ class SvnRepository(Repository):
                 # If there are any new entries that are not yet in the cache, 
                 # add them
                 for (entry_revno, entry_revid) in revids:
+                    if entry_revid == revid:
+                        found = True
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
                             str(scheme), entry_revno)
 
-                if revid in revids:
+                if found:
                     break
                 
+            if not found:
+                # We've added all the revision ids for this scheme in the repository,
+                # so no need to check again unless new revisions got added
+                self._revids_seen[str(scheme)] = last_revnum
+                raise
             (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)
 
@@ -734,9 +749,11 @@ class SvnRepository(Repository):
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
-    def _full_revision_graph(self, scheme):
+    def _full_revision_graph(self, scheme, _latest_revnum=None):
+        if _latest_revnum is None:
+            _latest_revnum = self.transport.get_latest_revnum()
         graph = {}
-        for (branch, revnum) in self.follow_history(self._latest_revnum, 
+        for (branch, revnum) in self.follow_history(_latest_revnum, 
                                                     scheme):
             mutter('%r, %r' % (branch, revnum))
             revid = self.generate_revision_id(revnum, branch, scheme)
@@ -757,7 +774,7 @@ class SvnRepository(Repository):
         
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
-                revid = self.generate_revision_id(rev, branch, scheme)
+                revid = self.generate_revision_id(rev, branch, str(scheme))
                 self._ancestry[_previous] = [revid]
                 _previous = revid
 

@@ -384,7 +384,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             lock.unlock()
 
         assert self.revnum is not None
-        self.repository._latest_revnum = self.revnum
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
@@ -400,10 +399,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
                (self.revnum, self.author, self.date, revid))
-
-        #FIXME: Use public API:
-        if self.branch._revision_history is not None:
-            self.branch._revision_history.append(revid)
 
         return revid
 
@@ -558,17 +553,18 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
             return None
 
         def last_revision_info(self):
-            return (0, None)
+            last_revid = self.last_revision()
+            return (history.index(last_revid), last_revid)
 
         def last_revision(self):
-            return None
+            return source.repository.revision_parents(start_revid)[0]
 
         def get_branch_path(self, revnum=None):
             return target_branch_path
 
         def generate_revision_id(self, revnum):
             return self.repository.generate_revision_id(
-                revnum, self.get_branch_path(revnum), self.repository.scheme)
+                revnum, self.get_branch_path(revnum), str(self.repository.scheme))
 
     push(ImaginaryBranch(target_repository), source, start_revid)
 

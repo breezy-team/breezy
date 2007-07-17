@@ -51,21 +51,14 @@ def _escape_commit_message(message):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, transport=None, cache_db=None, last_revnum=None):
+    def __init__(self, transport=None, cache_db=None):
         """Create a new instance.
 
         :param transport:   SvnRaTransport to use to access the repository.
         :param cache_db:    Optional sql database connection to use. Doesn't 
                             cache if not set.
-        :param last_revnum: Last known revnum in the repository. Will be 
-                            determined if not specified.
         """
         assert isinstance(transport, SvnRaTransport)
-
-        if last_revnum is None:
-            last_revnum = transport.get_latest_revnum()
-
-        self.last_revnum = last_revnum
 
         self.transport = SvnRaTransport(transport.base)
 
@@ -93,7 +86,7 @@ class LogWalker(object):
 
         :param to_revnum: End of range to fetch information for
         """
-        to_revnum = max(self.last_revnum, to_revnum)
+        to_revnum = max(self.transport.get_latest_revnum(), to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 

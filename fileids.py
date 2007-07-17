@@ -150,7 +150,7 @@ class FileIdMap(object):
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
                                              revnum, scheme):
             revid = self.repos.generate_revision_id(rev, bp.encode("utf-8"), 
-                                                    scheme)
+                                                    str(scheme))
             map = self.load(revid)
             if map != {}:
                 # found the nearest cached map

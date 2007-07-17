@@ -68,6 +68,7 @@ class SvnBranch(Branch):
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
         self._revision_history = None
+        self._revision_history_revnum = None
         self.scheme = scheme
         self.revnum = revnum
         try:
@@ -85,13 +86,14 @@ class SvnBranch(Branch):
         :param revnum: Revnum to look for.
         """
         if revnum is None:
-            revnum = self.get_revnum()
+            return self._branch_path
+
         # TODO: Use revnum - this branch may have been moved in the past 
         return self._branch_path
 
     def get_revnum(self):
         if self.revnum is None:
-            return self.repository._latest_revnum
+            return self.repository.transport.get_latest_revnum()
         return self.revnum
 
     def check(self):
@@ -154,7 +156,6 @@ class SvnBranch(Branch):
     def generate_revision_id(self, revnum):
         """Generate a new revision id for a revision on this branch."""
         assert isinstance(revnum, int)
-        # FIXME: What if this branch had a different name in the past?
         return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), str(self.scheme))
        
@@ -166,6 +167,7 @@ class SvnBranch(Branch):
             self._revision_history.append(
                 self.repository.generate_revision_id(rev, branch, str(self.scheme)))
         self._revision_history.reverse()
+        self._revision_history_revnum = last_revnum
         self.repository.revmap.insert_revision_history(self._revision_history)
 
     def get_root_id(self):
@@ -176,8 +178,8 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
-        bp = self.get_branch_path().strip("/")
-        if self.get_branch_path() == "":
+        bp = self._branch_path.strip("/")
+        if self._branch_path == "":
             return None
         return bp
 
@@ -215,23 +217,25 @@ class SvnBranch(Branch):
         # get_push_location not supported on Subversion
         return None
 
-    def revision_history(self):
-        if self._revision_history is None:
-            self._generate_revision_history(self.get_revnum())
+    def revision_history(self, last_revnum=None):
+        if last_revnum is None:
+            last_revnum = self.get_revnum()
+        if self._revision_history is None or self._revision_history_revnum != last_revnum:
+            self._generate_revision_history(last_revnum)
         return self._revision_history
 
     def last_revision(self):
         # Shortcut for finding the tip. This avoids expensive generation time
         # on large branches.
+        last_revnum = self.get_revnum()
         if self._revision_history is None:
             for (branch, rev) in self.repository.follow_branch(
-                self.get_branch_path(), self.get_revnum(), 
-                self.scheme):
+                self.get_branch_path(), last_revnum, self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
                                                             str(self.scheme))
             return None
 
-        ph = self._revision_history
+        ph = self.revision_history(last_revnum)
         if ph:
             return ph[-1]
         else:

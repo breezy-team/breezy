@@ -467,12 +467,6 @@ class SvnWorkingTree(WorkingTree):
         self.base_revnum = commit_info.revision
         self.base_tree = SvnBasisTree(self)
 
-        self.branch.repository._latest_revnum = commit_info.revision
-
-        #FIXME: Use public API:
-        if self.branch._revision_history is not None:
-            self.branch._revision_history.append(revid)
-
         return revid
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):

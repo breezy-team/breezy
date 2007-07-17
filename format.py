@@ -151,7 +151,6 @@ class SvnRemoteAccess(BzrDir):
 
         if self.branch_path != "":
             repos.transport.mkdir(self.branch_path)
-            repos._latest_revnum = repos.transport.get_latest_revnum()
         else:
             # TODO: Check if there are any revisions in this repository yet
             pass
