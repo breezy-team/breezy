@@ -46,6 +46,10 @@ import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
 
+lazy_import(globals(), """
+from bzrlib import remote
+""")
+
 # TODO: Avoid repeatedly opening weaves so many times.
 
 # XXX: This doesn't handle ghost (not present in branch) revisions at
@@ -89,10 +93,7 @@ class RepoFetcher(object):
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
-        if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
-            # check that last_revision is in 'from' and then return a no-operation.
-            if last_revision not in (None, NULL_REVISION):
-                from_repository.get_revision(last_revision)
+        if self._same_repo(to_repository, from_repository, last_revision):
             return
         self.to_repository = to_repository
         self.from_repository = from_repository
@@ -115,6 +116,14 @@ class RepoFetcher(object):
                 self.to_repository.unlock()
         finally:
             self.from_repository.unlock()
+
+    def _same_repo(self, to_repository, from_repository, last_revision):
+        if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
+            # check that last_revision is in 'from' and then return a no-operation.
+            if last_revision not in (None, NULL_REVISION):
+                from_repository.get_revision(last_revision)
+            return True
+        return False
 
     def __fetch(self):
         """Primary worker function.
@@ -407,8 +416,15 @@ class RemoteToOtherFetcher(GenericRepoFetcher):
     def _fetch_everything_for_revisions(self, revs, pp):
         # XXX: this assumes that we want RemoteRepository.get_data_stream to
         # deserialise the smart response.
-        data_stream = self.from_repository.get_data_stream(revs, pp)
+        data_stream = self.from_repository.get_data_stream(revs)
         self.to_repository.insert_data_stream(data_stream)
+
+    def _same_repo(self, to_repository, from_repository, last_revision):
+        assert isinstance(from_repository, remote.RemoteRepository), from_repository
+        if isinstance(to_repository, remote.RemoteRepository):
+            return to_repository._client is from_repository._client
+        else:
+            return False
 
 
 class Fetcher(object):

@@ -456,6 +456,23 @@ class TestRepository(TestCaseWithRepository):
 
         self.assertEqual(expected_record_names, streamed_names)
 
+    def test_insert_data_stream(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        source_repo = tree.branch.repository
+        dest_repo = self.make_repository('dest')
+        try:
+            stream = source_repo.get_data_stream(['rev_id'])
+        except NotImplementedError, e:
+            # Not all repositories support streaming.
+            self.assertContainsRe(str(e), 'get_data_stream')
+            raise TestSkipped('This format does not support streaming.')
+
+        dest_repo.insert_data_stream(stream)
+        self.assertTrue(dest_repo.has_revision('rev_id'))
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

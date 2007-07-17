@@ -1226,23 +1226,19 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
 class TestFormatSignatures(TestCaseWithMemoryTransport):
 
-    def get_knit_file(self, name, delta, annotated):
+    def get_knit_file(self, name, annotated):
         if annotated:
             factory = KnitAnnotateFactory()
         else:
             factory = KnitPlainFactory()
         return KnitVersionedFile(
-            name, get_transport(self.get_url('.')), delta=delta, create=True,
+            name, get_transport(self.get_url('.')), create=True,
             factory=factory)
 
     def test_knit_format_signatures(self):
         """Different formats of knit have different signature strings."""
-        knit = self.get_knit_file('d-a', True, True)
-        self.assertEqual('knit-delta-annotated', knit.get_format_signature())
-        knit = self.get_knit_file('d-p', True, False)
-        self.assertEqual('knit-delta-plain', knit.get_format_signature())
-        knit = self.get_knit_file('f-a', False, True)
-        self.assertEqual('knit-full-annotated', knit.get_format_signature())
-        knit = self.get_knit_file('f-p', False, False)
-        self.assertEqual('knit-full-plain', knit.get_format_signature())
+        knit = self.get_knit_file('a', True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('p', False)
+        self.assertEqual('knit-plain', knit.get_format_signature())
 

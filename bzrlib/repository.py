@@ -55,6 +55,7 @@ from bzrlib.symbol_versioning import (
         zero_nine,
         )
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 
 
 # Old formats display a warning, but only once
@@ -325,6 +326,32 @@ class Repository(object):
 
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
+
+    def insert_data_stream(self, stream):
+        for knit_name, bytes in stream:
+            #bytes_buffer = StringIO(bytes)
+            if knit_name.startswith('file:'):
+                file_id = knit_name[5:]
+                knit = self.text_store.get_weave_or_empty(
+                    file_id, self.get_transaction())
+            elif knit_name == 'inventory':
+                knit = self.get_inventory_weave()
+            elif knit_name == 'revisions':
+                knit = self.control_weaves.get_weave(
+                    'revisions', self.get_transaction())
+            else:
+                raise 'boom', knit_name # XXX
+            decoded_list = bencode.bdecode(bytes)
+            format = decoded_list.pop(0)
+            data_list = []
+            knit_bytes = ''
+            for version, options, parents, some_bytes in decoded_list:
+                data_list.append((version, options, len(some_bytes), parents))
+                knit_bytes += some_bytes
+            knit.insert_data_stream((format, data_list,
+                StringIO(knit_bytes).read))
+            #assert bytes_buffer.tell() == len(bytes)
+
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -1817,18 +1844,18 @@ class InterRemoteToOther(InterRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
-        self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb)
-#        from bzrlib.fetch import RemoteToOtherFetcher
-#        mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
-#               self.source, self.target, self.target._format)
-#        # TODO: jam 20070210 This should be an assert, not a translate
-#        revision_id = osutils.safe_revision_id(revision_id)
-#        f = RemoteToOtherFetcher(to_repository=self.target,
-#                                 from_repository=self.source,
-#                                 last_revision=revision_id,
-#                                 pb=pb)
-#        return f.count_copied, f.failed_revisions
+        #self._ensure_real_inter()
+        #self._real_inter.fetch(revision_id=revision_id, pb=pb)
+        from bzrlib.fetch import RemoteToOtherFetcher
+        mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
+               self.source, self.target, self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
+        f = RemoteToOtherFetcher(to_repository=self.target,
+                                 from_repository=self.source,
+                                 last_revision=revision_id,
+                                 pb=pb)
+        return f.count_copied, f.failed_revisions
 
     @classmethod
     def _get_repo_format_to_test(self):

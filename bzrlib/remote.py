@@ -31,6 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.pack import ContainerReader
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.trace import note
@@ -460,9 +461,11 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        to_repo = to_bzrdir.create_repository()
-        self._copy_repository_tarball(to_repo, revision_id)
-        return to_repo
+        dest_repo = to_bzrdir.create_repository()
+        dest_repo.fetch(self, revision_id=revision_id)
+        return dest_repo
+        #self._copy_repository_tarball(to_repo, revision_id)
+        #return to_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
@@ -688,8 +691,11 @@ class RemoteRepository(object):
             for [name], read_bytes in reader.iter_records():
                 yield name, read_bytes(None)
         else:
-            raise errors.SmartServerError(error_code=response)
+            raise errors.UnexpectedSmartServerResponse(response)
 
+    def insert_data_stream(self, stream):
+        self._ensure_real()
+        self._real_repository.insert_data_stream(stream)
 
 
 class RemoteBranchLockableFiles(LockableFiles):

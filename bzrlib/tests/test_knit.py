@@ -1092,7 +1092,7 @@ class BasicKnitTests(KnitTests):
         """Get a data stream for an empty knit file."""
         k1 = self.make_test_knit()
         format, data_list, reader_callable = k1.get_data_stream([])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual([], data_list)
         content = reader_callable(None)
         self.assertEqual('', content)
@@ -1114,7 +1114,7 @@ class BasicKnitTests(KnitTests):
             k1.add_lines(version_id, parents, split_lines(lines))
 
         format, data_list, reader_callable = k1.get_data_stream(['text-a'])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
         # There's only one record in the knit, so the content should be the
         # entire knit data file's contents.
@@ -1143,7 +1143,7 @@ class BasicKnitTests(KnitTests):
             k1.add_lines(version_id, parents, split_lines(lines))
 
         format, data_list, reader_callable = k1.get_data_stream(['text-m'])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
         self.assertRecordContentEqual(k1, 'text-m', reader_callable(None))
         
@@ -1161,7 +1161,7 @@ class BasicKnitTests(KnitTests):
             ]
         
         format, data_list, reader_callable = k1.get_data_stream(['text-b'])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
         self.assertRecordContentEqual(k1, 'text-b', reader_callable(None))
     
@@ -1190,7 +1190,7 @@ class BasicKnitTests(KnitTests):
         # case, they'll be in the order they were inserted into the knit.
         format, data_list, reader_callable = k1.get_data_stream(
             ['text-d', 'text-b'])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
         self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
         self.assertRecordContentEqual(k1, 'text-d', reader_callable(84))
@@ -1228,7 +1228,7 @@ class BasicKnitTests(KnitTests):
 
         format, data_list, reader_callable = k1.get_data_stream(
             ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
         for version_id, options, length, parents in expected_data_list:
             bytes = reader_callable(length)
@@ -1243,7 +1243,7 @@ class BasicKnitTests(KnitTests):
         bytes = k1.get_stream_as_bytes(['text-a'])
         data = bencode.bdecode(bytes)
         format, record = data
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
         self.assertEqual(['text-a', ['fulltext'], []], record[:3])
         self.assertRecordContentEqual(k1, 'text-a', record[3])
 
@@ -1278,7 +1278,7 @@ class BasicKnitTests(KnitTests):
 
         data = bencode.bdecode(bytes)
         format = data.pop(0)
-        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual('knit-plain', format)
 
         for expected, actual in zip(expected_data_list, data):
             expected_version = expected[0]
@@ -1436,88 +1436,88 @@ class BasicKnitTests(KnitTests):
             errors.KnitDataStreamIncompatible,
             target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_buffering_limit(self):
-        """insert_data_stream will batch the incoming records up to a certain
-        size.
-
-        This isn't testing correctness in the way other tests in this file do,
-        just a performance/resource-use characteristic.
-        """
-        target = self.make_test_knit(name='target')
-        # Instrument target.  We want to log the size of writes, and not
-        # actually perform the insert because we aren't using real data.
-        add_raw_records_calls = []
-        def fake_add_raw_records(records, bytes):
-            add_raw_records_calls.append(len(bytes))
-        target._add_raw_records = fake_add_raw_records
-        
-        data_stream = (
-            target.get_format_signature(),
-            [('v1', [], 30, []), ('v2', [], 30, []), ('v3', [], 30, [])],
-            StringIO('x' * 90).read
-            )
-
-        # Insert 3 records of size 30, when bufsize is 64.  No individual write
-        # should exceed 64, so in this case we expect [60, 30] (i.e. the first
-        # two records will be read and written in one go).
-        target.insert_data_stream(data_stream, buffer_size=64)
-        self.assertEqual([60, 30], add_raw_records_calls)
-
-    def test_insert_data_stream_buffering_large_records(self):
-        """insert_data_stream's batching copes with records larger than the
-        buffer size.
-        """
-        target = self.make_test_knit(name='target')
-        # Instrument target.  We want to log the size of writes, and not
-        # actually perform the insert because we aren't using real data.
-        add_raw_records_calls = []
-        def fake_add_raw_records(records, bytes):
-            add_raw_records_calls.append(len(bytes))
-        target._add_raw_records = fake_add_raw_records
-        
-        data_stream = (
-            target.get_format_signature(),
-            [('v1', [], 100, []), ('v2', [], 100, [])],
-            StringIO('x' * 200).read
-            )
-
-        # Insert 1 record of size 100, when the buffer_size is much smaller than
-        # that.  Note that _add_raw_records is never called with no records,
-        # i.e. if the buffer is empty, then flushing it does not trigger an
-        # empty write.
-        target.insert_data_stream(data_stream, buffer_size=20)
-        self.assertEqual([100, 100], add_raw_records_calls)
-
-    def test_insert_data_stream_buffering_flushed_by_known_record(self):
-        """insert_data_stream's flushes its buffers (if any) when it needs to do
-        consistency checks on a record from the stream.
-        """
-        target = self.make_test_knit(name='target')
-        # Insert a record real record.
-        target.add_lines('v1', [], split_lines(TEXT_1))
-        # Now instrument target.  We want to log the size of writes, and not
-        # actually perform the insert because we aren't using real data.
-        add_raw_records_calls = []
-        def fake_add_raw_records(records, bytes):
-            add_raw_records_calls.append(len(bytes))
-        target._add_raw_records = fake_add_raw_records
-        
-        # Create a file with a superficially valid knit header, gzip it.
-        sio = StringIO()
-        gzip_file = gzip.GzipFile(mode='wb', fileobj=sio)
-        gzip_file.write('xx v1 yy %s\n' % target.get_sha1('v1'))
-        gzip_file.close()
-        sio.seek(0)
-        data_stream = (
-            target.get_format_signature(),
-            [('v1', [], len(sio.getvalue()), [])],
-            sio.read,
-            )
-
-        # Nothing is written; the buffer had nothing to flush.
-        target.insert_data_stream(data_stream)
-        self.assertEqual([], add_raw_records_calls)
-
+#    def test_insert_data_stream_buffering_limit(self):
+#        """insert_data_stream will batch the incoming records up to a certain
+#        size.
+#
+#        This isn't testing correctness in the way other tests in this file do,
+#        just a performance/resource-use characteristic.
+#        """
+#        target = self.make_test_knit(name='target')
+#        # Instrument target.  We want to log the size of writes, and not
+#        # actually perform the insert because we aren't using real data.
+#        add_raw_records_calls = []
+#        def fake_add_raw_records(records, bytes):
+#            add_raw_records_calls.append(len(bytes))
+#        target._add_raw_records = fake_add_raw_records
+#        
+#        data_stream = (
+#            target.get_format_signature(),
+#            [('v1', [], 30, []), ('v2', [], 30, []), ('v3', [], 30, [])],
+#            StringIO('x' * 90).read
+#            )
+#
+#        # Insert 3 records of size 30, when bufsize is 64.  No individual write
+#        # should exceed 64, so in this case we expect [60, 30] (i.e. the first
+#        # two records will be read and written in one go).
+#        target.insert_data_stream(data_stream, buffer_size=64)
+#        self.assertEqual([60, 30], add_raw_records_calls)
+#
+#    def test_insert_data_stream_buffering_large_records(self):
+#        """insert_data_stream's batching copes with records larger than the
+#        buffer size.
+#        """
+#        target = self.make_test_knit(name='target')
+#        # Instrument target.  We want to log the size of writes, and not
+#        # actually perform the insert because we aren't using real data.
+#        add_raw_records_calls = []
+#        def fake_add_raw_records(records, bytes):
+#            add_raw_records_calls.append(len(bytes))
+#        target._add_raw_records = fake_add_raw_records
+#        
+#        data_stream = (
+#            target.get_format_signature(),
+#            [('v1', [], 100, []), ('v2', [], 100, [])],
+#            StringIO('x' * 200).read
+#            )
+#
+#        # Insert 1 record of size 100, when the buffer_size is much smaller than
+#        # that.  Note that _add_raw_records is never called with no records,
+#        # i.e. if the buffer is empty, then flushing it does not trigger an
+#        # empty write.
+#        target.insert_data_stream(data_stream, buffer_size=20)
+#        self.assertEqual([100, 100], add_raw_records_calls)
+#
+#    def test_insert_data_stream_buffering_flushed_by_known_record(self):
+#        """insert_data_stream's flushes its buffers (if any) when it needs to do
+#        consistency checks on a record from the stream.
+#        """
+#        target = self.make_test_knit(name='target')
+#        # Insert a record real record.
+#        target.add_lines('v1', [], split_lines(TEXT_1))
+#        # Now instrument target.  We want to log the size of writes, and not
+#        # actually perform the insert because we aren't using real data.
+#        add_raw_records_calls = []
+#        def fake_add_raw_records(records, bytes):
+#            add_raw_records_calls.append(len(bytes))
+#        target._add_raw_records = fake_add_raw_records
+#        
+#        # Create a file with a superficially valid knit header, gzip it.
+#        sio = StringIO()
+#        gzip_file = gzip.GzipFile(mode='wb', fileobj=sio)
+#        gzip_file.write('xx v1 yy %s\n' % target.get_sha1('v1'))
+#        gzip_file.close()
+#        sio.seek(0)
+#        data_stream = (
+#            target.get_format_signature(),
+#            [('v1', [], len(sio.getvalue()), [])],
+#            sio.read,
+#            )
+#
+#        # Nothing is written; the buffer had nothing to flush.
+#        target.insert_data_stream(data_stream)
+#        self.assertEqual([], add_raw_records_calls)
+#
     #  * test that a stream of "already present version, then new version"
     #    inserts correctly.
 
