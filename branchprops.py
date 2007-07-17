@@ -53,10 +53,12 @@ class BranchPropertyList:
         assert path is not None
         assert isinstance(path, str)
         assert isinstance(origrevnum, int) and origrevnum >= 0
-        proplist = {}
         revnum = self.log.find_latest_change(path, origrevnum)
         assert revnum is not None, \
                 "can't find latest change for %r:%r" % (path, origrevnum)
+
+        if revnum == 0: # no properties are set in revision 0
+            return {}
 
         proplist = {}
         for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):

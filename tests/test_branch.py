@@ -45,10 +45,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
     def test_get_branch_path_subdir(self):
         repos_url = self.make_client("a", "dc")
+        self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Add branch")
         branch = Branch.open(repos_url+"/trunk")
-        self.assertEqual("trunk", branch.get_branch_path())
+        self.assertEqual("/trunk", branch.get_branch_path())
 
     def test_open_nonexistant(self):
         repos_url = self.make_client("a", "dc")

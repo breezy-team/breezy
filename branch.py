@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Handles branch-specific operations."""
 
+from bzrlib import ui
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
@@ -299,8 +300,14 @@ class SvnBranch(Branch):
             # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
             raise NotImplementedError(self.pull)
         else:
-            for rev_id in self.missing_revisions(other, stop_revision):
-                push(self, other, rev_id)
+            todo = self.missing_revisions(other, stop_revision)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for rev_id in todo:
+                    pb.update("pushing revisions", todo.index(rev_id), len(todo))
+                    push(self, other, rev_id)
+            finally:
+                pb.finished()
 
     # The remote server handles all this for us
     def lock_write(self):

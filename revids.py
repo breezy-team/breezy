@@ -92,7 +92,7 @@ class RevidMap(object):
         create index if not exists revid on revmap (revid);
         create unique index if not exists revid on revmap (revid);
         create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
-        create table if not exists revno_cache (revid text, dist_to_origin integer);
+        create table if not exists revno_cache (revid text unique, dist_to_origin integer);
         create index if not exists revid on revno_cache (revid);
         """)
         self.cachedb.commit()
@@ -117,11 +117,11 @@ class RevidMap(object):
         assert revid is not None and revid != ""
         assert isinstance(scheme, basestring)
         self.cachedb.execute(
-            "insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
+            "replace into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
             (revid, branch, min_revnum, max_revnum, scheme))
         if dist_to_origin is not None:
             self.cachedb.execute(
-                "insert into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
+                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
                 (revid, dist_to_origin))
 
     def lookup_dist_to_origin(self, revid):
@@ -135,7 +135,7 @@ class RevidMap(object):
         i = 1
         for revid in revhistory:
             self.cachedb.execute(
-                "insert into revno_cache (revid,dist_to_origin) VALUES (?,?)",
+                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)",
                 (revid, i))
             i += 1
         self.cachedb.commit()

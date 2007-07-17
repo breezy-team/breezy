@@ -304,8 +304,8 @@ class TestPush(TestCaseWithSubversionRepository):
         push(Branch.open("sc/trunk"), wt.branch, 
              wt.branch.revision_history()[-2])
         mutter('log %r' % self.client_log("sc/trunk")[4][0])
-        self.assertEquals("/trunk", 
-            self.client_log("sc/trunk")[4][0]['/trunk'].copyfrom_path)
+        self.assertEquals('M',
+            self.client_log("sc/trunk")[4][0]['/trunk'].action)
         push(Branch.open("sc/trunk"), wt.branch, wt.branch.last_revision())
         mutter('log %r' % self.client_log("sc/trunk")[5][0])
         self.assertEquals("/branches/mybranch", 

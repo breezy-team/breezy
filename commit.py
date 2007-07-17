@@ -166,7 +166,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         if path == "":
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                mutter('setting %r: %r on branch' % (prop, value))
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(baton, prop, value, self.pool)
