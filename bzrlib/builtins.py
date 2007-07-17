@@ -2844,14 +2844,20 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except errors.NotConflicted:
                     pass
-            conflicts = _mod_merge.merge_inner(
-                                      tree.branch, other_tree, base_tree,
-                                      this_tree=tree,
-                                      interesting_ids=interesting_ids,
-                                      other_rev_id=parents[1],
-                                      merge_type=merge_type,
-                                      show_base=show_base,
-                                      reprocess=reprocess)
+            # Disable pending merges, to avoid affecting merge behavior
+            pending_merges = tree.pending_merges()
+            tree.set_pending_merges([])
+            try:
+                conflicts = _mod_merge.merge_inner(
+                                          tree.branch, other_tree, base_tree,
+                                          this_tree=tree,
+                                          interesting_ids=interesting_ids,
+                                          other_rev_id=parents[1],
+                                          merge_type=merge_type,
+                                          show_base=show_base,
+                                          reprocess=reprocess)
+            finally:
+                tree.set_pending_merges(pending_merges)
         finally:
             tree.unlock()
         if conflicts > 0:
