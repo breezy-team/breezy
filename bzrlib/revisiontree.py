@@ -21,6 +21,7 @@ from cStringIO import StringIO
 from bzrlib import (
     osutils,
     revision,
+    symbol_versioning,
     )
 from bzrlib.tree import Tree
 
@@ -61,7 +62,11 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_nineteen)
     def get_weave(self, file_id):
+        return self._get_weave(file_id)
+
+    def _get_weave(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())
@@ -69,7 +74,7 @@ class RevisionTree(Tree):
     def get_file_lines(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
-        weave = self.get_weave(file_id)
+        weave = self._get_weave(file_id)
         return weave.get_lines(ie.revision)
 
     def get_file_text(self, file_id):
@@ -84,7 +89,7 @@ class RevisionTree(Tree):
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         file_id = osutils.safe_file_id(file_id)
-        w = self.get_weave(file_id)
+        w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
