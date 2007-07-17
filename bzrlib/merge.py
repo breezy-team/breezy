@@ -22,6 +22,7 @@ import warnings
 from bzrlib import (
     errors,
     osutils,
+    patiencediff,
     registry,
     revision as _mod_revision,
     )
@@ -49,7 +50,7 @@ from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
                               unique_add, ROOT_PARENT)
-from bzrlib.versionedfile import WeaveMerge
+from bzrlib.versionedfile import PlanWeaveMerge
 from bzrlib import ui
 
 # TODO: Report back as changes are merged in
@@ -901,44 +902,19 @@ class WeaveMerger(Merge3Merger):
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
                  interesting_files=None):
-        self.this_revision_tree = self._get_revision_tree(this_tree)
-        self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
                                           change_reporter=change_reporter)
 
-    def _get_revision_tree(self, tree):
-        """Return a revision tree related to this tree.
-        If the tree is a WorkingTree, the basis will be returned.
-        """
-        if getattr(tree, 'get_weave', False) is False:
-            # If we have a WorkingTree, try using the basis
-            return tree.branch.basis_tree()
-        else:
-            return tree
-
-    def _check_file(self, file_id):
-        """Check that the revision tree's version of the file matches."""
-        for tree, rt in ((self.this_tree, self.this_revision_tree), 
-                         (self.other_tree, self.other_revision_tree)):
-            if rt is tree:
-                continue
-            if tree.get_file_sha1(file_id) != rt.get_file_sha1(file_id):
-                raise WorkingTreeNotRevision(self.this_tree)
-
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        weave = self.this_revision_tree.get_weave(file_id)
-        this_revision_id = self.this_revision_tree.inventory[file_id].revision
-        other_revision_id = \
-            self.other_revision_tree.inventory[file_id].revision
-        wm = WeaveMerge(weave, this_revision_id, other_revision_id, 
-                        '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
+        plan = self.this_tree.plan_merge(file_id, self.other_tree)
+        wm = PlanWeaveMerge(plan, '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
         return wm.merge_lines(self.reprocess)
 
     def text_merge(self, file_id, trans_id):
@@ -946,7 +922,6 @@ class WeaveMerger(Merge3Merger):
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        self._check_file(file_id)
         lines, conflicts = self._merged_lines(file_id)
         lines = list(lines)
         # Note we're checking whether the OUTPUT is binary in this case, 
@@ -1048,3 +1023,39 @@ def get_merge_type_registry():
     """
     from bzrlib import option
     return option._merge_type_registry
+
+
+def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
+    def status_a(revision, text):
+        if revision in ancestors_b:
+            return 'killed-b', text
+        else:
+            return 'new-a', text
+
+    def status_b(revision, text):
+        if revision in ancestors_a:
+            return 'killed-a', text
+        else:
+            return 'new-b', text
+
+    plain_a = [t for (a, t) in annotated_a]
+    plain_b = [t for (a, t) in annotated_b]
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_a, plain_b)
+    blocks = matcher.get_matching_blocks()
+    a_cur = 0
+    b_cur = 0
+    for ai, bi, l in blocks:
+        # process all mismatched sections
+        # (last mismatched section is handled because blocks always
+        # includes a 0-length last block)
+        for revision, text in annotated_a[a_cur:ai]:
+            yield status_a(revision, text)
+        for revision, text in annotated_b[b_cur:bi]:
+            yield status_b(revision, text)
+
+        # and now the matched section
+        a_cur = ai + l
+        b_cur = bi + l
+        for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
+            assert text_a == text_b
+            yield "unchanged", text_a

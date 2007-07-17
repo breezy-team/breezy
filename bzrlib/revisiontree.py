@@ -80,7 +80,8 @@ class RevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         file_id = osutils.safe_file_id(file_id)
         w = self.get_weave(file_id)
@@ -147,6 +148,10 @@ class RevisionTree(Tree):
     def _file_size(self, entry, stat_value):
         assert entry.text_size is not None
         return entry.text_size
+
+    def _get_ancestors(self, default_revision):
+        return set(self._repository.get_ancestry(self._revision_id,
+                                                 topo_sorted=False))
 
     def lock_read(self):
         self._repository.lock_read()

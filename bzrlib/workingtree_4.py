@@ -1346,12 +1346,16 @@ class DirStateRevisionTree(Tree):
         return "<%s of %s in %s>" % \
             (self.__class__.__name__, self._revision_id, self._dirstate)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._repository.weave_store.get_weave(file_id,
                            self._repository.get_transaction())
         return w.annotate_iter(self.inventory[file_id].revision)
 
+    def _get_ancestors(self, default_revision):
+        return set(self._repository.get_ancestry(self._revision_id,
+                                                 topo_sorted=False))
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
