@@ -980,7 +980,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/py")
         self.client_commit("dc", "Initial commit")
         self.assertRaises(NoSuchRevision, 
-                lambda: repos._mainline_revision_parent("trunk", 1, NoBranchingScheme()))
+                lambda: repos._mainline_revision_parent("trunk", 2, NoBranchingScheme()))
 
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):

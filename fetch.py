@@ -345,7 +345,7 @@ class InterFromSvnRepository(InterRepository):
         prev_revid = None
         for (branch, revnum) in self.source.follow_branch(path, 
                                                           until_revnum, scheme):
-            revid = self.source.generate_revision_id(revnum, branch, scheme)
+            revid = self.source.generate_revision_id(revnum, branch, str(scheme))
 
             if prev_revid is not None:
                 parents[prev_revid] = revid

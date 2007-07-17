@@ -127,7 +127,7 @@ class FileIdMap(object):
         else:
             get_children = None
 
-        revid = self.repos.generate_revision_id(revnum, branch, scheme)
+        revid = self.repos.generate_revision_id(revnum, branch, str(scheme))
 
         def new_file_id(x):
             if renames.has_key(x):
@@ -144,7 +144,7 @@ class FileIdMap(object):
         if revnum == 0:
             assert branch == ""
             return {"": (generate_svn_file_id(uuid, revnum, branch, ""), 
-              self.repos.generate_revision_id(revnum, branch, scheme))}
+              self.repos.generate_revision_id(revnum, branch, str(scheme)))}
 
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, 

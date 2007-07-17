@@ -287,7 +287,8 @@ class SvnRepository(Repository):
 
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
-                ancestry.append(self.generate_revision_id(rev, branch, scheme))
+                ancestry.append(
+                    self.generate_revision_id(rev, branch, str(scheme)))
 
         ancestry.append(None)
         ancestry.reverse()
@@ -756,7 +757,7 @@ class SvnRepository(Repository):
         for (branch, revnum) in self.follow_history(_latest_revnum, 
                                                     scheme):
             mutter('%r, %r' % (branch, revnum))
-            revid = self.generate_revision_id(revnum, branch, scheme)
+            revid = self.generate_revision_id(revnum, branch, str(scheme))
             graph[revid] = self.revision_parents(revid)
         return graph
 
