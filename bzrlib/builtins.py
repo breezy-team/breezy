@@ -2845,8 +2845,7 @@ class cmd_remerge(Command):
                 except errors.NotConflicted:
                     pass
             # Disable pending merges, to avoid affecting merge behavior
-            pending_merges = tree.pending_merges()
-            tree.set_pending_merges([])
+            tree.set_parent_ids(parents[:1])
             try:
                 conflicts = _mod_merge.merge_inner(
                                           tree.branch, other_tree, base_tree,
@@ -2857,7 +2856,7 @@ class cmd_remerge(Command):
                                           show_base=show_base,
                                           reprocess=reprocess)
             finally:
-                tree.set_pending_merges(pending_merges)
+                tree.set_parent_ids(parents)
         finally:
             tree.unlock()
         if conflicts > 0:
