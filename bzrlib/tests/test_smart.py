@@ -20,7 +20,7 @@ from StringIO import StringIO
 import tempfile
 import tarfile
 
-from bzrlib import bzrdir, errors, pack, smart, tests
+from bzrlib import bzrdir, container, errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
@@ -784,7 +784,7 @@ class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
         response = request.execute(backing.local_abspath(''), rev_id2_utf8)
         self.assertEqual(('ok',), response.args)
         from cStringIO import StringIO
-        unpacker = pack.ContainerReader(StringIO(response.body))
+        unpacker = container.ContainerReader(StringIO(response.body))
         names = []
         for [name], read_bytes in unpacker.iter_records():
             names.append(name)
