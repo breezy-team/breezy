@@ -249,8 +249,8 @@ class RemoteRepository(object):
         self._lock_count = 0
         self._leave_lock = False
 
-    def end_write_group(self):
-        """End a write group on the decorated repository.
+    def abort_write_group(self):
+        """complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatability thunk
@@ -258,7 +258,18 @@ class RemoteRepository(object):
         facility.
         """
         self._ensure_real()
-        return self._real_repository.end_write_group()
+        return self._real_repository.abort_write_group()
+
+    def commit_write_group(self):
+        """complete a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatability thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.commit_write_group()
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.

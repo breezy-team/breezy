@@ -38,7 +38,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo = self.make_repository('.')
         repo.lock_write()
         self.assertEqual(None, repo.start_write_group())
-        repo.end_write_group()
+        repo.commit_write_group()
         repo.unlock()
 
     def test_start_write_group_twice_errors(self):
@@ -51,14 +51,14 @@ class TestWriteGroup(TestCaseWithRepository):
             # semantic information.
             self.assertRaises(errors.BzrError, repo.start_write_group)
         finally:
-            repo.end_write_group()
+            repo.commit_write_group()
             repo.unlock()
 
-    def test_end_write_group_gets_None(self):
+    def test_commit_write_group_gets_None(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        self.assertEqual(None, repo.end_write_group())
+        self.assertEqual(None, repo.commit_write_group())
         repo.unlock()
 
     def test_unlock_after_start_errors(self):
@@ -70,7 +70,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # semantic information.
         self.assertRaises(errors.BzrError, repo.unlock)
         self.assertTrue(repo.is_locked())
-        repo.end_write_group()
+        repo.commit_write_group()
         repo.unlock()
 
     def test_is_in_write_group(self):
@@ -79,6 +79,18 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         self.assertTrue(repo.is_in_write_group())
-        repo.end_write_group()
+        repo.commit_write_group()
         self.assertFalse(repo.is_in_write_group())
+        # abort also removes the in_write_group status.
+        repo.start_write_group()
+        self.assertTrue(repo.is_in_write_group())
+        repo.abort_write_group()
+        self.assertFalse(repo.is_in_write_group())
+        repo.unlock()
+
+    def test_abort_write_group_gets_None(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertEqual(None, repo.abort_write_group())
         repo.unlock()

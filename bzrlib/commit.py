@@ -300,25 +300,30 @@ class Commit(object):
             self._emit_progress_set_stage("Collecting changes", show_entries=True)
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            self._update_builder_with_changes()
-            self._check_pointless()
+            try:
+                self._update_builder_with_changes()
+                self._check_pointless()
 
-            # TODO: Now the new inventory is known, check for conflicts.
-            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
-            # weave lines, because nothing should be recorded until it is known
-            # that commit will succeed.
-            self._emit_progress_set_stage("Saving data locally")
-            self.builder.finish_inventory()
+                # TODO: Now the new inventory is known, check for conflicts.
+                # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+                # weave lines, because nothing should be recorded until it is known
+                # that commit will succeed.
+                self._emit_progress_set_stage("Saving data locally")
+                self.builder.finish_inventory()
 
-            # Prompt the user for a commit message if none provided
-            message = message_callback(self)
-            assert isinstance(message, unicode), type(message)
-            self.message = message
-            self._escape_commit_message()
+                # Prompt the user for a commit message if none provided
+                message = message_callback(self)
+                assert isinstance(message, unicode), type(message)
+                self.message = message
+                self._escape_commit_message()
 
-            # Add revision data to the local branch
-            self.rev_id = self.builder.commit(self.message)
-            
+                # Add revision data to the local branch
+                self.rev_id = self.builder.commit(self.message)
+            except:
+                # perhaps this should be done by the CommitBuilder ?
+                self.work_tree.branch.repository.abort_write_group()
+                raise
+
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
