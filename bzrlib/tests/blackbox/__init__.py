@@ -80,6 +80,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
                      'bzrlib.tests.blackbox.test_outside_wt',
+                     'bzrlib.tests.blackbox.test_pack',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',

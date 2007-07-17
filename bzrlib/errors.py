@@ -198,15 +198,6 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
-class InProcessTransport(BzrError):
-
-    _fmt = "The transport '%(transport)s' is only accessible within this " \
-        "process."
-
-    def __init__(self, transport):
-        self.transport = transport
-
-
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -341,6 +332,62 @@ class NotWriteLocked(BzrError):
 class BzrOptionError(BzrCommandError):
 
     _fmt = "Error in command line options"
+
+
+class BadIndexFormatSignature(BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
 
 
 class BadOptionValue(BzrError):
@@ -1563,7 +1610,6 @@ class MissingText(BzrError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
-
 
 class DuplicateFileId(BzrError):
 
