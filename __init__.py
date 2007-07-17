@@ -137,7 +137,9 @@ class cmd_svn_import(Command):
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
             standalone=False, scheme=None, all=False):
-        from bzrlib.repository import Repository
+        from bzrlib.errors import NoRepositoryPresent
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.trace import info
         from convert import convert_repository
         import os
         from scheme import TrunkBranchingScheme
@@ -158,7 +160,13 @@ class cmd_svn_import(Command):
         else:
             tmp_repos = None
 
-        from_repos = Repository.open(from_location)
+        from_dir = BzrDir.open(from_location)
+        try:
+            from_repos = from_dir.open_repository()
+        except NoRepositoryPresent, e:
+            from bzrlib.errors import BzrCommandError
+            raise BzrCommandError("No Repository found at %s. "
+                "For individual branches, use 'bzr branch'." % from_location)
 
         convert_repository(from_repos, to_location, scheme, not standalone, 
                 trees, all)
