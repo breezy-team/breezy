@@ -28,6 +28,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     osutils,
+    revision as _mod_revision,
     )
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
@@ -121,7 +122,7 @@ class TextRevisionStore(RevisionStore):
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
-        return (revision_id is None
+        return (_mod_revision.is_null(revision_id)
                 or self.text_store.has_id(revision_id))
 
     def _has_signature(self, revision_id, transaction):

@@ -17,12 +17,15 @@
 
 """Tests for the info command of bzr."""
 
+import os
 import sys
 
 import bzrlib
 from bzrlib import (
     bzrdir,
+    osutils,
     repository,
+    urlutils,
     )
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
@@ -48,11 +51,20 @@ class TestInfo(ExternalBase):
         self.build_tree(['standalone/a'])
         tree1.add('a')
         branch1 = tree1.branch
+
+        out, err = self.run_bzr('info standalone')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: standalone
+""", out)
+        self.assertEqual('', err)
+
         out, err = self.run_bzr('info standalone -v')
         self.assertEqualDiff(
 """Standalone tree (format: weave)
 Location:
-  branch root: %s
+  branch root: standalone
 
 Format:
        control: All-in-one format 6
@@ -77,7 +89,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % branch1.bzrdir.root_transport.base, out)
+""", out)
         self.assertEqual('', err)
         tree1.commit('commit one')
         rev = branch1.repository.get_revision(branch1.revision_history()[0])
@@ -86,15 +98,28 @@ Repository:
         # Branch standalone with push location
         branch2 = branch1.bzrdir.sprout('branch').open_branch()
         branch2.set_push_location(branch1.bzrdir.root_transport.base)
+
+        out, err = self.run_bzr('info branch')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: branch
+
+Related branches:
+    push branch: standalone
+  parent branch: standalone
+""", out)
+        self.assertEqual('', err)
+
         out, err = self.run_bzr('info branch --verbose')
         self.assertEqualDiff(
 """Standalone tree (format: weave)
 Location:
-  branch root: %s
+  branch root: branch
 
 Related branches:
-      parent branch: %s
-  publish to branch: %s
+    push branch: standalone
+  parent branch: standalone
 
 Format:
        control: All-in-one format 6
@@ -122,10 +147,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (branch2.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first,
+""" % (datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        branch2.repository._revision_store.total_size(
@@ -145,11 +167,11 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: knit)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: bound
+  checkout of branch: standalone
 
 Related branches:
-  parent branch: %s
+  parent branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -177,10 +199,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (branch3.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       bound_tree._format.get_format_description(),      
+""" % (bound_tree._format.get_format_description(),
        branch3._format.get_format_description(),
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
@@ -200,8 +219,8 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: knit)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: checkout
+  checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -229,9 +248,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (branch4.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch4.repository._format.get_format_description(),
+""" % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -247,8 +264,8 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
-  light checkout root: %s
-   checkout of branch: %s
+  light checkout root: lightcheckout
+   checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -276,10 +293,7 @@ Branch history:
 Repository:
          1 revision
          0 KiB
-""" % (tree5.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first,
-       ), out)
+""" % (datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -294,11 +308,11 @@ Repository:
         self.assertEqualDiff(
 """Standalone tree (format: weave)
 Location:
-  branch root: %s
+  branch root: branch
 
 Related branches:
-      parent branch: %s
-  publish to branch: %s
+    push branch: standalone
+  parent branch: standalone
 
 Format:
        control: All-in-one format 6
@@ -326,10 +340,7 @@ Branch history:
 Repository:
          1 revision
          0 KiB
-""" % (branch2.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first,
+""" % (datestring_first, datestring_first,
        ), out)
         self.assertEqual('', err)
 
@@ -338,11 +349,11 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: knit)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: bound
+  checkout of branch: standalone
 
 Related branches:
-  parent branch: %s
+  parent branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -372,10 +383,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (branch3.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch3.repository._format.get_format_description(),
+""" % (branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -389,8 +397,8 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: knit)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: checkout
+  checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -420,9 +428,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (branch4.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       branch4.repository._format.get_format_description(),
+""" % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -436,8 +442,8 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
-  light checkout root: %s
-   checkout of branch: %s
+  light checkout root: lightcheckout
+   checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
@@ -467,10 +473,7 @@ Branch history:
 Repository:
          2 revisions
          0 KiB
-""" % (tree5.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_last,
-       ), out)
+""" % (datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -482,7 +485,7 @@ Repository:
         self.assertEqualDiff(
 """Standalone branch (format: dirstate or knit)
 Location:
-  branch root: %s
+  branch root: branch
 
 Format:
        control: Meta directory format 1
@@ -496,8 +499,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (branch.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -522,8 +524,7 @@ Format:
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.repository_format.get_format_description(),
+""" % ('repo', format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -535,8 +536,8 @@ Repository:
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
 Location:
-  shared repository: %s
-  repository branch: branch
+  shared repository: repo
+  repository branch: repo/branch
 
 Format:
        control: Meta directory format 1
@@ -550,8 +551,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -580,9 +580,9 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
-  light checkout root: %s
-   checkout of branch: %s
-    shared repository: %s
+  light checkout root: tree/lightcheckout
+   checkout of branch: repo/branch
+    shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -610,10 +610,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (tree2.bzrdir.root_transport.base,
-       tree2.branch.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -627,8 +624,8 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: dirstate)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: tree/checkout
+  checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
@@ -655,9 +652,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (tree3.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -670,8 +665,8 @@ Repository:
         self.assertEqualDiff(
 """Checkout (format: dirstate)
 Location:
-       checkout root: %s
-  checkout of branch: %s
+       checkout root: tree/checkout
+  checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
@@ -699,8 +694,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -717,9 +711,9 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
-  light checkout root: %s
-   checkout of branch: %s
-    shared repository: %s
+  light checkout root: tree/lightcheckout
+   checkout of branch: repo/branch
+    shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -749,10 +743,7 @@ Branch history:
 Repository:
          2 revisions
          %d KiB
-""" % (tree2.bzrdir.root_transport.base,
-       tree2.branch.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -766,8 +757,8 @@ Repository:
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
 Location:
-  shared repository: %s
-  repository branch: branch
+  shared repository: repo
+  repository branch: repo/branch
 
 Format:
        control: Meta directory format 1
@@ -784,8 +775,7 @@ Branch history:
 Repository:
          2 revisions
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -799,7 +789,7 @@ Repository:
         self.assertEqualDiff(
 """Shared repository (format: dirstate or dirstate-tags or knit)
 Location:
-  shared repository: %s
+  shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -808,8 +798,7 @@ Format:
 Repository:
          2 revisions
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.repository_format.get_format_description(),
+""" % (format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
@@ -827,7 +816,7 @@ Repository:
         self.assertEqualDiff(
 """Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
-  shared repository: %s
+  shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -838,8 +827,7 @@ Create working tree for new branches inside the repository.
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.repository_format.get_format_description(),
+""" % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -854,8 +842,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-  shared repository: %s
-  repository branch: branch1
+  shared repository: repo
+  repository branch: repo/branch1
 
 Format:
        control: Meta directory format 1
@@ -880,8 +868,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -897,8 +884,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-  shared repository: %s
-  repository branch: branch1
+  shared repository: repo
+  repository branch: repo/branch1
 
 Format:
        control: Meta directory format 1
@@ -926,8 +913,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -941,11 +927,11 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-  shared repository: %s
-  repository branch: branch2
+  shared repository: repo
+  repository branch: repo/branch2
 
 Related branches:
-  parent branch: %s
+  parent branch: repo/branch1
 
 Format:
        control: Meta directory format 1
@@ -970,9 +956,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -987,11 +971,11 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-  shared repository: %s
-  repository branch: branch2
+  shared repository: repo
+  repository branch: repo/branch2
 
 Related branches:
-  parent branch: %s
+  parent branch: repo/branch1
 
 Format:
        control: Meta directory format 1
@@ -1019,9 +1003,7 @@ Branch history:
 Repository:
          1 revision
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -1035,7 +1017,7 @@ Repository:
         self.assertEqualDiff(
 """Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
-  shared repository: %s
+  shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -1046,8 +1028,7 @@ Create working tree for new branches inside the repository.
 Repository:
          1 revision
          %d KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.repository_format.get_format_description(),
+""" % (format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
@@ -1066,7 +1047,7 @@ Repository:
         self.assertEqualDiff(
 """Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
-  shared repository: %s
+  shared repository: repo
 
 Format:
        control: Meta directory format 1
@@ -1077,8 +1058,7 @@ Create working tree for new branches inside the repository.
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.repository_format.get_format_description(),
+""" % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -1090,8 +1070,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-  shared repository: %s
-  repository branch: .
+  shared repository: repo
+  repository branch: repo
 
 Format:
        control: Meta directory format 1
@@ -1116,8 +1096,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base,
-       format.get_branch_format().get_format_description(),
+""" % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1149,6 +1128,13 @@ Repository:
         :param repo_locked: If true, expect the repository to be locked.
         :param verbose: If true, expect verbose output
         """
+        def friendly_location(url):
+            path = urlutils.unescape_for_display(url, 'ascii')
+            try:
+                return osutils.relpath(os.getcwd(), path)
+            except errors.PathNotChild:
+                return path
+
         if tree_locked and sys.platform == 'win32':
             # We expect this to fail because of locking errors. (A write-locked
             # file cannot be read-locked in the same process).
@@ -1186,22 +1172,22 @@ Repository:
         extra_space = ''
         if light_checkout:
             tree_data = ("  light checkout root: %s\n" %
-                lco_tree.bzrdir.root_transport.base)
+                friendly_location(lco_tree.bzrdir.root_transport.base))
             extra_space = ' '
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += ("%s       checkout root: %s\n" % (extra_space,
-                lco_tree.branch.bzrdir.root_transport.base))
+                friendly_location(lco_tree.branch.bzrdir.root_transport.base)))
         if shared_repo is not None:
             branch_data = (
                 "   checkout of branch: %s\n"
                 "    shared repository: %s\n" %
-                (repo_branch.bzrdir.root_transport.base,
-                 shared_repo.bzrdir.root_transport.base))
+                (friendly_location(repo_branch.bzrdir.root_transport.base),
+                 friendly_location(shared_repo.bzrdir.root_transport.base)))
         elif repo_branch is not None:
             branch_data = (
                 "%s  checkout of branch: %s\n" %
                 (extra_space,
-                 repo_branch.bzrdir.root_transport.base))
+                 friendly_location(repo_branch.bzrdir.root_transport.base)))
         else:
             branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
@@ -1404,8 +1390,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (tree.bzrdir.root_transport.base,
-       tree.branch.repository._format.get_format_description(),
+""" % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         # L L L
@@ -1439,8 +1424,7 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (tree.bzrdir.root_transport.base,
-       tree.branch.repository._format.get_format_description(),
+""" % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         tree.unlock()

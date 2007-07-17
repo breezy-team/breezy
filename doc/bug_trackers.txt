@@ -1,0 +1,78 @@
+============
+Bug Trackers
+============
+
+Bazaar has a facility that allows you to associate a commit with a bug
+in the project's bug tracker. Other tools can then use this information
+to link between the commit and the bug, or to automatically mark the bug
+closed in the branches that contain the commit.
+
+Associating Commits and Bugs
+============================
+
+When you make a commit you can assiociate it with a bug by using the
+``--fixes`` option of ``commit``. For example::
+
+    $ bzr commit --fixes 12345 -m 'Properly close the connection on errors'
+
+This will set a revision property on the revision that is committed
+which contains the URI at which more information on the bug can be found.
+Bazaar itself does no more than this, but once the information is recorded
+other tools can make use of it.
+
+Configuration of the Bug Tracker
+================================
+
+As each project has it's own bug tracker, and there are many different
+bug tracking systems you must first do some configuration before you
+can use this system.
+
+Bazaar currently implements support for projects that use Bugzilla or
+Trac to manage their bugs. If your project uses a different system it
+is easy to add support for the system, perhaps through a plugin.
+
+If you do use Bugzilla or Trac then you only need to set a configuration
+variable which contains the base URL of the bug tracker. These options
+can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
+configuration section in ``locations.conf``.
+
+You can set up these values for each of the projects you work on in
+``bazaar.conf``, as you specify a short name for each so that you
+can specify which you mean at commit time.
+
+bugzilla_<tracker_abbreviation>_url
+-----------------------------------
+If present, the location of the Bugzilla bug tracker referred to by
+<tracker_abbreviation>. This option can then be used together with ``bzr commit
+--fixes`` to mark bugs in that tracker as being fixed by that commit. For
+example::
+
+    bugzilla_squid_url = http://www.squid-cache.org/bugs
+
+would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
+fixed.
+
+trac_<tracker_abbrevation>_url
+------------------------------
+If present, the location of the Trac instance referred to by
+<tracker_abbreviation>. This option can then be used together with ``bzr commit
+--fixes`` to mark bugs in that tracker as being fixed by that commit. For
+example::
+
+    trac_twisted_url = http://www.twistedmatrix.com/trac
+
+would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
+fixed.
+
+Limitations of the system
+=========================
+
+This method of associating revisions and bugs does have some limitations. The
+first is that the association can only be made at commit time. This means that
+if you forget to make the association when you commit, or the bug is reported
+after you fix it you cannot go back and add the link later.
+
+Related to this is the fact that the association is immutable. If a bug is
+marked as fixed by one commit, but that revision does not fully solve the
+bug, or there is a later regression you cannot go back and remove the link.
+

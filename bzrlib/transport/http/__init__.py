@@ -439,11 +439,6 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
         """Delete the item at relpath"""
         raise errors.TransportNotPossible('http does not support delete()')
 
-    def external_url(self):
-        """See bzrlib.transport.Transport.external_url."""
-        # HTTP URL's are externally usable.
-        return self.base
-
     def is_readonly(self):
         """See Transport.is_readonly."""
         return True

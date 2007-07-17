@@ -15,6 +15,7 @@ takes contents of a workingtree, logically puts it into a branch and the
 branch's repository
 point is that it should only store the new things in the tree which are 
 not already in the tree
+
 * possibly updates the workingtree after the commit to tell it about the new
   basis revision
 

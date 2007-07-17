@@ -111,6 +111,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_revision_tree',
         'bzrlib.tests.workingtree_implementations.test_set_root_id',
         'bzrlib.tests.workingtree_implementations.test_smart_add',
+        'bzrlib.tests.workingtree_implementations.test_uncommit',
         'bzrlib.tests.workingtree_implementations.test_unversion',
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
