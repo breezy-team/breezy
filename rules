@@ -10,15 +10,15 @@ DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
 
 clean::
 	-rm -rf build test*.tmp doc/bzr_man.txt
-	find doc -name "*.htm" -print0 | xargs -0 rm -f
-	find . -name "*.pyc" -print0 | xargs -0 rm -f
+	find doc -name "*.htm" -print0 | xargs -r0 rm -f
+	find . -name "*.pyc" -print0 | xargs -r0 rm -f
 	rm -f bzr.1 man1/bzr.1
 	rm -f debian/stamp-doc
 	rm -f .bzr.log
 
 ifneq (,$(findstring test,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::
-	./bzr selftest --no-plugins --one
+	./bzr selftest --no-plugins
 endif
 
 build/bzr:: debian/stamp-doc
@@ -26,8 +26,3 @@ build/bzr:: debian/stamp-doc
 debian/stamp-doc:
 	make docs
 	touch $@
-
-install/bzr::
-	# we can't delete the tests/ subdirectory due to an upstream
-	# bug; #368760.
-	#rm -rf $(DEB_DESTDIR)/usr/lib/python$(DEB_PYTHON_COMPILE_VERSION)/site-packages/bzrlib/tests

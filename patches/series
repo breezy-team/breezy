@@ -1,0 +1,2 @@
+dont_build_developers_doc.diff -p0
+no_python2.4_shebangs.diff -p0

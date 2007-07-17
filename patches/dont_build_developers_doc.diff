@@ -1,0 +1,11 @@
+--- Makefile.orig
++++ Makefile
+@@ -113,7 +113,7 @@
+ man1/bzr.1: $(MAN_DEPENDENCIES)
+ 	python generate_docs.py -o $@ man
+ 
+-ALL_DOCS = $(htm_files) $(MAN_PAGES) doc/developers/HACKING.htm $(dev_htm_files) doc/developers/performance.png
++ALL_DOCS = $(htm_files) $(MAN_PAGES)
+ docs: $(ALL_DOCS)
+ 
+ copy-docs: docs

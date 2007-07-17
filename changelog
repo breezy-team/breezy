@@ -1,10 +1,30 @@
-bzr (0.18~rc1-1) unstable; urgency=low
+bzr (0.18-1) unstable; urgency=low
 
-  * new upstream version
-  * add ubuntu changelog entries, since we have merged a lot for the
-    0.16 release
+  * New upstream version.
 
- -- Reinhard Tartler <siretart@tauware.de>  Tue, 10 Jul 2007 21:13:05 +0200
+  * Drop version constraints in Build-Depends and Depends, all are satisfied
+    in etch.
+
+  * Add a patch to skip the generation of doc/developers/*.htm, since we don't
+    ship those in the package.
+
+  * debian/rules:
+    + pass -r to xargs.
+    + drop commented out install/bzr:: hunk.
+    + don't abort the test suite on the first error.
+
+  * Bits to help Ubuntu:
+
+    + prefix dependency and build-dependency on python-celementtree with a
+      "python (>> 2.5)" alternative, since Python 2.5 includes celementtree.
+
+    + apply patch from Ubuntu to drop python2.4-specific shebang lines, and
+      hence spurious dependency on python2.4 (submitted upstream).
+
+    + drop build-dependency on python-medusa, only needed to exercise the FTP
+      part of the test suite.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Tue, 17 Jul 2007 16:48:37 +0200
 
 bzr (0.17-1) unstable; urgency=low
 
