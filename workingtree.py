@@ -784,14 +784,14 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
         if isinstance(transport, LocalTransport) and \
             transport.has(svn.wc.get_adm_dir()):
-            subr_version = svn.core.svn_subr_version()
-            if subr_version.major == 1 and subr_version.minor < 4:
-                raise NoCheckoutSupport()
             return format
 
         raise NotBranchError(path=transport.base)
 
     def _open(self, transport):
+        subr_version = svn.core.svn_subr_version()
+        if subr_version.major == 1 and subr_version.minor < 4:
+            raise NoCheckoutSupport()
         return SvnCheckout(transport, self)
 
     def get_format_string(self):

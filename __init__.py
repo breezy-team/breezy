@@ -31,6 +31,8 @@ import format
 import workingtree
 """)
 
+# versions ending in 'exp' mean experimental mappings
+# versions ending in 'dev' mean development version
 __version__ = '0.4.0exp'
 COMPATIBLE_BZR_VERSIONS = [(0, 19)]
 
@@ -79,9 +81,6 @@ def check_versions():
     check_subversion_version()
     check_bzrsvn_version()
 
-check_versions()
-
-register_transport_proto('svn://', help="Access using the Subversion smart server.")
 register_transport_proto('svn+ssh://', 
     help="Access using the Subversion smart server tunneled over SSH.")
 register_transport_proto('svn+file://', 
@@ -90,6 +89,8 @@ register_transport_proto('svn+http://',
     help="Access of Subversion smart servers over HTTP.")
 register_transport_proto('svn+https://',
     help="Access of Subversion smart servers over secure HTTP.")
+register_transport_proto('svn://', 
+    help="Access using the Subversion smart server.")
 register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport', 
                         'SvnRaTransport')
 register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
@@ -98,9 +99,16 @@ register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport',
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 
+versions_checked = False
+def lazy_check_versions():
+    global versions_checked
+    if versions_checked:
+        return
+    versions_checked = True
+    check_versions()
+
 InterRepository.register_optimiser(fetch.InterFromSvnRepository)
 InterRepository.register_optimiser(commit.InterToSvnRepository)
-
 
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""

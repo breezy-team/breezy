@@ -150,6 +150,9 @@ class SvnRaTransport(Transport):
                 raise NotBranchError(path=url)
             raise
 
+        from bzrlib.plugins.svn import lazy_check_versions
+        lazy_check_versions()
+
     class Reporter:
         def __init__(self, (reporter, report_baton)):
             self._reporter = reporter

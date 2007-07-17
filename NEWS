@@ -24,6 +24,9 @@ bzr-svn 0.4	UNRELEASED
 
    * Warn when used with experimental version of mappings. (#117198)
 
+   * Only warn about out of date mappings, bzr-svn version or 
+     experimental mappings when the plugin is being used. (#93319)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.

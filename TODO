@@ -4,6 +4,7 @@ mandatory before 0.4.0:
 - nestedtree support
 
 todo:
+- cache for find_branches()
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - more intelligent guessing of branching scheme. Look at directory structure in current tree?
 - be able to create new branches
