@@ -55,6 +55,13 @@ IN DEVELOPMENT
       are done within directories in $TMPDIR.  (Martin Pool)
 
 
+bzr 0.18  2007-07-17
+
+  BUGFIXES:
+
+    * Fix 'bzr add' crash under Win32 (Kuno Meyer)
+
+
 bzr 0.18rc1  2007-07-10
 
   BUGFIXES:
