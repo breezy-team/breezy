@@ -227,13 +227,17 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
         show_diff_trees(working_tree.basis_tree(), working_tree,
                     stream, specific_files)
 
-        stream.seek(0,0)
-        for l in stream.readlines():
-            if ( l.startswith("===") or l.startswith("---") or
-                 l.startswith("+++") ):
-                    # the header are utf8 encoded
-                    status_tmp.write(l.decode("utf8","replace"))
-            else:
-                    status_tmp.write(l.decode(output_encoding, "replace"))
+        # FIXME: the function show_diff_trees encode the pathname
+        #        as UTF8. The output of the make_commit_message_template()
+        #        function is decoded according to the user encoding.
+        #        So assuming output_encoding = user encoding
+        #         - if the output_encoding is different from
+        #        UTF8 the diff body is preserved, but the filename
+        #        may be not correct
+        #        - if we set output_encoding=UTF8 and the
+        #        output_encoding is not UTF8 we have the
+        #        filepath correct, but the diff body may be not correct
+
+        status_tmp.write(stream.getvalue().decode(output_encoding))
 
     return status_tmp.getvalue()
