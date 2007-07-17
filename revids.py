@@ -90,8 +90,8 @@ class RevidMap(object):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
-        create unique index if not exists revid on revmap (revid);
-        create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
+        create unique index if not exists revid_path_scheme on revmap (revid, path, scheme);
+        create unique index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
         create table if not exists revno_cache (revid text unique, dist_to_origin integer);
         create index if not exists revid on revno_cache (revid);
         """)
@@ -105,7 +105,15 @@ class RevidMap(object):
         return (str(ret[0]), ret[1], ret[2], ret[3])
 
     def lookup_branch_revnum(self, revnum, path, scheme):
-        # FIXME: SCHEME MISSING
+        """Lookup a revision by revision number, branch path and branching scheme.
+
+        :param revnum: Subversion revision number.
+        :param path: Subversion branch path.
+        :param scheme: Branching scheme name
+        """
+        assert isinstance(revnum, int)
+        assert isinstance(path, basestring)
+        assert isinstance(scheme, basestring)
         revid = self.cachedb.execute(
                 "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
         if revid is not None:
@@ -116,9 +124,13 @@ class RevidMap(object):
                      dist_to_origin=None):
         assert revid is not None and revid != ""
         assert isinstance(scheme, basestring)
-        self.cachedb.execute(
-            "replace into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
-            (revid, branch, min_revnum, max_revnum, scheme))
+        cursor = self.cachedb.execute(
+            "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
+            (min_revnum, max_revnum, revid, branch, scheme))
+        if cursor.rowcount == 0:
+            self.cachedb.execute(
+                "insert into revmap (revid,path,min_revnum,max_revnum,scheme) VALUES (?,?,?,?,?)",
+                (revid, branch, min_revnum, max_revnum, scheme))
         if dist_to_origin is not None:
             self.cachedb.execute(
                 "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
