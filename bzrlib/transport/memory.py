@@ -29,7 +29,12 @@ import warnings
 
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
-from bzrlib.transport import (Transport, register_transport, Server)
+from bzrlib.transport import (
+    LateReadError,
+    register_transport,
+    Server,
+    Transport,
+    )
 import bzrlib.urlutils as urlutils
 
 
@@ -121,7 +126,10 @@ class MemoryTransport(Transport):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
         if not _abspath in self._files:
-            raise NoSuchFile(relpath)
+            if _abspath in self._dirs:
+                return LateReadError(relpath)
+            else:
+                raise NoSuchFile(relpath)
         return StringIO(self._files[_abspath][0])
 
     def put_file(self, relpath, f, mode=None):

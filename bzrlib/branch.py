@@ -172,7 +172,7 @@ class Branch(object):
         return self.get_config().get_nickname()
 
     def _set_nick(self, nick):
-        self.get_config().set_user_option('nickname', nick)
+        self.get_config().set_user_option('nickname', nick, warn_masked=True)
 
     nick = property(_get_nick, _set_nick)
 
@@ -505,7 +505,7 @@ class Branch(object):
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
-        if revision_id is None:
+        if _mod_revision.is_null(revision_id):
             return 0
         revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
@@ -584,7 +584,7 @@ class Branch(object):
             url = ''
         elif make_relative:
             url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url)
+        config.set_user_option(name, url, warn_masked=True)
 
     def _get_config_location(self, name, config=None):
         if config is None:
@@ -610,7 +610,8 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        self.get_config().set_user_option('submit_branch', location)
+        self.get_config().set_user_option('submit_branch', location,
+            warn_masked=True)
 
     def get_public_branch(self):
         """Return the public location of the branch.
@@ -700,8 +701,10 @@ class Branch(object):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
         new_history = self.revision_history()
-        if revision_id is not None:
+        if revision_id is not None and new_history != []:
             revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -1403,7 +1406,8 @@ class BzrBranch(Branch):
                           other_branch=None):
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
-        if last_rev is not None and last_rev not in stop_graph:
+        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
+            and last_rev not in stop_graph):
             # our previous tip is not merged into stop_revision
             raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
@@ -1448,7 +1452,7 @@ class BzrBranch(Branch):
                 stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = self.last_revision()
+            last_rev = _mod_revision.ensure_null(self.last_revision())
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
@@ -1778,12 +1782,12 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = self.last_revision()
-        if last_rev is not None:
+        last_rev = _mod_revision.ensure_null(self.last_revision())
+        if last_rev != _mod_revision.NULL_REVISION:
             other.lock_read()
             try:
                 other_last_rev = other.last_revision()
-                if other_last_rev is not None:
+                if not _mod_revision.is_null(other_last_rev):
                     # neither branch is new, we have to do some work to
                     # ascertain diversion.
                     remote_graph = other.repository.get_revision_graph(
@@ -1812,8 +1816,9 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision(),
-                                                       topo_sorted=False):
+            if old_tip in self.repository.get_ancestry(
+                _mod_revision.ensure_null(self.last_revision()),
+                topo_sorted=False):
                 return None
             return old_tip
         return None
@@ -1960,8 +1965,8 @@ class BzrBranch6(BzrBranch5):
         self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
-        last_revision = self.last_revision()
-        if last_revision is None:
+        last_revision = _mod_revision.ensure_null(self.last_revision())
+        if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):
             raise errors.AppendRevisionsOnlyViolation(self.base)
@@ -2031,12 +2036,12 @@ class BzrBranch6(BzrBranch5):
             if config.get_user_option('bound') != 'True':
                 return False
             else:
-                config.set_user_option('bound', 'False')
+                config.set_user_option('bound', 'False', warn_masked=True)
                 return True
         else:
             self._set_config_location('bound_location', location,
                                       config=config)
-            config.set_user_option('bound', 'True')
+            config.set_user_option('bound', 'True', warn_masked=True)
         return True
 
     def _get_bound_location(self, bound):
@@ -2062,7 +2067,8 @@ class BzrBranch6(BzrBranch5):
             value = 'True'
         else:
             value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value)
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')

@@ -45,20 +45,20 @@ class TestMove(TestCaseWithTransport):
         files = self.build_tree(['a', 'c', 'subdir/'])
         tree.add(['a', 'c', 'subdir'])
 
-        self.run_bzr('mv', 'a', 'b')
+        self.run_bzr('mv a b')
         self.assertMoved('a','b')
 
-        self.run_bzr('mv', 'b', 'subdir')
+        self.run_bzr('mv b subdir')
         self.assertMoved('b','subdir/b')
 
-        self.run_bzr('mv', 'subdir/b', 'a')
+        self.run_bzr('mv subdir/b a')
         self.assertMoved('subdir/b','a')
 
-        self.run_bzr('mv', 'a', 'c', 'subdir')
+        self.run_bzr('mv a c subdir')
         self.assertMoved('a','subdir/a')
         self.assertMoved('c','subdir/c')
 
-        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+        self.run_bzr('mv subdir/a subdir/newa')
         self.assertMoved('subdir/a','subdir/newa')
 
     def test_mv_unversioned(self):
@@ -66,13 +66,13 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename unversioned.txt => elsewhere."
              " .*unversioned.txt is not versioned$"],
-            'mv', 'unversioned.txt', 'elsewhere')
+            'mv unversioned.txt elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename doesnotexist => somewhereelse."
              " .*doesnotexist is not versioned$"],
-            'mv', 'doesnotexist', 'somewhereelse')
+            'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
         self.run_bzr_error(['^bzr: ERROR: missing file argument$'], 'mv')
@@ -84,30 +84,30 @@ class TestMove(TestCaseWithTransport):
 
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned$"],
-            'mv', 'test.txt', 'sub1')
+            'mv test.txt sub1')
 
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
              "sub1 is not versioned$"],
-            'mv', 'test.txt', 'sub1/hello.txt')
+            'mv test.txt sub1/hello.txt')
         
     def test_mv_dirs(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'sub1/'])
         tree.add(['hello.txt', 'sub1'])
 
-        self.run_bzr('mv', 'sub1', 'sub2')
+        self.run_bzr('mv sub1 sub2')
         self.assertMoved('sub1','sub2')
 
-        self.run_bzr('mv', 'hello.txt', 'sub2')
+        self.run_bzr('mv hello.txt sub2')
         self.assertMoved('hello.txt','sub2/hello.txt')
 
         self.build_tree(['sub1/'])
         tree.add(['sub1'])
-        self.run_bzr('mv', 'sub2/hello.txt', 'sub1')
+        self.run_bzr('mv sub2/hello.txt sub1')
         self.assertMoved('sub2/hello.txt','sub1/hello.txt')
 
-        self.run_bzr('mv', 'sub2', 'sub1')
+        self.run_bzr('mv sub2 sub1')
         self.assertMoved('sub2','sub1/sub2')
 
     def test_mv_relative(self):
@@ -116,11 +116,11 @@ class TestMove(TestCaseWithTransport):
         tree.add(['sub1', 'sub1/sub2', 'sub1/hello.txt'])
 
         os.chdir('sub1/sub2')
-        self.run_bzr('mv', '../hello.txt', '.')
+        self.run_bzr('mv ../hello.txt .')
         self.failUnlessExists('./hello.txt')
 
         os.chdir('..')
-        self.run_bzr('mv', 'sub2/hello.txt', '.')
+        self.run_bzr('mv sub2/hello.txt .')
         os.chdir('..')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
 
@@ -131,8 +131,8 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
 
-        self.run_bzr('move', 'a', 'b')
-        self.run_bzr('rename', 'b', 'a')
+        self.run_bzr('move a b')
+        self.run_bzr('rename b a')
 
     def test_mv_through_symlinks(self):
         if not osutils.has_symlinks():
@@ -142,7 +142,7 @@ class TestMove(TestCaseWithTransport):
         os.symlink('a', 'c')
         os.symlink('.', 'd')
         tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
-        self.run_bzr('mv', 'c/b', 'b')
+        self.run_bzr('mv c/b b')
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual('b-id', tree.path2id('b'))
 
@@ -159,7 +159,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a'])
 
         osutils.rename('a', 'b')
-        self.run_bzr('mv', 'a', 'b')
+        self.run_bzr('mv a b')
         self.assertMoved('a','b')
 
     def test_mv_already_moved_file_to_versioned_target(self):
@@ -178,7 +178,7 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('a', 'b')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move a => b. b is already versioned$"],
-            'mv', 'a', 'b')
+            'mv a b')
         #check that nothing changed
         self.failIfExists('a')
         self.failUnlessExists('b')
@@ -196,7 +196,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a', 'sub'])
 
         osutils.rename('a', 'sub/a')
-        self.run_bzr('mv', 'a', 'sub/a')
+        self.run_bzr('mv a sub/a')
         self.assertMoved('a','sub/a')
 
     def test_mv_already_moved_file_into_unversioned_subdir(self):
@@ -214,7 +214,7 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('a', 'sub/a')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move a => a: sub is not versioned$"],
-            'mv', 'a', 'sub/a')
+            'mv a sub/a')
         self.failIfExists('a')
         self.failUnlessExists('sub/a')
 
@@ -231,7 +231,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a1', 'a2', 'sub'])
 
         osutils.rename('a1', 'sub/a1')
-        self.run_bzr('mv', 'a1', 'a2', 'sub')
+        self.run_bzr('mv a1 a2 sub')
         self.assertMoved('a1','sub/a1')
         self.assertMoved('a2','sub/a2')
 
@@ -250,7 +250,7 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move to sub. sub is not versioned$"],
-            'mv', 'a1', 'a2', 'sub')
+            'mv a1 a2 sub')
         self.failIfExists('a1')
         self.failUnlessExists('sub/a1')
         self.failUnlessExists('a2')
@@ -274,7 +274,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a => b because both files exist."
              " \(Use --after to update the Bazaar id\)$"],
-            'mv', 'a', 'b')
+            'mv a b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
 
@@ -295,7 +295,7 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('a', 'b')
         self.build_tree(['a']) #touch a
 
-        self.run_bzr('mv', 'a', 'b', '--after')
+        self.run_bzr('mv a b --after')
         self.failUnlessExists('a')
         self.assertNotInWorkingTree('a')#a should be unknown now.
         self.failUnlessExists('b')
@@ -323,7 +323,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files exist."
              " \(Use --after to update the Bazaar id\)$"],
-            'mv', 'a1', 'a2', 'sub')
+            'mv a1 a2 sub')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')
         self.failUnlessExists('sub/a1')
@@ -350,7 +350,7 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a1']) #touch a1
         self.build_tree(['a2']) #touch a2
 
-        self.run_bzr('mv', 'a1', 'a2', 'sub', '--after')
+        self.run_bzr('mv a1 a2 sub --after')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')
         self.failUnlessExists('sub/a1')

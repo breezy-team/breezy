@@ -56,30 +56,26 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['2'], 'revision-info')
 
         # Check the results of just specifying a numeric revision
-        self.check_output(values['1'], 'revision-info', '1')
-        self.check_output(values['1.1.1'], 'revision-info', '1.1.1')
-        self.check_output(values['2'], 'revision-info', '2')
-        self.check_output(values['1']+values['2'], 'revision-info', '1', '2')
+        self.check_output(values['1'], 'revision-info 1')
+        self.check_output(values['1.1.1'], 'revision-info 1.1.1')
+        self.check_output(values['2'], 'revision-info 2')
+        self.check_output(values['1']+values['2'], 'revision-info 1 2')
         self.check_output(values['1']+values['1.1.1']+values['2'],
-                          'revision-info', '1', '1.1.1', '2')
-        self.check_output(values['2']+values['1'], 'revision-info', '2', '1')
+                          'revision-info 1 1.1.1 2')
+        self.check_output(values['2']+values['1'], 'revision-info 2 1')
 
         # Check as above, only using the '--revision' syntax
-        
-        self.check_output(values['1'], 'revision-info', '-r', '1')
-        self.check_output(values['1.1.1'], 'revision-info', '--revision',
-                          '1.1.1')
-        self.check_output(values['2'], 'revision-info', '-r', '2')
-        self.check_output(values['1']+values['2'], 'revision-info',
-                          '-r', '1..2')
+
+        self.check_output(values['1'], 'revision-info -r 1')
+        self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
+        self.check_output(values['2'], 'revision-info -r 2')
+        self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
         self.check_output(values['1']+values['1.1.1']+values['2'],
-                          'revision-info', '-r', '1..1.1.1..2')
-        self.check_output(values['2']+values['1'], 'revision-info',
-                          '-r', '2..1')
+                          'revision-info -r 1..1.1.1..2')
+        self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
 
         # Now try some more advanced revision specifications
-        
-        self.check_output(values['1'], 'revision-info', '-r',
-                          'revid:a@r-0-1')
-        self.check_output(values['1.1.1'], 'revision-info', '--revision',
-                          'revid:a@r-0-1.1.1')
+
+        self.check_output(values['1'], 'revision-info -r revid:a@r-0-1')
+        self.check_output(values['1.1.1'],
+                          'revision-info --revision revid:a@r-0-1.1.1')

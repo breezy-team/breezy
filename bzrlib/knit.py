@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1187,7 +1187,7 @@ class _KnitIndex(_KnitComponentFile):
             try:
                 # _load_data may raise NoSuchFile if the target knit is
                 # completely empty.
-                self._load_data(fp)
+                _load_data(self, fp)
             finally:
                 fp.close()
         except NoSuchFile:
@@ -1198,70 +1198,6 @@ class _KnitIndex(_KnitComponentFile):
             else:
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
-
-    def _load_data(self, fp):
-        cache = self._cache
-        history = self._history
-
-        self.check_header(fp)
-        # readlines reads the whole file at once:
-        # bad for transports like http, good for local disk
-        # we save 60 ms doing this one change (
-        # from calling readline each time to calling
-        # readlines once.
-        # probably what we want for nice behaviour on
-        # http is a incremental readlines that yields, or
-        # a check for local vs non local indexes,
-        history_top = len(history) - 1
-        for line in fp.readlines():
-            rec = line.split()
-            if len(rec) < 5 or rec[-1] != ':':
-                # corrupt line.
-                # FIXME: in the future we should determine if its a
-                # short write - and ignore it 
-                # or a different failure, and raise. RBC 20060407
-                continue
-
-            try:
-                parents = []
-                for value in rec[4:-1]:
-                    if value[0] == '.':
-                        # uncompressed reference
-                        parent_id = value[1:]
-                    else:
-                        parent_id = history[int(value)]
-                    parents.append(parent_id)
-            except (IndexError, ValueError), e:
-                # The parent could not be decoded to get its parent row. This
-                # at a minimum will cause this row to have wrong parents, or
-                # even to apply a delta to the wrong base and decode
-                # incorrectly. its therefore not usable, and because we have
-                # encountered a situation where a new knit index had this
-                # corrupt we can't asssume that no other rows referring to the
-                # index of this record actually mean the subsequent uncorrupt
-                # one, so we error.
-                raise errors.KnitCorrupt(self._filename,
-                    "line %r: %s" % (rec, e))
-
-            version_id, options, pos, size = rec[:4]
-            version_id = version_id
-
-            # See self._cache_version
-            # only want the _history index to reference the 1st 
-            # index entry for version_id
-            if version_id not in cache:
-                history_top += 1
-                index = history_top
-                history.append(version_id)
-            else:
-                index = cache[version_id][5]
-            cache[version_id] = (version_id,
-                                 options.split(','),
-                                 int(pos),
-                                 int(size),
-                                 parents,
-                                 index)
-            # end self._cache_version 
 
     def get_graph(self):
         return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
@@ -1998,3 +1934,9 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             bestsize = bestsize + 1
 
         return besti, bestj, bestsize
+
+
+try:
+    from bzrlib._knit_load_data_c import _load_data_c as _load_data
+except ImportError:
+    from bzrlib._knit_load_data_py import _load_data_py as _load_data

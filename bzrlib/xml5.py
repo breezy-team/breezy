@@ -21,6 +21,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     inventory,
+    revision as _mod_revision,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
@@ -257,6 +258,7 @@ class Serializer_v5(Serializer):
             pelts.tail = pelts.text = '\n'
             for parent_id in rev.parent_ids:
                 assert isinstance(parent_id, basestring)
+                _mod_revision.check_not_reserved_id(parent_id)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
                 if isinstance(parent_id, str):

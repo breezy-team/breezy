@@ -59,7 +59,7 @@ class TestSubmit(tests.TestCaseWithTransport):
 
     def test_uses_submit(self):
         """Submit location can be used and set"""
-        self.make_trees()        
+        self.make_trees()
         os.chdir('branch')
         br = read_bundle(StringIO(self.run_bzr('submit')[0]))
         self.assertRevisions(br, ['revision3'])
@@ -79,9 +79,9 @@ class TestSubmit(tests.TestCaseWithTransport):
                               '--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
-        self.make_trees()        
+        self.make_trees()
         os.chdir('branch')
-        bi = read_bundle(StringIO(self.run_bzr('bundle', '../grandparent')[0]))
+        bi = read_bundle(StringIO(self.run_bzr('bundle ../grandparent')[0]))
         self.assertRevisions(bi, ['revision3', 'revision2'])
         out = StringIO(self.run_bzr('submit ../grandparent -r -2')[0])
         bi = read_bundle(out)
@@ -149,3 +149,4 @@ class TestSubmit(tests.TestCaseWithTransport):
         md_file = open('file1', 'rb')
         self.addCleanup(md_file.close)
         self.assertContainsRe(md_file.read(), 'revision3')
+

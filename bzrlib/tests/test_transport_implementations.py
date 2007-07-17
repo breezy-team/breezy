@@ -181,6 +181,26 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
 
+    def test_get_directory_read_gives_ReadError(self):
+        """consistent errors for read() on a file returned by get()."""
+        t = self.get_transport()
+        if t.is_readonly():
+            self.build_tree(['a directory/'])
+        else:
+            t.mkdir('a%20directory')
+        # getting the file must either work or fail with a PathError
+        try:
+            a_file = t.get('a%20directory')
+        except (errors.PathError, errors.RedirectRequested):
+            # early failure return immediately.
+            return
+        # having got a file, read() must either work (i.e. http reading a dir listing) or
+        # fail with ReadError
+        try:
+            a_file.read()
+        except errors.ReadError:
+            pass
+
     def test_get_bytes(self):
         t = self.get_transport()
 

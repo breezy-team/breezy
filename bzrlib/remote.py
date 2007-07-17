@@ -641,6 +641,15 @@ class RemoteRepository(object):
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
+    @needs_write_lock
+    def pack(self):
+        """Compress the data within the repository.
+
+        This is not currently implemented within the smart server.
+        """
+        self._ensure_real()
+        return self._real_repository.pack()
+
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)
 

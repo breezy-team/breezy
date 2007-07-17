@@ -2,6 +2,78 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr rm`` now does not insist on ``--force`` to delete files that
+      have been renamed but not otherwise modified.  (Marius Kruger,
+      #111664)
+
+  IMPROVEMENTS:
+
+    * Don't show "dots" progress indicators when run non-interactively, such
+      as from cron.  (Martin Pool)
+
+    * ``info`` now formats locations more nicely and lists "submit" and
+      "public" branches (Aaron Bentley)
+
+    * New ``pack`` command that will trigger database compression within
+      the repository (Robert Collins)
+
+    * Implement ``_KnitIndex._load_data`` in a pyrex extension. The pyrex
+      version is approximately 2-3x faster at parsing a ``.kndx`` file.
+      Which yields a measurable improvement for commands which have to
+      read from the repository, such as a 1s => 0.75s improvement in
+      ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
+
+    * Merge is now faster.  Depending on the scenario, it can be more than 2x
+      faster. (Aaron Bentley)
+
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
+  LIBRARY API BREAKS:
+
+    * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
+
+  INTERNALS:
+
+    * merge now uses iter_changes to calculate changes, which makes room for
+      future performance increases.  It is also more consistent with other
+      operations that perform comparisons, and reduces reliance on
+      Tree.inventory.  (Aaron Bentley)
+
+    * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
+      the null revision, and consider using ``None`` for this purpose
+      deprecated.  (Aaron Bentley)
+
+    * New ``index`` module with abstract index functionality. This will be
+      used during the planned changes in the repository layer. Currently the
+      index layer provides a graph aware immutable index, a builder for the
+      same index type to allow creating them, and finally a composer for
+      such indices to allow the use of many indices in a single query. The
+      index performance is not optimised, however the API is stable to allow
+      development on top of the index. (Robert Collins)
+
+  TESTING:
+
+    * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
+      ``--keep-output`` options, which are obsolete now that tests
+      are done within directories in $TMPDIR.  (Martin Pool)
+
+
+bzr 0.18  2007-07-17
+
+  BUGFIXES:
+
+    * Fix 'bzr add' crash under Win32 (Kuno Meyer)
+
+
+bzr 0.18rc1  2007-07-10
+
+  BUGFIXES:
+
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
 
@@ -15,6 +87,16 @@ IN DEVELOPMENT
     * Work around python-2.4.1 inhability to correctly parse the
       authentication header.
       (Vincent Ladeuil, #121889)
+
+    * Use exact encoding for merge directives. (Adeodato Simó, #120591)
+
+    * Fix tempfile permissions error in smart server tar bundling under
+      Windows. (Martin_, #119330)
+
+    * Fix detection of directory entries in the inventory. (James Westby)
+
+    * Fix handling of http code 400: Bad Request When issuing too many ranges.
+      (Vincent Ladeuil, #115209)
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
@@ -30,6 +112,13 @@ IN DEVELOPMENT
     * Don't use the '-f' strace option during tests.
       (Vincent Ladeuil, #102019).
 
+    * Warn when setting ``push_location`` to a value that will be masked by
+      locations.conf.  (Aaron Bentley, #122286)
+
+    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+    *  Make annotate behave in a non-ASCII world (Adeodato Simó).
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -41,7 +130,7 @@ IN DEVELOPMENT
 
     * ``info`` now defaults to non-verbose mode, displaying only paths and
       abbreviated format info.  ``info -v`` displays all the information
-      formerly displayed by ``info``.  (Aaron Bentley)
+      formerly displayed by ``info``.  (Aaron Bentley, Adeodato Simó)
 
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
@@ -71,6 +160,8 @@ IN DEVELOPMENT
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
 
+    * Make merge directives robust against broken bundles. (Aaron Bentley)
+
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
@@ -89,6 +180,14 @@ IN DEVELOPMENT
 
     * Long log format reports deltas on merge revisions. 
       (John Arbash Meinel, Kent Gibson)
+
+    * Make initial push over ftp more resilient. (John Arbash Meinel)
+
+    * Print a summary of changes for update just like pull does.
+      (Daniel Watkins, #113990)
+
+    * Add a -Dhpss option to trace smart protocol requests and responses.
+      (Andrew Bennetts)
 
   LIBRARY API BREAKS:
 
@@ -112,6 +211,8 @@ IN DEVELOPMENT
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
+    * Relocate TestCaseWithRepository to be more central. (Robert Collins)
+
     * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
       win32. Callers of the function should do this and use the new
       ``MutableTree.smart_add`` method instead. (Robert Collins)
@@ -128,12 +229,36 @@ IN DEVELOPMENT
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
+    * Fix documentation of BzrError. (Adeodato Simó)
+
+    * Make BzrBadParameter an internal error. (Adeodato Simó)
+
+    * Remove use of 'assert False' to raise an exception unconditionally.
+      (Martin Pool)
+
+    * Give a cleaner error when failing to decode knit index entry.
+      (Martin Pool)
+
+    * TreeConfig would mistakenly search the top level when asked for options
+      from a section. It now respects the section argument and only
+      searches the specified section. (James Westby)
+
+    * Improve ``make api-docs`` output. (John Arbash Meinel)
+
+    * Use os.lstat rather than os.stat for osutils.make_readonly and
+      osutils.make_writeable. This makes the difftools plugin more
+      robust when dangling symlinks are found. (Elliot Murphy)
+
     * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
       lockdirs are taken or released.  (Martin Pool)
 
     * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
       allows a nicer UI when hooks are running as the current hook can
       be displayed. (Robert Collins)
+
+    * ``Transport.get`` has had its interface made more clear for ease of use.
+      Retrieval of a directory must now fail with either 'PathError' at open
+      time, or raise 'ReadError' on a read. (Robert Collins)
 
     * New method ``_maybe_expand_globs`` on the ``Command`` class for 
       dealing with unexpanded glob lists - e.g. on the win32 platform. This
@@ -142,6 +267,12 @@ IN DEVELOPMENT
     * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
       deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
       Martin Pool)
+
+    * New method ``external_url`` on Transport for obtaining the url to
+      hand to external processes. (Robert Collins)
+
+    * Teach windows installers to build pyrex/C extensions.
+      (Alexander Belchenko)
 
   TESTING:
 

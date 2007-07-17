@@ -334,6 +334,62 @@ class BzrOptionError(BzrCommandError):
     _fmt = "Error in command line options"
 
 
+class BadIndexFormatSignature(BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
 class BadOptionValue(BzrError):
 
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
@@ -349,6 +405,10 @@ class StrictCommitFailed(BzrError):
 
 # XXX: Should be unified with TransportError; they seem to represent the
 # same thing
+# RBC 20060929: I think that unifiying with TransportError would be a mistake
+# - this is finer than a TransportError - and more useful as such. It 
+# differentiates between 'transport has failed' and 'operation on a transport
+# has failed.'
 class PathError(BzrError):
     
     _fmt = "Generic path error: %(path)r%(extra)s)"
@@ -455,6 +515,11 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ReadError(PathError):
+    
+    _fmt = """Error reading from %(path)r."""
 
 
 class ShortReadvError(PathError):
@@ -1550,7 +1615,6 @@ class MissingText(BzrError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
-
 
 class DuplicateFileId(BzrError):
 

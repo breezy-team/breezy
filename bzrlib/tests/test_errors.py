@@ -166,6 +166,42 @@ class TestErrors(TestCaseWithTransport):
                              repo.bzrdir.root_transport.base,
                              str(error))
 
+    def test_read_error(self):
+        # a unicode path to check that %r is being used.
+        path = u'a path'
+        error = errors.ReadError(path)
+        self.assertEqualDiff("Error reading from u'a path'.", str(error))
+
+    def test_bad_index_format_signature(self):
+        error = errors.BadIndexFormatSignature("foo", "bar")
+        self.assertEqual("foo is not an index of type bar.",
+            str(error))
+
+    def test_bad_index_data(self):
+        error = errors.BadIndexData("foo")
+        self.assertEqual("Error in data for index foo.",
+            str(error))
+
+    def test_bad_index_duplicate_key(self):
+        error = errors.BadIndexDuplicateKey("foo", "bar")
+        self.assertEqual("The key 'foo' is already in index 'bar'.",
+            str(error))
+
+    def test_bad_index_key(self):
+        error = errors.BadIndexKey("foo")
+        self.assertEqual("The key 'foo' is not a valid key.",
+            str(error))
+
+    def test_bad_index_options(self):
+        error = errors.BadIndexOptions("foo")
+        self.assertEqual("Could not parse options for index foo.",
+            str(error))
+
+    def test_bad_index_value(self):
+        error = errors.BadIndexValue("foo")
+        self.assertEqual("The value 'foo' is not a valid value.",
+            str(error))
+
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):
             pass
@@ -205,9 +241,9 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_transport_not_possible(self):
-        e = errors.TransportNotPossible('readonly', 'original error')
-        self.assertEqual('Transport operation not possible:'
-                         ' readonly original error', str(e))
+        error = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqualDiff('Transport operation not possible:'
+                         ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
         """Check the formatting of a SocketConnectionError exception"""
@@ -360,4 +396,3 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat')
-

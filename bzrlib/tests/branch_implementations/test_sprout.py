@@ -90,7 +90,7 @@ class TestSprout(TestCaseWithBranch):
         wt.commit('rev1a', rev_id='rev1a')
         # simulated uncommit
         wt.branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
-        wt.set_last_revision(None)
+        wt.set_last_revision(_mod_revision.NULL_REVISION)
         wt.revert([])
         wt.commit('rev1b', rev_id='rev1b')
         wt2 = wt.bzrdir.sprout('target',

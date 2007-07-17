@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,12 @@ from cStringIO import StringIO
 import difflib
 import gzip
 import sha
+import sys
 
 from bzrlib import (
     errors,
+    generate_ids,
+    knit,
     )
 from bzrlib.errors import (
     RevisionAlreadyPresent,
@@ -41,10 +44,25 @@ from bzrlib.knit import (
     KnitSequenceMatcher,
     )
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, Feature
 from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.weave import Weave
+
+
+class _CompiledKnitFeature(Feature):
+
+    def _probe(self):
+        try:
+            import bzrlib._knit_load_data_c
+        except ImportError:
+            return False
+        return True
+
+    def feature_name(self):
+        return 'bzrlib._knit_load_data_c'
+
+CompiledKnitFeature = _CompiledKnitFeature()
 
 
 class KnitContentTests(TestCase):
@@ -241,17 +259,27 @@ class LowLevelKnitDataTests(TestCase):
 
 class LowLevelKnitIndexTests(TestCase):
 
+    def get_knit_index(self, *args, **kwargs):
+        orig = knit._load_data
+        def reset():
+            knit._load_data = orig
+        self.addCleanup(reset)
+        from bzrlib._knit_load_data_py import _load_data_py
+        knit._load_data = _load_data_py
+        return _KnitIndex(*args, **kwargs)
+
     def test_no_such_file(self):
         transport = MockTransport()
 
-        self.assertRaises(NoSuchFile, _KnitIndex, transport, "filename", "r")
-        self.assertRaises(NoSuchFile, _KnitIndex, transport,
-            "filename", "w", create=False)
+        self.assertRaises(NoSuchFile, self.get_knit_index,
+                          transport, "filename", "r")
+        self.assertRaises(NoSuchFile, self.get_knit_index,
+                          transport, "filename", "w", create=False)
 
     def test_create_file(self):
         transport = MockTransport()
 
-        index = _KnitIndex(transport, "filename", "w",
+        index = self.get_knit_index(transport, "filename", "w",
             file_mode="wb", create=True)
         self.assertEqual(
                 ("put_bytes_non_atomic",
@@ -261,7 +289,7 @@ class LowLevelKnitIndexTests(TestCase):
     def test_delay_create_file(self):
         transport = MockTransport()
 
-        index = _KnitIndex(transport, "filename", "w",
+        index = self.get_knit_index(transport, "filename", "w",
             create=True, file_mode="wb", create_parent_dir=True,
             delay_create=True, dir_mode=0777)
         self.assertEqual([], transport.calls)
@@ -286,7 +314,7 @@ class LowLevelKnitIndexTests(TestCase):
             _KnitIndex.HEADER,
             '%s option 0 1 :' % (utf8_revision_id,)
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         # _KnitIndex is a private class, and deals in utf8 revision_ids, not
         # Unicode revision_ids.
         self.assertTrue(index.has_version(utf8_revision_id))
@@ -299,7 +327,7 @@ class LowLevelKnitIndexTests(TestCase):
             _KnitIndex.HEADER,
             "version option 0 1 .%s :" % (utf8_revision_id,)
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual([utf8_revision_id],
             index.get_parents_with_ghosts("version"))
 
@@ -310,14 +338,14 @@ class LowLevelKnitIndexTests(TestCase):
             "corrupted options 0 1 .b .c ",
             "version options 0 1 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(1, index.num_versions())
         self.assertTrue(index.has_version("version"))
 
     def test_read_corrupted_header(self):
         transport = MockTransport(['not a bzr knit index header\n'])
         self.assertRaises(KnitHeaderError,
-            _KnitIndex, transport, "filename", "r")
+            self.get_knit_index, transport, "filename", "r")
 
     def test_read_duplicate_entries(self):
         transport = MockTransport([
@@ -327,7 +355,7 @@ class LowLevelKnitIndexTests(TestCase):
             "version options2 1 2 .other :",
             "version options3 3 4 0 .other :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(2, index.num_versions())
         self.assertEqual(1, index.lookup("version"))
         self.assertEqual((3, 4), index.get_position("version"))
@@ -342,7 +370,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 0 1 0 :",
             "c option 0 1 1 0 :",
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(["a"], index.get_parents("b"))
         self.assertEqual(["b", "a"], index.get_parents("c"))
 
@@ -352,7 +380,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         index.add_version(utf8_revision_id, ["option"], 0, 1, [])
         self.assertEqual(("append_bytes", ("filename",
             "\n%s option 0 1  :" % (utf8_revision_id,)),
@@ -365,7 +393,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
         index.add_version("version", ["option"], 0, 1, [utf8_revision_id])
         self.assertEqual(("append_bytes", ("filename",
             "\nversion option 0 1 .%s :" % (utf8_revision_id,)),
@@ -374,7 +402,7 @@ class LowLevelKnitIndexTests(TestCase):
 
     def test_get_graph(self):
         transport = MockTransport()
-        index = _KnitIndex(transport, "filename", "w", create=True)
+        index = self.get_knit_index(transport, "filename", "w", create=True)
         self.assertEqual([], index.get_graph())
 
         index.add_version("a", ["option"], 0, 1, ["b"])
@@ -392,7 +420,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 0 :",
             "d option 0 1 2 .f :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual([], index.get_ancestry([]))
         self.assertEqual(["a"], index.get_ancestry(["a"]))
@@ -412,7 +440,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 0 .f .g :",
             "d option 0 1 2 .h .j .k :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual([], index.get_ancestry_with_ghosts([]))
         self.assertEqual(["a"], index.get_ancestry_with_ghosts(["a"]))
@@ -437,7 +465,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual(0, index.num_versions())
         self.assertEqual(0, len(index))
@@ -458,7 +486,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual([], index.get_versions())
 
@@ -477,7 +505,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 0 1 :",
             "b option 0 1 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual("a", index.idx_to_name(0))
         self.assertEqual("b", index.idx_to_name(1))
@@ -490,7 +518,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 0 1 :",
             "b option 0 1 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual(0, index.lookup("a"))
         self.assertEqual(1, index.lookup("b"))
@@ -499,7 +527,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         index.add_version("a", ["option"], 0, 1, ["b"])
         self.assertEqual(("append_bytes",
@@ -535,7 +563,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         index.add_versions([
             ("a", ["option"], 0, 1, ["b"]),
@@ -560,7 +588,7 @@ class LowLevelKnitIndexTests(TestCase):
     def test_delay_create_and_add_versions(self):
         transport = MockTransport()
 
-        index = _KnitIndex(transport, "filename", "w",
+        index = self.get_knit_index(transport, "filename", "w",
             create=True, file_mode="wb", create_parent_dir=True,
             delay_create=True, dir_mode=0777)
         self.assertEqual([], transport.calls)
@@ -588,7 +616,7 @@ class LowLevelKnitIndexTests(TestCase):
             _KnitIndex.HEADER,
             "a option 0 1 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertTrue(index.has_version("a"))
         self.assertFalse(index.has_version("b"))
@@ -599,7 +627,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 0 1 :",
             "b option 1 2 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual((0, 1), index.get_position("a"))
         self.assertEqual((1, 2), index.get_position("b"))
@@ -611,7 +639,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b unknown,line-delta 1 2 :",
             "c bad 3 4 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual("fulltext", index.get_method("a"))
         self.assertEqual("line-delta", index.get_method("b"))
@@ -623,7 +651,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a opt1 0 1 :",
             "b opt2,opt3 1 2 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual(["opt1"], index.get_options("a"))
         self.assertEqual(["opt2", "opt3"], index.get_options("b"))
@@ -635,7 +663,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 1 2 0 .c :",
             "c option 1 2 1 0 .e :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual([], index.get_parents("a"))
         self.assertEqual(["a", "c"], index.get_parents("b"))
@@ -648,7 +676,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 1 2 0 .c :",
             "c option 1 2 1 0 .e :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual([], index.get_parents_with_ghosts("a"))
         self.assertEqual(["a", "c"], index.get_parents_with_ghosts("b"))
@@ -661,7 +689,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 0 1 :",
             "b option 0 1 :"
             ])
-        index = _KnitIndex(transport, "filename", "r")
+        index = self.get_knit_index(transport, "filename", "r")
 
         check = index.check_versions_present
 
@@ -671,6 +699,148 @@ class LowLevelKnitIndexTests(TestCase):
         check(["a", "b"])
         self.assertRaises(RevisionNotPresent, check, ["c"])
         self.assertRaises(RevisionNotPresent, check, ["a", "b", "c"])
+
+    def test_impossible_parent(self):
+        """Test we get KnitCorrupt if the parent couldn't possibly exist."""
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 4 :"  # We don't have a 4th record
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.IndexError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+            else:
+                raise
+
+    def test_corrupted_parent(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :",
+            "c option 0 1 1v :", # Can't have a parent of '1v'
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+            else:
+                raise
+
+    def test_corrupted_parent_in_list(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :",
+            "c option 0 1 1 v :", # Can't have a parent of 'v'
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+            else:
+                raise
+
+    def test_invalid_position(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 1v 1 :",
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+            else:
+                raise
+
+    def test_invalid_size(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 1 1v :",
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+            else:
+                raise
+
+    def test_short_line(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0", # This line isn't terminated, ignored
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a'], index.get_versions())
+
+    def test_skip_incomplete_record(self):
+        # A line with bogus data should just be skipped
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0", # This line isn't terminated, ignored
+            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a', 'c'], index.get_versions())
+
+    def test_trailing_characters(self):
+        # A line with bogus data should just be skipped
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 10  :",
+            "b option 10 10 0 :a", # This line has extra trailing characters
+            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+        self.assertEqual(['a', 'c'], index.get_versions())
+
+
+class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
+
+    _test_needs_features = [CompiledKnitFeature]
+
+    def get_knit_index(self, *args, **kwargs):
+        orig = knit._load_data
+        def reset():
+            knit._load_data = orig
+        self.addCleanup(reset)
+        from bzrlib._knit_load_data_c import _load_data_c
+        knit._load_data = _load_data_c
+        return _KnitIndex(*args, **kwargs)
+
 
 
 class KnitTests(TestCaseWithTransport):
@@ -1017,7 +1187,7 @@ class BasicKnitTests(KnitTests):
         knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # write a short write to the file and ensure that its ignored
-        indexfile = file('test.kndx', 'at')
+        indexfile = file('test.kndx', 'ab')
         indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
         indexfile.close()
         # we should be able to load this file again
