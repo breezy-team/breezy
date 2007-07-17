@@ -1,2 +1,7 @@
 .bzr-builddeb/local.conf
 debian
+./bzr
+./files
+./stamp-*
+./*.debhelper
+./*.substvars
