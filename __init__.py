@@ -248,3 +248,14 @@ class cmd_ancestor_growth(bzrlib.commands.Command):
 
 
 bzrlib.commands.register_command(cmd_ancestor_growth)
+
+def test_suite():
+    from unittest import TestSuite
+    from bzrlib.tests import TestLoader
+    import test_stats
+    suite = TestSuite()
+    loader = TestLoader()
+    testmod_names = ['test_stats']
+    suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
+    return suite
+
