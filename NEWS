@@ -30,6 +30,8 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * Annotate merge now works when there are local changes. (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -55,6 +57,9 @@ IN DEVELOPMENT
       such indices to allow the use of many indices in a single query. The
       index performance is not optimised, however the API is stable to allow
       development on top of the index. (Robert Collins)
+
+    * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
+      for performing annotate-merge.  (Aaron Bentley)
 
   TESTING:
 
