@@ -24,9 +24,10 @@ from bzrlib import (
     )
 
 
-EMAIL1 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: bar
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
 # Bazaar merge directive format 1
 # revision_id: bar-id

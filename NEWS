@@ -56,6 +56,8 @@ IN DEVELOPMENT
       index performance is not optimised, however the API is stable to allow
       development on top of the index. (Robert Collins)
 
+    * New EmailMessage class to create email messages. (Adeodato Simó)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and

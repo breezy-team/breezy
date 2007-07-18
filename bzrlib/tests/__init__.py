@@ -2267,6 +2267,7 @@ def test_suite():
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
