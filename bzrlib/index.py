@@ -196,20 +196,21 @@ class GraphIndex(object):
         """
         self._transport = transport
         self._name = name
+        self._nodes = None
+        self._keys_by_offset = None
 
-    def iter_all_entries(self):
-        """Iterate over all keys within the index.
+    def _buffer_all(self):
+        """Buffer all the index data.
 
-        :return: An iterable of (key, value) or (key, value, reference_lists).
-            The former tuple is used when there are no reference lists in the
-            index, making the API compatible with simple key:value index types.
-            There is no defined order for the result iteration - it will be in
-            the most efficient order for the index.
+        Mutates self._nodes and self.keys_by_offset.
         """
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
         line_count = 0
-        self.keys_by_offset = {}
+        # raw data keyed by offset
+        self._keys_by_offset = {}
+        # ready-to-return key:value or key:value, node_ref_lists
+        self._nodes = {}
         trailers = 0
         pos = stream.tell()
         for line in stream.readlines():
@@ -224,22 +225,40 @@ class GraphIndex(object):
                     int(ref) for ref in ref_string.split('\r') if ref
                     ]))
             ref_lists = tuple(ref_lists)
-            self.keys_by_offset[pos] = (key, absent, ref_lists, value)
+            self._keys_by_offset[pos] = (key, absent, ref_lists, value)
             pos += len(line)
-        for key, absent, references, value in self.keys_by_offset.itervalues():
+        for key, absent, references, value in self._keys_by_offset.itervalues():
             if absent:
                 continue
             # resolve references:
             if self.node_ref_lists:
                 node_refs = []
                 for ref_list in references:
-                    node_refs.append(tuple([self.keys_by_offset[ref][0] for ref in ref_list]))
-                yield (key, value, tuple(node_refs))
+                    node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
+                self._nodes[key] = (value, tuple(node_refs))
             else:
-                yield (key, value)
+                self._nodes[key] = value
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
+
+    def iter_all_entries(self):
+        """Iterate over all keys within the index.
+
+        :return: An iterable of (key, value) or (key, value, reference_lists).
+            The former tuple is used when there are no reference lists in the
+            index, making the API compatible with simple key:value index types.
+            There is no defined order for the result iteration - it will be in
+            the most efficient order for the index.
+        """
+        if self._nodes is None:
+            self._buffer_all()
+        if self.node_ref_lists:
+            for key, (value, node_ref_lists) in self._nodes.iteritems():
+                yield key, value, node_ref_lists
+        else:
+            for key, value in self._nodes.iteritems():
+                yield key, value
 
     def _read_prefix(self, stream):
         signature = stream.read(len(self._signature()))
