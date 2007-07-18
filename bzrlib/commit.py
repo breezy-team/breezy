@@ -592,16 +592,15 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", specific_files)
 
         # Check and warn about old CommitBuilders
-        root_added_already = False
-        if not self.builder.record_root_entry:
+        old_commit_builder = not self.builder.record_root_entry
+        if old_commit_builder:
             symbol_versioning.warn('CommitBuilders should support recording'
                 ' the root entry as of bzr 0.10.', DeprecationWarning, 
                 stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
-            root_added_already = True
 
         # Build the new inventory
-        self._populate_from_inventory(specific_files, root_added_already)
+        self._populate_from_inventory(specific_files, old_commit_builder)
 
         # If specific files/directories were nominated, it is possible
         # that some data from outside those needs to be preserved from
@@ -609,6 +608,11 @@ class Commit(object):
         # directory foo into directory bar and the user requests
         # ``commit foo``, then information about bar/x must also be
         # recorded.
+        # ABENTLEY says:
+        # This implies that bar knows what its children are, which isn't
+        # really accurate.  Strictly speaking, bar only needs to be committed
+        # if it wasn't a directory in the basis tree - the current
+        # implementation is overkill.
         if specific_files:
             for path, new_ie in self.basis_inv.iter_entries():
                 if new_ie.file_id in self.builder.new_inventory:
@@ -627,7 +631,7 @@ class Commit(object):
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
-    def _populate_from_inventory(self, specific_files, root_added_already):
+    def _populate_from_inventory(self, specific_files, skip_first_entry):
         """Populate the CommitBuilder by walking the working tree inventory."""
         if self.strict:
             # raise an exception as soon as we find a single unknown.
@@ -639,13 +643,13 @@ class Commit(object):
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
         entries = work_inv.iter_entries()
-        if root_added_already:
+        if skip_first_entry:
             entries.next()
-        for path, new_ie in entries:
-            file_id = new_ie.file_id
-            name = new_ie.name
-            parent_id = new_ie.parent_id
-            kind = new_ie.kind
+        for path, existing_ie in entries:
+            file_id = existing_ie.file_id
+            name = existing_ie.name
+            parent_id = existing_ie.parent_id
+            kind = existing_ie.kind
             if kind == 'directory':
                 self._next_progress_entry()
 
@@ -674,9 +678,9 @@ class Commit(object):
             # Note: I don't particularly want to have the existing_ie
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
-            definitely_changed = kind != new_ie.kind 
+            definitely_changed = kind != existing_ie.kind 
             self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, new_ie)
+                parent_id, definitely_changed, existing_ie)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
