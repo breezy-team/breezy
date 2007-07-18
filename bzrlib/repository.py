@@ -395,7 +395,9 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context and write group.')
+            raise errors.BzrError('mismatched lock context %r and '
+                'write group %r.' %
+                (self.get_transaction(), self._write_group))
         self._commit_write_group()
         self._write_group = None
 

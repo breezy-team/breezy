@@ -335,7 +335,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
-        if getattr(self.repo, '_revision_knit', None):
+        if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
         index_transport = self.get_indices_transport()
         self.repo._revision_indices = file_collection.FileCollection(
@@ -368,7 +368,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
     def flush(self):
         """Write out pending indices."""
         # have we done anything?
-        if getattr(self.repo, '_revision_knit', None):
+        if getattr(self.repo, '_revision_knit', None) is not None:
             index_transport = self.get_indices_transport()
             new_name = self.repo._revision_indices.allocate()
             new_index_name = self.name_to_index_name(new_name)
@@ -403,12 +403,20 @@ class GraphKnitRepository1(KnitRepository):
                               _revision_store, control_store, text_store)
         self._revision_store = GraphKnitRevisionStore(self, self._revision_store)
 
-    def unlock(self):
-        if self.control_files._lock_count == 1:
-            if self.control_files._lock_mode == 'w':
-                self._revision_store.flush()
+    def _abort_write_group(self):
+        # FIXME: just drop the transient index.
+        self._revision_store.reset()
+
+    def _refresh_data(self):
+        if self.control_files._lock_count==1:
             self._revision_store.reset()
-        self.control_files.unlock()
+
+    def _start_write_group(self):
+        pass
+
+    def _commit_write_group(self):
+        self._revision_store.flush()
+        self._revision_store.reset()
 
 
 class GraphKnitRepository3(KnitRepository3):
@@ -420,12 +428,20 @@ class GraphKnitRepository3(KnitRepository3):
                               _revision_store, control_store, text_store)
         self._revision_store = GraphKnitRevisionStore(self, self._revision_store)
 
-    def unlock(self):
-        if self.control_files._lock_count == 1:
-            if self.control_files._lock_mode == 'w':
-                self._revision_store.flush()
+    def _abort_write_group(self):
+        # FIXME: just drop the transient index.
+        self._revision_store.reset()
+
+    def _refresh_data(self):
+        if self.control_files._lock_count==1:
             self._revision_store.reset()
-        self.control_files.unlock()
+
+    def _start_write_group(self):
+        pass
+
+    def _commit_write_group(self):
+        self._revision_store.flush()
+        self._revision_store.reset()
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
