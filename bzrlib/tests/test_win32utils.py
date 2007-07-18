@@ -26,7 +26,7 @@ from bzrlib.win32utils import glob_expand
 class _Win32Feature(Feature):
 
     def _probe(self):
-        return sys.platform != 'win32'
+        return sys.platform == 'win32'
     
     def feature_name(self):
         return 'Win32 platform'
