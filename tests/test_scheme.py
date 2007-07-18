@@ -22,7 +22,7 @@ from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
                     SingleBranchingScheme, UnknownBranchingScheme,
-                    parse_list_scheme_text)
+                    parse_list_scheme_text, find_commit_paths)
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
@@ -418,6 +418,7 @@ class TrunkScheme(TestCase):
     def test_is_branch_parent_other(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))
 
+
 class SingleBranchingSchemeTests(TestCase):
     def test_is_branch(self):
         self.assertTrue(SingleBranchingScheme("bla").is_branch("bla"))
@@ -453,10 +454,37 @@ class SingleBranchingSchemeTests(TestCase):
         self.assertTrue(SingleBranchingScheme("bla/bla").is_branch_parent("bla"))
 
     def test_is_branch_parent_grandparent(self):
-        self.assertFalse(SingleBranchingScheme("bla/bla/bla").is_branch_parent("bla"))
+        self.assertFalse(
+            SingleBranchingScheme("bla/bla/bla").is_branch_parent("bla"))
 
     def test_create_empty(self):
         self.assertRaises(BzrError, SingleBranchingScheme, "")
 
     def test_str(self):
         self.assertEquals("single-ha/bla", str(SingleBranchingScheme("ha/bla")))
+
+
+class FindCommitPathsTester(TestCase):
+    def test_simple_trunk_only(self):
+        self.assertEquals(["trunk"], 
+            find_commit_paths([{"trunk": ('M', None, None)}]))
+
+    def test_branches(self):
+        self.assertEquals(["trunk", "branches/bar"], 
+            find_commit_paths([{"trunk": ('M', None, None)},
+                               {"branches/bar": ('A', None, None)}]))
+
+    def test_trunk_more_files(self):
+        self.assertEquals(["trunk"],
+                find_commit_paths([{
+                    "trunk/bfile": ('A', None, None),
+                    "trunk/afile": ('M', None, None),
+                    "trunk": ('A', None, None)
+                    }]))
+
+    def test_trunk_more_files_no_root(self):
+        self.assertEquals(["trunk"],
+                find_commit_paths([{
+                    "trunk/bfile": ('A', None, None),
+                    "trunk/afile": ('M', None, None)
+                    }]))

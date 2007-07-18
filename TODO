@@ -8,6 +8,10 @@ mandatory before 0.4.0:
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - more intelligent guessing of branching scheme. Look at directory structure in last revision? (#81976)
+  - check bzr:branching-scheme property
+  - guess_branching_scheme(paths)
+- fix reuse of listbranchingscheme
+- support use of wildcards in listbranchingscheme
 - fix autorealm repository
 - avoid extra connect in logwalker?
 - free memory! (#54253)

@@ -265,3 +265,22 @@ class SingleBranchingScheme(BranchingScheme):
         return False
 
 
+def _find_common_prefix(paths):
+    prefix = ""
+    # Find a common prefix
+    parts = paths[0].split("/")
+    for i in range(len(parts)+1):
+        for j in paths:
+            if j.split("/")[:i] != parts[:i]:
+                return prefix
+        prefix = "/".join(parts[:i])
+    return prefix
+
+
+def find_commit_paths(changed_paths):
+    """Find the commit-paths used in a bunch of revisions.
+
+    :param changed_paths: List of changed_paths (dictionary with path -> action)
+    :return: List of potential commit paths.
+    """
+    return [_find_common_prefix(changes.keys()) for changes in changed_paths]
