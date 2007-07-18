@@ -16,7 +16,7 @@
 """Subversion repository access."""
 
 import bzrlib
-from bzrlib import osutils
+from bzrlib import osutils, ui
 from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
                            NotBranchError, UninitializableFormat, BzrError)
@@ -783,7 +783,7 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
-    def find_branches(self, scheme, revnum=None, pb=None):
+    def find_branches(self, scheme, revnum=None):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
@@ -795,47 +795,56 @@ class SvnRepository(Repository):
 
         created_branches = {}
 
-        for i in range(revnum+1):
-            if pb is not None:
-                pb.update("finding branches", i, revnum+1)
-            paths = self._log.get_revision_paths(i)
-            names = paths.keys()
-            names.sort()
-            for p in names:
-                if scheme.is_branch(p) or scheme.is_tag(p):
-                    if paths[p][0] in ('R', 'D'):
-                        del created_branches[p]
-                        j = self._log.find_latest_change(p, i-1, recurse=True)
-                        yield (p, j, False)
+        ret = []
 
-                    if paths[p][0] in ('A', 'R'): 
-                        created_branches[p] = i
-                elif scheme.is_branch_parent(p) or \
-                        scheme.is_tag_parent(p):
-                    if paths[p][0] in ('R', 'D'):
-                        k = created_branches.keys()
-                        for c in k:
-                            if c.startswith(p+"/"):
-                                del created_branches[c] 
-                                j = self._log.find_latest_change(c, i-1, 
-                                        recurse=True)
-                                yield (c, j, False)
-                    if paths[p][0] in ('A', 'R'):
-                        parents = [p]
-                        while parents:
-                            p = parents.pop()
-                            for c in self.transport.get_dir(p, i)[0].keys():
-                                n = p+"/"+c
-                                if scheme.is_branch(n) or scheme.is_tag(n):
-                                    created_branches[n] = i
-                                elif scheme.is_branch_parent(n) or scheme.is_tag_parent(n):
-                                    parents.append(n)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i in range(revnum+1):
+                pb.update("finding branches", i, revnum+1)
+                paths = self._log.get_revision_paths(i)
+                names = paths.keys()
+                names.sort()
+                for p in names:
+                    if scheme.is_branch(p) or scheme.is_tag(p):
+                        if paths[p][0] in ('R', 'D'):
+                            del created_branches[p]
+                            j = self._log.find_latest_change(p, i-1, 
+                                recurse=True)
+                            ret.append((p, j, False))
+
+                        if paths[p][0] in ('A', 'R'): 
+                            created_branches[p] = i
+                    elif scheme.is_branch_parent(p) or \
+                            scheme.is_tag_parent(p):
+                        if paths[p][0] in ('R', 'D'):
+                            k = created_branches.keys()
+                            for c in k:
+                                if c.startswith(p+"/"):
+                                    del created_branches[c] 
+                                    j = self._log.find_latest_change(c, i-1, 
+                                            recurse=True)
+                                    ret.append((c, j, False))
+                        if paths[p][0] in ('A', 'R'):
+                            parents = [p]
+                            while parents:
+                                p = parents.pop()
+                                for c in self.transport.get_dir(p, i)[0].keys():
+                                    n = p+"/"+c
+                                    if scheme.is_branch(n) or scheme.is_tag(n):
+                                        created_branches[n] = i
+                                    elif (scheme.is_branch_parent(n) or 
+                                          scheme.is_tag_parent(n)):
+                                        parents.append(n)
+        finally:
+            pb.finished()
 
         for p in created_branches:
             j = self._log.find_latest_change(p, revnum, recurse=True)
             if j is None:
                 j = created_branches[p]
-            yield (p, j, True)
+            ret.append((p, j, True))
+
+        return ret
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""

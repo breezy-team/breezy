@@ -62,6 +62,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Support pushing new branches.
 
+   * Add --prefix option to svn-import. (#125993)
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)

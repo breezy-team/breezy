@@ -67,7 +67,7 @@ def load_dumpfile(dumpfile, outputdir):
 
 def convert_repository(source_repos, output_url, scheme=None, 
                        create_shared_repo=True, working_trees=False, all=False,
-                       format=None, pb=None):
+                       format=None, pb=None, filter_branch=None):
     """Convert a Subversion repository and its' branches to a 
     Bazaar repository.
 
@@ -110,19 +110,17 @@ def convert_repository(source_repos, output_url, scheme=None,
         if all:
             source_repos.copy_content_into(target_repos)
 
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
-        branches = source_repos.find_branches(source_repos.scheme, pb=pb)
-        existing_branches = filter(lambda (bp, revnum, exists): exists, 
-                               branches)
-    finally:
-        pb.finished()
+    if filter_branch is None:
+        filter_branch = lambda (bp, rev, exists): exists
+
+    existing_branches = [(bp, revnum) for (bp, revnum, _) in 
+            filter(filter_branch,
+                   source_repos.find_branches(source_repos.scheme))]
 
     pb = ui.ui_factory.nested_progress_bar()
-                   
     try:
         i = 0
-        for (branch, revnum, _) in existing_branches:
+        for (branch, revnum) in existing_branches:
             if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
                 continue
             pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))

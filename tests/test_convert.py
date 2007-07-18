@@ -117,6 +117,21 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision(
             oldrepos.generate_revision_id(3, "branches/somebranch", "trunk0")))
 
+    def test_fetch_filter(self):
+        self.build_tree({'dc/branches/somebranch/somefile': 'data',
+                         'dc/branches/anotherbranch/somefile': 'data'})
+        self.client_add("dc/branches/somebranch")
+        self.client_commit("dc", "add a branch")
+        self.client_add("dc/branches/anotherbranch")
+        self.client_commit("dc", "add another branch")
+        oldrepos = Repository.open(self.repos_url)
+        convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
+            create_shared_repo=True,
+            filter_branch=lambda (bp, revnum, exists): bp.endswith("somebranch"))
+        newrepos = Repository.open("e")
+        self.assertTrue(os.path.exists("e/branches/somebranch"))
+        self.assertFalse(os.path.exists("e/branches/anotherbranch"))
+
     def test_shared_import_continue(self):
         BzrDir.create_repository("e", shared=True, 
                 format=get_rich_root_format())

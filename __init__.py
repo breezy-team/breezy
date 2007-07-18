@@ -132,11 +132,15 @@ class cmd_svn_import(Command):
                          help='Convert all revisions, even those not in '
                               'current branch history (forbids --standalone).'),
                      Option('scheme', type=get_scheme,
-                         help='Branching scheme (none, trunk, ...).')]
+                         help='Branching scheme (none, trunk, ...).'),
+                     Option('prefix', type=str, 
+                         help='Only consider branches of which path start with '
+                              'prefix.')
+                    ]
 
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
-            standalone=False, scheme=None, all=False):
+            standalone=False, scheme=None, all=False, prefix=None):
         from bzrlib.errors import NoRepositoryPresent
         from bzrlib.bzrdir import BzrDir
         from bzrlib.trace import info
@@ -168,8 +172,13 @@ class cmd_svn_import(Command):
             raise BzrCommandError("No Repository found at %s. "
                 "For individual branches, use 'bzr branch'." % from_location)
 
+        def filter_branch(branch_path, revnum, exists):
+            if prefix is not None and not branch_path.startswith(prefix):
+                return False
+            return exists
+
         convert_repository(from_repos, to_location, scheme, not standalone, 
-                trees, all)
+                trees, all, filter_branch=filter_branch)
 
         if tmp_repos is not None:
             from bzrlib import osutils
@@ -184,11 +193,11 @@ class cmd_svn_upgrade(Command):
     This will change the revision ids of revisions whose parents 
     were mapped from svn revisions.
     """
-    takes_args = ['svn_repository?']
+    takes_args = ['from_repository?']
     takes_options = ['verbose']
 
     @display_command
-    def run(self, svn_repository=None, verbose=False):
+    def run(self, from_repository=None, verbose=False):
         from upgrade import upgrade_branch
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
@@ -202,7 +211,7 @@ class cmd_svn_upgrade(Command):
             branch_to = Branch.open(".")
 
         stored_loc = branch_to.get_parent()
-        if svn_repository is None:
+        if from_repository is None:
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or"
                                              " specified.")
@@ -211,11 +220,11 @@ class cmd_svn_upgrade(Command):
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
-                svn_repository = Branch.open(stored_loc).repository
+                from_repository = Branch.open(stored_loc).repository
         else:
-            svn_repository = Repository.open(svn_repository)
+            from_repository = Repository.open(from_repository)
 
-        upgrade_branch(branch_to, svn_repository, allow_changes=True, 
+        upgrade_branch(branch_to, from_repository, allow_changes=True, 
                        verbose=verbose)
 
         if wt_to is not None:
