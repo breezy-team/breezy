@@ -283,12 +283,16 @@ class GraphIndex(object):
         keys = set(keys)
         if not keys:
             return
-        for node in self.iter_all_entries():
-            if not keys:
-                return
-            if node[0] in keys:
-                yield node
-                keys.remove(node[0])
+        if self._nodes is None:
+            self._buffer_all()
+        keys = keys.intersection(self._nodes)
+        if self.node_ref_lists:
+            for key in keys:
+                value, node_refs = self._nodes[key]
+                yield key, value, node_refs
+        else:
+            for key in keys:
+                yield key, self._nodes[key]
 
     def _signature(self):
         """The file signature for this index type."""
