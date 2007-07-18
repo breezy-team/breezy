@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.win32utils import glob_expand
 import sys
 
+from bzrlib.tests import TestCaseInTempDir, Feature
+from bzrlib.win32utils import glob_expand
 
-class Win32UtilsGlobExpand(TestCaseInTempDir):
+
+# Features
+# --------
+
+class _Win32Feature(Feature):
+
+    def _probe(self):
+        return sys.platform != 'win32'
+    
+    def feature_name(self):
+        return 'Win32 platform'
+
+Win32Feature = _Win32Feature()
+
+
+# Tests
+# -----
+   
+class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     def setUp(self):
-        super(Win32UtilsGlobExpand, self).setUp()
-        if sys.platform != 'win32':
-             raise TestSkipped('just for the Win32 platform')
+        super(TestWin32UtilsGlobExpand, self).setUp()
+        self.requireFeature(Win32Feature)
    
     def test_empty_tree(self):
         self.build_tree([])
@@ -38,7 +55,7 @@ class Win32UtilsGlobExpand(TestCaseInTempDir):
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
                          'b', 'b1', 'b2', 'b3',
                          'c/', 'c/c1', 'c/c2', 
-                         'd/', 'd/d1', 'd/d2'])
+                         'd/', 'd/d1', 'd/d2', 'd/e/', 'd/e/e1'])
         self._run_testset([
             # no wildcards
             [['a'], ['a']],
@@ -47,7 +64,7 @@ class Win32UtilsGlobExpand(TestCaseInTempDir):
                 
             [['d'], ['d']],
             [['d/'], ['d/']],
-            [['d\\'], ['d\\']],
+            [['d\\'], ['d/']],
                
             # wildcards
             [['a*'], ['a', 'a1', 'a2', 'a11', 'a.1']],
@@ -57,12 +74,12 @@ class Win32UtilsGlobExpand(TestCaseInTempDir):
             [['b[1-2]'], ['b1', 'b2']],
             [['A?'], ['a1', 'a2']],
                
-            [['d/*'], ['d\\d1', 'd\\d2']],
-            [['d\\*'], ['d\\d1', 'd\\d2']],
-            [['?\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
-            [['*\\*'], ['c\\c1', 'c\\c2', 'd\\d1', 'd\\d2']],
-            [['*/'], ['c\\', 'd\\']],
-            [['*\\'], ['c\\', 'd\\']]])
+            [['d/*'], ['d/d1', 'd/d2', 'd/e']],
+            [['d\\*'], ['d/d1', 'd/d2', 'd/e']],
+            [['?\\*'], ['c/c1', 'c/c2', 'd/d1', 'd/d2', 'd/e']],
+            [['*\\*'], ['c/c1', 'c/c2', 'd/d1', 'd/d2', 'd/e']],
+            [['*/'], ['c/', 'd/']],
+            [['*\\'], ['c/', 'd/']]])
         
     def _run_testset(self, testset):
         for pattern, expected in testset:

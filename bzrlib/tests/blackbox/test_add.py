@@ -18,10 +18,9 @@
 """Tests of the 'bzr add' command."""
 
 import os
-import sys
 
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_win32utils import Win32Feature
 
 
 class TestAdd(ExternalBase):
@@ -196,9 +195,8 @@ class TestAdd(ExternalBase):
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_with_wildcards(self):
-        if (sys.platform != 'win32'):
-            raise TestSkipped('Unix shell glob expansion not (yet) accessible.')
-        self.run_bzr('init')
+        self.requireFeature(Win32Feature)
+        self.make_branch_and_tree('.')
         self.build_tree(['a1', 'a2', 'b', 'c33'])
-        self.run_bzr('add', 'a?', 'c*')
+        self.run_bzr(['add', 'a?', 'c*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'b\n')

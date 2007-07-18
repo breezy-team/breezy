@@ -264,6 +264,7 @@ def glob_expand(file_list):
             expanded_file_list.append(possible_glob)
         else:
             expanded_file_list += glob_files
+    expanded_file_list = map(lambda x: x.replace('\\', '/'), expanded_file_list)
     return expanded_file_list
 
 
