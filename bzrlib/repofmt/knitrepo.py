@@ -321,14 +321,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         self.repo = repo
         self._serializer = revisionstore._serializer
 
-    def _add_revision(self, revision, revision_as_file, transaction):
-        """Template method helper to store revision in this store."""
-        # FIXME: make this ghost aware at the knit level
-        rf = self.get_revision_file(transaction)
-        self.get_revision_file(transaction).add_lines_with_ghosts(
-            revision.revision_id,
-            revision.parent_ids,
-            osutils.split_lines(revision_as_file.read()))
+    def _ensure_names_loaded(self):
+        if self.repo._revision_indices is None:
+            index_transport = self.get_indices_transport()
+            self.repo._revision_indices = file_collection.FileCollection(
+                index_transport, 'index')
+            self.repo._revision_indices.load()
 
     def get_indices_transport(self):
         return self.versioned_file_store._transport.clone('indices')
@@ -338,20 +336,17 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
         index_transport = self.get_indices_transport()
-        self.repo._revision_indices = file_collection.FileCollection(
-            index_transport, 'index')
-        self.repo._revision_indices.load()
         indices = []
+        self._ensure_names_loaded()
         def _cmp(x, y): return cmp(int(x), int(y))
         for name in sorted(self.repo._revision_indices.names(), cmp=_cmp, reverse=True):
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
-            index_name = self.name_to_index_name(name)
+            index_name = self.name_to_revision_index_name(name)
             indices.append(GraphIndex(index_transport, index_name))
-        if self.repo.control_files._lock_mode == 'w':
+        if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
-            indices.append(InMemoryGraphIndex(1))
-            self.repo._revision_write_index = indices[-1]
+            indices.append(self.repo._revision_write_index)
             add_callback = self.repo._revision_write_index.add_nodes
         else:
             add_callback = None # no data-adding permitted.
@@ -365,33 +360,106 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             index=knit_index, delta=False, factory=knit.KnitPlainFactory())
         return self.repo._revision_knit
 
+    def get_signature_file(self, transaction):
+        """Get the signature versioned file object."""
+        if getattr(self.repo, '_signature_knit', None) is not None:
+            return self.repo._signature_knit
+        index_transport = self.get_indices_transport()
+        indices = []
+        self._ensure_names_loaded()
+        def _cmp(x, y): return cmp(int(x), int(y))
+        for name in sorted(self.repo._revision_indices.names(), cmp=_cmp, reverse=True):
+            # TODO: maybe this should expose size to us  to allow
+            # sorting of the indices for better performance ?
+            index_name = self.name_to_signature_index_name(name)
+            indices.append(GraphIndex(index_transport, index_name))
+        if self.repo.is_in_write_group():
+            # allow writing: queue writes to a new index
+            indices.append(self.repo._signature_write_index)
+            add_callback = self.repo._signature_write_index.add_nodes
+        else:
+            add_callback = None # no data-adding permitted.
+        self.repo._signature_all_indices = CombinedGraphIndex(indices)
+        knit_index = KnitGraphIndex(self.repo._signature_all_indices,
+            add_callback=add_callback, parents=False)
+        self.repo._signature_knit = knit.KnitVersionedFile(
+            'signatures', index_transport.clone('..'),
+            self.repo.control_files._file_mode,
+            create=False, access_mode=self.repo.control_files._lock_mode,
+            index=knit_index, delta=False, factory=knit.KnitPlainFactory())
+        return self.repo._signature_knit
+
     def flush(self):
         """Write out pending indices."""
-        # have we done anything?
-        if getattr(self.repo, '_revision_knit', None) is not None:
-            index_transport = self.get_indices_transport()
+        # if any work has been done, allocate a new name
+        if (getattr(self.repo, '_revision_knit', None) is not None or
+            getattr(self.repo, '_signature_knit', None) is not None):
             new_name = self.repo._revision_indices.allocate()
-            new_index_name = self.name_to_index_name(new_name)
-            index_transport.put_file(new_index_name,
-                self.repo._revision_write_index.finish())
             self.repo._revision_indices.save()
-            self.repo._revision_write_index = None
+        else:
+            # no knits actually accessed
+            return
+        index_transport = self.get_indices_transport()
+        # write a revision index (might be empty)
+        new_index_name = self.name_to_revision_index_name(new_name)
+        index_transport.put_file(new_index_name,
+            self.repo._revision_write_index.finish())
+        self.repo._revision_write_index = None
+        if self.repo._revision_all_indices is not None:
+            # revisions 'knit' accessed : update it.
             self.repo._revision_all_indices.insert_index(0,
                 GraphIndex(index_transport, new_index_name))
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._revision_all_indices._indices[-1]
+        # write a signatures index (might be empty)
+        new_index_name = self.name_to_signature_index_name(new_name)
+        index_transport.put_file(new_index_name,
+            self.repo._signature_write_index.finish())
+        self.repo._signature_write_index = None
+        if self.repo._signature_all_indices is not None:
+            # sigatures 'knit' accessed : update it.
+            self.repo._signature_all_indices.insert_index(0,
+                GraphIndex(index_transport, new_index_name))
+            # remove the write buffering index. XXX: API break
+            # - clearly we need a remove_index call too.
+            del self.repo._signature_all_indices._indices[-1]
 
-    def name_to_index_name(self, name):
+    def name_to_revision_index_name(self, name):
         """The revision index is the name + .rix."""
         return name + '.rix'
 
+    def name_to_signature_index_name(self, name):
+        """The signature index is the name + .six."""
+        return name + '.six'
+
     def reset(self):
         """Clear all cached data."""
-        self.repo._revision_knit = None
+        # the packs that exist
         self.repo._revision_indices = None
+        # cached revision data
+        self.repo._revision_knit = None
         self.repo._revision_write_index = None
         self.repo._revision_all_indices = None
+        # cached signature data
+        self.repo._signature_knit = None
+        self.repo._signature_write_index = None
+        self.repo._signature_all_indices = None
+
+    def setup(self):
+        # setup in-memory indices to accumulate data.
+        if self.repo.control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        self.repo._revision_write_index = InMemoryGraphIndex(1)
+        self.repo._signature_write_index = InMemoryGraphIndex(0)
+        # if knit indices have been handed out, add a mutable
+        # index to them
+        if self.repo._revision_knit is not None:
+            self.repo._revision_all_indices.insert_index(0, self.repo._revision_write_index)
+            self.repo._revision_knit._index._add_callback = self.repo._revision_write_index.add_nodes
+        if self.repo._signature_knit is not None:
+            self.repo._signature_all_indices.insert_index(0, self.repo._signature_write_index)
+            self.repo._signature_knit._index._add_callback = self.repo._signature_write_index.add_nodes
 
 
 class GraphKnitRepository1(KnitRepository):
@@ -412,7 +480,7 @@ class GraphKnitRepository1(KnitRepository):
             self._revision_store.reset()
 
     def _start_write_group(self):
-        pass
+        self._revision_store.setup()
 
     def _commit_write_group(self):
         self._revision_store.flush()
@@ -437,7 +505,7 @@ class GraphKnitRepository3(KnitRepository3):
             self._revision_store.reset()
 
     def _start_write_group(self):
-        pass
+        self._revision_store.setup()
 
     def _commit_write_group(self):
         self._revision_store.flush()
@@ -695,6 +763,7 @@ def _knit_to_experimental(result, a_bzrdir):
     collection.initialise()
     collection.save()
     repo_transport.delete('revisions.kndx')
+    repo_transport.delete('signatures.kndx')
 
 
 class RepositoryFormatGraphKnit3(RepositoryFormatKnit3):

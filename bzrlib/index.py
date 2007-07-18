@@ -365,8 +365,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
         :param nodes: An iterable of (key, node_refs, value) entries to add.
         """
-        for (key, value, node_refs) in nodes:
-            self.add_node(key, value, node_refs)
+        if self.reference_lists:
+            for (key, value, node_refs) in nodes:
+                self.add_node(key, value, node_refs)
+        else:
+            for (key, value) in nodes:
+                self.add_node(key, value)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index

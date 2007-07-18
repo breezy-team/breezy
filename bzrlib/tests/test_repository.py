@@ -542,9 +542,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         """check knit content for a repository."""
         self.assertHasKndx(t, 'inventory')
         self.assertHasKnit(t, 'inventory')
-        self.assertHasKnit(t, 'revisions')
         self.assertHasNoKndx(t, 'revisions')
-        self.assertHasKndx(t, 'signatures')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasNoKndx(t, 'signatures')
         self.assertHasKnit(t, 'signatures')
         # revision-indexes file-container directory
         collection = FileCollection(t.clone('indices'), 'index')
@@ -599,6 +599,16 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(trans.has('indices/0.rix'))
         tree.commit('foobarbaz')
         self.assertTrue(trans.has('indices/0.rix'))
+
+    def test_add_revision_creates_zero_dot_six(self):
+        """Adding a revision makes a 0.six (Signature IndeX) file."""
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        self.assertFalse(trans.has('indices/0.six'))
+        tree.commit('foobarbaz')
+        self.assertTrue(trans.has('indices/0.six'))
+
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):

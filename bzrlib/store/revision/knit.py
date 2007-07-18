@@ -65,7 +65,6 @@ class KnitRevisionStore(RevisionStore):
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
         # FIXME: make this ghost aware at the knit level
-        rf = self.get_revision_file(transaction)
         self.get_revision_file(transaction).add_lines_with_ghosts(
             revision.revision_id,
             revision.parent_ids,
