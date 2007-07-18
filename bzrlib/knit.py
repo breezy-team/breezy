@@ -633,10 +633,6 @@ class KnitVersionedFile(VersionedFile):
 
     def get_format_signature(self):
         """See VersionedFile.get_format_signature()."""
-#        if self.delta:
-#            delta_part = "delta"
-#        else:
-#            delta_part = "full"
         if self.factory.annotated:
             annotated_part = "annotated"
         else:
@@ -722,67 +718,6 @@ class KnitVersionedFile(VersionedFile):
                     [(version_id, options, parents, length)],
                     reader_callable(length))
         return
-
-
-
-
-
-        # To avoid lots of small writes (and small reads from the
-        # reader_callable), we batch up the records to insert as we process the
-        # stream, rather than inserting them one-by-one.  This means in the
-        # worst case we may need to hold the entire knit contents in memory, but
-        # this is no worse than the existing logic in join.  We also take care
-        # to avoid empty writes.
-        records_to_insert = []
-        bytes_to_read = 0
-        for version_id, options, length, parents in data_list:
-            # do we have this version_id:
-            #  * yes: check its consistent with the data we've already got
-            #         stored for that version_id.
-            #  * no: arrange to insert this record.
-            if self.has_version(version_id):
-                # Make sure that if we've already got this version_id, that the
-                # stream agrees with what's stored.
-                # First we flush the records to insert, because we'll need to
-                # read from the reader_callable to inspect the data.
-                if records_to_insert:
-                    self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
-                    records_to_insert = []
-                    bytes_to_read = 0
-                
-                # First check: the list of parents.
-                my_parents = self.get_parents_with_ghosts(version_id)
-                if my_parents != parents:
-                    raise KnitCorrupt(
-                        self.filename,
-                        'parents list %r from data stream does not match '
-                        'already recorded parents %r for %s'
-                        % (parents, my_parents, version_id))
-
-                # Also check the SHA-1 of the fulltext this content will
-                # produce.
-                raw_data = reader_callable(length)
-                my_fulltext_sha1 = self.get_sha1(version_id)
-                df, rec = self._data._parse_record_header(version_id, raw_data)
-                stream_fulltext_sha1 = rec[3]
-                if my_fulltext_sha1 != stream_fulltext_sha1:
-                    # Actually, we don't know if it's this knit that's corrupt,
-                    # or the data stream we're trying to insert.
-                    raise KnitCorrupt(
-                        self.filename, 'sha-1 does not match %s' % version_id)
-            else:
-                # We don't have this record.  Queue it for insertion.
-                if records_to_insert and bytes_to_read + length > buffer_size:
-                    # This record will overflow the buffer, so flush first.
-                    self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
-                    records_to_insert = []
-                    bytes_to_read = 0
-
-                records_to_insert.append((version_id, options, parents, length))
-                bytes_to_read += length
-        # Write any unflushed records.
-        if records_to_insert:
-            self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
 
     def versions(self):
         """See VersionedFile.versions."""
