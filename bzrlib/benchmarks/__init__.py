@@ -183,6 +183,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_dirstate',
                    'bzrlib.benchmarks.bench_info',
                    'bzrlib.benchmarks.bench_inventory',
+                   'bzrlib.benchmarks.bench_knit',
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',

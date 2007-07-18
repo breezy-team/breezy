@@ -149,30 +149,62 @@ class bzr_build(build):
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build}
+from distutils.extension import Extension
 ext_modules = []
 try:
     from Pyrex.Distutils import build_ext
 except ImportError:
+    have_pyrex = False
     # try to build the extension from the prior generated source.
-    print ("Pyrex not available, while bzr will build, "
-           "you cannot modify the C extensions.")
+    print
+    print ("The python package 'Pyrex' is not available."
+           " If the .c files are available,")
+    print ("they will be built,"
+           " but modifying the .pyx files will not rebuild them.")
+    print
     from distutils.command.build_ext import build_ext
-    from distutils.extension import Extension
-    ext_modules.extend([
-        Extension("bzrlib._dirstate_helpers_c",
-                  ["bzrlib/_dirstate_helpers_c.c"],
-                  libraries=[],
-                  ),
-    ])
 else:
-    from distutils.extension import Extension
-    ext_modules.extend([
-        Extension("bzrlib._dirstate_helpers_c",
-                  ["bzrlib/_dirstate_helpers_c.pyx"],
-                  libraries=[],
-                  ),
-    ])
+    have_pyrex = True
+# Override the build_ext if we have Pyrex available
 command_classes['build_ext'] = build_ext
+unavailable_files = []
+
+
+def add_pyrex_extension(module_name, **kwargs):
+    """Add a pyrex module to build.
+
+    This will use Pyrex to auto-generate the .c file if it is available.
+    Otherwise it will fall back on the .c file. If the .c file is not
+    available, it will warn, and not add anything.
+
+    You can pass any extra options to Extension through kwargs. One example is
+    'libraries = []'.
+
+    :param module_name: The python path to the module. This will be used to
+        determine the .pyx and .c files to use.
+    """
+    path = module_name.replace('.', '/')
+    pyrex_name = path + '.pyx'
+    c_name = path + '.c'
+    if have_pyrex:
+        ext_modules.append(Extension(module_name, [pyrex_name]))
+    else:
+        if not os.path.isfile(c_name):
+            unavailable_files.append(c_name)
+        else:
+            ext_modules.append(Extension(module_name, [c_name]))
+
+
+add_pyrex_extension('bzrlib._dirstate_helpers_c')
+add_pyrex_extension('bzrlib._knit_load_data_c')
+
+
+if unavailable_files:
+    print 'C extension(s) not found:'
+    print '   %s' % ('\n  '.join(unavailable_files),)
+    print 'The python versions will be used instead.'
+    print
+
 
 if 'bdist_wininst' in sys.argv:
     import glob
