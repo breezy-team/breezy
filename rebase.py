@@ -28,6 +28,7 @@ from maptree import MapTree, map_file_ids
 REBASE_PLAN_FILENAME = 'rebase-plan'
 REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
 REBASE_PLAN_VERSION = 1
+REVPROP_REBASE_OF = 'rebase-of'
 
 def rebase_plan_exists(wt):
     """Check whether there is a rebase plan present.
@@ -275,7 +276,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     oldrev = repository.get_revision(oldrevid)
 
     revprops = dict(oldrev.properties)
-    revprops['rebase-of'] = oldrevid
+    revprops[REVPROP_REBASE_OF] = oldrevid
 
     builder = repository.get_commit_builder(branch=None, parents=new_parents, 
                                   config=Config(),
@@ -316,7 +317,7 @@ def commit_rebase(wt, oldrev, newrevid):
     :param newrevid: New revision id."""
     assert oldrev.revision_id != newrevid
     revprops = dict(oldrev.properties)
-    revprops['rebase-of'] = oldrev.revision_id
+    revprops[REVPROP_REBASE_OF] = oldrev.revision_id
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, timezone=oldrev.timezone,
               revprops=revprops, rev_id=newrevid)
     write_active_rebase_revid(wt, None)

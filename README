@@ -13,7 +13,7 @@ replaying a revision, it will abort. When it's aborted, you can either resolve
 the conflicts (using "bzr resolve") and run ``bzr rebase-continue`` or 
 abort the rebase and undo all changes it's done using ``bzr rebase-abort``. 
 The current state of the rebase can be viewed with the ``bzr rebase-todo`` 
-command.
+command. See "bzr help rebase" for more details.
 
 In the future, I hope it can also support rebasing on top of an unrelated 
 branch.
@@ -34,7 +34,7 @@ The rebase-state file contains the following information:
    place and the revisions that are only on the branch that is being 
    rebased.
 
-   The map is from old revid to a tupole with new revid and new parents.
+   The map is from old revid to a tuple with new revid and new parents.
 
    For example, in the following scenario:
 
@@ -47,10 +47,10 @@ The rebase-state file contains the following information:
 	E -> (E', [D])
 	F -> (F', [E'])
 
-   Corner cases would be situations like this:
+The rebase plan contains the newly generated revision ids so that it is 
+not necessary to update it after each revision that has been written 
+because the new generated revision ids would have to be known when rewriting 
+their children.
 
-    A -> B -> C -> D main
-	     |\-> G -\
-         \ -> E ---> F next
-
-    Would G get rebased on top of D rather than B?
+The 'rebase-of' revision property of newly created revisions 
+will be set to the revision id of the revision they are a rewrite of.
