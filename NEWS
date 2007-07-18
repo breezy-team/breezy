@@ -26,15 +26,16 @@ IN DEVELOPMENT
     * Merge is now faster.  Depending on the scenario, it can be more than 2x
       faster. (Aaron Bentley)
 
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
-      Various globally-declared options have been removed, so plugins
-      that previously said ``takes_options=['message']`` must now
-      construct an Option object and provide appropriate help. Options
-      are now required to provide a help string and it must comply with
-      the style guide by being one or more sentences with an initial
-      capital and final period. (Martin Pool)
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
 
   INTERNALS:
 
@@ -73,6 +74,13 @@ IN DEVELOPMENT
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
       ``--keep-output`` options, which are obsolete now that tests
       are done within directories in $TMPDIR.  (Martin Pool)
+
+
+bzr 0.18  2007-07-17
+
+  BUGFIXES:
+
+    * Fix 'bzr add' crash under Win32 (Kuno Meyer)
 
 
 bzr 0.18rc1  2007-07-10

@@ -16,12 +16,12 @@ strict digraph performance {
   uncommit_analysis[label="Work required analysis for uncommit"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
   iter_merge[label="iter_changes based merge\n2 days"];
+  diff_analysis[label="Work required analysis for diff"];
 
   /* uncompleted node list - add new tasks here */
   node[color="blue"];
   log_analysis[label="Work required analysis for log"];
   log_path_analysis[label="Work required analysis for log of selected paths."];
-  diff_analysis[label="Work required analysis for diff"];
   diff_path_analysis[label="Work required analysis for diff of selected paths"];
   merge_analysis[label="Work required analysis for merge"];
   missing_analysis[label="Work required analysis for missing"];
