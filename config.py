@@ -57,7 +57,7 @@ class SvnRepositoryConfig(IniBasedConfig):
 
     def add_location(self, location):
         locations = self.get_locations()
-        locations.add(location)
+        locations.add(location.rstrip("/"))
         self.set_user_option('locations', ";".join(list(locations)))
 
     def set_user_option(self, name, value):
