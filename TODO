@@ -6,18 +6,15 @@ mandatory before 0.4.0:
 - nestedtree support
 
 todo:
-- lookup_revision_id() needs to be able to quicklier prove that a revision id doesn't exist
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
-- more intelligent guessing of branching scheme. Look at directory structure in last revision?
-- make has_revision() more efficient - just call lookup_revision_id() and never add entries that don't exist 
-                                       in the repository?
+- more intelligent guessing of branching scheme. Look at directory structure in last revision? (#81976)
 - fix autorealm repository
 - avoid extra connect in logwalker?
-- free memory!
-- report changes to delta editor in Branch.pull()
+- free memory! (#54253)
 - more blackbox tests
  - svn-import without scheme specified should guess
 - transform file ids in workingtree in svn-upgrade
+- support tags (#81102)
 
 working trees:
 - implement apply_inventory_delta()
