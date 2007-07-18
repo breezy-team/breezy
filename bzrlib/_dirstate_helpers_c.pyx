@@ -104,20 +104,20 @@ cdef int _is_aligned(void *ptr):
 
 
 cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
-    cdef char *cur1
-    cdef char *cur2
-    cdef char *end1
-    cdef char *end2
+    cdef unsigned char *cur1
+    cdef unsigned char *cur2
+    cdef unsigned char *end1
+    cdef unsigned char *end2
     cdef int *cur_int1
     cdef int *cur_int2
     cdef int *end_int1
     cdef int *end_int2
 
-    if path1 == path2:
+    if path1 == path2 and size1 == size2:
         return 0
 
-    end1 = path1+size1
-    end2 = path2+size2
+    end1 = <unsigned char*>path1+size1
+    end2 = <unsigned char*>path2+size2
 
     # Use 32-bit comparisons for the matching portion of the string.
     # Almost all CPU's are faster at loading and comparing 32-bit integers,
@@ -127,8 +127,8 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     if _is_aligned(path1) and _is_aligned(path2):
         cur_int1 = <int*>path1
         cur_int2 = <int*>path2
-        end_int1 = <int*>(path1 + size1 - (size1%4))
-        end_int2 = <int*>(path2 + size2 - (size2%4))
+        end_int1 = <int*>(path1 + size1 - (size1 % sizeof(int)))
+        end_int2 = <int*>(path2 + size2 - (size2 % sizeof(int)))
 
         while cur_int1 < end_int1 and cur_int2 < end_int2:
             if cur_int1[0] != cur_int2[0]:
@@ -136,11 +136,11 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
             cur_int1 = cur_int1 + 1
             cur_int2 = cur_int2 + 1
 
-        cur1 = <char*>cur_int1
-        cur2 = <char*>cur_int2
+        cur1 = <unsigned char*>cur_int1
+        cur2 = <unsigned char*>cur_int2
     else:
-        cur1 = path1
-        cur2 = path2
+        cur1 = <unsigned char*>path1
+        cur2 = <unsigned char*>path2
 
     while cur1 < end1 and cur2 < end2:
         if cur1[0] == cur2[0]:
@@ -184,6 +184,12 @@ def cmp_by_dirs_c(path1, path2):
         0 if paths are equal,
         and negative number if ``path2`` sorts first
     """
+    if not PyString_CheckExact(path1):
+        raise TypeError("'path1' must be a plain string, not %s: %r"
+                        % (type(path1), path1))
+    if not PyString_CheckExact(path2):
+        raise TypeError("'path2' must be a plain string, not %s: %r"
+                        % (type(path2), path2))
     return _cmp_by_dirs(PyString_AsString(path1),
                         PyString_Size(path1),
                         PyString_AsString(path2),
@@ -206,6 +212,12 @@ def _cmp_path_by_dirblock_c(path1, path2):
         0 if paths are equal
         and a negative number if ``path2`` sorts first
     """
+    if not PyString_CheckExact(path1):
+        raise TypeError("'path1' must be a plain string, not %s: %r"
+                        % (type(path1), path1))
+    if not PyString_CheckExact(path2):
+        raise TypeError("'path2' must be a plain string, not %s: %r"
+                        % (type(path2), path2))
     return _cmp_path_by_dirblock(PyString_AsString(path1),
                                  PyString_Size(path1),
                                  PyString_AsString(path2),
@@ -214,6 +226,10 @@ def _cmp_path_by_dirblock_c(path1, path2):
 
 cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
                                char *path2, int path2_len):
+    """Compare two paths by what directory they are in.
+
+    see ``_cmp_path_by_dirblock_c`` for details.
+    """
     cdef char *dirname1
     cdef int dirname1_len
     cdef char *dirname2
@@ -226,6 +242,9 @@ cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
     cdef int cmp_val
 
     if path1_len == 0 and path2_len == 0:
+        return 0
+
+    if path1 == path2 and path1_len == path2_len:
         return 0
 
     if path1_len == 0:
@@ -279,16 +298,6 @@ cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
     return 1
 
 
-cdef object _pystr(char *s, int length):
-    if s == NULL:
-        if length == 0:
-            return ''
-        else:
-            return None
-    else:
-        return PyString_FromStringAndSize(s, length)
-
-
 def _bisect_path_left_c(paths, path):
     """Return the index where to insert path into paths.
 
@@ -310,29 +319,31 @@ def _bisect_path_left_c(paths, path):
     cdef int _lo
     cdef int _hi
     cdef int _mid
-    cdef char *path_str
+    cdef char *path_cstr
     cdef int path_size
-    cdef char *cur_str
+    cdef char *cur_cstr
     cdef int cur_size
     cdef void *cur
 
     if not PyList_CheckExact(paths):
-        raise TypeError('you must pass a python list for paths')
+        raise TypeError("you must pass a python list for 'paths' not: %s %r"
+                        % (type(paths), paths))
     if not PyString_CheckExact(path):
-        raise TypeError('you must pass a string for path')
+        raise TypeError("you must pass a string for 'path' not: %s %r"
+                        % (type(path), path))
 
     _hi = len(paths)
     _lo = 0
 
-    path_str = PyString_AsString(path)
+    path_cstr = PyString_AsString(path)
     path_size = PyString_Size(path)
 
     while _lo < _hi:
         _mid = (_lo + _hi) / 2
         cur = PyList_GetItem_object_void(paths, _mid)
-        cur_str = PyString_AS_STRING_void(cur)
+        cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock(cur_str, cur_size, path_str, path_size) < 0:
+        if _cmp_path_by_dirblock(cur_cstr, cur_size, path_cstr, path_size) < 0:
             _lo = _mid + 1
         else:
             _hi = _mid
@@ -360,29 +371,31 @@ def _bisect_path_right_c(paths, path):
     cdef int _lo
     cdef int _hi
     cdef int _mid
-    cdef char *path_str
+    cdef char *path_cstr
     cdef int path_size
-    cdef char *cur_str
+    cdef char *cur_cstr
     cdef int cur_size
     cdef void *cur
 
     if not PyList_CheckExact(paths):
-        raise TypeError('you must pass a python list for paths')
+        raise TypeError("you must pass a python list for 'paths' not: %s %r"
+                        % (type(paths), paths))
     if not PyString_CheckExact(path):
-        raise TypeError('you must pass a string for path')
+        raise TypeError("you must pass a string for 'path' not: %s %r"
+                        % (type(path), path))
 
     _hi = len(paths)
     _lo = 0
 
-    path_str = PyString_AsString(path)
+    path_cstr = PyString_AsString(path)
     path_size = PyString_Size(path)
 
     while _lo < _hi:
         _mid = (_lo + _hi) / 2
         cur = PyList_GetItem_object_void(paths, _mid)
-        cur_str = PyString_AS_STRING_void(cur)
+        cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock(path_str, path_size, cur_str, cur_size) < 0:
+        if _cmp_path_by_dirblock(path_cstr, path_size, cur_cstr, cur_size) < 0:
             _hi = _mid
         else:
             _lo = _mid + 1
@@ -402,23 +415,25 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
     cdef int _lo
     cdef int _hi
     cdef int _mid
-    cdef char *dirname_str
+    cdef char *dirname_cstr
     cdef int dirname_size
-    cdef char *cur_str
+    cdef char *cur_cstr
     cdef int cur_size
     cdef void *cur
 
+    if not PyList_CheckExact(dirblocks):
+        raise TypeError("you must pass a python list for 'dirblocks' not: %s %r"
+                        % (type(dirblocks), dirblocks))
+    if not PyString_CheckExact(dirname):
+        raise TypeError("you must pass a string for dirname not: %s %r"
+                        % (type(dirname), dirname))
     if hi is None:
         _hi = len(dirblocks)
     else:
         _hi = hi
 
-    if not PyList_CheckExact(dirblocks):
-        raise TypeError('you must pass a python list for dirblocks')
     _lo = lo
-    if not PyString_CheckExact(dirname):
-        raise TypeError('you must pass a string for dirname')
-    dirname_str = PyString_AsString(dirname)
+    dirname_cstr = PyString_AsString(dirname)
     dirname_size = PyString_Size(dirname)
 
     while _lo < _hi:
@@ -427,9 +442,9 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
                 PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_str = PyString_AS_STRING_void(cur)
+        cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_by_dirs(cur_str, cur_size, dirname_str, dirname_size) < 0:
+        if _cmp_by_dirs(cur_cstr, cur_size, dirname_cstr, dirname_size) < 0:
             _lo = _mid + 1
         else:
             _hi = _mid
@@ -440,27 +455,27 @@ cdef class Reader:
     """Maintain the current location, and return fields as you parse them."""
 
     cdef object text # The overall string object
-    cdef char *text_str # Pointer to the beginning of text
+    cdef char *text_cstr # Pointer to the beginning of text
     cdef int text_size # Length of text
 
-    cdef char *end_str # End of text
-    cdef char *cur # Pointer to the current record
+    cdef char *end_cstr # End of text
+    cdef char *cur_cstr # Pointer to the current record
     cdef char *next # Pointer to the end of this record
 
     def __new__(self, text):
         self.text = text
-        self.text_str = PyString_AsString(text)
+        self.text_cstr = PyString_AsString(text)
         self.text_size = PyString_Size(text)
-        self.end_str = self.text_str + self.text_size
-        self.cur = self.text_str
+        self.end_cstr = self.text_cstr + self.text_size
+        self.cur_cstr = self.text_cstr
 
     cdef char *get_next(self, int *size):
         """Return a pointer to the start of the next field."""
         cdef char *next
-        next = self.cur
-        self.cur = <char*>memchr(next, c'\0', self.end_str-next)
-        size[0] = self.cur - next
-        self.cur = self.cur + 1
+        next = self.cur_cstr
+        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr-next)
+        size[0] = self.cur_cstr - next
+        self.cur_cstr = self.cur_cstr + 1
         return next
 
     cdef object get_next_str(self):
@@ -470,8 +485,14 @@ cdef class Reader:
         next = self.get_next(&size)
         return PyString_FromStringAndSize(next, size)
 
-    def init(self):
-        """Get the pointer ready"""
+    cdef int _init(self) except -1:
+        """Get the pointer ready.
+
+        This assumes that the dirstate header has already been read, and we
+        already have the dirblock string loaded into memory.
+        This just initializes our memory pointers, etc for parsing of the
+        dirblock string.
+        """
         cdef char *first
         cdef int size
         # The first field should be an empty string left over from the Header
@@ -479,23 +500,35 @@ cdef class Reader:
         if first[0] != c'\0' and size == 0:
             raise AssertionError('First character should be null not: %s'
                                  % (first,))
-
-    def get_all_fields(self):
-        """Get a list of all fields"""
-        self.init()
-        fields = []
-        while self.cur < self.end_str:
-            PyList_Append(fields, self.get_next_str())
-        return fields
+        return 0
 
     cdef object _get_entry(self, int num_trees, void **p_current_dirname,
                            int *new_block):
+        """Extract the next entry.
+
+        This parses the next entry based on the current location in
+        ``self.cur_cstr``.
+        Each entry can be considered a "row" in the total table. And each row
+        has a fixed number of columns. It is generally broken up into "key"
+        columns, then "current" columns, and then "parent" columns.
+
+        :param num_trees: How many parent trees need to be parsed
+        :param p_current_dirname: A pointer to the current PyString
+            representing the directory name.
+            We pass this in as a void * so that pyrex doesn't have to
+            increment/decrement the PyObject reference counter for each
+            _get_entry call.
+            We use a pointer so that _get_entry can update it with the new
+            value.
+        :param new_block: This is to let the caller know that it needs to
+            create a new directory block to store the next entry.
+        """
         cdef object path_name_file_id_key
-        cdef char *entry_size_str
+        cdef char *entry_size_cstr
         cdef unsigned long int entry_size
-        cdef char* executable_str
+        cdef char* executable_cstr
         cdef int is_executable
-        cdef char* dirname_str
+        cdef char* dirname_cstr
         cdef char* trailing
         cdef int cur_size
         cdef int i
@@ -503,28 +536,59 @@ cdef class Reader:
         cdef object fingerprint
         cdef object info
 
-        dirname_str = self.get_next(&cur_size)
-        if strncmp(dirname_str,
-                  PyString_AS_STRING_void(p_current_dirname[0]),
-                  cur_size+1) != 0:
-            dirname = PyString_FromStringAndSize(dirname_str, cur_size)
+        # Read the 'key' information (dirname, name, file_id)
+        dirname_cstr = self.get_next(&cur_size)
+        # Check to see if we have started a new directory block.
+        # If so, then we need to create a new dirname PyString, so that it can
+        # be used in all of the tuples. This saves time and memory, by re-using
+        # the same object repeatedly.
+
+        # Do the cheap 'length of string' check first. If the string is a
+        # different length, then we *have* to be a different directory.
+        if (cur_size != PyString_GET_SIZE_void(p_current_dirname[0])
+            or strncmp(dirname_cstr,
+                       # Extract the char* from our current dirname string.  We
+                       # know it is a PyString, so we can use
+                       # PyString_AS_STRING, we use the _void version because
+                       # we are tricking Pyrex by using a void* rather than an
+                       # <object>
+                       PyString_AS_STRING_void(p_current_dirname[0]),
+                       cur_size+1) != 0):
+            dirname = PyString_FromStringAndSize(dirname_cstr, cur_size)
             p_current_dirname[0] = <void*>dirname
             new_block[0] = 1
         else:
             new_block[0] = 0
+
+        # Build up the key that will be used.
+        # By using <object>(void *) Pyrex will automatically handle the
+        # Py_INCREF that we need.
         path_name_file_id_key = (<object>p_current_dirname[0],
                                  self.get_next_str(),
                                  self.get_next_str(),
                                 )
 
+        # Parse all of the per-tree information. current has the information in
+        # the same location as parent trees. The only difference is that 'info'
+        # is a 'packed_stat' for current, while it is a 'revision_id' for
+        # parent trees.
+        # minikind, fingerprint, and info will be returned as regular python
+        # strings
+        # entry_size and is_executable will be parsed into a python Long and
+        # python Boolean, respectively.
+        # TODO: jam 20070718 Consider changin the entry_size conversion to
+        #       prefer python Int when possible. They are generally faster to
+        #       work with, and it will be rare that we have a file >2GB.
+        #       Especially since this code is pretty much fixed at a max of
+        #       4GB.
         trees = []
         for i from 0 <= i < num_trees:
             minikind = self.get_next_str()
             fingerprint = self.get_next_str()
-            entry_size_str = self.get_next(&cur_size)
-            entry_size = strtoul(entry_size_str, NULL, 10)
-            executable_str = self.get_next(&cur_size)
-            is_executable = (executable_str[0] == c'y')
+            entry_size_cstr = self.get_next(&cur_size)
+            entry_size = strtoul(entry_size_cstr, NULL, 10)
+            executable_cstr = self.get_next(&cur_size)
+            is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
             PyList_Append(trees, (
                 minikind,     # minikind
@@ -534,13 +598,17 @@ cdef class Reader:
                 info,         # packed_stat or revision_id
             ))
 
+        # The returned tuple is (key, [trees])
         ret = (path_name_file_id_key, trees)
-        # Ignore the trailing newline
+        # Ignore the trailing newline, but assert that it does exist, this
+        # ensures that we always finish parsing a line on an end-of-entry
+        # marker.
         trailing = self.get_next(&cur_size)
         if cur_size != 1 or trailing[0] != c'\n':
             raise AssertionError(
                 'Bad parse, we expected to end on \\n, not: %d %s: %s'
-                % (cur_size, PyString_FromString(trailing), ret))
+                % (cur_size, PyString_FromStringAndSize(trailing, cur_size),
+                   ret))
         return ret
 
     def _parse_dirblocks(self, state):
@@ -557,7 +625,7 @@ cdef class Reader:
         expected_entry_count = state._num_entries
 
         # Ignore the first record
-        self.init()
+        self._init()
 
         current_block = []
         state._dirblocks = [('', current_block), ('', [])]
@@ -573,7 +641,7 @@ cdef class Reader:
         #       reasonable. Or we could malloc it to something large (100 or
         #       so), and then truncate. That would give us a malloc + realloc,
         #       rather than lots of reallocs.
-        while self.cur < self.end_str:
+        while self.cur_cstr < self.end_cstr:
             entry = self._get_entry(num_trees, &current_dirname, &new_block)
             if new_block:
                 # new block - different dirname
@@ -598,6 +666,8 @@ def _read_dirblocks_c(state):
 
     :param state: A DirState object.
     :return: None
+    :postcondition: The dirblocks will be loaded into the appropriate fields in
+        the DirState object.
     """
     state._state_file.seek(state._end_of_header)
     text = state._state_file.read()

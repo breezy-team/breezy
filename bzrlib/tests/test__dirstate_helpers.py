@@ -447,6 +447,19 @@ class TestCmpByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, 'ab/cd', 'ab/cd-')
         self.assertCmpByDirs(-1, 'ab/cd', 'ab-cd')
 
+    def test_cmp_unicode_not_allowed(self):
+        cmp_by_dirs = self.get_cmp_by_dirs()
+        self.assertRaises(TypeError, cmp_by_dirs, u'Unicode', 'str')
+        self.assertRaises(TypeError, cmp_by_dirs, 'str', u'Unicode')
+        self.assertRaises(TypeError, cmp_by_dirs, u'Unicode', u'Unicode')
+
+    def test_cmp_non_ascii(self):
+        self.assertCmpByDirs(-1, '\xc2\xb5', '\xc3\xa5') # u'\xb5', u'\xe5'
+        self.assertCmpByDirs(-1, 'a', '\xc3\xa5') # u'a', u'\xe5'
+        self.assertCmpByDirs(-1, 'b', '\xc2\xb5') # u'b', u'\xb5'
+        self.assertCmpByDirs(-1, 'a/b', 'a/\xc3\xa5') # u'a/b', u'a/\xe5'
+        self.assertCmpByDirs(-1, 'b/a', 'b/\xc2\xb5') # u'b/a', u'b/\xb5'
+
 
 class TestCompiledCmpByDirs(TestCmpByDirs):
     """Test the pyrex implementation of cmp_by_dirs"""
@@ -570,6 +583,33 @@ class TestCmpPathByDirblock(tests.TestCase):
                  # content of 'a=z'
                  'a=z/z',
                 ])
+
+    def test_unicode_not_allowed(self):
+        cmp_path_by_dirblock = self.get_cmp_path_by_dirblock()
+        self.assertRaises(TypeError, cmp_path_by_dirblock, u'Uni', 'str')
+        self.assertRaises(TypeError, cmp_path_by_dirblock, 'str', u'Uni')
+        self.assertRaises(TypeError, cmp_path_by_dirblock, u'Uni', u'Uni')
+        self.assertRaises(TypeError, cmp_path_by_dirblock, u'x/Uni', 'x/str')
+        self.assertRaises(TypeError, cmp_path_by_dirblock, 'x/str', u'x/Uni')
+        self.assertRaises(TypeError, cmp_path_by_dirblock, u'x/Uni', u'x/Uni')
+
+    def test_nonascii(self):
+        self.assertCmpPathByDirblock([
+            # content of '/'
+            '', 'a', '\xc2\xb5', '\xc3\xa5',
+            # content of 'a'
+            'a/a', 'a/\xc2\xb5', 'a/\xc3\xa5',
+            # content of 'a/a'
+            'a/a/a', 'a/a/\xc2\xb5', 'a/a/\xc3\xa5',
+            # content of 'a/\xc2\xb5'
+            'a/\xc2\xb5/a', 'a/\xc2\xb5/\xc2\xb5', 'a/\xc2\xb5/\xc3\xa5',
+            # content of 'a/\xc3\xa5'
+            'a/\xc3\xa5/a', 'a/\xc3\xa5/\xc2\xb5', 'a/\xc3\xa5/\xc3\xa5',
+            # content of '\xc2\xb5'
+            '\xc2\xb5/a', '\xc2\xb5/\xc2\xb5', '\xc2\xb5/\xc3\xa5',
+            # content of '\xc2\xe5'
+            '\xc3\xa5/a', '\xc3\xa5/\xc2\xb5', '\xc3\xa5/\xc3\xa5',
+            ])
 
 
 class TestCompiledCmpPathByDirblock(TestCmpPathByDirblock):

@@ -148,6 +148,12 @@ def cmp_by_dirs_py(path1, path2):
         0 if paths are equal,
         and negative number if ``path2`` sorts first
     """
+    if not isinstance(path1, str):
+        raise TypeError("'path1' must be a plain string, not %s: %r"
+                        % (type(path1), path1))
+    if not isinstance(path2, str):
+        raise TypeError("'path2' must be a plain string, not %s: %r"
+                        % (type(path2), path2))
     return cmp(path1.split('/'), path2.split('/'))
 
 
@@ -164,6 +170,12 @@ def _cmp_path_by_dirblock_py(path1, path2):
         0 if paths are equal
         and a negative number if ``path2`` sorts first
     """
+    if not isinstance(path1, str):
+        raise TypeError("'path1' must be a plain string, not %s: %r"
+                        % (type(path1), path1))
+    if not isinstance(path2, str):
+        raise TypeError("'path2' must be a plain string, not %s: %r"
+                        % (type(path2), path2))
     dirname1, basename1 = os.path.split(path1)
     key1 = (dirname1.split('/'), basename1)
     dirname2, basename2 = os.path.split(path2)
