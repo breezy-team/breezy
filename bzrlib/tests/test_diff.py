@@ -24,8 +24,26 @@ from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
-from bzrlib.tests import (TestCase, TestCaseWithTransport,
+from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
+
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        filename = u'\u03b1'
+        os.mkdir('tree')
+        try:
+            fd = file('tree/' + filename, 'wb')
+        except UnicodeEncodeError:
+            return False
+        fd.close()
+        os.remove('tree/' + filename)
+        os.rmdir('tree')
+        return True
+
+UnicodeFilename = _UnicodeFilename()
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -446,6 +464,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         is a binary file in the diff.
         """
         # See https://bugs.launchpad.net/bugs/110092.
+        self.requireFeature(UnicodeFilename)
 
         # This bug isn't triggered with cStringIO.
         from StringIO import StringIO
