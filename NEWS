@@ -29,6 +29,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Clearer warning when branch specified to svn-import. (#121391)
 
+   * Support pushing multiple revisions in a row. (#115494)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.
