@@ -1010,7 +1010,7 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
 
-    _see_also = ['pull', 'working-trees']
+    _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
     aliases = ['up']
 
