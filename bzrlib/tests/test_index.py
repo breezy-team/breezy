@@ -471,6 +471,16 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         result.add_nodes(nodes)
         return result
 
+    def test_add_nodes_no_refs(self):
+        index = self.make_index(0)
+        index.add_nodes([('name', 'data')])
+        index.add_nodes([('name2', ''), ('name3', '')])
+        self.assertEqual(set([
+            ('name', 'data'),
+            ('name2', ''),
+            ('name3', ''),
+            ]), set(index.iter_all_entries()))
+
     def test_add_nodes(self):
         index = self.make_index(1)
         index.add_nodes([('name', 'data', ([],))])
@@ -486,7 +496,7 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([], list(index.iter_all_entries()))
 
     def test_iter_all_entries_simple(self):
-        index = self.make_index(nodes=[('name', 'data', ())])
+        index = self.make_index(nodes=[('name', 'data')])
         self.assertEqual([('name', 'data')],
             list(index.iter_all_entries()))
 
@@ -528,7 +538,7 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index.validate()
 
     def test_validate_no_refs_content(self):
-        index = self.make_index(nodes=[('key', 'value', ())])
+        index = self.make_index(nodes=[('key', 'value')])
         index.validate()
 
 
