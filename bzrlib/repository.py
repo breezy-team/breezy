@@ -329,7 +329,6 @@ class Repository(object):
 
     def insert_data_stream(self, stream):
         for knit_name, bytes in stream:
-            #bytes_buffer = StringIO(bytes)
             if knit_name.startswith('file:'):
                 file_id = knit_name[5:]
                 knit = self.text_store.get_weave_or_empty(
@@ -350,7 +349,6 @@ class Repository(object):
                 knit_bytes += some_bytes
             knit.insert_data_stream((format, data_list,
                 StringIO(knit_bytes).read))
-            #assert bytes_buffer.tell() == len(bytes)
 
 
     @needs_read_lock
@@ -1900,51 +1898,11 @@ class InterOtherToRemote(InterRepository):
         return None
 
 
-#class InterRemoteRepository(InterRepository): #XXX: delete this class.
-#    """Code for converting between RemoteRepository objects.
-#
-#    This just gets an non-remote repository from the RemoteRepository, and calls
-#    InterRepository.get again.
-#    """
-#
-#    def __init__(self, source, target):
-#        if isinstance(source, remote.RemoteRepository):
-#            source._ensure_real()
-#            real_source = source._real_repository
-#        else:
-#            real_source = source
-#        if isinstance(target, remote.RemoteRepository):
-#            target._ensure_real()
-#            real_target = target._real_repository
-#        else:
-#            real_target = target
-#        self.real_inter = InterRepository.get(real_source, real_target)
-#
-#    @staticmethod
-#    def is_compatible(source, target):
-#        if isinstance(source, remote.RemoteRepository):
-#            return True
-#        if isinstance(target, remote.RemoteRepository):
-#            return True
-#        return False
-#
-#    def copy_content(self, revision_id=None):
-#        self.real_inter.copy_content(revision_id=revision_id)
-#
-#    def fetch(self, revision_id=None, pb=None):
-#        self.real_inter.fetch(revision_id=revision_id, pb=pb)
-#
-#    @classmethod
-#    def _get_repo_format_to_test(self):
-#        return None
-
-
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
-#InterRepository.register_optimiser(InterRemoteRepository)
 InterRepository.register_optimiser(InterRemoteToOther)
 InterRepository.register_optimiser(InterOtherToRemote)
 
