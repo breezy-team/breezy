@@ -162,16 +162,7 @@ class KnitRepository(MetaDirRepository):
         elif revision_id not in a_weave:
             raise errors.NoSuchRevision(self, revision_id)
         else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = a_weave.get_parents(node)
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
+            return a_weave.get_graph([revision_id])
 
     @needs_read_lock
     def get_revision_graph_with_ghosts(self, revision_ids=None):
