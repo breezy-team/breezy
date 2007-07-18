@@ -1844,18 +1844,25 @@ class InterRemoteToOther(InterRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
-        #self._ensure_real_inter()
-        #self._real_inter.fetch(revision_id=revision_id, pb=pb)
-        from bzrlib.fetch import RemoteToOtherFetcher
-        mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
-               self.source, self.target, self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
-        f = RemoteToOtherFetcher(to_repository=self.target,
-                                 from_repository=self.source,
-                                 last_revision=revision_id,
-                                 pb=pb)
-        return f.count_copied, f.failed_revisions
+        # Is source's model compatible with target's model, and are they the
+        # same format?  Currently we can only optimise fetching from an
+        # identical model & format repo.
+        self.source._ensure_real()
+        real_source = self.source._real_repository
+        if InterSameDataRepository.is_compatible(real_source, self.target):
+            from bzrlib.fetch import RemoteToOtherFetcher
+            mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
+                   self.source, self.target, self.target._format)
+            # TODO: jam 20070210 This should be an assert, not a translate
+            revision_id = osutils.safe_revision_id(revision_id)
+            f = RemoteToOtherFetcher(to_repository=self.target,
+                                     from_repository=self.source,
+                                     last_revision=revision_id,
+                                     pb=pb)
+            return f.count_copied, f.failed_revisions
+        else:
+            self._ensure_real_inter()
+            return self._real_inter.fetch(revision_id=revision_id, pb=pb)
 
     @classmethod
     def _get_repo_format_to_test(self):

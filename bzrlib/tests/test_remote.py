@@ -733,24 +733,6 @@ class TestRepositoryTarball(TestRemoteRepository):
         finally:
             tarball_file.close()
 
-    def test_sprout_uses_tarball(self):
-        # RemoteRepository.sprout should try to use the
-        # tarball command rather than accessing all the files
-        transport_path = 'srcrepo'
-        expected_responses = [(('ok',), self.tarball_content),
-            ]
-        expected_calls = [('call2', 'Repository.tarball', ('///srcrepo/', 'bz2',),),
-            ]
-        remote_repo, client = self.setup_fake_client_and_repository(
-            expected_responses, transport_path)
-        # make a regular local repository to receive the results
-        dest_transport = MemoryTransport()
-        dest_transport.mkdir('destrepo')
-        bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
-        dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
-        # try to copy...
-        remote_repo.sprout(dest_bzrdir)
-
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
     """RemoteRepository.copy_content_into optimizations"""

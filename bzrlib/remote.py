@@ -464,8 +464,6 @@ class RemoteRepository(object):
         dest_repo = to_bzrdir.create_repository()
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
-        #self._copy_repository_tarball(to_repo, revision_id)
-        #return to_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
