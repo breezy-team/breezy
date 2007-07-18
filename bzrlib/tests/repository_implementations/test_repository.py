@@ -16,7 +16,6 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-from itertools import imap
 import re
 
 import bzrlib

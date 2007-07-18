@@ -717,7 +717,6 @@ class KnitVersionedFile(VersionedFile):
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))
-        return
 
     def versions(self):
         """See VersionedFile.versions."""

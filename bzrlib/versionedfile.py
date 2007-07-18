@@ -267,7 +267,7 @@ class VersionedFile(object):
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
         
-        :since: 0.18
+        :since: 0.19
         """
         raise NotImplementedError(self.get_format_signature)
 
