@@ -26,15 +26,16 @@ IN DEVELOPMENT
     * Merge is now faster.  Depending on the scenario, it can be more than 2x
       faster. (Aaron Bentley)
 
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
-      Various globally-declared options have been removed, so plugins
-      that previously said ``takes_options=['message']`` must now
-      construct an Option object and provide appropriate help. Options
-      are now required to provide a help string and it must comply with
-      the style guide by being one or more sentences with an initial
-      capital and final period. (Martin Pool)
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
 
   INTERNALS:
 
@@ -46,6 +47,14 @@ IN DEVELOPMENT
     * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
       the null revision, and consider using ``None`` for this purpose
       deprecated.  (Aaron Bentley)
+
+    * New ``index`` module with abstract index functionality. This will be
+      used during the planned changes in the repository layer. Currently the
+      index layer provides a graph aware immutable index, a builder for the
+      same index type to allow creating them, and finally a composer for
+      such indices to allow the use of many indices in a single query. The
+      index performance is not optimised, however the API is stable to allow
+      development on top of the index. (Robert Collins)
 
     * New methods on Repository - ``start_write_group``,
       ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
@@ -59,6 +68,13 @@ IN DEVELOPMENT
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
       ``--keep-output`` options, which are obsolete now that tests
       are done within directories in $TMPDIR.  (Martin Pool)
+
+
+bzr 0.18  2007-07-17
+
+  BUGFIXES:
+
+    * Fix 'bzr add' crash under Win32 (Kuno Meyer)
 
 
 bzr 0.18rc1  2007-07-10

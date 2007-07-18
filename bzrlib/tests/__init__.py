@@ -2243,6 +2243,7 @@ def test_suite():
     suite on a global basis, but it is not encouraged.
     """
     testmod_names = [
+                   'bzrlib.util.tests.test_bencode',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2284,6 +2285,7 @@ def test_suite():
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
+                   'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
