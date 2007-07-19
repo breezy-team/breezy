@@ -181,6 +181,12 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev1']), graph.find_lca('rev1', 'rev1'))
         self.assertEqual(set(['rev1']), graph.find_lca('rev2a', 'rev2b'))
 
+    def test_no_unique_lca(self):
+        """Test error when one revision is not in the graph"""
+        graph = self.make_graph(ancestry_1)
+        self.assertRaises(errors.NoCommonAncestor, graph.find_unique_lca,
+                          'rev1', '1rev')
+
     def test_lca_criss_cross(self):
         """Test least-common-ancestor after a criss-cross merge."""
         graph = self.make_graph(criss_cross)

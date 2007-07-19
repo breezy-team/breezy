@@ -16,6 +16,7 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
+from cStringIO import StringIO
 import re
 
 import bzrlib
@@ -415,6 +416,11 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_serializer_format(self):
+        repo = self.make_repository('.')
+        format = repo.get_serializer_format()
+        self.assertEqual(repo._serializer.format_num, format)
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -679,3 +685,11 @@ class TestEscaping(TestCaseWithTransport):
         revtree = branch.repository.revision_tree(REV_ID)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
+
+    def test_create_bundle(self):
+        wt = self.make_branch_and_tree('repo')
+        self.build_tree(['repo/file1'])
+        wt.add('file1')
+        wt.commit('file1', rev_id='rev1')
+        fileobj = StringIO()
+        wt.branch.repository.create_bundle('rev1', NULL_REVISION, fileobj)
