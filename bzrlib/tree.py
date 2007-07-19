@@ -245,7 +245,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_merge(self, file_id, other):
+    def plan_file_merge(self, file_id, other):
         """Generate a merge plan based on annotations
 
         If the file contains uncommitted changes in this tree, they will be

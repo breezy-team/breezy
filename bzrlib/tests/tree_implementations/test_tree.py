@@ -38,9 +38,9 @@ class TestAnnotate(TestCaseWithTree):
             self.assertEqual(tree_revision, revision)
 
 
-class TestPlanMerge(TestCaseWithTree):
+class TestPlanFileMerge(TestCaseWithTree):
 
-    def test_plan_merge(self):
+    def test_plan_file_merge(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
@@ -61,7 +61,7 @@ class TestPlanMerge(TestCaseWithTree):
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
             ('new-b', 'f\n'),
-        ], list(tree_a.plan_merge('file-id', tree_b)))
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
 
 
 class TestReference(TestCaseWithTree):
