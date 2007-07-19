@@ -485,7 +485,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open(repos_url)
         repository.set_branching_scheme(TrunkBranchingScheme(42))
         repository = Repository.open(repos_url)
-        self.assertEquals("trunk42", str(repository.scheme))
+        self.assertEquals("trunk42", str(repository.get_scheme()))
 
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')
@@ -767,7 +767,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "set scheme")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEquals(ListBranchingScheme(["trunk", "branches/*", "branches/tmp/*"]).branch_list,
-                          repository.scheme.branch_list)
+                          repository.get_scheme().branch_list)
 
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
