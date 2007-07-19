@@ -295,6 +295,7 @@ class SvnWorkingTree(WorkingTree):
                 ids = self._get_new_file_ids(rootwc)
                 if ids.has_key(relpath):
                     return (ids[relpath], None)
+                # FIXME: Generate more random file ids
                 return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
 
         def add_dir_to_inv(relpath, wc, parent_id):

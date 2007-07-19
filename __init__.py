@@ -17,6 +17,7 @@
 """
 Support for Subversion branches
 """
+import bzrlib
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
