@@ -1081,6 +1081,8 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # SSH Agent
+            'SSH_AUTH_SOCK': None,
             # Proxies
             'http_proxy': None,
             'HTTP_PROXY': None,

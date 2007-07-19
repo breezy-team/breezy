@@ -30,6 +30,10 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * ``bzr pull`` and ``bzr push`` no longer do a complete walk of the 
+      branch revision history for ui display unless -v is supplied.
+      (Robert Collins)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -74,6 +78,9 @@ IN DEVELOPMENT
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
       ``--keep-output`` options, which are obsolete now that tests
       are done within directories in $TMPDIR.  (Martin Pool)
+
+    * The SSH_AUTH_SOCK environment variable is now reset to avoid 
+      interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
 
 
 bzr 0.18  2007-07-17
