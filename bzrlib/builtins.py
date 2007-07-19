@@ -3105,7 +3105,7 @@ class cmd_plugins(Command):
     install them. Instructions are also provided there on how to
     write new plugins using the Python programming language.
     """
-    hidden = False
+
     @display_command
     def run(self):
         import bzrlib.plugin
