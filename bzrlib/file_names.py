@@ -65,8 +65,7 @@ class FileNames(object):
         """Load the names from the transport."""
         self._names = set(self._transport.get_bytes(
             self._index_name).split('\n'))
-        if '' in self._names:
-            self._names.remove('')
+        self._names.discard('')
 
     def names(self):
         """What are the names in this names?"""
