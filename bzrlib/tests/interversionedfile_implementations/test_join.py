@@ -278,7 +278,7 @@ class TestJoin(TestCaseWithTransport):
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
         self.assertEqual([], source.get_parents('notbase'))
-        self.assertEqual({'notbase':[]}, source.get_graph())
+        self.assertEqual({'notbase':()}, source.get_graph())
         self.assertFalse(source.has_version('base'))
         if source_ghosts:
             # ghost data should have been preserved
@@ -293,8 +293,8 @@ class TestJoin(TestCaseWithTransport):
         target.join(source, version_ids=['base']) 
         self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
         self.assertEqual(['base'], target.get_parents('notbase'))
-        self.assertEqual({'base':[],
-                          'notbase':['base'],
+        self.assertEqual({'base':(),
+                          'notbase':('base', ),
                           },
                          target.get_graph())
         self.assertTrue(target.has_version('base'))

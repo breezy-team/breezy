@@ -156,10 +156,10 @@ class KnitRepository(MetaDirRepository):
             return {}
         revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self._get_revision_vf()
-        entire_graph = a_weave.get_graph()
         if revision_id is None:
             return a_weave.get_graph()
-        elif revision_id not in a_weave:
+        entire_graph = a_weave.get_graph()
+        if revision_id not in a_weave:
             raise errors.NoSuchRevision(self, revision_id)
         else:
             return a_weave.get_graph([revision_id])
