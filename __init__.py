@@ -74,18 +74,15 @@ def check_subversion_version():
     try:
         import svn.delta
     except ImportError:
-        warning('Python bindings for Subversion not installed. See the '
+        warning('No Python bindings for Subversion installed. See the '
                 'bzr-svn README for details.')
-        return
+        raise bzrlib.errors.BzrError("missing python subversion bindings")
     if not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler'):
         warning('Installed Subversion version does not have updated Python '
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
-def check_versions():
-    check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
-    check_subversion_version()
-    check_bzrsvn_version()
+check_subversion_version()
 
 register_transport_proto('svn+ssh://', 
     help="Access using the Subversion smart server tunneled over SSH.")
@@ -114,7 +111,8 @@ def lazy_check_versions():
     if versions_checked:
         return
     versions_checked = True
-    check_versions()
+    check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
+    check_bzrsvn_version()
 
 InterRepository.register_optimiser(fetch.InterFromSvnRepository)
 InterRepository.register_optimiser(commit.InterToSvnRepository)
