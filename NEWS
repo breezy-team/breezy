@@ -30,6 +30,10 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * ``bzr pull`` and ``bzr push`` no longer do a complete walk of the 
+      branch revision history for ui display unless -v is supplied.
+      (Robert Collins)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.

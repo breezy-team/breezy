@@ -633,7 +633,8 @@ class cmd_pull(Command):
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
 
-        old_rh = branch_to.revision_history()
+        if verbose:
+            old_rh = branch_to.revision_history()
         if tree_to is not None:
             result = tree_to.pull(branch_from, overwrite, revision_id,
                 delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
@@ -735,7 +736,8 @@ class cmd_push(Command):
                 # Found a branch, so we must have found a repository
                 repository_to = br_to.repository
         push_result = None
-        old_rh = []
+        if verbose:
+            old_rh = []
         if dir_to is None:
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
@@ -791,7 +793,8 @@ class cmd_push(Command):
             # we don't need to successfully push because of possible divergence.
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
-            old_rh = br_to.revision_history()
+            if verbose:
+                old_rh = br_to.revision_history()
             try:
                 try:
                     tree_to = dir_to.open_workingtree()
