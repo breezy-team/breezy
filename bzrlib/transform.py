@@ -1482,7 +1482,6 @@ def _get_backup_name(name, by_parent, parent_trans_id, tt):
             return new_name
 
 
-@deprecated_function(zero_nineteen)
 def _entry_changes(file_id, entry, working_tree):
     """Determine in which ways the inventory entry has changed.
 
