@@ -1208,7 +1208,7 @@ class V09BundleKnit1Tester(V08BundleTester):
 
 class V4BundleTester(BundleTester, TestCaseWithTransport):
 
-    format = '4alpha'
+    format = '4'
 
     def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
         """Create a bundle from base_rev_id -> rev_id in built-in branch.
@@ -1255,7 +1255,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
                                     '<file executable="y" file_id="exe-1"')
         new_text = new_text.replace('B372', 'B387')
         bundle_txt = StringIO()
-        bundle_txt.write(serializer._get_bundle_header('4alpha'))
+        bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
         bundle_txt.write(new_text.encode('bz2'))
         bundle_txt.seek(0)
@@ -1338,7 +1338,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         tree_b = self.make_branch_and_tree('tree_b')
         repo_b = tree_b.branch.repository
         s = StringIO()
-        serializer = BundleSerializerV4('4alpha')
+        serializer = BundleSerializerV4('4')
         serializer.write(tree_a.branch.repository, ['A', 'B'], {}, s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
@@ -1448,7 +1448,7 @@ class MungedBundleTesterV09(TestCaseWithTransport, MungedBundleTester):
 
 class MungedBundleTesterV4(TestCaseWithTransport, MungedBundleTester):
 
-    format = '4alpha'
+    format = '4'
 
 
 class TestBundleWriterReader(TestCase):
