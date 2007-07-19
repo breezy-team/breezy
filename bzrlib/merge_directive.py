@@ -328,7 +328,7 @@ class MergeDirective(_BaseMergeDirective):
 
 class MergeDirective2(_BaseMergeDirective):
 
-    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.18)'
+    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.19)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
