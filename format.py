@@ -131,6 +131,10 @@ class SvnRemoteAccess(BzrDir):
     def import_branch(self, source, stop_revision=None):
         """Create a new branch in this repository, possibly 
         with the specified history, optionally importing revisions.
+        
+        :param source: Source branch
+        :param stop_revision: Tip of new branch
+        :return: Branch object
         """
         from commit import push_new
         if stop_revision is None:
@@ -147,9 +151,10 @@ class SvnRemoteAccess(BzrDir):
         repos = self.find_repository()
 
         if self.branch_path != "":
+            # TODO: Set NULL_REVISION in SVN_PROP_BZR_BRANCHING_SCHEME
             repos.transport.mkdir(self.branch_path)
         else:
-            # TODO: Check if there are any revisions in this repository yet
+            # Check if there are any revisions in this repository yet
             pass
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self

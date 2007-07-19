@@ -563,3 +563,11 @@ class TestGuessBranchingSchemeFromHistory(TestCase):
             ("", {"trunk": ('M', None, None)}, 3),
             ], 3)
         self.assertIsInstance(scheme, TrunkBranchingScheme)
+
+    def test_simple_no_history(self):
+        scheme = guess_scheme_from_history([], 0)
+        self.assertIsInstance(scheme, NoBranchingScheme)
+
+    def test_simple_no_history_bp(self):
+        scheme = guess_scheme_from_history([], 0, "trunk")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)

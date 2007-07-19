@@ -338,15 +338,14 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     finally:
         pb.finished()
     
-    if len(potentials) == 0:
-        return NoBranchingScheme()
-    
     entries = potentials.items()
     entries.sort(lambda (a, b), (c, d): d - b)
 
-    mutter('potentials %r' % entries)
+    mutter('potential branching schemes: %r' % entries)
 
     if relpath is None:
+        if len(entries) == 0:
+            return NoBranchingScheme()
         return scheme_cache[entries[0][0]]
 
     for (schemename, _) in entries:

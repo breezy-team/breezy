@@ -200,17 +200,29 @@ class SvnRepository(Repository):
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
         self.revmap = RevidMap(self.cachedb)
-        if self.config.get_branching_scheme() is not None:
-            self.scheme = self.config.get_branching_scheme()
-        else:
-            last_revnum = transport.get_latest_revnum()
-            scheme = self._get_property_scheme(last_revnum)
-            if scheme is not None:
-                self.set_branching_scheme(scheme)
-            else:
-                self.set_branching_scheme(
-                    self._guess_scheme(last_revnum, branch_path))
-            assert self.scheme is not None
+        self._scheme = None
+        self._hinted_branch_path = branch_path
+
+    def get_scheme(self):
+        if self._scheme is not None:
+            return self._scheme
+
+        scheme = self.config.get_branching_scheme()
+        if scheme is not None:
+            self._scheme = scheme
+            return scheme
+
+        last_revnum = self.transport.get_latest_revnum()
+        scheme = self._get_property_scheme(last_revnum)
+        if scheme is not None:
+            self.set_branching_scheme(scheme)
+            return scheme
+
+        self.set_branching_scheme(
+            self._guess_scheme(last_revnum, self._hinted_branch_path),
+            store=(last_revnum > 20))
+
+        return self._scheme
 
     def _get_property_scheme(self, revnum):
         text = self.branchprop_list.get_property("", 
@@ -226,9 +238,10 @@ class SvnRepository(Repository):
         mutter("Guessed branching scheme: %r" % scheme)
         return scheme
 
-    def set_branching_scheme(self, scheme):
-        self.scheme = scheme
-        self.config.set_branching_scheme(str(scheme))
+    def set_branching_scheme(self, scheme, store=True):
+        self._scheme = scheme
+        if store:
+            self.config.set_branching_scheme(str(scheme))
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -263,7 +276,7 @@ class SvnRepository(Repository):
 
     def all_revision_ids(self, scheme=None):
         if scheme is None:
-            scheme = self.scheme
+            scheme = self.get_scheme()
         for (bp, rev) in self.follow_history(
                 self.transport.get_latest_revnum(), scheme):
             yield self.generate_revision_id(rev, bp, str(scheme))
@@ -540,7 +553,7 @@ class SvnRepository(Repository):
         except NoSuchRevision, e:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
-                scheme = self.scheme
+                scheme = self.get_scheme()
             last_revnum = self.transport.get_latest_revnum()
             if (self._revids_seen.has_key(str(scheme)) and 
                 last_revnum <= self._revids_seen[str(scheme)]):
@@ -776,7 +789,7 @@ class SvnRepository(Repository):
             return {}
 
         if revision_id is None:
-            return self._full_revision_graph(self.scheme)
+            return self._full_revision_graph(self.get_scheme())
 
         (path, revnum, scheme) = self.lookup_revision_id(revision_id)
 

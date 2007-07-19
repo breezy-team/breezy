@@ -71,7 +71,12 @@ def check_subversion_version():
     """Check that Subversion is compatible.
 
     """
-    import svn.delta
+    try:
+        import svn.delta
+    except ImportError:
+        warning('Python bindings for Subversion not installed. See the '
+                'bzr-svn README for details.')
+        return
     if not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler'):
         warning('Installed Subversion version does not have updated Python '
                 'bindings. See the bzr-svn README for details.')

@@ -75,7 +75,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.branch.last_revision() is None:
             self.base_revnum = -1
             self.base_path = None
-            self.base_scheme = repository.scheme
+            self.base_scheme = repository.get_scheme()
         else:
             (self.base_path, self.base_revnum, self.base_scheme) = \
                 repository.lookup_revision_id(self.branch.last_revision())
@@ -185,7 +185,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.new_inventory[child_ie.file_id].name != child_name):
                     mutter('removing %r' % child_ie.file_id)
                     self.editor.delete_entry(
-                            os.path.join(self.branch.get_branch_path(), self.old_inv.id2path(child_ie.file_id)), 
+                            os.path.join(
+                                self.branch.get_branch_path(), 
+                                self.old_inv.id2path(child_ie.file_id)), 
                             self.base_revnum, baton, self.pool)
 
         # Loop over file members of file_id in self.new_inventory
@@ -201,7 +203,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                 mutter('adding %s %r' % (child_ie.kind, self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = self.editor.add_file(
-                           os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)),
+                           os.path.join(
+                               self.branch.get_branch_path(), 
+                               self.new_inventory.id2path(child_ie.file_id)),
                            baton, None, -1, self.pool)
 
 
@@ -569,7 +573,8 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
 
         def generate_revision_id(self, revnum):
             return self.repository.generate_revision_id(
-                revnum, self.get_branch_path(revnum), str(self.repository.scheme))
+                revnum, self.get_branch_path(revnum), 
+                str(self.repository.get_scheme()))
 
     push(ImaginaryBranch(target_repository), source, start_revid)
 

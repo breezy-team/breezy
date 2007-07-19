@@ -70,7 +70,7 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         self._revision_history = None
         self._revision_history_revnum = None
-        self.scheme = self.repository.scheme
+        self.scheme = self.repository.get_scheme()
         if not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, scheme=self.scheme)
         try:

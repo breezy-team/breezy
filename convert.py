@@ -103,8 +103,8 @@ def convert_repository(source_repos, output_url, scheme=None,
     if create_shared_repo:
         try:
             target_repos = get_dir("").open_repository()
-            assert (source_repos.scheme.is_branch("") or 
-                    source_repos.scheme.is_tag("") or 
+            assert (source_repos.get_scheme().is_branch("") or 
+                    source_repos.get_scheme().is_tag("") or 
                     target_repos.is_shared())
         except NoRepositoryPresent:
             target_repos = get_dir("").create_repository(shared=True)
@@ -117,7 +117,7 @@ def convert_repository(source_repos, output_url, scheme=None,
 
     existing_branches = [(bp, revnum) for (bp, revnum, _) in 
             filter(filter_branch,
-                   source_repos.find_branches(source_repos.scheme))]
+                   source_repos.find_branches(source_repos.get_scheme()))]
 
     pb = ui.ui_factory.nested_progress_bar()
     try:
@@ -127,7 +127,7 @@ def convert_repository(source_repos, output_url, scheme=None,
                 continue
             pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
             revid = source_repos.generate_revision_id(revnum, branch, 
-                                                      str(source_repos.scheme))
+                                          str(source_repos.get_scheme()))
 
             target_dir = get_dir(branch)
             if not create_shared_repo:
