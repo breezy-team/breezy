@@ -153,6 +153,25 @@ class ListScheme(TestCase):
     def test_is_branch_slash(self):
         self.assertFalse(self.scheme.is_branch("/"))
 
+    def test_is_branch_wildcard(self):
+        scheme = ListBranchingScheme(["trunk/*"])
+        self.assertTrue(scheme.is_branch("trunk/foo"))
+        self.assertFalse(scheme.is_branch("trunk"))
+
+    def test_is_branch_wildcard_root(self):
+        scheme = ListBranchingScheme(["*/trunk"])
+        self.assertTrue(scheme.is_branch("bla/trunk"))
+        self.assertFalse(scheme.is_branch("trunk"))
+        self.assertFalse(scheme.is_branch("bla"))
+
+    def test_is_branch_wildcard_multiple(self):
+        scheme = ListBranchingScheme(["*/trunk/*"])
+        self.assertTrue(scheme.is_branch("bla/trunk/bloe"))
+        self.assertFalse(scheme.is_branch("bla/trunk"))
+        self.assertFalse(scheme.is_branch("trunk/bloe"))
+        self.assertFalse(scheme.is_branch("blie/trunk/bloe/bla"))
+        self.assertFalse(scheme.is_branch("bla"))
+
     def test_is_branch_slashsub(self):
         self.assertTrue(self.scheme.is_branch("/foo"))
 
@@ -176,6 +195,22 @@ class ListScheme(TestCase):
 
     def test_unprefix_notbranch_empty(self):
         self.assertRaises(NotBranchError, self.scheme.unprefix, "")
+
+    def test_unprefix_wildcard(self):
+        scheme = ListBranchingScheme(["*/trunk"])
+        self.assertEquals(("bla/trunk", "foo"), 
+                          scheme.unprefix("bla/trunk/foo"))
+
+    def test_unprefix_wildcard_multiple(self):
+        scheme = ListBranchingScheme(["trunk/*/*"])
+        self.assertEquals(("trunk/foo/bar", "bla/blie"), 
+                          scheme.unprefix("trunk/foo/bar/bla/blie"))
+
+    def test_unprefix_wildcard_nonexistant(self):
+        scheme = ListBranchingScheme(["*/trunk"])
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "bla")
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "trunk")
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "trunk/bla")
 
     def test_unprefix_notbranch_slash(self):
         self.assertRaises(NotBranchError, self.scheme.unprefix, "/")

@@ -182,9 +182,8 @@ class ListBranchingScheme(BranchingScheme):
 
         :param branch_list: List of know branch locations.
         """
-        self.branch_list = []
-        for p in branch_list:
-            self.branch_list.append(p.strip("/"))
+        self.branch_list = [p.strip("/") for p in branch_list]
+        self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
         return "list-%s" % sha_strings(self.branch_list)
@@ -193,16 +192,30 @@ class ListBranchingScheme(BranchingScheme):
         """See BranchingScheme.is_tag()."""
         return False
 
+    @staticmethod
+    def _pattern_cmp(parts, pattern):
+        if len(parts) != len(pattern):
+            return False
+        for (p, q) in zip(pattern, parts):
+            if p != q and p != "*":
+                return False
+        return True
+
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
-        return path.strip("/") in self.branch_list
+        parts = path.strip("/").split("/")
+        for pattern in self.split_branch_list:
+            if self._pattern_cmp(parts, pattern):
+                return True
+        return False
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
-        path = path.strip("/")
-        for i in self.branch_list:
-            if (path+"/").startswith(i+"/"):
-                return (i, path[len(i):].strip("/"))
+        parts = path.strip("/").split("/")
+        for pattern in self.split_branch_list:
+            if self._pattern_cmp(parts[:len(pattern)], pattern):
+                return ("/".join(parts[:len(pattern)]), 
+                        "/".join(parts[len(pattern):]))
         raise NotBranchError(path=path)
 
     def __eq__(self, other):
