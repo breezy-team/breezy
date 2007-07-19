@@ -19,7 +19,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
-                           NoWorkingTree)
+                           NoWorkingTree, AlreadyBranchError)
 
 import svn
 
@@ -56,6 +56,14 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         x = BzrDir.open(repos_url)
         b = x.create_branch()
         self.assertEquals(repos_url, b.base)
+
+    def test_create_branch_top_already_branch(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({'dc/bla': 'contents'})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "message")
+        x = BzrDir.open(repos_url)
+        self.assertRaises(AlreadyBranchError, x.create_branch)
 
     def test_create_branch_nested(self):
         repos_url = self.make_client("d", "dc")

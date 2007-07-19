@@ -17,7 +17,7 @@
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
-                           NoWorkingTree)
+                           NoWorkingTree, AlreadyBranchError)
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
 
@@ -153,9 +153,9 @@ class SvnRemoteAccess(BzrDir):
         if self.branch_path != "":
             # TODO: Set NULL_REVISION in SVN_PROP_BZR_BRANCHING_SCHEME
             repos.transport.mkdir(self.branch_path)
-        else:
-            # Check if there are any revisions in this repository yet
-            pass
+        elif repos.transport.get_latest_revnum() > 0:
+            # Bail out if there are already revisions in this repository
+            raise AlreadyBranchError(self.root_transport.base)
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
         return branch
