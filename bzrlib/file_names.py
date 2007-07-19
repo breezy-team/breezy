@@ -24,7 +24,7 @@ from bzrlib import (
 """)
 
 
-class FileCollection(object):
+class FileNames(object):
     """A collection of file names.
 
     The file names are persisted to a file on a transport, and cand be
@@ -44,7 +44,7 @@ class FileCollection(object):
     """
 
     def __init__(self, transport, index_name):
-        """Create a collection on transport called index_name."""
+        """Create a names on transport called index_name."""
         self._transport = transport
         self._index_name = index_name
         self._names = None
@@ -58,22 +58,21 @@ class FileCollection(object):
         raise errors.BzrError('too many files')
 
     def initialise(self):
-        """Initialise the collection record on disk."""
+        """Initialise the names record on disk."""
         self._names = set()
 
     def load(self):
         """Load the names from the transport."""
         self._names = set(self._transport.get_bytes(
             self._index_name).split('\n'))
-        if '' in self._names:
-            self._names.remove('')
+        self._names.discard('')
 
     def names(self):
-        """What are the names in this collection?"""
+        """What are the names in this names?"""
         return frozenset(self._names)
 
     def remove(self, name):
-        """Remove name from the collection."""
+        """Remove name from the names."""
         self._names.remove(name)
 
     def save(self):

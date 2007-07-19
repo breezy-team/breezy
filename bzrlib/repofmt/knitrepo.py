@@ -17,7 +17,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-        file_collection,
+        file_names,
         )
 from bzrlib.index import InMemoryGraphIndex, GraphIndex, CombinedGraphIndex
 from bzrlib.knit import KnitGraphIndex
@@ -305,7 +305,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Create a GraphKnitRevisionStore on repo with revisionstore.
 
         This will store its state in the Repository, use the
-        revision-indices FileCollection to provide a KnitGraphIndex,
+        revision-indices FileNames to provide a KnitGraphIndex,
         and at the end of transactions write new indices.
         """
         KnitRevisionStore.__init__(self, revisionstore.versioned_file_store)
@@ -315,7 +315,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
     def _ensure_names_loaded(self):
         if self.repo._revision_indices is None:
             index_transport = self.get_indices_transport()
-            self.repo._revision_indices = file_collection.FileCollection(
+            self.repo._revision_indices = file_names.FileNames(
                 index_transport, 'index')
             self.repo._revision_indices.load()
 
@@ -749,10 +749,10 @@ def _knit_to_experimental(result, a_bzrdir):
     mutter('changing to GraphKnit1 repository in %s.', a_bzrdir.transport.base)
     repo_transport = a_bzrdir.get_repository_transport(None)
     repo_transport.mkdir('indices')
-    collection = file_collection.FileCollection(
+    names = file_names.FileNames(
         repo_transport.clone('indices'), 'index')
-    collection.initialise()
-    collection.save()
+    names.initialise()
+    names.save()
     repo_transport.delete('revisions.kndx')
     repo_transport.delete('signatures.kndx')
 

@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib.file_collection import FileCollection
+from bzrlib.file_names import FileNames
 from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
@@ -547,9 +547,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertHasNoKndx(t, 'signatures')
         self.assertHasKnit(t, 'signatures')
         # revision-indexes file-container directory
-        collection = FileCollection(t.clone('indices'), 'index')
-        collection.load()
-        self.assertEqual(set(), collection.names())
+        names = FileNames(t.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(set(), names.names())
 
     def test_shared_disk_layout(self):
         format = self.get_format()
