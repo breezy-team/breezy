@@ -15,8 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Branching scheme implementations."""
 
+from bzrlib import ui
 from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.osutils import sha_strings
+from bzrlib.trace import mutter
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -37,20 +39,6 @@ class BranchingScheme:
         :return: Tuple with branch-path and inside-branch path.
         """
         raise NotImplementedError
-
-    @staticmethod
-    def guess_scheme(relpath):
-        """Try to guess the branching scheme based on a partial URL.
-
-        :param relpath: Relative URL to a branch.
-        :return: New BranchingScheme instance.
-        """
-        parts = relpath.strip("/").split("/")
-        for i in range(0, len(parts)):
-            if parts[i] in ("trunk", "branches", "tags"):
-                return TrunkBranchingScheme(level=i)
-
-        return NoBranchingScheme()
 
     @staticmethod
     def find_scheme(name):
@@ -234,7 +222,7 @@ class SingleBranchingScheme(BranchingScheme):
     def __init__(self, path):
         self.path = path.strip("/")
         if self.path == "":
-            raise BzrError("NoneBranchingScheme should be used")
+            raise BzrError("NoBranchingScheme should be used")
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
@@ -283,4 +271,86 @@ def find_commit_paths(changed_paths):
     :param changed_paths: List of changed_paths (dictionary with path -> action)
     :return: List of potential commit paths.
     """
-    return [_find_common_prefix(changes.keys()) for changes in changed_paths]
+    for changes in changed_paths:
+        yield _find_common_prefix(changes.keys())
+
+
+def guess_scheme_from_branch_path(relpath):
+    """Try to guess the branching scheme from a branch path.
+
+    :param relpath: Relative URL to a branch.
+    :return: New BranchingScheme instance.
+    """
+    parts = relpath.strip("/").split("/")
+    for i in range(0, len(parts)):
+        if parts[i] == "trunk" and i == len(parts)-1:
+            return TrunkBranchingScheme(level=i)
+        elif parts[i] in ("branches", "tags") and i == len(parts)-2:
+            return TrunkBranchingScheme(level=i)
+
+    if parts == [""]:
+        return NoBranchingScheme()
+    return SingleBranchingScheme(relpath)
+
+
+def guess_scheme_from_path(relpath):
+    """Try to guess the branching scheme from a path in the repository, 
+    not necessarily a branch path.
+
+    :param relpath: Relative path in repository
+    :return: New BranchingScheme instance.
+    """
+    parts = relpath.strip("/").split("/")
+    for i in range(0, len(parts)):
+        if parts[i] == "trunk":
+            return TrunkBranchingScheme(level=i)
+        elif parts[i] in ("branches", "tags"):
+            return TrunkBranchingScheme(level=i)
+
+    return NoBranchingScheme()
+
+
+def guess_scheme_from_history(changed_paths, last_revnum, 
+                              relpath=None):
+    """Try to determine the best fitting branching scheme.
+
+    :param changed_paths: Iterator over (branch_path, changes, revnum)
+        as returned from LogWalker.follow_path().
+    :param last_revnum: Number of entries in changed_paths.
+    :param relpath: Branch path that should be accepted by the branching 
+                    scheme as a branch.
+    :return: Branching scheme instance that matches best.
+    """
+    potentials = {}
+    pb = ui.ui_factory.nested_progress_bar()
+    scheme_cache = {}
+    try:
+        for (bp, revpaths, revnum) in changed_paths:
+            assert isinstance(revpaths, dict)
+            pb.update("analyzing repository layout", last_revnum-revnum, 
+                      last_revnum)
+            for path in find_commit_paths([revpaths]):
+                scheme = guess_scheme_from_path(path)
+                mutter('scheme %r' % scheme)
+                if not potentials.has_key(str(scheme)):
+                    potentials[str(scheme)] = 0
+                potentials[str(scheme)] += 1
+                scheme_cache[str(scheme)] = scheme
+    finally:
+        pb.finished()
+    
+    if len(potentials) == 0:
+        return NoBranchingScheme()
+    
+    entries = potentials.items()
+    entries.sort(lambda (a, b), (c, d): d - b)
+
+    if relpath is None:
+        return scheme_cache[entries.pop()[0]]
+
+    for (schemename, _) in entries:
+        scheme = scheme_cache[schemename]
+        if scheme.is_branch(relpath):
+            return scheme
+
+    return guess_scheme_from_branch_path(relpath)

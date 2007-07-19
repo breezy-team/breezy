@@ -41,7 +41,8 @@ import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION, RevidMap)
-from scheme import BranchingScheme, ListBranchingScheme, parse_list_scheme_text
+from scheme import (BranchingScheme, ListBranchingScheme, NoBranchingScheme,
+                    parse_list_scheme_text, guess_scheme_from_history)
 from tree import SvnRevisionTree
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
@@ -166,7 +167,7 @@ class SvnRepository(Repository):
     Provides a simplified interface to a Subversion repository 
     by using the RA (remote access) API from subversion
     """
-    def __init__(self, bzrdir, transport, guessed_scheme):
+    def __init__(self, bzrdir, transport, branch_path=None):
         from fileids import SimpleFileIdMap
         _revision_store = None
 
@@ -202,15 +203,28 @@ class SvnRepository(Repository):
         if self.config.get_branching_scheme() is not None:
             self.scheme = self.config.get_branching_scheme()
         else:
-            text = self.branchprop_list.get_property("", 
-                transport.get_latest_revnum(), 
-                SVN_PROP_BZR_BRANCHING_SCHEME, None)
-            if text is not None:
-                self.set_branching_scheme(
-                        ListBranchingScheme(parse_list_scheme_text(text)))
+            last_revnum = transport.get_latest_revnum()
+            scheme = self._get_property_scheme(last_revnum)
+            if scheme is not None:
+                self.set_branching_scheme(scheme)
             else:
-                self.scheme = guessed_scheme
+                self.set_branching_scheme(
+                    self._guess_scheme(last_revnum, branch_path))
             assert self.scheme is not None
+
+    def _get_property_scheme(self, revnum):
+        text = self.branchprop_list.get_property("", 
+            revnum, SVN_PROP_BZR_BRANCHING_SCHEME, None)
+        if text is None:
+            return None
+        return ListBranchingScheme(parse_list_scheme_text(text))
+
+    def _guess_scheme(self, last_revnum, branch_path=None):
+        scheme = guess_scheme_from_history(
+            self._log.follow_path("", last_revnum), last_revnum, 
+            branch_path)
+        mutter("Guessed branching scheme: %r" % scheme)
+        return scheme
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
@@ -643,9 +657,7 @@ class SvnRepository(Repository):
         assert branch_path is not None
         assert isinstance(branch_path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        if not scheme.is_branch(branch_path) and \
-           not scheme.is_tag(branch_path):
-            raise errors.NotSvnBranchPath(branch_path, revnum)
+        assert scheme.is_branch(branch_path) or scheme.is_tag(branch_path)
         branch_path = branch_path.strip("/")
 
         while revnum >= 0:
@@ -705,9 +717,7 @@ class SvnRepository(Repository):
     """
     def follow_branch_history(self, branch_path, revnum, scheme):
         assert branch_path is not None
-        if not scheme.is_branch(branch_path) and \
-           not scheme.is_tag(branch_path):
-            raise errors.NotSvnBranchPath(branch_path, revnum)
+        assert scheme.is_branch(branch_path) or scheme.is_tag(branch_path)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             if (paths.has_key(bp) and 

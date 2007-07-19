@@ -28,6 +28,7 @@ import svn.client, svn.core
 from svn.core import SubversionException
 
 from commit import push
+from errors import NotSvnBranchPath
 from format import get_rich_root_format
 from repository import SvnRepository
 from transport import bzr_to_svn_url, svn_config
@@ -50,7 +51,7 @@ class FakeControlFiles(object):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, base, repository, branch_path, scheme, revnum=None):
+    def __init__(self, base, repository, branch_path):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
@@ -69,11 +70,12 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         self._revision_history = None
         self._revision_history_revnum = None
-        self.scheme = scheme
-        self.revnum = revnum
+        self.scheme = self.repository.scheme
+        if not self.scheme.is_branch(branch_path):
+            raise NotSvnBranchPath(branch_path, scheme=self.scheme)
         try:
-            if self.repository.transport.check_path(branch_path.strip("/"), self.get_revnum()) != \
-                    svn.core.svn_node_dir:
+            if self.repository.transport.check_path(branch_path.strip("/"), 
+                self.get_revnum()) != svn.core.svn_node_dir:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
@@ -92,9 +94,7 @@ class SvnBranch(Branch):
         return self._branch_path
 
     def get_revnum(self):
-        if self.revnum is None:
-            return self.repository.transport.get_latest_revnum()
-        return self.revnum
+        return self.repository.transport.get_latest_revnum()
 
     def check(self):
         """See Branch.Check.
@@ -308,7 +308,8 @@ class SvnBranch(Branch):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for rev_id in todo:
-                    pb.update("pushing revisions", todo.index(rev_id), len(todo))
+                    pb.update("pushing revisions", todo.index(rev_id), 
+                              len(todo))
                     push(self, other, rev_id)
             finally:
                 pb.finished()

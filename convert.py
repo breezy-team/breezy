@@ -103,7 +103,9 @@ def convert_repository(source_repos, output_url, scheme=None,
     if create_shared_repo:
         try:
             target_repos = get_dir("").open_repository()
-            assert source_repos.scheme.is_branch("") or source_repos.scheme.is_tag("") or target_repos.is_shared()
+            assert (source_repos.scheme.is_branch("") or 
+                    source_repos.scheme.is_tag("") or 
+                    target_repos.is_shared())
         except NoRepositoryPresent:
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)

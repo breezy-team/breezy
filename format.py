@@ -25,7 +25,6 @@ from svn.core import SubversionException
 import svn.core, svn.repos
 
 from repository import SvnRepository
-from scheme import BranchingScheme
 from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
 
 def get_rich_root_format():
@@ -89,9 +88,8 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
-        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
         if self.branch_path == "":
-            return SvnRepository(self, self.root_transport, guess_scheme)
+            return SvnRepository(self, self.root_transport)
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
@@ -99,11 +97,10 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
-        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
         transport = self.root_transport
         if self.svn_root_url != transport.base:
             transport = SvnRaTransport(self.svn_root_url)
-        return SvnRepository(self, transport, guess_scheme)
+        return SvnRepository(self, transport, self.branch_path)
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
@@ -154,8 +151,7 @@ class SvnRemoteAccess(BzrDir):
         else:
             # TODO: Check if there are any revisions in this repository yet
             pass
-        branch = SvnBranch(self.root_transport.base, repos, self.branch_path, 
-                           repos.scheme)
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
         return branch
 
@@ -163,8 +159,7 @@ class SvnRemoteAccess(BzrDir):
         """See BzrDir.open_branch()."""
         from branch import SvnBranch
         repos = self.find_repository()
-        branch = SvnBranch(self.root_transport.base, repos, self.branch_path,
-                           repos.scheme)
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
         return branch
 

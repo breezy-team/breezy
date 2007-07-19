@@ -16,18 +16,18 @@
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
 from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
-                           PermissionDenied, DependencyNotPresent)
+                           NotBranchError, PermissionDenied, DependencyNotPresent)
 
 import svn.core
 
-class NotSvnBranchPath(BzrError):
+class NotSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that did not exist."""
-    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
+    _fmt = """%(path)s is not a valid Subversion branch path. 
+See 'bzr help svn-branching-schemes' for details."""
 
-    def __init__(self, branch_path, revnum=None):
-        BzrError.__init__(self)
-        self.branch_path = branch_path
-        self.revnum = revnum
+    def __init__(self, branch_path, scheme=None):
+        NotBranchError.__init__(self, branch_path)
+        self.scheme = scheme
 
 
 def convert_error(err):

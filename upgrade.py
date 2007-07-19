@@ -22,7 +22,7 @@ import bzrlib.ui as ui
 from errors import RebaseNotPresent
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
-from scheme import BranchingScheme
+from scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
@@ -36,7 +36,8 @@ def parse_legacy_revision_id(revid):
     """Try to parse a legacy Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, revision number, scheme, mapping version)
+    :return: tuple with (uuid, branch_path, revision number, scheme, mapping 
+        version)
     """
     if revid.startswith("svn-v1:"):
         revid = revid[len("svn-v1:"):]
@@ -120,7 +121,8 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     :return: Dictionary of mapped revisions
     """
     try:
-        from bzrlib.plugins.rebase.rebase import replay_snapshot, generate_transpose_plan, rebase, rebase_todo
+        from bzrlib.plugins.rebase.rebase import (
+            replay_snapshot, generate_transpose_plan, rebase, rebase_todo)
     except ImportError, e:
         raise RebaseNotPresent(e)
     rename_map = {}
@@ -143,12 +145,12 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                     # Not a bzr-svn revision, nothing to do
                     continue
                 if scheme is None:
-                    scheme = BranchingScheme.guess_scheme(bp)
+                    scheme = guess_scheme_from_branch_path(bp)
                 newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
                 if not repository.has_revision(newrevid) and \
                    not svn_repository.has_revision(newrevid):
-                    # Not a revision that can be upgraded using the remote repository, 
-                    # nothing to do
+                    # Not a revision that can be upgraded using the remote 
+                    # repository, nothing to do
                     if hasattr(svn_repository, 'uuid') and \
                             svn_repository.uuid == uuid:
                         mutter("Remote repository doesn't have %r" % newrevid)

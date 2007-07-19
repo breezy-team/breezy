@@ -429,6 +429,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.exists("sc/foo/trunk/file"))
         self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
 
+
 class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
     def test_bind(self):
         repos_url = self.make_client("d", "sc")

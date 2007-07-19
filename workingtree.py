@@ -710,7 +710,8 @@ class SvnCheckout(BzrDir):
             svn.wc.adm_close(wc)
 
         self.remote_transport = SvnRaTransport(svn_url)
-        self.svn_root_transport = SvnRaTransport(self.remote_transport.get_repos_root())
+        self.svn_root_transport = SvnRaTransport(
+            self.remote_transport.get_repos_root())
         self.root_transport = self.transport = transport
 
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
@@ -737,9 +738,7 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        guess_scheme = BranchingScheme.guess_scheme(self.branch_path)
-        return SvnRepository(self, self.svn_root_transport, 
-                             guess_scheme)
+        return SvnRepository(self, self.svn_root_transport, self.branch_path)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().
@@ -758,8 +757,8 @@ class SvnCheckout(BzrDir):
         repos = self.find_repository()
 
         try:
-            branch = SvnBranch(self.root_transport.base, repos, self.branch_path,
-                               repos.scheme)
+            branch = SvnBranch(self.root_transport.base, repos, 
+                               self.branch_path)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)

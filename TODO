@@ -7,9 +7,6 @@ mandatory before 0.4.0:
 
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
-- more intelligent guessing of branching scheme. Look at directory structure in last revision? (#81976)
-  - check bzr:branching-scheme property
-  - guess_branching_scheme(paths)
 - fix reuse of listbranchingscheme
 - support use of wildcards in listbranchingscheme
 - fix autorealm repository
@@ -19,6 +16,7 @@ todo:
  - svn-import without scheme specified should guess
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
+- 'bzr help branching-schemes'
 
 working trees:
 - implement apply_inventory_delta()

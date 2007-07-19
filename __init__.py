@@ -132,10 +132,11 @@ class cmd_svn_import(Command):
                          help='Convert all revisions, even those not in '
                               'current branch history (forbids --standalone).'),
                      Option('scheme', type=get_scheme,
-                         help='Branching scheme (none, trunk, ...).'),
+                         help='Branching scheme (none, trunk, ...). '
+                              'Default: auto'),
                      Option('prefix', type=str, 
-                         help='Only consider branches of which path start with '
-                              'prefix.')
+                         help='Only consider branches of which path starts '
+                              'with prefix.')
                     ]
 
     @display_command
@@ -172,7 +173,7 @@ class cmd_svn_import(Command):
             raise BzrCommandError("No Repository found at %s. "
                 "For individual branches, use 'bzr branch'." % from_location)
 
-        def filter_branch(branch_path, revnum, exists):
+        def filter_branch((branch_path, revnum, exists)):
             if prefix is not None and not branch_path.startswith(prefix):
                 return False
             return exists

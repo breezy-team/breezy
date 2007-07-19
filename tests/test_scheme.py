@@ -22,7 +22,9 @@ from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
                     SingleBranchingScheme, UnknownBranchingScheme,
-                    parse_list_scheme_text, find_commit_paths)
+                    parse_list_scheme_text, find_commit_paths, 
+                    guess_scheme_from_branch_path, guess_scheme_from_history,
+                    guess_scheme_from_path)
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
@@ -42,14 +44,6 @@ class BranchingSchemeTest(TestCase):
     def test_unprefix(self):
         self.assertRaises(NotImplementedError, 
                 BranchingScheme().unprefix, "")
-
-    def test_guess_empty(self):
-        self.assertIsInstance(BranchingScheme.guess_scheme(""), 
-                              NoBranchingScheme)
-
-    def test_guess_not_convenience(self):
-        self.assertIsInstance(BranchingScheme.guess_scheme("foo"), 
-                              NoBranchingScheme)
 
     def test_find_scheme_no(self):
         self.assertIsInstance(BranchingScheme.find_scheme("none"),
@@ -342,31 +336,6 @@ class TrunkScheme(TestCase):
     def test_unprefix_level_correct_nested(self):
         self.assertEqual(TrunkBranchingScheme(1).unprefix("data/tags/ver1"), ("data/tags/ver1", ""))
 
-    def test_guess_trunk_zero(self):
-        scheme = BranchingScheme.guess_scheme("trunk") 
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(0, scheme.level)
-
-    def test_guess_trunk_branch_sub(self):
-        scheme = BranchingScheme.guess_scheme("branches/foo/bar")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(0, scheme.level)
-
-    def test_guess_trunk_level(self):
-        scheme = BranchingScheme.guess_scheme("test/branches/foo/bar")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(1, scheme.level)
-
-    def test_guess_trunk_level_sub(self):
-        scheme = BranchingScheme.guess_scheme("test/bar/branches/foo/bar")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(2, scheme.level)
-
-    def test_guess_level_detection(self):
-        scheme = BranchingScheme.guess_scheme("branches/trunk")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(0, scheme.level)
-
     def test_str0(self):
         self.assertEqual("trunk0", TrunkBranchingScheme().__str__())
 
@@ -467,24 +436,122 @@ class SingleBranchingSchemeTests(TestCase):
 class FindCommitPathsTester(TestCase):
     def test_simple_trunk_only(self):
         self.assertEquals(["trunk"], 
-            find_commit_paths([{"trunk": ('M', None, None)}]))
+            list(find_commit_paths([{"trunk": ('M', None, None)}])))
 
     def test_branches(self):
         self.assertEquals(["trunk", "branches/bar"], 
-            find_commit_paths([{"trunk": ('M', None, None)},
-                               {"branches/bar": ('A', None, None)}]))
+            list(find_commit_paths([{"trunk": ('M', None, None)},
+                               {"branches/bar": ('A', None, None)}])))
 
     def test_trunk_more_files(self):
         self.assertEquals(["trunk"],
-                find_commit_paths([{
+                list(find_commit_paths([{
                     "trunk/bfile": ('A', None, None),
                     "trunk/afile": ('M', None, None),
                     "trunk": ('A', None, None)
-                    }]))
+                    }])))
 
     def test_trunk_more_files_no_root(self):
         self.assertEquals(["trunk"],
-                find_commit_paths([{
+                list(find_commit_paths([{
                     "trunk/bfile": ('A', None, None),
                     "trunk/afile": ('M', None, None)
-                    }]))
+                    }])))
+
+
+class TestGuessBranchingSchemeFromBranchpath(TestCase):
+    def test_guess_empty(self):
+        self.assertIsInstance(guess_scheme_from_branch_path(""), 
+                              NoBranchingScheme)
+
+    def test_guess_not_convenience(self):
+        self.assertIsInstance(guess_scheme_from_branch_path("foo"), 
+                              SingleBranchingScheme)
+
+    def test_guess_trunk_zero(self):
+        scheme = guess_scheme_from_branch_path("trunk") 
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_guess_trunk_branch_sub(self):
+        scheme = guess_scheme_from_branch_path("branches/bar")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_guess_trunk_level_sub(self):
+        scheme = guess_scheme_from_branch_path("test/bar/branches/bla")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(2, scheme.level)
+
+    def test_guess_level_detection(self):
+        scheme = guess_scheme_from_branch_path("branches/trunk")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+
+class TestGuessBranchingSchemeFromPath(TestCase):
+    def test_guess_empty(self):
+        self.assertIsInstance(guess_scheme_from_path(""), 
+                              NoBranchingScheme)
+
+    def test_guess_not_convenience(self):
+        self.assertIsInstance(guess_scheme_from_path("foo"), 
+                              NoBranchingScheme)
+
+    def test_guess_trunk_zero(self):
+        scheme = guess_scheme_from_path("trunk") 
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_guess_trunk_nested(self):
+        scheme = guess_scheme_from_path("trunk/child") 
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_guess_trunk_branch_sub(self):
+        scheme = guess_scheme_from_path("branches/bar")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_guess_trunk_level_sub(self):
+        scheme = guess_scheme_from_path("test/bar/branches/bla")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(2, scheme.level)
+
+    def test_guess_level_detection(self):
+        scheme = guess_scheme_from_path("branches/trunk")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+
+class TestGuessBranchingSchemeFromHistory(TestCase):
+    def test_simple(self):
+        scheme = guess_scheme_from_history([
+            ("", {"trunk": ('M', None, None)}, 0)], 1)
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_simple_with_relpath(self):
+        scheme = guess_scheme_from_history([
+            ("", {"trunk": ('M', None, None)}, 0)], 1, 
+            relpath="trunk")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_simple_prefer_relpath(self):
+        scheme = guess_scheme_from_history([
+            ("", {"trunk": ('M', None, None)}, 1),
+            ("", {"trunk": ('M', None, None)}, 2),
+            ("", {"trunk/bar": ('M', None, None)}, 3),
+            ], 3, 
+            relpath="trunk/bar")
+        self.assertIsInstance(scheme, SingleBranchingScheme)
+        self.assertEqual("trunk/bar", scheme.path)
+
+    def test_simple_notwant_single(self):
+        scheme = guess_scheme_from_history([
+            ("", {"foo": ('M', None, None)}, 1),
+            ("", {"foo": ('M', None, None)}, 2),
+            ("", {"foo/bar": ('M', None, None)}, 3),
+            ], 3)
+        self.assertIsInstance(scheme, NoBranchingScheme)
