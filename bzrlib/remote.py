@@ -280,7 +280,7 @@ class RemoteRepository(object):
             lines = coded.split('\n')
             revision_graph = {}
             for line in lines:
-                d = list(line.split())
+                d = tuple(line.split())
                 revision_graph[d[0]] = d[1:]
                 
             return revision_graph
