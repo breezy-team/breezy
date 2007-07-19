@@ -35,18 +35,18 @@ class cmd_mp_regen(commands.Command):
     takes_args = ['file?']
 
     takes_options = [commands.Option('sync-snapshots',
-                                     help='Snapshots follow source'),
+                                     help='Snapshots follow source.'),
                      commands.Option('snapshot-interval', type=int,
-                                     help='take snapshots every x revisions'),
+                                     help='Take snapshots every x revisions.'),
                      commands.Option('outfile', type=unicode,
-                                     help='Write pseudo-knit to this file'),
-                     commands.Option('memory', help='Use memory, not disk'),
-                     commands.Option('extract', help='test extract time'),
-                     commands.Option('single', help='use a single parent'),
-                     commands.Option('verify', help='verify added texts'),
-                     commands.Option('cache', help='Aggresively cache'),
-                     commands.Option('size', help='Aggressive size'),
-                     commands.Option('build', help='Aggressive build'),
+                                     help='Write pseudo-knit to this file.'),
+                     commands.Option('memory', help='Use memory, not disk.'),
+                     commands.Option('extract', help='Test extract time.'),
+                     commands.Option('single', help='Use a single parent.'),
+                     commands.Option('verify', help='Verify added texts.'),
+                     commands.Option('cache', help='Aggresively cache.'),
+                     commands.Option('size', help='Aggressive size.'),
+                     commands.Option('build', help='Aggressive build.'),
                     ]
     hidden = True
 
@@ -121,9 +121,9 @@ class cmd_mp_extract(commands.Command):
     hidden = True
 
     takes_options = [
-        commands.Option('lsprof-timed', help='Use lsprof'),
-        commands.Option('parallel', help='extract multiple versions at once'),
-        commands.Option('count', help='Number of cycles to do', type=int),
+        commands.Option('lsprof-timed', help='Use lsprof.'),
+        commands.Option('parallel', help='Extract multiple versions at once.'),
+        commands.Option('count', help='Number of cycles to do.', type=int),
         ]
 
     takes_args = ['filename', 'vfile?']
