@@ -634,7 +634,8 @@ class cmd_pull(Command):
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
 
-        old_rh = branch_to.revision_history()
+        if verbose:
+            old_rh = branch_to.revision_history()
         if tree_to is not None:
             result = tree_to.pull(branch_from, overwrite, revision_id,
                 delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
@@ -736,7 +737,8 @@ class cmd_push(Command):
                 # Found a branch, so we must have found a repository
                 repository_to = br_to.repository
         push_result = None
-        old_rh = []
+        if verbose:
+            old_rh = []
         if dir_to is None:
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
@@ -792,7 +794,8 @@ class cmd_push(Command):
             # we don't need to successfully push because of possible divergence.
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
-            old_rh = br_to.revision_history()
+            if verbose:
+                old_rh = br_to.revision_history()
             try:
                 try:
                     tree_to = dir_to.open_workingtree()
@@ -3096,8 +3099,23 @@ class cmd_pack(Command):
 
 
 class cmd_plugins(Command):
-    """List plugins"""
-    hidden = True
+    """List the installed plugins.
+    
+    This command displays the list of installed plugins including the
+    path where each one is located and a short description of each.
+
+    A plugin is an external component for Bazaar that extends the
+    revision control system, by adding or replacing code in Bazaar.
+    Plugins can do a variety of things, including overriding commands,
+    adding new commands, providing additional network transports and
+    customizing log output.
+
+    See the Bazaar web site, http://bazaar-vcs.org, for further
+    information on plugins including where to find them and how to
+    install them. Instructions are also provided there on how to
+    write new plugins using the Python programming language.
+    """
+
     @display_command
     def run(self):
         import bzrlib.plugin
