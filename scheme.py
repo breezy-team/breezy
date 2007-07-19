@@ -331,7 +331,6 @@ def guess_scheme_from_history(changed_paths, last_revnum,
                       last_revnum)
             for path in find_commit_paths([revpaths]):
                 scheme = guess_scheme_from_path(path)
-                mutter('scheme %r' % scheme)
                 if not potentials.has_key(str(scheme)):
                     potentials[str(scheme)] = 0
                 potentials[str(scheme)] += 1
@@ -345,8 +344,10 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     entries = potentials.items()
     entries.sort(lambda (a, b), (c, d): d - b)
 
+    mutter('potentials %r' % entries)
+
     if relpath is None:
-        return scheme_cache[entries.pop()[0]]
+        return scheme_cache[entries[0][0]]
 
     for (schemename, _) in entries:
         scheme = scheme_cache[schemename]
@@ -354,3 +355,30 @@ def guess_scheme_from_history(changed_paths, last_revnum,
             return scheme
 
     return guess_scheme_from_branch_path(relpath)
+
+help_schemes = """Subversion Branching Schemes
+
+Subversion is basically a versioned file system. It does not have 
+any notion of branches and what is a branch in Subversion is therefor
+up to the user. 
+
+In order for Bazaar to access a Subversion repository it has to know 
+what paths to consider branches. It does this by using so-called branching 
+schemes. When you connect to a repository for the first time, Bazaar
+will try to determine the branching scheme to use using some simple 
+heuristics. It is always possible to change the branching scheme it should 
+use later.
+
+There are some conventions in use in Subversion for repository layouts. 
+The most common one is probably the trunk/branches/tags 
+layout, where the repository contains a "trunk" directory with the main 
+development branch, other branches in a "branches" directory and tags as 
+subdirectories of a "tags" directory. This branching scheme is named 
+"trunk" in Bazaar.
+
+Another option is simply having just one branch at the root of the repository. 
+This scheme is called "none" by Bazaar.
+
+The branching scheme bzr-svn should use for a repository can be set in the 
+configuration file ~/.bazaar/subversion.conf.
+"""

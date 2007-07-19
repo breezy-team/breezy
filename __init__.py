@@ -19,6 +19,7 @@ Support for Subversion branches
 """
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.commands import Command, register_command, display_command, Option
+from bzrlib.help_topics import topic_registry
 from bzrlib.lazy_import import lazy_import
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
@@ -95,6 +96,9 @@ register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport',
                         'SvnRaTransport')
 register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
                         'SvnRaTransport')
+topic_registry.register_lazy('svn-branching-schemes', 
+                             'bzrlib.plugins.svn.scheme',
+                             'help_schemes', 'Subversion branching schemes')
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)

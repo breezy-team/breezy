@@ -16,7 +16,6 @@ todo:
  - svn-import without scheme specified should guess
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
-- 'bzr help branching-schemes'
 
 working trees:
 - implement apply_inventory_delta()

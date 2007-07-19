@@ -64,6 +64,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Add --prefix option to svn-import. (#125993)
 
+   * Add 'bzr help svn-branching-schemes'
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)
