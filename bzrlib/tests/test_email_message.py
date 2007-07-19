@@ -111,9 +111,9 @@ class TestEmailMessage(TestCase):
                 msg.as_string(BOUNDARY))
 
     def test_headers_accept_unicode_and_utf8(self):
-        for string in [ u'Pepe P\xe9rez <pperez@ejemplo.com>',
+        for user in [ u'Pepe P\xe9rez <pperez@ejemplo.com>',
                 'Pepe P\xc3\xa9red <pperez@ejemplo.com>' ]:
-            msg = EmailMessage(string, string, string) # no exception raised
+            msg = EmailMessage(user, user, user) # no exception raised
 
             for header in ['From', 'To', 'Subject']:
                 value = msg[header]
@@ -153,30 +153,32 @@ class TestEmailMessage(TestCase):
             def get_user_option(self, option):
                 return None
 
-        def verify_message_with_mime_type(mime_subtype='plain'):
-            def wrapper(_self, msg):
-                self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % mime_subtype,
-                        msg.as_string(BOUNDARY))
-            return wrapper
+        messages = []
 
-        def verify_message_without_attachment(_self, msg):
-            self.assertEqualDiff(SIMPLE_MESSAGE_ASCII , msg.as_string())
+        def send_as_append(_self, msg):
+            messages.append(msg.as_string(BOUNDARY))
 
         old_send_email = SMTPConnection.send_email
         try:
-            SMTPConnection.send_email = verify_message_with_mime_type()
+            SMTPConnection.send_email = send_as_append
+
             EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
                     'subject', 'body', u'a\nb\nc\nd\ne\n', 'lines.txt')
+            self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % 'plain',
+                    messages[0])
+            messages[:] = []
 
-            SMTPConnection.send_email = verify_message_with_mime_type(
-                    'x-patch')
             EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
                     'subject', 'body', u'a\nb\nc\nd\ne\n', 'lines.txt',
                     'x-patch')
+            self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % 'x-patch',
+                    messages[0])
+            messages[:] = []
 
-            SMTPConnection.send_email = verify_message_without_attachment
             EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
                     'subject', 'body')
+            self.assertEqualDiff(SIMPLE_MESSAGE_ASCII , messages[0])
+            messages[:] = []
         finally:
             SMTPConnection.send_email = old_send_email
 
@@ -220,5 +222,5 @@ class TestEmailMessage(TestCase):
                 'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),
                 'P\xe9rez':     ('P\xe9rez', '8-bit'),
         }
-        for string, pair in pairs.items():
-            self.assertEqual(pair, EmailMessage.string_with_encoding(string))
+        for string_, pair in pairs.items():
+            self.assertEqual(pair, EmailMessage.string_with_encoding(string_))

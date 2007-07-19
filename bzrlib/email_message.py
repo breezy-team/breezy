@@ -29,7 +29,7 @@ from bzrlib.osutils import safe_unicode
 from bzrlib.smtp_connection import SMTPConnection
 
 
-class EmailMessage:
+class EmailMessage(object):
     """An email message.
     
     The constructor needs an origin address, a destination address or addresses
@@ -107,8 +107,8 @@ class EmailMessage:
         if not self._parts:
             self._msgobj = Message.Message()
             if self._body is not None:
-                string, encoding = self.string_with_encoding(self._body)
-                self._msgobj.set_payload(string, encoding)
+                body, encoding = self.string_with_encoding(self._body)
+                self._msgobj.set_payload(body, encoding)
         else:
             self._msgobj = MIMEMultipart.MIMEMultipart()
 
@@ -116,8 +116,8 @@ class EmailMessage:
                 self._msgobj.set_boundary(boundary)
 
             for body, filename, mime_subtype in self._parts:
-                string, encoding = self.string_with_encoding(body)
-                payload = MIMEText.MIMEText(string, mime_subtype, encoding)
+                body, encoding = self.string_with_encoding(body)
+                payload = MIMEText.MIMEText(body, mime_subtype, encoding)
 
                 if filename is not None:
                     content_type = payload['Content-Type']
@@ -142,7 +142,7 @@ class EmailMessage:
     def __getitem__(self, header):
         """Get a header from the message, returning None if not present.
         
-        This method does intentionally not raise KeyError to mimic the behavior
+        This method intentionally does not raise KeyError to mimic the behavior
         of __getitem__ in email.Message.
         """
         return self._headers.get(header, None)
@@ -183,10 +183,10 @@ class EmailMessage:
                 email))
 
     @staticmethod
-    def string_with_encoding(string):
+    def string_with_encoding(string_):
         """Return a str object together with an encoding.
 
-        :param string: A str or unicode object.
+        :param string_: A str or unicode object.
         :return: A tuple (str, encoding), where encoding is one of 'ascii',
             'utf-8', or '8-bit', in that preferred order.
         """
@@ -195,18 +195,18 @@ class EmailMessage:
         # avoid base64 when it's not necessary in order to be most compatible
         # with the capabilities of the receiving side, we check with encode()
         # and decode() whether the body is actually ascii-only.
-        if isinstance(string, unicode):
+        if isinstance(string_, unicode):
             try:
-                return (string.encode('ascii'), 'ascii')
+                return (string_.encode('ascii'), 'ascii')
             except UnicodeEncodeError:
-                return (string.encode('utf-8'), 'utf-8')
+                return (string_.encode('utf-8'), 'utf-8')
         else:
             try:
-                string.decode('ascii')
-                return (string, 'ascii')
+                string_.decode('ascii')
+                return (string_, 'ascii')
             except UnicodeDecodeError:
                 try:
-                    string.decode('utf-8')
-                    return (string, 'utf-8')
+                    string_.decode('utf-8')
+                    return (string_, 'utf-8')
                 except UnicodeDecodeError:
-                    return (string, '8-bit')
+                    return (string_, '8-bit')
