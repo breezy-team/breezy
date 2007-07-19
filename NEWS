@@ -30,6 +30,9 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * New bundle and merge directive formats are faster to generate, and
+      more robust against email mangling.  (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
