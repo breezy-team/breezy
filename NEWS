@@ -82,6 +82,8 @@ IN DEVELOPMENT
     * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
       for performing annotate-merge.  (Aaron Bentley)
 
+    * New EmailMessage class to create email messages. (Adeodato Simó)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
