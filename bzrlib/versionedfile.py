@@ -25,12 +25,15 @@ lazy_import(globals(), """
 from bzrlib import (
     errors,
     osutils,
+    multiparent,
     tsort,
     revision,
     ui,
     )
 from bzrlib.transport.memory import MemoryTransport
 """)
+
+from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
@@ -264,10 +267,62 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def make_mpdiffs(self, version_ids):
+        """Create multiparent diffs for specified versions"""
+        knit_versions = set()
+        for version_id in version_ids:
+            knit_versions.add(version_id)
+            knit_versions.update(self.get_parents(version_id))
+        lines = dict(zip(knit_versions,
+            self._get_lf_split_line_list(knit_versions)))
+        diffs = []
+        for version_id in version_ids:
+            target = lines[version_id]
+            parents = [lines[p] for p in self.get_parents(version_id)]
+            if len(parents) > 0:
+                left_parent_blocks = self._extract_blocks(version_id,
+                                                          parents[0], target)
+            else:
+                left_parent_blocks = None
+            diffs.append(multiparent.MultiParent.from_lines(target, parents,
+                         left_parent_blocks))
+        return diffs
+
+    def _extract_blocks(self, version_id, source, target):
+        return None
+
+    def add_mpdiffs(self, records):
+        """Add mpdiffs to this versionedfile
+
+        Records should be iterables of version, parents, expected_sha1,
+        mpdiff.  mpdiff should be a MultiParent instance.
+        """
+        vf_parents = {}
+        for version, parents, expected_sha1, mpdiff in records:
+            mpvf = multiparent.MultiMemoryVersionedFile()
+            needed_parents = [p for p in parents if not mpvf.has_version(p)]
+            parent_lines = self._get_lf_split_line_list(needed_parents)
+            for parent_id, lines in zip(needed_parents, parent_lines):
+                mpvf.add_version(lines, parent_id, [])
+            mpvf.add_diff(mpdiff, version, parents)
+            lines = mpvf.get_line_list([version])[0]
+            version_text = self.add_lines(version, parents, lines, vf_parents)
+            vf_parents[version] = version_text
+            if expected_sha1 != self.get_sha1(version):
+                raise errors.VersionedFileInvalidChecksum(version)
+
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
         :param name: The name of the version to lookup
+        """
+        raise NotImplementedError(self.get_sha1)
+
+    def get_sha1s(self, version_ids):
+        """Get the stored sha1 sums for the given revisions.
+
+        :param version_ids: The names of the versions to lookup
+        :return: a list of sha1s in order according to the version_ids
         """
         raise NotImplementedError(self.get_sha1)
 
@@ -299,6 +354,9 @@ class VersionedFile(object):
         file history.
         """
         raise NotImplementedError(self.get_lines)
+
+    def _get_lf_split_line_list(self, version_ids):
+        return [StringIO(t).readlines() for t in self.get_texts(version_ids)]
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This

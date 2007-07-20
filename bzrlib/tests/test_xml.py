@@ -20,6 +20,7 @@ from bzrlib import (
     errors, 
     inventory, 
     xml7,
+    xml_serializer,
     )
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
@@ -396,6 +397,16 @@ class TestSerializer(TestCase):
                 self.assertIsInstance(act_ie.revision, str)
 
         self.assertEqual(len(expected), len(actual))
+
+    def test_registry(self):
+        self.assertIs(serializer_v4,
+                      xml_serializer.format_registry.get('4'))
+        self.assertIs(bzrlib.xml5.serializer_v5,
+                      xml_serializer.format_registry.get('5'))
+        self.assertIs(bzrlib.xml6.serializer_v6,
+                      xml_serializer.format_registry.get('6'))
+        self.assertIs(bzrlib.xml7.serializer_v7,
+                      xml_serializer.format_registry.get('7'))
 
 
 class TestEncodeAndEscape(TestCase):
