@@ -529,9 +529,12 @@ Module Imports
 Naming
 ------
 
-Functions, methods or members that are in some sense "private" are given
-a leading underscore prefix.  This is just a hint that code outside the
-implementation should probably not use that interface.
+Functions, methods or members that are "private" to bzrlib are given
+a leading underscore prefix.  Names without a leading underscore are
+public not just across modules but to programmers using bzrlib as an
+API. As a consequence, a leading underscore is appropriate for names
+exposed across modules but that are not to be exposed to bzrlib API
+programmers.
 
 We prefer class names to be concatenated capital words (``TestCase``)
 and variables, methods and functions to be lowercase words joined by
