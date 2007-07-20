@@ -209,6 +209,21 @@ class TestRepository(TestCaseWithRepository):
         rev2_tree = knit3_repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
 
+    def makeARepoWithSignatures(self):
+        wt = self.make_branch_and_tree('a-repo-with-sigs')
+        wt.commit('rev1', allow_pointless=True, rev_id='rev1')
+        repo = wt.branch.repository
+        repo.sign_revision('rev1', bzrlib.gpg.LoopbackGPGStrategy(None))
+        return repo
+
+    def test_fetch_copies_signatures(self):
+        source_repo = self.makeARepoWithSignatures()
+        target_repo = self.make_repository('target')
+        target_repo.fetch(source_repo, revision_id=None)
+        self.assertEqual(
+            source_repo.get_signature_text('rev1'),
+            target_repo.get_signature_text('rev1'))
+
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -437,7 +452,7 @@ class TestRepository(TestCaseWithRepository):
         #   * the inventory knit
         #   * the revisions knit
         # in that order.
-        expected_record_names = ['file:file1', 'inventory', 'revisions']
+        expected_record_names = ['file:file1', 'inventory', 'signatures', 'revisions']
         streamed_names = []
         for name, bytes in stream:
             streamed_names.append(name)

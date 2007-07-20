@@ -338,8 +338,11 @@ class Repository(object):
             elif knit_name == 'revisions':
                 knit = self.control_weaves.get_weave(
                     'revisions', self.get_transaction())
+            elif knit_name == 'signatures':
+                knit = self._revision_store.get_signature_file(
+                    self.get_transaction())
             else:
-                raise 'boom', knit_name # XXX
+                raise XXX
             decoded_list = bencode.bdecode(bytes)
             format = decoded_list.pop(0)
             data_list = []
@@ -349,7 +352,6 @@ class Repository(object):
                 knit_bytes += some_bytes
             knit.insert_data_stream((format, data_list,
                 StringIO(knit_bytes).read))
-
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -677,7 +679,16 @@ class Repository(object):
         inv_w.clear_cache()
 
         # signatures
-        # XXX
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
 
         # revisions
         yield ("revisions", None, revision_ids)

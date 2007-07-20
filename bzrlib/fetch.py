@@ -179,6 +179,10 @@ class RepoFetcher(object):
                     # it's not always inventory?
                     self._generate_root_texts(revs)
                     self._fetch_inventory_weave(revs, pb)
+                elif knit_kind == "signatures":
+                    # Nothing to do here; this will be taken care of when
+                    # _fetch_revision_texts happens.
+                    pass
                 elif knit_kind == "revisions":
                     self._fetch_revision_texts(revs, pb)
                 else:
