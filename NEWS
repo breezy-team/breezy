@@ -69,6 +69,12 @@ IN DEVELOPMENT
       index performance is not optimised, however the API is stable to allow
       development on top of the index. (Robert Collins)
 
+    * New transport decorator 'unlistable+' which disables the list_dir
+      functionality for testing.
+
+    * New ``file_names.FileNames`` support class which mananges names
+      for unlistable transport situations. (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
