@@ -366,11 +366,15 @@ class DirState(object):
         # add it.
         #------- copied from inventory.make_entry
         # --- normalized_filename wants a unicode basename only, so get one.
-        if path.__class__ == unicode:
-            utf8path = path.encode('utf8')
-        else:
-            utf8path = path
-        dirname, basename = osutils.split(utf8path)
+        dirname, basename = osutils.split(path)
+        # we dont import normalized_filename directly because we want to be
+        # able to change the implementation at runtime for tests.
+        norm_name, can_access = osutils.normalized_filename(basename)
+        if norm_name != basename:
+            if can_access:
+                basename = norm_name
+            else:
+                raise errors.InvalidNormalization(path)
         # you should never have files called . or ..; just add the directory
         # in the parent, or according to the special treatment for the root
         if basename == '.' or basename == '..':
@@ -378,6 +382,8 @@ class DirState(object):
         # now that we've normalised, we need the correct utf8 path and 
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
+        utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
+        dirname, basename = osutils.split(utf8path)
         assert file_id.__class__ == str, \
             "must be a utf8 file_id not %s" % (type(file_id))
         # Make sure the file_id does not exist in this tree
