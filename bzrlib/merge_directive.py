@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from email import Message
 from StringIO import StringIO
 import re
 
@@ -33,6 +32,7 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
+from bzrlib.email_message import EmailMessage
 
 
 class _BaseMergeDirective(object):
@@ -170,19 +170,16 @@ class _BaseMergeDirective(object):
         :return: an email message
         """
         mail_from = branch.get_config().username()
-        message = Message.Message()
-        message['To'] = mail_to
-        message['From'] = mail_from
         if self.message is not None:
-            message['Subject'] = self.message
+            subject = self.message
         else:
             revision = branch.repository.get_revision(self.revision_id)
-            message['Subject'] = revision.message
+            subject = revision.message
         if sign:
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message.set_payload(body)
+        message = EmailMessage(mail_from, mail_to, subject, body)
         return message
 
     def install_revisions(self, target_repo):
