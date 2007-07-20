@@ -816,6 +816,14 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
@@ -2246,6 +2254,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2268,6 +2277,7 @@ def test_suite():
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
