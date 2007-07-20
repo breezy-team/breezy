@@ -58,14 +58,14 @@ added:
         template = bzrlib.msgeditor.make_commit_message_template(working_tree,
                                                             None, diff=True)
 
-        self.assertTrue(u"""\
+        self.assertTrue("""\
 @@ -0,0 +1,1 @@
 +contents of hello
-""" in template)
+""" in template[1])
         self.assertTrue(u"""\
 added:
   hell\u00d8
-""" in template)
+""" in template[0])
 
     def setUp(self):
         super(MsgEditorTest, self).setUp()

@@ -90,6 +90,10 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
+                        May be a string, which will not be encoded
+                        May be a unicode string, which will be encoded
+                        May be a list of [unicode] string, which
+                        will may be encoded depending if it is unicode
 
     :param ignoreline:  The separator to use above the infotext.
 
@@ -164,6 +168,10 @@ def _create_temp_file_with_commit_template(infotext,
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
+                        May be a string, which will not be encoded
+                        May be a unicode string, which will be encoded
+                        May be a list of [unicode] string, which
+                        will may be encoded depending if it is unicode
 
     :param ignoreline:  The separator to use above the infotext.
 
@@ -187,11 +195,17 @@ def _create_temp_file_with_commit_template(infotext,
             msgfile.write("%s\n" % start_message.encode(
                                        output_encoding, 'replace'))
 
-        if infotext is not None and infotext != "":
+        if infotext is not None and len(infotext)>0:
             hasinfo = True
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
-                          infotext.encode(output_encoding,
+            msgfile.write("\n\n%s\n\n" % (ignoreline))
+            if isinstance(infotext, basestring):
+                infotext = [infotext]
+            for s in infotext:
+                if isinstance(s, unicode):
+                    msgfile.write("%s" % (s.encode(output_encoding,
                                                 'replace')))
+                else:
+                    msgfile.write(s)
         else:
             hasinfo = False
     finally:
@@ -200,11 +214,11 @@ def _create_temp_file_with_commit_template(infotext,
     return (msgfilename, hasinfo)
 
 
-def make_commit_message_template(working_tree, specific_files, diff=False,
-                                 output_encoding=None):
+def make_commit_message_template(working_tree, specific_files, diff=False):
     """Prepare a template file for a commit into a branch.
 
-    Returns a unicode string containing the template.
+    Returns a unicode string containing the template or a list of
+    unicode/8-bit string.
     """
     # TODO: Should probably be given the WorkingTree not the branch
     #
@@ -215,8 +229,6 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
-    if output_encoding is None:
-        output_encoding = bzrlib.user_encoding
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
@@ -227,17 +239,6 @@ def make_commit_message_template(working_tree, specific_files, diff=False,
         show_diff_trees(working_tree.basis_tree(), working_tree,
                     stream, specific_files)
 
-        # FIXME: the function show_diff_trees encode the pathname
-        #        as UTF8. The output of the make_commit_message_template()
-        #        function is decoded according to the user encoding.
-        #        So assuming output_encoding = user encoding
-        #         - if the output_encoding is different from
-        #        UTF8 the diff body is preserved, but the filename
-        #        may be not correct
-        #        - if we set output_encoding=UTF8 and the
-        #        output_encoding is not UTF8 we have the
-        #        filepath correct, but the diff body may be not correct
-
-        status_tmp.write(stream.getvalue().decode(output_encoding))
+        return [status_tmp.getvalue( ), stream.getvalue()]
 
     return status_tmp.getvalue()

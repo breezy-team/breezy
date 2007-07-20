@@ -2158,8 +2158,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-              Option('diff',
-                     help='Show the diff in the bottom of the editor.'),
+              Option('show-diff',
+                     help='When no message is supplied, show the diff along'
+                     ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2186,7 +2187,8 @@ class cmd_commit(Command):
         return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None, diff=False):
+            unchanged=False, strict=False, local=False, fixes=None,
+            show_diff=False):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2220,16 +2222,17 @@ class cmd_commit(Command):
             my_message = message
             if my_message is None and not file:
                 template = make_commit_message_template(tree, selected_list,
-                                                        diff,
-                                                        output_encoding=bzrlib.user_encoding)
+                                                        show_diff)
                 my_message = edit_commit_message(template,
-                                                 output_encoding=bzrlib.user_encoding)
+                                          output_encoding=bzrlib.user_encoding)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif my_message and file:
+            elif (my_message and file ) or \
+                 (my_message and show_diff ) or \
+                 (file and show_diff ):
                 raise errors.BzrCommandError(
-                    "please specify either --message or --file")
+                    "please specify either --message or --file or --show-diff")
             if file:
                 my_message = codecs.open(file, 'rt', 
                                          bzrlib.user_encoding).read()
