@@ -75,6 +75,8 @@ IN DEVELOPMENT
     * New ``file_names.FileNames`` support class which mananges names
       for unlistable transport situations. (Robert Collins)
 
+    * Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
