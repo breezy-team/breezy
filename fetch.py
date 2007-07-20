@@ -324,7 +324,7 @@ class InterFromSvnRepository(InterRepository):
 
     @staticmethod
     def _get_repo_format_to_test():
-        return None
+        return SvnRepositoryFormat()
 
     def _find_all(self):
         parents = {}

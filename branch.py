@@ -355,6 +355,12 @@ class SvnBranchFormat(BranchFormat):
     def __init__(self):
         BranchFormat.__init__(self)
 
+    def __get_matchingbzrdir(self):
+        from format import SvnFormat
+        return SvnFormat()
+
+    _matchingbzrdir = property(__get_matchingbzrdir)
+
     def get_format_description(self):
         """See Branch.get_format_description."""
         return 'Subversion Smart Server'

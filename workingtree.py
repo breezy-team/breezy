@@ -686,8 +686,16 @@ class SvnWorkingTree(WorkingTree):
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     """Subversion working copy format."""
+    def __get_matchingbzrdir(self):
+        return SvnWorkingTreeDirFormat()
+
+    _matchingbzrdir = property(__get_matchingbzrdir)
+
     def get_format_description(self):
         return "Subversion Working Copy"
+
+    def get_format_string(self):
+        return "Subversion Working Copy Format"
 
     def initialize(self, a_bzrdir, revision_id=None):
         raise NotImplementedError(self.initialize)

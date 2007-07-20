@@ -68,6 +68,9 @@ bzr-svn 0.4	UNRELEASED
 
    * Add 'bzr help svn-branching-schemes'
 
+   * Branching schemes can now be autodetected using some simple heuristics. 
+     (#81976)
+
   INTERNALS
 
    * Implement SvnRaTransport.local_abspath(). (#117090)
