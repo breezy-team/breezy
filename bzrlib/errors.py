@@ -334,6 +334,62 @@ class BzrOptionError(BzrCommandError):
     _fmt = "Error in command line options"
 
 
+class BadIndexFormatSignature(BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
 class BadOptionValue(BzrError):
 
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
@@ -1207,6 +1263,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         self.file_id = file_id
 
 
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
+
+
 class KnitError(BzrError):
     
     _fmt = "Knit error"
@@ -1554,7 +1615,6 @@ class MissingText(BzrError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
-
 
 class DuplicateFileId(BzrError):
 
@@ -2057,6 +2117,22 @@ class NoMergeSource(BzrError):
 
     _fmt = "A merge directive must provide either a bundle or a public"\
         " branch location."
+
+
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
 
 
 class PatchMissing(BzrError):

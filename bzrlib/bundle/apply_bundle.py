@@ -25,6 +25,9 @@ from bzrlib.trace import note
 
 
 def install_bundle(repository, bundle_reader):
+    custom_install = getattr(bundle_reader, 'install', None)
+    if custom_install is not None:
+        return custom_install(repository)
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     repository.lock_write()
     try:

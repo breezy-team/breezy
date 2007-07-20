@@ -276,6 +276,8 @@ class Graph(object):
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
                 return lca.pop()
+            if len(lca) == 0:
+                raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
 
     def iter_topo_order(self, revisions):
