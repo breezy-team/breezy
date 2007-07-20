@@ -29,23 +29,31 @@ import urllib
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
 
-def apply_txdelta_handler(src_stream, target_stream, pool):
-    assert hasattr(src_stream, 'read')
-    assert hasattr(target_stream, 'write')
-    ret = svn.delta.svn_txdelta_apply(
-            src_stream, 
-            target_stream,
-            None,
-            pool)
+# Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
+# slightly different).
 
-    def wrapper(window):
-        if hasattr(svn.delta, 'invoke_txdelta_window_handler'):
+if hasattr(svn.delta, 'tx_apply'):
+    def apply_txdelta_handler(src_stream, target_stream, pool):
+        assert hasattr(src_stream, 'read')
+        assert hasattr(target_stream, 'write')
+        window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
+                                                   None, pool)
+
+        def wrapper(window):
+            window_handler(window, baton)
+
+        return wrapper
+else:
+    def apply_txdelta_handler(src_stream, target_stream, pool):
+        assert hasattr(src_stream, 'read')
+        assert hasattr(target_stream, 'write')
+        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None, pool)
+
+        def wrapper(window):
             svn.delta.invoke_txdelta_window_handler(
                 ret[1], window, ret[2])
-        else:
-            svn.delta.tx_invoke_window_handler(ret[0], window, ret[1])
 
-    return wrapper
+        return wrapper
 
 class SvnRevisionTree(RevisionTree):
     """A tree that existed in a historical Subversion revision."""
@@ -219,7 +227,7 @@ class SvnBasisTree(RevisionTree):
         def add_file_to_inv(relpath, id, revid, wc):
             props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
             if isinstance(props, list): # Subversion 1.5
-                props = props[0]
+                props = props[1]
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
