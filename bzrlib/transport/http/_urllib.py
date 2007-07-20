@@ -47,10 +47,11 @@ class HttpTransport_urllib(HttpTransportBase):
 
     _opener_class = Opener
 
-    def __init__(self, base, from_transport=None):
-        super(HttpTransport_urllib, self).__init__(base, from_transport)
-        if from_transport is not None:
-            self._opener = from_transport._opener
+    def __init__(self, base, _from_transport=None):
+        super(HttpTransport_urllib, self).__init__(
+            base, _from_transport=_from_transport)
+        if _from_transport is not None:
+            self._opener = _from_transport._opener
         else:
             self._opener = self._opener_class()
 

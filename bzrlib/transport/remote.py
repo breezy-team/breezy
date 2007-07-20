@@ -78,28 +78,29 @@ class RemoteTransport(transport.ConnectedTransport):
     # it. It may be even clearer to define a TestRemoteTransport that handles
     # the specific cases of providing a _client and/or a _medium, and leave
     # RemoteTransport as an abstract class.
-    def __init__(self, url, from_transport=None, medium=None, _client=None):
+    def __init__(self, url, _from_transport=None, medium=None, _client=None):
         """Constructor.
 
-        :param from_transport: Another RemoteTransport instance that this
+        :param _from_transport: Another RemoteTransport instance that this
             one is being cloned from.  Attributes such as the medium will
             be reused.
 
         :param medium: The medium to use for this RemoteTransport. This must be
-            supplied if from_transport is None.
+            supplied if _from_transport is None.
 
         :param _client: Override the _SmartClient used by this transport.  This
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super(RemoteTransport, self).__init__(url, from_transport)
+        super(RemoteTransport, self).__init__(url,
+                                              _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
         # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
         # what we want to share is really the shared connection.
 
-        if from_transport is None:
-            # If no from_transport is specified, we need to intialize the
+        if _from_transport is None:
+            # If no _from_transport is specified, we need to intialize the
             # shared medium.
             credentials = None
             if medium is None:
@@ -113,7 +114,7 @@ class RemoteTransport(transport.ConnectedTransport):
             self._client = _client
 
     def _build_medium(self):
-        """Create the medium if from_transport does not provide one.
+        """Create the medium if _from_transport does not provide one.
 
         The medium is analogous to the connection for ConnectedTransport: it
         allows connection sharing.
@@ -430,11 +431,8 @@ class RemoteTCPTransport(RemoteTransport):
         SmartTCPClientMedium).
     """
 
-    def __init__(self, base, from_transport=None):
-        assert base.startswith('bzr://')
-        super(RemoteTCPTransport, self).__init__(base, from_transport)
-
     def _build_medium(self):
+        assert self.base.startswith('bzr://')
         if self._port is None:
             self._port = BZR_DEFAULT_PORT
         return medium.SmartTCPClientMedium(self._host, self._port), None
@@ -467,7 +465,7 @@ class RemoteHTTPTransport(RemoteTransport):
     HTTP path into a local path.
     """
 
-    def __init__(self, base, from_transport=None, http_transport=None):
+    def __init__(self, base, _from_transport=None, http_transport=None):
         assert base.startswith('bzr+http://')
 
         if http_transport is None:
@@ -478,7 +476,8 @@ class RemoteHTTPTransport(RemoteTransport):
             self._http_transport = transport.get_transport(http_url)
         else:
             self._http_transport = http_transport
-        super(RemoteHTTPTransport, self).__init__(base, from_transport)
+        super(RemoteHTTPTransport, self).__init__(
+            base, _from_transport=_from_transport)
 
     def _build_medium(self):
         # We let http_transport take care of the credentials
@@ -522,7 +521,9 @@ class RemoteHTTPTransport(RemoteTransport):
             http_transport = self._http_transport.clone(normalized_rel_url)
         else:
             http_transport = self._http_transport
-        return RemoteHTTPTransport(abs_url, self, http_transport=http_transport)
+        return RemoteHTTPTransport(abs_url,
+                                   _from_transport=self,
+                                   http_transport=http_transport)
 
 
 def get_test_permutations():

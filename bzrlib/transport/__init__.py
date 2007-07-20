@@ -1106,26 +1106,26 @@ class ConnectedTransport(Transport):
     them and share the underlying, protocol specific, connection.
     """
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         """Constructor.
 
         :param base: transport root URL
 
-        :param from_transport: optional transport to build from. The built
+        :param _from_transport: optional transport to build from. The built
             transport will share the connection with this transport.
         """
-        if base[-1] != '/':
+        if not base.endswith('/'):
             base += '/'
         (self._scheme,
          self._user, self._password,
          self._host, self._port,
          self._path) = self._split_url(base)
-        if from_transport is not None:
+        if _from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
-            # otherwise. It can appear in the _initial_split_url above if the
-            # user provided it on the command line. Otherwise, daughter classes
-            # will prompt the user for one when appropriate.
-            self._password = from_transport._password
+            # otherwise. It can appear in the _split_url above if the user
+            # provided it on the command line. Otherwise, daughter classes will
+            # prompt the user for one when appropriate.
+            self._password = _from_transport._password
 
         base = self._unsplit_url(self._scheme,
                                  self._user, self._password,
@@ -1133,10 +1133,10 @@ class ConnectedTransport(Transport):
                                  self._path)
 
         super(ConnectedTransport, self).__init__(base)
-        if from_transport is None:
+        if _from_transport is None:
             self._shared_connection = _SharedConnection()
         else:
-            self._shared_connection = from_transport._shared_connection
+            self._shared_connection = _from_transport._shared_connection
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
@@ -1145,9 +1145,9 @@ class ConnectedTransport(Transport):
         that it's a cloning not a raw creation.
         """
         if offset is None:
-            return self.__class__(self.base, self)
+            return self.__class__(self.base, _from_transport=self)
         else:
-            return self.__class__(self.abspath(offset), self)
+            return self.__class__(self.abspath(offset), _from_transport=self)
 
     @staticmethod
     def _split_url(url):
@@ -1336,8 +1336,10 @@ class ConnectedTransport(Transport):
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
-        if (scheme, user, host, port) == (self._scheme,
-                                          self._user, self._host, self._port):
+        if (scheme == self._scheme
+            and user == self._user
+            and host == self._host
+            and port == self._port):
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
@@ -1348,7 +1350,7 @@ class ConnectedTransport(Transport):
             # We don't call clone here because the intent is different: we
             # build a new transport on a different base (which may be totally
             # unrelated) but we share the connection.
-            transport = self.__class__(other_base, self)
+            transport = self.__class__(other_base, _from_transport=self)
         return transport
 
 
@@ -1367,10 +1369,10 @@ def get_transport(base, possible_transports=None):
     :param base: either a URL or a directory name.
 
     :param transports: optional reusable transports list. If not None, created
-    transports will be added to the list.
+        transports will be added to the list.
 
     :return: A new transport optionally sharing its connection with one of
-    possible_transports.
+        possible_transports.
     """
     if base is None:
         base = '.'

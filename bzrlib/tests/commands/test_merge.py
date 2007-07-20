@@ -17,7 +17,8 @@
 
 from bzrlib.builtins import cmd_merge
 from bzrlib.tests import StringIOWrapper
-from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+
 
 class TestMerge(TestCaseWithConnectionHookedTransport):
 
@@ -29,11 +30,10 @@ class TestMerge(TestCaseWithConnectionHookedTransport):
         wt2.commit('empty commit too')
 
         self.install_hooks()
-        self.addCleanup(self.reset_hooks)
 
         cmd = cmd_merge()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = StringIOWrapper()
-        cmd.run(self.get_url() + 'branch1', directory='branch2')
+        cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEquals(1, len(self.connections))
 

@@ -14,14 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 from bzrlib.hooks import Hooks
-from bzrlib.tests.test_ftp_transport import TestCaseWithFTPServer
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import (
     register_transport,
     unregister_transport,
     )
-from bzrlib.transport.ftp import FtpTransport
+from bzrlib.transport.sftp import SFTPTransport
 
 
 class TransportHooks(Hooks):
@@ -34,7 +33,7 @@ class TransportHooks(Hooks):
         self['_set_connection'] = []
 
 
-class InstrumentedTransport(FtpTransport):
+class InstrumentedTransport(SFTPTransport):
     """Instrumented transport class to test commands behavior"""
 
     hooks = TransportHooks()
@@ -51,31 +50,23 @@ class ConnectionHookedTransport(InstrumentedTransport):
             hook(self, connection, credentials)
 
 
-class TestCaseWithConnectionHookedTransport(TestCaseWithFTPServer):
+class TestCaseWithConnectionHookedTransport(TestCaseWithSFTPServer):
 
     def setUp(self):
         super(TestCaseWithConnectionHookedTransport, self).setUp()
-        self._hooks_installed = False
-
-        def cleanup():
-            # Be nice and reset hooks if the test writer forgot about them
-            if self._hooks_installed:
-                self.reset_hooks()
-
-        self.addCleanup(cleanup)
-        self.connections = []
+        self.reset_connections()
 
     def install_hooks(self):
         ConnectionHookedTransport.hooks.install_hook('_set_connection',
                                                      self.set_connection_hook)
         # Make our instrumented transport the default ftp transport
-        register_transport('ftp://', ConnectionHookedTransport)
-        self._hooks_installed = True
+        register_transport('sftp://', ConnectionHookedTransport)
+        # uninstall our hooks when we are finished
+        self.addCleanup(self.reset_hooks)
 
     def reset_hooks(self):
         InstrumentedTransport.hooks = TransportHooks()
-        unregister_transport('ftp://', ConnectionHookedTransport)
-        self._hooks_installed = False
+        unregister_transport('sftp://', ConnectionHookedTransport)
 
     def reset_connections(self):
         self.connections = []

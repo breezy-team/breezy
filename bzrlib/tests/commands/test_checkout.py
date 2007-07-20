@@ -16,7 +16,8 @@
 
 
 from bzrlib.builtins import cmd_checkout
-from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+
 
 class TestCheckout(TestCaseWithConnectionHookedTransport):
 
@@ -24,9 +25,8 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.make_branch_and_tree('branch1')
 
         self.install_hooks()
-        self.addCleanup(self.reset_hooks)
 
         cmd = cmd_checkout()
-        cmd.run(self.get_url() + 'branch1', 'local')
+        cmd.run(self.get_url('branch1'), 'local')
         self.assertEquals(1, len(self.connections))
 

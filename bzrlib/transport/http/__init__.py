@@ -43,14 +43,6 @@ from bzrlib.transport import (
     Transport,
     )
 
-# FIXME: There are two known cases where we open a new connection during the
-# lifetime of the transport:
-# - when an error is received from the server,
-# - when the keep-alive header reach zero.
-# This should be taken into account for the connection sharing by either
-# failing without reconnecting or inform the clones that a new connection have
-# been established.
-
 # TODO: This is not used anymore by HttpTransport_urllib
 # (extracting the auth info and prompting the user for a password
 # have been split), only the tests still use it. It should be
@@ -141,7 +133,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     # _unqualified_scheme: "http" or "https"
     # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
@@ -151,7 +143,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         if impl_name:
             impl_name = impl_name[1:]
         self._impl_name = impl_name
-        super(HttpTransportBase, self).__init__(base, from_transport)
+        super(HttpTransportBase, self).__init__(base,
+                                                _from_transport=_from_transport)
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
         # requests and if the server returns bogus results, we
@@ -159,8 +152,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         # forget about range if the server really can't
         # understand. Once acquired, this piece of info is
         # propagated to clones.
-        if from_transport is not None:
-            self._range_hint = from_transport._range_hint
+        if _from_transport is not None:
+            self._range_hint = _from_transport._range_hint
         else:
             self._range_hint = 'multi'
 

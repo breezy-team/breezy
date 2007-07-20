@@ -17,7 +17,8 @@
 
 from bzrlib.builtins import cmd_pull
 from bzrlib.tests import StringIOWrapper
-from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+
 
 class TestPull(TestCaseWithConnectionHookedTransport):
 
@@ -27,11 +28,10 @@ class TestPull(TestCaseWithConnectionHookedTransport):
         wt2 = self.make_branch_and_tree('branch2')
 
         self.install_hooks()
-        self.addCleanup(self.reset_hooks)
 
         cmd = cmd_pull()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = StringIOWrapper()
-        cmd.run(self.get_url() + 'branch1', directory='branch2')
+        cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEquals(1, len(self.connections))
 

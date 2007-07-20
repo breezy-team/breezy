@@ -16,7 +16,8 @@
 
 
 from bzrlib.builtins import cmd_push
-from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+
 
 class TestPush(TestCaseWithConnectionHookedTransport):
 
@@ -24,9 +25,8 @@ class TestPush(TestCaseWithConnectionHookedTransport):
         self.make_branch_and_tree('branch')
 
         self.install_hooks()
-        self.addCleanup(self.reset_hooks)
 
         cmd = cmd_push()
-        cmd.run(self.get_url() + 'remote', directory='branch')
+        cmd.run(self.get_url('remote'), directory='branch')
         self.assertEquals(1, len(self.connections))
 

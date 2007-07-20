@@ -151,9 +151,10 @@ class SFTPTransport(ConnectedTransport):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         assert base.startswith('sftp://')
-        super(SFTPTransport, self).__init__(base, from_transport)
+        super(SFTPTransport, self).__init__(base,
+                                            _from_transport=_from_transport)
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.

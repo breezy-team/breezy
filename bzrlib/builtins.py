@@ -595,27 +595,8 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
 
-        reader = None
-        # The user may provide a bundle or branch as 'location' We first try to
-        # identify a bundle, if it's not, we try to preserve connection used by
-        # the transport to access the branch.
         if location is not None:
-            url = urlutils.normalize_url(location)
-            url, filename = urlutils.split(url, exclude_trailing_slash=False)
-            location_transport = transport.get_transport(url)
-            if filename:
-                try:
-                    read_bundle = bundle.read_mergeable_from_transport
-                    # There may be redirections but we ignore the intermediate
-                    # and final transports used
-                    mergeable, t = read_bundle(location_transport, filename)
-                except errors.NotABundle:
-                    # Continue on considering this url a Branch but adjust the
-                    # location_transport
-                    location_transport = location_transport.clone(filename)
-            else:
-                # A directory was provided, location_transport is correct
-                pass
+            mergeable, location_transport = _get_bundle_helper(location)
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -2672,32 +2653,18 @@ class cmd_merge(Command):
         other_transport = None
         other_revision_id = None
         possible_transports = []
-        # The user may provide a bundle or branch as 'branch' We first try to
-        # identify a bundle, if it's not, we try to preserve connection used by
-        # the transport to access the branch.
+
         if branch is not None:
-            url = urlutils.normalize_url(branch)
-            url, filename = urlutils.split(url, exclude_trailing_slash=False)
-            other_transport = transport.get_transport(url)
-            if filename:
-                try:
-                    read_bundle = bundle.read_mergeable_from_transport
-                    # There may be redirections but we ignore the intermediate
-                    # and final transports used
-                    mergeable, t = read_bundle(other_transport, filename)
-                except errors.NotABundle:
-                    # Continue on considering this url a Branch but adjust the
-                    # other_transport
-                    other_transport = other_transport.clone(filename)
-                else:
-                    if revision is not None:
-                        raise errors.BzrCommandError('Cannot use -r with merge'
-                                                     ' directives or bundles')
-                    other_revision_id = mergeable.install_revisions(
-                        tree.branch.repository)
-                    revision = [RevisionSpec.from_string(
-                        'revid:' + other_revision_id)]
-                possible_transports.append(other_transport)
+            mergeable, other_transport = _get_bundle_helper(branch)
+            if mergeable:
+                if revision is not None:
+                    raise errors.BzrCommandError('Cannot use -r with merge'
+                                                 ' directives or bundles')
+                other_revision_id = mergeable.install_revisions(
+                    tree.branch.repository)
+                revision = [RevisionSpec.from_string('revid:'
+                                                     + other_revision_id)]
+            possible_transports.append(other_transport)
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
@@ -2764,7 +2731,7 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = _merge_helper(
-                    other, base, possible_transports,
+                    other, base,
                     other_rev_id=other_revision_id,
                     check_clean=(not force),
                     merge_type=merge_type,
@@ -2773,7 +2740,8 @@ class cmd_merge(Command):
                     pull=pull,
                     this_dir=directory,
                     pb=pb, file_list=interesting_files,
-                    change_reporter=change_reporter)
+                    change_reporter=change_reporter,
+                    possible_transports=possible_transports)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -3052,7 +3020,7 @@ class cmd_missing(Command):
                                              " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            self.outf.write("Using last location: " + display_url + '\n')
+            self.outf.write("Using last location: " + display_url + "\n")
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -3753,7 +3721,7 @@ class cmd_tags(Command):
 
 
 # command-line interpretation helper for merge-related commands
-def _merge_helper(other_revision, base_revision, possible_transports=None,
+def _merge_helper(other_revision, base_revision,
                   check_clean=True, ignore_zero=False,
                   this_dir=None, backup_files=False,
                   merge_type=None,
@@ -3761,7 +3729,8 @@ def _merge_helper(other_revision, base_revision, possible_transports=None,
                   pull=False,
                   pb=DummyProgress(),
                   change_reporter=None,
-                  other_rev_id=None):
+                  other_rev_id=None,
+                  possible_transports=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3869,6 +3838,34 @@ def _create_prefix(cur_transport):
     while needed:
         cur_transport = needed.pop()
         cur_transport.ensure_base()
+
+
+def _get_bundle_helper(location):
+    """Get a bundle if 'location' points to one.
+
+    Try try to identify a bundle and returns its mergeable form. If it's not,
+    we return the tried transport anyway so that it can reused to access the
+    branch
+
+    :param location: can point to a bundle or a branch.
+
+    :return: mergeable, transport
+    """
+    mergeable = None
+    url = urlutils.normalize_url(location)
+    url, filename = urlutils.split(url, exclude_trailing_slash=False)
+    location_transport = transport.get_transport(url)
+    if filename:
+        try:
+            # There may be redirections but we ignore the intermediate
+            # and final transports used
+            read = bundle.read_mergeable_from_transport
+            mergeable, t = read(location_transport, filename)
+        except errors.NotABundle:
+            # Continue on considering this url a Branch but adjust the
+            # location_transport
+            location_transport = location_transport.clone(filename)
+    return mergeable, location_transport
 
 
 # Compatibility

@@ -87,8 +87,9 @@ class PyCurlTransport(HttpTransportBase):
     Python client.  Advantages include: DNS caching.
     """
 
-    def __init__(self, base, from_transport=None):
-        super(PyCurlTransport, self).__init__(base, from_transport)
+    def __init__(self, base, _from_transport=None):
+        super(PyCurlTransport, self).__init__(base,
+                                              _from_transport=_from_transport)
         if base.startswith('https'):
             # Check availability of https into pycurl supported
             # protocols

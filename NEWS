@@ -2,13 +2,13 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
-    * ``bzr init`` should only connect to the remote location one time.  We
+    * ``bzr init`` should connect to the remote location one time only.  We
       have been connecting several times because we forget to pass around the
       Transport object. This modifies ``BzrDir.create_branch_convenience``,
-      so that we can pass in the Transport that we already have.
+      so that we can give it the Transport we already have.
       (John Arbash Meinel, Vincent Ladeuil, #111702)
 
-    * Get rid of sftp connection cache.
+    * Get rid of sftp connection cache (get rid of the FTP one too).
       (Vincent Ladeuil, #43731)
 
     * bzr branch {local|remote} remote don't try to create a working tree
@@ -30,9 +30,6 @@ IN DEVELOPMENT
 
     * ``info`` now formats locations more nicely and lists "submit" and
       "public" branches (Aaron Bentley)
-
-    * Get rid of FTP connection cache.
-     (Vincent Ladeuil)
 
     * New ``pack`` command that will trigger database compression within
       the repository (Robert Collins)
@@ -65,7 +62,7 @@ IN DEVELOPMENT
 
     * Refactoring of transport classes connected to a remote server.
       ConnectedTransport is a new class that serves as a basis for all
-      transports needing to connet to a remote server.  transport.split_url
+      transports needing to connect to a remote server.  transport.split_url
       have been deprecated, use the static method on the object instead. URL
       tests have been refactored too.
       (Vincent Ladeuil)

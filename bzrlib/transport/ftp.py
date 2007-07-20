@@ -79,14 +79,16 @@ _sleep_between_retries = 5
 # FIXME: there are inconsistencies in the way temporary errors are
 # handled. Sometimes we reconnect, sometimes we raise an exception. Care should
 # be taken to analyze the implications for write operations (read operations
-# are safe to retry). Overall even some read operations are never retried.
+# are safe to retry). Overall even some read operations are never
+# retried. --vila 20070720 (Bug #127164)
 class FtpTransport(ConnectedTransport):
     """This is the transport agent for ftp:// access."""
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         """Set the base path where files will be stored."""
         assert base.startswith('ftp://') or base.startswith('aftp://')
-        super(FtpTransport, self).__init__(base, from_transport)
+        super(FtpTransport, self).__init__(base,
+                                           _from_transport=_from_transport)
         self._unqualified_scheme = 'ftp'
         if self._scheme == 'aftp':
             self.is_active = True

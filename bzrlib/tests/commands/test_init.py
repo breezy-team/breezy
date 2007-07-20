@@ -16,14 +16,14 @@
 
 
 from bzrlib.builtins import cmd_init
-from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+
 
 class TestInit(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestInit, self).setUp()
         self.install_hooks()
-        self.addCleanup(self.reset_hooks)
 
     def test_init(self):
         cmd = cmd_init()
