@@ -408,7 +408,8 @@ class WorkingTree4(WorkingTree3):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
-        assert entry[0] is not None, 'what error should this raise'
+        if entry[0] is None:
+            raise errors.NoSuchId(self, file_id)
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
