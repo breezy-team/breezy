@@ -40,6 +40,7 @@ from bzrlib import (
     transactions,
     ui,
     )
+from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
@@ -166,6 +167,12 @@ class Repository(object):
                 # yes, this is not suitable for adding with ghosts.
                 self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
+
+    def _add_revision_text(self, revision_id, text):
+        revision = self._revision_store._serializer.read_revision_from_string(
+            text)
+        self._revision_store._add_revision(revision, StringIO(text),
+                                           self.get_transaction())
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -419,6 +426,9 @@ class Repository(object):
             return inter.fetch(revision_id=revision_id, pb=pb)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
@@ -729,6 +739,9 @@ class Repository(object):
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
+
+    def get_serializer_format(self):
+        return self._serializer.format_num
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):

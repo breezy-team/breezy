@@ -519,6 +519,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.revision_tree(revision_id)
 
+    def get_serializer_format(self):
+        self._ensure_real()
+        return self._real_repository.get_serializer_format()
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
@@ -575,6 +579,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        self._ensure_real()
+        self._real_repository.create_bundle(target, base, fileobj, format)
 
     @property
     def control_weaves(self):
