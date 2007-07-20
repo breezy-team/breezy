@@ -39,8 +39,11 @@ def apply_txdelta_handler(src_stream, target_stream, pool):
             pool)
 
     def wrapper(window):
-        svn.delta.invoke_txdelta_window_handler(
-            ret[1], window, ret[2])
+        if hasattr(svn.delta, 'invoke_txdelta_window_handler'):
+            svn.delta.invoke_txdelta_window_handler(
+                ret[1], window, ret[2])
+        else:
+            svn.delta.tx_invoke_window_handler(ret[0], window, ret[1])
 
     return wrapper
 

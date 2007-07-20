@@ -157,6 +157,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         os.chdir(dir)
         info = svn.client.commit3(["."], recursive, False, self.client_ctx)
         os.chdir(olddir)
+        assert info is not None
         return (info.revision, info.date, info.author)
 
     def client_add(self, relpath, recursive=True):

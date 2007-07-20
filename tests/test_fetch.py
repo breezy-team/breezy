@@ -1310,13 +1310,13 @@ Node-copyfrom-path: x
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/trunk/bla': "data"})
         self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        self.client_commit("dc", "My Message") #1
         self.client_set_prop("dc", "some:property", "some data\n")
-        self.client_commit("dc", "My 3")
+        self.client_commit("dc", "My 3") #2
         self.client_set_prop("dc", "some2:property", "some data\n")
-        self.client_commit("dc", "My 2")
-        self.client_set_prop("dc", "some:property", "some data\n")
-        self.client_commit("dc", "My 4")
+        self.client_commit("dc", "My 2") #3
+        self.client_set_prop("dc", "some:property", "some data4\n")
+        self.client_commit("dc", "My 4") #4
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1326,6 +1326,7 @@ Node-copyfrom-path: x
             oldrepos.generate_revision_id(1, "", "none"),
             oldrepos.generate_revision_id(2, "", "none"),
             oldrepos.generate_revision_id(3, "", "none"),
+            oldrepos.generate_revision_id(4, "", "none"),
             ], newrepos.all_revision_ids())
 
     def test_fetch_property_change_only_trunk(self):
@@ -1337,7 +1338,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "My 3")
         self.client_set_prop("dc/trunk", "some2:property", "some data\n")
         self.client_commit("dc", "My 2")
-        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_set_prop("dc/trunk", "some:property", "some data3\n")
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
@@ -1348,6 +1349,7 @@ Node-copyfrom-path: x
             oldrepos.generate_revision_id(1, "trunk", "trunk0"),
             oldrepos.generate_revision_id(2, "trunk", "trunk0"),
             oldrepos.generate_revision_id(3, "trunk", "trunk0"),
+            oldrepos.generate_revision_id(4, "trunk", "trunk0"),
             ], newrepos.all_revision_ids())
 
     def test_fetch_crosscopy(self):

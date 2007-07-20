@@ -78,7 +78,8 @@ def check_subversion_version():
         warning('No Python bindings for Subversion installed. See the '
                 'bzr-svn README for details.')
         raise bzrlib.errors.BzrError("missing python subversion bindings")
-    if not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler'):
+    if (not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler') and 
+        not hasattr(svn.delta, 'tx_invoke_window_handler')):
         warning('Installed Subversion version does not have updated Python '
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")

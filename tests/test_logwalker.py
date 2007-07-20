@@ -526,7 +526,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My 3")
         self.client_set_prop("dc/trunk", "some2:property", "some data\n")
         self.client_commit("dc", "My 2")
-        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_set_prop("dc/trunk", "some:property", "some data4\n")
         self.client_commit("dc", "My 4")
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
         self.assertEquals({'trunk': ('M', None, -1)}, walker.get_revision_paths(3))
