@@ -57,7 +57,6 @@ class EmailMessage(object):
         self._headers = {}
         self._body = body
         self._parts = []
-        self._msgobj = None
 
         if isinstance(to_address, basestring):
             to_address = [ to_address ]
@@ -93,7 +92,6 @@ class EmailMessage(object):
             self._body = None
 
         self._parts.append((body, filename, mime_subtype))
-        self._msgobj = None
 
     def as_string(self, boundary=None):
         """Return the entire formatted message as a string.
@@ -101,19 +99,16 @@ class EmailMessage(object):
         :param boundary: The boundary to use between MIME parts, if applicable.
             Used for tests.
         """
-        if self._msgobj is not None:
-            return self._msgobj.as_string()
-
         if not self._parts:
-            self._msgobj = Message.Message()
+            msgobj = Message.Message()
             if self._body is not None:
                 body, encoding = self.string_with_encoding(self._body)
-                self._msgobj.set_payload(body, encoding)
+                msgobj.set_payload(body, encoding)
         else:
-            self._msgobj = MIMEMultipart.MIMEMultipart()
+            msgobj = MIMEMultipart.MIMEMultipart()
 
             if boundary is not None:
-                self._msgobj.set_boundary(boundary)
+                msgobj.set_boundary(boundary)
 
             for body, filename, mime_subtype in self._parts:
                 body, encoding = self.string_with_encoding(body)
@@ -125,13 +120,13 @@ class EmailMessage(object):
                     payload.replace_header('Content-Type', content_type)
 
                 payload['Content-Disposition'] = 'inline'
-                self._msgobj.attach(payload)
+                msgobj.attach(payload)
 
         # sort headers here to ease testing
         for header, value in sorted(self._headers.items()):
-            self._msgobj[header] = value
+            msgobj[header] = value
 
-        return self._msgobj.as_string()
+        return msgobj.as_string()
 
     __str__ = as_string
 

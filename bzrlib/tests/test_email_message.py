@@ -43,7 +43,7 @@ User-Agent: Bazaar (%s)
 
 SIMPLE_MESSAGE_ASCII = _SIMPLE_MESSAGE % ('us-ascii', '7bit', 'body')
 SIMPLE_MESSAGE_UTF8 = _SIMPLE_MESSAGE % ('utf-8', 'base64', 'YsOzZHk=\n')
-SIMPLE_MESSAGE_8BIT = _SIMPLE_MESSAGE % ('8-bit', 'base64', 'YvNkeQ==\n')
+SIMPLE_MESSAGE_8BIT = _SIMPLE_MESSAGE % ('8-bit', 'base64', 'YvRkeQ==\n')
 
 
 BOUNDARY = '=====123456=='
@@ -94,7 +94,7 @@ class TestEmailMessage(TestCase):
             'body': SIMPLE_MESSAGE_ASCII,
             u'b\xf3dy': SIMPLE_MESSAGE_UTF8,
             'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xf3dy': SIMPLE_MESSAGE_8BIT,
+            'b\xf4dy': SIMPLE_MESSAGE_8BIT,
         }
         for body, expected in pairs.items():
             msg = EmailMessage('from@from.com', 'to@to.com', 'subject', body)
@@ -220,7 +220,7 @@ class TestEmailMessage(TestCase):
                 u'P\xe9rez':    ('P\xc3\xa9rez', 'utf-8'),
                 'Perez':         ('Perez', 'ascii'), # u'Pepe' == 'Pepe'
                 'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),
-                'P\xe9rez':     ('P\xe9rez', '8-bit'),
+                'P\xe8rez':     ('P\xe8rez', '8-bit'),
         }
         for string_, pair in pairs.items():
             self.assertEqual(pair, EmailMessage.string_with_encoding(string_))
