@@ -2849,8 +2849,7 @@ class cmd_remerge(Command):
             # list, we imply that the working tree text has seen and rejected
             # all the changes from the other tree, when in fact those changes
             # have not yet been seen.
-            _get_parent_ids = tree.get_parent_ids
-            tree.get_parent_ids = lambda: parents[:1]
+            tree.set_parent_ids(parents[:1])
             try:
                 conflicts = _mod_merge.merge_inner(
                                           tree.branch, other_tree, base_tree,
@@ -2861,7 +2860,7 @@ class cmd_remerge(Command):
                                           show_base=show_base,
                                           reprocess=reprocess)
             finally:
-                tree.get_parent_ids = _get_parent_ids
+                tree.set_parent_ids(parents)
         finally:
             tree.unlock()
         if conflicts > 0:
