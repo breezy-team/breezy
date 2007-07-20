@@ -153,6 +153,32 @@ class KnitContent(object):
     def copy(self):
         return KnitContent(self._lines[:])
 
+    @staticmethod
+    def get_line_delta_blocks(knit_delta, source, target):
+        """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
+        target_len = len(target)
+        s_pos = 0
+        t_pos = 0
+        for s_begin, s_end, t_len, new_text in knit_delta:
+            true_n = s_begin - s_pos
+            n = true_n
+            if n > 0:
+                # knit deltas do not provide reliable info about whether the
+                # last line of a file matches, due to eol handling.
+                if source[s_pos + n -1] != target[t_pos + n -1]:
+                    n-=1
+                if n > 0:
+                    yield s_pos, t_pos, n
+            t_pos += t_len + true_n
+            s_pos = s_end
+        n = target_len - t_pos
+        if n > 0:
+            if source[s_pos + n -1] != target[t_pos + n -1]:
+                n-=1
+            if n > 0:
+                yield s_pos, t_pos, n
+        yield s_pos + (target_len - t_pos), target_len, 0
+
 
 class _KnitFactory(object):
     """Base factory for creating content objects."""
@@ -523,6 +549,12 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def _extract_blocks(self, version_id, source, target):
+        if self._index.get_method(version_id) != 'line-delta':
+            return None
+        parent, sha1, noeol, delta = self.get_delta(version_id)
+        return KnitContent.get_line_delta_blocks(delta, source, target)
+
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
         version_id = osutils.safe_revision_id(version_id)
@@ -558,11 +590,14 @@ class KnitVersionedFile(VersionedFile):
         return dict(graph_items)
 
     def get_sha1(self, version_id):
+        return self.get_sha1s([version_id])[0]
+
+    def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1()."""
-        version_id = osutils.safe_revision_id(version_id)
-        record_map = self._get_record_map([version_id])
-        method, content, digest, next = record_map[version_id]
-        return digest 
+        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
+        record_map = self._get_record_map(version_ids)
+        # record entry 2 is the 'digest'.
+        return [record_map[v][2] for v in version_ids]
 
     @staticmethod
     def get_suffixes():
@@ -815,6 +850,8 @@ class KnitVersionedFile(VersionedFile):
             self.check_not_reserved_id(version_id)
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
+
+    _get_lf_split_line_list = get_line_list
 
     def _get_content_maps(self, version_ids):
         """Produce maps of text and KnitContents

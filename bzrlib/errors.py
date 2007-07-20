@@ -1263,6 +1263,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         self.file_id = file_id
 
 
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
+
+
 class KnitError(BzrError):
     
     _fmt = "Knit error"
@@ -2112,6 +2117,22 @@ class NoMergeSource(BzrError):
 
     _fmt = "A merge directive must provide either a bundle or a public"\
         " branch location."
+
+
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
 
 
 class PatchMissing(BzrError):

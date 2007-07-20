@@ -43,6 +43,7 @@ from bzrlib.knit import (
     _KnitData,
     _KnitIndex,
     WeaveToKnit,
+    KnitSequenceMatcher,
     )
 from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCase, TestCaseWithTransport, Feature
@@ -932,11 +933,56 @@ class BasicKnitTests(KnitTests):
     def test_delta(self):
         """Expression of knit delta as lines"""
         k = self.make_test_knit()
+        KnitContent
         td = list(line_delta(TEXT_1.splitlines(True),
                              TEXT_1A.splitlines(True)))
         self.assertEqualDiff(''.join(td), delta_1_1a)
         out = apply_line_delta(TEXT_1.splitlines(True), td)
         self.assertEqualDiff(''.join(out), TEXT_1A)
+
+    def assertDerivedBlocksEqual(self, source, target, noeol=False):
+        """Assert that the derived matching blocks match real output"""
+        source_lines = source.splitlines(True)
+        target_lines = target.splitlines(True)
+        def nl(line):
+            if noeol and not line.endswith('\n'):
+                return line + '\n'
+            else:
+                return line
+        source_content = KnitContent([(None, nl(l)) for l in source_lines])
+        target_content = KnitContent([(None, nl(l)) for l in target_lines])
+        line_delta = source_content.line_delta(target_content)
+        delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
+            source_lines, target_lines))
+        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        self.assertEqual(matcher_blocks, delta_blocks)
+
+    def test_get_line_delta_blocks(self):
+        self.assertDerivedBlocksEqual('a\nb\nc\n', 'q\nc\n')
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1)
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1A)
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1B)
+        self.assertDerivedBlocksEqual(TEXT_1B, TEXT_1A)
+        self.assertDerivedBlocksEqual(TEXT_1A, TEXT_1B)
+        self.assertDerivedBlocksEqual(TEXT_1A, '')
+        self.assertDerivedBlocksEqual('', TEXT_1A)
+        self.assertDerivedBlocksEqual('', '')
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
+
+    def test_get_line_delta_blocks_noeol(self):
+        """Handle historical knit deltas safely
+
+        Some existing knit deltas don't consider the last line to differ
+        when the only difference whether it has a final newline.
+
+        New knit deltas appear to always consider the last line to differ
+        in this case.
+        """
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd\n', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\nd\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\n', noeol=True)
 
     def test_add_with_parents(self):
         """Store in knit with parents"""

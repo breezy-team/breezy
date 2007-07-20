@@ -44,7 +44,7 @@ class FileNames(object):
     """
 
     def __init__(self, transport, index_name):
-        """Create a names on transport called index_name."""
+        """Create a collection on transport called index_name."""
         self._transport = transport
         self._index_name = index_name
         self._names = None
@@ -58,7 +58,7 @@ class FileNames(object):
         raise errors.BzrError('too many files')
 
     def initialise(self):
-        """Initialise the names record on disk."""
+        """Initialise the collection."""
         self._names = set()
 
     def load(self):
@@ -68,11 +68,11 @@ class FileNames(object):
         self._names.discard('')
 
     def names(self):
-        """What are the names in this names?"""
+        """What are the names in this collection?"""
         return frozenset(self._names)
 
     def remove(self, name):
-        """Remove name from the names."""
+        """Remove name from the collection."""
         self._names.remove(name)
 
     def save(self):
