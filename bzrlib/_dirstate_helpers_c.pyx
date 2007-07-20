@@ -22,8 +22,15 @@ This is the python implementation for DirState functions.
 from bzrlib.dirstate import DirState
 
 
+# Give Pyrex some function definitions for it to understand.
+# All of these are just hints to Pyrex, so that it can try to convert python
+# objects into similar C objects. (such as PyInt => int).
+# In anything defined 'cdef extern from XXX' the real C header will be
+# imported, and the real definition will be used from there. So these are just
+# hints, and do not need to match exactly to the C definitions.
+
 cdef extern from *:
-    ctypedef unsigned size_t
+    ctypedef unsigned long size_t
 
 cdef extern from "stdint.h":
     ctypedef int intptr_t
@@ -33,6 +40,15 @@ cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
 
+# These functions allow us access to a bit of the 'bare metal' of python
+# objects, rather than going through the object abstraction. (For example,
+# PyList_Append, rather than getting the 'append' attribute of the object, and
+# creating a tuple, and then using PyCallObject).
+# Functions that return (or take) a void* are meant to grab a C PyObject*. This
+# differs from the Pyrex 'object'. If you declare a variable as 'object' Pyrex
+# will automatically Py_INCREF and Py_DECREF when appropriate. But for some
+# inner loops, we don't need to do that at all, as the reference only lasts for
+# a very short time.
 cdef extern from "Python.h":
     int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
