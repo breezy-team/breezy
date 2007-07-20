@@ -21,7 +21,7 @@ import os
 
 from bzrlib import errors
 from bzrlib.bundle.serializer import (BundleSerializer,
-                                      BUNDLE_HEADER,
+                                      _get_bundle_header,
                                      )
 from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
@@ -128,11 +128,13 @@ class BundleSerializerV08(BundleSerializer):
         finally:
             source.unlock()
 
+    def write_bundle(self, repository, target, base, fileobj):
+        return self._write_bundle(repository, target, base, fileobj)
+
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(BUNDLE_HEADER)
-        f.write('0.8\n')
+        f.write(_get_bundle_header('0.8'))
         f.write('#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):

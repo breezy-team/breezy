@@ -98,6 +98,15 @@ class ChrootTransport(Transport):
     def delete_tree(self, relpath):
         return self._call('delete_tree', relpath)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # Chroots, like MemoryTransport depend on in-process
+        # state and thus the base cannot simply be handed out.
+        # See the base class docstring for more details and
+        # possible directions. For now we return the chrooted
+        # url. 
+        return self.server.backing_transport.external_url()
+
     def get(self, relpath):
         return self._call('get', relpath)
 
