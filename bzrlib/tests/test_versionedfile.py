@@ -247,6 +247,18 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
         #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
 
+    def test_make_mpdiffs(self):
+        from bzrlib import multiparent
+        vf = self.get_file('foo')
+        sha1s = self._setup_for_deltas(vf)
+        new_vf = self.get_file('bar')
+        for version in multiparent.topo_iter(vf):
+            mpdiff = vf.make_mpdiffs([version])[0]
+            new_vf.add_mpdiffs([(version, vf.get_parents(version),
+                                 vf.get_sha1(version), mpdiff)])
+            self.assertEqualDiff(vf.get_text(version),
+                                 new_vf.get_text(version))
+
     def _setup_for_deltas(self, f):
         self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
         # add texts that should trip the knit maximum delta chain threshold
@@ -776,6 +788,11 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
+
+        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
+                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+                          '3f786850e387550fdab836ed7e6dc881de23001b'],
+                          vf.get_sha1s(['a', 'c', 'b']))
         
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):

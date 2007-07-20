@@ -43,15 +43,31 @@ IN DEVELOPMENT
     * Merge is now faster.  Depending on the scenario, it can be more than 2x
       faster. (Aaron Bentley)
 
+    * Give a clearer warning, and allow ``python setup.py install`` to
+      succeed even if pyrex is not available.
+      (John Arbash Meinel)
+
+    * ``bzr pull`` and ``bzr push`` no longer do a complete walk of the 
+      branch revision history for ui display unless -v is supplied.
+      (Robert Collins)
+
+    * ``bzr log -rA..B`` output shifted to the left margin if the log only 
+      contains merge revisions. (Kent Gibson) 
+
+    * The ``plugins`` command is now public with improved help.
+      (Ian Clatworthy)
+
+    * New bundle and merge directive formats are faster to generate, and
+      more robust against email mangling.  (Aaron Bentley)
+
+    * Annotate merge now works when there are local changes. (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
-      Various globally-declared options have been removed, so plugins
-      that previously said ``takes_options=['message']`` must now
-      construct an Option object and provide appropriate help. Options
-      are now required to provide a help string and it must comply with
-      the style guide by being one or more sentences with an initial
-      capital and final period. (Martin Pool)
+      Options are now required to provide a help string and it must
+      comply with the style guide by being one or more sentences with an
+      initial capital and final period. (Martin Pool)
 
   INTERNALS:
 
@@ -77,11 +93,42 @@ IN DEVELOPMENT
       the null revision, and consider using ``None`` for this purpose
       deprecated.  (Aaron Bentley)
 
+    * New ``index`` module with abstract index functionality. This will be
+      used during the planned changes in the repository layer. Currently the
+      index layer provides a graph aware immutable index, a builder for the
+      same index type to allow creating them, and finally a composer for
+      such indices to allow the use of many indices in a single query. The
+      index performance is not optimised, however the API is stable to allow
+      development on top of the index. (Robert Collins)
+
+    * New transport decorator 'unlistable+' which disables the list_dir
+      functionality for testing.
+
+    * New ``file_names.FileNames`` support class which mananges names
+      for unlistable transport situations. (Robert Collins)
+
+    * Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
+
+    * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
+      for performing annotate-merge.  (Aaron Bentley)
+
+    * New EmailMessage class to create email messages. (Adeodato Simó)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
       ``--keep-output`` options, which are obsolete now that tests
       are done within directories in $TMPDIR.  (Martin Pool)
+
+    * The SSH_AUTH_SOCK environment variable is now reset to avoid 
+      interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
+
+
+bzr 0.18  2007-07-17
+
+  BUGFIXES:
+
+    * Fix 'bzr add' crash under Win32 (Kuno Meyer)
 
 
 bzr 0.18rc1  2007-07-10
@@ -238,6 +285,13 @@ bzr 0.18rc1  2007-07-10
       ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
     * ``LockDir.wait`` removed.  (Martin Pool)
+
+    * The ``SmartServer`` hooks API has changed for the ``server_started`` and
+      ``server_stopped`` hooks. The first parameter is now an iterable of
+      backing URLs rather than a single URL. This is to reflect that many
+      URLs may map to the external URL of the server. E.g. the server interally
+      may have a chrooted URL but also the local file:// URL will be at the 
+      same location. (Robert Collins)
 
   INTERNALS:
 

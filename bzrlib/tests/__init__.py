@@ -1083,6 +1083,8 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # SSH Agent
+            'SSH_AUTH_SOCK': None,
             # Proxies
             'http_proxy': None,
             'HTTP_PROXY': None,
@@ -2245,6 +2247,7 @@ def test_suite():
     suite on a global basis, but it is not encouraged.
     """
     testmod_names = [
+                   'bzrlib.util.tests.test_bencode',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2261,17 +2264,18 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_file_names',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
@@ -2286,6 +2290,7 @@ def test_suite():
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
+                   'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
@@ -2302,10 +2307,12 @@ def test_suite():
                    'bzrlib.tests.test_merge_directive',
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
+                   'bzrlib.tests.test_multiparent',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
+                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',

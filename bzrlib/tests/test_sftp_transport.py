@@ -361,6 +361,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
     def test_default(self):
         # This test is potentially brittle: under extremely high machine load
         # it could fail, but that is quite unlikely
+        raise TestSkipped('Timing-sensitive test')
         start_time = time.time()
         transport = self.get_transport()
         transport.has('not me') # Force connection by issuing a request

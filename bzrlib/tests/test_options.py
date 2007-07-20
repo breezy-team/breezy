@@ -241,26 +241,13 @@ class TestListOptions(TestCase):
 class TestOptionDefinitions(TestCase):
     """Tests for options in the Bazaar codebase."""
 
-    def get_all_options(self):
-        """Return a list of all options used by Bazaar, both global and command.
-        
-        The list returned contains elements of (scope, option) where 'scope' 
-        is either None for global options, or a command name.
-
-        This includes options provided by plugins.
-        """
-        g = [(None, opt) for name, opt
-             in sorted(option.Option.OPTIONS.items())]
+    def get_builtin_command_options(self):
+        g = []
         for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
             cmd = cmd_class()
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
         return g
-
-    def test_get_all_options(self):
-        all = self.get_all_options()
-        self.assertTrue(len(all) > 100,
-                "too few options found: %r" % all)
 
     def test_global_options_used(self):
         # In the distant memory, options could only be declared globally.  Now
@@ -281,12 +268,13 @@ class TestOptionDefinitions(TestCase):
                 else:
                     used_globals.setdefault(option_or_name, []).append(cmd_name)
         unused_globals = set(g.keys()) - set(used_globals.keys())
-        for option_name in sorted(unused_globals):
-            msgs.append("unused global option %r" % option_name)
-        for option_name, cmds in sorted(used_globals.items()):
-            if len(cmds) <= 1:
-                msgs.append("global option %r is only used by %r"
-                        % (option_name, cmds))
+        # not enforced because there might be plugins that use these globals
+        ## for option_name in sorted(unused_globals):
+        ##    msgs.append("unused global option %r" % option_name)
+        ## for option_name, cmds in sorted(used_globals.items()):
+        ##     if len(cmds) <= 1:
+        ##         msgs.append("global option %r is only used by %r"
+        ##                 % (option_name, cmds))
         if msgs:
             self.fail("problems with global option definitions:\n"
                     + '\n'.join(msgs))
@@ -297,7 +285,7 @@ class TestOptionDefinitions(TestCase):
         # period and be all on a single line, because the display code will
         # wrap it.
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
-        for scope, option in self.get_all_options():
+        for scope, option in self.get_builtin_command_options():
             if not option.help:
                 msgs.append('%-16s %-16s %s' %
                        ((scope or 'GLOBAL'), option.name, 'NO HELP'))
@@ -307,7 +295,3 @@ class TestOptionDefinitions(TestCase):
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
-
-    # TODO: Scan for global options that aren't used by any command?
-    #
-    # TODO: Check that there are two spaces between sentences.

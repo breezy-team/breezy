@@ -834,6 +834,8 @@ class TestSmartTCPServer(tests.TestCase):
         self._captureVar('BZR_NO_SMART_VFS', None)
         class FlakyTransport(object):
             base = 'a_url'
+            def external_url(self):
+                return self.base
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
@@ -860,12 +862,15 @@ class SmartTCPTests(tests.TestCase):
     the server is obtained by calling self.setUpServer(readonly=False).
     """
 
-    def setUpServer(self, readonly=False):
+    def setUpServer(self, readonly=False, backing_transport=None):
         """Setup the server.
 
         :param readonly: Create a readonly server.
         """
-        self.backing_transport = memory.MemoryTransport()
+        if not backing_transport:
+            self.backing_transport = memory.MemoryTransport()
+        else:
+            self.backing_transport = backing_transport
         if readonly:
             self.real_backing_transport = self.backing_transport
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
@@ -999,11 +1004,11 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
 
 class TestServerHooks(SmartTCPTests):
 
-    def capture_server_call(self, backing_url, public_url):
+    def capture_server_call(self, backing_urls, public_url):
         """Record a server_started|stopped hook firing."""
-        self.hook_calls.append((backing_url, public_url))
+        self.hook_calls.append((backing_urls, public_url))
 
-    def test_server_started_hook(self):
+    def test_server_started_hook_memory(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_hook('server_started',
@@ -1012,16 +1017,53 @@ class TestServerHooks(SmartTCPTests):
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
-        self.assertEqual([(self.backing_transport.base, self.transport.base)],
+        # The default test server uses MemoryTransport and that has no external
+        # url:
+        self.assertEqual([([self.backing_transport.base], self.transport.base)],
             self.hook_calls)
 
-    def test_server_stopped_hook_simple(self):
+    def test_server_started_hook_file(self):
+        """The server_started hook fires when the server is started."""
+        self.hook_calls = []
+        server.SmartTCPServer.hooks.install_hook('server_started',
+            self.capture_server_call)
+        self.setUpServer(backing_transport=get_transport("."))
+        # at this point, the server will be starting a thread up.
+        # there is no indicator at the moment, so bodge it by doing a request.
+        self.transport.has('.')
+        # The default test server uses MemoryTransport and that has no external
+        # url:
+        self.assertEqual([([
+            self.backing_transport.base, self.backing_transport.external_url()],
+             self.transport.base)],
+            self.hook_calls)
+
+    def test_server_stopped_hook_simple_memory(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_hook('server_stopped',
             self.capture_server_call)
         self.setUpServer()
-        result = [(self.backing_transport.base, self.transport.base)]
+        result = [([self.backing_transport.base], self.transport.base)]
+        # check the stopping message isn't emitted up front.
+        self.assertEqual([], self.hook_calls)
+        # nor after a single message
+        self.transport.has('.')
+        self.assertEqual([], self.hook_calls)
+        # clean up the server
+        self.tearDownServer()
+        # now it should have fired.
+        self.assertEqual(result, self.hook_calls)
+
+    def test_server_stopped_hook_simple_file(self):
+        """The server_stopped hook fires when the server is stopped."""
+        self.hook_calls = []
+        server.SmartTCPServer.hooks.install_hook('server_stopped',
+            self.capture_server_call)
+        self.setUpServer(backing_transport=get_transport("."))
+        result = [(
+            [self.backing_transport.base, self.backing_transport.external_url()]
+            , self.transport.base)]
         # check the stopping message isn't emitted up front.
         self.assertEqual([], self.hook_calls)
         # nor after a single message
