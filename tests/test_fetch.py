@@ -1312,6 +1312,7 @@ Node-copyfrom-path: x
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message") #1
         self.client_set_prop("dc", "some:property", "some data\n")
+        self.client_update("dc")
         self.client_commit("dc", "My 3") #2
         self.client_set_prop("dc", "some2:property", "some data\n")
         self.client_commit("dc", "My 2") #3

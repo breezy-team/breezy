@@ -18,8 +18,8 @@ You will need at least version 0.15 of Bazaar or higher.
 
 You also need a fairly recent version of the Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5 (trunk). The python-subversion package in Ubuntu Feisty 
-and Debian Etch and Sid also contain the required changes. 
+Subversion 1.5 (trunk). The python-subversion package in Ubuntu Feisty and 
+Gutsy and Debian Etch and Sid also contain the required changes. 
 
 If you are running an older version of Python (under 2.5), you will also 
 need to have the pysqlite package installed.

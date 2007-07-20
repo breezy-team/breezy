@@ -31,6 +31,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Support pushing multiple revisions in a row. (#115494)
 
+   * Fix compatibility with Subversion 1.5. (#73918)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.
