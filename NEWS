@@ -43,6 +43,8 @@ IN DEVELOPMENT
     * New bundle and merge directive formats are faster to generate, and
       more robust against email mangling.  (Aaron Bentley)
 
+    * Annotate merge now works when there are local changes. (Aaron Bentley)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -76,6 +78,9 @@ IN DEVELOPMENT
       for unlistable transport situations. (Robert Collins)
 
     * Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
+
+    * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
+      for performing annotate-merge.  (Aaron Bentley)
 
   TESTING:
 

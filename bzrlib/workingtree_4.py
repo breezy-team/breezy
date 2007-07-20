@@ -1346,12 +1346,15 @@ class DirStateRevisionTree(Tree):
         return "<%s of %s in %s>" % \
             (self.__class__.__name__, self._revision_id, self._dirstate)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        w = self._repository.weave_store.get_weave(file_id,
-                           self._repository.get_transaction())
+        w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
+    def _get_ancestors(self, default_revision):
+        return set(self._repository.get_ancestry(self._revision_id,
+                                                 topo_sorted=False))
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
@@ -1490,7 +1493,11 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_nineteen)
     def get_weave(self, file_id):
+        return self._get_weave(file_id)
+
+    def _get_weave(self, file_id):
         return self._repository.weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
@@ -1499,8 +1506,7 @@ class DirStateRevisionTree(Tree):
 
     def get_file_lines(self, file_id):
         ie = self.inventory[file_id]
-        return self._repository.weave_store.get_weave(file_id,
-                self._repository.get_transaction()).get_lines(ie.revision)
+        return self._get_weave(file_id).get_lines(ie.revision)
 
     def get_file_size(self, file_id):
         return self.inventory[file_id].text_size
