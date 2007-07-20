@@ -38,6 +38,8 @@ Use cases
 
 .. include:: commit.txt
 
+.. include:: diff.txt
+
 .. include:: gc.txt
 
 .. include:: revert.txt

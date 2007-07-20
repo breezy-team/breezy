@@ -20,6 +20,37 @@ Where to find Plugins
 =====================
 We keep our list of plugins on the http://bazaar-vcs.org/BzrPlugins page.
 
+How to Install a plugin 
+=======================
+Installing a plugin is very easy! One can either install a plugin
+system-wide or on a per user basis. Both methods involve creating a
+``plugins`` directory. Within this directory one can place plugins in
+subdirectories. For example, ``plugins/bzrtools/``.
+
+Two locations are currently checked:  the bzrlib/plugins directory
+(typically found in ``/usr/lib/python2.4/site-packages/bzrlib/plugins/``) and
+``$HOME/.bazaar/plugins/``.
+
+One can additionally override the home plugins by setting the environment
+variable ``BZR_PLUGIN_PATH`` to a directory that contains plugins. The
+installation of a plugin can be checked by running ``bzr plugins`` at
+any time. New commands can be seen by running ``bzr help commands``.
+The commands provided by a plugin are shown followed by the name of the
+plugin in brackets.
+
+Plugins work particularly well with Bazaar branches. For example, to
+install the bzrtools plugins for your main user account, one can perform
+the following:: 
+
+    bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
+    ~/.bazaar/plugins/bzrtools
+
+When installing plugins the directories that you install them in must
+be valid python identifiers. This means that they can only contain
+certain characters, notably they cannot contain hyphens (``-``). Rather
+than installing ``bzr-gtk`` to ``~/.bazaar/plugins/bzr-gtk``, install it
+to ``~/.bazaar/plugins/gtk``.
+
 Writing a plugin
 ================
 Plugins are very similar to bzr core functionality.  They can import
@@ -46,27 +77,4 @@ package, i.e. a directory with an ``__init__.py`` file.
 
 Please feel free to contribute your plugin to BzrTools, if you think it
 would be useful to other people.
-
-How to Install a plugin 
-=======================
-Installing a plugin is very easy! One can either install a plugin
-system-wide or on a per user basis. Both methods involve creating a
-``plugins`` directory. Within this directory one can place plugins in
-subdirectories. For example, ``plugins/bzrtools/``.
-
-Two locations are currently checked:  the bzrlib/plugins directory
-(typically found in ``/usr/lib/python2.4/site-packages/bzrlib/plugins/``) and
-``$HOME/.bazaar/plugins/``.
-
-One can additionally override the home plugins by setting the environment
-variable ``BZR_PLUGIN_PATH`` to a directory that contains plugins. The
-installation of a plugin can be checked by running ``bzr plugins`` at
-any time. New commands can be seen by running ``bzr help commands``.
-
-Plugins work particularly well with Bazaar branches. For example, to
-install the bzrtools plugins for your main user account, one can perform
-the following:: 
-
-    bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
-    ~/.bazaar/plugins/bzrtools
 

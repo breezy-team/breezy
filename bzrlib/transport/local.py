@@ -393,6 +393,11 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # File URL's are externally usable.
+        return self.base
+
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
