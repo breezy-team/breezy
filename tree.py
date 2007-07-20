@@ -218,6 +218,8 @@ class SvnBasisTree(RevisionTree):
 
         def add_file_to_inv(relpath, id, revid, wc):
             props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
+            if isinstance(props, list): # Subversion 1.5
+                props = props[0]
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
