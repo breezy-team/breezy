@@ -32,7 +32,7 @@ from svn.core import Pool
 # Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
 # slightly different).
 
-if hasattr(svn.delta, 'tx_apply'):
+if hasattr(svn.delta, 'tx_invoke_window_handler'):
     def apply_txdelta_handler(src_stream, target_stream, pool):
         assert hasattr(src_stream, 'read')
         assert hasattr(target_stream, 'write')
