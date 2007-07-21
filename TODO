@@ -1,15 +1,13 @@
 mandatory before 0.4.0:
 - commit still seems to have some issues with deletes
-- fix setting of bzr:file-ids property
 - integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
+- fix setting of bzr:file-ids property
 - splittree support
 - nestedtree support
 
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - fix reuse of listbranchingscheme
-- support use of wildcards in listbranchingscheme
-- fix autorealm repository
 - avoid extra connect in logwalker?
 - free memory! (#54253)
 - more blackbox tests
@@ -17,8 +15,9 @@ todo:
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
 
-working trees:
+.svn working trees:
 - implement apply_inventory_delta()
+- support merge without requiring revisions to be added to svn repository
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - don't update all entries to the same revnum when opening working tree
 - when committing specific files in a lightweight checkout, make sure to 

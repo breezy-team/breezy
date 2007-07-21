@@ -134,6 +134,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
         wt.set_pending_merges(["some-ghost-revision"])
+        oldid = wt.path2id("foo")
         wt.commit(message="data")
         wt.rename_one("foo", "bar")
         wt.commit(message="doe")
@@ -142,6 +143,9 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEquals('A', paths["/bar"].action)
         self.assertEquals('/foo', paths["/bar"].copyfrom_path)
         self.assertEquals(1, paths["/bar"].copyfrom_rev)
+        self.assertEquals("bar\t%s\n" % oldid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 2))
+                          
 
     def test_commit_rename_file_from_directory(self):
         repos_url = self.make_client('d', 'dc')
@@ -452,3 +456,19 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         revid = wt.commit(message="Commit from Bzr")
         master_branch = Branch.open(repos_url)
         self.assertEquals(revid, master_branch.last_revision())
+
+    def test_fileid(self):
+        repos_url = self.make_client("d", "sc")
+        master_branch = Branch.open(repos_url)
+        os.mkdir("b")
+        local_dir = master_branch.bzrdir.sprout("b")
+        wt = local_dir.open_workingtree()
+        local_dir.open_branch().bind(master_branch)
+        self.build_tree({'b/file': 'data'})
+        wt.add('file')
+        oldid = wt.path2id("file")
+        revid = wt.commit(message="Commit from Bzr")
+        master_branch = Branch.open(repos_url)
+        self.assertEquals(revid, master_branch.last_revision())
+        self.assertEquals("file\t%s\n" % oldid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 1))

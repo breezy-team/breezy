@@ -79,14 +79,15 @@ class TestPush(TestCaseWithSubversionRepository):
     def test_change(self):
         self.build_tree({'dc/foo/bla': 'other data'})
         wt = self.bzrdir.open_workingtree()
-        wt.commit(message="Commit from Bzr")
+        newid = wt.commit(message="Commit from Bzr")
 
-        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+        svnbranch = self.svndir.open_branch()
+        svnbranch.pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
+        self.assertEquals(newid, svnbranch.last_revision())
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
-                         inv[inv.path2id('foo/bla')].revision)
+        self.assertEqual(newid, inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
           repos.generate_revision_id(2, "", "none"))
         self.assertEqual(repos.generate_revision_id(2, "", "none"),

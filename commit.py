@@ -60,6 +60,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param committer: Optional committer to set for commit.
         :param revprops: Revision properties to set.
         :param revision_id: Revision id for the new revision.
+        :param old_inv: Optional revision on top of which 
+            the commit is happening
         """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, timestamp, timezone, committer, revprops, revision_id)
@@ -163,13 +165,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _dir_process(self, path, file_id, baton):
         mutter('processing %r' % path)
-        if path == "":
-            # Set all the revprops
-            for prop, value in self._svnprops.items():
-                if value is not None:
-                    value = value.encode('utf-8')
-                self.editor.change_dir_prop(baton, prop, value, self.pool)
-
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
         # or parents
@@ -379,6 +374,14 @@ class SvnCommitBuilder(RootCommitBuilder):
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])
 
+            # Set all the revprops
+            for prop, value in self._svnprops.items():
+                mutter('prop: %r -> %r' % (prop, value))
+                if value is not None:
+                    value = value.encode('utf-8')
+                self.editor.change_dir_prop(branch_batons[-1], prop, value, 
+                                            self.pool)
+
             branch_batons.reverse()
             for baton in branch_batons:
                 self.editor.close_directory(baton, self.pool)
@@ -424,7 +427,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
-        mutter('recording %s' % ie.file_id)
         if ie.revision is not None:
             return
 
