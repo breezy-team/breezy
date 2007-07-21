@@ -2120,3 +2120,22 @@ class TestDirstateValidation(TestCaseWithDirState):
         self.assertContainsRe(str(e),
             'file a-id is absent in row')
 
+
+class TestDirstateTreeReference(TestCaseWithDirState):
+
+    def test_reference_revision_is_none(self):
+        tree = self.make_branch_and_tree('tree', format='dirstate-with-subtree')
+        subtree = self.make_branch_and_tree('tree/subtree',
+                            format='dirstate-with-subtree')
+        subtree.set_root_id('subtree')
+        tree.add_reference(subtree)
+        tree.add('subtree')
+        state = dirstate.DirState.from_tree(tree, 'dirstate')
+        key = ('', 'subtree', 'subtree')
+        expected = ('', [(key,
+            [('t', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])])
+
+        try:
+            self.assertEqual(expected, state._find_block(key))
+        finally:
+            state.unlock()
