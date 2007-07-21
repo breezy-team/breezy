@@ -80,13 +80,16 @@ class LogWalker(object):
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
-    def fetch_revisions(self, to_revnum):
+    def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
         :param to_revnum: End of range to fetch information for
         """
-        to_revnum = max(self.transport.get_latest_revnum(), to_revnum)
+        if to_revnum is None:
+            to_revnum = self.transport.get_latest_revnum()
+        else:
+            to_revnum = max(self.transport.get_latest_revnum(), to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 
