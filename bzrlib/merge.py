@@ -164,7 +164,7 @@ class Merger(object):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor or not self.base_is_other_ancestor:
+        if not self.base_is_ancestor or not self.base_is_other_ancestor or self.other_rev_id is None:
             return
         self._add_parent()
 
