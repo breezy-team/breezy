@@ -427,6 +427,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repository.revision_parents(
                     repository.generate_revision_id(2, "", "none")))
  
+    def test_revision_svk_parent(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/foo': "data", 'dc/branches/foo': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.build_tree({'dc/trunk/foo': "data2"})
+        repository = Repository.open("svn+%s" % repos_url)
+        self.client_set_prop("dc/trunk", "svk:merge", 
+            "%s:/branches/foo:1\n" % repository.uuid)
+        self.client_commit("dc", "Second Message")
+        self.assertEqual([repository.generate_revision_id(1, "trunk", "trunk0"),
+            repository.generate_revision_id(1, "branches/foo", "trunk0")], 
+                repository.revision_parents(
+                    repository.generate_revision_id(2, "trunk", "trunk0")))
+ 
     
     def test_get_revision(self):
         repos_url = self.make_client('d', 'dc')

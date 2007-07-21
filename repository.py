@@ -54,6 +54,19 @@ SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d:' % MAPPING_VERSION
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
+def parse_merge_property(line):
+    """Parse a bzr:merge property value.
+
+    :param line: Line to parse
+    :return: List of revisions merged
+    """
+    if ' ' in line:
+        mutter('invalid revision id %r in merged property, skipping' % line)
+        return None
+
+    return line.split("\t")
+
+
 def parse_revid_property(line):
     """Parse a (revnum, revid) tuple as set in revision id properties.
     :param line: line to parse
@@ -120,16 +133,18 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
     return text
 
 
-def svk_feature_to_revision_id(feature, scheme):
-    """Create a revision id from a svk feature identifier.
+def parse_svk_feature(feature):
+    """Parse a svk feature identifier.
 
     :param feature: The feature identifier as string.
-    :param scheme: Branching scheme name
-    :return: Matching revision id.
+    :return: tuple with uuid, branch path and revnum
     """
-    (uuid, branch, revnum) = feature.split(":")
-    return generate_svn_revision_id(uuid, int(revnum), branch.strip("/"), 
-                                    scheme)
+    try:
+        (uuid, branch, revnum) = feature.split(":", 3)
+    except ValueError:
+        raise errors.InvalidPropertyValue(SVN_PROP_SVK_MERGE, 
+                "not enough colons")
+    return (uuid, branch.strip("/"), int(revnum))
 
 
 def revision_id_to_svk_feature(revid):
@@ -139,6 +154,8 @@ def revision_id_to_svk_feature(revid):
     :return: Matching SVK feature identifier.
     """
     (uuid, branch, revnum, scheme) = parse_svn_revision_id(revid)
+    # TODO: What about renamed revisions? Should use 
+    # repository.lookup_revision_id here.
     return "%s:/%s:%d" % (uuid, branch, revnum)
 
 
@@ -407,44 +424,61 @@ class SvnRepository(Repository):
             # The specified revision was the first one in the branch
             return None
 
-    def revision_parents(self, revision_id, merged_data=None):
+    def _bzr_merged_revisions(self, branch, revnum):
+        change = self.branchprop_list.get_property_diff(branch, revnum, 
+                                       SVN_PROP_BZR_MERGE).splitlines()
+        if len(change) == 0:
+            return []
+
+        assert len(change) == 1
+
+        return parse_merge_property(change[0])
+
+    def _svk_feature_to_revision_id(self, scheme, feature):
+        try:
+            (uuid, bp, revnum) = parse_svk_feature(feature)
+        except errors.InvalidPropertyValue:
+            return None
+        if uuid != self.uuid:
+            return None
+        if not scheme.is_branch(bp) and not scheme.is_tag(bp):
+            return None
+        return self.generate_revision_id(revnum, bp, str(scheme))
+
+    def _svk_merged_revisions(self, branch, revnum, scheme):
+        current = set(self.branchprop_list.get_property(branch, revnum, SVN_PROP_SVK_MERGE, "").splitlines())
+        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = set()
+        else:
+            previous = set(self.branchprop_list.get_property(prev_path.encode("utf-8"), 
+                         prev_revnum, SVN_PROP_SVK_MERGE, "").splitlines())
+        for feature in current.difference(previous):
+            revid = self._svk_feature_to_revision_id(scheme, feature)
+            if revid is not None:
+                yield revid
+
+    def revision_parents(self, revision_id, bzr_merges=None, svk_merges=None):
         parent_ids = []
         (branch, revnum, scheme) = self.lookup_revision_id(revision_id)
         mainline_parent = self._mainline_revision_parent(branch, revnum, scheme)
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
-            (parent_path, parent_revnum, scheme) = self.lookup_revision_id(mainline_parent)
-        else:
-            parent_path = None
 
-        # if the branch didn't change, bzr:merge can't have changed
+        # if the branch didn't change, bzr:merge or svk:merge can't have changed
         if not self._log.touches_path(branch, revnum):
             return parent_ids
        
-        if merged_data is None:
-            new_merge = self.branchprop_list.get_property(branch, revnum, 
-                                           SVN_PROP_BZR_MERGE, "").splitlines()
+        if bzr_merges is None:
+            bzr_merges = self._bzr_merged_revisions(branch, revnum)
+        if svk_merges is None:
+            svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
 
-            if len(new_merge) == 0 or parent_path is None:
-                old_merge = ""
-            else:
-                old_merge = self.branchprop_list.get_property(parent_path, parent_revnum, 
-                        SVN_PROP_BZR_MERGE, "").splitlines()
+        parent_ids.extend(bzr_merges)
 
-            assert (len(old_merge) == len(new_merge) or 
-                    len(old_merge) + 1 == len(new_merge))
-
-            if len(old_merge) < len(new_merge):
-                merged_data = new_merge[-1]
-            else:
-                merged_data = ""
-
-        if ' ' in merged_data:
-            mutter('invalid revision id %r in merged property, skipping' % merged_data)
-            merged_data = ""
-
-        if merged_data != "":
-            parent_ids.extend(merged_data.split("\t"))
+        if bzr_merges == []:
+            # Commit was doing using svk apparently
+            parent_ids.extend(svk_merges)
 
         return parent_ids
 

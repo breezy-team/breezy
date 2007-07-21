@@ -19,6 +19,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
+from bzrlib.trace import mutter
 
 from convert import load_dumpfile
 from fileids import generate_svn_file_id, generate_file_id
@@ -1291,6 +1292,30 @@ Node-copyfrom-path: x
 
         rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", "none"))
         self.assertTrue("aghost" in rev.parent_ids)
+
+    def test_fetch_svk_merge(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bla': "data", "dc/branches": None})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk", "dc/branches/foo")
+        self.build_tree({'dc/branches/foo/bla': "more data"})
+        self.client_commit("dc", "Branch")
+
+        oldrepos = Repository.open("svn+"+repos_url)
+        self.client_set_prop("dc/trunk", "svk:merge", 
+                             "%s:/branches/foo:2\n" % oldrepos.uuid)
+        self.client_commit("dc", "Merge")
+
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", "trunk0"))
+        mutter('parent ids: %r' % rev.parent_ids)
+        self.assertTrue(oldrepos.generate_revision_id(2, "branches/foo", "trunk0") in rev.parent_ids)
 
     def test_fetch_invalid_ghosts(self):
         repos_url = self.make_client('d', 'dc')

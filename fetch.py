@@ -32,10 +32,12 @@ from svn.core import Pool
 import svn.core
 
 from fileids import generate_file_id
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
+from repository import (SvnRepository, SVN_PROP_BZR_MERGE, 
+                SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SVN_PROP_BZR_BRANCHING_SCHEME,
-                SvnRepositoryFormat, parse_revision_metadata)
+                SvnRepositoryFormat, parse_revision_metadata,
+                parse_merge_property)
 from tree import apply_txdelta_handler
 
 
@@ -61,7 +63,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.transact = target.get_transaction()
         self.weave_store = target.weave_store
         self.dir_baserev = {}
-        self._parent_ids = None
+        self._bzr_merges = []
+        self._svk_merges = []
         self._revinfo = None
         self._svn_revprops = svn_revprops
         self.pool = Pool()
@@ -71,10 +74,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         :param revid: Revision id of the revision to create.
         """
-        if self._parent_ids is None:
-            self._parent_ids = ""
-
-        parent_ids = self.source.revision_parents(revid, self._parent_ids)
+        parent_ids = self.source.revision_parents(revid, self._bzr_merges)
 
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=parent_ids)
@@ -177,17 +177,18 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        if name in (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_BRANCHING_SCHEME):
+        if name == SVN_PROP_BZR_BRANCHING_SCHEME:
+            if id != self.inventory.root.file_id:
+                mutter('rogue %r on non-root directory' % name)
+                return
+        elif name == SVN_PROP_BZR_MERGE:
             if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
             
-            self._parent_ids = value.splitlines()[-1]
+            self._bzr_merges = parse_merge_property(value.splitlines()[-1])
         elif name == SVN_PROP_SVK_MERGE:
-            if self._parent_ids is None:
-                # Only set parents using svk:merge if no 
-                # bzr:merge set.
-                pass # FIXME 
+            self._svk_merges = None # Force Repository.revision_parents() to look it up
         elif name == SVN_PROP_BZR_REVISION_INFO:
             if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)

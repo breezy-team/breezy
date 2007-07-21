@@ -98,6 +98,6 @@ class BranchPropertyList:
             previous = self.get_property(prev_path.encode("utf-8"), 
                                          prev_revnum, name, "")
         if len(previous) > len(current) or current[0:len(previous)] != previous:
-            mutter('original part changed!')
+            mutter('original part changed for %r between %s:%d -> %s:%d' % (name, prev_path, prev_revnum, path, revnum))
             return ""
         return current[len(previous):] 

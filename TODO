@@ -3,7 +3,6 @@ mandatory before 0.4.0:
 - integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
 - fix setting of bzr:file-ids property
 - splittree support
-- nestedtree support
 
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
@@ -14,6 +13,7 @@ todo:
  - svn-import without scheme specified should guess
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
+- nestedtree support
 
 .svn working trees:
 - implement apply_inventory_delta()
