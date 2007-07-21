@@ -64,12 +64,14 @@ class cmd_rebase(Command):
     """
     takes_args = ['upstream_location?']
     takes_options = ['revision', 'merge-type', 'verbose',
-                     Option('onto', help='Different revision to replay onto.',
-                            type=str)]
+        Option('dry-run',
+               help="Show what would be done, but don't actually do anything."),
+        Option('onto', help='Different revision to replay onto.',
+               type=str)]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
-            merge_type=None, verbose=False):
+            merge_type=None, verbose=False, dry_run=False):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -90,8 +92,7 @@ class cmd_rebase(Command):
                 raise BzrCommandError("A rebase operation was interrupted. Continue using 'bzr rebase-continue' or abort using 'bzr rebase-abort'")
 
             # Pull required revisions
-            wt.branch.repository.fetch(upstream_repository, 
-                                       upstream_revision)
+            wt.branch.repository.fetch(upstream_repository, upstream_revision)
             if onto is None:
                 onto = upstream.last_revision()
             else:
@@ -122,20 +123,24 @@ class cmd_rebase(Command):
                     wt.branch.repository, 
                     wt.branch.revision_history(), start_revid, onto)
 
-            # Write plan file
-            write_rebase_plan(wt, replace_map)
-
             if verbose:
-                for revid in rebase_todo(wt.branch.repository, replace_map):
-                    info("%s -> %s" % (revid, replace_map[revid][0]))
+                todo = list(rebase_todo(wt.branch.repository, replace_map))
+                info('%d revisions will be rebased:' % len(todo))
+                for revid in todo:
+                    info("%s" % revid)
 
-            # Start executing plan
-            try:
-                rebase(wt.branch.repository, replace_map, workingtree_replay(wt, merge_type=merge_type))
-            except ConflictsInTree:
-                raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
-            # Remove plan file
-            remove_rebase_plan(wt)
+            if not dry_run:
+                # Write plan file
+                write_rebase_plan(wt, replace_map)
+
+                # Start executing plan
+                try:
+                    rebase(wt.branch.repository, replace_map, 
+                           workingtree_replay(wt, merge_type=merge_type))
+                except ConflictsInTree:
+                    raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
+                # Remove plan file
+                remove_rebase_plan(wt)
         finally:
             wt.unlock()
 
