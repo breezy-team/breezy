@@ -47,6 +47,8 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+   * Support read locking for Branch.
+
   FEATURES
    
    * add -v option to svn-upgrade

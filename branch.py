@@ -68,10 +68,13 @@ class SvnBranch(Branch):
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
+        self._lock_mode = None
+        self._cached_revnum = None
         self._revision_history = None
         self._revision_history_revnum = None
         self.scheme = self.repository.get_scheme()
-        if not self.scheme.is_branch(branch_path):
+        if (not self.scheme.is_branch(branch_path) and 
+            not self.scheme.is_tag(branch_path)):
             raise NotSvnBranchPath(branch_path, scheme=self.scheme)
         try:
             if self.repository.transport.check_path(branch_path.strip("/"), 
@@ -94,7 +97,10 @@ class SvnBranch(Branch):
         return self._branch_path
 
     def get_revnum(self):
-        return self.repository.transport.get_latest_revnum()
+        if self._lock_mode == 'r' and self._cached_revnum:
+            return self._cached_revnum
+        self._cached_revnum = self.repository.transport.get_latest_revnum()
+        return self._cached_revnum
 
     def check(self):
         """See Branch.Check.
@@ -314,15 +320,28 @@ class SvnBranch(Branch):
             finally:
                 pb.finished()
 
-    # The remote server handles all this for us
     def lock_write(self):
-        pass
+        # TODO: Obtain lock on the remote server?
+        if self._lock_mode:
+            assert self._lock_mode == 'w'
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'w'
+            self._lock_count = 1
         
     def lock_read(self):
-        pass
+        if self._lock_mode:
+            assert self._lock_mode in ('r', 'w')
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'r'
+            self._lock_count = 1
 
     def unlock(self):
-        pass
+        self._lock_count -= 1
+        if self._lock_count == 0:
+            self._lock_mode = None
+            self._cached_revnum = None
 
     def get_parent(self):
         return self.base
