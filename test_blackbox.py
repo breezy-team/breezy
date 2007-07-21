@@ -1,4 +1,4 @@
-# Copyright (C) 2007 by Jelmer Vernooij
+# Copyright (C) 2007 by Jelmer Vernooij <jelmer@samba.org>
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -116,7 +116,17 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m this')
         out, err = self.run_bzr('rebase -v ../main')
-        self.assertContainsRe(err, ' -> ')
+        self.assertContainsRe(err, '1 revisions will be rebased:')
         self.assertEqual('', out)
         self.check_output('3\n', 'revno')
 
+    def test_useless_merge(self):
+        self.make_file('bar', '42')
+        self.run_bzr('add')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hello', "my data")
+        self.run_bzr('commit -m this')
+        self.run_bzr('merge')
+        self.run_bzr('commit -m merge')
+        self.run_bzr('rebase')
