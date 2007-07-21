@@ -271,11 +271,14 @@ class TestMerge(TestCaseWithTransport):
         except AttributeError:
             self.fail('tried to join a path when name was None')
 
-    def test_merge_uncommitted(self):
+    def test_merge_uncommitted_otherbasis_ancestor_of_thisbasis(self):
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/file_1'])
+        self.build_tree(['a/file_1', 'a/file_2'])
         tree_a.add(['file_1'])
         tree_a.commit('commit 1')
+        tree_a.add(['file_2'])
+        tree_a.commit('commit 2')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
-        tree_b.rename_one('file_1', 'file_2')
+        tree_b.rename_one('file_1', 'renamed')
         _merge_helper(['b', None], ['b', -1], this_dir='a')
+        self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
