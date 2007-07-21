@@ -160,10 +160,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         self.modified_dirs.append(file_id)
 
     def _file_process(self, file_id, contents, baton):
+        assert baton is not None
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
     def _dir_process(self, path, file_id, baton):
+        assert baton is not None
         mutter('processing %r' % path)
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
@@ -185,7 +187,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                 self.old_inv.id2path(child_ie.file_id)), 
                             self.base_revnum, baton, self.pool)
 
-        # Loop over file members of file_id in self.new_inventory
+        # Loop over file children of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
             child_ie = self.new_inventory.get_child(file_id, child_name)
             assert child_ie is not None
@@ -225,6 +227,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                         baton, self.base_revnum, self.pool)
 
             else:
+                # Old copy of the file was retained. No need to send changes
+                assert child_ie.file_id not in self.modified_files
                 child_baton = None
 
             if child_ie.file_id in self.old_inv:
@@ -254,8 +258,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # handle the file
             if child_ie.file_id in self.modified_files:
-                self._file_process(child_ie.file_id, self.modified_files[child_ie.file_id], 
-                                   child_baton)
+                self._file_process(child_ie.file_id, 
+                    self.modified_files[child_ie.file_id], child_baton)
 
             if child_baton is not None:
                 self.editor.close_file(child_baton, None, self.pool)
@@ -292,6 +296,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                         os.path.join(self.branch.get_branch_path(), self.new_inventory.id2path(child_ie.file_id)), 
                         baton, self.base_revnum, self.pool)
             else:
+                assert child_ie.file_id not in self.modified_dirs
                 continue
 
             # Handle this directory
