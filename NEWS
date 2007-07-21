@@ -33,6 +33,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Fix compatibility with Subversion 1.5. (#73918)
 
+   * Fix import of svk:merge properties (need to be sorted lexicographically).
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.

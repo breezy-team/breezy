@@ -46,12 +46,12 @@ from scheme import (BranchingScheme, ListBranchingScheme, NoBranchingScheme,
 from tree import SvnRevisionTree
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
-SVN_PROP_BZR_MERGE = 'bzr:merge'
+SVN_PROP_BZR_ANCESTRY = 'bzr:ancestry:v%d-' % MAPPING_VERSION
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
-SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d:' % MAPPING_VERSION
+SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 def parse_merge_property(line):
@@ -62,7 +62,7 @@ def parse_merge_property(line):
     """
     if ' ' in line:
         mutter('invalid revision id %r in merged property, skipping' % line)
-        return None
+        return []
 
     return line.split("\t")
 
@@ -332,7 +332,7 @@ class SvnRepository(Repository):
         ancestry = [revision_id]
 
         for l in self.branchprop_list.get_property(path, revnum, 
-                                    SVN_PROP_BZR_MERGE, "").splitlines():
+                                    SVN_PROP_BZR_ANCESTRY+str(scheme), "").splitlines():
             ancestry.extend(l.split("\n"))
 
         if revnum > 0:
@@ -424,9 +424,9 @@ class SvnRepository(Repository):
             # The specified revision was the first one in the branch
             return None
 
-    def _bzr_merged_revisions(self, branch, revnum):
+    def _bzr_merged_revisions(self, branch, revnum, scheme):
         change = self.branchprop_list.get_property_diff(branch, revnum, 
-                                       SVN_PROP_BZR_MERGE).splitlines()
+                                       SVN_PROP_BZR_ANCESTRY+str(scheme)).splitlines()
         if len(change) == 0:
             return []
 
@@ -470,7 +470,7 @@ class SvnRepository(Repository):
             return parent_ids
        
         if bzr_merges is None:
-            bzr_merges = self._bzr_merged_revisions(branch, revnum)
+            bzr_merges = self._bzr_merged_revisions(branch, revnum, scheme)
         if svk_merges is None:
             svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
 

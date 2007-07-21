@@ -210,7 +210,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -220,11 +220,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "someotherdata"})
-        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
                             "2 myrevid\n3 mysecondrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -692,7 +692,7 @@ foohosts""")
 
         self.build_tree({'sc/foo/bla': "data"})
         self.client_add("sc/foo")
-        self.client_set_prop("sc", "bzr:merge", "some-ghost\n")
+        self.client_set_prop("sc", "bzr:ancestry:v3-none", "some-ghost\n")
         self.client_commit("sc", "foo")
 
         olddir = self.open_checkout_bzrdir("sc")

@@ -413,7 +413,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:merge", "ghostparent\n")
+        self.client_set_prop("dc", "bzr:ancestry:v3-none", "ghostparent\n")
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([],
@@ -473,7 +473,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
                             "3 myrevid\n")
         self.client_update("dc")
         (num, date, author) = self.client_commit("dc", "Second Message")
@@ -647,7 +647,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.client_update("dc")
-        self.client_set_prop("dc", "bzr:merge", "a-parent\n")
+        self.client_set_prop("dc", "bzr:ancestry:v3-none", "a-parent\n")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)

@@ -32,7 +32,7 @@ from svn.core import Pool
 import svn.core
 
 from fileids import generate_file_id
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE, 
+from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
                 SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SVN_PROP_BZR_BRANCHING_SCHEME,
@@ -52,12 +52,13 @@ class RevisionBuildEditor(svn.delta.Editor):
     Bazaar revision.
     """
     def __init__(self, source, target, branch_path, prev_inventory, revid, 
-                 svn_revprops, id_map):
+                 svn_revprops, id_map, scheme):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)
         self.revid = revid
         self.id_map = id_map
+        self.scheme = scheme
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -181,7 +182,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
-        elif name == SVN_PROP_BZR_MERGE:
+        elif name == SVN_PROP_BZR_ANCESTRY+str(self.scheme):
             if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
@@ -416,7 +417,7 @@ class InterFromSvnRepository(InterRepository):
                 editor = RevisionBuildEditor(self.source, self.target, branch, 
                              parent_inv, revid, 
                              self.source._log.get_revision_info(revnum),
-                             id_map)
+                             id_map, scheme)
 
                 pool = Pool()
                 edit, edit_baton = svn.delta.make_editor(editor, pool)

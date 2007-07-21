@@ -33,7 +33,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from branch import SvnBranch
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE,
+from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                         revision_id_to_svk_feature, generate_revision_metadata) 
@@ -612,7 +612,7 @@ class SvnWorkingTree(WorkingTree):
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(
                 self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, SVN_PROP_BZR_MERGE, "")
+                self.base_revnum, SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), "")
 
     def _get_svk_merges(self):
         return self.branch.repository.branchprop_list.get_property(
@@ -629,7 +629,7 @@ class SvnWorkingTree(WorkingTree):
             else:
                 bzr_merge = ""
 
-            svn.wc.prop_set(SVN_PROP_BZR_MERGE, 
+            svn.wc.prop_set(SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), 
                                  self._get_bzr_merges() + bzr_merge, 
                                  self.basedir, wc)
 
@@ -656,7 +656,8 @@ class SvnWorkingTree(WorkingTree):
         merged = self._get_bzr_merges().splitlines()
         wc = self._get_wc()
         try:
-            merged_data = svn.wc.prop_get(SVN_PROP_BZR_MERGE, self.basedir, wc)
+            merged_data = svn.wc.prop_get(
+                SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), self.basedir, wc)
             if merged_data is None:
                 set_merged = []
             else:

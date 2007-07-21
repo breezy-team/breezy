@@ -26,7 +26,7 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
-from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
+from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
                         generate_revision_metadata, SvnRepositoryFormat, 
@@ -86,10 +86,10 @@ class SvnCommitBuilder(RootCommitBuilder):
             # Bazaar Parents
             if branch.last_revision() is not None:
                 old = repository.branchprop_list.get_property(
-                      self.base_path, self.base_revnum, SVN_PROP_BZR_MERGE, "")
+                      self.base_path, self.base_revnum, SVN_PROP_BZR_ANCESTRY+str(self.base_scheme), "")
             else:
                 old = ""
-            self._svnprops[SVN_PROP_BZR_MERGE] = old + "\t".join(self.merges) + "\n"
+            self._svnprops[SVN_PROP_BZR_ANCESTRY+str(self.base_scheme)] = old + "\t".join(self.merges) + "\n"
 
             if branch.last_revision() is not None:
                 old = repository.branchprop_list.get_property(

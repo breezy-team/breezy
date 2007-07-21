@@ -1,6 +1,5 @@
 mandatory before 0.4.0:
 - commit still seems to have some issues with deletes
-- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
 - fix setting of bzr:file-ids property
 - splittree support
 

@@ -123,7 +123,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual(["some-ghost-revision"], wt.pending_merges())
         wt.commit(message="data")
         self.assertEqual("some-ghost-revision\n", 
-                self.client_get_prop(repos_url, "bzr:merge", 1))
+                self.client_get_prop(repos_url, "bzr:ancestry:v3-none", 1))
         self.assertEqual([wt.branch.generate_revision_id(0), "some-ghost-revision"],
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
@@ -182,7 +182,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
         self.assertEqual("3 my-revision-id\n", 
             self.client_get_prop("dc", 
-                "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
+                "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
@@ -204,7 +204,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
 
         self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 
                 self.client_get_prop("dc", "bzr:revision-info", 2))
