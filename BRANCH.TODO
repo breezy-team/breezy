@@ -1,0 +1,12 @@
+Subversion 1.5 adds support for custom revision properties. This allows moving the various Bazaar-related 
+properties from file to revision properties.
+
+The following settings would be set on the revisions:
+* bzr:branch
+* bzr:revision-id
+* bzr:merge
+* bzr:pgp-signature
+* bzr:committer
+* bzr:timestamp
+* bzr:properties:branch-nick
+* bzr:properties:*
