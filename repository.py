@@ -64,7 +64,7 @@ def parse_merge_property(line):
         mutter('invalid revision id %r in merged property, skipping' % line)
         return []
 
-    return line.split("\t")
+    return filter(lambda x: x != "", line.split("\t"))
 
 
 def parse_revid_property(line):

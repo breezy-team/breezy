@@ -685,7 +685,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
         inv = repository.get_inventory(
-                repository.generate_revision_id(2, "", "none"))
+            repository.generate_revision_id(2, "", "none"))
         self.assertEqual(repository.generate_revision_id(2, "", "none"), 
                          inv[inv.path2id("foo")].revision)
         self.assertEqual(repository.generate_revision_id(1, "", "none"), 
