@@ -40,7 +40,8 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         # branch/foo/.bzr/branch-format when used with the paramiko test
         # server.
         from bzrlib.tests import TestSkipped
-        raise TestSkipped
+        raise TestSkipped('SFTPTransport raises incorrect exception'
+                          ' when reading from paramiko server')
         wt1 = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/foo', 'foo')])
         wt1.add('foo')

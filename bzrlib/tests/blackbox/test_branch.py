@@ -102,7 +102,7 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
     def test_branch_local_remote(self):
         self.run_bzr(['branch', 'branch', self.get_url('remote')])
         t = self.get_transport()
-        # Ensures that no working tree what created remotely
+        # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
 
     def test_branch_remote_remote(self):
@@ -110,6 +110,6 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         self.run_bzr(['branch', self.get_url('branch'),
                       self.get_url('remote')])
         t = self.get_transport()
-        # Ensures that no working tree what created remotely
+        # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
 

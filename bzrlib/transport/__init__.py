@@ -1141,6 +1141,9 @@ class ConnectedTransport(Transport):
     def __init__(self, base, _from_transport=None):
         """Constructor.
 
+        The caller should ensure that _from_transport points at the same host
+        as the new base.
+
         :param base: transport root URL
 
         :param _from_transport: optional transport to build from. The built
@@ -1386,12 +1389,13 @@ class ConnectedTransport(Transport):
         return transport
 
 
+@deprecated_function(zero_nineteen)
+def urlescape(relpath):
+    urlutils.escape(relpath)
+@deprecated_function(zero_nineteen)
+def urlunescape(url):
+    urlutils.unescape(url)
 
-# jam 20060426 For compatibility we copy the functions here
-# TODO: They should be marked as deprecated
-# vila-20070606: How should we do that ?
-urlescape = urlutils.escape
-urlunescape = urlutils.unescape
 # We try to recognize an url lazily (ignoring user, password, etc)
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
 
