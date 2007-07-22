@@ -156,6 +156,16 @@ def register_urlparse_netloc_protocol(protocol):
         urlparse.uses_netloc.append(protocol)
 
 
+def _unregister_urlparse_netloc_protocol(protocol):
+    """Remove protocol from urlparse netloc parsing.
+
+    Except for tests, you should never use that function. Using it with 'http',
+    for example, will break all http transports.
+    """
+    if protocol in urlparse.uses_netloc:
+        urlparse.uses_netloc.remove(protocol)
+
+
 def unregister_transport(scheme, factory):
     """Unregister a transport."""
     l = transport_list_registry.get(scheme)

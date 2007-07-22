@@ -18,7 +18,9 @@ from bzrlib.hooks import Hooks
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import (
     register_transport,
+    register_urlparse_netloc_protocol,
     unregister_transport,
+    _unregister_urlparse_netloc_protocol,
     )
 from bzrlib.transport.sftp import SFTPTransport
 
@@ -32,11 +34,18 @@ class TransportHooks(Hooks):
         # The api signature is (transport, connection, credentials)
         self['_set_connection'] = []
 
+_hooked_scheme = 'hooked'
 
 class InstrumentedTransport(SFTPTransport):
     """Instrumented transport class to test commands behavior"""
 
     hooks = TransportHooks()
+
+    def __init__(self, base, _from_transport=None):
+        assert base.startswith(_hooked_scheme + '://')
+        # Avoid SFTPTransport assertion since we use a dedicated scheme
+        super(SFTPTransport, self).__init__(base,
+                                            _from_transport=_from_transport)
 
 
 class ConnectionHookedTransport(InstrumentedTransport):
@@ -53,20 +62,32 @@ class ConnectionHookedTransport(InstrumentedTransport):
 class TestCaseWithConnectionHookedTransport(TestCaseWithSFTPServer):
 
     def setUp(self):
+        register_urlparse_netloc_protocol(_hooked_scheme)
+        register_transport(_hooked_scheme, ConnectionHookedTransport)
+
+        def unregister():
+            unregister_transport(_hooked_scheme, ConnectionHookedTransport)
+            _unregister_urlparse_netloc_protocol(_hooked_scheme)
+
+        self.addCleanup(unregister)
         super(TestCaseWithConnectionHookedTransport, self).setUp()
         self.reset_connections()
+
+    def get_url(self, relpath=None):
+        super_self = super(TestCaseWithConnectionHookedTransport, self)
+        url = super_self.get_url(relpath)
+        # Replace the sftp scheme by our own
+        url = _hooked_scheme + url[len('sftp'):]
+        return url
 
     def install_hooks(self):
         ConnectionHookedTransport.hooks.install_hook('_set_connection',
                                                      self.set_connection_hook)
-        # Make our instrumented transport the default ftp transport
-        register_transport('sftp://', ConnectionHookedTransport)
         # uninstall our hooks when we are finished
         self.addCleanup(self.reset_hooks)
 
     def reset_hooks(self):
         InstrumentedTransport.hooks = TransportHooks()
-        unregister_transport('sftp://', ConnectionHookedTransport)
 
     def reset_connections(self):
         self.connections = []

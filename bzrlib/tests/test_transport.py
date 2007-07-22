@@ -615,6 +615,7 @@ class TestWin32LocalTransport(TestCase):
         t = t.clone('..')
         self.assertEquals(t.base, 'file://HOST/')
 
+
 class TestConnectedTransport(TestCase):
     """Tests for connected to remote server transports"""
 
