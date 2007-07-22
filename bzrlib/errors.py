@@ -545,7 +545,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
