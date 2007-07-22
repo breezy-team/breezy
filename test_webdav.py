@@ -42,15 +42,12 @@ from shutil import (
     )
 import sys
 import time
+import urlparse
 
 from bzrlib.errors import (
     NoSuchFile,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import(
-    get_transport,
-    split_url
-    )
 from bzrlib.tests.HttpServer import (
     HttpServer,
     TestingHTTPRequestHandler,
@@ -150,11 +147,8 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                 # just ignores them (bad Apache).
                 self.send_error(501, 'Not Implemented')
                 return
-            else:
-                (begin, size) = match.group('begin','size')
-                begin = int(begin)
-                size = int(size)
-                do_append = True
+            begin = int(match.group('begin'))
+            do_append = True
 
         if self.headers.get('Expect') == '100-continue':
             # Tell the client to go ahead, we're ready to get the content
@@ -215,8 +209,10 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         if url_to is None:
             self.send_error(400,"Destination header missing")
             return
-        scheme, username, password, host, port, rel_to = split_url(url_to)
-        mutter("do_COPY rel_from: [%s], rel_to: [%s]" % (self.path,rel_to))
+        (scheme, netloc, rel_to,
+         params, query, fragment) = urlparse.urlparse(url_to)
+        mutter("urlparse: (%s) [%s]" % (url_to, rel_to))
+        mutter("do_COPY rel_from: [%s], rel_to: [%s]" % (self.path, rel_to))
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         try:
@@ -224,19 +220,10 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
             # not.  In the  mean  time, just  go  along and  trap
             # exceptions
             copyfile(abs_from,abs_to)
-        except IOError, e:
-            try:
-                # FIXME:    We   cheat    here,   we    use   the
-                # _translate_error of  Transport, but this method
-                # is not a real one. It's really a function which
-                # should   be  declared   as   such.   Also,   we
-                # arbitrarily  choose to  call  it with  abs_from
-                # when abs_to may as  well be appropriate. But at
-                # the end we send 404, so...
-                get_transport('.')._translate_error(e,abs_from,False)
-            except NoSuchFile:
+        except (IOError, OSError), e:
+            if e.errno == errno.ENOENT:
                 self.send_error(404,"File not found") ;
-            except:
+            else:
                 self.send_error(409,"Conflict") ;
         else:
             # TODO: We may be able  to return 204 "No content" if
@@ -252,7 +239,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         because we *should* fail to delete a non empty dir.
         """
         path = self.translate_path(self.path)
-        mutter("do_DELETE rel: [%s], abs: [%s]" % (self.path,path))
+        mutter("do_DELETE rel: [%s], abs: [%s]" % (self.path, path))
         try:
             # DAV  makes no  distinction between  files  and dirs
             # when required to nuke them,  but we have to. And we
@@ -291,8 +278,10 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
             should_overwrite = False
         else:
             should_overwrite = True
-        scheme, username, password, host, port, rel_to = split_url(url_to)
-        mutter("do_MOVE rel_from: [%s], rel_to: [%s]" % (self.path,rel_to))
+        (scheme, netloc, rel_to,
+         params, query, fragment) = urlparse.urlparse(url_to)
+        mutter("urlparse: (%s) [%s]" % (url_to, rel_to))
+        mutter("do_MOVE rel_from: [%s], rel_to: [%s]" % (self.path, rel_to))
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         if should_overwrite is False and os.access(abs_to, os.F_OK):
@@ -301,18 +290,9 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         try:
             os.rename(abs_from, abs_to)
         except (IOError, OSError), e:
-            try:
-                # FIXME:    We   cheat    here,   we    use   the
-                # _translate_error  of Transport, but  this method
-                # is not  real one. It's really  a function which
-                # should   be  declared   as   such.   Also,   we
-                # arbitrarily  choose to  call  it with  abs_from
-                # when abs_to may as  well be appropriate. But at
-                # the end we send 404, so...
-                get_transport('.')._translate_error(e,abs_from,False)
-            except NoSuchFile:
+            if e.errno == errno.ENOENT:
                 self.send_error(404,"File not found") ;
-            except:
+            else:
                 self.send_error(409,"Conflict") ;
         else:
             # TODO: We may be able  to return 204 "No content" if

@@ -139,7 +139,7 @@ register_urlparse_netloc_protocol('http+webdav')
 register_urlparse_netloc_protocol('https+webdav')
 
 class PUTRequest(Request):
-    def __init__(self, url, data, more_headers={}):
+    def __init__(self, url, data, more_headers={}, accepted_errors=None):
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
         headers = {'Accept': '*/*',
                    'Content-type': 'application/octet-stream',
@@ -153,7 +153,8 @@ class PUTRequest(Request):
                    #  'Transfer-Encoding': 'chunked',
                    }
         headers.update(more_headers)
-        Request.__init__(self, 'PUT', url, data, headers)
+        Request.__init__(self, 'PUT', url, data, headers,
+                         accepted_errors=accepted_errors)
 
 class DavResponse(Response):
     """Custom HTTPResponse.
@@ -161,12 +162,11 @@ class DavResponse(Response):
     DAV have some reponses for which the body is of no interest.
     """
 
-    def __init__(self, *args, **kwargs):
-        Response.__init__(self, *args, **kwargs)
-        self._body_ignored_responses += [201, 204,
-                                         405, 409, 412,
-                                         999, # FIXME: <cough>
-                                         ]
+    accepted_errors = [201, 204,
+                       405, 409, 412,
+                       999, # FIXME: <cough>
+                       ]
+
 
 # Takes DavResponse into account:
 class DavHTTPConnection(HTTPConnection):
@@ -178,23 +178,6 @@ class DavHTTPSConnection(HTTPSConnection):
 
     response_class = DavResponse
 
-
-class DavErrorProcessor(HTTPErrorProcessor):
-    """Process DAV error responses.
-
-    We don't really process the errors, quite the contrary
-    instead, we leave our Transport handle them.    
-    """
-    def http_response(self, request, response):
-        code, msg, hdrs = response.code, response.msg, response.info()
-
-        if code not in (201, 204, 403, 405, 409, 412, # DAV
-                        999, # FIXME: <cough> search for 999 in this file
-                        ):
-            response = HTTPErrorProcessor.http_response(self, request, response)
-        return response
-
-    https_response = http_response
 
 class DavConnectionHandler(ConnectionHandler):
     """Custom connection handler.
@@ -215,8 +198,7 @@ class DavOpener(Opener):
     """Dav specific needs regarding HTTP(S)"""
 
     def __init__(self):
-        super(DavOpener, self).__init__(connection=DavConnectionHandler,
-                                        error=DavErrorProcessor)
+        super(DavOpener, self).__init__(connection=DavConnectionHandler)
 
 
 class HttpDavTransport(HttpTransport_urllib):
@@ -229,9 +211,10 @@ class HttpDavTransport(HttpTransport_urllib):
     _debuglevel = 0
     _opener_class = DavOpener
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
-        super(HttpDavTransport, self).__init__(base, from_transport)
+        super(HttpDavTransport, self).__init__(base,
+                                               _from_transport=_from_transport)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -267,7 +250,7 @@ class HttpDavTransport(HttpTransport_urllib):
         :param f:       File-like object.
         :param mode:    Not supported by DAV.
         """
-        abspath = self._real_abspath(relpath)
+        abspath = self._remote_path(relpath)
 
         # We generate a sufficiently random name to *assume* that
         # no collisions will occur and don't worry about it (nor
@@ -314,8 +297,9 @@ class HttpDavTransport(HttpTransport_urllib):
                             dir_mode=False):
         """See Transport.put_file_non_atomic"""
 
-        abspath = self._real_abspath(relpath)
-        request = PUTRequest(abspath, bytes)
+        abspath = self._remote_path(relpath)
+        request = PUTRequest(abspath, bytes,
+                             accepted_errors=[200, 201, 204, 403, 404, 409])
 
         # FIXME: We just make a mix between the sftp
         # implementation and the Transport one so there may be
@@ -367,14 +351,15 @@ class HttpDavTransport(HttpTransport_urllib):
 
         # Once we teach httplib to do that, we will use file-like
         # objects (see handling chunked data and 100-continue).
-        abspath = self._real_abspath(relpath)
+        abspath = self._remote_path(relpath)
 
         # Content-Range is start-end/size. 'size' is the file size, not the
         # chunk size. We can't be sure about the size of the file so put '*' at
         # the end of the range instead.
         request = PUTRequest(abspath, bytes,
                              {'Content-Range':
-                                  'bytes %d-%d/*' % (at, at+len(bytes)),})
+                                  'bytes %d-%d/*' % (at, at+len(bytes)),},
+                             accepted_errors=[200, 201, 204, 403, 404, 409])
         response = self._perform(request)
         code = response.code
 
@@ -386,9 +371,10 @@ class HttpDavTransport(HttpTransport_urllib):
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir"""
-        abspath = self._real_abspath(relpath)
+        abspath = self._remote_path(relpath)
 
-        request = Request('MKCOL', abspath)
+        request = Request('MKCOL', abspath,
+                          accepted_errors=[201, 403, 405, 404, 409])
         response = self._perform(request)
 
         code = response.code
@@ -412,12 +398,13 @@ class HttpDavTransport(HttpTransport_urllib):
 
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
-        abs_from = self._real_abspath(rel_from)
-        abs_to = self._real_abspath(rel_to)
+        abs_from = self._remote_path(rel_from)
+        abs_to = self._remote_path(rel_to)
 
         request = Request('MOVE', abs_from, None,
                           {'Destination': abs_to,
-                           'Overwrite': 'F'})
+                           'Overwrite': 'F'},
+                          accepted_errors=[201, 404, 409, 412])
         response = self._perform(request)
 
         code = response.code
@@ -439,10 +426,11 @@ class HttpDavTransport(HttpTransport_urllib):
     def move(self, rel_from, rel_to):
         """See Transport.move"""
 
-        abs_from = self._real_abspath(rel_from)
-        abs_to = self._real_abspath(rel_to)
+        abs_from = self._remote_path(rel_from)
+        abs_to = self._remote_path(rel_to)
 
-        request = Request('MOVE', abs_from, None, {'Destination': abs_to})
+        request = Request('MOVE', abs_from, None, {'Destination': abs_to},
+                          accepted_errors=[201, 204, 404, 409])
         response = self._perform(request)
 
         code = response.code
@@ -464,15 +452,16 @@ class HttpDavTransport(HttpTransport_urllib):
         server will delete the dir and all its content. That does
         not normally append in bzr.
         """
-        abs_path = self._real_abspath(rel_path)
+        abs_path = self._remote_path(rel_path)
 
-        request = Request('DELETE', abs_path)
+        request = Request('DELETE', abs_path,
+                          accepted_errors=[200, 204, 404, 999])
         response = self._perform(request)
 
         code = response.code
         if code == 404:
             raise NoSuchFile(abs_path)
-        # FIXME: This  is an  horrrrrible workaround to  pass the
+        # FIXME: This  is an  hoooooorible workaround to  pass the
         # tests,  what  we really  should  do  is  test that  the
         # directory  is not  empty *because  bzr do  not  want to
         # remove non-empty dirs*.
@@ -483,10 +472,11 @@ class HttpDavTransport(HttpTransport_urllib):
 
     def copy(self, rel_from, rel_to):
         """See Transport.copy"""
-        abs_from = self._real_abspath(rel_from)
-        abs_to = self._real_abspath(rel_to)
+        abs_from = self._remote_path(rel_from)
+        abs_to = self._remote_path(rel_to)
 
-        request = Request('COPY', abs_from, None, {'Destination': abs_to})
+        request = Request('COPY', abs_from, None, {'Destination': abs_to},
+                          accepted_errors=[201, 404, 409])
         response = self._perform(request)
 
         code = response.code
