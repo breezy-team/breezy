@@ -47,6 +47,15 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * ``DirState._read_dirblocks`` now has an optional Pyrex
+      implementation. This improves the speed of any command that has to
+      read the entire DirState. (``diff``, ``status``, etc, improve by
+      about 10%).
+      ``bisect_dirblocks`` has also been improved, which helps all
+      ``_get_entry`` type calls (whenever we are searching for a
+      particular entry in the in-memory DirState).
+      (John Arbash Meinel)
+
     * ``bzr pull`` and ``bzr push`` no longer do a complete walk of the 
       branch revision history for ui display unless -v is supplied.
       (Robert Collins)
@@ -71,7 +80,7 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * merge now uses iter_changes to calculate changes, which makes room for
+    * merge now uses ``iter_changes`` to calculate changes, which makes room for
       future performance increases.  It is also more consistent with other
       operations that perform comparisons, and reduces reliance on
       Tree.inventory.  (Aaron Bentley)
@@ -100,6 +109,12 @@ IN DEVELOPMENT
       such indices to allow the use of many indices in a single query. The
       index performance is not optimised, however the API is stable to allow
       development on top of the index. (Robert Collins)
+
+    * ``bzrlib.dirstate.cmp_by_dirs`` can be used to compare two paths by
+      their directory sections. This is equivalent to comparing
+      ``path.split('/')``, only without having to split the paths.
+      This has a Pyrex implementation available.
+      (John Arbash Meinel)
 
     * New transport decorator 'unlistable+' which disables the list_dir
       functionality for testing.

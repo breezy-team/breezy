@@ -408,7 +408,8 @@ class WorkingTree4(WorkingTree3):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
-        assert entry[0] is not None, 'what error should this raise'
+        if entry[0] is None:
+            raise errors.NoSuchId(self, file_id)
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
@@ -1688,6 +1689,7 @@ class InterDirStateTree(InterTree):
         """
         utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
+        cmp_by_dirs = dirstate.cmp_by_dirs
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
@@ -2174,7 +2176,7 @@ class InterDirStateTree(InterTree):
                    current_block is not None):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
-                    if current_dir_info[0][0].split('/') < current_block[0].split('/'):
+                    if cmp_by_dirs(current_dir_info[0][0], current_block[0]) < 0:
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
