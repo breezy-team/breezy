@@ -16,7 +16,7 @@
 
 import sys
 
-from bzrlib.tests import TestCaseInTempDir, Feature
+from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
 from bzrlib.win32utils import glob_expand
 
 
@@ -36,12 +36,19 @@ Win32Feature = _Win32Feature()
 
 # Tests
 # -----
-   
+
+class TestWin32Feature(TestCase):
+    
+    def test_available(self):
+        self.assertEqual(sys.platform == 'win32', Win32Feature.available())
+        
+    def test_str(self):
+        self.assertTrue("platform" in str(Win32Feature))
+
+
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
-    def setUp(self):
-        super(TestWin32UtilsGlobExpand, self).setUp()
-        self.requireFeature(Win32Feature)
+    _test_needs_features = [Win32Feature]
    
     def test_empty_tree(self):
         self.build_tree([])
