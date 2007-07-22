@@ -103,7 +103,7 @@ class LogBenchmark(Benchmark):
     def test_cmd_log(self):
         """Test execution of the log command.""" 
         tree = self.make_many_commit_tree(hardlink=True)
-        self.time(self.run_bzr, 'log', '-r', '-4..')
+        self.time(self.run_bzr, ['log', '-r', '-4..'])
 
     def test_cmd_log_subprocess(self):
         """Text startup and execution of the log command.""" 

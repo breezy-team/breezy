@@ -23,6 +23,9 @@ IN DEVELOPMENT
       have been renamed but not otherwise modified.  (Marius Kruger,
       #111664)
 
+    * ``bzr selftest --bench`` no longer emits deprecation warnings
+      (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
