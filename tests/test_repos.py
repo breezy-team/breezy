@@ -453,6 +453,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
@@ -513,10 +514,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([None, 
             repository.generate_revision_id(0, "", "none"),
@@ -587,10 +591,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual({
             repository.generate_revision_id(0, "", "none"): [],

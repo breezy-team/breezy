@@ -1,7 +1,6 @@
 mandatory before 0.4.0:
 - commit still seems to have some issues with deletes
 - fix setting of bzr:file-ids property
-- splittree support
 
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION

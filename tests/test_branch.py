@@ -91,6 +91,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
@@ -173,6 +174,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", 
                 "42 mycommit\n")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
