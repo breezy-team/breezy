@@ -681,11 +681,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_add("dc/blah")
         self.client_commit("dc", "My Message") #1
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2", "dc/bar/foo": "data3"})
         self.client_add("dc/bar")
         self.client_commit("dc", "Second Message") #2
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message") #3
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         inv = repository.get_inventory(
                 repository.generate_revision_id(1, "", "none"))
