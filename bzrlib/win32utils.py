@@ -264,6 +264,6 @@ def glob_expand(file_list):
             expanded_file_list.append(possible_glob)
         else:
             expanded_file_list += glob_files
-    return [elem.replace('\\', '/') for elem in expanded_file_list] 
-
-
+    expanded_file_list = [_ensure_unicode(elem) for elem in expanded_file_list]
+    expanded_file_list = [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
+    return expanded_file_list

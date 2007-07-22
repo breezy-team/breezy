@@ -59,6 +59,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['a', 'a'], ['a', 'a']]])
         
     def test_tree1(self):
+        """Checks the glob expansion and path separation char
+        normalization"""
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
                          'b', 'b1', 'b2', 'b3',
                          'c/', 'c/c1', 'c/c2', 
@@ -72,7 +74,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['d'], ['d']],
             [['d/'], ['d/']],
             [['d\\'], ['d/']],
-               
+            
             # wildcards
             [['a*'], ['a', 'a1', 'a2', 'a11', 'a.1']],
             [['?'], ['a', 'b', 'c', 'd']],
@@ -88,6 +90,24 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['*/'], ['c/', 'd/']],
             [['*\\'], ['c/', 'd/']]])
         
+    def test_tree2(self):
+        """Checks behaviour with non-ascii filenames"""
+        self.build_tree([u'ä', u'é', u'ö/', u'ö/öö'])
+        self._run_testset([
+            # no wildcards
+            [[u'ä'], [u'ä']],
+            [[u'é'], [u'é']],
+            
+            [[u'ö/'], [u'ö/']],
+            [[u'ö/öö'], [u'ö/öö']],
+            
+            # wildcards
+            [[u'?'], [u'ä', u'é', u'ö']],
+            [[u'*'], [u'ä', u'é', u'ö']],
+            
+            [[u'*/'], [u'ö/']],
+            [[u'*/*'], [u'ö/öö']]])
+
     def _run_testset(self, testset):
         for pattern, expected in testset:
             result = glob_expand(pattern)
