@@ -592,27 +592,18 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", specific_files)
 
         # Check and warn about old CommitBuilders
-        old_commit_builder = not self.builder.record_root_entry
-        if old_commit_builder:
+        if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
                 ' the root entry as of bzr 0.10.', DeprecationWarning, 
                 stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
 
         # Build the new inventory
-        self._populate_from_inventory(specific_files, old_commit_builder)
+        self._populate_from_inventory(specific_files)
 
-        # If specific files/directories were nominated, it is possible
-        # that some data from outside those needs to be preserved from
-        # the basis tree. For example, if a file x is moved from out of
-        # directory foo into directory bar and the user requests
-        # ``commit foo``, then information about bar/x must also be
-        # recorded.
-        # ABENTLEY says:
-        # This implies that bar knows what its children are, which isn't
-        # really accurate.  Strictly speaking, bar only needs to be committed
-        # if it wasn't a directory in the basis tree - the current
-        # implementation is overkill.
+        # If specific files are selected, then all un-selected files must be
+        # recorded in their previous state. For more details, see
+        # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
         if specific_files:
             for path, new_ie in self.basis_inv.iter_entries():
                 if new_ie.file_id in self.builder.new_inventory:
@@ -631,7 +622,7 @@ class Commit(object):
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
-    def _populate_from_inventory(self, specific_files, skip_first_entry):
+    def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
         if self.strict:
             # raise an exception as soon as we find a single unknown.
@@ -643,7 +634,7 @@ class Commit(object):
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
         entries = work_inv.iter_entries()
-        if skip_first_entry:
+        if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
             file_id = existing_ie.file_id
