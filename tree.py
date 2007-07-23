@@ -17,7 +17,7 @@
 
 from bzrlib.inventory import Inventory
 
-import bzrlib.osutils as osutils
+from bzrlib import osutils, urlutils
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -71,7 +71,7 @@ class SvnRevisionTree(RevisionTree):
         root_repos = repository.transport.get_repos_root()
         reporter = repository.transport.do_switch(
                 self.revnum, "", True, 
-                os.path.join(root_repos, self.branch_path), editor, baton, pool)
+                urlutils.join(root_repos, self.branch_path), editor, baton, pool)
         reporter.set_path("", 0, True, None, pool)
         reporter.finish_report(pool)
         pool.destroy()

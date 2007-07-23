@@ -15,10 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Cache of the Subversion history log."""
 
+from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision
 import bzrlib.ui as ui
-
-import os
 
 from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
@@ -265,7 +264,7 @@ class LogWalker(object):
                 return path
 
             def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-                self.files.append(os.path.join(self.base, path))
+                self.files.append(urlutils.join(self.base, path))
                 return path
 
             def change_dir_prop(self, id, name, value, pool):
@@ -275,7 +274,7 @@ class LogWalker(object):
                 pass
 
             def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-                self.files.append(os.path.join(self.base, path))
+                self.files.append(urlutils.join(self.base, path))
                 return path
 
             def close_dir(self, id):
@@ -298,7 +297,7 @@ class LogWalker(object):
         old_base = self.transport.base
         try:
             root_repos = self.transport.get_repos_root()
-            self.transport.reparent(os.path.join(root_repos, path))
+            self.transport.reparent(urlutils.join(root_repos, path))
             reporter = self.transport.do_update(
                             revnum, "", True, edit, baton, pool)
             reporter.set_path("", revnum, True, None, pool)
