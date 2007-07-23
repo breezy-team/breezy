@@ -74,6 +74,9 @@ IN DEVELOPMENT
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
+    * Commit now only shows the progress in terms of directories instead of
+      entries. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
