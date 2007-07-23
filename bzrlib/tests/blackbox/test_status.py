@@ -28,7 +28,11 @@ from os import mkdir, chdir, rmdir, unlink
 import sys
 from tempfile import TemporaryFile
 
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    bzrdir,
+    conflicts,
+    errors,
+    )
 import bzrlib.branch
 from bzrlib.builtins import merge
 from bzrlib.osutils import pathjoin
@@ -226,6 +230,30 @@ class BranchStatus(TestCaseWithTransport):
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['?   dir2/\n'])
+
+    def test_specific_files_conflicts(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir2/'])
+        tree.add('dir2')
+        tree.commit('added dir2')
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('foo')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('', tof.getvalue())
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('dir2')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2\n',
+                             tof.getvalue())
+
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('dir2/file1')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
+                             tof.getvalue())
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree

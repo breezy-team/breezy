@@ -233,7 +233,8 @@ class ConflictList(object):
                     if e.errno != errno.ENOENT:
                         raise
 
-    def select_conflicts(self, tree, paths, ignore_misses=False):
+    def select_conflicts(self, tree, paths, ignore_misses=False,
+                         recurse=False):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
@@ -258,6 +259,11 @@ class ConflictList(object):
                 if cpath in path_set:
                     selected = True
                     selected_paths.add(cpath)
+                if recurse:
+                    if osutils.is_inside_any(path_set, cpath):
+                        selected = True
+                        selected_paths.add(cpath)
+
             for key in ('file_id', 'conflict_file_id'):
                 cfile_id = getattr(conflict, key, None)
                 if cfile_id is None:
