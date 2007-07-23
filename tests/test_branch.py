@@ -505,7 +505,9 @@ foohosts""")
                 generate_svn_revision_id(uuid, 7, "branches/foobranch", 
                 "trunk0"))
 
-        weave = tree.get_weave(tree.inventory.path2id("hosts"))
+        weave = newbranch.repository.weave_store.get_weave(
+            tree.inventory.path2id("hosts"),
+            newbranch.repository.get_transaction())
         self.assertEqual([
             generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
             generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")],
@@ -550,7 +552,9 @@ foohosts""")
         tree = newbranch.repository.revision_tree(
              generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
 
-        weave = tree.get_weave(tree.inventory.path2id("hosts"))
+        weave = newbranch.repository.weave_store.get_weave(
+                tree.inventory.path2id("hosts"), 
+                newbranch.repository.get_transaction())
         self.assertEqual([
             generate_svn_revision_id(uuid, 1, "trunk", "trunk0"),
             generate_svn_revision_id(uuid, 2, "trunk", "trunk0"),
