@@ -64,7 +64,7 @@ class SvnBranch(Branch):
         super(SvnBranch, self).__init__()
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
-        self._branch_path = branch_path
+        self._branch_path = branch_path.strip("/")
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()

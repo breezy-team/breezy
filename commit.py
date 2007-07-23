@@ -421,11 +421,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         revid = self.branch.generate_revision_id(self.revnum)
 
-        # TODO: for some reason, branch properties don't seem to be accessible 
-        # at this point!?
-        #assert self._new_revision_id is None or self._new_revision_id == revid
-        if self._new_revision_id is not None:
-            revid = self._new_revision_id
+        assert self._new_revision_id is None or self._new_revision_id == revid
 
         mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
                (self.revnum, self.author, self.date, revid))
@@ -662,6 +658,7 @@ def push(target, source, revision_id):
             raise DivergedBranches(source, target)
         raise
 
+
 class InterToSvnRepository(InterRepository):
     """Any to Subversion repository actions."""
 
@@ -682,6 +679,7 @@ class InterToSvnRepository(InterRepository):
             if revision_id == NULL_REVISION:
                 raise "Unrelated repositories."
         mutter("pushing %r into svn" % todo)
+        target_branch = None
         for revision_id in todo:
             if pb is not None:
                 pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -695,7 +693,8 @@ class InterToSvnRepository(InterRepository):
             new_tree = self.source.revision_tree(parent_revid)
 
             (bp, _, scheme) = self.target.lookup_revision_id(parent_revid)
-            target_branch = Branch.open(urlutils.join(self.target.base, bp))
+            if target_branch is None or target_branch.get_branch_path() != bp:
+                target_branch = Branch.open(urlutils.join(self.target.base, bp))
 
             builder = SvnCommitBuilder(self.target, target_branch, 
                                rev.parent_ids,
