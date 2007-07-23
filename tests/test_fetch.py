@@ -36,6 +36,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/test': "data"})
         self.client_add("dc/test")
         self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
+        self.client_set_prop("dc", "bzr:revision-info", "")
         self.client_commit("dc", "Msg")
 
         oldrepos = Repository.open(repos_url)

@@ -145,7 +145,6 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEquals(1, paths["/bar"].copyfrom_rev)
         self.assertEquals("bar\t%s\n" % oldid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 2))
-                          
 
     def test_commit_rename_file_from_directory(self):
         repos_url = self.make_client('d', 'dc')
@@ -498,8 +497,15 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         self.build_tree({'b/file': 'data'})
         wt.add('file')
         oldid = wt.path2id("file")
-        revid = wt.commit(message="Commit from Bzr")
+        revid1 = wt.commit(message="Commit from Bzr")
+        wt.rename_one('file', 'file2')
+        revid2 = wt.commit(message="Commit from Bzr")
         master_branch = Branch.open(repos_url)
-        self.assertEquals(revid, master_branch.last_revision())
         self.assertEquals("file\t%s\n" % oldid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 1))
+        self.assertEquals("file2\t%s\n" % oldid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 2))
+        tree1 = master_branch.repository.revision_tree(revid1)
+        tree2 = master_branch.repository.revision_tree(revid2)
+        delta = tree2.changes_from(tree1)
+        self.assertEquals(1, len(delta.renamed))

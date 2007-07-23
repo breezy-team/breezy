@@ -582,11 +582,7 @@ class SvnWorkingTree(WorkingTree):
         else:
             assert isinstance(id, str)
             new_entries[path] = id
-        committed = self.branch.repository.branchprop_list.get_property(
-                self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, 
-                SVN_PROP_BZR_FILEIDS, "")
-        existing = committed + "".join(map(lambda (path, id): "%s\t%s\n" % (path, id), new_entries.items()))
+        existing = "".join(map(lambda (path, id): "%s\t%s\n" % (path, id), new_entries.items()))
         if existing != "":
             svn.wc.prop_set(SVN_PROP_BZR_FILEIDS, existing.encode("utf-8"), self.basedir, subwc)
         if wc is None:
@@ -597,11 +593,10 @@ class SvnWorkingTree(WorkingTree):
                 self.branch.get_branch_path(self.base_revnum), self.base_revnum, 
                 SVN_PROP_BZR_FILEIDS, "")
         existing = svn.wc.prop_get(SVN_PROP_BZR_FILEIDS, self.basedir, wc)
-        if existing is None:
+        if existing is None or committed == existing:
             return {}
-        else:
-            return dict(map(lambda x: str(x).split("\t"), 
-                existing[len(committed):].splitlines()))
+        return dict(map(lambda x: str(x).split("\t"), 
+            existing.splitlines()))
 
     def _get_bzr_revids(self):
         return self.branch.repository.branchprop_list.get_property(

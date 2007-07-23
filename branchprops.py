@@ -82,6 +82,24 @@ class BranchPropertyList:
             return props[name]
         return default
 
+    def touches_property(self, path, revnum, name):
+        """Check whether a property was modified in a revision."""
+        assert isinstance(path, str)
+        assert isinstance(revnum, int)
+        assert isinstance(name, str)
+        # If the path this property is set on didn't change, then 
+        # the property can't have changed.
+        if not self.log.touches_path(path, revnum):
+            return ""
+
+        current = self.get_property(path, revnum, name, None)
+        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
+        if prev_path is None and prev_revnum == -1:
+            return (current is not None)
+        previous = self.get_property(prev_path.encode("utf-8"), 
+                                     prev_revnum, name, None)
+        return (previous != current)
+
     def get_property_diff(self, path, revnum, name):
         """Returns the new lines that were added to a particular property."""
         assert isinstance(path, str)

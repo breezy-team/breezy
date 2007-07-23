@@ -386,9 +386,16 @@ class SvnRepository(Repository):
         :return: dictionary with paths as keys, file ids as values
         """
         (path, revnum, scheme) = self.lookup_revision_id(revid)
+        # Only consider bzr:file-ids if this is a bzr revision
+        if not self.branchprop_list.touches_property(path, revnum, 
+                SVN_PROP_BZR_REVISION_INFO):
+            return {}
+        fileids = self.branchprop_list.get_property(path, revnum, 
+                                                    SVN_PROP_BZR_FILEIDS)
+        if fileids is None:
+            return {}
         ret = {}
-        for line in self.branchprop_list.get_property_diff(path, revnum, 
-                SVN_PROP_BZR_FILEIDS).splitlines():
+        for line in fileids.splitlines():
             (path, key) = line.split("\t", 2)
             ret[path] = osutils.safe_file_id(key)
         return ret

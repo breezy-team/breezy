@@ -399,6 +399,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:revision-info", "")
         self.client_set_prop("dc", "bzr:file-ids", "foo\tsomeid\n")
         self.client_commit("dc", "My Message")
         repository = Repository.open("svn+%s" % repos_url)
@@ -852,6 +853,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/test': "data"})
         self.client_add("dc/test")
+        self.client_set_prop("dc", "bzr:revision-info", "")
         self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
         self.client_commit("dc", "Msg")
 
