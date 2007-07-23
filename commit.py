@@ -26,6 +26,7 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
+import os
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
@@ -108,7 +109,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             assert self.old_inv.revision_id == self.base_revid
 
         self.modified_files = {}
-        self.modified_dirs = []
+        self.modified_dirs = set()
 
     def _record_revision_id(self, revid):
         if self.base_revid is not None:
@@ -168,7 +169,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def modified_directory(self, file_id, file_parents):
         mutter('modifying directory %s' % file_id)
-        self.modified_dirs.append(file_id)
+        self.modified_dirs.add(file_id)
 
     def _file_process(self, file_id, contents, baton):
         assert baton is not None
@@ -435,6 +436,14 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         return revid
 
+    def _record_file_id(self, ie, path):
+        # Make sure that ie.file_id exists in the map
+        if not ie.file_id in self.old_inv:
+            if not self._svnprops.has_key(SVN_PROP_BZR_FILEIDS):
+                self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
+            mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
+            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
+
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
@@ -456,12 +465,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if ie.revision is not None:
             return
 
-        # Make sure that ie.file_id exists in the map
-        if not ie.file_id in self.old_inv:
-            if not self._svnprops.has_key(SVN_PROP_BZR_FILEIDS):
-                self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
-            mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
-            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
+        self._record_file_id(ie, path)
 
         previous_entries = ie.find_previous_heads(parent_invs, 
             self.repository.weave_store, self.repository.get_transaction())
@@ -478,9 +482,10 @@ def replay_delta(builder, delta, old_tree):
     :param delta: Treedelta to apply
     :param old_tree: Original tree on top of which the delta should be applied
     """
-    for (_, ie) in builder.new_inventory.entries():
-        if not delta.touches_file_id(ie.file_id):
-            continue
+    def touch_id(id):
+        ie = builder.new_inventory[id]
+        path = builder.new_inventory.id2path(id)
+        builder._record_file_id(ie, path)
 
         id = ie.file_id
         while builder.new_inventory[id].parent_id is not None:
@@ -497,6 +502,18 @@ def replay_delta(builder, delta, old_tree):
             def get_text():
                 return old_tree.get_file_text(ie.file_id)
             builder.modified_file_text(ie.file_id, [], get_text)
+
+    for (_, id, _) in delta.added + delta.removed:
+        touch_id(id)
+
+    for (_, id, _, _, _) in delta.modified:
+        touch_id(id)
+
+    for (oldpath, _, id, _, _, _) in delta.renamed:
+        touch_id(id)
+        touch_id(old_tree.inventory.path2id(os.path.dirname(oldpath)))
+
+    builder.finish_inventory()
 
 
 def push_as_merged(target, source, revision_id):
@@ -538,7 +555,7 @@ def push_as_merged(target, source, revision_id):
                                None,
                                new_tree.inventory)
                          
-    delta = new_tree.changes_from(old_tree)
+    delta = old_tree.changes_from(new_tree)
     builder.new_inventory = inv
     replay_delta(builder, delta, old_tree)
 
@@ -638,7 +655,7 @@ def push(target, source, revision_id):
                                revision_id,
                                new_tree.inventory)
                          
-    delta = new_tree.changes_from(old_tree)
+    delta = old_tree.changes_from(new_tree)
     builder.new_inventory = inv
     replay_delta(builder, delta, old_tree)
     try:
@@ -693,7 +710,7 @@ class InterToSvnRepository(InterRepository):
                                revision_id,
                                new_tree.inventory)
                          
-            delta = new_tree.changes_from(old_tree)
+            delta = old_tree.changes_from(new_tree)
             builder.new_inventory = inv
             replay_delta(builder, delta, old_tree)
             builder.commit(rev.message)
