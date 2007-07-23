@@ -111,6 +111,9 @@ class TestConflicts(TestCaseWithTransport):
                          tree_conflicts.select_conflicts(tree, ['foo'],
                                                          recurse=True,
                                                          ignore_misses=True))
+        self.assertEqual((tree_conflicts, ConflictList()),
+                         tree_conflicts.select_conflicts(tree, ['foo'],
+                                                         ignore_misses=True))
 
 
 class TestConflictStanzas(TestCase):
