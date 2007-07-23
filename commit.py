@@ -160,17 +160,14 @@ class SvnCommitBuilder(RootCommitBuilder):
     def modified_file_text(self, file_id, file_parents,
                            get_content_byte_lines, text_sha1=None,
                            text_size=None):
-        mutter('modifying file %s' % file_id)
         new_lines = get_content_byte_lines()
         self.modified_files[file_id] = "".join(new_lines)
         return osutils.sha_strings(new_lines), sum(map(len, new_lines))
 
     def modified_link(self, file_id, file_parents, link_target):
-        mutter('modifying link %s' % file_id)
         self.modified_files[file_id] = "link %s" % link_target
 
     def modified_directory(self, file_id, file_parents):
-        mutter('modifying directory %s' % file_id)
         self.modified_dirs.add(file_id)
 
     def _file_process(self, file_id, contents, baton):
@@ -474,13 +471,14 @@ class SvnCommitBuilder(RootCommitBuilder):
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
-def replay_delta(builder, delta, old_tree):
+def replay_delta(builder, old_tree, new_tree):
     """Replays a delta to a commit builder.
 
     :param builder: The commit builder.
-    :param delta: Treedelta to apply
     :param old_tree: Original tree on top of which the delta should be applied
+    :param new_tree: New tree that should be committed
     """
+    delta = new_tree.changes_from(old_tree)
     def touch_id(id):
         ie = builder.new_inventory[id]
         path = builder.new_inventory.id2path(id)
@@ -499,7 +497,7 @@ def replay_delta(builder, delta, old_tree):
             builder.modified_link(ie.file_id, [], ie.symlink_target)
         elif ie.kind == 'file':
             def get_text():
-                return old_tree.get_file_text(ie.file_id)
+                return new_tree.get_file_text(ie.file_id)
             builder.modified_file_text(ie.file_id, [], get_text)
 
     for (_, id, _) in delta.added:
@@ -510,7 +508,9 @@ def replay_delta(builder, delta, old_tree):
 
     for (oldpath, _, id, _, _, _) in delta.renamed:
         touch_id(id)
-        touch_id(old_tree.inventory.path2id(os.path.dirname(oldpath)))
+        old_parent_id = old_tree.inventory.path2id(os.path.dirname(oldpath))
+        if old_parent_id in builder.new_inventory:
+            touch_id(old_parent_id)
 
     builder.finish_inventory()
 
@@ -554,9 +554,8 @@ def push_as_merged(target, source, revision_id):
                                None,
                                new_tree.inventory)
                          
-    delta = old_tree.changes_from(new_tree)
     builder.new_inventory = inv
-    replay_delta(builder, delta, old_tree)
+    replay_delta(builder, new_tree, old_tree)
 
     try:
         return builder.commit(rev.message)
@@ -654,9 +653,8 @@ def push(target, source, revision_id):
                                revision_id,
                                new_tree.inventory)
                          
-    delta = old_tree.changes_from(new_tree)
     builder.new_inventory = inv
-    replay_delta(builder, delta, old_tree)
+    replay_delta(builder, new_tree, old_tree)
     try:
         return builder.commit(rev.message)
     except SubversionException, (msg, num):
@@ -709,9 +707,8 @@ class InterToSvnRepository(InterRepository):
                                revision_id,
                                new_tree.inventory)
                          
-            delta = old_tree.changes_from(new_tree)
             builder.new_inventory = inv
-            replay_delta(builder, delta, old_tree)
+            replay_delta(builder, new_tree, old_tree)
             builder.commit(rev.message)
  
 

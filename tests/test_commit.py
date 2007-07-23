@@ -422,6 +422,23 @@ class TestPush(TestCaseWithSubversionRepository):
         mutter('paths %r' % paths)
         self.assertEquals('D', paths["/foob"].action)
 
+    def test_commit_rename_remove_parent(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/adir/foob': "data"})
+        wt.add("adir")
+        wt.add("adir/foob")
+        wt.commit(message="data")
+        wt.rename_one("adir/foob", "bar")
+        wt.remove(["adir"])
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/adir"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/adir/foob', paths["/bar"].copyfrom_path)
+        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+
 
 class TestPushNested(TestCaseWithSubversionRepository):
     def setUp(self):
