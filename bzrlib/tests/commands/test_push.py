@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,16 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzr tree building (checkout) performance."""
+
+from bzrlib.builtins import cmd_push
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
 
 
-from bzrlib.benchmarks import Benchmark
+class TestPush(TestCaseWithConnectionHookedTransport):
 
+    def test_push(self):
+        self.make_branch_and_tree('branch')
 
-class CheckoutBenchmark(Benchmark):
-    """Benchmarks for ``'bzr checkout'`` performance."""
+        self.install_hooks()
 
-    def test_build_kernel_like_tree(self):
-        """Checkout of a clean kernel sized tree should be (<10secs)."""
-        self.make_kernel_like_committed_tree(link_bzr=True)
-        self.time(self.run_bzr, ['checkout', '--lightweight', '.', 'acheckout'])
+        cmd = cmd_push()
+        cmd.run(self.get_url('remote'), directory='branch')
+        self.assertEquals(1, len(self.connections))
+

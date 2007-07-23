@@ -594,13 +594,8 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
 
-        reader = None
         if location is not None:
-            try:
-                mergeable = bundle.read_mergeable_from_url(
-                    location)
-            except errors.NotABundle:
-                pass # Continue on considering this url a Branch
+            mergeable, location_transport = _get_bundle_helper(location)
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -612,6 +607,7 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
+                location_transport = transport.get_transport(location)
 
         if mergeable is not None:
             if revision is not None:
@@ -622,7 +618,7 @@ class cmd_pull(Command):
                 mergeable.get_merge_request(branch_to.repository)
             branch_from = branch_to
         else:
-            branch_from = Branch.open(location)
+            branch_from = Branch.open_from_transport(location_transport)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
@@ -885,7 +881,8 @@ class cmd_branch(Command):
                                              % to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base, revision_id)
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                            possible_transports=[to_transport])
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -1299,11 +1296,12 @@ class cmd_init(Command):
             _create_prefix(to_transport)
 
         try:
-            existing_bzrdir = bzrdir.BzrDir.open(location)
+            existing_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
-                                                             format=format)
+            create_branch = bzrdir.BzrDir.create_branch_convenience
+            branch = create_branch(to_transport.base, format=format,
+                                   possible_transports=[to_transport])
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
@@ -2641,8 +2639,6 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
-        other_revision_id = None
-        base_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2658,13 +2654,14 @@ class cmd_merge(Command):
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored)
 
+        other_transport = None
+        other_revision_id = None
+        base_revision_id = None
+        possible_transports = []
+
         if branch is not None:
-            try:
-                mergeable = bundle.read_mergeable_from_url(
-                    branch)
-            except errors.NotABundle:
-                pass # Continue on considering this url a Branch
-            else:
+            mergeable, other_transport = _get_bundle_helper(branch)
+            if mergeable:
                 if revision is not None:
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
@@ -2678,6 +2675,7 @@ class cmd_merge(Command):
                 path = ''
                 other = None
                 base = None
+            possible_transports.append(other_transport)
 
         if other_revision_id is None:
             verified = 'inapplicable'
@@ -2693,7 +2691,8 @@ class cmd_merge(Command):
                 else:
                     base = [None, None]
                     other = [branch, -1]
-                other_branch, path = Branch.open_containing(branch)
+                other_branch, path = Branch.open_containing(branch,
+                                                            possible_transports)
             else:
                 if uncommitted:
                     raise errors.BzrCommandError('Cannot use --uncommitted and'
@@ -2701,7 +2700,8 @@ class cmd_merge(Command):
                 branch = revision[0].get_branch() or branch
                 if len(revision) == 1:
                     base = [None, None]
-                    other_branch, path = Branch.open_containing(branch)
+                    other_branch, path = Branch.open_containing(
+                        branch, possible_transports)
                     revno = revision[0].in_history(other_branch).revno
                     other = [branch, revno]
                 else:
@@ -2709,9 +2709,11 @@ class cmd_merge(Command):
                     if None in revision:
                         raise errors.BzrCommandError(
                             "Merge doesn't permit empty revision specifier.")
-                    base_branch, path = Branch.open_containing(branch)
+                    base_branch, path = Branch.open_containing(
+                        branch, possible_transports)
                     branch1 = revision[1].get_branch() or branch
-                    other_branch, path1 = Branch.open_containing(branch1)
+                    other_branch, path1 = Branch.open_containing(
+                        branch1, possible_transports)
                     if revision[0].get_branch() is not None:
                         # then path was obtained from it, and is None.
                         path = path1
@@ -2720,6 +2722,7 @@ class cmd_merge(Command):
                     other = [branch1,
                              revision[1].in_history(other_branch).revno]
 
+        # Remember where we merge from
         if ((tree.branch.get_parent() is None or remember) and
             other_branch is not None):
             tree.branch.set_parent(other_branch.base)
@@ -2746,7 +2749,8 @@ class cmd_merge(Command):
                     pull=pull,
                     this_dir=directory,
                     pb=pb, file_list=interesting_files,
-                    change_reporter=change_reporter)
+                    change_reporter=change_reporter,
+                    possible_transports=possible_transports)
             finally:
                 pb.finished()
             if verified == 'failed':
@@ -3032,10 +3036,11 @@ class cmd_missing(Command):
         if other_branch is None:
             other_branch = parent
             if other_branch is None:
-                raise errors.BzrCommandError("No peer location known or specified.")
+                raise errors.BzrCommandError("No peer location known"
+                                             " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            print "Using last location: " + display_url
+            self.outf.write("Using last location: " + display_url + "\n")
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -3044,10 +3049,11 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-                if (log_format is None):
-                    log_format = log.log_formatter_registry.get_default(
-                        local_branch)
+                local_extra, remote_extra = find_unmerged(local_branch,
+                                                          remote_branch)
+                if log_format is None:
+                    registry = log.log_formatter_registry
+                    log_format = registry.get_default(local_branch)
                 lf = log_format(to_file=self.outf,
                                 show_ids=show_ids,
                                 show_timezone='original')
@@ -3055,8 +3061,9 @@ class cmd_missing(Command):
                     local_extra.reverse()
                     remote_extra.reverse()
                 if local_extra and not theirs_only:
-                    print "You have %d extra revision(s):" % len(local_extra)
-                    for revision in iter_log_revisions(local_extra, 
+                    self.outf.write("You have %d extra revision(s):\n" %
+                                    len(local_extra))
+                    for revision in iter_log_revisions(local_extra,
                                         local_branch.repository,
                                         verbose):
                         lf.log_revision(revision)
@@ -3065,15 +3072,16 @@ class cmd_missing(Command):
                     printed_local = False
                 if remote_extra and not mine_only:
                     if printed_local is True:
-                        print "\n\n"
-                    print "You are missing %d revision(s):" % len(remote_extra)
-                    for revision in iter_log_revisions(remote_extra, 
-                                        remote_branch.repository, 
+                        self.outf.write("\n\n\n")
+                    self.outf.write("You are missing %d revision(s):\n" %
+                                    len(remote_extra))
+                    for revision in iter_log_revisions(remote_extra,
+                                        remote_branch.repository,
                                         verbose):
                         lf.log_revision(revision)
                 if not remote_extra and not local_extra:
                     status_code = 0
-                    print "Branches are up to date."
+                    self.outf.write("Branches are up to date.\n")
                 else:
                     status_code = 1
             finally:
@@ -3879,7 +3887,8 @@ def _merge_helper(other_revision, base_revision,
                   pull=False,
                   pb=DummyProgress(),
                   change_reporter=None,
-                  other_rev_id=None, base_rev_id=None):
+                  other_rev_id=None, base_rev_id=None,
+                  possible_transports=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3938,7 +3947,7 @@ def _merge_helper(other_revision, base_revision,
         if other_rev_id is not None:
             merger.set_other_revision(other_rev_id, this_tree.branch)
         else:
-            merger.set_other(other_revision)
+            merger.set_other(other_revision, possible_transports)
         merger.pp.next_phase()
         if base_rev_id is not None:
             merger.set_base_revision(base_rev_id, this_tree.branch)
@@ -3992,6 +4001,34 @@ def _create_prefix(cur_transport):
     while needed:
         cur_transport = needed.pop()
         cur_transport.ensure_base()
+
+
+def _get_bundle_helper(location):
+    """Get a bundle if 'location' points to one.
+
+    Try try to identify a bundle and returns its mergeable form. If it's not,
+    we return the tried transport anyway so that it can reused to access the
+    branch
+
+    :param location: can point to a bundle or a branch.
+
+    :return: mergeable, transport
+    """
+    mergeable = None
+    url = urlutils.normalize_url(location)
+    url, filename = urlutils.split(url, exclude_trailing_slash=False)
+    location_transport = transport.get_transport(url)
+    if filename:
+        try:
+            # There may be redirections but we ignore the intermediate
+            # and final transports used
+            read = bundle.read_mergeable_from_transport
+            mergeable, t = read(location_transport, filename)
+        except errors.NotABundle:
+            # Continue on considering this url a Branch but adjust the
+            # location_transport
+            location_transport = location_transport.clone(filename)
+    return mergeable, location_transport
 
 
 # Compatibility

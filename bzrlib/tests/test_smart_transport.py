@@ -953,7 +953,8 @@ class WritableEndToEndTests(SmartTCPTests):
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
         conn2 = self.transport.clone('.')
-        self.assertIs(self.transport._medium, conn2._medium)
+        self.assertIs(self.transport.get_smart_medium(),
+                      conn2.get_smart_medium())
 
     def test__remote_path(self):
         self.assertEquals('/foo/bar',

@@ -100,13 +100,13 @@ class Merger(object):
             self._cached_trees[revision_id] = tree
         return self._cached_trees[revision_id]
 
-    def _get_tree(self, treespec):
+    def _get_tree(self, treespec, possible_transports=None):
         from bzrlib import workingtree
         location, revno = treespec
         if revno is None:
             tree = workingtree.WorkingTree.open_containing(location)[0]
             return tree.branch, tree
-        branch = Branch.open_containing(location)[0]
+        branch = Branch.open_containing(location, possible_transports)[0]
         if revno == -1:
             revision_id = branch.last_revision()
         else:
@@ -164,7 +164,7 @@ class Merger(object):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor or not self.base_is_other_ancestor:
+        if not self.base_is_ancestor or not self.base_is_other_ancestor or self.other_rev_id is None:
             return
         self._add_parent()
 
@@ -187,14 +187,15 @@ class Merger(object):
                 if tree is not None:
                     tree.unlock()
 
-    def set_other(self, other_revision):
+    def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
 
         This sets the other_tree, other_rev_id, other_basis attributes.
 
         :param other_revision: The [path, revision] list to merge from.
         """
-        self.other_branch, self.other_tree = self._get_tree(other_revision)
+        self.other_branch, self.other_tree = self._get_tree(other_revision,
+                                                            possible_transports)
         if other_revision[1] == -1:
             self.other_rev_id = _mod_revision.ensure_null(
                 self.other_branch.last_revision())
