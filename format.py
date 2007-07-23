@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion BzrDir formats."""
 
+from bzrlib import urlutils
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree, AlreadyBranchError)
@@ -139,12 +141,14 @@ class SvnRemoteAccess(BzrDir):
         from commit import push_new
         if stop_revision is None:
             stop_revision = source.last_revision()
+        target_branch_path = self.branch_path.strip("/")
         repos = self.find_repository()
-        if repos.transport.check_path(self.branch_path.strip("/"),
+        full_branch_url = urlutils.join(repos.transport.base, 
+                                        target_branch_path)
+        if repos.transport.check_path(target_branch_path,
             repos.transport.get_latest_revnum()) != svn.core.svn_node_none:
-            raise AlreadyBranchError(self.root_transport.base)
-        push_new(repos, self.branch_path, source, 
-                 stop_revision)
+            raise AlreadyBranchError(full_branch_url)
+        push_new(repos, target_branch_path, source, stop_revision)
         branch = self.open_branch()
         branch.pull(source)
         return branch

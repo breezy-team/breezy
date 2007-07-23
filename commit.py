@@ -106,7 +106,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.old_inv = self.repository.get_inventory(self.base_revid)
         else:
             self.old_inv = old_inv
-            assert self.old_inv.revision_id == self.base_revid
+            # Not all repositories appear to set Inventory.revision_id, 
+            # so allow None as well.
+            assert self.old_inv.revision_id in (None, self.base_revid)
 
         self.modified_files = {}
         self.modified_dirs = set()
@@ -503,7 +505,7 @@ def replay_delta(builder, delta, old_tree):
                 return old_tree.get_file_text(ie.file_id)
             builder.modified_file_text(ie.file_id, [], get_text)
 
-    for (_, id, _) in delta.added + delta.removed:
+    for (_, id, _) in delta.added:
         touch_id(id)
 
     for (_, id, _, _, _) in delta.modified:

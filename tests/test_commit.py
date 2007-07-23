@@ -410,6 +410,18 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
         self.assertEquals(2, paths["/bar"].copyfrom_rev)
 
+    def test_commit_remove(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/foob': "data"})
+        wt.add("foob")
+        wt.commit(message="data")
+        wt.remove(["foob"])
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/foob"].action)
+
 
 class TestPushNested(TestCaseWithSubversionRepository):
     def setUp(self):
