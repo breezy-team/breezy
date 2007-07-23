@@ -942,7 +942,8 @@ class cmd_checkout(Command):
             to_location = branch_location
         source = Branch.open(branch_location)
         if len(revision) == 1 and revision[0] is not None:
-            revision_id = revision[0].in_history(source)[1]
+            revision_id = _mod_revision.ensure_null(
+                revision[0].in_history(source)[1])
         else:
             revision_id = None
         if to_location is None:
@@ -955,7 +956,7 @@ class cmd_checkout(Command):
             try:
                 source.bzrdir.open_workingtree()
             except errors.NoWorkingTree:
-                source.bzrdir.create_workingtree()
+                source.bzrdir.create_workingtree(revision_id)
                 return
         try:
             os.mkdir(to_location)

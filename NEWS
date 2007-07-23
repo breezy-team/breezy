@@ -29,6 +29,9 @@ IN DEVELOPMENT
     * ``bzr status`` now honours FILE parameters for conflict lists
       (Aaron Bentley, #127606)
 
+    * ``bzr checkout`` now honours -r when reconstituting a working tree.
+      It also honours -r 0.  (Aaron Bentley, #127708)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
