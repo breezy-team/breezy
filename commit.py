@@ -502,6 +502,11 @@ def replay_delta(builder, old_tree, new_tree):
         if old_parent_id in builder.new_inventory:
             touch_id(old_parent_id)
 
+    for (path, _, _) in delta.removed:
+        old_parent_id = old_tree.inventory.path2id(os.path.dirname(path))
+        if old_parent_id in builder.new_inventory:
+            touch_id(old_parent_id)
+
     builder.finish_inventory()
 
 
