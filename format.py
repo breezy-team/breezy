@@ -65,7 +65,7 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-            recurse='down'):
+            recurse='down', possible_transports=None):
         """See BzrDir.sprout()."""
         # FIXME: Use recurse
         format = get_rich_root_format()
