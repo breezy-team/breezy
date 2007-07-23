@@ -253,7 +253,7 @@ class cmd_svn_upgrade(Command):
 
 register_command(cmd_svn_upgrade)
 
-class cmd_svn_push_new(Command):
+class cmd_svn_push(Command):
     """Create a new branch in Subversion.
     
     This command is experimental and will be removed in the future.
@@ -265,18 +265,22 @@ class cmd_svn_push_new(Command):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         bzrdir = BzrDir.open(location)
-        branch = Branch.open(".")
+        source_branch = Branch.open(".")
         if revision is not None:
             if len(revision) > 1:
                 raise errors.BzrCommandError(
-                    'bzr svn-push-new --revision takes exactly one revision' 
+                    'bzr svn-push --revision takes exactly one revision' 
                     ' identifier')
-            revision_id = revision[0].in_history(branch).rev_id
+            revision_id = revision[0].in_history(source_branch).rev_id
         else:
             revision_id = None
-        bzrdir.import_branch(branch, revision_id)
+        try:
+            target_branch = bzrdir.open_branch()
+            target_branch.pull(source_branch, revision_id)
+        except NotBranchError:
+            target_branch = bzrdir.import_branch(source_branch, revision_id)
 
-register_command(cmd_svn_push_new)
+register_command(cmd_svn_push)
 
 
 def test_suite():

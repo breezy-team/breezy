@@ -16,8 +16,9 @@
 
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import DivergedBranches
+from bzrlib.errors import AlreadyBranchError, DivergedBranches
 from bzrlib.inventory import Inventory
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -311,3 +312,47 @@ class TestPush(TestCaseWithSubversionRepository):
         mutter('log %r' % self.client_log("sc/trunk")[5][0])
         self.assertEquals("/branches/mybranch", 
             self.client_log("sc/trunk")[5][0]['/trunk'].copyfrom_path)
+
+class PushNewBranchTests(TestCaseWithSubversionRepository):
+    def test_single_revision(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/test': "Tour"})
+        bzrwt.add("test")
+        revid = bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid, newbranch.last_revision())
+        self.assertEquals([revid], newbranch.revision_history())
+
+    def test_repeat(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/test': "Tour"})
+        bzrwt.add("test")
+        revid = bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid, newbranch.last_revision())
+        self.assertEquals([revid], newbranch.revision_history())
+        self.build_tree({'c/test': "Tour de France"})
+        bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        self.assertRaises(AlreadyBranchError, newdir.import_branch, 
+                          bzrwt.branch)
+
+    def test_multiple(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/test': "Tour"})
+        bzrwt.add("test")
+        revid1 = bzrwt.commit("Do a commit")
+        self.build_tree({'c/test': "Tour de France"})
+        revid2 = bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid2, newbranch.last_revision())
+        self.assertEquals([revid1, revid2], newbranch.revision_history())

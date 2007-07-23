@@ -139,7 +139,11 @@ class SvnRemoteAccess(BzrDir):
         from commit import push_new
         if stop_revision is None:
             stop_revision = source.last_revision()
-        push_new(self.find_repository(), self.branch_path, source, 
+        repos = self.find_repository()
+        if repos.transport.check_path(self.branch_path.strip("/"),
+            repos.transport.get_latest_revnum()) != svn.core.svn_node_none:
+            raise AlreadyBranchError(self.root_transport.base)
+        push_new(repos, self.branch_path, source, 
                  stop_revision)
         branch = self.open_branch()
         branch.pull(source)
