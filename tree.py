@@ -117,8 +117,11 @@ class TreeBuildEditor(svn.delta.Editor):
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
-        elif name in (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
-                      SVN_PROP_BZR_BRANCHING_SCHEME):
+        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
+            if id != self.tree._inventory.root.file_id:
+                mutter('%r set on non-root dir!' % name)
+                return
+        elif name in (SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_BRANCHING_SCHEME):
             if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % name)
                 return

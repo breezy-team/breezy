@@ -1,5 +1,6 @@
 todo before 0.4.0:
-- fix svn-push-new
+- make sure bzr:file-ids is set correctly
+ - don't truncate bzr:file-ids!
 
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
@@ -10,6 +11,7 @@ todo:
  - svn-import without scheme specified should guess
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
+- more efficient implementation of get_revision_delta() to speed up bzr log -v
 - nestedtree support
 
 .svn working trees:

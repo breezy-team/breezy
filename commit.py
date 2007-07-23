@@ -180,7 +180,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _dir_process(self, path, file_id, baton):
         assert baton is not None
-        mutter('processing %r' % path)
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
         # or parents
@@ -389,7 +388,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         try:
             existing_bp_parts =_check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
-            mutter('obtaining commit editor')
             self.revnum = None
             self.editor = self.repository.transport.get_commit_editor(
                 message.encode("utf-8"), done, None, False)
@@ -405,7 +403,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                mutter('prop: %r -> %r' % (prop, value))
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
