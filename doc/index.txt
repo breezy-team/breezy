@@ -27,6 +27,8 @@ and what is documented on the wiki.
     The various ways that exist to tell Bazaar your email address for
     commits.
 
+* `Conflict handling <conflicts.htm>`_
+
 * `Plugins <plugins.htm>`_
   (wiki page: http://bazaar-vcs.org/BzrPlugins)
     
