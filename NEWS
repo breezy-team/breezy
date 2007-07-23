@@ -26,6 +26,9 @@ IN DEVELOPMENT
     * ``bzr selftest --bench`` no longer emits deprecation warnings
       (Lukáš Lalinský)
 
+    * ``bzr status`` now honours FILE parameters for conflict lists
+      (Aaron Bentley, #127606)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such

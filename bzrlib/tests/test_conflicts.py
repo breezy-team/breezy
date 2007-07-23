@@ -89,6 +89,29 @@ class TestConflicts(TestCaseWithTransport):
         l = ConflictList([TextConflict('hello')])
         l.remove_files(tree)
 
+    def test_select_conflicts(self):
+        tree = self.make_branch_and_tree('.')
+        tree_conflicts = ConflictList([ContentsConflict('foo'),
+                                       ContentsConflict('bar')])
+        self.assertEqual((ConflictList([ContentsConflict('bar')]),
+                          ConflictList([ContentsConflict('foo')])),
+                         tree_conflicts.select_conflicts(tree, ['foo']))
+        self.assertEqual((ConflictList(), tree_conflicts),
+                         tree_conflicts.select_conflicts(tree, [''],
+                         ignore_misses=True, recurse=True))
+        tree_conflicts = ConflictList([ContentsConflict('foo/baz'),
+                                       ContentsConflict('bar')])
+        self.assertEqual((ConflictList([ContentsConflict('bar')]),
+                          ConflictList([ContentsConflict('foo/baz')])),
+                         tree_conflicts.select_conflicts(tree, ['foo'],
+                                                         recurse=True,
+                                                         ignore_misses=True))
+        tree_conflicts = ConflictList([PathConflict('qux', 'foo/baz')])
+        self.assertEqual((ConflictList(), tree_conflicts),
+                         tree_conflicts.select_conflicts(tree, ['foo'],
+                                                         recurse=True,
+                                                         ignore_misses=True))
+
 
 class TestConflictStanzas(TestCase):
 
