@@ -171,6 +171,8 @@ class cmd_svn_import(Command):
             to_location = os.path.basename(from_location.rstrip("/\\"))
 
         if all:
+            # All implies shared repository 
+            # (otherwise there is no repository to store revisions in)
             standalone = False
 
         if os.path.isfile(from_location):

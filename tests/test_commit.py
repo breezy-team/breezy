@@ -152,9 +152,10 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/adir/foo': "data"})
         self.client_add("dc/adir")
         wt = self.open_checkout("dc")
-        wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         wt.rename_one("adir/foo", "bar")
+        self.assertFalse(wt.has_filename("adir/foo"))
+        self.assertTrue(wt.has_filename("bar"))
         wt.commit(message="doe")
         paths = self.client_log("dc", 2, 0)[2][0]
         self.assertEquals('D', paths["/adir/foo"].action)
@@ -396,9 +397,10 @@ class TestPush(TestCaseWithSubversionRepository):
         self.build_tree({'dc/adir/foo': "data"})
         wt.add("adir")
         wt.add("adir/foo")
-        wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         wt.rename_one("adir/foo", "bar")
+        self.assertTrue(wt.has_filename("bar"))
+        self.assertFalse(wt.has_filename("adir/foo"))
         wt.commit(message="doe")
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
