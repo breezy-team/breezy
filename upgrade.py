@@ -36,8 +36,7 @@ def parse_legacy_revision_id(revid):
     """Try to parse a legacy Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, revision number, scheme, mapping 
-        version)
+    :return: tuple with (uuid, branch_path, revision number, scheme, mapping version)
     """
     if revid.startswith("svn-v1:"):
         revid = revid[len("svn-v1:"):]
@@ -108,6 +107,29 @@ def check_revision_changed(oldrev, newrev):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
+def generate_upgrade_map(graph):
+    rename_map = {}
+    pb = ui.ui_factory.nested_progress_bar()
+    i = 0
+    # Create a list of revisions that can be renamed during the upgade
+    try:
+        for revid in graph:
+            pb.update('gather revision information', i, len(graph))
+            i += 1
+            try:
+                (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
+            except InvalidRevisionId:
+                # Not a bzr-svn revision, nothing to do
+                continue
+            if scheme is None:
+                scheme = guess_scheme_from_branch_path(bp)
+            newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
+            rename_map[revid] = newrevid
+    finally:
+        pb.finished()
+
+    return rename_map
+ 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
                        allow_changes=False, verbose=False):
     """Upgrade the revisions in repository until the specified stop revision.
@@ -125,50 +147,27 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             replay_snapshot, generate_transpose_plan, rebase, rebase_todo)
     except ImportError, e:
         raise RebaseNotPresent(e)
-    rename_map = {}
 
+    # Find revisions that need to be upgraded, create
+    # dictionary with revision ids in key, new parents in value
     try:
         repository.lock_write()
         svn_repository.lock_read()
-        # Find revisions that need to be upgraded, create
-        # dictionary with revision ids in key, new parents in value
         graph = repository.get_revision_graph(revision_id)
-        pb = ui.ui_factory.nested_progress_bar()
-        i = 0
-        try:
-            for revid in graph:
-                pb.update('gather revision information', i, len(graph))
-                i += 1
-                try:
-                    (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
-                except InvalidRevisionId:
-                    # Not a bzr-svn revision, nothing to do
-                    continue
-                if scheme is None:
-                    scheme = guess_scheme_from_branch_path(bp)
-                newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
-                if not repository.has_revision(newrevid) and \
-                   not svn_repository.has_revision(newrevid):
-                    # Not a revision that can be upgraded using the remote 
-                    # repository, nothing to do
-                    if hasattr(svn_repository, 'uuid') and \
-                            svn_repository.uuid == uuid:
-                        mutter("Remote repository doesn't have %r" % newrevid)
-                    continue
-                rename_map[revid] = newrevid
-                if not allow_changes:
-                    oldrev = repository.get_revision(revid)
-                    newrev = svn_repository.get_revision(newrevid)
-                    check_revision_changed(oldrev, newrev)
-        finally:
-            pb.finished()
-        
+        upgrade_map = generate_upgrade_map(graph)
+       
         # Make sure all the required current version revisions are present
-        for revid in rename_map.values():
+        for revid in upgrade_map.values():
             if not repository.has_revision(revid):
                 repository.fetch(svn_repository, revid)
 
-        plan = generate_transpose_plan(repository, graph, rename_map, 
+        if not allow_changes:
+            for oldrevid, newrevid in upgrade_map.items():
+                oldrev = repository.get_revision(oldrevid)
+                newrev = repository.get_revision(newrevid)
+                check_revision_changed(oldrev, newrev)
+
+        plan = generate_transpose_plan(repository, graph, upgrade_map, 
                            lambda rev: create_upgraded_revid(rev.revision_id))
         if verbose:
             for revid in rebase_todo(repository, plan):
