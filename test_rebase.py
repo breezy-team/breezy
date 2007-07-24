@@ -139,20 +139,21 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='add hello', rev_id="lala")
 
         self.assertEquals({
-                'bla': ('lala', []),
-                'blie': ('newblie', ['lala']),
-            },
-                generate_transpose_plan(b.repository, b.repository.get_revision_graph("blie"), 
-                {"bla": "lala"}, lambda y: "new"+y.revision_id))
+                'blie': ('newblie', ['lala']), },
+                generate_transpose_plan(b.repository.get_revision_graph("blie"), 
+                {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
         self.assertEquals({
-                'bla': ('lala', []),
                 'bla2': ('newbla2', ['lala']),
                 'bla3': ('newbla3', ['newbla2']),
                 'blie': ('newblie', ['lala']),
                 'bloe': ('newbloe', ['lala'])},
-                generate_transpose_plan(b.repository, b.repository.get_revision_graph(), 
-                {"bla": "lala"}, lambda y: "new"+y.revision_id))
+                generate_transpose_plan(b.repository.get_revision_graph(), 
+                {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
 
+    def test_generate_transpose_plan_one(self):
+        self.assertEquals({"bla": ("newbla", ["lala"])},
+                generate_transpose_plan({"bla": ["bloe"], "bloe": []},
+                    {"bloe": "lala"}, {}.get, lambda y: "new"+y))
 
 class PlanFileTests(TestCaseWithTransport):
    def test_rebase_plan_exists_false(self):

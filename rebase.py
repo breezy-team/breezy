@@ -147,23 +147,17 @@ def generate_simple_plan(repository, history, start_revid, onto_revid,
     return replace_map
 
 
-def generate_transpose_plan(repository, graph, renames, 
-        generate_revid=regenerate_default_revid):
-    """Create a rebase plan that replaces the bottom of 
-    a revision graph.
+def generate_transpose_plan(graph, renames, get_parents, generate_revid):
+    """Create a rebase plan that replaces a bunch of revisions
+    in a revision graph.
 
-    :param repository: Repository
     :param graph: Revision graph in which to operate
     :param renames: Renames of revision
+    :param get_parents: Function for determining parents
     :param generate_revid: Function for creating new revision ids
     """
     replace_map = {}
     todo = []
-    for r in renames:
-        replace_map[r] = (renames[r], 
-                          repository.revision_parents(renames[r]))
-        todo.append(r)
-    
     children = {}
     for r in graph:
         if not children.has_key(r):
@@ -172,6 +166,12 @@ def generate_transpose_plan(repository, graph, renames,
             if not children.has_key(p):
                 children[p] = []
             children[p].append(r)
+
+    # todo contains a list of revisions that need to 
+    # be rewritten
+    for r in renames:
+        replace_map[r] = (renames[r], get_parents(renames[r]))
+        todo.append(r)
 
     total = len(todo)
     processed = set()
@@ -186,21 +186,25 @@ def generate_transpose_plan(repository, graph, renames,
             for c in children[r]:
                 if c in renames:
                     continue
-                rev = repository.get_revision(c)
                 if replace_map.has_key(c):
                     parents = replace_map[c][1]
                 else:
-                    parents = rev.parent_ids
+                    parents = graph[c]
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
                     parents[parents.index(r)] = replace_map[r][0]
-                replace_map[c] = (generate_revid(rev), parents)
-                assert replace_map[c][0] != rev.revision_id
+                replace_map[c] = (generate_revid(c), parents)
+                assert replace_map[c][0] != c
             processed.add(r)
             # Add them to todo[]
             todo.extend(filter(lambda x: not x in processed, children[r]))
     finally:
         pb.finished()
+
+    # Remove items from the map that already exist
+    for revid in renames:
+        if replace_map.has_key(revid):
+            del replace_map[revid]
 
     return replace_map
 
