@@ -448,6 +448,8 @@ class RevisionInstaller(object):
         current_file = None
         current_versionedfile = None
         pending_file_records = []
+        inventory_vf = None
+        pending_inventory_records = []
         added_inv = set()
         target_revision = None
         for bytes, metadata, repo_kind, revision_id, file_id in\
@@ -455,24 +457,31 @@ class RevisionInstaller(object):
             if repo_kind == 'info':
                 assert self._info is None
                 self._handle_info(metadata)
-            if repo_kind != 'file':
+            if (repo_kind, file_id) !=  ('file', current_file) and\
+                len(pending_file_records) > 0:
                 self._install_mp_records(current_versionedfile,
                     pending_file_records)
                 current_file = None
                 current_versionedfile = None
                 pending_file_records = []
-                if repo_kind == 'inventory':
-                    self._install_inventory(revision_id, metadata, bytes)
-                if repo_kind == 'revision':
-                    target_revision = revision_id
-                    self._install_revision(revision_id, metadata, bytes)
-                if repo_kind == 'signature':
-                    self._install_signature(revision_id, metadata, bytes)
+            if len(pending_inventory_records) > 0 and repo_kind != 'inventory':
+                self._install_inventory_records(inventory_vf,
+                                                pending_inventory_records)
+                pending_inventory_records = []
+            if repo_kind == 'inventory':
+                if inventory_vf is None:
+                    inventory_vf = self._repository.get_inventory_weave()
+                if revision_id not in inventory_vf:
+                    pending_inventory_records.append((revision_id, metadata,
+                                                      bytes))
+            if repo_kind == 'revision':
+                target_revision = revision_id
+                self._install_revision(revision_id, metadata, bytes)
+            if repo_kind == 'signature':
+                self._install_signature(revision_id, metadata, bytes)
             if repo_kind == 'file':
-                if file_id != current_file:
-                    self._install_mp_records(current_versionedfile,
-                        pending_file_records)
-                    current_file = file_id
+                current_file = file_id
+                if current_versionedfile is None:
                     current_versionedfile = \
                         self._repository.weave_store.get_weave_or_empty(
                         file_id, self._repository.get_transaction())
@@ -501,30 +510,28 @@ class RevisionInstaller(object):
                       records if r not in versionedfile]
         versionedfile.add_mpdiffs(vf_records)
 
-    def _install_inventory(self, revision_id, metadata, text):
-        vf = self._repository.get_inventory_weave()
-        if revision_id in vf:
-            return
-        parent_ids = metadata['parents']
+    def _install_inventory_records(self, vf, records):
         if self._info['serializer'] == self._repository._serializer.format_num:
-            return self._install_mp_records(vf, [(revision_id, metadata,
-                                                  text)])
-        parents = [self._repository.get_inventory(p)
-                   for p in parent_ids]
-        parent_texts = [self._source_serializer.write_inventory_to_string(p)
-                        for p in parents]
-        target_lines = multiparent.MultiParent.from_patch(text).to_lines(
-            parent_texts)
-        sha1 = osutils.sha_strings(target_lines)
-        if sha1 != metadata['sha1']:
-            raise errors.BadBundle("Can't convert to target format")
-        target_inv = self._source_serializer.read_inventory_from_string(
-            ''.join(target_lines))
-        self._handle_root(target_inv, parent_ids)
-        try:
-            self._repository.add_inventory(revision_id, target_inv, parent_ids)
-        except errors.UnsupportedInventoryKind:
-            raise errors.IncompatibleRevision(repr(self._repository))
+            return self._install_mp_records(vf, records)
+        for revision_id, metadata, bytes in records:
+            parent_ids = metadata['parents']
+            parents = [self._repository.get_inventory(p)
+                       for p in parent_ids]
+            p_texts = [self._source_serializer.write_inventory_to_string(p)
+                       for p in parents]
+            target_lines = multiparent.MultiParent.from_patch(bytes).to_lines(
+                p_texts)
+            sha1 = osutils.sha_strings(target_lines)
+            if sha1 != metadata['sha1']:
+                raise errors.BadBundle("Can't convert to target format")
+            target_inv = self._source_serializer.read_inventory_from_string(
+                ''.join(target_lines))
+            self._handle_root(target_inv, parent_ids)
+            try:
+                self._repository.add_inventory(revision_id, target_inv,
+                                               parent_ids)
+            except errors.UnsupportedInventoryKind:
+                raise errors.IncompatibleRevision(repr(self._repository))
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id

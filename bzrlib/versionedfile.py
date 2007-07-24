@@ -307,7 +307,7 @@ class VersionedFile(object):
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version in versions:
+        for version, parent_ids, expected_sha1, mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         for parent_id, lines in zip(needed_parents,
@@ -323,7 +323,9 @@ class VersionedFile(object):
             version_text = self.add_lines(version, parent_ids, lines,
                 vf_parents, left_matching_blocks = left_matching_blocks)
             vf_parents[version] = version_text
-            if expected_sha1 != self.get_sha1(version):
+        for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
+             zip(records, self.get_sha1s(versions)):
+            if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
     def get_sha1(self, version_id):
