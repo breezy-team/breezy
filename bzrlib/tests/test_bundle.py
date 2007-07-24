@@ -1462,7 +1462,27 @@ class TestBundleWriterReader(TestCase):
             'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        record_iter = v4.BundleReader(fileobj).iter_records()
+        reader = v4.BundleReader(fileobj, memory_friendly=True)
+        record_iter = reader.iter_records()
+        record = record_iter.next()
+        self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
+            'info', None, None), record)
+        record = record_iter.next()
+        self.assertEqual(("Record body", {'storage_kind': 'fulltext',
+                          'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
+                          record)
+
+    def test_roundtrip_record_memory_hungry(self):
+        fileobj = StringIO()
+        writer = v4.BundleWriter(fileobj)
+        writer.begin()
+        writer.add_info_record(foo='bar')
+        writer._add_record("Record body", {'parents': ['1', '3'],
+            'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
+        writer.end()
+        fileobj.seek(0)
+        reader = v4.BundleReader(fileobj, memory_friendly=False)
+        record_iter = reader.iter_records()
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)

@@ -144,13 +144,23 @@ class BundleReader(object):
     body
     """
 
-    def __init__(self, fileobj):
+    def __init__(self, fileobj, memory_friendly=True):
+        """Constructor
+
+        :param fileobj: a file containing a bzip-encoded container
+        :param memory_friendly: If True, read the file in pieces.
+            If False, decode the entire file into memory at once.
+            (This is much faster)
+        """
         line = fileobj.readline()
         if line != '\n':
             fileobj.readline()
         self.patch_lines = []
-        self._container = pack.ContainerReader(
-            iterablefile.IterableFile(self.iter_decode(fileobj)))
+        if memory_friendly:
+            source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
+        else:
+            source_file = StringIO(bz2.decompress(fileobj.read()))
+        self._container = pack.ContainerReader(source_file)
 
     @staticmethod
     def iter_decode(fileobj):
@@ -382,11 +392,11 @@ class BundleInfoV4(object):
     def install(self, repository):
         return self.install_revisions(repository)
 
-    def install_revisions(self, repository):
+    def install_revisions(self, repository, memory_friendly=True):
         """Install this bundle's revisions into the specified repository"""
         repository.lock_write()
         try:
-            ri = RevisionInstaller(self.get_bundle_reader(),
+            ri = RevisionInstaller(self.get_bundle_reader(memory_friendly),
                                    self._serializer, repository)
             return ri.install()
         finally:
@@ -399,9 +409,9 @@ class BundleInfoV4(object):
         """
         return None, self.target, 'inapplicable'
 
-    def get_bundle_reader(self):
+    def get_bundle_reader(self, memory_friendly=True):
         self._fileobj.seek(0)
-        return BundleReader(self._fileobj)
+        return BundleReader(self._fileobj, memory_friendly)
 
     def _get_real_revisions(self):
         if self.__real_revisions is None:
