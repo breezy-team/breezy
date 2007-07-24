@@ -490,8 +490,7 @@ class BaseVersionedFile(object):
             pass
         diff = self.get_diff(version_id)
         lines = []
-        reconstructor = _Reconstructor(self, self._lines,
-                                       self._parents)
+        reconstructor = _Reconstructor(self, self._lines, self._parents)
         reconstructor.reconstruct_version(lines, version_id)
         self._lines[version_id] = lines
         return lines
@@ -601,6 +600,9 @@ class _Reconstructor(object):
         while len(pending_reqs) > 0:
             req_version_id, req_start, req_end = pending_reqs.pop()
             # lazily allocate cursors for versions
+            if req_version_id in self.lines:
+                lines.extend(self.lines[req_version_id][req_start:req_end])
+                continue
             try:
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:
