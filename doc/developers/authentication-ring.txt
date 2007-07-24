@@ -1,0 +1,353 @@
+Authentication ring
+===================
+
+When accessing a remote branch (specified as an URL), it may occur that the
+server request an authentication.
+
+This authentication can be provided in different ways:
+
+1. Embedding the user and password in the URL::
+
+    bzr branch <scheme>://<user>:<password>@host:port/path
+
+* ``scheme``: Any transport protocol requiring authentication.
+* ``user``: The login used to authenticate.
+* ``password``: The associated password.
+* ``host``: The address of the server.
+* ``port``: The port the server is listening to.
+* ``path``: The path on the server.
+
+2. Embedding the user in the URL and let bzr find the right password or prompt
+for one:
+
+ . {{{bzr branch <scheme>://<user>@host/path}}}
+
+3. Embedding nothing in the URL and let bzr find user and password or prompt
+for user and/or password:
+
+ . {{{bzr branch <scheme>://host/path}}}
+
+This spec proposes a mechanism that will allow users to just use ``bzr branch
+<scheme>://host/path`` or ``bzr branch <scheme>://<user>@host/path`` and leaves
+bzr find the ``user`` and ``password`` in its configuration files.
+
+When no user is specified for ``FTP``, ``SFTP`` or ``SSH``, the actual behavior
+of ``bzr`` is to default to ``getpass.get_user()``.
+
+Any implementation of this specification should respect that behaviour.
+
+Rationale
+---------
+
+Embedding user and passwords in the command line is a security
+hazard (see `bug #34685
+<https://launchpad.net/products/bzr/+bug/34685>`_).
+
+Storing passwords in ``~/.bazaar/bazaar.conf`` or ``~/.bazaar/locations.conf``
+is also a security risk.
+
+Typing user and passwords is error-prone and boring.
+
+Yet, a safe way to store passwords, while allowing bzr to retrieve them, when
+needed, could improve the bzr user experience.
+
+This specification describes a way to provide user and passwords to bzr while
+storing them in a relatively safe way.
+
+Note that ssh servers can be configured to use keys instead of (``user``,
+``password``) and, when used with appropriate agents, provide the same kind of
+comfort this specification aims to provide for all other schemes. These
+specification do not try to cover these configurations by providing
+pass-phrases, but the mechanisms presented *can* be used to provide users.
+
+Authentication definitions
+--------------------------
+
+There are two kinds of authentication used by the various schemes:
+
+1. user and password
+
+``FTP`` and ``SFTP`` needs a (``user``, ``password``) to authenticate against a
+``host`` (SFTP can use ssh keys too, but we don't talk about that in this
+specification as ssh agents provide a better solution).
+
+2. user, realm and password
+
+``HTTP`` and ``HTTPS`` needs a (``user, realm, password``) to authenticate
+against a host. But, by using ``.htaccess`` files, for example, it is possible
+to define several (``user, realm, password``) for a given ``host``. So what is
+really needed is (``user``, ``password``, ``host``, ``path``). The ``realm``
+can be ignored [#ignored_realm]_ as long as it is still presented to the user
+when prompting for the password (unless someone found a way to declare two
+different realms for the same path). ``HTTP proxy`` can be handled as ``HTTP``
+(or ``HTTPS``).
+
+.. [#ignored_realm] The true purpose of realms is to allow the same credentials
+   to be reused for disjoint hierarchies. Ignoring them in this specifications
+   aims to simplify the user experience.
+
+To take all schemes into account, the password will be deduced from a set of
+authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
+``password``).
+
+  * ``scheme``: can be empty (meaning the rest of the definition can be used
+    for any scheme),
+
+  * ``host``: can be empty (to act as a default for any host),
+
+  * ``port`` can be empty (useful when an host provides several servers for the
+    same scheme), only numerical values are allowed,
+
+  * ``path``: can be empty (FTP or SFTP will never user it),
+
+  * ``user``: is mandatory (if no user is provided, there is no point in
+    defining these rules),
+
+  * ``password``: can be empty (for security reasons, a user may use the
+    definitions without storing the passwords but want to be prompted).
+
+Also note that an optional ``self_certified`` field will be allowed to force
+the connection to ``HTTPS`` hosts that provides a self certified certificate
+(the default should be to refuse the connection and inform the user).
+
+Multiple definitions can be provided and, for a given URL, bzr will select a
+(``user`` [, ``password``]) based on the following rules :
+
+ 1. the first match wins,
+
+ 2. empty fields match everything,
+
+ 3. ``scheme`` matches even if decorators are used in the requested URL,
+
+ 4. ``host`` matches if included in the requested URL. ``foo.net`` will match a
+    requested ``bzr.foo.net``.
+
+ 5. ``port`` matches if included in the requested URL (exact matches only)
+
+ 6. ``path`` matches if included in the requested URL (and by rule #2 above,
+    empty paths will match any provided path).
+
+An optional ``password_encoding`` field may specify how the password is encoded.
+
+Possible values are ``plaintext`` (no encoding at all) and ``base64``. When the
+field is absent, ``plaintext`` is assumed. Additional encodings may be added in
+future versions.
+
+Encoding passwords in ``base64``, while weak, provides protection against
+accidental reading (if an administrator have to look into the file, he will not
+see the passwords in clear).
+
+This specification intend to ease the authentication providing, not to secure
+it in the best possible way.
+
+Future versions of this specification may provide additional encodings.
+
+File format
+-----------
+
+Even if ``~/.bazaar/bazaar.conf`` and ``~/.bazaar/locations.conf`` seems to
+provide most of the needed infrastructure, we choose to use a dedicated file
+for the authentication info ``~/.bazaar/authentication.conf`` for the following
+reasons:
+
+  * allow the user to protect the content of one file only, relaxing security
+    constraints on the others,
+
+  * while ``locations.conf`` is intended to describe *local* branches,
+    ``authentication.conf`` is intended to describe *remote* branches or
+    servers.
+
+``~/.bazaar/authentication.conf`` will use the same file format than
+``~/.bazaar/bazaar.conf``.
+
+Each section will define an authentication definition.
+
+The section name is an arbitrary string, only the ``DEFAULT`` value is reserved
+and should appear as the *last* section.
+
+Each section should define:
+
+  * ``user``: the login to be used,
+
+Each section could define:
+
+  * ``host``: the remote server,
+
+  * ``port``: the port the server is listening,
+
+  * ``self_certified``: whether a self certified certificate should be accepted
+    (this applies to HTTP[S] only). Accepted values are yes and no.
+
+  * ``path``: the branch location,
+
+  * ``password``: the password,
+
+  * ``password_encoding``: the method used to encode the password if any,
+
+The default content of the file will be::
+
+    [DEFAULT]
+
+This section could define:
+
+  * ``user``: default user to be used.
+
+  * ``password_encoding``: default password encoding.
+
+Use Cases
+---------
+
+The use cases described below use the file format defined above.
+
+  * all FTP connections to the foo.net domain are done with the same (``user``,
+    ``password``)::
+
+        # Identity on foo.net
+        [foo.net]
+        scheme=ftp
+        host=foo.net
+        user=joe
+        password=secret-pass
+
+    will provide ('joe', 'secret-pass') for::
+
+        bzr branch ftp://foo.net/bzr/branch
+        bzr pull ftp://bzr.foo.net/bzr/product/branch/trunk
+
+  * all connections are done with the same ``user`` (the local one) and the
+    password is always prompted with some exceptions::
+
+        # Pet projects on hobby.net
+        [hobby]
+        scheme=https
+        host=r.hobby.net
+        self_certified==yes
+        user=jim
+        password=obvious1234
+        
+        # Home server
+        [home]
+        host=home.net
+        user=joe
+        password='c2VjcmV0LXBhc3M='
+        password_encoding=base64
+        
+        [DEFAULT]
+        user=foobar
+        
+  * an HTTP server that also acts as a proxy (weird)::
+
+        # development branches on dev server
+        [dev]
+        scheme=https
+        host=dev.company.com
+        path=/dev
+        user=user1
+        password=pass1
+        
+        # toy branches
+        [localhost]
+        scheme=http
+        host=dev.company.com
+        path=/
+        user=user2
+        password=pass2
+        
+        # Pesky proxy
+        [proxy]
+        scheme=http
+        host=dev.company.com
+        user=proxyuser1
+        password=proxypass1
+        
+Note that the proxy should be specified last because it uses no path. An
+alternative is to specify the port used by the proxy.
+
+UI Changes
+----------
+
+Depending on the info provided in the URL, bzr will interact with the user in
+different ways:
+
+1. ``user`` and ``password`` given in the URL.
+
+  Nothing to do.
+
+2. ``user`` given in the URL.
+
+  Get a password from ``~/.bazaar/authentication.conf`` or prompt
+  for one if none is found.
+
+3. No ``user`` given in the URL (and no ``password``).
+
+  Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
+  found. Continue as 2.
+
+Note: A user will be queried only if the server requires it for ``HTTP``, other
+protocols always require a user.
+
+In any case, if the server refuses the authentication, bzr reports to the user
+and terminates.
+
+Implementation constraints
+--------------------------
+
+* bzr should be able to prompt for a ``user`` for a given (``scheme``, ``host``
+  [, ``realm``]). Note that ``realm`` may be available only after a first
+  connection attempt to the server.
+
+* No assumptions should be made about the clients of this service
+  (i.e. Transport is the primary target but plugins must be able to use it as
+  well, the definitions used: (``scheme, host, [port,] path``) are general
+  enough to described credentials for ``svn`` servers or LaunchPad xmlrpc
+  calls).
+
+* Policies regarding default users may be taken into account by the
+  implementations, there is no good way to represent that in this specification
+  and stays flexible enough to accommodate various needs (default user policies
+  may differ for different schemes and that may be easier to handle in the code
+  than in the authentication file itself).
+
+* If no user can be found by the mechanism described above, bzr should still
+  default to ``getpass.get_user()`` and may attempt a second matching to obtain
+  a password.
+
+Questions and Answers
+---------------------
+
+  * What if a ``.netrc`` or a ``.authinfo`` file exists ?
+
+    * They will be ignored,
+
+    * Automatic (one-time) conversions may be proposed if sufficient demand
+      exists,
+
+  * What mode should the authentication file use ?
+
+    * 600 read/write for owner only by default, if another mode (more
+      permissive) is used, a warning will be issued to inform the users of the
+      potential risks.
+
+  * What about using ``seahorse`` on Ubuntu or ``KeyChain Access`` on Mac OS X ?
+
+    * ``svn`` use some native APIs to encode its cached credentials, that may
+      provides examples on how this can be done for bzr, then these services
+      could be used to encrypt the passwords and define a new
+      ``password_encoding``.
+
+  * Could it be possible to encode the whole authentication file with a ssh key
+    ?
+
+    * yes and if the user configure a ssh-agent it will not be queried for
+      pass-phrase every time we want to query the file for a password. But that
+      seems a bit extreme for a first version.
+
+  * Why can't bzr update the authentication file when it queried the user for a
+    password ?
+
+    * a future version may address that but:
+
+      1. The user may want to decide which passwords are stored in the file and
+         which aren't.
+
+      2. The user should decide if the passwords are encoded or not.
