@@ -29,6 +29,8 @@ and what is documented on the wiki.
 
 * `Conflict handling <conflicts.htm>`_
 
+    The various kind of conflicts you may encounter, and how to handle them.
+
 * `Plugins <plugins.htm>`_
   (wiki page: http://bazaar-vcs.org/BzrPlugins)
     

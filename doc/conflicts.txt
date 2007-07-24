@@ -3,32 +3,56 @@ Conflict handling
 =================
 
 Some operations, like merge, revert and pull, modify the contents of your
-working tree.  But because the changes are programmatically generated, they
-can come into conflict with the actual state of your working tree.  Many
-kinds of changes can be combined programmatically, but sometimes only a
-human can determine the right thing to do.
+working tree.  These modifications are programmatically generated, and so they
+may conflict with the current state of your working tree. Many kinds of changes
+can be combined programmatically, but sometimes only a human can determine the
+right thing to do.  When this happens Bazaar will inform you that there is a
+conflict and then ask you to resolve it.  The command to tell Bazaar a conflict
+is resolved is ``resolve``, but you must perform some action before you can do
+this.
+
+Each type of conflict is explained below, and the action which must be done to
+resolve the conflict is outlined.
+
 
 Text conflicts
 ==============
 Typical message::
 
-  Text conflict in foo
+  Text conflict in FILE
 
 These are produced when a text merge cannot completely reconcile two sets of
 text changes.  Bazaar will emit files for each version with the extensions
-THIS, OTHER, and BASE.  THIS is the version of the file from the target tree.
-OTHER is the version that you are merging into the target.  BASE is an older
-version that is used as a basis for comparison.
+THIS, OTHER, and BASE.  THIS is the version of the file from the target tree,
+i.e. the tree that you are merging changes into.  OTHER is the version that you
+are merging into the target.  BASE is an older version that is used as a basis
+for comparison.
 
 In the main copy of the file, Bazaar will include all the changes that it
 could reconcile, and any un-reconciled conflicts are surrounded by
 "herringbone" markers like ``<<<<<<<``.
+
+Say the initial text is "The project leader released it.", and THIS modifies it
+to "Martin Pool released it.", while OTHER modifies it to "The project leader
+released Bazaar."  A conflict would look like this::
+
+  <<<<<<< TREE
+  Martin Pool released it.
+  =======
+  The project leader released Bazaar.
+  >>>>>>> MERGE-SOURCE
+
+The correct resolution would be "Martin Pool released Bazaar."
 
 You can handle text conflicts either by editing the main copy of the file, or
 by invoking external tools on the THIS, OTHER and BASE versions.  It's worth
 mentioning that resolving text conflicts rarely involves picking one set of
 changes over the other.  More often, the two sets of changes must be
 intelligently combined.
+
+If you edit the main copy, be sure to remove the herringbone markers.  When
+you are done editing, the file should look like it never had a conflict, and be
+ready to commit.
 
 When you have resolved text conflicts, just run "bzr resolve", and Bazaar will
 auto-detect which conflicts you have resolved.
@@ -37,39 +61,40 @@ Content conflicts
 =================
 Typical message::
 
-  Contents conflict in foo
+  Contents conflict in FILE
 
 This conflict happens when there are conflicting changes in the target tree and
 the merge source, but the conflicted items are not text files.  They may be
 binary files, or symlinks, or directories.  It can even happen with files that
 are deleted on one side, and modified on the other.
 
-Like text conflicts, Bazaar will emit "THIS", "OTHER" and "BASE" files.  But
-it will not include a "main copy" of the file with herringbone conflict
-markers.  It will appear that the "main copy" has been renamed to "THIS" or
-"OTHER".
+Like text conflicts, Bazaar will emit THIS, OTHER and BASE files.  (They may be
+regular files, symlinks or directories).  But it will not include a "main copy"
+of the file with herringbone conflict markers.  It will appear that the "main
+copy" has been renamed to "THIS" or "OTHER".
 
 To resolve this, use "bzr mv" to rename the file back to its normal name, and
 combine the changes manually.  When you are satisfied, run "bzr resolve
-FILENAME".  Bazaar cannot auto-detect when conflicts of this kind have been
+FILE".  Bazaar cannot auto-detect when conflicts of this kind have been
 resolved.
 
 Duplicate Paths
 ===============
 Typical message::
 
-  Conflict adding file foo.  Moved existing file to foo.moved.
+  Conflict adding file FILE.  Moved existing file to FILE.moved.
 
 Sometimes Bazaar will attempt to create a file using a pathname that has
 already been used.  The existing file will be renamed to "FILE.moved".  If
-you wish, you can rename either one of these files.  When you are satisfied,
-you can run "bzr resolve FILE" to mark the conflict as resolved.
+you wish, you can rename either one of these files, or combine their contents.
+When you are satisfied, you can run "bzr resolve FILE" to mark the conflict as
+resolved.
 
 Unversioned Parent
 ==================
 Typical message::
 
-    Conflict because foo is not versioned, but has versioned children.
+    Conflict because FILE is not versioned, but has versioned children.
 
 Sometimes Bazaar will attempt to create a file whose parent directory is not
 versioned.  This happens when the directory has been deleted in the target,
@@ -82,31 +107,31 @@ Missing Parent
 ==============
 Typical message::
 
-  Conflict adding files to foo.  Created directory.
+  Conflict adding files to FILE.  Created directory.
 
 This happens when a file has been deleted in the target, but has new children
 in the source.  This is similar to the "unversioned parent" conflict, except
 that the parent directory does not *exist*, instead of just being unversioned.
 In this situation, Bazaar will create the missing parent.  You may rename
-either file, if you like.  When you are satisfied, you can run "bzr resolve
-FILE" to mark the conflict as resolved.
+the file or directory, if you like.  When you are satisfied, you can run "bzr
+resolve FILE" to mark the conflict as resolved.
 
 Deleting Parent
 ===============
 Typical message::
 
-  Conflict: can't delete foo because it is not empty.  Not deleting.
+  Conflict: can't delete FILE because it is not empty.  Not deleting.
 
 This is the opposite of "missing parent".  A directory is deleted in the
 source, but has new children in the target.  Bazaar will retain the directory.
-You may rename or delete either file, if you like.  When you are satisfied, you
-can run "bzr resolve FILE" to mark the conflict as resolved.
+You may rename or delete the file or directory, if you like.  When you are
+satisfied, you can run "bzr resolve FILE" to mark the conflict as resolved.
 
 Path Conflict
 =============
 Typical message::
 
-  Path conflict: foo/bar / baz/qux
+  Path conflict: PATH1 / PATH2
 
 This happens when the source and target have each modified the name or parent
 directory of a file.  Bazaar will use the path elements from the source.  You
@@ -117,7 +142,7 @@ Parent Loop
 ===========
 Typical message::
 
-  Conflict moving b/a into b.  Cancelled move.
+  Conflict moving FILE into DIRECTORY.  Cancelled move.
 
 This happens when the source and the target have each moved directories, so
 that, if the change could be applied, a directory would be contained by itself.
@@ -135,10 +160,12 @@ For example::
   $ bzr merge ../other
 
 In this situation, Bazaar will cancel the move, and leave "a" in "b".
+You can rename the directories if you like, and once you have, run "bzr resolve
+FILE" to mark the conflict as resolved.
 
 MalformedTransform
 ==================
 It is possible (though very rare) for Bazaar to raise a MalformedTransform
 exception.  This means that Bazaar encounted a filesystem conflict that it was
 unable to resolve.  This usually indicates a bug.  Please let us know if you
-encounter this.
+encounter this.  Our bug tracker is at https://launchpad.net/bzr/+bugs
