@@ -16,6 +16,7 @@
 
 import sys
 
+from bzrlib import osutils
 from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
 from bzrlib.win32utils import glob_expand
 
@@ -23,32 +24,33 @@ from bzrlib.win32utils import glob_expand
 # Features
 # --------
 
-class _Win32Feature(Feature):
+class _NeedsGlobExpansionFeature(Feature):
 
     def _probe(self):
         return sys.platform == 'win32'
-    
-    def feature_name(self):
-        return 'Win32 platform'
 
-Win32Feature = _Win32Feature()
+    def feature_name(self):
+        return 'Internally performed glob expansion'
+
+NeedsGlobExpansionFeature = _NeedsGlobExpansionFeature()
 
 
 # Tests
 # -----
 
-class TestWin32Feature(TestCase):
+class TestNeedsGlobExpansionFeature(TestCase):
     
     def test_available(self):
-        self.assertEqual(sys.platform == 'win32', Win32Feature.available())
+        self.assertEqual(sys.platform == 'win32', 
+                         NeedsGlobExpansionFeature.available())
         
     def test_str(self):
-        self.assertTrue("platform" in str(Win32Feature))
+        self.assertTrue("performed" in str(NeedsGlobExpansionFeature))
 
 
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
-    _test_needs_features = [Win32Feature]
+    _test_needs_features = [NeedsGlobExpansionFeature]
    
     def test_empty_tree(self):
         self.build_tree([])
@@ -58,7 +60,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['*'], ['*']],
             [['a', 'a'], ['a', 'a']]])
         
-    def test_tree1(self):
+    def test_tree_ascii(self):
         """Checks the glob expansion and path separation char
         normalization"""
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
@@ -67,46 +69,57 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
                          'd/', 'd/d1', 'd/d2', 'd/e/', 'd/e/e1'])
         self._run_testset([
             # no wildcards
-            [['a'], ['a']],
-            [['a', 'a' ], ['a', 'a']],
-            [['A'], ['A']],
+            [[u'a'], [u'a']],
+            [[u'a', u'a' ], [u'a', u'a']],
+            [[u'A'], [u'A']],
                 
-            [['d'], ['d']],
-            [['d/'], ['d/']],
-            [['d\\'], ['d/']],
+            [[u'd'], [u'd']],
+            [[u'd/'], [u'd/']],
+            [[u'd\\'], [u'd/']],
             
             # wildcards
-            [['a*'], ['a', 'a1', 'a2', 'a11', 'a.1']],
-            [['?'], ['a', 'b', 'c', 'd']],
-            [['a?'], ['a1', 'a2']],
-            [['a??'], ['a11', 'a.1']],
-            [['b[1-2]'], ['b1', 'b2']],
-            [['A?'], ['a1', 'a2']],
+            [[u'a*'], [u'a', u'a1', u'a2', u'a11', u'a.1']],
+            [[u'?'], [u'a', u'b', u'c', u'd']],
+            [[u'a?'], [u'a1', u'a2']],
+            [[u'a??'], [u'a11', u'a.1']],
+            [[u'b[1-2]'], [u'b1', u'b2']],
+            [[u'A?'], [u'a1', u'a2']],
                
-            [['d/*'], ['d/d1', 'd/d2', 'd/e']],
-            [['d\\*'], ['d/d1', 'd/d2', 'd/e']],
-            [['?\\*'], ['c/c1', 'c/c2', 'd/d1', 'd/d2', 'd/e']],
-            [['*\\*'], ['c/c1', 'c/c2', 'd/d1', 'd/d2', 'd/e']],
-            [['*/'], ['c/', 'd/']],
-            [['*\\'], ['c/', 'd/']]])
+            [[u'd/*'], [u'd/d1', u'd/d2', u'd/e']],
+            [[u'd\\*'], [u'd/d1', u'd/d2', u'd/e']],
+            [[u'?\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
+            [[u'*\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
+            [[u'*/'], [u'c/', u'd/']],
+            [[u'*\\'], [u'c/', u'd/']]])
         
-    def test_tree2(self):
+    def test_tree_unicode(self):
         """Checks behaviour with non-ascii filenames"""
-        self.build_tree([u'ä', u'é', u'ö/', u'ö/öö'])
+        self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/', u'\u1235/\u1235'])
         self._run_testset([
             # no wildcards
-            [[u'ä'], [u'ä']],
-            [[u'é'], [u'é']],
-            
-            [[u'ö/'], [u'ö/']],
-            [[u'ö/öö'], [u'ö/öö']],
+            [[u'\u1234'], [u'\u1234']],
+            [[u'\u1235'], [u'\u1235']],
+         
+            [[u'\u1235/'], [u'\u1235/']],
+            [[u'\u1235/\u1235'], [u'\u1235/\u1235']],
             
             # wildcards
-            [[u'?'], [u'ä', u'é', u'ö']],
-            [[u'*'], [u'ä', u'é', u'ö']],
+            [[u'?'], [u'\u1234', u'\u1235']],
+            [[u'*'], [u'\u1234', u'\u1234\u1234', u'\u1235']],
+            [[u'\u1234*'], [u'\u1234', u'\u1234\u1234']],
             
-            [[u'*/'], [u'ö/']],
-            [[u'*/*'], [u'ö/öö']]])
+            [[u'\u1235/?'], [u'\u1235/\u1235']],
+            [[u'\u1235/*'], [u'\u1235/\u1235']],
+            [[u'\u1235\\?'], [u'\u1235/\u1235']],
+            [[u'\u1235\\*'], [u'\u1235/\u1235']],
+            [[u'?/'], [u'\u1235/']],
+            [[u'*/'], [u'\u1235/']],
+            [[u'?\\'], [u'\u1235/']],
+            [[u'*\\'], [u'\u1235/']],
+            [[u'?/?'], [u'\u1235/\u1235']],
+            [[u'*/*'], [u'\u1235/\u1235']],
+            [[u'?\\?'], [u'\u1235/\u1235']],
+            [[u'*\\*'], [u'\u1235/\u1235']]])
 
     def _run_testset(self, testset):
         for pattern, expected in testset:

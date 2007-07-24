@@ -240,6 +240,20 @@ def get_host_name_unicode():
     return _ensure_unicode(get_host_name())
 
 
+def _ensure_with_dir(path):
+    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+        return u'./' + path, True
+    else:
+        return path, False
+    
+def _undo_ensure_with_dir(path, corrected):
+    if corrected:
+        return path[2:]
+    else:
+        return path
+
+
+
 def glob_expand(file_list):
     """Replacement for glob expansion by the shell.
 
@@ -256,14 +270,20 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
+        
+        # work around bugs in glob.glob()
+        # - Python bug #1001604 ("glob doesn't return unicode with ...")
+        # - failing expansion for */* with non-iso-8859-* chars
+        possible_glob, corrected = _ensure_with_dir(possible_glob)
         glob_files = glob.glob(possible_glob)
 
         if glob_files == []:
             # special case to let the normal code path handle
             # files that do not exists
-            expanded_file_list.append(possible_glob)
+            expanded_file_list.append(
+                _undo_ensure_with_dir(possible_glob, corrected))
         else:
+            glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
             expanded_file_list += glob_files
-    expanded_file_list = [_ensure_unicode(elem) for elem in expanded_file_list]
-    expanded_file_list = [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
-    return expanded_file_list
+            
+    return [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
