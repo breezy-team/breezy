@@ -28,12 +28,40 @@ class TestAnnotate(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
         tree.lock_read()
-        try:
-            for revision, line in tree.annotate_iter('a-id'):
-                self.assertEqual('contents of a\n', line)
-                self.assertEqual(tree_revision, revision)
-        finally:
-            tree.unlock()
+        self.addCleanup(tree.unlock)
+        for revision, line in tree.annotate_iter('a-id'):
+            self.assertEqual('contents of a\n', line)
+            self.assertEqual(tree_revision, revision)
+        tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
+        for revision, line in tree.annotate_iter('a-id', 'random:'):
+            self.assertEqual('contents of a\n', line)
+            self.assertEqual(tree_revision, revision)
+
+
+class TestPlanFileMerge(TestCaseWithTree):
+
+    def test_plan_file_merge(self):
+        work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        work_a.commit('base version')
+        work_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        self.build_tree_contents([('wta/file', 'b\nc\nd\ne\n')])
+        tree_a = self.workingtree_to_test_tree(work_a)
+        tree_a.lock_read()
+        self.addCleanup(tree_a.unlock)
+        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        tree_b = self.workingtree_to_test_tree(work_b)
+        tree_b.lock_read()
+        self.addCleanup(tree_b.unlock)
+        self.assertEqual([
+            ('killed-b', 'b\n'),
+            ('killed-a', 'a\n'),
+            ('unchanged', 'c\n'),
+            ('unchanged', 'd\n'),
+            ('new-a', 'e\n'),
+            ('new-b', 'f\n'),
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
 
 
 class TestReference(TestCaseWithTree):

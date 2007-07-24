@@ -251,9 +251,10 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
         md.bundle = value
 
 
-EMAIL1 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: Commit of rev2a
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
 # Bazaar merge directive format 1
 # revision_id: rev2a
@@ -264,9 +265,10 @@ Subject: Commit of rev2a
 """
 
 
-EMAIL1_2 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL1_2 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: Commit of rev2a
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
 # Bazaar merge directive format 2 \\(Bazaar 0.19\\)
 # revision_id: rev2a
@@ -277,9 +279,10 @@ Subject: Commit of rev2a
 """
 
 
-EMAIL2 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL2 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: Commit of rev2a with special message
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
 # Bazaar merge directive format 1
 # revision_id: rev2a
@@ -290,9 +293,10 @@ Subject: Commit of rev2a with special message
 # message: Commit of rev2a with special message
 """
 
-EMAIL2_2 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL2_2 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: Commit of rev2a with special message
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
 # Bazaar merge directive format 2 \\(Bazaar 0.19\\)
 # revision_id: rev2a

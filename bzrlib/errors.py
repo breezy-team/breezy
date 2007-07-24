@@ -198,6 +198,15 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -536,7 +545,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
