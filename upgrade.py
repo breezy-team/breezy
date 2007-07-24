@@ -107,15 +107,13 @@ def check_revision_changed(oldrev, newrev):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
-def generate_upgrade_map(graph):
+def generate_upgrade_map(revs):
     rename_map = {}
     pb = ui.ui_factory.nested_progress_bar()
-    i = 0
     # Create a list of revisions that can be renamed during the upgade
     try:
-        for revid in graph:
-            pb.update('gather revision information', i, len(graph))
-            i += 1
+        for revid in revs:
+            pb.update('gather revision information', revs.index(revid), len(revs))
             try:
                 (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
             except InvalidRevisionId:
@@ -154,7 +152,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         repository.lock_write()
         svn_repository.lock_read()
         graph = repository.get_revision_graph(revision_id)
-        upgrade_map = generate_upgrade_map(graph)
+        upgrade_map = generate_upgrade_map(graph.keys())
        
         # Make sure all the required current version revisions are present
         for revid in upgrade_map.values():

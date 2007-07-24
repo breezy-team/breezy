@@ -28,7 +28,7 @@ from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
                      UpgradeChangesContent, parse_legacy_revision_id,
-                     create_upgraded_revid)
+                     create_upgraded_revid, generate_upgrade_map)
 
 class TestUpgradeChangesContent(TestCase):
     def test_init(self):
@@ -298,3 +298,11 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
 
         self.assertRaises(UpgradeChangesContent, upgrade_branch, b, oldrepos)
+
+
+class TestGenerateUpdateMapTests(TestCase):
+    def test_nothing(self):
+        self.assertEquals({}, generate_upgrade_map(["bla", "bloe"]))
+
+    def test_v2(self):
+        self.assertEquals({"svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk": "svn-v3-trunk0:65390229-12b7-0310-b90b-f21a5aa7ec8e:trunk:12"}, generate_upgrade_map(["svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk", "bloe", "blaaa"]))
