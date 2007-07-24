@@ -301,20 +301,27 @@ class VersionedFile(object):
         mpdiff.  mpdiff should be a MultiParent instance.
         """
         vf_parents = {}
-        for version, parents, expected_sha1, mpdiff in records:
-            mpvf = multiparent.MultiMemoryVersionedFile()
-            parent_lines = self._get_lf_split_line_list(parents)
-            for parent_id, lines in zip(parents, parent_lines):
-                mpvf.add_version(lines, parent_id, [])
-            mpvf.add_diff(mpdiff, version, parents)
-            lines = mpvf.get_line_list([version])[0]
-            if len(parents) == 1:
+        mpvf = multiparent.MultiMemoryVersionedFile()
+        versions = []
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            versions.append(version)
+            mpvf.add_diff(mpdiff, version, parent_ids)
+        needed_parents = set()
+        for version in versions:
+            needed_parents.update(p for p in parent_ids
+                                  if not mpvf.has_version(p))
+        for parent_id, lines in zip(needed_parents,
+                                 self._get_lf_split_line_list(needed_parents)):
+            mpvf.add_version(lines, parent_id, [])
+        for (version, parent_ids, expected_sha1, mpdiff), lines in\
+            zip(records, mpvf.get_line_list(versions)):
+            if len(parent_ids) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
-                    len(parent_lines[0])))
+                    mpvf.get_diff(parent_ids[0]).num_lines()))
             else:
                 left_matching_blocks = None
-            version_text = self.add_lines(version, parents, lines, vf_parents,
-                left_matching_blocks = left_matching_blocks)
+            version_text = self.add_lines(version, parent_ids, lines,
+                vf_parents, left_matching_blocks = left_matching_blocks)
             vf_parents[version] = version_text
             if expected_sha1 != self.get_sha1(version):
                 raise errors.VersionedFileInvalidChecksum(version)
