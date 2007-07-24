@@ -136,6 +136,13 @@ class MultiParent(object):
             diff.hunks.append(new_text)
         return diff
 
+    def get_matching_blocks(self, parent, parent_len):
+        for hunk in self.hunks:
+            if not isinstance(hunk, ParentText) or hunk.parent != parent:
+                continue
+            yield (hunk.parent_pos, hunk.child_pos, hunk.num_lines)
+        yield parent_len, self.num_lines(), 0
+
     def to_lines(self, parents=()):
         """Contruct a fulltext from this diff and its parents"""
         mpvf = MultiMemoryVersionedFile()
