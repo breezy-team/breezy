@@ -526,7 +526,6 @@ def push_as_merged(target, source, revision_id):
     """
     assert isinstance(source, Branch)
     rev = source.repository.get_revision(revision_id)
-    inv = source.repository.get_inventory(revision_id)
 
     # revision on top of which to commit
     prev_revid = target.last_revision()
@@ -535,9 +534,9 @@ def push_as_merged(target, source, revision_id):
 
     old_tree = source.repository.revision_tree(revision_id)
     if source.repository.has_revision(prev_revid):
-        new_tree = source.repository.revision_tree(prev_revid)
+        base_tree = source.repository.revision_tree(prev_revid)
     else:
-        new_tree = target.repository.revision_tree(prev_revid)
+        base_tree = target.repository.revision_tree(prev_revid)
 
     builder = SvnCommitBuilder(target.repository, target, 
                                [revision_id, prev_revid],
@@ -547,10 +546,10 @@ def push_as_merged(target, source, revision_id):
                                None,
                                rev.properties, 
                                None,
-                               new_tree.inventory)
+                               base_tree.inventory)
                          
-    builder.new_inventory = inv
-    replay_delta(builder, new_tree, old_tree)
+    builder.new_inventory = source.repository.get_inventory(revision_id)
+    replay_delta(builder, base_tree, old_tree)
 
     try:
         return builder.commit(rev.message)
@@ -629,14 +628,15 @@ def push(target, source, revision_id):
     assert isinstance(source, Branch)
     mutter('pushing %r' % (revision_id))
     rev = source.repository.get_revision(revision_id)
-    inv = source.repository.get_inventory(revision_id)
+
+    base_revid = target.last_revision()
 
     # revision on top of which to commit
-    assert (target.last_revision() in rev.parent_ids or 
-            target.last_revision() is None and rev.parent_ids == [])
+    assert (base_revid in rev.parent_ids or 
+            base_revid is None and rev.parent_ids == [])
 
     old_tree = source.repository.revision_tree(revision_id)
-    new_tree = source.repository.revision_tree(target.last_revision())
+    base_tree = source.repository.revision_tree(base_revid)
 
     builder = SvnCommitBuilder(target.repository, target, 
                                rev.parent_ids,
@@ -646,10 +646,10 @@ def push(target, source, revision_id):
                                rev.committer,
                                rev.properties, 
                                revision_id,
-                               new_tree.inventory)
+                               base_tree.inventory)
                          
-    builder.new_inventory = inv
-    replay_delta(builder, new_tree, old_tree)
+    builder.new_inventory = source.repository.get_inventory(revision_id)
+    replay_delta(builder, base_tree, old_tree)
     try:
         return builder.commit(rev.message)
     except SubversionException, (msg, num):
@@ -683,13 +683,12 @@ class InterToSvnRepository(InterRepository):
             if pb is not None:
                 pb.update("pushing revisions", todo.index(revision_id), len(todo))
             rev = self.source.get_revision(revision_id)
-            inv = self.source.get_inventory(revision_id)
 
             mutter('pushing %r' % (revision_id))
 
             old_tree = self.source.revision_tree(revision_id)
-            parent_revid = self.source.revision_parents(revision_id)[0]
-            new_tree = self.source.revision_tree(parent_revid)
+            parent_revid = rev.parent_ids[0]
+            base_tree = self.source.revision_tree(parent_revid)
 
             (bp, _, scheme) = self.target.lookup_revision_id(parent_revid)
             if target_branch is None or target_branch.get_branch_path() != bp:
@@ -703,10 +702,10 @@ class InterToSvnRepository(InterRepository):
                                rev.committer,
                                rev.properties, 
                                revision_id,
-                               new_tree.inventory)
+                               base_tree.inventory)
                          
-            builder.new_inventory = inv
-            replay_delta(builder, new_tree, old_tree)
+            builder.new_inventory = self.source.get_inventory(revision_id)
+            replay_delta(builder, base_tree, old_tree)
             builder.commit(rev.message)
  
 

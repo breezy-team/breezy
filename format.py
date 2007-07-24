@@ -150,7 +150,7 @@ class SvnRemoteAccess(BzrDir):
             raise AlreadyBranchError(full_branch_url)
         push_new(repos, target_branch_path, source, stop_revision)
         branch = self.open_branch()
-        branch.pull(source)
+        branch.pull(source, stop_revision=stop_revision)
         return branch
 
     def create_branch(self):

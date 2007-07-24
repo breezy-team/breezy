@@ -1,7 +1,3 @@
-todo before 0.4.0:
-- make sure bzr:file-ids is set correctly
- - don't truncate bzr:file-ids!
-
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - fix reuse of listbranchingscheme

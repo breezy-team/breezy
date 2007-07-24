@@ -226,7 +226,8 @@ class SvnBranch(Branch):
     def revision_history(self, last_revnum=None):
         if last_revnum is None:
             last_revnum = self.get_revnum()
-        if self._revision_history is None or self._revision_history_revnum != last_revnum:
+        if (self._revision_history is None or 
+            self._revision_history_revnum != last_revnum):
             self._generate_revision_history(last_revnum)
         return self._revision_history
 
@@ -234,7 +235,8 @@ class SvnBranch(Branch):
         # Shortcut for finding the tip. This avoids expensive generation time
         # on large branches.
         last_revnum = self.get_revnum()
-        if self._revision_history is None:
+        if (self._revision_history is None or 
+            self._revision_history_revnum != last_revnum):
             for (branch, rev) in self.repository.follow_branch(
                 self.get_branch_path(), last_revnum, self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
@@ -310,7 +312,8 @@ class SvnBranch(Branch):
             # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
             raise NotImplementedError(self.pull)
         else:
-            todo = self.missing_revisions(other, stop_revision)
+            # TODO: Use stop_revision
+            todo = self.missing_revisions(other)
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for rev_id in todo:
