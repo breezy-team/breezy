@@ -106,7 +106,7 @@ class MultiParent(object):
                 if block is None:
                     continue
                 i, j, n = block
-                while j + n < cur_line:
+                while j + n <= cur_line:
                     block = cur_block[p] = next_block(p)
                     if block is None:
                         break
