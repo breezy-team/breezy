@@ -634,29 +634,27 @@ class KnitVersionedFile(VersionedFile):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
-        if annotated:
+        if left_matching_blocks is not None:
+            delta_seq = diff._PrematchedMatcher(left_matching_blocks)
+        else:
             delta_seq = None
+        if annotated:
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                if (parent_id == parents[0] and
-                    left_matching_blocks is not None):
-                    seq = diff._PrematchedMatcher(left_matching_blocks)
+                if (parent_id == parents[0] and delta_seq is not None):
+                    seq = delta_seq
                 else:
                     seq = patiencediff.PatienceSequenceMatcher(
                         None, merge_content.text(), content.text())
-                if delta_seq is None:
-                    # setup a delta seq to reuse.
-                    delta_seq = seq
                 for i, j, n in seq.get_matching_blocks():
                     if n == 0:
                         continue
-                    # this appears to copy (origin, text) pairs across to the new
-                    # content for any line that matches the last-checked parent.
-                    # FIXME: save the sequence control data for delta compression
-                    # against the most relevant parent rather than rediffing.
+                    # this appears to copy (origin, text) pairs across to the
+                    # new content for any line that matches the last-checked
+                    # parent.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
         if delta:
-            if not annotated:
+            if delta_seq is None:
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
