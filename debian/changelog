@@ -24,8 +24,6 @@ bzr-builddeb (0.18) unstable; urgency=low
   * Remove the need for --ignore-unknowns, as it is no longer checked for.
     The option is still there for backwards compatibility, but it now does
     nothing.
-  * Allow empty author information in the changelog for those that like to
-    develop without filling it in, and then add it while releasing.
 
  -- James Westby <jw+debian@jameswestby.net>  Tue, 10 Jul 2007 22:25:49 +0100
 
