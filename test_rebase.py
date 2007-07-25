@@ -69,7 +69,7 @@ class ConversionTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
         
         newrev = replay_snapshot(wt.branch.repository, "bla2", "bla4", 
-                                        ["bloe"])
+                ["bloe"], {"bla": "bloe"})
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
         self.assertEqual(["bloe"], 
@@ -268,7 +268,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         self.build_tree(['afile'])
         wt.add(["afile"])
         wt.commit("bla", rev_id="oldcommit")
-        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", [])
+        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", [],
+                        {})
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals([], newrev.parent_ids)
@@ -295,7 +296,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         self.assertRaises(
                 ReplayParentsInconsistent, replay_snapshot, 
                 wt.branch.repository, "oldcommit", "newcommit", 
-                        ["base"])
+                ["base"], {"oldparent": "base"})
 
     def test_two_revisions(self):
         wt = self.make_branch_and_tree("old")
@@ -311,7 +312,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
-                        ["newparent"])
+                ["newparent"], {"oldparent": "newparent"})
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)
@@ -343,7 +344,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
 
     def test_multi_revisions(self):
         wt = self.make_branch_and_tree("old")
-        self.build_tree(['old/afile', 'old/notherfile'])
+        self.build_tree(['old/afile', 'old/sfile', 'old/notherfile'])
+        wt.add(['sfile'])
         wt.add(["afile"], ["somefileid"])
         wt.commit("bla", rev_id="oldgrandparent")
         open("old/afile", "w").write("data")
@@ -352,14 +354,16 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="oldcommit")
         oldrepos = wt.branch.repository
         wt = self.make_branch_and_tree("new")
-        self.build_tree(['new/afile', 'new/notherfile'])
+        self.build_tree(['new/afile', 'new/sfile', 'new/notherfile'])
+        wt.add(['sfile'])
         wt.add(["afile"], ["afileid"])
         wt.commit("bla", rev_id="newgrandparent")
         open("new/afile", "w").write("data")
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
-                        ["newparent"])
+                ["newparent"], {"oldgrandparent": "newgrandparent", 
+                                "oldparent": "newparent"})
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)
@@ -370,8 +374,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         inv = wt.branch.repository.get_inventory("newcommit")
         self.assertEquals("afileid", inv.path2id("afile"))
         self.assertEquals("newcommit", inv[inv.path2id("notherfile")].revision)
-
-
+        self.assertEquals("newgrandparent", inv[inv.path2id("sfile")].revision)
 
     def test_maps_ids(self):
         wt = self.make_branch_and_tree("old")
@@ -388,7 +391,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
-                        ["newparent"])
+                ["newparent"], {"oldparent": "newparent"})
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)

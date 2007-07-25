@@ -271,7 +271,7 @@ def rebase(repository, replace_map, replay_fn):
 
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents, 
-                    revid_renames=None):
+                    revid_renames):
     """Replay a commit by simply commiting the same snapshot with different 
     parents.
 
@@ -285,9 +285,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
     mutter('creating copy %r of %r with new parents %r' % 
                                (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
-
-    if revid_renames is None:
-        revid_renames = dict(zip(oldrev.parent_ids, new_parents))
 
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrevid
