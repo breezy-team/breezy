@@ -891,6 +891,10 @@ class Weave(VersionedFile):
         """See VersionedFile.get_sha1()."""
         return self._sha1s[self._lookup(version_id)]
 
+    def get_sha1s(self, version_ids):
+        """See VersionedFile.get_sha1s()."""
+        return [self._sha1s[self._lookup(v)] for v in version_ids]
+
     @deprecated_method(zero_eight)
     def numversions(self):
         """How many versions are in this weave?

@@ -198,6 +198,15 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -536,7 +545,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
@@ -1261,6 +1270,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         VersionedFileError.__init__(self)
         self.revision_id = revision_id
         self.file_id = file_id
+
+
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
 
 
 class KnitError(BzrError):
@@ -2112,6 +2126,22 @@ class NoMergeSource(BzrError):
 
     _fmt = "A merge directive must provide either a bundle or a public"\
         " branch location."
+
+
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
 
 
 class PatchMissing(BzrError):
