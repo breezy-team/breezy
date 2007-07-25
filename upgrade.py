@@ -80,6 +80,13 @@ def create_upgraded_revid(revid):
         return revid + suffix
 
 
+def upgrade_workingtree(wt, svn_repository, allow_changes=False, verbose=False):
+    upgrade_branch(wt.branch, svn_repository, allow_changes=allow_changes, verbose=verbose)
+    last_revid = wt.branch.last_revision()
+    wt.set_parent_trees([(last_revid, wt.branch.repository.revision_tree(last_revid))])
+    # TODO: Should also adjust file ids in working tree if necessary
+
+
 def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
     """Upgrade a branch to the current mapping version.
     

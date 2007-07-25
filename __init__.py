@@ -219,7 +219,7 @@ class cmd_svn_upgrade(Command):
 
     @display_command
     def run(self, from_repository=None, verbose=False):
-        from upgrade import upgrade_branch
+        from upgrade import upgrade_branch, upgrade_workingtree
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
@@ -245,8 +245,12 @@ class cmd_svn_upgrade(Command):
         else:
             from_repository = Repository.open(from_repository)
 
-        upgrade_branch(branch_to, from_repository, allow_changes=True, 
-                       verbose=verbose)
+        if wt_to is not None:
+            upgrade_workingtree(wt_to, from_repository, allow_changes=True,
+                                verbose=verbose)
+        else:
+            upgrade_branch(branch_to, from_repository, allow_changes=True, 
+                           verbose=verbose)
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())
