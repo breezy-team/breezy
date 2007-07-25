@@ -19,7 +19,10 @@
 
 import os
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    merge
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -95,3 +98,19 @@ class TestMergeFromBranch(TestCaseWithWorkingTree):
         self.addCleanup(tree_a.unlock)
         changes = list(tree_a._iter_changes(tree_a.basis_tree()))
         self.assertEqual(1, len(changes))
+
+    def test_merge_type(self):
+        this = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/foo', 'foo')])
+        this.add('foo', 'foo-id')
+        this.commit('added foo')
+        other = this.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/foo', 'bar')])
+        other.commit('content -> bar')
+        self.build_tree_contents([('this/foo', 'baz')])
+        this.commit('content -> baz')
+        class QuxMerge(merge.Merge3Merger):
+            def text_merge(self, file_id, trans_id):
+                self.tt.create_file('qux', trans_id)
+        this.merge_from_branch(other.branch, merge_type=QuxMerge)
+        self.assertEqual('qux', this.get_file_text('foo-id'))
