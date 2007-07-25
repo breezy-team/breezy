@@ -270,7 +270,8 @@ def rebase(repository, replace_map, replay_fn):
 
 
 
-def replay_snapshot(repository, oldrevid, newrevid, new_parents):
+def replay_snapshot(repository, oldrevid, newrevid, new_parents, 
+                    revid_renames=None):
     """Replay a commit by simply commiting the same snapshot with different 
     parents.
 
@@ -278,11 +279,15 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     :param oldrevid: Revision id of the revision to copy.
     :param newrevid: Revision id of the revision to create.
     :param new_parents: Revision ids of the new parent revisions.
+    :param revid_renames: Revision id renames for texts.
     """
     assert isinstance(new_parents, list)
     mutter('creating copy %r of %r with new parents %r' % 
                                (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
+
+    if revid_renames is None:
+        revid_renames = dict(zip(oldrev.parent_ids, new_parents))
 
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrevid
@@ -307,14 +312,20 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
         transact = repository.get_transaction()
         for path, ie in oldtree.inventory.iter_entries():
             pb.update('upgrading file', i, total)
-            # Either this file was modified last in this revision
+            ie = ie.copy()
+            # Either this file was modified last in this revision, 
+            # in which case it has to be rewritten
             if ie.revision == oldrevid:
-                ie = ie.copy()
                 ie.revision = None
             else:
-                # Other it should already have had this version in one of the parents
+                # or it was already there before the commit, in 
+                # which case the right revision should be used
+                if revid_renames.has_key(ie.revision):
+                    ie.revision = revid_renames[ie.revision]
+                # make sure at least one of the new parents contains 
+                # the ie.file_id, ie.revision combination
                 if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
-                    raise ReplaySnapshotFailed("Revision %r for file %r doesn't appear in any parent invs" % (ie.revision, ie.file_id))
+                    raise ReplayParentsInconsistent(ie.file_id, ie.revision)
             i += 1
             builder.record_entry_contents(ie, parent_invs, path, oldtree)
     finally:
@@ -433,9 +444,18 @@ def complete_revert(wt, newparents):
     wt.revert([], old_tree=newtree, backups=False)
 
 
-class ReplaySnapshotFailed(BzrError):
+class ReplaySnapshotError(BzrError):
     _fmt = """Replaying the snapshot failed: %(message)s."""
 
     def __init__(self, message):
         BzrError.__init__(self)
         self.message = message
+
+
+class ReplayParentsInconsistent(BzrError):
+    _fmt = """Parents were inconsistent while replaying commit for file id %(fileid)s, revision %(revid)s."""
+
+    def __init__(self, fileid, revid):
+        BzrError.__init__(self)
+        self.fileid = fileid
+        self.revid = revid

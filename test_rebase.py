@@ -26,7 +26,7 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     REBASE_CURRENT_REVID_FILENAME, read_rebase_plan, 
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
-                    ReplaySnapshotFailed)
+                    ReplaySnapshotError, ReplayParentsInconsistent)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -290,36 +290,88 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="oldparent")
         wt.add(["notherfile"])
         wt.commit("bla", rev_id="oldcommit")
+        # this should raise an exception since oldcommit is being rewritten 
+        # but 'afile' is present in the old parents but not in the new ones.
         self.assertRaises(
-                ReplaySnapshotFailed, replay_snapshot, 
+                ReplayParentsInconsistent, replay_snapshot, 
                 wt.branch.repository, "oldcommit", "newcommit", 
                         ["base"])
 
-    def test_multi_revisions(self):
+    def test_two_revisions(self):
         wt = self.make_branch_and_tree("old")
         self.build_tree(['old/afile', 'old/notherfile'])
-        wt.add(["afile"])
+        wt.add(["afile"], ["somefileid"])
         wt.commit("bla", rev_id="oldparent")
         wt.add(["notherfile"])
         wt.commit("bla", rev_id="oldcommit")
         oldrepos = wt.branch.repository
         wt = self.make_branch_and_tree("new")
         self.build_tree(['new/afile', 'new/notherfile'])
-        wt.add(["afile"])
+        wt.add(["afile"], ["afileid"])
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
                         ["newparent"])
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
-        self.assertEquals(["base"], newrev.parent_ids)
+        self.assertEquals(["newparent"], newrev.parent_ids)
         self.assertEquals("newcommit", newrev.revision_id)
         self.assertEquals(oldrev.committer, newrev.committer)
         self.assertEquals(oldrev.timestamp, newrev.timestamp)
         self.assertEquals(oldrev.timezone, newrev.timezone)
         inv = wt.branch.repository.get_inventory("newcommit")
-        self.assertIs(None, inv.path2id("afile"))
+        self.assertEquals("afileid", inv.path2id("afile"))
         self.assertEquals("newcommit", inv[inv.path2id("notherfile")].revision)
+
+    def test_two_revisions_no_renames(self):
+        wt = self.make_branch_and_tree("old")
+        self.build_tree(['old/afile', 'old/notherfile'])
+        wt.add(["afile"], ["somefileid"])
+        wt.commit("bla", rev_id="oldparent")
+        wt.add(["notherfile"])
+        wt.commit("bla", rev_id="oldcommit")
+        oldrepos = wt.branch.repository
+        wt = self.make_branch_and_tree("new")
+        self.build_tree(['new/afile', 'new/notherfile'])
+        wt.add(["afile"], ["afileid"])
+        wt.commit("bla", rev_id="newparent")
+        wt.branch.repository.fetch(oldrepos)
+        self.assertRaises(ReplayParentsInconsistent, 
+                          replay_snapshot, wt.branch.repository, 
+                          "oldcommit", "newcommit", 
+                        ["newparent"], revid_renames={})
+
+    def test_multi_revisions(self):
+        wt = self.make_branch_and_tree("old")
+        self.build_tree(['old/afile', 'old/notherfile'])
+        wt.add(["afile"], ["somefileid"])
+        wt.commit("bla", rev_id="oldgrandparent")
+        open("old/afile", "w").write("data")
+        wt.commit("bla", rev_id="oldparent")
+        wt.add(["notherfile"])
+        wt.commit("bla", rev_id="oldcommit")
+        oldrepos = wt.branch.repository
+        wt = self.make_branch_and_tree("new")
+        self.build_tree(['new/afile', 'new/notherfile'])
+        wt.add(["afile"], ["afileid"])
+        wt.commit("bla", rev_id="newgrandparent")
+        open("new/afile", "w").write("data")
+        wt.commit("bla", rev_id="newparent")
+        wt.branch.repository.fetch(oldrepos)
+        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
+                        ["newparent"])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["newparent"], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.committer, newrev.committer)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+        inv = wt.branch.repository.get_inventory("newcommit")
+        self.assertEquals("afileid", inv.path2id("afile"))
+        self.assertEquals("newcommit", inv[inv.path2id("notherfile")].revision)
+
+
 
     def test_maps_ids(self):
         wt = self.make_branch_and_tree("old")
@@ -348,6 +400,11 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         self.assertEquals("newid", inv.path2id("afile"))
         self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
 
-class TestReplaySnapshotFailed(TestCase):
+class TestReplaySnapshotError(TestCase):
     def test_create(self):
-        ReplaySnapshotFailed("message")
+        ReplaySnapshotError("message")
+
+
+class TestReplayParentsInconsistent(TestCase):
+    def test_create(self):
+        ReplayParentsInconsistent("afileid", "arevid")
