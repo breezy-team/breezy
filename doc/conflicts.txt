@@ -99,9 +99,10 @@ Typical message::
 Sometimes Bazaar will attempt to create a file whose parent directory is not
 versioned.  This happens when the directory has been deleted in the target,
 but has a new child in the source, or vice versa.  In this situation, Bazaar
-will version the parent directory as well.  You may rename either file, if you
-like.  When you are satisfied, you can run "bzr resolve FILE" to mark the
-conflict as resolved.
+will version the parent directory as well.  Resolving this issue depends
+very much on the particular scenario.  You may wish to rename or delete either
+the file or the directory.  When you are satisfied, you can run "bzr resolve
+FILE" to mark the conflict as resolved.
 
 Missing Parent
 ==============
@@ -112,8 +113,9 @@ Typical message::
 This happens when a file has been deleted in the target, but has new children
 in the source.  This is similar to the "unversioned parent" conflict, except
 that the parent directory does not *exist*, instead of just being unversioned.
-In this situation, Bazaar will create the missing parent.  You may rename
-the file or directory, if you like.  When you are satisfied, you can run "bzr
+In this situation, Bazaar will create the missing parent.  Resolving this issue
+depends very much on the particular scenario.  You may wish to rename or delete
+either the file or the directory.  When you are satisfied, you can run "bzr
 resolve FILE" to mark the conflict as resolved.
 
 Deleting Parent
@@ -124,7 +126,8 @@ Typical message::
 
 This is the opposite of "missing parent".  A directory is deleted in the
 source, but has new children in the target.  Bazaar will retain the directory.
-You may rename or delete the file or directory, if you like.  When you are
+Resolving this issue depends very much on the particular scenario.  You may
+wish to rename or delete either the file or the directory.  When you are
 satisfied, you can run "bzr resolve FILE" to mark the conflict as resolved.
 
 Path Conflict
