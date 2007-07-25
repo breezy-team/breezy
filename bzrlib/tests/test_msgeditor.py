@@ -45,27 +45,30 @@ class MsgEditorTest(TestCaseWithTransport):
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
-        template = bzrlib.msgeditor.make_commit_message_template(working_tree, None)
+        template = bzrlib.msgeditor.make_commit_message_template(working_tree,
+                                                     None,
+                                                     output_encoding='utf8')
         self.assertEqualDiff(template,
 u"""\
 added:
   hell\u00d8
-""")
+""".encode("utf8"))
 
     def test_commit_template_and_diff(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
         template = bzrlib.msgeditor.make_commit_message_template(working_tree,
-                                                            None, diff=True)
+                                                     None, diff=True,
+                                                     output_encoding='utf8')
 
         self.assertTrue("""\
 @@ -0,0 +1,1 @@
 +contents of hello
-""" in template[1])
+""" in template)
         self.assertTrue(u"""\
 added:
   hell\u00d8
-""" in template[0])
+""".encode('utf8') in template)
 
     def setUp(self):
         super(MsgEditorTest, self).setUp()
@@ -140,7 +143,7 @@ if len(sys.argv) == 2:
 
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
-                         bzrlib.msgeditor.edit_commit_message(u'\u1234'))
+                         bzrlib.msgeditor.edit_commit_message(u'\u1234'.encode("utf8")))
 
     def test_start_message(self):
         self.make_uncommitted_tree()
