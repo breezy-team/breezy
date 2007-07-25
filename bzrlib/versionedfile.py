@@ -399,8 +399,10 @@ class VersionedFile(object):
             pending = set()
             for version, parents in self.iter_parents(this_iteration):
                 result[version] = parents
-                pending.update(parents)
-            pending.difference_update(result)
+                for parent in parents:
+                    if parent in result:
+                        continue
+                    pending.add(parent)
         return result
 
     def get_graph_with_ghosts(self):
