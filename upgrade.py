@@ -127,6 +127,32 @@ def generate_upgrade_map(revs):
         pb.finished()
 
     return rename_map
+
+
+def create_upgrade_plan(repository, svn_repository, revision_id=None,
+                        allow_changes=False):
+    try:
+        from bzrlib.plugins.rebase.rebase import generate_transpose_plan
+    except ImportError, e:
+        raise RebaseNotPresent(e)
+
+    graph = repository.get_revision_graph(revision_id)
+    upgrade_map = generate_upgrade_map(graph.keys())
+   
+    # Make sure all the required current version revisions are present
+    for revid in upgrade_map.values():
+        if not repository.has_revision(revid):
+            repository.fetch(svn_repository, revid)
+
+    if not allow_changes:
+        for oldrevid, newrevid in upgrade_map.items():
+            oldrev = repository.get_revision(oldrevid)
+            newrev = repository.get_revision(newrevid)
+            check_revision_changed(oldrev, newrev)
+
+    return generate_transpose_plan(graph, upgrade_map, repository.revision_parents,
+                                   create_upgraded_revid)
+
  
 def upgrade_repository(repository, svn_repository, revision_id=None, 
                        allow_changes=False, verbose=False):
@@ -142,7 +168,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     """
     try:
         from bzrlib.plugins.rebase.rebase import (
-            replay_snapshot, generate_transpose_plan, rebase, rebase_todo)
+            replay_snapshot, rebase, rebase_todo)
     except ImportError, e:
         raise RebaseNotPresent(e)
 
@@ -151,22 +177,9 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     try:
         repository.lock_write()
         svn_repository.lock_read()
-        graph = repository.get_revision_graph(revision_id)
-        upgrade_map = generate_upgrade_map(graph.keys())
-       
-        # Make sure all the required current version revisions are present
-        for revid in upgrade_map.values():
-            if not repository.has_revision(revid):
-                repository.fetch(svn_repository, revid)
-
-        if not allow_changes:
-            for oldrevid, newrevid in upgrade_map.items():
-                oldrev = repository.get_revision(oldrevid)
-                newrev = repository.get_revision(newrevid)
-                check_revision_changed(oldrev, newrev)
-
-        plan = generate_transpose_plan(repository, graph, upgrade_map, 
-                           lambda rev: create_upgraded_revid(rev.revision_id))
+        plan = create_upgrade_plan(repository, svn_repository, 
+                                   revision_id=revision_id,
+                                   allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
                 info("%s -> %s" % (revid, plan[revid][0]))
