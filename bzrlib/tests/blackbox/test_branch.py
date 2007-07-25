@@ -22,6 +22,7 @@ import os
 from bzrlib import branch, bzrdir
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
@@ -88,4 +89,27 @@ class TestBranch(ExternalBase):
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
+
+class TestRemoteBranch(TestCaseWithSFTPServer):
+
+    def setUp(self):
+        super(TestRemoteBranch, self).setUp()
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/file', 'file content\n')])
+        tree.add('file')
+        tree.commit('file created')
+
+    def test_branch_local_remote(self):
+        self.run_bzr(['branch', 'branch', self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
+
+    def test_branch_remote_remote(self):
+        # Light cheat: we access the branch remotely
+        self.run_bzr(['branch', self.get_url('branch'),
+                      self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
 

@@ -48,8 +48,12 @@ from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, remote, _get_transport_modules
-import bzrlib.transport
+from bzrlib.transport import (
+    ConnectedTransport,
+    get_transport,
+    _get_transport_modules,
+    )
+from bzrlib.transport.memory import MemoryTransport
 
 
 class TransportTestProviderAdapter(TestScenarioApplier):
@@ -634,7 +638,6 @@ class TransportTests(TestTransportImplementation):
         # same protocol two servers
         # and    different protocols (done for now except for MemoryTransport.
         # - RBC 20060122
-        from bzrlib.transport.memory import MemoryTransport
 
         def simple_copy_files(transport_from, transport_to):
             files = ['a', 'b', 'c', 'd']
@@ -1030,18 +1033,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        # This should be:  but SSH still connects on construction. No COOKIE!
-        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
-        try:
-            t = bzrlib.transport.get_transport(url)
-            t.get('.bzr/branch')
-        except (ConnectionError, NoSuchFile), e:
-            pass
-        except (Exception), e:
-            self.fail('Wrong exception thrown (%s.%s): %s' 
-                        % (e.__class__.__module__, e.__class__.__name__, e))
-        else:
-            self.fail('Did not get the expected ConnectionError or NoSuchFile.')
+        t = get_transport(url)
+        self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing
@@ -1136,6 +1129,96 @@ class TransportTests(TestTransportImplementation):
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
+
+    def test_clone_preserve_info(self):
+        t1 = self.get_transport()
+        if not isinstance(t1, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t2 = t1.clone('subdir')
+        self.assertEquals(t1._scheme, t2._scheme)
+        self.assertEquals(t1._user, t2._user)
+        self.assertEquals(t1._password, t2._password)
+        self.assertEquals(t1._host, t2._host)
+        self.assertEquals(t1._port, t2._port)
+
+    def test__reuse_for(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        def new_url(scheme=None, user=None, password=None,
+                    host=None, port=None, path=None):
+            """Build a new url from t.base chaging only parts of it.
+
+            Only the parameters different from None will be changed.
+            """
+            if scheme   is None: scheme   = t._scheme
+            if user     is None: user     = t._user
+            if password is None: password = t._password
+            if user     is None: user     = t._user
+            if host     is None: host     = t._host
+            if port     is None: port     = t._port
+            if path     is None: path     = t._path
+            return t._unsplit_url(scheme, user, password, host, port, path)
+
+        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._user == 'me':
+            user = 'you'
+        else:
+            user = 'me'
+        self.assertIsNot(t, t._reuse_for(new_url(user=user)))
+        # passwords are not taken into account because:
+        # - it makes no sense to have two different valid passwords for the
+        #   same user
+        # - _password in ConnectedTransport is intended to collect what the
+        #   user specified from the command-line and there are cases where the
+        #   new url can contain no password (if the url was built from an
+        #   existing transport.base for example)
+        # - password are considered part of the credentials provided at
+        #   connection creation time and as such may not be present in the url
+        #   (they may be typed by the user when prompted for example)
+        self.assertIs(t, t._reuse_for(new_url(password='from space')))
+        # We will not connect, we can use a invalid host
+        self.assertIsNot(t, t._reuse_for(new_url(host=t._host + 'bar')))
+        if t._port == 1234:
+            port = 4321
+        else:
+            port = 1234
+        self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+
+    def test_connection_sharing(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        c = t.clone('subdir')
+        # Some transports will create the connection  only when needed
+        t.has('surely_not') # Force connection
+        self.assertIs(t._get_connection(), c._get_connection())
+
+        # Temporary failure, we need to create a new dummy connection
+        new_connection = object()
+        t._set_connection(new_connection)
+        # Check that both transports use the same connection
+        self.assertIs(new_connection, t._get_connection())
+        self.assertIs(new_connection, c._get_connection())
+
+    def test_reuse_connection_for_various_paths(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t.has('surely_not') # Force connection
+        self.assertIsNot(None, t._get_connection())
+
+        subdir = t._reuse_for(t.base + 'whatever/but/deep/down/the/path')
+        self.assertIsNot(t, subdir)
+        self.assertIs(t._get_connection(), subdir._get_connection())
+
+        home = subdir._reuse_for(t.base + 'home')
+        self.assertIs(t._get_connection(), home._get_connection())
+        self.assertIs(subdir._get_connection(), home._get_connection())
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
@@ -1235,7 +1318,7 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
-        
+
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
@@ -1361,23 +1444,23 @@ class TransportTests(TestTransportImplementation):
             self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
-        # check that our server (whatever it is) is accessable reliably
+        # check that our server (whatever it is) is accessible reliably
         # via get_transport and multiple connections share content.
         transport = self.get_transport()
         if transport.is_readonly():
             return
         transport.put_bytes('foo', 'bar')
-        transport2 = self.get_transport()
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport3 = self.get_transport()
+        self.check_transport_contents('bar', transport3, 'foo')
         # its base should be usable.
-        transport2 = bzrlib.transport.get_transport(transport.base)
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport4 = get_transport(transport.base)
+        self.check_transport_contents('bar', transport4, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport2 = bzrlib.transport.get_transport(transport.base + "newdir")
-        transport2 = transport2.clone('..')
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport5 = get_transport(transport.base + "newdir")
+        transport6 = transport5.clone('..')
+        self.check_transport_contents('bar', transport6, 'foo')
 
     def test_lock_write(self):
         """Test transport-level write locks.

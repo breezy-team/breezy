@@ -313,7 +313,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
         g = repo.get_revision_graph()
-        if g['wrong-first-parent'] == ['1', '2']:
+        if tuple(g['wrong-first-parent']) == ('1', '2'):
             raise TestSkipped('wrong-first-parent is not setup for testing')
         self.checkUnreconciled(d, repo.reconcile())
         # nothing should have been altered yet : inventories without
@@ -325,7 +325,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.assertEqual(0, reconciler.garbage_inventories)
         # and should have been fixed:
         g = repo.get_revision_graph()
-        self.assertEqual(['1', '2'], g['wrong-first-parent'])
+        self.assertEqual(('1', '2'), g['wrong-first-parent'])
 
     def test_reconcile_wrong_order_secondary(self):
         # a wrong order in secondary parents is ignored.

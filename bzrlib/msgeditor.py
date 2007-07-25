@@ -207,11 +207,11 @@ def make_commit_message_template(working_tree, specific_files, diff=None,
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
-    template = status_tmp.getvalue().encode()
+    template = status_tmp.getvalue().encode(output_encoding, "replace")
     if diff:
         from bzrlib.diff import show_diff_trees
         stream = StringIO()
-        template += u"\n"
+        template += "\n"
         show_diff_trees(working_tree.basis_tree(),
                 working_tree, stream, specific_files,
                 path_encoding=output_encoding)

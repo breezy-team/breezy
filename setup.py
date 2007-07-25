@@ -195,6 +195,7 @@ def add_pyrex_extension(module_name, **kwargs):
             ext_modules.append(Extension(module_name, [c_name]))
 
 
+add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 
 

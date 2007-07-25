@@ -34,13 +34,13 @@ from bzrlib.trace import note
 def read_bundle_from_url(url):
     return read_mergeable_from_url(url, _do_directive=False)
 
+
 def read_mergeable_from_url(url, _do_directive=True):
     """Read mergable object from a given URL.
 
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    from bzrlib.merge_directive import MergeDirective
     url = urlutils.normalize_url(url)
     url, filename = urlutils.split(url, exclude_trailing_slash=False)
     if not filename:
@@ -48,14 +48,19 @@ def read_mergeable_from_url(url, _do_directive=True):
         # definitely not a bundle
         raise errors.NotABundle('A directory cannot be a bundle')
 
+    transport = get_transport(url)
+    mergeable, transport = read_mergeable_from_transport(transport, filename,
+                                                         _do_directive)
+    return mergeable
+
+
+def read_mergeable_from_transport(transport, filename, _do_directive=True):
     # All of this must be in the try/except
     # Some transports cannot detect that we are trying to read a
     # directory until we actually issue read() on the handle.
     try:
-        transport = get_transport(url)
-
         def get_bundle(transport):
-            return transport.get(filename)
+            return transport.get(filename), transport
 
         def redirected_transport(transport, exception, redirection_notice):
             note(redirection_notice)
@@ -66,16 +71,17 @@ def read_mergeable_from_url(url, _do_directive=True):
             return get_transport(url)
 
         try:
-            f = do_catching_redirections(get_bundle, transport,
-                                         redirected_transport)
+            f, transport = do_catching_redirections(get_bundle, transport,
+                                                    redirected_transport)
         except errors.TooManyRedirections:
             raise errors.NotABundle(str(url))
 
         if _do_directive:
+            from bzrlib.merge_directive import MergeDirective
             directive = MergeDirective.from_lines(f.readlines())
-            return directive
+            return directive, transport
         else:
-            return _serializer.read_bundle(f)
+            return _serializer.read_bundle(f), transport
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:
@@ -89,4 +95,4 @@ def read_mergeable_from_url(url, _do_directive=True):
         raise errors.NotABundle(str(e))
     except errors.NotAMergeDirective:
         f.seek(0)
-        return _serializer.read_bundle(f)
+        return _serializer.read_bundle(f), transport
