@@ -567,7 +567,7 @@ class WorkingTree4(WorkingTree3):
         if parent_ids:
             return parent_ids[0]
         else:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""

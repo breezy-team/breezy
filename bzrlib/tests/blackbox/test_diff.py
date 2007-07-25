@@ -209,7 +209,8 @@ class TestDiff(DiffBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr('diff -r 1.. branch1',
                               retcode=1)
-        self.assertTrue('\n-original line\n+new line\n' in output[0])
+        raise output[0]
+        self.assertContainsRe('\n\\-original line\n\\+new line\n', output[0])
 
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing"""

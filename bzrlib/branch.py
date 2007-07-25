@@ -457,7 +457,7 @@ class Branch(object):
         if ph:
             return ph[-1]
         else:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -517,7 +517,7 @@ class Branch(object):
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
-            return None
+            return _mod_revision.NULL_REVISION
         if history is None:
             history = self.revision_history()
         if revno <= 0 or revno > len(history):
@@ -1938,8 +1938,6 @@ class BzrBranch6(BzrBranch5):
     def last_revision(self):
         """Return last revision id, or None"""
         revision_id = self.last_revision_info()[1]
-        if revision_id == _mod_revision.NULL_REVISION:
-            revision_id = None
         return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):

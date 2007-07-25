@@ -1623,7 +1623,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_read_lock
     def _last_revision(self):
         """helper for get_parent_ids."""
-        return self.branch.last_revision()
+        return _mod_revision.ensure_null(self.branch.last_revision())
 
     def is_locked(self):
         return self._control_files.is_locked()
@@ -2411,7 +2411,7 @@ class WorkingTree3(WorkingTree):
             return osutils.safe_revision_id(
                         self._control_files.get('last-revision').read())
         except errors.NoSuchFile:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""

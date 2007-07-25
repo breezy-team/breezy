@@ -58,6 +58,8 @@ class RevisionInfo(object):
                 self.rev_id = None
             else:
                 self.rev_id = branch.get_rev_id(self.revno)
+        elif rev_id is None:
+            self.rev_id = None
         else:
             self.rev_id = rev_id
 
@@ -454,7 +456,7 @@ class RevisionSpec_before(RevisionSpec):
             rev = branch.repository.get_revision(r.rev_id)
             if not rev.parent_ids:
                 revno = 0
-                revision_id = None
+                revision_id = revision.NULL_REVISION
             else:
                 revision_id = rev.parent_ids[0]
                 try:
