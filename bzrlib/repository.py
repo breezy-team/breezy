@@ -691,7 +691,7 @@ class Repository(object):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, a_weave.get_parents(node)) for 
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
                              node in all_revisions])
         if revision_id is None:
             return entire_graph

@@ -90,6 +90,8 @@ IN DEVELOPMENT
       comply with the style guide by being one or more sentences with an
       initial capital and final period. (Martin Pool)
 
+    * KnitIndex.get_parents now returns tuples. (Robert Collins)
+
   INTERNALS:
 
     * merge now uses ``iter_changes`` to calculate changes, which makes room for
@@ -140,6 +142,16 @@ IN DEVELOPMENT
       for performing annotate-merge.  (Aaron Bentley)
 
     * New EmailMessage class to create email messages. (Adeodato Simó)
+
+    * Unused functions on the private interface KnitIndex have been removed.
+      (Robert Collins)
+
+    * New ``knit.KnitGraphIndex`` which provides a ``KnitIndex`` layered on top
+      of a ``index.GraphIndex``. (Robert Collins)
+
+    * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
+      the parents of many knit nodes at once, reducing round trips to the 
+      underlying index. (Robert Collins)
 
   TESTING:
 
