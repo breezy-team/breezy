@@ -256,7 +256,9 @@ def rebase(repository, replace_map, replay_fn):
                 continue
             replay_fn(repository, revid, newrevid, newparents)
             assert repository.has_revision(newrevid)
-            assert repository.revision_parents(newrevid) == newparents
+            assert repository.revision_parents(newrevid) == newparents, \
+                   "expected parents %r, got %r" % (newparents, 
+                           repository.revision_parents(newrevid))
             if dependencies.has_key(newrevid):
                 todo.extend(dependencies[newrevid])
                 del dependencies[newrevid]
@@ -266,8 +268,11 @@ def rebase(repository, replace_map, replay_fn):
     #assert all(map(repository.has_revision, 
     #           [replace_map[r][0] for r in replace_map]))
 
+
+
 def replay_snapshot(repository, oldrevid, newrevid, new_parents):
-    """Replay a commit by simply commiting the same snapshot with different parents.
+    """Replay a commit by simply commiting the same snapshot with different 
+    parents.
 
     :param repository: Repository in which the revision is present.
     :param oldrevid: Revision id of the revision to copy.
@@ -302,10 +307,16 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
         transact = repository.get_transaction()
         for path, ie in oldtree.inventory.iter_entries():
             pb.update('upgrading file', i, total)
+            # Either this file was modified last in this revision
+            if ie.revision == oldrevid:
+                ie = ie.copy()
+                ie.revision = None
+            else:
+                # Other it should already have had this version in one of the parents
+                if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
+                    raise ReplaySnapshotFailed("Revision %r for file %r doesn't appear in any parent invs" % (ie.revision, ie.file_id))
             i += 1
-            builder.record_entry_contents(ie, 
-                    parent_invs,
-                   path, oldtree)
+            builder.record_entry_contents(ie, parent_invs, path, oldtree)
     finally:
         pb.finished()
 
@@ -420,3 +431,11 @@ def complete_revert(wt, newparents):
         if osutils.lexists(abs_path):
             osutils.delete_any(abs_path)
     wt.revert([], old_tree=newtree, backups=False)
+
+
+class ReplaySnapshotFailed(BzrError):
+    _fmt = """Replaying the snapshot failed: %(message)s."""
+
+    def __init__(self, message):
+        BzrError.__init__(self)
+        self.message = message

@@ -25,7 +25,8 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     rebase_todo, REBASE_PLAN_FILENAME, 
                     REBASE_CURRENT_REVID_FILENAME, read_rebase_plan, 
                     remove_rebase_plan, read_active_rebase_revid, 
-                    write_active_rebase_revid, write_rebase_plan, MapTree)
+                    write_active_rebase_revid, write_rebase_plan, MapTree,
+                    ReplaySnapshotFailed)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -260,3 +261,93 @@ class RebaseTodoTests(TestCase):
         self.assertEquals(["ha"], 
                 list(rebase_todo(Repository(), { "bla": ("bloe", []), 
                                                  "ha": ("hee", [])})))
+
+class ReplaySnapshotTests(TestCaseWithTransport):
+    def test_single_revision(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['afile'])
+        wt.add(["afile"])
+        wt.commit("bla", rev_id="oldcommit")
+        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", [])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals([], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.committer, newrev.committer)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+        inv = wt.branch.repository.get_inventory("newcommit")
+        self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
+
+    def test_parents_different(self):
+        """replay_snapshot() relies on the fact that the contents of 
+        the old and new parents is equal (at least concerning tree shape). If 
+        it turns out it isn't, an exception should be raised."""
+        wt = self.make_branch_and_tree(".")
+        wt.commit("bloe", rev_id="base")
+        self.build_tree(['afile', 'notherfile'])
+        wt.add(["afile"])
+        wt.commit("bla", rev_id="oldparent")
+        wt.add(["notherfile"])
+        wt.commit("bla", rev_id="oldcommit")
+        self.assertRaises(
+                ReplaySnapshotFailed, replay_snapshot, 
+                wt.branch.repository, "oldcommit", "newcommit", 
+                        ["base"])
+
+    def test_multi_revisions(self):
+        wt = self.make_branch_and_tree("old")
+        self.build_tree(['old/afile', 'old/notherfile'])
+        wt.add(["afile"])
+        wt.commit("bla", rev_id="oldparent")
+        wt.add(["notherfile"])
+        wt.commit("bla", rev_id="oldcommit")
+        oldrepos = wt.branch.repository
+        wt = self.make_branch_and_tree("new")
+        self.build_tree(['new/afile', 'new/notherfile'])
+        wt.add(["afile"])
+        wt.commit("bla", rev_id="newparent")
+        wt.branch.repository.fetch(oldrepos)
+        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
+                        ["newparent"])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["base"], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.committer, newrev.committer)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+        inv = wt.branch.repository.get_inventory("newcommit")
+        self.assertIs(None, inv.path2id("afile"))
+        self.assertEquals("newcommit", inv[inv.path2id("notherfile")].revision)
+
+    def test_maps_ids(self):
+        wt = self.make_branch_and_tree("old")
+        wt.commit("base", rev_id="base")
+        self.build_tree(['old/afile'])
+        wt.add(["afile"], ids=["originalid"])
+        wt.commit("bla", rev_id="oldparent")
+        file("old/afile", "w").write("bloe")
+        wt.commit("bla", rev_id="oldcommit")
+        oldrepos = wt.branch.repository
+        wt = self.make_branch_and_tree("new")
+        self.build_tree(['new/afile'])
+        wt.add(["afile"], ids=["newid"])
+        wt.commit("bla", rev_id="newparent")
+        wt.branch.repository.fetch(oldrepos)
+        replay_snapshot(wt.branch.repository, "oldcommit", "newcommit", 
+                        ["newparent"])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["newparent"], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.committer, newrev.committer)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+        inv = wt.branch.repository.get_inventory("newcommit")
+        self.assertEquals("newid", inv.path2id("afile"))
+        self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
+
+class TestReplaySnapshotFailed(TestCase):
+    def test_create(self):
+        ReplaySnapshotFailed("message")

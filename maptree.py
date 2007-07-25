@@ -43,6 +43,7 @@ def map_file_ids(repository, old_parents, new_parents):
 
 
 class MapInventory:
+    """Maps the file ids in an inventory."""
     def __init__(self, oldinv, maptree):
         self.oldinv = oldinv
         self.maptree = maptree
