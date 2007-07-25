@@ -378,7 +378,8 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
                     old_label='a/', new_label='b/',
-                    extra_trees=None):
+                    extra_trees=None,
+                    path_encoding=None):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -389,7 +390,12 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     extra_trees
         If set, more Trees to use for looking up file ids
+
+    path_encoding
+        If set, the path will be encoded as specified
     """
+    if path_encoding is None:
+        path_encoding = 'utf8'
     old_tree.lock_read()
     try:
         if extra_trees is not None:
@@ -400,7 +406,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
             return _show_diff_trees(old_tree, new_tree, to_file,
                                     specific_files, external_diff_options,
                                     old_label=old_label, new_label=new_label,
-                                    extra_trees=extra_trees)
+                                    extra_trees=extra_trees,
+                                    path_encoding=path_encoding)
         finally:
             new_tree.unlock()
             if extra_trees is not None:
@@ -411,7 +418,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 
 def _show_diff_trees(old_tree, new_tree, to_file,
-                     specific_files, external_diff_options, 
+                     specific_files, external_diff_options, path_encoding,
                      old_label='a/', new_label='b/', extra_trees=None):
 
     # GNU Patch uses the epoch date to detect files that are being added
@@ -436,7 +443,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     has_changes = 0
     for path, file_id, kind in delta.removed:
         has_changes = 1
-        print >>to_file, '=== removed %s %r' % (kind, path.encode('utf8'))
+        print >>to_file, '=== removed %s %r' % (kind,
+                                                path.encode(path_encoding))
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
@@ -444,7 +452,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                                          new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path.encode('utf8'))
+        print >>to_file, '=== added %s %r' % (kind, path.encode(path_encoding))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
@@ -456,8 +464,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
-                    kind, old_path.encode('utf8'),
-                    new_path.encode('utf8'), prop_str)
+                    kind, old_path.encode(path_encoding),
+                    new_path.encode(path_encoding), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
                                  _patch_header_date(old_tree, file_id,
                                                     old_path))
@@ -470,7 +478,9 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
+        print >>to_file, '=== modified %s %r%s' % (kind,
+                                                   path.encode(path_encoding),
+                                                   prop_str)
         # The file may be in a different location in the old tree (because
         # the containing dir was renamed, but the file itself was not)
         old_path = old_tree.id2path(file_id)

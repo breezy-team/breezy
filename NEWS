@@ -65,8 +65,8 @@ IN DEVELOPMENT
       deprecated.  (Aaron Bentley)
 
     * Add the option user_encoding to the function
-      - _create_temp_file_with_commit_template
-      - edit_commit_message
+      - make_commit_message_template
+      - show_diff_trees
       in order to move the user encoding at the UI level. (Goffredo Baroncelli)
 
     * New ``index`` module with abstract index functionality. This will be

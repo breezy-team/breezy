@@ -81,7 +81,7 @@ DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
-                        start_message=None, output_encoding=None):
+                        start_message=None):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -90,10 +90,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
-                        May be a string, which will not be encoded
-                        May be a unicode string, which will be encoded
-                        May be a list of [unicode] string, which
-                        will may be encoded depending if it is unicode
+                        The string is already encoded
 
     :param ignoreline:  The separator to use above the infotext.
 
@@ -101,17 +98,12 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                             This will not be removed from the message
                             after the user has edited it.
 
-    :output_encoding:   Messages encoding
-
     :return:    commit message or None.
     """
     msgfilename = None
-    if output_encoding is None:
-        output_encoding = bzrlib.user_encoding
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
-                                    infotext, ignoreline, start_message,
-                                    output_encoding)
+                                    infotext, ignoreline, start_message)
 
         if not msgfilename or not _run_editor(msgfilename):
             return None
@@ -122,7 +114,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         # codecs.open() ALWAYS opens file in binary mode but we need text mode
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
         f = file(msgfilename, 'rU')
-        for line in codecs.getreader(output_encoding)(f):
+        for line in codecs.getreader(bzrlib.user_encoding)(f):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
@@ -161,17 +153,13 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
 def _create_temp_file_with_commit_template(infotext,
                                            ignoreline=DEFAULT_IGNORE_LINE,
-                                           start_message=None,
-                                           output_encoding=None):
+                                           start_message=None):
     """Create temp file and write commit template in it.
 
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
-                        May be a string, which will not be encoded
-                        May be a unicode string, which will be encoded
-                        May be a list of [unicode] string, which
-                        will may be encoded depending if it is unicode
+                        The text is already encoded.
 
     :param ignoreline:  The separator to use above the infotext.
 
@@ -179,33 +167,20 @@ def _create_temp_file_with_commit_template(infotext,
                             This will not be removed from the message
                             after the user has edited it.
 
-    :output_encoding:   Messages encoding
-
     :return:    2-tuple (temp file name, hasinfo)
     """
     import tempfile
-    if output_encoding is None:
-        output_encoding = bzrlib.user_encoding
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
                                                dir=u'.',
                                                text=True)
     msgfile = os.fdopen(tmp_fileno, 'w')
     try:
         if start_message is not None:
-            msgfile.write("%s\n" % start_message.encode(
-                                       output_encoding, 'replace'))
+            msgfile.write("%s\n" % start_message)
 
         if infotext is not None and len(infotext)>0:
             hasinfo = True
-            msgfile.write("\n\n%s\n\n" % (ignoreline))
-            if isinstance(infotext, basestring):
-                infotext = [infotext]
-            for s in infotext:
-                if isinstance(s, unicode):
-                    msgfile.write("%s" % (s.encode(output_encoding,
-                                                'replace')))
-                else:
-                    msgfile.write(s)
+            msgfile.write("\n\n%s\n\n%s" %(ignoreline, infotext))
         else:
             hasinfo = False
     finally:
@@ -214,11 +189,11 @@ def _create_temp_file_with_commit_template(infotext,
     return (msgfilename, hasinfo)
 
 
-def make_commit_message_template(working_tree, specific_files, diff=False):
+def make_commit_message_template(working_tree, specific_files, diff=None,
+                                 output_encoding=None):
     """Prepare a template file for a commit into a branch.
 
-    Returns a unicode string containing the template or a list of
-    unicode/8-bit string.
+    Returns an encoded string.
     """
     # TODO: Should probably be given the WorkingTree not the branch
     #
@@ -232,13 +207,14 @@ def make_commit_message_template(working_tree, specific_files, diff=False):
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
+    template = status_tmp.getvalue().encode()
     if diff:
         from bzrlib.diff import show_diff_trees
         stream = StringIO()
-        status_tmp.write(u"\n")
-        show_diff_trees(working_tree.basis_tree(), working_tree,
-                    stream, specific_files)
+        template += u"\n"
+        show_diff_trees(working_tree.basis_tree(),
+                working_tree, stream, specific_files,
+                path_encoding=output_encoding)
+        template = template + stream.getvalue()
 
-        return [status_tmp.getvalue( ), stream.getvalue()]
-
-    return status_tmp.getvalue()
+    return template

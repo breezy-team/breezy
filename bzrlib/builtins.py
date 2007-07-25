@@ -2226,9 +2226,9 @@ class cmd_commit(Command):
             my_message = message
             if my_message is None and not file:
                 template = make_commit_message_template(tree, selected_list,
-                                                        show_diff)
-                my_message = edit_commit_message(template,
-                                          output_encoding=bzrlib.user_encoding)
+                                                        diff=show_diff,
+                                                        output_encoding=bzrlib.user_encoding)
+                my_message = edit_commit_message(template)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
