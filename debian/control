@@ -4,13 +4,13 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <jw+debian@jameswestby.net>
 Build-Depends: debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11)
-Build-Depends-Indep: bzr (>= 0.18~), python-central (>= 0.5.8), python-docutils, python-debian (>= 0.1.3), python-deb822 (>= 0.3), bzrtools (>= 0.18)
+Build-Depends-Indep: bzr (>= 0.18~), python-central (>= 0.5.8), python-docutils, python-debian (>= 0.1.3), python-deb822 (>= 0.3), bzrtools (>= 0.18), patchutils
 XS-Python-Version: >= 2.4
 Standards-Version: 3.7.2
 
 Package: bzr-builddeb
 Architecture: all
-Depends: bzr (>= 0.18~), python-debian (>= 0.1.3), ${python:Depends}, python-deb822 (>= 0.3), dpkg-dev, fakeroot, bzrtools (>= 0.18), devscripts
+Depends: bzr (>= 0.18~), python-debian (>= 0.1.3), ${python:Depends}, python-deb822 (>= 0.3), dpkg-dev, fakeroot, bzrtools (>= 0.18), devscripts, patchutils
 Provides: bzr-buildpackage
 XB-Python-Version: ${python:Versions}
 Description: bzr plugin for Debian package management
