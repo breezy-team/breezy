@@ -89,6 +89,41 @@ class Merger(object):
         self.change_reporter = change_reporter
         self._cached_trees = {}
 
+    @staticmethod
+    def from_uncommitted(tree, other_tree, pb):
+        merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
+                        pb)
+        merger.base_rev_id = merger.base_tree.get_revision_id()
+        merger.other_rev_id = None
+        return merger
+
+    @classmethod
+    def from_mergeable(klass, tree, mergeable, pb):
+        mergeable.install_revisions(tree.branch.repository)
+        base_revision_id, other_revision_id, verified =\
+            mergeable.get_merge_request(tree.branch.repository)
+        if base_revision_id in tree.branch.repository.get_ancestry(
+            tree.branch.last_revision(), topo_sorted=False):
+            base_revision_id = None
+        merger = klass.from_revision_ids(pb, tree, other_revision_id,
+                                         base_revision_id)
+        return merger, verified
+
+    @staticmethod
+    def from_revision_ids(pb, this, other, base=None, other_branch=None,
+                          base_branch=None):
+        merger = Merger(this.branch, this_tree=this, pb=pb)
+        if other_branch is None:
+            other_branch = this.branch
+        merger.set_other_revision(other, other_branch)
+        if base is None:
+            merger.find_base()
+        else:
+            if base_branch is None:
+                base_branch = other_branch
+            merger.set_base_revision(base, base_branch)
+        return merger
+
     def revision_tree(self, revision_id, branch=None):
         if revision_id not in self._cached_trees:
             if branch is None:
