@@ -4052,10 +4052,6 @@ def _get_mergeable_helper(location):
     return mergeable, location_transport
 
 
-# Compatibility
-merge = _merge_helper
-
-
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 
