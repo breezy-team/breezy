@@ -97,6 +97,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :param start_message:   The text to place above the separator, if any.
                             This will not be removed from the message
                             after the user has edited it.
+                            The string is already encoded
 
     :return:    commit message or None.
     """
@@ -166,6 +167,7 @@ def _create_temp_file_with_commit_template(infotext,
     :param start_message:   The text to place above the separator, if any.
                             This will not be removed from the message
                             after the user has edited it.
+                            The string is already encoded
 
     :return:    2-tuple (temp file name, hasinfo)
     """
