@@ -71,7 +71,7 @@ are deleted on one side, and modified on the other.
 Like text conflicts, Bazaar will emit THIS, OTHER and BASE files.  (They may be
 regular files, symlinks or directories).  But it will not include a "main copy"
 of the file with herringbone conflict markers.  It will appear that the "main
-copy" has been renamed to "THIS" or "OTHER".
+copy" has been renamed to THIS or OTHER.
 
 To resolve this, use "bzr mv" to rename the file back to its normal name, and
 combine the changes manually.  When you are satisfied, run "bzr resolve
