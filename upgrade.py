@@ -138,6 +138,16 @@ def generate_upgrade_map(revs):
 
 def create_upgrade_plan(repository, svn_repository, revision_id=None,
                         allow_changes=False):
+    """Generate a rebase plan for upgrading revisions.
+
+    :param repository: Repository to do upgrade in
+    :param svn_repository: Subversion repository to fetch new revisions from.
+    :param revision_id: Revision to upgrade (None for all revisions in 
+        repository.)
+    :param allow_changes: Whether an upgrade is allowed to change the contents
+        of revisions.
+    :return: Tuple with a rebase plan and map of renamed revisions.
+    """
     try:
         from bzrlib.plugins.rebase.rebase import generate_transpose_plan
     except ImportError, e:
@@ -157,8 +167,14 @@ def create_upgrade_plan(repository, svn_repository, revision_id=None,
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    return generate_transpose_plan(graph, upgrade_map, repository.revision_parents,
+    plan = generate_transpose_plan(graph, upgrade_map, 
+                                   repository.revision_parents,
                                    create_upgraded_revid)
+    def remove_parents((oldrevid, (newrevid, parents))):
+        return (oldrevid, newrevid)
+    upgrade_map.update(dict(map(remove_parents, plan.items())))
+
+    return (plan, upgrade_map)
 
  
 def upgrade_repository(repository, svn_repository, revision_id=None, 
@@ -184,16 +200,17 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     try:
         repository.lock_write()
         svn_repository.lock_read()
-        plan = create_upgrade_plan(repository, svn_repository, 
-                                   revision_id=revision_id,
-                                   allow_changes=allow_changes)
+        (plan, revid_renames) = create_upgrade_plan(repository, svn_repository, 
+                                                    revision_id=revision_id,
+                                                    allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
                 info("%s -> %s" % (revid, plan[revid][0]))
-        rebase(repository, plan, replay_snapshot)
-        def remove_parents((oldrevid, (newrevid, parents))):
-            return (oldrevid, newrevid)
-        return dict(map(remove_parents, plan.items()))
+        def replay(repository, oldrevid, newrevid, new_parents):
+            return replay_snapshot(repository, oldrevid, newrevid, new_parents,
+                                   revid_renames)
+        rebase(repository, plan, replay)
+        return revid_renames
     finally:
         repository.unlock()
         svn_repository.unlock()

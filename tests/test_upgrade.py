@@ -218,6 +218,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         renames = upgrade_repository(newrepos, oldrepos, allow_changes=True)
         self.assertEqual({
+            'svn-v1:1@%s-' % oldrepos.uuid: 'svn-v3-none:%s::1' % oldrepos.uuid,
             "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
             "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
             renames)
