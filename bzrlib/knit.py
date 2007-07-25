@@ -76,6 +76,7 @@ from bzrlib import (
     osutils,
     patiencediff,
     progress,
+    merge,
     ui,
     )
 from bzrlib.errors import (
@@ -1037,41 +1038,12 @@ class KnitVersionedFile(VersionedFile):
         ver_a = osutils.safe_revision_id(ver_a)
         ver_b = osutils.safe_revision_id(ver_b)
         ancestors_b = set(self.get_ancestry(ver_b, topo_sorted=False))
-        def status_a(revision, text):
-            if revision in ancestors_b:
-                return 'killed-b', text
-            else:
-                return 'new-a', text
         
         ancestors_a = set(self.get_ancestry(ver_a, topo_sorted=False))
-        def status_b(revision, text):
-            if revision in ancestors_a:
-                return 'killed-a', text
-            else:
-                return 'new-b', text
-
         annotated_a = self.annotate(ver_a)
         annotated_b = self.annotate(ver_b)
-        plain_a = [t for (a, t) in annotated_a]
-        plain_b = [t for (a, t) in annotated_b]
-        blocks = KnitSequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
-        a_cur = 0
-        b_cur = 0
-        for ai, bi, l in blocks:
-            # process all mismatched sections
-            # (last mismatched section is handled because blocks always
-            # includes a 0-length last block)
-            for revision, text in annotated_a[a_cur:ai]:
-                yield status_a(revision, text)
-            for revision, text in annotated_b[b_cur:bi]:
-                yield status_b(revision, text)
-
-            # and now the matched section
-            a_cur = ai + l
-            b_cur = bi + l
-            for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
-                assert text_a == text_b
-                yield "unchanged", text_a
+        return merge._plan_annotate_merge(annotated_a, annotated_b,
+                                          ancestors_a, ancestors_b)
 
 
 class _KnitComponentFile(object):

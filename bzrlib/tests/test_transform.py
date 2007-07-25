@@ -37,7 +37,8 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              find_interesting, build_tree, get_backup_name)
+                              find_interesting, build_tree, get_backup_name,
+                              change_entry)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -941,6 +942,11 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.cancel_creation(child)
         transform.cancel_creation(parent)
         transform.finalize()
+
+    def test_change_entry(self):
+        txt = 'bzrlib.transform.change_entry was deprecated in version 0.19.'
+        self.callDeprecated([txt], change_entry, None, None, None, None, None,
+            None, None, None)
 
 
 class TransformGroup(object):
