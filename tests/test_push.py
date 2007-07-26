@@ -18,6 +18,7 @@ from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import AlreadyBranchError, DivergedBranches
 from bzrlib.inventory import Inventory
+from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -356,3 +357,24 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         newbranch = newdir.import_branch(bzrwt.branch)
         self.assertEquals(revid2, newbranch.last_revision())
         self.assertEquals([revid1, revid2], newbranch.revision_history())
+
+    def test_multiple_part_exists(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/myfile': "data", 'dc/branches': None})
+        self.client_add('dc/trunk')
+        self.client_add('dc/branches')
+        self.client_commit("dc", "Message")
+        svnrepos = Repository.open(repos_url)
+        os.mkdir("c")
+        bzrdir = BzrDir.open(repos_url+"/trunk").sprout("c")
+        bzrwt = bzrdir.open_workingtree()
+        self.build_tree({'c/myfile': "Tour"})
+        revid1 = bzrwt.commit("Do a commit")
+        self.build_tree({'c/myfile': "Tour de France"})
+        revid2 = bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/branches/mybranch")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid2, newbranch.last_revision())
+        self.assertEquals([
+            svnrepos.generate_revision_id(1, "trunk", "trunk0") 
+            , revid1, revid2], newbranch.revision_history())

@@ -1,12 +1,7 @@
 This document specifies mapping between Subversion and Bazaar semantics.
 
 Revision: 3
-Jelmer Vernooij <jelmer@samba.org>, June 2006.
-Updated October 2006.
-Updated December 2006.
-Updated January 2007.
-Updated February 2007.
-Updated June 2007.
+Written by Jelmer Vernooij <jelmer@samba.org>
 
 ============
 Branch paths
@@ -33,15 +28,6 @@ implementation. At the moment, the following branching schemes are available:
 	part of the scheme name).
 
 The branching scheme can be explicitly specified or automatically guessed. 
-The guessing algorithm currently works as follows and is based on paths 
-relative to the repository root:
-
-- Look for 'trunk', 'branches' or 'tags' inside the path - if found, 
-  create a TrunkBranchingScheme with the found level of nesting.
-
-- Assume NoBranchingScheme
-
-Branching scheme names can not contain colons.
 
 ============
 Revision ids
@@ -126,8 +112,8 @@ Neither the original nor the target file id may occur more than once.
 The entries are sorted by revnum (highest revnum last). Within a specific 
 revnum, the order is not specified.
 
-File id mappings can only change if something about the metadata of a file changed: it 
-is in no way related to the contents of that file.
+File id mappings can only change if something about the metadata of a file 
+changed: it is in no way related to the contents of that file.
 
 If a file is being replaced by a copy of itself in an older revision it will 
 receive a new file id.
@@ -167,8 +153,8 @@ can be copied, moved or merged from other branches, which can result in partial 
 that bzr doesn't support at the moment.
 
 Whenever a Bazaar commit to Subversion has more than one parent (merges two 
-revisions), it will add a line to the 'bzr:ancestry:vX-SCHEME' property set on the 
-branch path. The format of these lines is:
+revisions), it will add a line to the 'bzr:ancestry:vX-SCHEME' property set on 
+the branch path. The format of these lines is:
 
 ([\tPARENT-REV-ID]+)\n
 
@@ -201,7 +187,8 @@ by version 0.9 of the bundle format.
 Signatures
 ==========
 
-NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision property 'bzr:gpg-signature'. 
+NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision 
+property 'bzr:gpg-signature'. 
 
 =========
 Revisions
