@@ -1628,7 +1628,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """Return a writeable transport.
 
         This transport is for the test scratch space relative to
-        "self._test_root""
+        "self._test_root"
         
         :param relpath: a path relative to the base url.
         """

@@ -32,19 +32,31 @@ class _UnicodeFilename(Feature):
     """Does the filesystem support Unicode filenames?"""
 
     def _probe(self):
-        filename = u'\u03b1'
-        os.mkdir('tree')
         try:
-            fd = file('tree/' + filename, 'wb')
+            fd = file(u'\u03b1', 'r')
         except UnicodeEncodeError:
             return False
-        fd.close()
-        os.remove('tree/' + filename)
-        os.rmdir('tree')
-        return True
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist. 
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            fd.close()
+            return True
 
 UnicodeFilename = _UnicodeFilename()
 
+
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        UnicodeFilename._probe()
+        
 
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
