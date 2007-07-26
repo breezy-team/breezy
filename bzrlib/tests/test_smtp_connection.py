@@ -18,6 +18,7 @@ from cStringIO import StringIO
 from email.Message import Message
 
 from bzrlib import config
+from bzrlib.email_message import EmailMessage
 from bzrlib.errors import NoDestinationAddress
 from bzrlib.tests import TestCase
 from bzrlib.smtp_connection import SMTPConnection
@@ -72,6 +73,17 @@ class TestSMTPConnection(TestCase):
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
+        # now with bzrlib's EmailMessage
+        msg = EmailMessage('"J. Random Developer" <jrandom@example.com>', [
+            'John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
+            u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
+            'subject')
+
+        from_, to = SMTPConnection.get_message_addresses(msg)
+        self.assertEqual('jrandom@example.com', from_)
+        self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
+            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+
     def test_destination_address_required(self):
         class FakeConfig:
             def get_user_option(self, option):
@@ -79,5 +91,13 @@ class TestSMTPConnection(TestCase):
 
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
+        self.assertRaises(NoDestinationAddress,
+                SMTPConnection(FakeConfig()).send_email, msg)
+
+        msg = EmailMessage('from@from.com', '', 'subject')
+        self.assertRaises(NoDestinationAddress,
+                SMTPConnection(FakeConfig()).send_email, msg)
+
+        msg = EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(NoDestinationAddress,
                 SMTPConnection(FakeConfig()).send_email, msg)

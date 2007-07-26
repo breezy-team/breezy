@@ -157,7 +157,7 @@ class KnitRepository(MetaDirRepository):
             pending = set([revision_id])
             while len(pending) > 0:
                 node = pending.pop()
-                result[node] = a_weave.get_parents(node)
+                result[node] = tuple(a_weave.get_parents(node))
                 for revision_id in result[node]:
                     if revision_id not in result:
                         pending.add(revision_id)

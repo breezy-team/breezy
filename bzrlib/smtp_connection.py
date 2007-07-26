@@ -79,15 +79,18 @@ class SMTPConnection(object):
     def get_message_addresses(message):
         """Get the origin and destination addresses of a message.
 
-        :param message: An email.Message or email.MIMEMultipart object.
+        :param message: A message object supporting get() to access its
+            headers, like email.Message or bzrlib.email_message.EmailMessage.
         :return: A pair (from_email, to_emails), where from_email is the email
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = Utils.parseaddr(message['From'])[1]
+        from_email = Utils.parseaddr(message.get('From', None))[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
-            to_full_addresses += message.get_all(header, [])
+            value = message.get(header, None)
+            if value:
+                to_full_addresses.append(value)
         to_emails = [ pair[1] for pair in
                 Utils.getaddresses(to_full_addresses) ]
 
