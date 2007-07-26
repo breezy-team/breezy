@@ -161,6 +161,7 @@ class KnitRepository(MetaDirRepository):
         if revision_id not in a_weave:
             raise errors.NoSuchRevision(self, revision_id)
         else:
+            # add what can be reached from revision_id
             return a_weave.get_graph([revision_id])
 
     @needs_read_lock
