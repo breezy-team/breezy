@@ -609,6 +609,17 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree.commit('foobarbaz')
         self.assertTrue(trans.has('indices/0.six'))
 
+    def test_pulling_nothing_leads_to_no_new_names(self):
+        format = self.get_format()
+        tree1 = self.make_branch_and_tree('1', format=format)
+        tree2 = self.make_branch_and_tree('2', format=format)
+        tree1.branch.repository.fetch(tree2.branch.repository)
+        trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
+        self.assertFalse(trans.has('indices/0.rix'))
+        self.assertFalse(trans.has('indices/0.six'))
+        names = FileNames(trans.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(set(), names.names())
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):

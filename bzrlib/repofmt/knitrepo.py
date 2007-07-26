@@ -382,14 +382,18 @@ class GraphKnitRevisionStore(KnitRevisionStore):
 
     def flush(self):
         """Write out pending indices."""
-        # if any work has been done, allocate a new name
-        if (getattr(self.repo, '_revision_knit', None) is not None or
-            getattr(self.repo, '_signature_knit', None) is not None):
-            new_name = self.repo._revision_indices.allocate()
-            self.repo._revision_indices.save()
-        else:
-            # no knits actually accessed
+        data_inserted = False
+        # XXX: Should we define __len__ for indices?
+        if (getattr(self.repo, '_revision_write_index', None) and
+            len(list(self.repo._revision_write_index.iter_all_entries()))):
+            data_inserted = True
+        if (getattr(self.repo, '_signature_write_index', None) and
+            len(list(self.repo._signature_write_index.iter_all_entries()))):
+            data_inserted = True
+        if not data_inserted:
             return
+        new_name = self.repo._revision_indices.allocate()
+        self.repo._revision_indices.save()
         index_transport = self.get_indices_transport()
         # write a revision index (might be empty)
         new_index_name = self.name_to_revision_index_name(new_name)
