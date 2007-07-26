@@ -238,6 +238,7 @@ class GraphIndex(object):
                 self._nodes[key] = (value, tuple(node_refs))
             else:
                 self._nodes[key] = value
+        self._keys = set(self._nodes)
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
@@ -285,7 +286,7 @@ class GraphIndex(object):
             return
         if self._nodes is None:
             self._buffer_all()
-        keys = keys.intersection(self._nodes)
+        keys = keys.intersection(self._keys)
         if self.node_ref_lists:
             for key in keys:
                 value, node_refs = self._nodes[key]
