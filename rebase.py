@@ -24,6 +24,7 @@ from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
 from maptree import MapTree, map_file_ids
+import os
 
 REBASE_PLAN_FILENAME = 'rebase-plan'
 REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
@@ -434,12 +435,16 @@ def complete_revert(wt, newparents):
     newtree = wt.branch.repository.revision_tree(newparents[0])
     delta = wt.changes_from(newtree)
     wt.branch.generate_revision_history(newparents[0])
-    wt.set_parent_ids(newparents)
+    wt.set_parent_ids(newparents[:1])
     for (f, _, _) in delta.added:
         abs_path = wt.abspath(f)
         if osutils.lexists(abs_path):
-            osutils.delete_any(abs_path)
+            if osutils.isdir(abs_path):
+                osutils.rmtree(abs_path)
+            else:
+                os.unlink(abs_path)
     wt.revert([], old_tree=newtree, backups=False)
+    assert not wt.changes_from(wt.basis_tree()).has_changed()
     wt.set_parent_ids(newparents)
 
 
