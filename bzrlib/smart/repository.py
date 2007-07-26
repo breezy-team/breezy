@@ -72,7 +72,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('nosuchrevision', revision_id), '')
 
         for revision, parents in revision_graph.items():
-            lines.append(' '.join((revision,) + parents))
+            lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
