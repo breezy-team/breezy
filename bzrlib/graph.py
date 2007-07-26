@@ -300,15 +300,6 @@ class Graph(object):
         active_descendant = True
         while (active_ancestor or active_descendant):
             common = set()
-            if active_ancestor:
-                try:
-                    nodes = ancestor_walker.next()
-                except StopIteration:
-                    active_ancestor = False
-                else:
-                    if candidate_descendant in nodes:
-                        return False
-                    common.update(nodes.intersection(descendant_walker.seen))
             if active_descendant:
                 try:
                     nodes = descendant_walker.next()
@@ -318,6 +309,15 @@ class Graph(object):
                     if candidate_ancestor in nodes:
                         return True
                     common.update(nodes.intersection(ancestor_walker.seen))
+            if active_ancestor:
+                try:
+                    nodes = ancestor_walker.next()
+                except StopIteration:
+                    active_ancestor = False
+                else:
+                    if candidate_descendant in nodes:
+                        return False
+                    common.update(nodes.intersection(descendant_walker.seen))
             try:
                 common.update(common_walker.next())
             except StopIteration:

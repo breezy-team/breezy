@@ -321,6 +321,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_is_ancestor(self):
         graph = self.make_graph(ancestry_1)
+        self.assertEqual(True, graph.is_ancestor('null:', 'null:'))
         self.assertEqual(True, graph.is_ancestor('null:', 'rev1'))
         self.assertEqual(False, graph.is_ancestor('rev1', 'null:'))
         self.assertEqual(True, graph.is_ancestor('null:', 'rev4'))
