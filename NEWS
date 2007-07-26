@@ -129,9 +129,13 @@ IN DEVELOPMENT
       deprecated.  (Aaron Bentley)
 
     * Add the option user_encoding to the function
-      - make_commit_message_template
       - show_diff_trees
       in order to move the user encoding at the UI level. (Goffredo Baroncelli)
+
+    * Add the function make_commit_message_template_encoded() and the function
+      edit_commit_message_encoded() which handle encoded strings.
+      This is done in order to mix the commit messages (which is a unicode
+      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
     * New ``index`` module with abstract index functionality. This will be
       used during the planned changes in the repository layer. Currently the

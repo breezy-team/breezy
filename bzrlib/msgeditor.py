@@ -90,14 +90,12 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
-                        The string is unicode.
 
     :param ignoreline:  The separator to use above the infotext.
 
     :param start_message:   The text to place above the separator, if any.
                             This will not be removed from the message
                             after the user has edited it.
-                            The string is unicode.
 
     :return:    commit message or None.
     """
@@ -208,7 +206,7 @@ def _create_temp_file_with_commit_template(infotext,
         if start_message is not None:
             msgfile.write("%s\n" % start_message)
 
-        if infotext is not None and len(infotext)>0:
+        if infotext is not None and infotext != "":
             hasinfo = True
             msgfile.write("\n\n%s\n\n%s" %(ignoreline, infotext))
         else:
@@ -217,6 +215,7 @@ def _create_temp_file_with_commit_template(infotext,
         msgfile.close()
 
     return (msgfilename, hasinfo)
+
 
 def make_commit_message_template(working_tree, specific_files):
     """Prepare a template file for a commit into a branch.
