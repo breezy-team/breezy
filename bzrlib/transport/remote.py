@@ -34,7 +34,7 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http', 'bzr+https']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -471,7 +471,7 @@ class RemoteHTTPTransport(RemoteTransport):
     """
 
     def __init__(self, base, _from_transport=None, http_transport=None):
-        assert base.startswith('bzr+http://')
+        assert ( base.startswith('bzr+http://') or base.startswith('bzr+https://') )
 
         if http_transport is None:
             # FIXME: the password may be lost here because it appears in the
