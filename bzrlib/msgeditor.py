@@ -90,6 +90,32 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :param infotext:    Text to be displayed at bottom of message
                         for the user's reference;
                         currently similar to 'bzr status'.
+                        The string is unicode.
+
+    :param ignoreline:  The separator to use above the infotext.
+
+    :param start_message:   The text to place above the separator, if any.
+                            This will not be removed from the message
+                            after the user has edited it.
+                            The string is unicode.
+
+    :return:    commit message or None.
+    """
+
+    return edit_commit_message_encoded(infotext.encode(bzrlib.user_encoding),
+                               ignoreline,
+                               start_message.encode(bzrlib.user_encoding))
+
+def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
+                        start_message=None):
+    """Let the user edit a commit message in a temp file.
+
+    This is run if they don't give a message or
+    message-containing file on the command line.
+
+    :param infotext:    Text to be displayed at bottom of message
+                        for the user's reference;
+                        currently similar to 'bzr status'.
                         The string is already encoded
 
     :param ignoreline:  The separator to use above the infotext.
@@ -190,12 +216,10 @@ def _create_temp_file_with_commit_template(infotext,
 
     return (msgfilename, hasinfo)
 
-
-def make_commit_message_template(working_tree, specific_files, diff=None,
-                                 output_encoding=None):
+def make_commit_message_template(working_tree, specific_files):
     """Prepare a template file for a commit into a branch.
 
-    Returns an encoded string.
+    Returns a unicode string containing the template.
     """
     # TODO: Should probably be given the WorkingTree not the branch
     #
@@ -209,9 +233,29 @@ def make_commit_message_template(working_tree, specific_files, diff=None,
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
                      to_file=status_tmp)
-    template = status_tmp.getvalue().encode(output_encoding, "replace")
+    return status_tmp.getvalue()
+
+
+def make_commit_message_template_encoded(working_tree, specific_files,
+                                 diff=None,
+                                 output_encoding=None):
+    """Prepare a template file for a commit into a branch.
+
+    Returns an encoded string.
+    """
+    # TODO: Should probably be given the WorkingTree not the branch
+    #
+    # TODO: make provision for this to be overridden or modified by a hook
+    #
+    # TODO: Rather than running the status command, should prepare a draft of
+    # the revision to be committed, then pause and ask the user to
+    # confirm/write a message.
+    from StringIO import StringIO       # must be unicode-safe
+    from bzrlib.diff import show_diff_trees
+
+    template = make_commit_message_template(working_tree, specific_files).encode(output_encoding, "replace")
+
     if diff:
-        from bzrlib.diff import show_diff_trees
         stream = StringIO()
         template += "\n"
         show_diff_trees(working_tree.basis_tree(),
