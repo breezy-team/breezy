@@ -35,6 +35,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Fix import of svk:merge properties (need to be sorted lexicographically).
 
+   * Support possible_transports argument to BzrDir.sprout(). (#128500)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.
