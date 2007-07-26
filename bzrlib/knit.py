@@ -1421,6 +1421,7 @@ class KnitGraphIndex(object):
             # get all pending nodes
             this_iteration = pending
             new_nodes = self._get_entries(this_iteration)
+            found = set()
             pending = set()
             for (key, value, node_refs) in new_nodes:
                 # dont ask for ghosties - otherwise
@@ -1428,11 +1429,14 @@ class KnitGraphIndex(object):
                 # being entirely ghosted.
                 graph[key] = [parent for parent in node_refs[0]
                     if parent not in ghosts]
-                # queue parents 
-                pending.update(graph[key])
-            ghosts.difference_update(graph)
-            # dont examine known nodes
-            pending.difference_update(graph)
+                # queue parents
+                for parent in graph[key]:
+                    # dont examine known nodes again
+                    if parent in graph:
+                        continue
+                    pending.add(parent)
+                found.add(key)
+            ghosts.update(this_iteration.difference(found))
         if versions.difference(graph):
             raise RevisionNotPresent(versions.difference(graph).pop(), self)
         if not topo_sorted:
@@ -1457,7 +1461,11 @@ class KnitGraphIndex(object):
             for (key, value, node_refs) in new_nodes:
                 graph[key] = node_refs[0]
                 # queue parents 
-                pending.update(graph[key])
+                for parent in graph[key]:
+                    # dont examine known nodes again
+                    if parent in graph:
+                        continue
+                    pending.add(parent)
             missing_versions = this_iteration.difference(graph)
             missing_needed = versions.intersection(missing_versions)
             if missing_needed:
@@ -1465,8 +1473,7 @@ class KnitGraphIndex(object):
             for missing_version in missing_versions:
                 # add a key, no parents
                 graph[missing_version] = []
-            # dont examine known nodes
-            pending.difference_update(graph)
+                pending.discard(missing_version) # don't look for it
         return topo_sort(graph.items())
 
     def get_graph(self):
