@@ -89,7 +89,7 @@ class TestOddRevisionSpec(TestRevisionSpec):
     """Test things that aren't normally thought of as revision specs"""
 
     def test_none(self):
-        self.assertInHistoryIs(0, 'null:', None)
+        self.assertInHistoryIs(0, None, None)
 
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())

@@ -492,6 +492,7 @@ def check_not_reserved_id(revision_id):
 def ensure_null(revision_id):
     """Ensure only NULL_REVISION is used to represent the null revisionn"""
     if revision_id is None:
+        raise 'hell'
         return NULL_REVISION
     else:
         return revision_id
