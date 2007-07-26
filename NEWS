@@ -4,6 +4,8 @@
 
  * Fix compatibility wit Bazaar 0.19.
 
+ * Store parents correctly.
+
 0.1 	2007-07-15
 
  * Initial release.

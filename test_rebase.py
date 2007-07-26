@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Tests for the rebase code."""
 
-from bzrlib.errors import UnknownFormatError, NoSuchFile
+from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
@@ -26,7 +26,8 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     REBASE_CURRENT_REVID_FILENAME, read_rebase_plan, 
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
-                    ReplaySnapshotError, ReplayParentsInconsistent)
+                    ReplaySnapshotError, ReplayParentsInconsistent, 
+                    replay_delta_workingtree)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -404,6 +405,70 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         inv = wt.branch.repository.get_inventory("newcommit")
         self.assertEquals("newid", inv.path2id("afile"))
         self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
+
+
+class TestReplayWorkingtree(TestCaseWithTransport):
+    def test_conflicts(self):
+        wt = self.make_branch_and_tree("old")
+        wt.commit("base", rev_id="base")
+        self.build_tree(['old/afile'])
+        wt.add(["afile"], ids=["originalid"])
+        wt.commit("bla", rev_id="oldparent")
+        file("old/afile", "w").write("bloe")
+        wt.commit("bla", rev_id="oldcommit")
+        oldrepos = wt.branch.repository
+        wt = self.make_branch_and_tree("new")
+        self.build_tree(['new/afile'])
+        wt.add(["afile"], ids=["newid"])
+        wt.commit("bla", rev_id="newparent")
+        wt.branch.repository.fetch(oldrepos)
+        self.assertRaises(ConflictsInTree, 
+            replay_delta_workingtree, wt, "oldcommit", "newcommit", 
+            ["newparent"])
+
+    def test_simple(self):
+        wt = self.make_branch_and_tree("old")
+        wt.commit("base", rev_id="base")
+        self.build_tree(['old/afile'])
+        wt.add(["afile"], ids=["originalid"])
+        wt.commit("bla", rev_id="oldparent")
+        file("old/afile", "w").write("bloe")
+        wt.commit("bla", rev_id="oldcommit")
+        wt = wt.bzrdir.sprout("new").open_workingtree()
+        self.build_tree(['new/bfile'])
+        wt.add(["bfile"], ids=["newid"])
+        wt.commit("bla", rev_id="newparent")
+        replay_delta_workingtree(wt, "oldcommit", "newcommit", 
+            ["newparent"])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["newparent"], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+
+    def test_multiple(self):
+        wt = self.make_branch_and_tree("old")
+        wt.commit("base", rev_id="base")
+        self.build_tree(['old/afile'])
+        wt.add(["afile"], ids=["originalid"])
+        wt.commit("bla", rev_id="oldparent")
+        file("old/afile", "w").write("bloe")
+        wt.add_pending_merge("ghost")
+        wt.commit("bla", rev_id="oldcommit")
+        wt = wt.bzrdir.sprout("new").open_workingtree()
+        self.build_tree(['new/bfile'])
+        wt.add(["bfile"], ids=["newid"])
+        wt.commit("bla", rev_id="newparent")
+        replay_delta_workingtree(wt, "oldcommit", "newcommit", 
+            ["newparent", "ghost"])
+        oldrev = wt.branch.repository.get_revision("oldcommit")
+        newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["newparent", "ghost"], newrev.parent_ids)
+        self.assertEquals("newcommit", newrev.revision_id)
+        self.assertEquals(oldrev.timestamp, newrev.timestamp)
+        self.assertEquals(oldrev.timezone, newrev.timezone)
+
 
 class TestReplaySnapshotError(TestCase):
     def test_create(self):

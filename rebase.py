@@ -343,8 +343,8 @@ def commit_rebase(wt, oldrev, newrevid):
     assert oldrev.revision_id != newrevid
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrev.revision_id
-    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, timezone=oldrev.timezone,
-              revprops=revprops, rev_id=newrevid)
+    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, 
+              timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid)
     write_active_rebase_revid(wt, None)
 
 
@@ -440,6 +440,7 @@ def complete_revert(wt, newparents):
         if osutils.lexists(abs_path):
             osutils.delete_any(abs_path)
     wt.revert([], old_tree=newtree, backups=False)
+    wt.set_parent_ids(newparents)
 
 
 class ReplaySnapshotError(BzrError):
