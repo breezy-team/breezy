@@ -379,7 +379,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
                     old_label='a/', new_label='b/',
                     extra_trees=None,
-                    path_encoding=None):
+                    path_encoding='utf8'):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -394,8 +394,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     path_encoding
         If set, the path will be encoded as specified
     """
-    if path_encoding is None:
-        path_encoding = 'utf8'
     old_tree.lock_read()
     try:
         if extra_trees is not None:
@@ -444,7 +442,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind in delta.removed:
         has_changes = 1
         print >>to_file, '=== removed %s %r' % (kind,
-                                                path.encode(path_encoding))
+                                                path.encode(path_encoding,
+                                                            "replace"))
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
@@ -452,7 +451,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                                          new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path.encode(path_encoding))
+        print >>to_file, '=== added %s %r' % (kind, path.encode(path_encoding,
+                                                                "replace"))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
@@ -464,8 +464,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
-                    kind, old_path.encode(path_encoding),
-                    new_path.encode(path_encoding), prop_str)
+                    kind, old_path.encode(path_encoding, "replace"),
+                    new_path.encode(path_encoding, "replace"), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
                                  _patch_header_date(old_tree, file_id,
                                                     old_path))
@@ -479,7 +479,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind,
-                                                   path.encode(path_encoding),
+                                                   path.encode(path_encoding,
+                                                               "replace"),
                                                    prop_str)
         # The file may be in a different location in the old tree (because
         # the containing dir was renamed, but the file itself was not)
