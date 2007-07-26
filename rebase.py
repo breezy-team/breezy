@@ -189,7 +189,9 @@ def generate_transpose_plan(graph, renames, get_parents, generate_revid):
                 if replace_map.has_key(c):
                     parents = replace_map[c][1]
                 else:
-                    parents = graph[c]
+                    parents = list(graph[c])
+                assert isinstance(parents, list), \
+                        "Expected list of parents, got: %r" % parents
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
                     parents[parents.index(r)] = replace_map[r][0]
@@ -377,9 +379,8 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
         basetree = MapTree(repository, basetree, fileid_map)
 
     write_active_rebase_revid(wt, oldrevid)
-    merge = merge_type(working_tree=wt, this_tree=wt, 
-            base_tree=basetree,
-            other_tree=oldtree)
+    merge = merge_type(working_tree=wt, this_tree=wt, base_tree=basetree,
+                       other_tree=oldtree)
 
     commit_rebase(wt, oldrev, newrevid)
 

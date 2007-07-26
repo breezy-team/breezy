@@ -140,16 +140,17 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='add hello', rev_id="lala")
 
         self.assertEquals({
-                'blie': ('newblie', ['lala']), },
-                generate_transpose_plan(b.repository.get_revision_graph("blie"), 
-                {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
+            'blie': ('newblie', ['lala'])},
+            generate_transpose_plan(b.repository.get_revision_graph("blie"), 
+            {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
         self.assertEquals({
-                'bla2': ('newbla2', ['lala']),
-                'bla3': ('newbla3', ['newbla2']),
-                'blie': ('newblie', ['lala']),
-                'bloe': ('newbloe', ['lala'])},
-                generate_transpose_plan(b.repository.get_revision_graph(), 
-                {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
+            'bla2': ('newbla2', ['lala']),
+            'bla3': ('newbla3', ['newbla2']),
+            'blie': ('newblie', ['lala']),
+            'bloe': ('newbloe', ['lala'])},
+            generate_transpose_plan(b.repository.get_revision_graph(), 
+            {"bla": "lala"}, 
+            b.repository.revision_parents, lambda y: "new"+y))
 
     def test_generate_transpose_plan_one(self):
         self.assertEquals({"bla": ("newbla", ["lala"])},
@@ -209,8 +210,9 @@ oldrev newrev newparent1 newparent2
 1 bla
 oldrev newrev newparent1 newparent2
 """)
-        self.assertEquals(((1, "bla"), {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
-                read_rebase_plan(wt))
+        self.assertEquals(((1, "bla"), 
+            {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
+            read_rebase_plan(wt))
 
 
 class CurrentRevidFileTests(TestCaseWithTransport):
