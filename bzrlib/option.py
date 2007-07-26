@@ -152,13 +152,6 @@ class Option(object):
     def short_name(self):
         if self._short_name:
             return self._short_name
-        else:
-            # remove this when SHORT_OPTIONS is removed
-            # XXX: This is accessing a DeprecatedDict, so we call the super 
-            # method to avoid warnings
-            for (k, v) in dict.iteritems(Option.SHORT_OPTIONS):
-                if v == self:
-                    return k
 
     def set_short_name(self, short_name):
         self._short_name = short_name
@@ -380,15 +373,13 @@ _global_option('overwrite', help='Ignore differences between branches and '
 _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
-_global_option('help',
-               help='Show help message.',
-               short_name='h')
 _global_option('file', type=unicode, short_name='F')
 _global_option('force')
 _global_option('format', type=unicode)
 _global_option('forward')
 _global_option('message', type=unicode,
-               short_name='m')
+               short_name='m',
+               help='Message string.')
 _global_option('no-recurse')
 _global_option('profile',
                help='Show performance profiling information.')
@@ -398,9 +389,9 @@ _global_option('revision',
                help='See \'help revisionspec\' for details.')
 _global_option('show-ids',
                help='Show internal object ids.')
-_global_option('timezone',
+_global_option('timezone', 
                type=str,
-               help='Display timezone as local, original, or utc.')
+               help='display timezone as local, original, or utc')
 _global_option('unbound')
 _global_option('verbose',
                help='Display more information.',
@@ -411,12 +402,10 @@ _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
                         log.log_formatter_registry, value_switches=True,
                         title='Log format')
-_global_option('long',
-        help='Use detailed log format.  Same as --log-format long.',
-        short_name='l')
-_global_option('short',
-        help='Use moderately short log format. Same as --log-format short.')
-_global_option('line', help='Use log format with one line per revision. Same as --log-format line.')
+_global_option('long', help='Use detailed log format. Same as --log-format long',
+               short_name='l')
+_global_option('short', help='Use moderately short log format. Same as --log-format short')
+_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
@@ -432,20 +421,6 @@ _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
 
-
-# prior to 0.14 these were always globally registered; the old dict is
-# available for plugins that use it but it should not be used.
-Option.SHORT_OPTIONS = symbol_versioning.DeprecatedDict(
-    symbol_versioning.zero_fourteen,
-    'SHORT_OPTIONS',
-    {
-        'F': Option.OPTIONS['file'],
-        'h': Option.OPTIONS['help'],
-        'm': Option.OPTIONS['message'],
-        'r': Option.OPTIONS['revision'],
-        'v': Option.OPTIONS['verbose'],
-        'l': Option.OPTIONS['long'],
-        'q': Option.OPTIONS['quiet'],
-    },
-    'Set the short option name when constructing the Option.',
-    )
+_help_option = Option('help',
+                      help='Show help message.',
+                      short_name='h')

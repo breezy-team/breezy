@@ -210,9 +210,9 @@ class TestCommit(ExternalBase):
             'added newdir\n'
             'added newfile\n'
             'renamed dirtorename => renameddir\n'
-            'renamed filetorename => renamedfile\n'
             'renamed dirtoreparent => renameddir/reparenteddir\n'
             'renamed filetoreparent => renameddir/reparentedfile\n'
+            'renamed filetorename => renamedfile\n'
             'deleted dirtoremove\n'
             'deleted filetoremove\n'
             'Committed revision 2.\n',

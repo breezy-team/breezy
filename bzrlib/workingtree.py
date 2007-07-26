@@ -460,7 +460,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file(self.abspath(filename), 'rb')
 
     @needs_read_lock
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):
         """See Tree.annotate_iter
 
         This implementation will use the basis tree implementation if possible.
@@ -493,9 +493,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     continue
                 old.append(list(tree.annotate_iter(file_id)))
             return annotate.reannotate(old, self.get_file(file_id).readlines(),
-                                       CURRENT_REVISION)
+                                       default_revision)
         finally:
             basis.unlock()
+
+    def _get_ancestors(self, default_revision):
+        ancestors = set([default_revision])
+        for parent_id in self.get_parent_ids():
+            ancestors.update(self.branch.repository.get_ancestry(
+                             parent_id, topo_sorted=False))
+        return ancestors
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -1767,7 +1774,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
-        """Remove nominated files from the working inventor.
+        """Remove nominated files from the working inventory.
 
         :files: File paths relative to the basedir.
         :keep_files: If true, the files will also be kept.
@@ -1808,18 +1815,30 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     recurse_directory_to_add_files(filename)
         files = [f for f in new_files]
 
+        if len(files) == 0:
+            return # nothing to do
+
         # Sort needed to first handle directory content before the directory
         files.sort(reverse=True)
         if not keep_files and not force:
-            tree_delta = self.changes_from(self.basis_tree(),
-                specific_files=files)
-            for unknown_file in unknown_files_in_directory:
-                tree_delta.unversioned.extend((unknown_file,))
-            if bool(tree_delta.modified
-                    or tree_delta.added
-                    or tree_delta.renamed
-                    or tree_delta.kind_changed
-                    or tree_delta.unversioned):
+            has_changed_files = len(unknown_files_in_directory) > 0
+            if not has_changed_files:
+                for (file_id, path, content_change, versioned, parent_id, name,
+                     kind, executable) in self._iter_changes(self.basis_tree(),
+                         include_unchanged=True, require_versioned=False,
+                         want_unversioned=True, specific_files=files):
+                    # check if it's unknown OR changed but not deleted:
+                    if (versioned == (False, False)
+                        or (content_change and kind[1] != None)):
+                        has_changed_files = True
+                        break
+
+            if has_changed_files:
+                # make delta to show ALL applicable changes in error message.
+                tree_delta = self.changes_from(self.basis_tree(),
+                    specific_files=files)
+                for unknown_file in unknown_files_in_directory:
+                    tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
         # do this before any modifications

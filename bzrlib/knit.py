@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ from bzrlib import (
     osutils,
     patiencediff,
     progress,
+    merge,
     ui,
     )
 from bzrlib.errors import (
@@ -152,6 +153,32 @@ class KnitContent(object):
 
     def copy(self):
         return KnitContent(self._lines[:])
+
+    @staticmethod
+    def get_line_delta_blocks(knit_delta, source, target):
+        """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
+        target_len = len(target)
+        s_pos = 0
+        t_pos = 0
+        for s_begin, s_end, t_len, new_text in knit_delta:
+            true_n = s_begin - s_pos
+            n = true_n
+            if n > 0:
+                # knit deltas do not provide reliable info about whether the
+                # last line of a file matches, due to eol handling.
+                if source[s_pos + n -1] != target[t_pos + n -1]:
+                    n-=1
+                if n > 0:
+                    yield s_pos, t_pos, n
+            t_pos += t_len + true_n
+            s_pos = s_end
+        n = target_len - t_pos
+        if n > 0:
+            if source[s_pos + n -1] != target[t_pos + n -1]:
+                n-=1
+            if n > 0:
+                yield s_pos, t_pos, n
+        yield s_pos + (target_len - t_pos), target_len, 0
 
 
 class _KnitFactory(object):
@@ -333,7 +360,7 @@ class KnitVersionedFile(VersionedFile):
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
                  create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None):
+                 dir_mode=None, index=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -342,6 +369,7 @@ class KnitVersionedFile(VersionedFile):
             hash-prefixes that may not exist yet)
         :param delay_create: The calling code is aware that the knit won't 
             actually be created until the first data is stored.
+        :param index: An index to use for the knit.
         """
         if deprecated_passed(basis_knit):
             warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
@@ -359,10 +387,13 @@ class KnitVersionedFile(VersionedFile):
 
         self._max_delta_chain = 200
 
-        self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            access_mode, create=create, file_mode=file_mode,
-            create_parent_dir=create_parent_dir, delay_create=delay_create,
-            dir_mode=dir_mode)
+        if index is None:
+            self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
+                access_mode, create=create, file_mode=file_mode,
+                create_parent_dir=create_parent_dir, delay_create=delay_create,
+                dir_mode=dir_mode)
+        else:
+            self._index = index
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=create and not len(self), file_mode=file_mode,
             create_parent_dir=create_parent_dir, delay_create=delay_create,
@@ -519,6 +550,12 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def _extract_blocks(self, version_id, source, target):
+        if self._index.get_method(version_id) != 'line-delta':
+            return None
+        parent, sha1, noeol, delta = self.get_delta(version_id)
+        return KnitContent.get_line_delta_blocks(delta, source, target)
+
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
         version_id = osutils.safe_revision_id(version_id)
@@ -554,11 +591,14 @@ class KnitVersionedFile(VersionedFile):
         return dict(graph_items)
 
     def get_sha1(self, version_id):
+        return self.get_sha1s([version_id])[0]
+
+    def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1()."""
-        version_id = osutils.safe_revision_id(version_id)
-        record_map = self._get_record_map([version_id])
-        method, content, digest, next = record_map[version_id]
-        return digest 
+        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
+        record_map = self._get_record_map(version_ids)
+        # record entry 2 is the 'digest'.
+        return [record_map[v][2] for v in version_ids]
 
     @staticmethod
     def get_suffixes():
@@ -812,6 +852,8 @@ class KnitVersionedFile(VersionedFile):
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
 
+    _get_lf_split_line_list = get_line_list
+
     def _get_content_maps(self, version_ids):
         """Produce maps of text and KnitContents
         
@@ -907,6 +949,19 @@ class KnitVersionedFile(VersionedFile):
 
         pb.update('Walking content.', total, total)
         
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        version_ids = [osutils.safe_revision_id(version_id) for
+            version_id in version_ids]
+        return self._index.iter_parents(version_ids)
+
     def num_versions(self):
         """See VersionedFile.num_versions()."""
         return self._index.num_versions()
@@ -983,41 +1038,12 @@ class KnitVersionedFile(VersionedFile):
         ver_a = osutils.safe_revision_id(ver_a)
         ver_b = osutils.safe_revision_id(ver_b)
         ancestors_b = set(self.get_ancestry(ver_b, topo_sorted=False))
-        def status_a(revision, text):
-            if revision in ancestors_b:
-                return 'killed-b', text
-            else:
-                return 'new-a', text
         
         ancestors_a = set(self.get_ancestry(ver_a, topo_sorted=False))
-        def status_b(revision, text):
-            if revision in ancestors_a:
-                return 'killed-a', text
-            else:
-                return 'new-b', text
-
         annotated_a = self.annotate(ver_a)
         annotated_b = self.annotate(ver_b)
-        plain_a = [t for (a, t) in annotated_a]
-        plain_b = [t for (a, t) in annotated_b]
-        blocks = KnitSequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
-        a_cur = 0
-        b_cur = 0
-        for ai, bi, l in blocks:
-            # process all mismatched sections
-            # (last mismatched section is handled because blocks always
-            # includes a 0-length last block)
-            for revision, text in annotated_a[a_cur:ai]:
-                yield status_a(revision, text)
-            for revision, text in annotated_b[b_cur:bi]:
-                yield status_b(revision, text)
-
-            # and now the matched section
-            a_cur = ai + l
-            b_cur = bi + l
-            for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
-                assert text_a == text_b
-                yield "unchanged", text_a
+        return merge._plan_annotate_merge(annotated_a, annotated_b,
+                                          ancestors_a, ancestors_b)
 
 
 class _KnitComponentFile(object):
@@ -1150,7 +1176,7 @@ class _KnitIndex(_KnitComponentFile):
             try:
                 # _load_data may raise NoSuchFile if the target knit is
                 # completely empty.
-                self._load_data(fp)
+                _load_data(self, fp)
             finally:
                 fp.close()
         except NoSuchFile:
@@ -1162,71 +1188,8 @@ class _KnitIndex(_KnitComponentFile):
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
 
-    def _load_data(self, fp):
-        cache = self._cache
-        history = self._history
-
-        self.check_header(fp)
-        # readlines reads the whole file at once:
-        # bad for transports like http, good for local disk
-        # we save 60 ms doing this one change (
-        # from calling readline each time to calling
-        # readlines once.
-        # probably what we want for nice behaviour on
-        # http is a incremental readlines that yields, or
-        # a check for local vs non local indexes,
-        history_top = len(history) - 1
-        for line in fp.readlines():
-            rec = line.split()
-            if len(rec) < 5 or rec[-1] != ':':
-                # corrupt line.
-                # FIXME: in the future we should determine if its a
-                # short write - and ignore it 
-                # or a different failure, and raise. RBC 20060407
-                continue
-
-            try:
-                parents = []
-                for value in rec[4:-1]:
-                    if value[0] == '.':
-                        # uncompressed reference
-                        parent_id = value[1:]
-                    else:
-                        parent_id = history[int(value)]
-                    parents.append(parent_id)
-            except (IndexError, ValueError), e:
-                # The parent could not be decoded to get its parent row. This
-                # at a minimum will cause this row to have wrong parents, or
-                # even to apply a delta to the wrong base and decode
-                # incorrectly. its therefore not usable, and because we have
-                # encountered a situation where a new knit index had this
-                # corrupt we can't asssume that no other rows referring to the
-                # index of this record actually mean the subsequent uncorrupt
-                # one, so we error.
-                raise errors.KnitCorrupt(self._filename,
-                    "line %r: %s" % (rec, e))
-
-            version_id, options, pos, size = rec[:4]
-            version_id = version_id
-
-            # See self._cache_version
-            # only want the _history index to reference the 1st 
-            # index entry for version_id
-            if version_id not in cache:
-                history_top += 1
-                index = history_top
-                history.append(version_id)
-            else:
-                index = cache[version_id][5]
-            cache[version_id] = (version_id,
-                                 options.split(','),
-                                 int(pos),
-                                 int(size),
-                                 parents,
-                                 index)
-            # end self._cache_version 
-
     def get_graph(self):
+        """Return a list of the node:parents lists from this knit index."""
         return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
 
     def get_ancestry(self, versions, topo_sorted=True):
@@ -1269,20 +1232,29 @@ class _KnitIndex(_KnitComponentFile):
                 graph[version] = parents
         return topo_sort(graph.items())
 
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        for version_id in version_ids:
+            try:
+                yield version_id, tuple(self.get_parents(version_id))
+            except KeyError:
+                pass
+
     def num_versions(self):
         return len(self._history)
 
     __len__ = num_versions
 
     def get_versions(self):
+        """Get all the versions in the file. not topologically sorted."""
         return self._history
-
-    def idx_to_name(self, idx):
-        return self._history[idx]
-
-    def lookup(self, version_id):
-        assert version_id in self._cache
-        return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
         result_list = []
@@ -1359,6 +1331,10 @@ class _KnitIndex(_KnitComponentFile):
             return 'line-delta'
 
     def get_options(self, version_id):
+        """Return a string represention options.
+
+        e.g. foo,bar
+        """
         return self._cache[version_id][1]
 
     def get_parents(self, version_id):
@@ -1377,6 +1353,289 @@ class _KnitIndex(_KnitComponentFile):
             if version_id not in cache:
                 raise RevisionNotPresent(version_id, self._filename)
 
+
+class KnitGraphIndex(object):
+    """A knit index that builds on GraphIndex."""
+
+    def __init__(self, graph_index, deltas=False, parents=True, add_callback=None):
+        """Construct a KnitGraphIndex on a graph_index.
+
+        :param graph_index: An implementation of bzrlib.index.GraphIndex.
+        :param deltas: Allow delta-compressed records.
+        :param add_callback: If not None, allow additions to the index and call
+            this callback with a list of added GraphIndex nodes:
+            [(node, value, node_refs), ...]
+        :param parents: If True, record knits parents, if not do not record 
+            parents.
+        """
+        self._graph_index = graph_index
+        self._deltas = deltas
+        self._add_callback = add_callback
+        self._parents = parents
+        if deltas and not parents:
+            raise KnitCorrupt(self, "Cannot do delta compression without "
+                "parent tracking.")
+
+    def _get_entries(self, version_ids, check_present=False):
+        """Get the entries for version_ids."""
+        version_ids = set(version_ids)
+        found_keys = set()
+        if self._parents:
+            for node in self._graph_index.iter_entries(version_ids):
+                yield node
+                found_keys.add(node[0])
+        else:
+            # adapt parentless index to the rest of the code.
+            for node in self._graph_index.iter_entries(version_ids):
+                yield node[0], node[1], ()
+                found_keys.add(node[0])
+        if check_present:
+            missing_keys = version_ids.difference(found_keys)
+            if missing_keys:
+                raise RevisionNotPresent(missing_keys.pop(), self)
+
+    def _present_keys(self, version_ids):
+        return set([
+            node[0] for node in self._get_entries(version_ids)])
+
+    def _parentless_ancestry(self, versions):
+        """Honour the get_ancestry API for parentless knit indices."""
+        present_keys = self._present_keys(versions)
+        missing = set(versions).difference(present_keys)
+        if missing:
+            raise RevisionNotPresent(missing.pop(), self)
+        return list(present_keys)
+
+    def get_ancestry(self, versions, topo_sorted=True):
+        """See VersionedFile.get_ancestry."""
+        if not self._parents:
+            return self._parentless_ancestry(versions)
+        # XXX: This will do len(history) index calls - perhaps
+        # it should be altered to be a index core feature?
+        # get a graph of all the mentioned versions:
+        graph = {}
+        ghosts = set()
+        versions = set(versions)
+        pending = set(versions)
+        while pending:
+            # get all pending nodes
+            this_iteration = pending
+            new_nodes = self._get_entries(this_iteration)
+            pending = set()
+            for (key, value, node_refs) in new_nodes:
+                # dont ask for ghosties - otherwise
+                # we we can end up looping with pending
+                # being entirely ghosted.
+                graph[key] = [parent for parent in node_refs[0]
+                    if parent not in ghosts]
+                # queue parents 
+                pending.update(graph[key])
+            ghosts.difference_update(graph)
+            # dont examine known nodes
+            pending.difference_update(graph)
+        if versions.difference(graph):
+            raise RevisionNotPresent(versions.difference(graph).pop(), self)
+        if not topo_sorted:
+            return graph.keys()
+        return topo_sort(graph.items())
+
+    def get_ancestry_with_ghosts(self, versions):
+        """See VersionedFile.get_ancestry."""
+        if not self._parents:
+            return self._parentless_ancestry(versions)
+        # XXX: This will do len(history) index calls - perhaps
+        # it should be altered to be a index core feature?
+        # get a graph of all the mentioned versions:
+        graph = {}
+        versions = set(versions)
+        pending = set(versions)
+        while pending:
+            # get all pending nodes
+            this_iteration = pending
+            new_nodes = self._get_entries(this_iteration)
+            pending = set()
+            for (key, value, node_refs) in new_nodes:
+                graph[key] = node_refs[0]
+                # queue parents 
+                pending.update(graph[key])
+            missing_versions = this_iteration.difference(graph)
+            missing_needed = versions.intersection(missing_versions)
+            if missing_needed:
+                raise RevisionNotPresent(missing_needed.pop(), self)
+            for missing_version in missing_versions:
+                # add a key, no parents
+                graph[missing_version] = []
+            # dont examine known nodes
+            pending.difference_update(graph)
+        return topo_sort(graph.items())
+
+    def get_graph(self):
+        """Return a list of the node:parents lists from this knit index."""
+        if not self._parents:
+            return [(key, ()) for key in self.get_versions()]
+        return [(key, refs[0]) for (key, value, refs) in 
+            self._graph_index.iter_all_entries()]
+
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        if self._parents:
+            all_nodes = set(self._get_entries(version_ids))
+            all_parents = set()
+            present_parents = set()
+            for node in all_nodes:
+                all_parents.update(node[2][0])
+                # any node we are querying must be present
+                present_parents.add(node[0])
+            unknown_parents = all_parents.difference(present_parents)
+            present_parents.update(self._present_keys(unknown_parents))
+            for node in all_nodes:
+                parents = []
+                for parent in node[2][0]:
+                    if parent in present_parents:
+                        parents.append(parent)
+                yield node[0], tuple(parents)
+        else:
+            for node in self._get_entries(version_ids):
+                yield node[0], ()
+
+    def num_versions(self):
+        return len(list(self._graph_index.iter_all_entries()))
+
+    __len__ = num_versions
+
+    def get_versions(self):
+        """Get all the versions in the file. not topologically sorted."""
+        return [node[0] for node in self._graph_index.iter_all_entries()]
+    
+    def has_version(self, version_id):
+        """True if the version is in the index."""
+        return len(self._present_keys([version_id])) == 1
+
+    def get_position(self, version_id):
+        """Return data position and size of specified version."""
+        bits = self._get_node(version_id)[1][1:].split(' ')
+        return int(bits[0]), int(bits[1])
+
+    def get_method(self, version_id):
+        """Return compression method of specified version."""
+        if not self._deltas:
+            return 'fulltext'
+        return self._parent_compression(self._get_node(version_id)[2][1])
+
+    def _parent_compression(self, reference_list):
+        # use the second reference list to decide if this is delta'd or not.
+        if len(reference_list):
+            return 'line-delta'
+        else:
+            return 'fulltext'
+
+    def _get_node(self, version_id):
+        return list(self._get_entries([version_id]))[0]
+
+    def get_options(self, version_id):
+        """Return a string represention options.
+
+        e.g. foo,bar
+        """
+        node = self._get_node(version_id)
+        if not self._deltas:
+            options = ['fulltext']
+        else:
+            options = [self._parent_compression(node[2][1])]
+        if node[1][0] == 'N':
+            options.append('no-eol')
+        return ','.join(options)
+
+    def get_parents(self, version_id):
+        """Return parents of specified version ignoring ghosts."""
+        parents = list(self.iter_parents([version_id]))
+        if not parents:
+            # missing key
+            raise errors.RevisionNotPresent(version_id, self)
+        return parents[0][1]
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return parents of specified version with ghosts."""
+        nodes = list(self._get_entries([version_id], check_present=True))
+        if not self._parents:
+            return ()
+        return nodes[0][2][0]
+
+    def check_versions_present(self, version_ids):
+        """Check that all specified versions are present."""
+        version_ids = set(version_ids)
+        present = self._present_keys(version_ids)
+        missing = version_ids.difference(present)
+        if missing:
+            raise RevisionNotPresent(missing.pop(), self)
+
+    def add_version(self, version_id, options, pos, size, parents):
+        """Add a version record to the index."""
+        return self.add_versions(((version_id, options, pos, size, parents),))
+
+    def add_versions(self, versions):
+        """Add multiple versions to the index.
+        
+        This function does not insert data into the Immutable GraphIndex
+        backing the KnitGraphIndex, instead it prepares data for insertion by
+        the caller and checks that it is safe to insert then calls
+        self._add_callback with the prepared GraphIndex nodes.
+
+        :param versions: a list of tuples:
+                         (version_id, options, pos, size, parents).
+        """
+        if not self._add_callback:
+            raise errors.ReadOnlyError(self)
+        # we hope there are no repositories with inconsistent parentage
+        # anymore.
+        # check for dups
+
+        keys = {}
+        for (version_id, options, pos, size, parents) in versions:
+            if 'no-eol' in options:
+                value = 'N'
+            else:
+                value = ' '
+            value += "%d %d" % (pos, size)
+            if not self._deltas:
+                if 'line-delta' in options:
+                    raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
+            if self._parents:
+                if self._deltas:
+                    if 'line-delta' in options:
+                        node_refs = (tuple(parents), (parents[0],))
+                    else:
+                        node_refs = (tuple(parents), ())
+                else:
+                    node_refs = (tuple(parents), )
+            else:
+                if parents:
+                    raise KnitCorrupt(self, "attempt to add node with parents "
+                        "in parentless index.")
+                node_refs = ()
+            keys[version_id] = (value, node_refs)
+        present_nodes = self._get_entries(keys)
+        for (key, value, node_refs) in present_nodes:
+            if (value, node_refs) != keys[key]:
+                raise KnitCorrupt(self, "inconsistent details in add_versions"
+                    ": %s %s" % ((value, node_refs), keys[key]))
+            del keys[key]
+        result = []
+        if self._parents:
+            for key, (value, node_refs) in keys.iteritems():
+                result.append((key, value, node_refs))
+        else:
+            for key, (value, node_refs) in keys.iteritems():
+                result.append((key, value))
+        self._add_callback(result)
+        
 
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
@@ -1961,3 +2220,9 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             bestsize = bestsize + 1
 
         return besti, bestj, bestsize
+
+
+try:
+    from bzrlib._knit_load_data_c import _load_data_c as _load_data
+except ImportError:
+    from bzrlib._knit_load_data_py import _load_data_py as _load_data

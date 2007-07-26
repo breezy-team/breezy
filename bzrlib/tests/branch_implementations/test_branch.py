@@ -69,10 +69,10 @@ class TestBranch(TestCaseWithBranch):
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
         ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':[],
-                          'rev-2':['rev-1'],
-                          'rev-1.1.1':['rev-1'],
-                          'rev-3':['rev-2', 'rev-1.1.1'],
+        self.assertEqual({'rev-1':(),
+                          'rev-2':('rev-1', ),
+                          'rev-1.1.1':('rev-1', ),
+                          'rev-3':('rev-2', 'rev-1.1.1', ),
                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):

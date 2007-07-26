@@ -128,6 +128,7 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.commands
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
@@ -141,6 +142,7 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.commands,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
@@ -165,7 +167,6 @@ class ExtendedTestResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
-                 use_numbered_dirs=False,
                  ):
         """Construct new TestResult.
 
@@ -196,7 +197,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.skip_count = 0
         self.unsupported = {}
         self.count = 0
-        self.use_numbered_dirs = use_numbered_dirs
         self._overall_start_time = time.time()
     
     def extractBenchmarkTime(self, testCase):
@@ -303,8 +303,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.write("%s: " % flavour)
-            if self.use_numbered_dirs:
-                self.stream.write('#%d ' % test.number)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
                 print >>self.stream
@@ -333,10 +331,9 @@ class TextTestResult(ExtendedTestResult):
                  bench_history=None,
                  num_tests=None,
                  pb=None,
-                 use_numbered_dirs=False,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests, use_numbered_dirs)
+            bench_history, num_tests)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -378,11 +375,7 @@ class TextTestResult(ExtendedTestResult):
                 + self._shortened_test_description(test))
 
     def _test_description(self, test):
-        if self.use_numbered_dirs:
-            return '#%d %s' % (self.count,
-                               self._shortened_test_description(test))
-        else:
-            return self._shortened_test_description(test)
+        return self._shortened_test_description(test)
 
     def report_error(self, test, err):
         self.pb.note('ERROR: %s\n    %s\n', 
@@ -447,19 +440,12 @@ class VerboseTestResult(ExtendedTestResult):
         # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
         # numbers, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
-        if self.use_numbered_dirs:
-            self.stream.write('%5d ' % self.count)
-            self.stream.write(self._ellipsize_to_right(name,
-                                osutils.terminal_width()-36))
-        else:
-            self.stream.write(self._ellipsize_to_right(name,
-                                osutils.terminal_width()-30))
+        self.stream.write(self._ellipsize_to_right(name,
+                          osutils.terminal_width()-30))
         self.stream.flush()
 
     def _error_summary(self, err):
         indent = ' ' * 4
-        if self.use_numbered_dirs:
-            indent += ' ' * 6
         return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
@@ -507,14 +493,12 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 use_numbered_dirs=False,
                  list_only=False
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
-        self.use_numbered_dirs = use_numbered_dirs
         self.list_only = list_only
 
     def run(self, test):
@@ -529,7 +513,6 @@ class TextTestRunner(object):
                               self.verbosity,
                               bench_history=self._bench_history,
                               num_tests=test.countTestCases(),
-                              use_numbered_dirs=self.use_numbered_dirs,
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
@@ -835,6 +818,14 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
@@ -1100,6 +1091,8 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # SSH Agent
+            'SSH_AUTH_SOCK': None,
             # Proxies
             'http_proxy': None,
             'HTTP_PROXY': None,
@@ -1894,7 +1887,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
-    use_numbered_dirs = False
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
@@ -2173,16 +2165,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
-              numbered_dirs=None,
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
               ):
-    use_numbered_dirs = bool(numbered_dirs)
-
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
-    if numbered_dirs is not None:
-        TestCaseInTempDir.use_numbered_dirs = use_numbered_dirs
     if verbose:
         verbosity = 2
     else:
@@ -2191,7 +2178,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
-                            use_numbered_dirs=use_numbered_dirs,
                             list_only=list_only,
                             )
     runner.stop_on_failure=stop_on_failure
@@ -2229,7 +2215,6 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None,
              matching_tests_first=None,
-             numbered_dirs=None,
              list_only=False,
              random_seed=None,
              exclude_pattern=None):
@@ -2256,7 +2241,6 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
                      matching_tests_first=matching_tests_first,
-                     numbered_dirs=numbered_dirs,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern)
@@ -2271,6 +2255,8 @@ def test_suite():
     suite on a global basis, but it is not encouraged.
     """
     testmod_names = [
+                   'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2287,17 +2273,18 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_file_names',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
@@ -2312,6 +2299,7 @@ def test_suite():
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
+                   'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
@@ -2328,10 +2316,12 @@ def test_suite():
                    'bzrlib.tests.test_merge_directive',
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
+                   'bzrlib.tests.test_multiparent',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
+                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -2453,24 +2443,6 @@ def _rmtree_temp_dir(dirname):
                                  '%s' % os.path.basename(dirname))
         else:
             raise
-
-
-def clean_selftest_output(root=None, quiet=False):
-    """Remove all selftest output directories from root directory.
-
-    :param  root:   root directory for clean
-                    (if ommitted or None then clean current directory).
-    :param  quiet:  suppress report about deleting directories
-    """
-    import re
-    re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
-    if root is None:
-        root = u'.'
-    for i in os.listdir(root):
-        if os.path.isdir(i) and re_dir.match(i):
-            if not quiet:
-                print 'delete directory:', i
-            _rmtree_temp_dir(i)
 
 
 class Feature(object):
