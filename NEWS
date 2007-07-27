@@ -165,6 +165,9 @@ IN DEVELOPMENT
       the parents of many knit nodes at once, reducing round trips to the 
       underlying index. (Robert Collins)
 
+    * Graph now has an is_ancestor method, various bits use it.
+      (Aaron Bentley)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
