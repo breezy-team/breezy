@@ -65,6 +65,7 @@ class GraphIndexBuilder(object):
         """
         self.reference_lists = reference_lists
         self._nodes = {}
+        self._nodes_by_key = {}
         self._key_length = key_elements
 
     def _check_key(self, key):
@@ -103,6 +104,21 @@ class GraphIndexBuilder(object):
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = ('', tuple(node_refs), value)
+        if self._key_length > 1:
+            key_dict = self._nodes_by_key
+            if self.reference_lists:
+                key_value = key, value, tuple(node_refs)
+            else:
+                key_value = key, value
+            # possibly should do this on-demand, but it seems likely it is 
+            # always wanted
+            subkey = list(reversed(key[:-1]))
+            while len(subkey):
+                if subkey[-1] not in key_dict:
+                    key_dict[subkey[-1]] = {}
+                key_dict = key_dict[subkey[-1]]
+                subkey.pop(-1)
+            key_dict[key[-1]] = key_value
 
     def finish(self):
         lines = [_SIGNATURE]
@@ -579,6 +595,76 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 node = self._nodes[key]
                 if not node[0]:
                     yield key, node[2]
+
+    def iter_entries_prefix(self, keys):
+        """Iterate over keys within the index using prefix matching.
+
+        Prefix matching is applied within the tuple of a key, not to within
+        the bytestring of each key element. e.g. if you have the keys ('foo',
+        'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
+        only the former key is returned.
+
+        :param keys: An iterable providing the key prefixes to be retrieved.
+            Each key prefix takes the form of a tuple the length of a key, but
+            with the last N elements 'None' rather than a regular bytestring.
+            The first element cannot be 'None'.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys with a matching prefix to those supplied. No additional keys
+            will be returned, and every match that is in the index will be
+            returned.
+        """
+        # XXX: To much duplication with the GraphIndex class; consider finding
+        # a good place to pull out the actual common logic.
+        keys = set(keys)
+        if not keys:
+            return
+        if self._key_length == 1:
+            for key in keys:
+                # sanity check
+                if key[0] is None:
+                    raise errors.BadIndexKey(key)
+                if len(key) != self._key_length:
+                    raise errors.BadIndexKey(key)
+                node = self._nodes[key]
+                if node[0]:
+                    continue 
+                if self.reference_lists:
+                    yield key, node[2], node[1]
+                else:
+                    yield key, node[2]
+            return
+        for key in keys:
+            # sanity check
+            if key[0] is None:
+                raise errors.BadIndexKey(key)
+            if len(key) != self._key_length:
+                raise errors.BadIndexKey(key)
+            # find what it refers to:
+            key_dict = self._nodes_by_key
+            elements = list(key)
+            # find the subdict to return
+            try:
+                while len(elements) and elements[0] is not None:
+                    key_dict = key_dict[elements[0]]
+                    elements.pop(0)
+            except KeyError:
+                # a non-existant lookup.
+                continue
+            if len(elements):
+                dicts = [key_dict]
+                while dicts:
+                    key_dict = dicts.pop(-1)
+                    # can't be empty or would not exist
+                    item, value = key_dict.iteritems().next()
+                    if type(value) == dict:
+                        # push keys 
+                        dicts.extend(key_dict.itervalues())
+                    else:
+                        # yield keys
+                        for value in key_dict.itervalues():
+                            yield value
+            else:
+                yield key_dict
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""

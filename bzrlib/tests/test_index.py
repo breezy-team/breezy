@@ -635,8 +635,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
 
-    def make_index(self, ref_lists=0, nodes=[]):
-        result = InMemoryGraphIndex(ref_lists)
+    def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
+        result = InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
         return result
 
@@ -693,6 +693,46 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
             (('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
+
+    def test_iter_key_prefix_1_key_element_no_refs(self):
+        index = self.make_index( nodes=[
+            (('name', ), 'data'),
+            (('ref', ), 'refdata')])
+        self.assertEqual(set([(('name', ), 'data'),
+            (('ref', ), 'refdata')]),
+            set(index.iter_entries_prefix([('name', ), ('ref', )])))
+
+    def test_iter_key_prefix_1_key_element_refs(self):
+        index = self.make_index(1, nodes=[
+            (('name', ), 'data', ([('ref', )], )),
+            (('ref', ), 'refdata', ([], ))])
+        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
+            (('ref', ), 'refdata', ((), ))]),
+            set(index.iter_entries_prefix([('name', ), ('ref', )])))
+
+    def test_iter_key_prefix_2_key_element_no_refs(self):
+        index = self.make_index(key_elements=2, nodes=[
+            (('name', 'fin1'), 'data'),
+            (('name', 'fin2'), 'beta'),
+            (('ref', 'erence'), 'refdata')])
+        self.assertEqual(set([(('name', 'fin1'), 'data'),
+            (('ref', 'erence'), 'refdata')]),
+            set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
+        self.assertEqual(set([(('name', 'fin1'), 'data'),
+            (('name', 'fin2'), 'beta')]),
+            set(index.iter_entries_prefix([('name', None)])))
+
+    def test_iter_key_prefix_2_key_element_refs(self):
+        index = self.make_index(1, key_elements=2, nodes=[
+            (('name', 'fin1'), 'data', ([('ref', 'erence')], )),
+            (('name', 'fin2'), 'beta', ([], )),
+            (('ref', 'erence'), 'refdata', ([], ))])
+        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (('ref', 'erence'), 'refdata', ((), ))]),
+            set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
+        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (('name', 'fin2'), 'beta', ((), ))]),
+            set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_nothing_empty(self):
         index = self.make_index()
