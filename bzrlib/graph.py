@@ -291,6 +291,33 @@ class Graph(object):
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
+        """Determine whether a revision is an ancestor of another.
+
+        There are two possible outcomes: True and False, but there are three
+        possible relationships:
+
+        a) candidate_ancestor is an ancestor of candidate_descendant
+        b) candidate_ancestor is an descendant of candidate_descendant
+        c) candidate_ancestor is an sibling of candidate_descendant
+
+        To check for a, we walk from candidate_descendant, looking for
+        candidate_ancestor.
+
+        To check for b, we walk from candidate_ancestor, looking for
+        candidate_descendant.
+
+        To make a and b more efficient, we can stop any searches that hit
+        common ancestors.
+
+        If we exhaust our searches, but neither a or b is true, then c is true.
+
+        In order to find c efficiently, we must avoid searching from
+        candidate_descendant or candidate_ancestor into common ancestors.  But
+        if we don't search common ancestors at all, we won't know if we hit
+        common ancestors.  So we have a walker for common ancestors.  Note that
+        its searches are not required to terminate in order to determine c to
+        be true.
+        """
         ancestor_walker = self._make_breadth_first_searcher(
             [candidate_ancestor])
         descendant_walker = self._make_breadth_first_searcher(
@@ -299,7 +326,7 @@ class Graph(object):
         active_ancestor = True
         active_descendant = True
         while (active_ancestor or active_descendant):
-            common = set()
+            new_common = set()
             if active_descendant:
                 try:
                     nodes = descendant_walker.next()
@@ -308,7 +335,7 @@ class Graph(object):
                 else:
                     if candidate_ancestor in nodes:
                         return True
-                    common.update(nodes.intersection(ancestor_walker.seen))
+                    new_common.update(nodes.intersection(ancestor_walker.seen))
             if active_ancestor:
                 try:
                     nodes = ancestor_walker.next()
@@ -317,16 +344,17 @@ class Graph(object):
                 else:
                     if candidate_descendant in nodes:
                         return False
-                    common.update(nodes.intersection(descendant_walker.seen))
+                    new_common.update(nodes.intersection(
+                        descendant_walker.seen))
             try:
-                common.update(common_walker.next())
+                new_common.update(common_walker.next())
             except StopIteration:
                 pass
             for walker in (ancestor_walker, descendant_walker):
-                for node in common:
+                for node in new_common:
                     c_ancestors = walker.find_seen_ancestors(node)
                     walker.stop_searching_any(c_ancestors)
-                common_walker.start_searching(common)
+                common_walker.start_searching(new_common)
         return False
 
 
