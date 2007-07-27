@@ -112,36 +112,34 @@ def unmarshall_rebase_plan(text):
     return (last_revision_info, replace_map)
 
 
-def regenerate_default_revid(rev):
+def regenerate_default_revid(repository, revid):
+    rev = repository.get_revision(revid)
     return gen_revision_id(rev.committer, rev.timestamp)
 
 
-def generate_simple_plan(repository, history, start_revid, onto_revid, 
-                         generate_revid=regenerate_default_revid):
+def generate_simple_plan(history, start_revid, onto_revid, 
+                         get_parents, generate_revid):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
 
-    :param repository: Repository
     :param history: Revision history
     :param start_revid: Id of revision at which to start replaying
     :param onto_revid: Id of revision on top of which to replay
+    :param get_parents: Function for obtaining the parents of a revision
     :param generate_revid: Function for generating new revision ids
 
     :return: replace map
     """
     assert start_revid in history
-    assert repository.has_revision(start_revid)
-    assert repository.has_revision(onto_revid)
     replace_map = {}
     i = history.index(start_revid)
     new_parent = onto_revid
     for oldrevid in history[i:]: 
-        rev = repository.get_revision(oldrevid)
-        parents = rev.parent_ids
+        parents = get_parents(oldrevid)
         assert len(parents) == 0 or \
                 parents[0] == history[history.index(oldrevid)-1]
         parents[0] = new_parent
-        newrevid = generate_revid(rev)
+        newrevid = generate_revid(oldrevid)
         assert newrevid != oldrevid
         replace_map[oldrevid] = (newrevid, parents)
         new_parent = newrevid

@@ -78,6 +78,7 @@ class cmd_rebase(Command):
         from rebase import (generate_simple_plan, rebase, rebase_plan_exists, 
                             read_rebase_plan, remove_rebase_plan, 
                             workingtree_replay, write_rebase_plan,
+                            regenerate_default_revid,
                             rebase_todo)
         wt = WorkingTree.open('.')
         wt.lock_write()
@@ -120,8 +121,10 @@ class cmd_rebase(Command):
 
             # Create plan
             replace_map = generate_simple_plan(
-                    wt.branch.repository, 
-                    wt.branch.revision_history(), start_revid, onto)
+                    wt.branch.revision_history(), start_revid, onto,
+                    wt.branch.repository.revision_parents,
+                    lambda revid: regenerate_default_revid(wt.branch.repository, revid)
+                    )
 
             if verbose:
                 todo = list(rebase_todo(wt.branch.repository, replace_map))

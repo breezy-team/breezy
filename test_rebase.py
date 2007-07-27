@@ -94,8 +94,9 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
-                generate_simple_plan(b.repository, b.revision_history(), "bla2", "bloe", 
-                    lambda y: "new"+y.revision_id))
+                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                    b.repository.revision_parents, 
+                    lambda y: "new"+y))
      
     def test_simple_plan_creator_extra_history(self):
         wt = self.make_branch_and_tree('.')
@@ -113,8 +114,9 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello again', rev_id="bla3")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
-                generate_simple_plan(b.repository, b.revision_history(), "bla2", "bloe", 
-                    lambda y: "new"+y.revision_id))
+                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                    b.repository.revision_parents,
+                    lambda y: "new"+y))
  
 
     def test_generate_transpose_plan(self):
@@ -157,6 +159,36 @@ class PlanCreatorTests(TestCaseWithTransport):
         self.assertEquals({"bla": ("newbla", ["lala"])},
                 generate_transpose_plan({"bla": ["bloe"], "bloe": []},
                     {"bloe": "lala"}, {}.get, lambda y: "new"+y))
+
+    def test_plan_with_already_merged(self):
+        """We need to use a merge base that makes sense. 
+        
+        A
+        | \
+        B  D
+        | \|
+        C  E
+
+        Rebasing E on C should result in:
+
+        A -> B -> C -> D -> E
+
+        with a plan of:
+
+        D -> (D', [C])
+        E -> (E', [D'])
+        """
+        parents_map = {
+                "A": [],
+                "B": ["A"],
+                "C": ["B"],
+                "D": ["A"],
+                "E": ["D", "C"]
+        }
+        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
+                generate_simple_plan(["A", "D", "E"], "D", "C", 
+                    parents_map.get, lambda y: y+"'"))
+ 
 
 class PlanFileTests(TestCaseWithTransport):
    def test_rebase_plan_exists_false(self):
@@ -468,6 +500,48 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.assertEquals("newcommit", newrev.revision_id)
         self.assertEquals(oldrev.timestamp, newrev.timestamp)
         self.assertEquals(oldrev.timezone, newrev.timezone)
+
+    def test_already_merged(self):
+        """We need to use a merge base that makes sense. 
+        
+        A
+        | \
+        B  D
+        | \|
+        C  E
+
+        Rebasing E on C should result in:
+
+        A -> B -> C -> D -> E
+        """
+        oldwt = self.make_branch_and_tree("old")
+        self.build_tree(['old/afile'])
+        oldwt.add(["afile"])
+        oldwt.commit("base", rev_id="A")
+
+        newwt = oldwt.bzrdir.sprout("new").open_workingtree()
+        file("old/afile", "w").write("bloe")
+        oldwt.commit("bla", rev_id="B")
+        file("old/afile", "w").write("blaaah")
+        oldwt.commit("bla", rev_id="C")
+        self.build_tree(['new/bfile'])
+        newwt.add(["bfile"])
+        newwt.commit("bla", rev_id="D")
+        file("old/bfile", "w").write("blaaah")
+        file("old/afile", "w").write("bloe")
+        newwt.add_pending_merge("B")
+        newwt.commit("bla", rev_id="E")
+        newwt.branch.repository.fetch(oldwt.branch.repository)
+        replay_delta_workingtree(newwt, "D", "D'", ["C"])
+        oldrev = newwt.branch.repository.get_revision("D")
+        newrev = newwt.branch.repository.get_revision("D'")
+        self.assertEquals(["C"], newrev.parent_ids)
+        replay_delta_workingtree(newwt, "E", "E'", ["D'"])
+        oldrev = newwt.branch.repository.get_revision("E")
+        newrev = newwt.branch.repository.get_revision("E'")
+        self.assertEquals(["D'"], newrev.parent_ids)
+        self.assertEquals(["A", "B", "C", "D'", "E'"], 
+                          newwt.branch.revision_history())
 
 
 class TestReplaySnapshotError(TestCase):
