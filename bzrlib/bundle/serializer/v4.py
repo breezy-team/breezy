@@ -144,19 +144,19 @@ class BundleReader(object):
     body
     """
 
-    def __init__(self, fileobj, memory_friendly=True):
+    def __init__(self, fileobj, stream_input=True):
         """Constructor
 
         :param fileobj: a file containing a bzip-encoded container
-        :param memory_friendly: If True, read the file in pieces.
-            If False, decode the entire file into memory at once.
-            (This is much faster)
+        :param stream_input: If True, the BundleReader stream input rather than
+            reading it all into memory at once.  Reading it into memory all at
+            once is (currently) faster.
         """
         line = fileobj.readline()
         if line != '\n':
             fileobj.readline()
         self.patch_lines = []
-        if memory_friendly:
+        if stream_input:
             source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
         else:
             source_file = StringIO(bz2.decompress(fileobj.read()))
@@ -392,11 +392,17 @@ class BundleInfoV4(object):
     def install(self, repository):
         return self.install_revisions(repository)
 
-    def install_revisions(self, repository, memory_friendly=True):
-        """Install this bundle's revisions into the specified repository"""
+    def install_revisions(self, repository, stream_input=True):
+        """Install this bundle's revisions into the specified repository
+
+        :param target_repo: The repository to install into
+        :param stream_input: If True, will stream input rather than reading it
+            all into memory at once.  Reading it into memory all at once is
+            (currently) faster.
+        """
         repository.lock_write()
         try:
-            ri = RevisionInstaller(self.get_bundle_reader(memory_friendly),
+            ri = RevisionInstaller(self.get_bundle_reader(stream_input),
                                    self._serializer, repository)
             return ri.install()
         finally:
@@ -409,9 +415,15 @@ class BundleInfoV4(object):
         """
         return None, self.target, 'inapplicable'
 
-    def get_bundle_reader(self, memory_friendly=True):
+    def get_bundle_reader(self, stream_input=True):
+        """Return a new BundleReader for the associated bundle
+
+        :param stream_input: If True, the BundleReader stream input rather than
+            reading it all into memory at once.  Reading it into memory all at
+            once is (currently) faster.
+        """
         self._fileobj.seek(0)
-        return BundleReader(self._fileobj, memory_friendly)
+        return BundleReader(self._fileobj, stream_input)
 
     def _get_real_revisions(self):
         if self.__real_revisions is None:

@@ -139,6 +139,9 @@ class VersionedFile(object):
              version_id to allow delta optimisations. 
              VERY IMPORTANT: the texts must be those returned
              by add_lines or data corruption can be caused.
+        :param left_matching_blocks: a hint about which areas are common
+            between the text and its left-hand-parent.  The format is
+            the SequenceMatcher.get_matching_blocks format.
         :return: An opaque representation of the inserted version which can be
                  provided back to future add_lines calls in the parent_texts
                  dictionary.

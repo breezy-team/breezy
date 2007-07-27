@@ -1462,7 +1462,7 @@ class TestBundleWriterReader(TestCase):
             'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        reader = v4.BundleReader(fileobj, memory_friendly=True)
+        reader = v4.BundleReader(fileobj, stream_input=True)
         record_iter = reader.iter_records()
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
@@ -1481,7 +1481,7 @@ class TestBundleWriterReader(TestCase):
             'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        reader = v4.BundleReader(fileobj, memory_friendly=False)
+        reader = v4.BundleReader(fileobj, stream_input=False)
         record_iter = reader.iter_records()
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},

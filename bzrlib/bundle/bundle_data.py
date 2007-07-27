@@ -457,8 +457,12 @@ class BundleInfo(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-    def install_revisions(self, target_repo, memory_friendly=True):
-        """Install revisions and return the target revision"""
+    def install_revisions(self, target_repo, stream_input=True):
+        """Install revisions and return the target revision
+
+        :param target_repo: The repository to install into
+        :param stream_input: Ignored by this implementation.
+        """
         apply_bundle.install_bundle(target_repo, self)
         return self.target
 
