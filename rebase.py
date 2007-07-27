@@ -371,6 +371,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     assert not wt.changes_from(wt.basis_tree()).has_changed()
 
     oldtree = repository.revision_tree(oldrevid)
+    # TODO: This is not the most appropriate base tree. 
     basetree = repository.revision_tree(oldrev.parent_ids[0])
     if map_ids:
         fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)

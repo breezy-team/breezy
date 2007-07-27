@@ -176,16 +176,16 @@ class PlanCreatorTests(TestCaseWithTransport):
         with a plan of:
 
         D -> (D', [C])
-        E -> (E', [D'])
+        E -> (E', [D', C])
         """
         parents_map = {
                 "A": [],
                 "B": ["A"],
                 "C": ["B"],
                 "D": ["A"],
-                "E": ["D", "C"]
+                "E": ["D", "B"]
         }
-        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
+        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'", "B"])}, 
                 generate_simple_plan(["A", "D", "E"], "D", "C", 
                     parents_map.get, lambda y: y+"'"))
  
@@ -536,10 +536,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
-        replay_delta_workingtree(newwt, "E", "E'", ["D'"])
+        replay_delta_workingtree(newwt, "E", "E'", ["D'", "B"])
         oldrev = newwt.branch.repository.get_revision("E")
         newrev = newwt.branch.repository.get_revision("E'")
-        self.assertEquals(["D'"], newrev.parent_ids)
+        self.assertEquals(["D'", "B"], newrev.parent_ids)
         self.assertEquals(["A", "B", "C", "D'", "E'"], 
                           newwt.branch.revision_history())
 
