@@ -728,7 +728,7 @@ class SvnCheckout(BzrDir):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
     def sprout(self, url, revision_id=None, force_new_repo=False, 
-               recurse='down'):
+               recurse='down', possible_transports=None):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = get_rich_root_format().initialize(url)
