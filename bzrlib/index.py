@@ -28,6 +28,7 @@ import re
 
 from bzrlib import errors
 
+_OPTION_KEY_ELEMENTS = "key_elements="
 _OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
@@ -105,7 +106,8 @@ class GraphIndexBuilder(object):
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        prefix_length = len(lines[0]) + len(lines[1])
+        lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
+        prefix_length = len(lines[0]) + len(lines[1]) + len(lines[2])
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the 
         # file cannot be determined until all the inbetween references have
@@ -287,6 +289,13 @@ class GraphIndex(object):
             raise errors.BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
+        except ValueError:
+            raise errors.BadIndexOptions(self)
+        options_line = stream.readline()
+        if not options_line.startswith(_OPTION_KEY_ELEMENTS):
+            raise errors.BadIndexOptions(self)
+        try:
+            self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
         except ValueError:
             raise errors.BadIndexOptions(self)
 
