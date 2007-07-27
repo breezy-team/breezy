@@ -79,7 +79,8 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
     * New bundle and merge directive formats are faster to generate, and
-      more robust against email mangling.  (Aaron Bentley)
+      more robust against email mangling.  New 'send' command replaces
+      'bundle' and 'merge-directive'.  (Aaron Bentley)
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
