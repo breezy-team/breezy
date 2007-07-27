@@ -22,6 +22,7 @@ import warnings
 from bzrlib import (
     errors,
     osutils,
+    patiencediff,
     registry,
     revision as _mod_revision,
     )
@@ -49,7 +50,7 @@ from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
                               unique_add, ROOT_PARENT)
-from bzrlib.versionedfile import WeaveMerge
+from bzrlib.versionedfile import PlanWeaveMerge
 from bzrlib import ui
 
 # TODO: Report back as changes are merged in
@@ -99,13 +100,13 @@ class Merger(object):
             self._cached_trees[revision_id] = tree
         return self._cached_trees[revision_id]
 
-    def _get_tree(self, treespec):
+    def _get_tree(self, treespec, possible_transports=None):
         from bzrlib import workingtree
         location, revno = treespec
         if revno is None:
             tree = workingtree.WorkingTree.open_containing(location)[0]
             return tree.branch, tree
-        branch = Branch.open_containing(location)[0]
+        branch = Branch.open_containing(location, possible_transports)[0]
         if revno == -1:
             revision_id = branch.last_revision()
         else:
@@ -163,7 +164,7 @@ class Merger(object):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor or not self.base_is_other_ancestor:
+        if not self.base_is_ancestor or not self.base_is_other_ancestor or self.other_rev_id is None:
             return
         self._add_parent()
 
@@ -186,14 +187,15 @@ class Merger(object):
                 if tree is not None:
                     tree.unlock()
 
-    def set_other(self, other_revision):
+    def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
 
         This sets the other_tree, other_rev_id, other_basis attributes.
 
         :param other_revision: The [path, revision] list to merge from.
         """
-        self.other_branch, self.other_tree = self._get_tree(other_revision)
+        self.other_branch, self.other_tree = self._get_tree(other_revision,
+                                                            possible_transports)
         if other_revision[1] == -1:
             self.other_rev_id = _mod_revision.ensure_null(
                 self.other_branch.last_revision())
@@ -223,6 +225,23 @@ class Merger(object):
         self._maybe_fetch(other_branch, self.this_branch, self.other_rev_id)
         self.other_tree = self.revision_tree(revision_id)
         self.other_basis = revision_id
+
+    def set_base_revision(self, revision_id, branch):
+        """Set 'base' based on a branch and revision id
+
+        :param revision_id: The revision to use for a tree
+        :param branch: The branch containing this tree
+        """
+        self.base_rev_id = revision_id
+        self.base_branch = branch
+        self._maybe_fetch(branch, self.this_branch, revision_id)
+        self.base_tree = self.revision_tree(revision_id)
+        self.base_is_ancestor = is_ancestor(self.this_basis,
+                                            self.base_rev_id,
+                                            self.this_branch)
+        self.base_is_other_ancestor = is_ancestor(self.other_basis,
+                                                  self.base_rev_id,
+                                                  self.this_branch)
 
     def _maybe_fetch(self, source, target, revision_id):
         if (source.repository.bzrdir.root_transport.base !=
@@ -901,52 +920,27 @@ class WeaveMerger(Merge3Merger):
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
                  interesting_files=None):
-        self.this_revision_tree = self._get_revision_tree(this_tree)
-        self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
                                           change_reporter=change_reporter)
 
-    def _get_revision_tree(self, tree):
-        """Return a revision tree related to this tree.
-        If the tree is a WorkingTree, the basis will be returned.
-        """
-        if getattr(tree, 'get_weave', False) is False:
-            # If we have a WorkingTree, try using the basis
-            return tree.branch.basis_tree()
-        else:
-            return tree
-
-    def _check_file(self, file_id):
-        """Check that the revision tree's version of the file matches."""
-        for tree, rt in ((self.this_tree, self.this_revision_tree), 
-                         (self.other_tree, self.other_revision_tree)):
-            if rt is tree:
-                continue
-            if tree.get_file_sha1(file_id) != rt.get_file_sha1(file_id):
-                raise WorkingTreeNotRevision(self.this_tree)
-
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        weave = self.this_revision_tree.get_weave(file_id)
-        this_revision_id = self.this_revision_tree.inventory[file_id].revision
-        other_revision_id = \
-            self.other_revision_tree.inventory[file_id].revision
-        wm = WeaveMerge(weave, this_revision_id, other_revision_id, 
-                        '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
-        return wm.merge_lines(self.reprocess)
+        plan = self.this_tree.plan_file_merge(file_id, self.other_tree)
+        textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
+            '>>>>>>> MERGE-SOURCE\n')
+        return textmerge.merge_lines(self.reprocess)
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        self._check_file(file_id)
         lines, conflicts = self._merged_lines(file_id)
         lines = list(lines)
         # Note we're checking whether the OUTPUT is binary in this case, 
@@ -1048,3 +1042,39 @@ def get_merge_type_registry():
     """
     from bzrlib import option
     return option._merge_type_registry
+
+
+def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
+    def status_a(revision, text):
+        if revision in ancestors_b:
+            return 'killed-b', text
+        else:
+            return 'new-a', text
+
+    def status_b(revision, text):
+        if revision in ancestors_a:
+            return 'killed-a', text
+        else:
+            return 'new-b', text
+
+    plain_a = [t for (a, t) in annotated_a]
+    plain_b = [t for (a, t) in annotated_b]
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_a, plain_b)
+    blocks = matcher.get_matching_blocks()
+    a_cur = 0
+    b_cur = 0
+    for ai, bi, l in blocks:
+        # process all mismatched sections
+        # (last mismatched section is handled because blocks always
+        # includes a 0-length last block)
+        for revision, text in annotated_a[a_cur:ai]:
+            yield status_a(revision, text)
+        for revision, text in annotated_b[b_cur:bi]:
+            yield status_b(revision, text)
+
+        # and now the matched section
+        a_cur = ai + l
+        b_cur = bi + l
+        for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
+            assert text_a == text_b
+            yield "unchanged", text_a

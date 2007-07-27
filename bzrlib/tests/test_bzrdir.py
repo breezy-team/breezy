@@ -198,9 +198,9 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Sample .bzr dir format."
 
-    def initialize(self, url):
+    def initialize(self, url, possible_transports=None):
         """Create a bzr dir."""
-        t = get_transport(url)
+        t = get_transport(url, possible_transports)
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
@@ -288,7 +288,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
-        branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(), 
+        branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(),
                                                       format=format)
         self.assertTrue(isinstance(branch, SampleBranch))
 
@@ -340,6 +340,15 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('.', format=format)
+        branch.bzrdir.open_workingtree()
+        branch.bzrdir.open_repository()
+
+    def test_create_branch_convenience_possible_transports(self):
+        """Check that the optional 'possible_transports' is recognized"""
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        t = self.get_transport()
+        branch = bzrdir.BzrDir.create_branch_convenience(
+            '.', format=format, possible_transports=[t])
         branch.bzrdir.open_workingtree()
         branch.bzrdir.open_repository()
 

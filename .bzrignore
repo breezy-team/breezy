@@ -36,4 +36,5 @@ build
 ./api
 doc/**/*.htm
 doc/developers/performance.png
+bzrlib/_dirstate_helpers_c.c
 bzrlib/_knit_load_data_c.c
