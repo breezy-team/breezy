@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * ``bzr checkout`` now honours -r when reconstituting a working tree.
       It also honours -r 0.  (Aaron Bentley, #127708)
 
+    * ``bzr add *`` no more fails on Windows if working tree contains
+      non-ascii file names. (Kuno Meyer, #127361)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
