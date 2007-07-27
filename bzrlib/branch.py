@@ -1463,10 +1463,8 @@ class BzrBranch(Branch):
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev,
-                                                       topo_sorted=False)
-            if stop_revision in my_ancestry:
-                # last_revision is a descendant of stop_revision
+            if self.repository.get_graph().is_ancestor(stop_revision,
+                                                       last_rev):
                 return
             self.generate_revision_history(stop_revision, last_rev=last_rev,
                 other_branch=other)
@@ -1821,11 +1819,10 @@ class BzrBranch5(BzrBranch):
         """
         master = self.get_master_branch()
         if master is not None:
-            old_tip = self.last_revision()
+            old_tip = _mod_revision.ensure_null(self.last_revision())
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(
-                _mod_revision.ensure_null(self.last_revision()),
-                topo_sorted=False):
+            if self.repository.get_graph().is_ancestor(old_tip,
+                _mod_revision.ensure_null(self.last_revision())):
                 return None
             return old_tip
         return None
