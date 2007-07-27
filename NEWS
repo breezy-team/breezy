@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * ``bzr checkout`` now honours -r when reconstituting a working tree.
       It also honours -r 0.  (Aaron Bentley, #127708)
 
+    * ``bzr add *`` no more fails on Windows if working tree contains
+      non-ascii file names. (Kuno Meyer, #127361)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -83,12 +86,23 @@ IN DEVELOPMENT
     * Commit now only shows the progress in terms of directories instead of
       entries. (Ian Clatworthy)
 
+    * Fix ``KnitRepository.get_revision_graph`` to not request the graph 2
+      times. This makes ``get_revision_graph`` 2x faster. (John Arbash
+      Meinel)
+
+    * Fix ``VersionedFile.get_graph()`` to avoid using
+      ``set.difference_update(other)``, which has bad scaling when
+      ``other`` is large. This improves ``VF.get_graph([version_id])`` for
+      a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
       Options are now required to provide a help string and it must
       comply with the style guide by being one or more sentences with an
       initial capital and final period. (Martin Pool)
+
+    * KnitIndex.get_parents now returns tuples. (Robert Collins)
 
   INTERNALS:
 
@@ -140,6 +154,16 @@ IN DEVELOPMENT
       for performing annotate-merge.  (Aaron Bentley)
 
     * New EmailMessage class to create email messages. (Adeodato Simó)
+
+    * Unused functions on the private interface KnitIndex have been removed.
+      (Robert Collins)
+
+    * New ``knit.KnitGraphIndex`` which provides a ``KnitIndex`` layered on top
+      of a ``index.GraphIndex``. (Robert Collins)
+
+    * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
+      the parents of many knit nodes at once, reducing round trips to the 
+      underlying index. (Robert Collins)
 
   TESTING:
 

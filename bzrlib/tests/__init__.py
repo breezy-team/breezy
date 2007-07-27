@@ -1640,7 +1640,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """Return a writeable transport.
 
         This transport is for the test scratch space relative to
-        "self._test_root""
+        "self._test_root"
         
         :param relpath: a path relative to the base url.
         """
@@ -2372,6 +2372,7 @@ def test_suite():
                    'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
+                   'bzrlib.tests.test_win32utils',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
