@@ -718,7 +718,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    try:
+        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%s' is unsupported by the current "
+                                                            "encoding." % a))
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret
