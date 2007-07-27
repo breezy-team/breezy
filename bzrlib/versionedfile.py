@@ -324,7 +324,7 @@ class VersionedFile(object):
             else:
                 left_matching_blocks = None
             version_text = self.add_lines(version, parent_ids, lines,
-                vf_parents, left_matching_blocks = left_matching_blocks)
+                vf_parents, left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
              zip(records, self.get_sha1s(versions)):
