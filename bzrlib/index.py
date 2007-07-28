@@ -112,19 +112,17 @@ class GraphIndexBuilder(object):
                 key_value = key, value
             # possibly should do this on-demand, but it seems likely it is 
             # always wanted
-            subkey = list(reversed(key[:-1]))
-            while len(subkey):
-                if subkey[-1] not in key_dict:
-                    key_dict[subkey[-1]] = {}
-                key_dict = key_dict[subkey[-1]]
-                subkey.pop(-1)
+            # For a key of (foo, bar, baz) create
+            # _nodes_by_key[foo][bar][baz] = key_value
+            for subkey in key[:-1]:
+                key_dict = key_dict.setdefault(subkey, {})
             key_dict[key[-1]] = key_value
 
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
-        prefix_length = len(lines[0]) + len(lines[1]) + len(lines[2])
+        prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the 
         # file cannot be determined until all the inbetween references have
@@ -195,7 +193,7 @@ class GraphIndexBuilder(object):
                     ref_addresses.append(format_string % key_addresses[reference])
                 flattened_references.append('\r'.join(ref_addresses))
             string_key = '\x00'.join(key)
-            lines.append("%s\0%s\0%s\0%s\n" % (string_key, absent,
+            lines.append("%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
         result = StringIO(''.join(lines))
@@ -243,6 +241,7 @@ class GraphIndex(object):
         """
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
+        expected_elements = 3 + self._key_length
         line_count = 0
         # raw data keyed by offset
         self._keys_by_offset = {}
@@ -256,6 +255,8 @@ class GraphIndex(object):
                 trailers += 1
                 continue
             elements = line.split('\0')
+            if len(elements) != expected_elements:
+                raise errors.BadIndexData(self)
             # keys are tuples
             key = tuple(elements[:self._key_length])
             absent, references, value = elements[-3:]
@@ -289,11 +290,10 @@ class GraphIndex(object):
                     key_value = key, node_value
                 # possibly should do this on-demand, but it seems likely it is 
                 # always wanted
-                while len(subkey):
-                    if subkey[-1] not in key_dict:
-                        key_dict[subkey[-1]] = {}
-                    key_dict = key_dict[subkey[-1]]
-                    subkey.pop(-1)
+                # For a key of (foo, bar, baz) create
+                # _nodes_by_key[foo][bar][baz] = key_value
+                for subkey in key[:-1]:
+                    key_dict = key_dict.setdefault(subkey, {})
                 key_dict[key[-1]] = key_value
         self._keys = set(self._nodes)
         if trailers != 1:
@@ -404,7 +404,7 @@ class GraphIndex(object):
             # find what it refers to:
             key_dict = self._nodes_by_key
             elements = list(key)
-            # find the subdict to return
+            # find the subdict whose contents should be returned.
             try:
                 while len(elements) and elements[0] is not None:
                     key_dict = key_dict[elements[0]]
@@ -424,8 +424,11 @@ class GraphIndex(object):
                     else:
                         # yield keys
                         for value in key_dict.itervalues():
+                            # each value is the key:value:node refs tuple
+                            # ready to yield.
                             yield value
             else:
+                # the last thing looked up was a terminal element
                 yield key_dict
 
     def _signature(self):

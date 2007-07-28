@@ -64,6 +64,9 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "akey\x00\x00\x00data\n\n", contents)
 
     def test_build_index_one_node_2_element_keys(self):
+        # multipart keys are separated by \x00 - because they are fixed length,
+        # not variable this does not cause any issues, and seems clearer to the
+        # author.
         builder = GraphIndexBuilder(key_elements=2)
         builder.add_node(('akey', 'secondpart'), 'data')
         stream = builder.finish()
