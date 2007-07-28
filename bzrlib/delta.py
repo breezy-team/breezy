@@ -217,7 +217,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
                    include_root, extra_trees=None,
-                   want_unversioned=False):
+                   require_versioned=False, want_unversioned=False):
     """Worker function that implements Tree.changes_from."""
     delta = TreeDelta()
     # mutter('start compare_trees')
@@ -225,6 +225,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree._iter_changes(old_tree, want_unchanged,
             specific_files, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned):
         if versioned == (False, False):
             delta.unversioned.append((path[1], None, kind[1]))
