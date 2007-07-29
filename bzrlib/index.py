@@ -20,6 +20,7 @@ __all__ = [
     'CombinedGraphIndex',
     'GraphIndex',
     'GraphIndexBuilder',
+    'GraphIndexPrefixAdapter',
     'InMemoryGraphIndex',
     ]
 
@@ -671,3 +672,83 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""
+
+
+class GraphIndexPrefixAdapter(object):
+    """An adapter between GraphIndex with different key lengths.
+
+    Queries against this will emit queries against the adapted Graph with the
+    prefix added, queries for all items use iter_entries_prefix. The returned
+    nodes will have their keys and node references adjusted to remove the 
+    prefix. Finally, an add_nodes_callback can be supplied - when called the
+    nodes and references being added will have prefix prepended.
+    """
+
+    def __init__(self, adapted, prefix, missing_key_length, add_nodes_callback=None):
+        """Construct an adapter against adapted with prefix."""
+        self.adapted = adapted
+        self.prefix = prefix + (None,)*missing_key_length
+        self.prefix_key = prefix
+        self.prefix_len = len(prefix)
+        self.add_nodes_callback = add_nodes_callback
+
+    def _strip_prefix(self, an_iter):
+        """Strip prefix data from nodes and return it."""
+        for node in an_iter:
+            # cross checks
+            if node[0][:self.prefix_len] != self.prefix_key:
+                raise errors.BadIndexData(self)
+            for ref_list in node[2]:
+                for ref_node in ref_list:
+                    if ref_node[:self.prefix_len] != self.prefix_key:
+                        raise errors.BadIndexData(self)
+            yield node[0][self.prefix_len:], node[1], (
+                tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
+                for ref_list in node[2]))
+
+    def iter_all_entries(self):
+        """Iterate over all keys within the index
+
+        iter_all_entries is implemented against the adapted index using
+        iter_entries_prefix.
+
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index (in this case dictionary hash order).
+        """
+        return self._strip_prefix(self.adapted.iter_entries_prefix([self.prefix]))
+
+    def iter_entries(self, keys):
+        """Iterate over keys within the index.
+
+        :param keys: An iterable providing the keys to be retrieved.
+        :return: An iterable of (key, reference_lists, value). There is no
+            defined order for the result iteration - it will be in the most
+            efficient order for the index (keys iteration order in this case).
+        """
+        return self._strip_prefix(self.adapted.iter_entries(
+            self.prefix_key + key for key in keys))
+
+    def iter_entries_prefix(self, keys):
+        """Iterate over keys within the index using prefix matching.
+
+        Prefix matching is applied within the tuple of a key, not to within
+        the bytestring of each key element. e.g. if you have the keys ('foo',
+        'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
+        only the former key is returned.
+
+        :param keys: An iterable providing the key prefixes to be retrieved.
+            Each key prefix takes the form of a tuple the length of a key, but
+            with the last N elements 'None' rather than a regular bytestring.
+            The first element cannot be 'None'.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys with a matching prefix to those supplied. No additional keys
+            will be returned, and every match that is in the index will be
+            returned.
+        """
+        return self._strip_prefix(self.adapted.iter_entries_prefix(
+            self.prefix_key + key for key in keys))
+
+    def validate(self):
+        """Call the adapted's validate."""
+        self.adapted.validate()

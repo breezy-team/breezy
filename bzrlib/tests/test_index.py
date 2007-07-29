@@ -754,3 +754,67 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index.validate()
 
 
+class TestGraphIndexPrefixAdapter(TestCaseWithMemoryTransport):
+
+    def make_index(self, ref_lists=1, key_elements=2, nodes=[]):
+        result = InMemoryGraphIndex(ref_lists, key_elements=key_elements)
+        result.add_nodes(nodes)
+        adapter = GraphIndexPrefixAdapter(result, ('prefix', ), key_elements - 1)
+        return result, adapter
+
+    def test_construct(self):
+        index = InMemoryGraphIndex()
+        adapter = GraphIndexPrefixAdapter(index, ('prefix', ), 1)
+
+    def test_construct_with_callback(self):
+        index = InMemoryGraphIndex()
+        adapter = GraphIndexPrefixAdapter(index, ('prefix', ), 1, index.add_nodes)
+
+    def test_iter_all_entries_cross_prefix_map_errors(self):
+        index, adapter = self.make_index(nodes=[
+            (('prefix', 'key1'), 'data1', ((('prefixaltered', 'key2'),),))])
+        self.assertRaises(errors.BadIndexData, list, adapter.iter_all_entries())
+
+    def test_iter_all_entries(self):
+        index, adapter = self.make_index(nodes=[
+            (('notprefix', 'key1'), 'data', ((), )),
+            (('prefix', 'key1'), 'data1', ((), )),
+            (('prefix', 'key2'), 'data2', ((('prefix', 'key1'),),))])
+        self.assertEqual(set([(('key1', ), 'data1', ((),)),
+            (('key2', ), 'data2', ((('key1',),),))]),
+            set(adapter.iter_all_entries()))
+
+    def test_iter_entries(self):
+        index, adapter = self.make_index(nodes=[
+            (('notprefix', 'key1'), 'data', ((), )),
+            (('prefix', 'key1'), 'data1', ((), )),
+            (('prefix', 'key2'), 'data2', ((('prefix', 'key1'),),))])
+        # ask for many - get all
+        self.assertEqual(set([(('key1', ), 'data1', ((),)),
+            (('key2', ), 'data2', ((('key1', ),),))]),
+            set(adapter.iter_entries([('key1', ), ('key2', )])))
+        # ask for one, get one
+        self.assertEqual(set([(('key1', ), 'data1', ((),))]),
+            set(adapter.iter_entries([('key1', )])))
+        # ask for missing, get none
+        self.assertEqual(set(),
+            set(adapter.iter_entries([('key3', )])))
+
+    def test_iter_entries_prefix(self):
+        index, adapter = self.make_index(key_elements=3, nodes=[
+            (('notprefix', 'foo', 'key1'), 'data', ((), )),
+            (('prefix', 'prefix2', 'key1'), 'data1', ((), )),
+            (('prefix', 'prefix2', 'key2'), 'data2', ((('prefix', 'prefix2', 'key1'),),))])
+        # ask for a prefix, get the results for just that prefix, adjusted.
+        self.assertEqual(set([(('prefix2', 'key1', ), 'data1', ((),)),
+            (('prefix2', 'key2', ), 'data2', ((('prefix2', 'key1', ),),))]),
+            set(adapter.iter_entries_prefix([('prefix2', None)])))
+
+    def test_validate(self):
+        index, adapter = self.make_index()
+        calls = []
+        def validate():
+            calls.append('called')
+        index.validate = validate
+        adapter.validate()
+        self.assertEqual(['called'], calls)
