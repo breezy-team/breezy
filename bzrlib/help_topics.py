@@ -194,9 +194,10 @@ command.  (e.g. "bzr --quiet help").
 --lsprof       Profile execution using the lsprof profiler
 --lsprof-file  Profile execution using the lsprof profiler, and write the
                results to a specified file.  If the filename ends with ".txt",
-               text format will be used.  If the filename ends with
-               ".callgrind", output will be formatted for use with KCacheGrind.
-               Otherwise, the output will be a pickle.
+               text format will be used.  If the filename either starts with
+               "callgrind.out" or end with ".callgrind", the output will be
+               formatted for use with KCacheGrind. Otherwise, the output
+               will be a pickle.
 
 See doc/developers/profiling.txt for more information on profiling.
 

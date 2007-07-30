@@ -95,6 +95,10 @@ IN DEVELOPMENT
       ``other`` is large. This improves ``VF.get_graph([version_id])`` for
       a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
 
+    * The ``--lsprof-file`` option now generates output for KCacheGrind if
+      the file starts with ``callgrind.out``. This matches the default file
+      filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -164,6 +168,9 @@ IN DEVELOPMENT
     * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
       the parents of many knit nodes at once, reducing round trips to the 
       underlying index. (Robert Collins)
+
+    * Graph now has an is_ancestor method, various bits use it.
+      (Aaron Bentley)
 
   TESTING:
 
