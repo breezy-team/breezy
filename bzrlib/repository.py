@@ -245,7 +245,6 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         self._revision_store = _revision_store
-        self.text_store = text_store
         # backwards compatibility
         self.weave_store = text_store
         # not right yet - should be more semantically clear ? 
