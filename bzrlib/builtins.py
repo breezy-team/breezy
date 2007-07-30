@@ -3684,7 +3684,7 @@ class cmd_merge_directive(Command):
             s.send_email(message)
 
 
-class cmd_submit(Command):
+class cmd_send(Command):
     """Create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -3715,6 +3715,7 @@ class cmd_submit(Command):
     _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
+
     takes_options = [
         Option('no-bundle',
                help='Do not include a bundle in the merge directive.'),
@@ -3737,6 +3738,9 @@ class cmd_submit(Command):
             **kwargs):
         from bzrlib.revision import ensure_null, NULL_REVISION
         if output is None:
+            raise errors.BzrCommandError('File must be specified with'
+                                         ' --output')
+        elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
@@ -3774,7 +3778,7 @@ class cmd_submit(Command):
             base_revision_id = None
             if revision is not None:
                 if len(revision) > 2:
-                    raise errors.BzrCommandError('bzr submit takes '
+                    raise errors.BzrCommandError('bzr send takes '
                         'at most two one revision identifiers')
                 revision_id = revision[-1].in_history(branch).rev_id
                 if len(revision) == 2:
@@ -3793,8 +3797,9 @@ class cmd_submit(Command):
                 base_revision_id=base_revision_id)
             outfile.writelines(directive.to_lines())
         finally:
-            if output is not None:
+            if output != '-':
                 outfile.close()
+
 
 class cmd_tag(Command):
     """Create a tag naming a revision.
