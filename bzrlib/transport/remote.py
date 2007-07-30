@@ -108,11 +108,8 @@ class RemoteTransport(transport.ConnectedTransport):
             if medium is None:
                 medium, credentials = self._build_medium()
                 if 'hpss' in debug.debug_flags:
-                    import traceback
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
-                    trace.mutter('hpss: backtrace:\n%s',
-                                 ''.join(traceback.format_stack()))
             self._shared_connection = transport._SharedConnection(medium,
                                                                   credentials)
 
