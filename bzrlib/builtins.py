@@ -1029,7 +1029,6 @@ class cmd_update(Command):
             if last_rev == _mod_revision.ensure_null(
                 tree.branch.last_revision()):
                 # may be up to date, check master too.
-                master = tree.branch.get_master_branch()
                 if master is None or last_rev == _mod_revision.ensure_null(
                     master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
