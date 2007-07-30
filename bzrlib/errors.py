@@ -932,6 +932,12 @@ class CannotCommitSelectedFileMerge(BzrError):
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
+class BadCommitMessageEncoding(BzrError):
+
+    _fmt = 'The specified commit message contains characters unsupported by '\
+        'the current encoding.'
+
+
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."
