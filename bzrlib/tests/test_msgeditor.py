@@ -80,7 +80,7 @@ added:
         self.assertEqual(True, bzrlib.msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
-    def make_fake_editor(self):
+    def make_fake_editor(self, message='test message from fed\\n'):
         """Set up environment so that an editor will be a known script.
 
         Sets up BZR_EDITOR so that if an editor is spawned it will run a
@@ -89,6 +89,7 @@ added:
         f = file('fed.py', 'wb')
         f.write('#!%s\n' % sys.executable)
         f.write("""\
+# coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
@@ -96,7 +97,7 @@ if len(sys.argv) == 2:
     s = f.read()
     f.close()
     f = file(fn, 'wb')
-    f.write('test message from fed\\n')
+    f.write('""" + message + """')
     f.write(s)
     f.close()
 """)
