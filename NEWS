@@ -6,6 +6,10 @@ IN DEVELOPMENT
       have been renamed but not otherwise modified.  (Marius Kruger,
       #111664)
 
+    * ``bzr commit`` now exits cleanly if a character unsupported by the
+      current encoding is used in the commit message.  (Daniel Watkins,
+      #116143)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
