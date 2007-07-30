@@ -292,6 +292,38 @@ class cmd_svn_push(Command):
 register_command(cmd_svn_push)
 
 
+class cmd_svn_branching_scheme(Command):
+    """Show or change the branching scheme for a Subversion repository.
+
+    See 'bzr help svn-branching-scheme' for details.
+    """
+    takes_args = ['location?']
+    takes_options = [Option('set', 
+                            help="Change the branching scheme. "),
+                     Option('repository-wide', 
+                            help="Act on repository-wide setting rather than local.")]
+
+    def run(self, location=".", set=False, repository_wide=False):
+        from bzrlib.repository import Repository
+        from bzrlib.trace import info
+        repos = Repository.open(location)
+        if repository_wide:
+            scheme = repos._get_property_scheme()
+        else:
+            scheme = repos.get_scheme()
+        if set:
+            # TODO: Allow editing of branching scheme
+            if repository_wide:
+                repos.set_property_scheme(scheme)
+            else:
+                repos.set_branching_scheme(scheme)
+        elif scheme is not None:
+            info(scheme)
+
+
+register_command(cmd_svn_branching_scheme)
+
+
 def test_suite():
     from unittest import TestSuite
     import tests

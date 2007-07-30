@@ -1,5 +1,5 @@
 todo before 0.4:
-- support a 'svn-branching-scheme' command
+- allow setting schemes with 'svn-branching-scheme' command
 - make ListBranchingScheme() reconstructable from a string
 
 todo:

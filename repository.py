@@ -247,7 +247,9 @@ class SvnRepository(Repository):
 
         return self._scheme
 
-    def _get_property_scheme(self, revnum):
+    def _get_property_scheme(self, revnum=None):
+        if revnum is None:
+            revnum = self.transport.get_latest_revnum()
         text = self.branchprop_list.get_property("", 
             revnum, SVN_PROP_BZR_BRANCHING_SCHEME, None)
         if text is None:
