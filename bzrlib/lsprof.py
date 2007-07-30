@@ -113,13 +113,17 @@ class Stats(object):
         :param format: 'txt' for a text representation;
             'callgrind' for calltree format;
             otherwise a pickled Python object. A format of None indicates
-            that the format to use is to be found from the extension of
-            filename.
+            that the format to use is to be found from the filename. If
+            the name starts with callgrind.out, callgrind format is used
+            otherwise the format is given by the filename extension.
         """
         if format is None:
-            ext = os.path.splitext(filename)[1]
-            if len(ext) > 1:
-                format = ext[1:]
+            if filename.startswith('callgrind.out'):
+                format = "callgrind"
+            else:
+                ext = os.path.splitext(filename)[1]
+                if len(ext) > 1:
+                    format = ext[1:]
         outfile = open(filename, 'wb')
         try:
             if format == "callgrind":
