@@ -99,6 +99,11 @@ IN DEVELOPMENT
       the file starts with ``callgrind.out``. This matches the default file
       filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
 
+    * Fix ``bzr update`` to avoid an unnecessary
+      ``branch.get_master_branch`` call, which avoids 1 extra connection
+      to the remote server. (Partial fix for #128076, John Arbash Meinel)
+      
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
