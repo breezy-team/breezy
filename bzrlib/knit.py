@@ -1376,21 +1376,24 @@ class KnitGraphIndex(object):
             raise KnitCorrupt(self, "Cannot do delta compression without "
                 "parent tracking.")
 
-    def _get_entries(self, version_ids, check_present=False):
-        """Get the entries for version_ids."""
-        version_ids = set(version_ids)
+    def _get_entries(self, keys, check_present=False):
+        """Get the entries for keys.
+        
+        :param keys: An iterable of index keys, - 1-tuples.
+        """
+        keys = set(keys)
         found_keys = set()
         if self._parents:
-            for node in self._graph_index.iter_entries(version_ids):
+            for node in self._graph_index.iter_entries(keys):
                 yield node
                 found_keys.add(node[0])
         else:
             # adapt parentless index to the rest of the code.
-            for node in self._graph_index.iter_entries(version_ids):
+            for node in self._graph_index.iter_entries(keys):
                 yield node[0], node[1], ()
                 found_keys.add(node[0])
         if check_present:
-            missing_keys = version_ids.difference(found_keys)
+            missing_keys = keys.difference(found_keys)
             if missing_keys:
                 raise RevisionNotPresent(missing_keys.pop(), self)
 
@@ -1400,11 +1403,12 @@ class KnitGraphIndex(object):
 
     def _parentless_ancestry(self, versions):
         """Honour the get_ancestry API for parentless knit indices."""
-        present_keys = self._present_keys(versions)
-        missing = set(versions).difference(present_keys)
+        wanted_keys = self._version_ids_to_keys(versions)
+        present_keys = self._present_keys(wanted_keys)
+        missing = set(wanted_keys).difference(present_keys)
         if missing:
             raise RevisionNotPresent(missing.pop(), self)
-        return list(present_keys)
+        return list(self._keys_to_version_ids(present_keys))
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1415,7 +1419,7 @@ class KnitGraphIndex(object):
         # get a graph of all the mentioned versions:
         graph = {}
         ghosts = set()
-        versions = set(versions)
+        versions = self._version_ids_to_keys(versions)
         pending = set(versions)
         while pending:
             # get all pending nodes
@@ -1439,9 +1443,11 @@ class KnitGraphIndex(object):
             ghosts.update(this_iteration.difference(found))
         if versions.difference(graph):
             raise RevisionNotPresent(versions.difference(graph).pop(), self)
-        if not topo_sorted:
-            return graph.keys()
-        return topo_sort(graph.items())
+        if topo_sorted:
+            result_keys = topo_sort(graph.items())
+        else:
+            result_keys = graph.iterkeys()
+        return [key[0] for key in result_keys]
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry."""
@@ -1451,7 +1457,7 @@ class KnitGraphIndex(object):
         # it should be altered to be a index core feature?
         # get a graph of all the mentioned versions:
         graph = {}
-        versions = set(versions)
+        versions = self._version_ids_to_keys(versions)
         pending = set(versions)
         while pending:
             # get all pending nodes
@@ -1474,14 +1480,17 @@ class KnitGraphIndex(object):
                 # add a key, no parents
                 graph[missing_version] = []
                 pending.discard(missing_version) # don't look for it
-        return topo_sort(graph.items())
+        result_keys = topo_sort(graph.items())
+        return [key[0] for key in result_keys]
 
     def get_graph(self):
         """Return a list of the node:parents lists from this knit index."""
         if not self._parents:
             return [(key, ()) for key in self.get_versions()]
-        return [(key, refs[0]) for (key, value, refs) in 
-            self._graph_index.iter_all_entries()]
+        result = []
+        for key, value, refs in self._graph_index.iter_all_entries():
+            result.append((key[0], tuple([ref[0] for ref in refs[0]])))
+        return result
 
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
@@ -1493,7 +1502,7 @@ class KnitGraphIndex(object):
             the underlying implementation.
         """
         if self._parents:
-            all_nodes = set(self._get_entries(version_ids))
+            all_nodes = set(self._get_entries(self._version_ids_to_keys(version_ids)))
             all_parents = set()
             present_parents = set()
             for node in all_nodes:
@@ -1506,11 +1515,11 @@ class KnitGraphIndex(object):
                 parents = []
                 for parent in node[2][0]:
                     if parent in present_parents:
-                        parents.append(parent)
-                yield node[0], tuple(parents)
+                        parents.append(parent[0])
+                yield node[0][0], tuple(parents)
         else:
-            for node in self._get_entries(version_ids):
-                yield node[0], ()
+            for node in self._get_entries(self._version_ids_to_keys(version_ids)):
+                yield node[0][0], ()
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
@@ -1519,11 +1528,14 @@ class KnitGraphIndex(object):
 
     def get_versions(self):
         """Get all the versions in the file. not topologically sorted."""
-        return [node[0] for node in self._graph_index.iter_all_entries()]
+        return [node[0][0] for node in self._graph_index.iter_all_entries()]
     
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return len(self._present_keys([version_id])) == 1
+        return len(self._present_keys(self._version_ids_to_keys([version_id]))) == 1
+
+    def _keys_to_version_ids(self, keys):
+        return tuple(key[0] for key in keys)
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
@@ -1544,7 +1556,7 @@ class KnitGraphIndex(object):
             return 'fulltext'
 
     def _get_node(self, version_id):
-        return list(self._get_entries([version_id]))[0]
+        return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
 
     def get_options(self, version_id):
         """Return a string represention options.
@@ -1570,16 +1582,17 @@ class KnitGraphIndex(object):
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        nodes = list(self._get_entries([version_id], check_present=True))
+        nodes = list(self._get_entries(self._version_ids_to_keys([version_id]),
+            check_present=True))
         if not self._parents:
             return ()
-        return nodes[0][2][0]
+        return self._keys_to_version_ids(nodes[0][2][0])
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
-        version_ids = set(version_ids)
-        present = self._present_keys(version_ids)
-        missing = version_ids.difference(present)
+        keys = self._version_ids_to_keys(version_ids)
+        present = self._present_keys(keys)
+        missing = keys.difference(present)
         if missing:
             raise RevisionNotPresent(missing.pop(), self)
 
@@ -1606,6 +1619,9 @@ class KnitGraphIndex(object):
 
         keys = {}
         for (version_id, options, pos, size, parents) in versions:
+            # index keys are tuples:
+            key = (version_id, )
+            parents = tuple((parent, ) for parent in parents)
             if 'no-eol' in options:
                 value = 'N'
             else:
@@ -1617,17 +1633,17 @@ class KnitGraphIndex(object):
             if self._parents:
                 if self._deltas:
                     if 'line-delta' in options:
-                        node_refs = (tuple(parents), (parents[0],))
+                        node_refs = (parents, (parents[0],))
                     else:
-                        node_refs = (tuple(parents), ())
+                        node_refs = (parents, ())
                 else:
-                    node_refs = (tuple(parents), )
+                    node_refs = (parents, )
             else:
                 if parents:
                     raise KnitCorrupt(self, "attempt to add node with parents "
                         "in parentless index.")
                 node_refs = ()
-            keys[version_id] = (value, node_refs)
+            keys[key] = (value, node_refs)
         present_nodes = self._get_entries(keys)
         for (key, value, node_refs) in present_nodes:
             if (value, node_refs) != keys[key]:
@@ -1642,6 +1658,9 @@ class KnitGraphIndex(object):
             for key, (value, node_refs) in keys.iteritems():
                 result.append((key, value))
         self._add_callback(result)
+        
+    def _version_ids_to_keys(self, version_ids):
+        return set((version_id, ) for version_id in version_ids)
         
 
 class _KnitData(_KnitComponentFile):
