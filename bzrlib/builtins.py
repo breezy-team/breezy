@@ -2685,7 +2685,7 @@ class cmd_merge(Command):
                 allow_pending = False
 
             if merger is None:
-                merger, allow_pending = self._merger_from_branch(tree,
+                merger, allow_pending = self._get_merger_from_branch(tree,
                     location, revision, remember, possible_transports, pb)
 
             merger.merge_type = merge_type
@@ -2731,9 +2731,9 @@ class cmd_merge(Command):
             raise errors.BzrCommandError("Cannot do conflict reduction and"
                                          " show base.")
 
-    def _merger_from_branch(self, tree, location, revision, remember,
-                     possible_transports, pb):
-        """Produce a merger from a path, assuming it refers to a branch."""
+    def _get_merger_from_branch(self, tree, location, revision, remember,
+                                possible_transports, pb):
+        """Produce a merger from a location, assuming it refers to a branch."""
         from bzrlib.tag import _merge_tags_if_possible
         assert revision is None or len(revision) < 3
         # find the branch locations
