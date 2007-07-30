@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * ``bzr checkout`` now honours -r when reconstituting a working tree.
       It also honours -r 0.  (Aaron Bentley, #127708)
 
+    * ``bzr add *`` no more fails on Windows if working tree contains
+      non-ascii file names. (Kuno Meyer, #127361)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -161,6 +164,9 @@ IN DEVELOPMENT
     * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
       the parents of many knit nodes at once, reducing round trips to the 
       underlying index. (Robert Collins)
+
+    * Graph now has an is_ancestor method, various bits use it.
+      (Aaron Bentley)
 
     * New methods on Repository - ``start_write_group``,
       ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
