@@ -692,6 +692,42 @@ class GraphIndexPrefixAdapter(object):
         self.prefix_len = len(prefix)
         self.add_nodes_callback = add_nodes_callback
 
+    def add_nodes(self, nodes):
+        """Add nodes to the index.
+
+        :param nodes: An iterable of (key, node_refs, value) entries to add.
+        """
+        # save nodes in case its an iterator
+        nodes = tuple(nodes)
+        translated_nodes = []
+        try:
+            for (key, value, node_refs) in nodes:
+                adjusted_references = (
+                    tuple(tuple(self.prefix_key + ref_node for ref_node in ref_list)
+                        for ref_list in node_refs))
+                translated_nodes.append((self.prefix_key + key, value,
+                    adjusted_references))
+        except ValueError:
+            # XXX: TODO add an explicit interface for getting the reference list
+            # status, to handle this bit of user-friendliness in the API more 
+            # explicitly.
+            for (key, value) in nodes:
+                translated_nodes.append((self.prefix_key + key, value))
+        self.add_nodes_callback(translated_nodes)
+
+    def add_node(self, key, value, references=()):
+        """Add a node to the index.
+
+        :param key: The key. keys are non-empty tuples containing
+            as many whitespace-free utf8 bytestrings as the key length
+            defined for this index.
+        :param references: An iterable of iterables of keys. Each is a
+            reference to another key.
+        :param value: The value to associate with the key. It may be any
+            bytes as long as it does not contain \0 or \n.
+        """
+        self.add_nodes(((key, value, references), ))
+
     def _strip_prefix(self, an_iter):
         """Strip prefix data from nodes and return it."""
         for node in an_iter:
