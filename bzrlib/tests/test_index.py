@@ -756,11 +756,34 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
 
 class TestGraphIndexPrefixAdapter(TestCaseWithMemoryTransport):
 
-    def make_index(self, ref_lists=1, key_elements=2, nodes=[]):
+    def make_index(self, ref_lists=1, key_elements=2, nodes=[], add_callback=False):
         result = InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
-        adapter = GraphIndexPrefixAdapter(result, ('prefix', ), key_elements - 1)
+        if add_callback:
+            add_nodes_callback=result.add_nodes
+        else:
+            add_nodes_callback=None
+        adapter = GraphIndexPrefixAdapter(result, ('prefix', ), key_elements - 1,
+            add_nodes_callback=add_nodes_callback)
         return result, adapter
+
+    def test_add_node(self):
+        index, adapter = self.make_index(add_callback=True)
+        adapter.add_node(('key',), 'value', ((('ref',),),))
+        self.assertEqual(set([(('prefix', 'key'), 'value', ((('prefix', 'ref'),),))]),
+            set(index.iter_all_entries()))
+
+    def test_add_nodes(self):
+        index, adapter = self.make_index(add_callback=True)
+        adapter.add_nodes((
+            (('key',), 'value', ((('ref',),),)),
+            (('key2',), 'value2', ((),)),
+            ))
+        self.assertEqual(set([
+            (('prefix', 'key2'), 'value2', ((),)),
+            (('prefix', 'key'), 'value', ((('prefix', 'ref'),),))
+            ]),
+            set(index.iter_all_entries()))
 
     def test_construct(self):
         index = InMemoryGraphIndex()
