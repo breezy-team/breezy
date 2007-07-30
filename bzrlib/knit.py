@@ -1570,7 +1570,7 @@ class KnitGraphIndex(object):
             options = [self._parent_compression(node[2][1])]
         if node[1][0] == 'N':
             options.append('no-eol')
-        return ','.join(options)
+        return options
 
     def get_parents(self, version_id):
         """Return parents of specified version ignoring ghosts."""
