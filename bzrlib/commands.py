@@ -553,12 +553,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     if filename is None:
         stats.pprint()
     else:
-        if filename.startswith("callgrind.out"):
-            fmt = "callgrind"
-        else:
-            # Get from extension
-            fmt = None
-        stats.save(filename, fmt)
+        stats.save(filename)
         trace.note('Profile data written to "%s".', filename)
     return ret
 
