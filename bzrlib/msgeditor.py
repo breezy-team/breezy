@@ -25,7 +25,7 @@ import sys
 
 import bzrlib
 import bzrlib.config as config
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.trace import warning, mutter
 
 
@@ -113,24 +113,28 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         # codecs.open() ALWAYS opens file in binary mode but we need text mode
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
         f = file(msgfilename, 'rU')
-        for line in codecs.getreader(bzrlib.user_encoding)(f):
-            stripped_line = line.strip()
-            # strip empty line before the log message starts
-            if not started:
+        try:
+            for line in codecs.getreader(bzrlib.user_encoding)(f):
+                stripped_line = line.strip()
+                # strip empty line before the log message starts
+                if not started:
+                    if stripped_line != "":
+                        started = True
+                    else:
+                        continue
+                # check for the ignore line only if there
+                # is additional information at the end
+                if hasinfo and stripped_line == ignoreline:
+                    break
+                nlines += 1
+                # keep track of the last line that had some content
                 if stripped_line != "":
-                    started = True
-                else:
-                    continue
-            # check for the ignore line only if there
-            # is additional information at the end
-            if hasinfo and stripped_line == ignoreline:
-                break
-            nlines += 1
-            # keep track of the last line that had some content
-            if stripped_line != "":
-                lastline = nlines
-            msg.append(line)
-        f.close()
+                    lastline = nlines
+                msg.append(line)
+            f.close()
+        except UnicodeDecodeError:
+            f.close()
+            raise BadCommitMessageEncoding()
 
         if len(msg) == 0:
             return ""
