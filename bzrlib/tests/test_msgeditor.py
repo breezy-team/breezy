@@ -26,6 +26,11 @@ import bzrlib.msgeditor
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 
+from bzrlib import (
+    osutils,
+    errors
+    )
+
 
 class MsgEditorTest(TestCaseWithTransport):
 
@@ -211,3 +216,13 @@ if len(sys.argv) == 2:
         self.assertNotEqual(None, msgfilename)
         self.assertFalse(hasinfo)
         self.assertFileEqual('', msgfilename)
+
+    def test_unsupported_encoding_commit_message(self):
+        old_env = osutils.set_or_unset_env('LANG', 'C')
+        self.make_fake_editor(message='\xff')
+
+        working_tree = self.make_uncommitted_tree()
+        self.assertRaises(errors.BadCommitMessageEncoding,
+                                    bzrlib.msgeditor.edit_commit_message, '')
+
+        osutils.set_or_unset_env('LANG', old_env)
