@@ -254,6 +254,17 @@ class SvnRepository(Repository):
             return None
         return ListBranchingScheme(parse_list_scheme_text(text))
 
+    def set_property_scheme(self, scheme):
+        def done(revision, date, author):
+            pass
+        editor = self.transport.get_commit_editor(
+                "Updating branching scheme for Bazaar.",
+                done, None, False)
+        root = editor.open_root(-1)
+        editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
+                "".join(map(lambda x: x+"\n", scheme.branch_list)))
+        editor.close()
+
     def _guess_scheme(self, last_revnum, branch_path=None):
         scheme = guess_scheme_from_history(
             self._log.follow_path("", last_revnum), last_revnum, 

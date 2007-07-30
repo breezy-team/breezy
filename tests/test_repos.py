@@ -800,6 +800,16 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals(ListBranchingScheme(["trunk", "branches/*", "branches/tmp/*"]).branch_list,
                           repository.get_scheme().branch_list)
 
+    def test_set_property_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repos = Repository.open(repos_url)
+        repos.set_property_scheme(ListBranchingScheme(["bla/*"]))
+        self.client_update("dc")
+        self.assertEquals("bla/*\n", 
+                   self.client_get_prop("dc", SVN_PROP_BZR_BRANCHING_SCHEME))
+        self.assertEquals("Updating branching scheme for Bazaar.", 
+                self.client_log("dc", 1, 1)[1][3])
+
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
