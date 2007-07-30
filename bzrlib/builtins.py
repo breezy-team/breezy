@@ -2639,6 +2639,10 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
+        # This is actually a branch (or merge-directive) *location*.
+        location = branch
+        del branch
+
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2656,8 +2660,8 @@ class cmd_merge(Command):
             cleanups.append(pb.finished)
             tree.lock_write()
             cleanups.append(tree.unlock)
-            if branch is not None:
-                mergeable, other_transport = _get_mergeable_helper(branch)
+            if location is not None:
+                mergeable, other_transport = _get_mergeable_helper(location)
                 if mergeable:
                     if uncommitted:
                         raise errors.BzrCommandError('Cannot use --uncommitted'
@@ -2674,15 +2678,15 @@ class cmd_merge(Command):
                 if revision is not None and len(revision) > 0:
                     raise errors.BzrCommandError('Cannot use --uncommitted and'
                         ' --revision at the same time.')
-                branch = self._select_branch(tree, branch)[0]
-                other_tree, other_path = WorkingTree.open_containing(branch)
+                location = self._select_branch_location(tree, location)[0]
+                other_tree, other_path = WorkingTree.open_containing(location)
                 merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
                     pb)
                 allow_pending = False
 
             if merger is None:
-                merger, allow_pending = self._from_branch(tree, branch,
-                    revision, remember, possible_transports, pb)
+                merger, allow_pending = self._merger_from_branch(tree,
+                    location, revision, remember, possible_transports, pb)
 
             merger.merge_type = merge_type
             merger.reprocess = reprocess
@@ -2727,14 +2731,17 @@ class cmd_merge(Command):
             raise errors.BzrCommandError("Cannot do conflict reduction and"
                                          " show base.")
 
-    def _from_branch(self, tree, branch, revision, remember,
+    def _merger_from_branch(self, tree, location, revision, remember,
                      possible_transports, pb):
+        """Produce a merger from a path, assuming it refers to a branch."""
         from bzrlib.tag import _merge_tags_if_possible
         assert revision is None or len(revision) < 3
         # find the branch locations
-        other_loc, branch = self._select_branch(tree, branch, revision, -1)
+        other_loc, location = self._select_branch_location(tree, location,
+            revision, -1)
         if revision is not None and len(revision) == 2:
-            base_loc, branch = self._select_branch(tree, branch, revision, 0)
+            base_loc, location = self._select_branch_location(tree, location,
+                                                              revision, 0)
         else:
             base_loc = other_loc
         # Open the branches
@@ -2774,14 +2781,32 @@ class cmd_merge(Command):
             allow_pending = True
         return merger, allow_pending
 
-    def _select_branch(self, tree, path, revision=None, index=None):
+    def _select_branch_location(self, tree, location, revision=None,
+                                index=None):
+        """Select a branch location, according to possible inputs.
+
+        If provided, branches from ``revision`` are preferred.  (Both
+        ``revision`` and ``index`` must be supplied.)
+
+        Otherwise, the ``location`` parameter is used.  If it is None, then the
+        ``parent`` location is used, and a note is printed.
+
+        :param tree: The working tree to select a branch for merging into
+        :param location: The location entered by the user
+        :param revision: The revision parameter to the command
+        :param index: The index to use for the revision parameter.  Negative
+            indices are permitted.
+        :return: (selected_location, default_location).  The default location
+            will be the user-entered location, if any, or else the remembered
+            location.
+        """
         if (revision is not None and index is not None
             and revision[index] is not None):
             branch = revision[index].get_branch()
             if branch is not None:
-                return branch, path
-        path = self._get_remembered_parent(tree, path, 'Merging from')
-        return path, path
+                return branch, location
+        location = self._get_remembered_parent(tree, location, 'Merging from')
+        return location, location
 
     # TODO: move up to common parent; this isn't merge-specific anymore. 
     def _get_remembered_parent(self, tree, supplied_location, verb_string):

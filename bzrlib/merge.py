@@ -91,6 +91,12 @@ class Merger(object):
 
     @staticmethod
     def from_uncommitted(tree, other_tree, pb):
+        """Return a Merger for uncommitted changes in other_tree.
+
+        :param tree: The tree to merge into
+        :param other_tree: The tree to get uncommitted changes from
+        :param pb: A progress indicator
+        """
         merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
                         pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
@@ -99,6 +105,12 @@ class Merger(object):
 
     @classmethod
     def from_mergeable(klass, tree, mergeable, pb):
+        """Return a Merger for a bundle or merge directive.
+
+        :param tree: The tree to merge changes into
+        :param mergeable: A merge directive or bundle
+        :param pb: A progress indicator
+        """
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
@@ -112,6 +124,18 @@ class Merger(object):
     @staticmethod
     def from_revision_ids(pb, this, other, base=None, other_branch=None,
                           base_branch=None):
+        """Return a Merger for revision-ids.
+
+        :param tree: The tree to merge changes into
+        :param other: The revision-id to use as OTHER
+        :param base: The revision-id to use as BASE.  If not specified, will
+            be auto-selected.
+        :param other_branch: A branch containing the other revision-id.  If
+            not supplied, this.branch is used.
+        :param base_branch: A branch containing the base revision-id.  If
+            not supplied, other_branch or this.branch will be used.
+        :param pb: A progress indicator
+        """
         merger = Merger(this.branch, this_tree=this, pb=pb)
         if other_branch is None:
             other_branch = this.branch
