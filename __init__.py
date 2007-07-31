@@ -298,27 +298,34 @@ class cmd_svn_branching_scheme(Command):
     See 'bzr help svn-branching-scheme' for details.
     """
     takes_args = ['location?']
-    takes_options = [Option('set', 
-                            help="Change the branching scheme. "),
-                     Option('repository-wide', 
-                            help="Act on repository-wide setting rather than local.")]
+    takes_options = [
+        Option('set', help="Change the branching scheme. "),
+        Option('repository-wide', 
+            help="Act on repository-wide setting rather than local.")
+        ]
 
     def run(self, location=".", set=False, repository_wide=False):
+        from bzrlib.msgeditor import edit_commit_message
         from bzrlib.repository import Repository
         from bzrlib.trace import info
+        from scheme import ListBranchingScheme
+        def scheme_str(scheme):
+            return "".join(map(lambda x: x+"\n", scheme.to_lines()))
         repos = Repository.open(location)
         if repository_wide:
             scheme = repos._get_property_scheme()
         else:
             scheme = repos.get_scheme()
         if set:
-            # TODO: Allow editing of branching scheme
+            schemestr = edit_commit_message("", 
+                                            start_message=scheme_str(scheme))
+            scheme = ListBranchingScheme(map(lambda x:x.strip("\n"), schemestr.splitlines()))
             if repository_wide:
                 repos.set_property_scheme(scheme)
             else:
                 repos.set_branching_scheme(scheme)
         elif scheme is not None:
-            info(scheme)
+            info(scheme_str(scheme))
 
 
 register_command(cmd_svn_branching_scheme)
@@ -330,6 +337,7 @@ def test_suite():
     suite = TestSuite()
     suite.addTest(tests.test_suite())
     return suite
+
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "

@@ -85,86 +85,13 @@ class BranchingScheme:
         """
         raise NotImplementedError
 
+    def to_lines(self):
+        """Generate a list of lines for this branching scheme.
 
-class TrunkBranchingScheme(BranchingScheme):
-    """Standard Subversion repository layout. Each project contains three 
-    directories `trunk', `tags' and `branches'. 
-    """
-    def __init__(self, level=0):
-        self.level = level
-
-    def is_branch(self, path):
-        """See BranchingScheme.is_branch()."""
-        parts = path.strip("/").split("/")
-        if len(parts) == self.level+1 and parts[self.level] == "trunk":
-            return True
-
-        if len(parts) == self.level+2 and parts[self.level] == "branches":
-            return True
-
-        return False
-
-    def is_tag(self, path):
-        """See BranchingScheme.is_tag()."""
-        parts = path.strip("/").split("/")
-        if len(parts) == self.level+2 and \
-           (parts[self.level] == "tags"):
-            return True
-
-        return False
-
-    def unprefix(self, path):
-        """See BranchingScheme.unprefix()."""
-        parts = path.strip("/").split("/")
-        if len(parts) == 0 or self.level >= len(parts):
-            raise NotBranchError(path=path)
-
-        if parts[self.level] == "trunk" or parts[self.level] == "hooks":
-            return ("/".join(parts[0:self.level+1]).strip("/"), 
-                    "/".join(parts[self.level+1:]).strip("/"))
-        elif ((parts[self.level] == "tags" or parts[self.level] == "branches") and 
-              len(parts) >= self.level+2):
-            return ("/".join(parts[0:self.level+2]).strip("/"), 
-                    "/".join(parts[self.level+2:]).strip("/"))
-        else:
-            raise NotBranchError(path=path)
-
-    def __str__(self):
-        return "trunk%d" % self.level
-
-    def is_branch_parent(self, path):
-        parts = path.strip("/").split("/")
-        if len(parts) <= self.level:
-            return True
-        return self.is_branch(path+"/trunk")
-
-    def is_tag_parent(self, path):
-        parts = path.strip("/").split("/")
-        return self.is_tag(path+"/aname")
-
-
-class NoBranchingScheme(BranchingScheme):
-    """Describes a scheme where there is just one branch, the 
-    root of the repository."""
-    def is_branch(self, path):
-        """See BranchingScheme.is_branch()."""
-        return path.strip("/") == ""
-
-    def is_tag(self, path):
-        return False
-
-    def unprefix(self, path):
-        """See BranchingScheme.unprefix()."""
-        return ("", path.strip("/"))
-
-    def __str__(self):
-        return "none"
-
-    def is_branch_parent(self, path):
-        return False
-
-    def is_tag_parent(self, path):
-        return False
+        :return: List of lines representing the data in this branching 
+            scheme.
+        """
+        raise NotImplementedError(self.to_lines)
 
 
 def parse_list_scheme_text(text):
@@ -221,6 +148,98 @@ class ListBranchingScheme(BranchingScheme):
     def __eq__(self, other):
         return self.branch_list == other.branch_list
 
+    def to_lines(self):
+        return self.branch_list
+
+
+class NoBranchingScheme(ListBranchingScheme):
+    """Describes a scheme where there is just one branch, the 
+    root of the repository."""
+    def __init__(self):
+        ListBranchingScheme.__init__(self, [""])
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        return path.strip("/") == ""
+
+    def is_tag(self, path):
+        return False
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        return ("", path.strip("/"))
+
+    def __str__(self):
+        return "none"
+
+    def is_branch_parent(self, path):
+        return False
+
+    def is_tag_parent(self, path):
+        return False
+
+
+class TrunkBranchingScheme(ListBranchingScheme):
+    """Standard Subversion repository layout. Each project contains three 
+    directories `trunk', `tags' and `branches'. 
+    """
+    def __init__(self, level=0):
+        self.level = level
+        ListBranchingScheme.__init__(self,
+            ["*/" * level + "trunk",
+             "*/" * level + "branches/*",
+             "*/" * level + "tags/*"])
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        parts = path.strip("/").split("/")
+        if len(parts) == self.level+1 and parts[self.level] == "trunk":
+            return True
+
+        if len(parts) == self.level+2 and parts[self.level] == "branches":
+            return True
+
+        return False
+
+    def is_tag(self, path):
+        """See BranchingScheme.is_tag()."""
+        parts = path.strip("/").split("/")
+        if len(parts) == self.level+2 and \
+           (parts[self.level] == "tags"):
+            return True
+
+        return False
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        parts = path.strip("/").split("/")
+        if len(parts) == 0 or self.level >= len(parts):
+            raise NotBranchError(path=path)
+
+        if parts[self.level] == "trunk" or parts[self.level] == "hooks":
+            return ("/".join(parts[0:self.level+1]).strip("/"), 
+                    "/".join(parts[self.level+1:]).strip("/"))
+        elif ((parts[self.level] == "tags" or parts[self.level] == "branches") and 
+              len(parts) >= self.level+2):
+            return ("/".join(parts[0:self.level+2]).strip("/"), 
+                    "/".join(parts[self.level+2:]).strip("/"))
+        else:
+            raise NotBranchError(path=path)
+
+    def __str__(self):
+        return "trunk%d" % self.level
+
+    def is_branch_parent(self, path):
+        parts = path.strip("/").split("/")
+        if len(parts) <= self.level:
+            return True
+        return self.is_branch(path+"/trunk")
+
+    def is_tag_parent(self, path):
+        parts = path.strip("/").split("/")
+        return self.is_tag(path+"/aname")
+
+
 
 class UnknownBranchingScheme(BzrError):
     _fmt = "Branching scheme could not be found: %(name)s"
@@ -229,13 +248,14 @@ class UnknownBranchingScheme(BzrError):
         self.name = name
 
 
-class SingleBranchingScheme(BranchingScheme):
+class SingleBranchingScheme(ListBranchingScheme):
     """Recognizes just one directory in the repository as branch.
     """
     def __init__(self, path):
         self.path = path.strip("/")
         if self.path == "":
             raise BzrError("NoBranchingScheme should be used")
+        ListBranchingScheme.__init__(self, [self.path])
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
