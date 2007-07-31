@@ -180,6 +180,10 @@ class cmd_status(Command):
             versioned=False):
         from bzrlib.status import show_tree_status
 
+        if is_quiet():
+            short = True
+            versioned = True
+
         tree, file_list = tree_files(file_list)
             
         show_tree_status(tree, show_ids=show_ids,
