@@ -285,13 +285,6 @@ class TestRepository(TestCaseWithRepository):
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        repo = self.make_repository('.')
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
-
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
@@ -596,10 +589,16 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
-        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
-                          None, None)
-        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
-                          None)
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                              None, None)
+            self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                              None)
+        finally:
+            repo.abort_write_group()
+            repo.unlock()
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

@@ -130,9 +130,7 @@ class RepoFetcher(object):
         requested revisions, finally clearing the progress bar.
         """
         self.to_weaves = self.to_repository.weave_store
-        self.to_control = self.to_repository.control_weaves
         self.from_weaves = self.from_repository.weave_store
-        self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
         pp = ProgressPhase('Fetch phase', 4, self.pb)
@@ -203,8 +201,7 @@ class RepoFetcher(object):
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             pb.update("fetch inventory", 0, 2)
-            to_weave = self.to_control.get_weave('inventory',
-                    self.to_repository.get_transaction())
+            to_weave = self.to_repository.get_inventory_weave()
     
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:

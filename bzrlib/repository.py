@@ -115,6 +115,7 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        assert self.is_in_write_group()
         revision_id = osutils.safe_revision_id(revision_id)
         _mod_revision.check_not_reserved_id(revision_id)
         assert inv.revision_id is None or inv.revision_id == revision_id, \
@@ -123,8 +124,7 @@ class Repository(object):
         assert inv.root is not None
         inv_text = self.serialise_inventory(inv)
         inv_sha1 = osutils.sha_string(inv_text)
-        inv_vf = self.control_weaves.get_weave('inventory',
-                                               self.get_transaction())
+        inv_vf = self.get_inventory_weave()
         self._inventory_add_lines(inv_vf, revision_id, parents,
                                   osutils.split_lines(inv_text))
         return inv_sha1

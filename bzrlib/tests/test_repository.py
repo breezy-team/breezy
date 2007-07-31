@@ -540,7 +540,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def check_databases(self, t):
         """check knit content for a repository."""
-        self.assertHasKndx(t, 'inventory')
+        self.assertHasNoKndx(t, 'inventory')
         self.assertHasKnit(t, 'inventory')
         self.assertHasNoKndx(t, 'revisions')
         self.assertHasKnit(t, 'revisions')
@@ -609,6 +609,15 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree.commit('foobarbaz')
         self.assertTrue(trans.has('indices/0.six'))
 
+    def test_add_revision_creates_zero_dot_iix(self):
+        """Adding a revision makes a 0.iix (Inventory IndeX) file."""
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        self.assertFalse(trans.has('indices/0.iix'))
+        tree.commit('foobarbaz')
+        self.assertTrue(trans.has('indices/0.iix'))
+
     def test_add_revision_creates_zero_dot_tix(self):
         """Adding a revision makes a 0.tix (Text IndeX) file."""
         format = self.get_format()
@@ -624,6 +633,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('2', format=format)
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
+        self.assertFalse(trans.has('indices/0.iix'))
         self.assertFalse(trans.has('indices/0.rix'))
         self.assertFalse(trans.has('indices/0.six'))
         self.assertFalse(trans.has('indices/0.tix'))

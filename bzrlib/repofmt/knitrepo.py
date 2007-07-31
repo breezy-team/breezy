@@ -584,6 +584,99 @@ class GraphKnitTextStore(VersionedFileStore):
         # adjust them.
 
 
+class InventoryKnitThunk(object):
+    """An object to manage thunking get_inventory_weave to pack based knits."""
+
+    def __init__(self, repo, transport):
+        """Create an InventoryKnitThunk for repo at transport.
+
+        This will store its state in the Repository, use the
+        indices FileNames to provide a KnitGraphIndex,
+        and at the end of transactions write a new index..
+        """
+        self.repo = repo
+        self.transport = transport
+
+    def data_inserted(self):
+        # XXX: Should we define __len__ for indices?
+        if (getattr(self.repo, '_inv_write_index', None) and
+            len(list(self.repo._inv_write_index.iter_all_entries()))):
+            return True
+
+    def _ensure_all_index(self):
+        """Create the combined index for all inventories."""
+        if getattr(self.repo, '_inv_all_indices', None) is not None:
+            return
+        indices = []
+        self.repo._data_names.ensure_loaded()
+        for name in self.repo._data_names.names():
+            # TODO: maybe this should expose size to us  to allow
+            # sorting of the indices for better performance ?
+            index_name = self.name_to_inv_index_name(name)
+            indices.append(GraphIndex(self.transport, index_name))
+        if self.repo.is_in_write_group():
+            # allow writing: queue writes to a new index
+            indices.append(self.repo._inv_write_index)
+        self.repo._inv_all_indices = CombinedGraphIndex(indices)
+
+    def flush(self, new_name):
+        """Write the index out to new_name."""
+        # write an index (might be empty)
+        new_index_name = self.name_to_inv_index_name(new_name)
+        self.transport.put_file(new_index_name,
+            self.repo._inv_write_index.finish())
+        self.repo._inv_write_index = None
+        if self.repo._inv_all_indices is not None:
+            # inv 'knit' has been used, replace the mutated memory index
+            # with the new on-disk one. XXX: is this really a good idea?
+            # perhaps just keep using the memory one ?
+            self.repo._inv_all_indices.insert_index(0,
+                GraphIndex(self.transport, new_index_name))
+            # remove the write buffering index. XXX: API break
+            # - clearly we need a remove_index call too.
+            del self.repo._inv_all_indices._indices[-1]
+
+    def get_weave(self):
+        """Get a 'Knit' that contains inventory data."""
+        self._ensure_all_index()
+        filename = 'inventory'
+        if self.repo.is_in_write_group():
+            add_callback = self.repo._inv_write_index.add_nodes
+        else:
+            add_callback = None # no data-adding permitted.
+
+        knit_index = KnitGraphIndex(self.repo._inv_all_indices,
+            add_callback=add_callback,
+            deltas=True, parents=True)
+        # TODO - mode support. self.weavestore._file_mode,
+        return knit.KnitVersionedFile('inventory', self.transport.clone('..'),
+            index=knit_index,
+            factory=knit.KnitPlainFactory())
+
+    def name_to_inv_index_name(self, name):
+        """The inv index is the name + .iix."""
+        return name + '.iix'
+
+    def reset(self):
+        """Clear all cached data."""
+        # remove any accumlating index of inv data
+        self.repo._inv_write_index = None
+        # remove all constructed inv data indices
+        self.repo._inv_all_indices = None
+
+    def setup(self):
+        # setup in-memory indices to accumulate data.
+        # - we want to map compression only, but currently the knit code hasn't
+        # been updated enough to understand that, so we have a regular 2-list
+        # index giving parents and compression source.
+        self.repo._inv_write_index = InMemoryGraphIndex(reference_lists=2)
+        # we require that inv 'knits' be accessed from within the write 
+        # group to be able to be written to, simply because it makes this
+        # code cleaner - we don't need to track all 'open' knits and 
+        # adjust them. As the inventory knit is neither precious, nor the
+        # regular interface for data access, this seems sufficient.
+
+
 class GraphKnitRepository1(KnitRepository):
     """Experimental graph-knit using repository."""
 
@@ -595,11 +688,13 @@ class GraphKnitRepository1(KnitRepository):
         self._data_names = RepositoryDataNames(self, index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
+        self._inv_thunk = InventoryKnitThunk(self, index_transport)
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         self._revision_store.reset()
         self.weave_store.reset()
+        self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
 
@@ -607,6 +702,7 @@ class GraphKnitRepository1(KnitRepository):
         if self.control_files._lock_count==1:
             self._revision_store.reset()
             self.weave_store.reset()
+            self._inv_thunk.reset()
             # forget what names there are
             self._data_names.reset()
 
@@ -614,20 +710,27 @@ class GraphKnitRepository1(KnitRepository):
         self._data_names.setup()
         self._revision_store.setup()
         self.weave_store.setup()
+        self._inv_thunk.setup()
 
     def _commit_write_group(self):
         data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted())
+            self.weave_store.data_inserted() or 
+            self._inv_thunk.data_inserted())
         if data_inserted:
             new_name = self._data_names.allocate()
-            self._revision_store.flush(new_name)
             self.weave_store.flush(new_name)
+            self._inv_thunk.flush(new_name)
+            self._revision_store.flush(new_name)
             self._data_names.save()
         self._revision_store.reset()
         self.weave_store.reset()
+        self._inv_thunk.reset()
         # forget what names there are - should just refresh and deal with the
         # delta.
         self._data_names.reset()
+
+    def get_inventory_weave(self):
+        return self._inv_thunk.get_weave()
 
 
 class GraphKnitRepository3(KnitRepository3):
@@ -641,11 +744,13 @@ class GraphKnitRepository3(KnitRepository3):
         self._data_names = RepositoryDataNames(self, index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
+        self._inv_thunk = InventoryKnitThunk(self, index_transport)
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         self._revision_store.reset()
         self.weave_store.reset()
+        self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
 
@@ -653,6 +758,7 @@ class GraphKnitRepository3(KnitRepository3):
         if self.control_files._lock_count==1:
             self._revision_store.reset()
             self.weave_store.reset()
+            self._inv_thunk.reset()
             # forget what names there are
             self._data_names.reset()
 
@@ -660,20 +766,27 @@ class GraphKnitRepository3(KnitRepository3):
         self._data_names.setup()
         self._revision_store.setup()
         self.weave_store.setup()
+        self._inv_thunk.setup()
 
     def _commit_write_group(self):
         data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted())
+            self.weave_store.data_inserted() or 
+            self._inv_thunk.data_inserted())
         if data_inserted:
             new_name = self._data_names.allocate()
-            self._revision_store.flush(new_name)
             self.weave_store.flush(new_name)
+            self._inv_thunk.flush(new_name)
+            self._revision_store.flush(new_name)
             self._data_names.save()
         self._revision_store.reset()
         self.weave_store.reset()
+        self._inv_thunk.reset()
         # forget what names there are - should just refresh and deal with the
         # delta.
         self._data_names.reset()
+
+    def get_inventory_weave(self):
+        return self._inv_thunk.get_weave()
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
