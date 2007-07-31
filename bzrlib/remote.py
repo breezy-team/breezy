@@ -250,7 +250,7 @@ class RemoteRepository(object):
         self._leave_lock = False
 
     def abort_write_group(self):
-        """complete a write group on the decorated repository.
+        """Complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
@@ -261,7 +261,7 @@ class RemoteRepository(object):
         return self._real_repository.abort_write_group()
 
     def commit_write_group(self):
-        """complete a write group on the decorated repository.
+        """Complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
