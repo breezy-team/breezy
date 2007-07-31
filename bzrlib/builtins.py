@@ -639,10 +639,9 @@ class cmd_pull(Command):
 
         result.report(self.outf)
         if verbose:
-            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            show_changed_revisions(branch_to, old_rh, new_rh,
-                                   to_file=self.outf)
+            log.show_changed_revisions(branch_to, old_rh, new_rh,
+                                       to_file=self.outf)
 
 
 class cmd_push(Command):
