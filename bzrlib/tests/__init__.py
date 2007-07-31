@@ -2214,6 +2214,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
     result = runner.run(suite)
+
+    if strict:
+        return result.wasStrictlySuccessful()
+
     return result.wasSuccessful()
 
 
