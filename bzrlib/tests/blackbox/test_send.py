@@ -30,7 +30,7 @@ def read_bundle(fileobj):
     return serializer.read_bundle(StringIO(md.get_raw_bundle()))
 
 
-class TestSubmit(tests.TestCaseWithTransport):
+class TestSend(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
@@ -101,7 +101,7 @@ class TestSubmit(tests.TestCaseWithTransport):
         # which would break patch-based bundles
         self.make_trees()        
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('send -o-')[0]
+        stdout = self.run_bzr_subprocess('send', '-o-')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
