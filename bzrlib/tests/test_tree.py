@@ -128,15 +128,9 @@ class TestTree(TestCaseWithTransport):
         self.build_tree(['known_file', 'unknown_file'])
         wt.add('known_file')
 
-        try:
-            delta = wt.changes_from(wt.basis_tree(), wt,
-                specific_files=['known_file', 'unknown_file'] ,
-                require_versioned=True)
-            self.fail('Expected PathsNotVersionedError to be thrown when '
-                'passing a known and unknown file to tree.changes_from '
-                'and specifying require_versioned.')
-        except errors.PathsNotVersionedError, e :
-            pass
+        self.assertRaises(errors.PathsNotVersionedError,
+            wt.changes_from, wt.basis_tree(), wt, specific_files=['known_file',
+            'unknown_file'], require_versioned=True)
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
