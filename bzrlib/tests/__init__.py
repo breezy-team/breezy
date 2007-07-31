@@ -323,6 +323,13 @@ class ExtendedTestResult(unittest._TextTestResult):
     def report_success(self, test):
         pass
 
+    def wasStrictlySuccessful(self):
+        if self.unsupported or self.known_failure_count:
+            return False
+
+        return self.wasSuccessful()
+
+
 
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
