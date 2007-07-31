@@ -21,16 +21,24 @@ import sys
 import bzrlib
 from bzrlib import (
     generate_ids,
+    merge_directive,
     osutils,
     )
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
+from bzrlib import errors
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-import bzrlib.inventory as inventory
-from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
+from bzrlib import  inventory
+from bzrlib.merge import (
+    Merge3Merger,
+    Diff3Merger,
+    WeaveMerger,
+    Merger,
+    )
 from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
                             sha_file,
                             )
+from bzrlib import progress
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -701,3 +709,51 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b_wt.commit('deleted foo, renamed bar to foo')
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
                                b_wt.branch.get_rev_id(1))
+
+
+class TestMerger(TestCaseWithTransport):
+
+    def set_up_trees(self):
+        this = self.make_branch_and_tree('this')
+        this.commit('rev1', rev_id='rev1')
+        other = this.bzrdir.sprout('other').open_workingtree()
+        this.commit('rev2a', rev_id='rev2a')
+        other.commit('rev2b', rev_id='rev2b')
+        return this, other
+
+    def test_from_revision_ids(self):
+        this, other = self.set_up_trees()
+        self.assertRaises(errors.RevisionNotPresent, Merger.from_revision_ids,
+                          progress.DummyProgress(), this, 'rev2b')
+        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+            'rev2b', other_branch=other.branch)
+        self.assertEqual('rev2b', merger.other_rev_id)
+        self.assertEqual('rev1', merger.base_rev_id)
+        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+            'rev2b', 'rev2a', other_branch=other.branch)
+        self.assertEqual('rev2a', merger.base_rev_id)
+
+    def test_from_uncommitted(self):
+        this, other = self.set_up_trees()
+        merger = Merger.from_uncommitted(this, other, progress.DummyProgress())
+        self.assertIs(other, merger.other_tree)
+        self.assertIs(None, merger.other_rev_id)
+        self.assertEqual('rev2b', merger.base_rev_id)
+
+    def test_from_mergeable(self):
+        this, other = self.set_up_trees()
+        other.commit('rev3', rev_id='rev3')
+        md = merge_directive.MergeDirective2.from_objects(
+            other.branch.repository, 'rev3', 0, 0, 'this')
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        md.patch = None
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        self.assertEqual('inapplicable', verified)
+        self.assertEqual('rev3', merger.other_rev_id)
+        self.assertEqual('rev1', merger.base_rev_id)
+        md.base_revision_id = 'rev2b'
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        self.assertEqual('rev2b', merger.base_rev_id)
