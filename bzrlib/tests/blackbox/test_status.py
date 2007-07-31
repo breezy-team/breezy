@@ -362,6 +362,28 @@ class TestStatus(TestCaseWithTransport):
         result2 = self.run_bzr("status --versioned -r 0..")[0]
         self.assertEquals(result2, result)
 
+    def test_status_quiet(self):
+        tree = self.make_branch_and_tree('.')
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status --quiet")[0]
+        self.assertNotContainsRe(result, "hello.txt")
+
+        tree.add("hello.txt")
+        result = self.run_bzr("status --quiet")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        tree.commit(message="added")
+        result = self.run_bzr("status --quiet -r 0..1")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status --quiet -r 0")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        result2 = self.run_bzr("status --quiet -r 0..")[0]
+        self.assertEquals(result2, result)
+
     def assertStatusContains(self, pattern):
         """Run status, and assert it contains the given pattern"""
         result = self.run_bzr("status --short")[0]
