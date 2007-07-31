@@ -315,10 +315,16 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/body: %r (%r...)', args, body[:20])
+            start = time.time()
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            # This gives us the time it took to send the information
+            # decoupled from the time it takes the server to respond to it.
+            mutter('hpss write time: %6.3fs', time.time() - start)
+            self._request_start_time = time.time()
 
     def call_with_body_readv_array(self, args, body):
         """Make a remote call with a readv array.
@@ -328,11 +334,15 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %r', args)
+            start = time.time()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss write time: %6.3fs', time.time() - start)
+            self._request_start_time = time.time()
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
