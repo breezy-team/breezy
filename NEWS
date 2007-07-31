@@ -113,6 +113,9 @@ IN DEVELOPMENT
 
     * KnitIndex.get_parents now returns tuples. (Robert Collins)
 
+    * Ancient unused ``Repository.text_store`` attribute has been removed.
+      (Robert Collins)
+
   INTERNALS:
 
     * merge now uses ``iter_changes`` to calculate changes, which makes room for
