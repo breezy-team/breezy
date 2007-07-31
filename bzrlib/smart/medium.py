@@ -255,8 +255,6 @@ class SmartClientMediumRequest(object):
         # pattern as BodyReader if it gets more complex.
         # valid states are: "writing", "reading", "done"
         self._state = "writing"
-        self._bytes_written = 0
-        self._bytes_read = 0
 
     def accept_bytes(self, bytes):
         """Accept bytes for inclusion in this request.
@@ -270,7 +268,6 @@ class SmartClientMediumRequest(object):
         """
         if self._state != "writing":
             raise errors.WritingCompleted(self)
-        self._bytes_written += len(bytes)
         self._accept_bytes(bytes)
 
     def _accept_bytes(self, bytes):
@@ -337,9 +334,6 @@ class SmartClientMediumRequest(object):
             raise errors.WritingNotComplete(self)
         if self._state != "reading":
             raise errors.ReadingCompleted(self)
-        # Technically we haven't read them yet, but we are assuming we will get
-        # this many bytes back.
-        self._bytes_read += count
         return self._read_bytes(count)
 
     def _read_bytes(self, count):
