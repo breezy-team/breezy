@@ -80,6 +80,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self.has_dispatched = False
         self.request = None
         self._body_decoder = None
+        self._write_func = write_func
 
     def accept_bytes(self, bytes):
         """Take bytes, and advance the internal state machine appropriately.
