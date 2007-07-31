@@ -253,7 +253,7 @@ class RemoteRepository(object):
         """complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
-        is not really applicable except as a compatability thunk
+        is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
@@ -264,7 +264,7 @@ class RemoteRepository(object):
         """complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
-        is not really applicable except as a compatability thunk
+        is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
@@ -445,7 +445,7 @@ class RemoteRepository(object):
         """Start a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
-        is not really applicable except as a compatability thunk
+        is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """

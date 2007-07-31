@@ -482,6 +482,7 @@ class Repository(object):
 
         A write lock is required around the start_write_group/commit_write_group
         for the support of lock-requiring repository formats.
+        :return: None.
         """
         if not self.is_locked() or self.control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
@@ -1145,7 +1146,7 @@ def install_revision(repository, rev, revision_tree):
 
     inv = revision_tree.inventory
     entries = inv.iter_entries()
-    # backwards compatability hack: skip the root id.
+    # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():
         path, root = entries.next()
         if root.revision != rev.revision_id:
