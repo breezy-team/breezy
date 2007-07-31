@@ -3841,7 +3841,7 @@ class cmd_send(Command):
 
 
 class cmd_tag(Command):
-    """Create a tag naming a revision.
+    """Create, remove or modify a tag naming a revision.
     
     Tags give human-meaningful names to revisions.  Commands that take a -r
     (--revision) option can be given -rtag:X, where X is any previously
