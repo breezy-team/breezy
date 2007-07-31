@@ -114,8 +114,9 @@ class Merger(object):
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
-        if base_revision_id in tree.branch.repository.get_ancestry(
-            tree.branch.last_revision(), topo_sorted=False):
+        if (base_revision_id != _mod_revision.NULL_REVISION and
+            tree.branch.repository.get_graph().is_ancestor(
+            base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id)

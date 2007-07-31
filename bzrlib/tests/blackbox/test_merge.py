@@ -205,7 +205,7 @@ class TestMerge(ExternalBase):
         f.close()
         tree_b.commit('message')
         os.chdir('branch_b')
-        file('../bundle', 'wb').write(self.run_bzr('bundle ../branch_a')[0])
+        self.run_bzr('bundle ../branch_a -o ../bundle')
         os.chdir('../branch_a')
         self.run_bzr('merge ../bundle', retcode=1)
         testament_a = Testament.from_revision(tree_a.branch.repository,

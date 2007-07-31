@@ -24,9 +24,38 @@ from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
-from bzrlib.tests import (TestCase, TestCaseWithTransport,
+from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilename = _UnicodeFilename()
+
+
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        UnicodeFilename._probe()
+        
 
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
@@ -440,6 +469,34 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '\\+\\+\\+ new/newname\t')
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
+
+    def test_binary_unicode_filenames(self):
+        """Test that contents of files are *not* encoded in UTF-8 when there
+        is a binary file in the diff.
+        """
+        # See https://bugs.launchpad.net/bugs/110092.
+        self.requireFeature(UnicodeFilename)
+
+        # This bug isn't triggered with cStringIO.
+        from StringIO import StringIO
+        tree = self.make_branch_and_tree('tree')
+        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
+        self.build_tree_contents(
+            [('tree/' + alpha, chr(0)),
+             ('tree/' + omega,
+              ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
+        tree.add([alpha], ['file-id'])
+        tree.add([omega], ['file-id-2'])
+        diff_content = StringIO()
+        show_diff_trees(tree.basis_tree(), tree, diff_content)
+        diff = diff_content.getvalue()
+        self.assertContainsRe(diff, r"=== added file '%s'" % alpha_utf8)
+        self.assertContainsRe(
+            diff, "Binary files a/%s.*and b/%s.* differ\n" % (alpha_utf8, alpha_utf8))
+        self.assertContainsRe(diff, r"=== added file '%s'" % omega_utf8)
+        self.assertContainsRe(diff, r"--- a/%s" % (omega_utf8,))
+        self.assertContainsRe(diff, r"\+\+\+ b/%s" % (omega_utf8,))
 
 
 class TestPatienceDiffLib(TestCase):
