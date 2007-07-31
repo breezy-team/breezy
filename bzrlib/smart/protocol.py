@@ -18,8 +18,8 @@
 client and server.
 """
 
-
 from cStringIO import StringIO
+import time
 
 from bzrlib import debug
 from bzrlib import errors
@@ -299,10 +299,12 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         self._request = request
         self._body_buffer = None
+        self._request_start_time = None
 
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
             mutter('hpss call:   %r', args)
+            self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()
 
@@ -348,7 +350,13 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         result = self._recv_tuple()
         if 'hpss' in debug.debug_flags:
-            mutter('hpss result: %r', result)
+            if self._request_start_time is not None:
+                mutter('hpss result: %6.3fs %r',
+                       time.time() - self._request_start_time,
+                       result)
+                self._request_start_time = None
+            else:
+                mutter('hpss result: %r', result)
         if not expect_body:
             self._request.finished_reading()
         return result
