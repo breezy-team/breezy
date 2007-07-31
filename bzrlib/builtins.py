@@ -2466,6 +2466,8 @@ class cmd_selftest(Command):
                             short_name='x',
                             help='Exclude tests that match this regular'
                                  ' expression.'),
+                     Option('strict', help='Fail on missing dependencies or '
+                            'known failures.'),
                      ]
     encoding_type = 'replace'
 
@@ -2473,7 +2475,7 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None):
+            randomize=None, exclude=None, strict=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2511,7 +2513,8 @@ class cmd_selftest(Command):
                               matching_tests_first=first,
                               list_only=list_only,
                               random_seed=randomize,
-                              exclude_pattern=exclude
+                              exclude_pattern=exclude,
+                              strict=strict,
                               )
         finally:
             if benchfile is not None:

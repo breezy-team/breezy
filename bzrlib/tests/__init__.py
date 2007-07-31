@@ -2175,6 +2175,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
+              strict=False,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2224,7 +2225,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              matching_tests_first=None,
              list_only=False,
              random_seed=None,
-             exclude_pattern=None):
+             exclude_pattern=None,
+             strict=False,
+             ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2250,7 +2253,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      matching_tests_first=matching_tests_first,
                      list_only=list_only,
                      random_seed=random_seed,
-                     exclude_pattern=exclude_pattern)
+                     exclude_pattern=exclude_pattern,
+                     strict=strict)
     finally:
         default_transport = old_transport
 
