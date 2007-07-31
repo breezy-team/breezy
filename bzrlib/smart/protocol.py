@@ -314,7 +314,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
-            mutter('         %8d bytes', len(body))
+            mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
@@ -336,7 +336,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
         if 'hpss' in debug.debug_flags:
-            mutter('         %8d bytes', len(readv_bytes))
+            mutter('              %d bytes in readv request', len(readv_bytes))
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -361,8 +361,6 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
                 self._request_start_time = None
             else:
                 mutter('   result:   %s', repr(result)[1:-1])
-            mutter('         %8d bytes written',
-                   self._request._bytes_written)
         if not expect_body:
             self._request.finished_reading()
         return result
@@ -385,7 +383,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._body_buffer = StringIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
         if 'hpss' in debug.debug_flags:
-            mutter('         %8d body bytes read',
+            mutter('              %d body bytes read',
                    len(self._body_buffer.getvalue()))
         return self._body_buffer.read(count)
 
