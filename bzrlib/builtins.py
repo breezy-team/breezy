@@ -155,6 +155,8 @@ class cmd_status(Command):
     --short gives a status flags for each item, similar to the SVN's status
     command.
 
+    --quiet has the same effect as '--short --versioned'.
+
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
