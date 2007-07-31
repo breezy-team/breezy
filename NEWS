@@ -103,7 +103,9 @@ IN DEVELOPMENT
     * Fix ``bzr update`` to avoid an unnecessary
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
-      
+
+    * ``bzr status'' now accepts the quiet option, with SVN-like behaviour.
+      (Daniel Watkins, #115990)
 
   LIBRARY API BREAKS:
 
