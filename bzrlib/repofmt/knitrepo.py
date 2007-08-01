@@ -563,6 +563,14 @@ class GraphKnitTextStore(VersionedFileStore):
 
     get_weave = get_weave_or_empty
 
+    def __iter__(self):
+        """Generate a list of the fileids inserted, for use by check."""
+        self._ensure_all_index()
+        ids = set()
+        for key, value, refs in self.repo._text_all_indices.iter_all_entries():
+            ids.add(key[0])
+        return iter(ids)
+
     def name_to_text_index_name(self, name):
         """The text index is the name + .tix."""
         return name + '.tix'
