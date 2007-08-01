@@ -1346,9 +1346,8 @@ class TestCase(unittest.TestCase):
         error_regexes = kwargs.pop('error_regexes', [])
 
         if kwargs:
-            kwarg = kwargs.keys()[0]
-            raise TypeError("run_bzr() got an unexpected keyword argument"
-                            " '%s'" % kwarg)
+            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
+                            % kwargs.keys())
 
         if len(args) == 1:
             if isinstance(args[0], (list, basestring)):
