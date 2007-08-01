@@ -273,6 +273,10 @@ class Repository(object):
 
     def lock_write(self, token=None):
         """Lock this repository for writing.
+
+        This causes caching within the repository obejct to start accumlating
+        data during reads, and allows a 'write_group' to be obtained. Write
+        groups must be used for actual data insertion.
         
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
@@ -281,6 +285,7 @@ class Repository(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+        :seealso: start_write_group.
 
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
@@ -482,6 +487,9 @@ class Repository(object):
 
         A write lock is required around the start_write_group/commit_write_group
         for the support of lock-requiring repository formats.
+
+        One can only insert data into a repository inside a write group.
+
         :return: None.
         """
         if not self.is_locked() or self.control_files._lock_mode != 'w':
