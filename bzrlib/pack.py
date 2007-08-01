@@ -24,18 +24,22 @@ import re
 from bzrlib import errors
 
 
-FORMAT_TWO = "Bazaar pack format 2 (introduced in 0.19)"
+FORMAT_ONE = "Bazaar pack format 1 (introduced in 0.18)"
+
+
+_whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
 
 
 def _check_name(name):
     """Do some basic checking of 'name'.
     
-    At the moment, this just makes sure there's no newline in name.
+    At the moment, this just checks that there are no whitespace characters in a
+    name.
 
     :raises InvalidRecordError: if name is not valid.
     :seealso: _check_name_encoding
     """
-    if '\n' in name:
+    if _whitespace_re.search(name) is not None:
         raise errors.InvalidRecordError("%r is not a valid name." % (name,))
 
 
@@ -66,7 +70,7 @@ class ContainerWriter(object):
 
     def begin(self):
         """Begin writing a container."""
-        self.write_func(FORMAT_TWO + "\n")
+        self.write_func(FORMAT_ONE + "\n")
 
     def end(self):
         """Finish writing a container."""
@@ -178,7 +182,7 @@ class ContainerReader(BaseReader):
 
     def _read_format(self):
         format = self._read_line()
-        if format != FORMAT_TWO:
+        if format != FORMAT_ONE:
             raise errors.UnknownContainerFormatError(format)
 
     def validate(self):
