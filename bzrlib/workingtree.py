@@ -399,6 +399,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(None)
 
+    def _cleanup(self):
+        self._flush_ignore_list_cache()
+
     @staticmethod
     @deprecated_method(zero_eight)
     def create(branch, directory):
