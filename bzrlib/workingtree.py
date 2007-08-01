@@ -2409,6 +2409,9 @@ class WorkingTree2(WorkingTree):
             raise
 
     def unlock(self):
+        # do non-implementation specific cleanup
+        self._cleanup()
+
         # we share control files:
         if self._control_files._lock_count == 3:
             # _inventory_is_modified is always False during a read lock.
@@ -2480,6 +2483,8 @@ class WorkingTree3(WorkingTree):
         return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
 
     def unlock(self):
+        # do non-implementation specific cleanup
+        self._cleanup()
         if self._control_files._lock_count == 1:
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
