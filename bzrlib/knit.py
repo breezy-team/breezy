@@ -1386,12 +1386,12 @@ class KnitGraphIndex(object):
         if self._parents:
             for node in self._graph_index.iter_entries(keys):
                 yield node
-                found_keys.add(node[0])
+                found_keys.add(node[1])
         else:
             # adapt parentless index to the rest of the code.
             for node in self._graph_index.iter_entries(keys):
-                yield node[0], node[1], ()
-                found_keys.add(node[0])
+                yield node[0], node[1], node[2], ()
+                found_keys.add(node[1])
         if check_present:
             missing_keys = keys.difference(found_keys)
             if missing_keys:
@@ -1399,7 +1399,7 @@ class KnitGraphIndex(object):
 
     def _present_keys(self, version_ids):
         return set([
-            node[0] for node in self._get_entries(version_ids)])
+            node[1] for node in self._get_entries(version_ids)])
 
     def _parentless_ancestry(self, versions):
         """Honour the get_ancestry API for parentless knit indices."""
@@ -1427,7 +1427,7 @@ class KnitGraphIndex(object):
             new_nodes = self._get_entries(this_iteration)
             found = set()
             pending = set()
-            for (key, value, node_refs) in new_nodes:
+            for (index, key, value, node_refs) in new_nodes:
                 # dont ask for ghosties - otherwise
                 # we we can end up looping with pending
                 # being entirely ghosted.
@@ -1464,7 +1464,7 @@ class KnitGraphIndex(object):
             this_iteration = pending
             new_nodes = self._get_entries(this_iteration)
             pending = set()
-            for (key, value, node_refs) in new_nodes:
+            for (index, key, value, node_refs) in new_nodes:
                 graph[key] = node_refs[0]
                 # queue parents 
                 for parent in graph[key]:
@@ -1488,7 +1488,7 @@ class KnitGraphIndex(object):
         if not self._parents:
             return [(key, ()) for key in self.get_versions()]
         result = []
-        for key, value, refs in self._graph_index.iter_all_entries():
+        for index, key, value, refs in self._graph_index.iter_all_entries():
             result.append((key[0], tuple([ref[0] for ref in refs[0]])))
         return result
 
@@ -1506,20 +1506,20 @@ class KnitGraphIndex(object):
             all_parents = set()
             present_parents = set()
             for node in all_nodes:
-                all_parents.update(node[2][0])
+                all_parents.update(node[3][0])
                 # any node we are querying must be present
-                present_parents.add(node[0])
+                present_parents.add(node[1])
             unknown_parents = all_parents.difference(present_parents)
             present_parents.update(self._present_keys(unknown_parents))
             for node in all_nodes:
                 parents = []
-                for parent in node[2][0]:
+                for parent in node[3][0]:
                     if parent in present_parents:
                         parents.append(parent[0])
-                yield node[0][0], tuple(parents)
+                yield node[1][0], tuple(parents)
         else:
             for node in self._get_entries(self._version_ids_to_keys(version_ids)):
-                yield node[0][0], ()
+                yield node[1][0], ()
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
@@ -1528,7 +1528,7 @@ class KnitGraphIndex(object):
 
     def get_versions(self):
         """Get all the versions in the file. not topologically sorted."""
-        return [node[0][0] for node in self._graph_index.iter_all_entries()]
+        return [node[1][0] for node in self._graph_index.iter_all_entries()]
     
     def has_version(self, version_id):
         """True if the version is in the index."""
@@ -1539,14 +1539,14 @@ class KnitGraphIndex(object):
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
-        bits = self._get_node(version_id)[1][1:].split(' ')
+        bits = self._get_node(version_id)[2][1:].split(' ')
         return int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
         if not self._deltas:
             return 'fulltext'
-        return self._parent_compression(self._get_node(version_id)[2][1])
+        return self._parent_compression(self._get_node(version_id)[3][1])
 
     def _parent_compression(self, reference_list):
         # use the second reference list to decide if this is delta'd or not.
@@ -1567,8 +1567,8 @@ class KnitGraphIndex(object):
         if not self._deltas:
             options = ['fulltext']
         else:
-            options = [self._parent_compression(node[2][1])]
-        if node[1][0] == 'N':
+            options = [self._parent_compression(node[3][1])]
+        if node[2][0] == 'N':
             options.append('no-eol')
         return ','.join(options)
 
@@ -1586,7 +1586,7 @@ class KnitGraphIndex(object):
             check_present=True))
         if not self._parents:
             return ()
-        return self._keys_to_version_ids(nodes[0][2][0])
+        return self._keys_to_version_ids(nodes[0][3][0])
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1645,7 +1645,7 @@ class KnitGraphIndex(object):
                 node_refs = ()
             keys[key] = (value, node_refs)
         present_nodes = self._get_entries(keys)
-        for (key, value, node_refs) in present_nodes:
+        for (index, key, value, node_refs) in present_nodes:
             if (value, node_refs) != keys[key]:
                 raise KnitCorrupt(self, "inconsistent details in add_versions"
                     ": %s %s" % ((value, node_refs), keys[key]))

@@ -314,10 +314,10 @@ class GraphIndex(object):
             self._buffer_all()
         if self.node_ref_lists:
             for key, (value, node_ref_lists) in self._nodes.iteritems():
-                yield key, value, node_ref_lists
+                yield self, key, value, node_ref_lists
         else:
             for key, value in self._nodes.iteritems():
-                yield key, value
+                yield self, key, value
 
     def _read_prefix(self, stream):
         signature = stream.read(len(self._signature()))
@@ -355,10 +355,10 @@ class GraphIndex(object):
         if self.node_ref_lists:
             for key in keys:
                 value, node_refs = self._nodes[key]
-                yield key, value, node_refs
+                yield self, key, value, node_refs
         else:
             for key in keys:
-                yield key, self._nodes[key]
+                yield self, key, self._nodes[key]
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -392,9 +392,9 @@ class GraphIndex(object):
                     raise errors.BadIndexKey(key)
                 if self.node_ref_lists:
                     value, node_refs = self._nodes[key]
-                    yield key, value, node_refs
+                    yield self, key, value, node_refs
                 else:
-                    yield key, self._nodes[key]
+                    yield self, key, self._nodes[key]
             return
         for key in keys:
             # sanity check
@@ -427,10 +427,10 @@ class GraphIndex(object):
                         for value in key_dict.itervalues():
                             # each value is the key:value:node refs tuple
                             # ready to yield.
-                            yield value
+                            yield (self, ) + value
             else:
                 # the last thing looked up was a terminal element
-                yield key_dict
+                yield (self, ) + key_dict
 
     def _signature(self):
         """The file signature for this index type."""
@@ -484,9 +484,9 @@ class CombinedGraphIndex(object):
         seen_keys = set()
         for index in self._indices:
             for node in index.iter_all_entries():
-                if node[0] not in seen_keys:
+                if node[1] not in seen_keys:
                     yield node
-                    seen_keys.add(node[0])
+                    seen_keys.add(node[1])
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -504,7 +504,7 @@ class CombinedGraphIndex(object):
             if not keys:
                 return
             for node in index.iter_entries(keys):
-                keys.remove(node[0])
+                keys.remove(node[1])
                 yield node
 
     def iter_entries_prefix(self, keys):
@@ -533,9 +533,9 @@ class CombinedGraphIndex(object):
         seen_keys = set()
         for index in self._indices:
             for node in index.iter_entries_prefix(keys):
-                if node[0] in seen_keys:
+                if node[1] in seen_keys:
                     continue
-                seen_keys.add(node[0])
+                seen_keys.add(node[1])
                 yield node
 
     def validate(self):
@@ -574,11 +574,11 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         if self.reference_lists:
             for key, (absent, references, value) in self._nodes.iteritems():
                 if not absent:
-                    yield key, value, references
+                    yield self, key, value, references
         else:
             for key, (absent, references, value) in self._nodes.iteritems():
                 if not absent:
-                    yield key, value
+                    yield self, key, value
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -593,12 +593,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             for key in keys.intersection(self._nodes):
                 node = self._nodes[key]
                 if not node[0]:
-                    yield key, node[2], node[1]
+                    yield self, key, node[2], node[1]
         else:
             for key in keys.intersection(self._nodes):
                 node = self._nodes[key]
                 if not node[0]:
-                    yield key, node[2]
+                    yield self, key, node[2]
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -633,9 +633,9 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 if node[0]:
                     continue 
                 if self.reference_lists:
-                    yield key, node[2], node[1]
+                    yield self, key, node[2], node[1]
                 else:
-                    yield key, node[2]
+                    yield self ,key, node[2]
             return
         for key in keys:
             # sanity check
@@ -666,9 +666,9 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     else:
                         # yield keys
                         for value in key_dict.itervalues():
-                            yield value
+                            yield (self, ) + value
             else:
-                yield key_dict
+                yield (self, ) + key_dict
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""
@@ -732,15 +732,15 @@ class GraphIndexPrefixAdapter(object):
         """Strip prefix data from nodes and return it."""
         for node in an_iter:
             # cross checks
-            if node[0][:self.prefix_len] != self.prefix_key:
+            if node[1][:self.prefix_len] != self.prefix_key:
                 raise errors.BadIndexData(self)
-            for ref_list in node[2]:
+            for ref_list in node[3]:
                 for ref_node in ref_list:
                     if ref_node[:self.prefix_len] != self.prefix_key:
                         raise errors.BadIndexData(self)
-            yield node[0][self.prefix_len:], node[1], (
+            yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
-                for ref_list in node[2]))
+                for ref_list in node[3]))
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
