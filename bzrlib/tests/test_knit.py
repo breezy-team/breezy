@@ -1017,8 +1017,8 @@ class BasicKnitTests(KnitTests):
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
         # check the index had the right data added.
         self.assertEqual(set([
-            (('text-1', ), ' 0 127', ((), ())),
-            (('text-1a', ), ' 127 140', ((('text-1', ),), (('text-1', ),))),
+            (index, ('text-1', ), ' 0 127', ((), ())),
+            (index, ('text-1a', ), ' 127 140', ((('text-1', ),), (('text-1', ),))),
             ]), set(index.iter_all_entries()))
         # we should not have a .kndx file
         self.assertFalse(get_transport('.').has('test.kndx'))
