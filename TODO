@@ -1,6 +1,3 @@
-todo before 0.4:
-- make ListBranchingScheme() reconstructable from a string
-
 todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - fix reuse of listbranchingscheme

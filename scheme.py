@@ -20,6 +20,9 @@ from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.osutils import sha_strings
 from bzrlib.trace import mutter
 
+import base64
+import bz2
+
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
@@ -55,6 +58,9 @@ class BranchingScheme:
 
         if name.startswith("single-"):
             return SingleBranchingScheme(name[len("single-"):])
+
+        if name.startswith("list-"):
+            return ListBranchingScheme(name[len("list-"):])
 
         raise UnknownBranchingScheme(name)
 
@@ -109,11 +115,14 @@ class ListBranchingScheme(BranchingScheme):
 
         :param branch_list: List of know branch locations.
         """
-        self.branch_list = [p.strip("/") for p in branch_list]
+        if isinstance(branch_list, basestring):
+            self.branch_list = bz2.decompress(base64.b64decode(branch_list)).splitlines()
+        else:
+            self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
-        return "list-%s" % sha_strings(self.branch_list)
+        return "list-%s" % base64.b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list))))
 
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""

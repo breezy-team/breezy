@@ -240,7 +240,7 @@ class ListScheme(TestCase):
         self.assertEqual(self.scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
 
     def test_str(self):
-        self.assertEqual("list-ffcc22c56739f8d862c2a7578274dd2649565451", str(self.scheme))
+        self.assertEqual("list-QlpoOTFBWSZTWSDz6woAAAPRgAAQAACzBJAAIAAiDRo9QgyYjmbjatAeLuSKcKEgQefWFA==", str(self.scheme))
 
     def test_parse_text(self):
         self.assertEqual(["bla/bloe"], parse_list_scheme_text("bla/bloe\n"))
