@@ -65,6 +65,7 @@ class GraphIndexBuilder(object):
         :param key_elements: The number of bytestrings in each key.
         """
         self.reference_lists = reference_lists
+        self._keys = set()
         self._nodes = {}
         self._nodes_by_key = {}
         self._key_length = key_elements
@@ -105,6 +106,7 @@ class GraphIndexBuilder(object):
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = ('', tuple(node_refs), value)
+        self._keys.add(key)
         if self._key_length > 1:
             key_dict = self._nodes_by_key
             if self.reference_lists:
@@ -590,12 +592,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """
         keys = set(keys)
         if self.reference_lists:
-            for key in keys.intersection(self._nodes):
+            for key in keys.intersection(self._keys):
                 node = self._nodes[key]
                 if not node[0]:
                     yield key, node[2], node[1]
         else:
-            for key in keys.intersection(self._nodes):
+            for key in keys.intersection(self._keys):
                 node = self._nodes[key]
                 if not node[0]:
                     yield key, node[2]
