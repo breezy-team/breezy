@@ -103,7 +103,9 @@ IN DEVELOPMENT
     * Fix ``bzr update`` to avoid an unnecessary
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
-      
+
+    * The cache of ignore definitions is now cleared in WorkingTree.unlock()
+      so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
 
   LIBRARY API BREAKS:
 
