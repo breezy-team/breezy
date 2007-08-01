@@ -232,9 +232,16 @@ class Graph(object):
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
-            searcher.next()
+            x = searcher.next()
         while len(active_searchers) > 0:
-            for candidate, searcher in list(active_searchers.iteritems()):
+            for candidate in active_searchers.keys():
+                try:
+                    searcher = active_searchers[candidate]
+                except KeyError:
+                    # rare case: we deleted candidate in a previous iteration
+                    # through this for loop, because it was determined to be
+                    # a descendant of another candidate.
+                    continue
                 try:
                     ancestors = searcher.next()
                 except StopIteration:
