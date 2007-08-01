@@ -35,6 +35,9 @@ IN DEVELOPMENT
     * ``bzr add *`` no more fails on Windows if working tree contains
       non-ascii file names. (Kuno Meyer, #127361)
 
+    * allow ``easy_install bzr`` runs without fatal errors. 
+      (Alexander Belchenko, #125521)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
