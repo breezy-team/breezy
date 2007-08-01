@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,23 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""\
-Common entries, like strings, etc, for the bundle reading + writing code.
-"""
-
-import bzrlib
-
-header_str = 'Bazaar revision bundle v'
-version = (0, 8)
 
 
-def get_header():
-    return [
-        header_str + '.'.join([str(v) for v in version]),
-        ''
-    ]
+from bzrlib.builtins import cmd_push
+from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
 
-      
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
+
+class TestPush(TestCaseWithConnectionHookedTransport):
+
+    def test_push(self):
+        self.make_branch_and_tree('branch')
+
+        self.install_hooks()
+
+        cmd = cmd_push()
+        cmd.run(self.get_url('remote'), directory='branch')
+        self.assertEquals(1, len(self.connections))
+

@@ -247,6 +247,18 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
         #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
 
+    def test_make_mpdiffs(self):
+        from bzrlib import multiparent
+        vf = self.get_file('foo')
+        sha1s = self._setup_for_deltas(vf)
+        new_vf = self.get_file('bar')
+        for version in multiparent.topo_iter(vf):
+            mpdiff = vf.make_mpdiffs([version])[0]
+            new_vf.add_mpdiffs([(version, vf.get_parents(version),
+                                 vf.get_sha1(version), mpdiff)])
+            self.assertEqualDiff(vf.get_text(version),
+                                 new_vf.get_text(version))
+
     def _setup_for_deltas(self, f):
         self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
         # add texts that should trip the knit maximum delta chain threshold
@@ -453,9 +465,9 @@ class VersionedFileTestMixIn(object):
     def test_get_graph(self):
         f = self.get_file()
         graph = {
-            'v1': [],
-            'v2': ['v1'],
-            'v3': ['v2']}
+            'v1': (),
+            'v2': ('v1', ),
+            'v3': ('v2', )}
         self.build_graph(f, graph)
         self.assertEqual(graph, f.get_graph())
     
@@ -463,21 +475,21 @@ class VersionedFileTestMixIn(object):
         f = self.get_file()
         complex_graph = {}
         simple_a = {
-            'c': [],
-            'b': ['c'],
-            'a': ['b'],
+            'c': (),
+            'b': ('c', ),
+            'a': ('b', ),
             }
         complex_graph.update(simple_a)
         simple_b = {
-            'c': [],
-            'b': ['c'],
+            'c': (),
+            'b': ('c', ),
             }
         complex_graph.update(simple_b)
         simple_gam = {
-            'c': [],
-            'oo': [],
-            'bar': ['oo', 'c'],
-            'gam': ['bar'],
+            'c': (),
+            'oo': (),
+            'bar': ('oo', 'c'),
+            'gam': ('bar', ),
             }
         complex_graph.update(simple_gam)
         simple_b_gam = {}
@@ -559,6 +571,37 @@ class VersionedFileTestMixIn(object):
     def reopen_file(self, name='foo'):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
+
+    def test_iter_parents(self):
+        """iter_parents returns the parents for many nodes."""
+        f = self.get_file()
+        # sample data:
+        # no parents
+        f.add_lines('r0', [], ['a\n', 'b\n'])
+        # 1 parents
+        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
+        # 2 parents
+        f.add_lines('r2', ['r1', 'r0'], ['a\n', 'b\n'])
+        # XXX TODO a ghost
+        # cases: each sample data individually:
+        self.assertEqual(set([('r0', ())]),
+            set(f.iter_parents(['r0'])))
+        self.assertEqual(set([('r1', ('r0', ))]),
+            set(f.iter_parents(['r1'])))
+        self.assertEqual(set([('r2', ('r1', 'r0'))]),
+            set(f.iter_parents(['r2'])))
+        # no nodes returned for a missing node
+        self.assertEqual(set(),
+            set(f.iter_parents(['missing'])))
+        # 1 node returned with missing nodes skipped
+        self.assertEqual(set([('r1', ('r0', ))]),
+            set(f.iter_parents(['ghost1', 'r1', 'ghost'])))
+        # 2 nodes returned
+        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
+            set(f.iter_parents(['r0', 'r1'])))
+        # 2 nodes returned, missing skipped
+        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
+            set(f.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by
@@ -690,7 +733,7 @@ class VersionedFileTestMixIn(object):
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([], vf.get_parents('notbxbfse'))
-        self.assertEqual({'notbxbfse':[]}, vf.get_graph())
+        self.assertEqual({'notbxbfse':()}, vf.get_graph())
         self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
                          vf.has_version, parent_id_unicode))
         self.assertFalse(vf.has_version(parent_id_utf8))
@@ -707,8 +750,8 @@ class VersionedFileTestMixIn(object):
                             vf.add_lines, parent_id_unicode, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
-        self.assertEqual({parent_id_utf8:[],
-                          'notbxbfse':[parent_id_utf8],
+        self.assertEqual({parent_id_utf8:(),
+                          'notbxbfse':(parent_id_utf8, ),
                           },
                          vf.get_graph())
         self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
@@ -776,6 +819,11 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
+
+        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
+                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+                          '3f786850e387550fdab836ed7e6dc881de23001b'],
+                          vf.get_sha1s(['a', 'c', 'b']))
         
 
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):

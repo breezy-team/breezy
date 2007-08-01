@@ -17,7 +17,6 @@
 import os
 import sys
 
-from bzrlib.builtins import merge
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository

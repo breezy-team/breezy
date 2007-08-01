@@ -16,7 +16,6 @@
 
 import os
 
-from bzrlib.builtins import merge
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 from bzrlib.branch import Branch
@@ -35,7 +34,8 @@ class TestAncestry(TestCaseWithTransport):
         b_wt.commit('modified B/foo',rev_id='B1')
         open('A/foo', 'wb').write('000\n1111\n')
         a_wt.commit('modified A/foo',rev_id='A2')
-        merge(['B',-1],['B',1],this_dir='A')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(),
+            b_wt.branch.get_rev_id(1))
         a_wt.commit('merged B into A',rev_id='A3')
 
     def _check_ancestry(self, location='', result=None):

@@ -293,9 +293,7 @@ class TestPull(ExternalBase):
 
         # Create the bundle for 'b' to pull
         os.chdir('branch_a')
-        bundle_file = open('../bundle', 'wb')
-        bundle_file.write(self.run_bzr('bundle ../branch_b')[0])
-        bundle_file.close()
+        self.run_bzr('bundle ../branch_b -o ../bundle')
 
         os.chdir('../branch_b')
         out, err = self.run_bzr('pull ../bundle')

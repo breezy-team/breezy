@@ -5,7 +5,8 @@ Bazaar Developer Guide
 .. contents::
 
 (The current version of this document is available in the file ``HACKING``
-in the source tree, or at http://doc.bazaar-vcs.org/bzr.dev/hacking.html)
+in the source tree, or at
+http://doc.bazaar-vcs.org/bzr.dev/developers/HACKING.htm)
 
 
 Getting Started
@@ -148,19 +149,18 @@ recorded in the Bug Tracker instead.)
 Anyone can "vote" on the mailing list. Core developers can also vote using
 Bundle Buggy. Here are the voting codes and their explanations.
 
-  -1	really don't want it in current form
-  -0	somewhat uncomfortable 
-  +0	comfortable but resubmission after changes requested
-  +1 conditional	good to go after some minor changes
-  +1	good to go
+:approve:  Reviewer wants this submission merged.
+:tweak:    Reviewer wants this submission merged with small changes. (No
+  re-review required.)
+:abstain:  Reviewer does not intend to vote on this patch.
+:resubmit: Please make changes and resubmit for review.
+:reject:   Reviewer doesn't want this kind of change merged.
+:comment:  Not really a vote. Reviewer just wants to comment, for now.
 
-+1 conditional is used as a way to avoid another submit/review cycle for
-patches that need small changes.
-
-If a change gets two +1 votes from core reviewers, and no
-vetos, then it's OK to come in.  Any of the core developers can bring it
-into the bzr.dev trunk and backport it to maintenance branches if required.
-The Release Manager will merge the change into the branch for a pending
+If a change gets two approvals from core reviewers, and no rejections,
+then it's OK to come in.  Any of the core developers can bring it into the
+bzr.dev trunk and backport it to maintenance branches if required.  The
+Release Manager will merge the change into the branch for a pending
 release, if any. As a guideline, core developers usually merge their own
 changes and volunteer to merge other contributions if they were the second
 reviewer to agree to a change.
@@ -529,9 +529,12 @@ Module Imports
 Naming
 ------
 
-Functions, methods or members that are in some sense "private" are given
-a leading underscore prefix.  This is just a hint that code outside the
-implementation should probably not use that interface.
+Functions, methods or members that are "private" to bzrlib are given
+a leading underscore prefix.  Names without a leading underscore are
+public not just across modules but to programmers using bzrlib as an
+API. As a consequence, a leading underscore is appropriate for names
+exposed across modules but that are not to be exposed to bzrlib API
+programmers.
 
 We prefer class names to be concatenated capital words (``TestCase``)
 and variables, methods and functions to be lowercase words joined by

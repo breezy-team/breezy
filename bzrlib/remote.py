@@ -53,11 +53,11 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._medium = transport.get_smart_client()
-            self._client = client._SmartClient(self._medium)
+            self._shared_medium = transport.get_shared_medium()
+            self._client = client._SmartClient(self._shared_medium)
         else:
             self._client = _client
-            self._medium = None
+            self._shared_medium = None
             return
 
         path = self._path_for_remote_call(self._client)
@@ -241,7 +241,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         else:
             self._client = _client
         self._format = format
@@ -281,7 +281,7 @@ class RemoteRepository(object):
             lines = coded.split('\n')
             revision_graph = {}
             for line in lines:
-                d = list(line.split())
+                d = tuple(line.split())
                 revision_graph[d[0]] = d[1:]
                 
             return revision_graph
@@ -471,6 +471,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.revision_tree(revision_id)
 
+    def get_serializer_format(self):
+        self._ensure_real()
+        return self._real_repository.get_serializer_format()
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
@@ -527,6 +531,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        self._ensure_real()
+        self._real_repository.create_bundle(target, base, fileobj, format)
 
     @property
     def control_weaves(self):
@@ -777,7 +785,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch

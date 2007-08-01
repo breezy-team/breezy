@@ -17,7 +17,6 @@
 import os
 
 
-from bzrlib.builtins import merge
 from bzrlib.missing import (
     find_unmerged,
     iter_log_data,
@@ -52,7 +51,7 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual(find_unmerged(original, puller), ([], []))
         self.assertEqual(find_unmerged(original, merger), ([(2, u'b'), 
                                                             (3, u'c')], []))
-        merge(['original', -1], [None, None], this_dir='merger')
+        merger_tree.merge_from_branch(original)
         self.assertEqual(find_unmerged(original, merger), ([(2, u'b'), 
                                                             (3, u'c')], []))
         merger_tree.commit('d', rev_id='d')

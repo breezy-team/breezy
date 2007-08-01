@@ -120,7 +120,7 @@ class Branch(object):
     def open_downlevel(base):
         """Open a branch which may be of an old format."""
         return Branch.open(base, _unsupported=True)
-        
+
     @staticmethod
     def open(base, _unsupported=False):
         """Open the branch rooted at base.
@@ -132,7 +132,13 @@ class Branch(object):
         return control.open_branch(_unsupported)
 
     @staticmethod
-    def open_containing(url):
+    def open_from_transport(transport, _unsupported=False):
+        """Open the branch rooted at transport"""
+        control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
+        return control.open_branch(_unsupported)
+
+    @staticmethod
+    def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
         
         This probes for a branch at url, and searches upwards from there.
@@ -143,7 +149,8 @@ class Branch(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        control, relpath = bzrdir.BzrDir.open_containing(url)
+        control, relpath = bzrdir.BzrDir.open_containing(url,
+                                                         possible_transports)
         return control.open_branch(), relpath
 
     @staticmethod
@@ -1456,10 +1463,8 @@ class BzrBranch(Branch):
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev,
-                                                       topo_sorted=False)
-            if stop_revision in my_ancestry:
-                # last_revision is a descendant of stop_revision
+            if self.repository.get_graph().is_ancestor(stop_revision,
+                                                       last_rev):
                 return
             self.generate_revision_history(stop_revision, last_rev=last_rev,
                 other_branch=other)
@@ -1814,11 +1819,10 @@ class BzrBranch5(BzrBranch):
         """
         master = self.get_master_branch()
         if master is not None:
-            old_tip = self.last_revision()
+            old_tip = _mod_revision.ensure_null(self.last_revision())
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(
-                _mod_revision.ensure_null(self.last_revision()),
-                topo_sorted=False):
+            if self.repository.get_graph().is_ancestor(old_tip,
+                _mod_revision.ensure_null(self.last_revision())):
                 return None
             return old_tip
         return None

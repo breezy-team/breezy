@@ -40,6 +40,7 @@ from bzrlib import (
     transactions,
     ui,
     )
+from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
@@ -144,6 +145,12 @@ class Repository(object):
                 self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
+    def _add_revision_text(self, revision_id, text):
+        revision = self._revision_store._serializer.read_revision_from_string(
+            text)
+        self._revision_store._add_revision(revision, StringIO(text),
+                                           self.get_transaction())
+
     @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -215,7 +222,6 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         self._revision_store = _revision_store
-        self.text_store = text_store
         # backwards compatibility
         self.weave_store = text_store
         # not right yet - should be more semantically clear ? 
@@ -331,7 +337,7 @@ class Repository(object):
         for knit_name, bytes in stream:
             if knit_name.startswith('file:'):
                 file_id = knit_name[5:]
-                knit = self.text_store.get_weave_or_empty(
+                knit = self.weave_store.get_weave_or_empty(
                     file_id, self.get_transaction())
             elif knit_name == 'inventory':
                 knit = self.get_inventory_weave()
@@ -394,6 +400,9 @@ class Repository(object):
             return inter.fetch(revision_id=revision_id, pb=pb)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
@@ -721,6 +730,9 @@ class Repository(object):
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
 
+    def get_serializer_format(self):
+        return self._serializer.format_num
+
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
@@ -756,7 +768,7 @@ class Repository(object):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, a_weave.get_parents(node)) for 
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
                              node in all_revisions])
         if revision_id is None:
             return entire_graph
