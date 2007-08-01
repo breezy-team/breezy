@@ -235,6 +235,8 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
+        self.deleted_paths = set()
+        self.added_paths = set()
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -254,7 +256,7 @@ class Commit(object):
             self._check_bound_branch()
 
             # Check that the working tree is up to date
-            old_revno,new_revno = self._check_out_of_date_tree()
+            old_revno, new_revno = self._check_out_of_date_tree()
 
             if self.config is None:
                 self.config = self.branch.get_config()
@@ -275,7 +277,7 @@ class Commit(object):
             # information in the progress bar during the relevant stages.
             self.pb_stage_name = ""
             self.pb_stage_count = 0
-            self.pb_stage_total = 4
+            self.pb_stage_total = 5
             if self.bound_branch:
                 self.pb_stage_total += 1
             self.pb.show_pct = False
@@ -315,6 +317,8 @@ class Commit(object):
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
             
+            self._process_pre_hooks(old_revno, new_revno)
+            
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
@@ -335,7 +339,7 @@ class Commit(object):
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
-            self._process_hooks(old_revno, new_revno)
+            self._process_post_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
         return self.rev_id
@@ -461,8 +465,13 @@ class Commit(object):
             new_revno = 1
         return old_revno,new_revno
 
-    def _process_hooks(self, old_revno, new_revno):
-        """Process any registered commit hooks."""
+    def _process_pre_hooks(self, old_revno, new_revno):
+        """Process any registered pre commit hooks."""
+        self._set_progress_stage("Running pre commit hooks")
+        self._process_hooks("pre_commit", old_revno, new_revno)
+
+    def _process_post_hooks(self, old_revno, new_revno):
+        """Process any registered post commit hooks."""
         # Process the post commit hooks, if any
         self._set_progress_stage("Running post commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
@@ -475,6 +484,10 @@ class Commit(object):
                               {'branch':self.branch,
                                'bzrlib':bzrlib,
                                'rev_id':self.rev_id})
+        # process new style post commit hooks
+        self._process_hooks("post_commit", old_revno, new_revno)
+
+    def _process_hooks(self, hook_name, old_revno, new_revno):
         # new style commit hooks:
         if not self.bound_branch:
             hook_master = self.branch
@@ -489,19 +502,29 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
-        for hook in Branch.hooks['post_commit']:
+        for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running post commit hooks [%s]" % \
-                Branch.hooks.get_hook_name(hook)
+            self.pb_stage_name = "Running %s hooks [%s]" % \
+                (hook_name.replace('_', ' '), Branch.hooks.get_hook_name(hook))
             self._emit_progress()
             if 'hooks' in debug.debug_flags:
                 mutter("Invoking commit hook: %r", hook)
-            hook(hook_local, hook_master, old_revno, old_revid, new_revno,
-                self.rev_id)
+            if hook_name == "post_commit":
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                     self.rev_id)
+            elif hook_name == "pre_commit":
+                future_tree = self.builder.revision_tree()
+                added = list(self.added_paths)
+                added.sort()
+                deleted = list(self.deleted_paths)
+                deleted.sort()
+                hook(hook_local, hook_master,
+                     old_revno, old_revid, new_revno, self.rev_id,
+                     deleted, added, future_tree)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -614,6 +637,7 @@ class Commit(object):
                 ie.revision = None
                 self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                    self.basis_tree)
+                self.added_paths.add(path)
 
         # Report what was deleted. We could skip this when no deletes are
         # detected to gain a performance win, but it arguably serves as a
@@ -621,6 +645,7 @@ class Commit(object):
         for path, ie in self.basis_inv.iter_entries():
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
+                self.deleted_paths.add(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -742,8 +767,12 @@ class Commit(object):
             InventoryEntry.MODIFIED_AND_RENAMED):
             old_path = self.basis_inv.id2path(ie.file_id)
             self.reporter.renamed(change, old_path, path)
+            self.deleted_paths.add(old_path)
+            self.added_paths.add(path)
         else:
             self.reporter.snapshot_change(change, path)
+            if change == 'added' and path != '':
+                self.added_paths.add(path)
 
     def _set_progress_stage(self, name, entries_title=None):
         """Set the progress stage and emit an update to the progress bar."""

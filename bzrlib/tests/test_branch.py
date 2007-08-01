@@ -336,6 +336,7 @@ class TestHooks(TestCase):
         self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
 

@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Branch.hooks now supports ``pre_commit`` hook. The hook's signature
+      is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
+
     * Don't show "dots" progress indicators when run non-interactively, such
       as from cron.  (Martin Pool)
 

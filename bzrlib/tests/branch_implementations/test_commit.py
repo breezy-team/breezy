@@ -59,6 +59,11 @@ class TestCommitHook(TestCaseWithBranch):
             ('post_commit', local_base, master.base, old_revno, old_revid,
              new_revno, new_revid, local_locked, master.is_locked()))
 
+    def capture_pre_commit_hook(self, local, master, old_revno, old_revid,
+                                new_revno, new_revid, deleted, added, tree):
+        self.hook_calls.append(('pre_commit', old_revno, old_revid,
+                                new_revno, new_revid, deleted, added))
+
     def test_post_commit_to_origin(self):
         tree = self.make_branch_and_memory_tree('branch')
         Branch.hooks.install_hook('post_commit',
@@ -109,6 +114,66 @@ class TestCommitHook(TestCaseWithBranch):
         self.assertEqual([
             ('post_commit', None, tree.branch.base, 1, revid, 2, revid2,
              None, True)
+            ],
+            self.hook_calls)
+        tree.unlock()
+    
+    def test_pre_commit_passes(self):
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('')
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        revid1 = tree.commit('first revision')
+        revid2 = tree.commit('second revision')
+        self.assertEqual([
+            ('pre_commit', 0, NULL_REVISION, 1, revid1, [], []),
+            ('pre_commit', 1, revid1, 2, revid2, [], [])
+            ],
+            self.hook_calls)
+        tree.unlock()
+
+    def test_pre_commit_fails(self):
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('')
+        class PreCommitException(Exception): pass
+        def hook_func(_1, _2, _3, _4, _5, new_revid, _7, _8, _9):
+            raise PreCommitException(new_revid)
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        Branch.hooks.install_hook("pre_commit", hook_func)
+        revids = [None, None, None]
+        try:
+            tree.commit('message')
+        except PreCommitException, e:
+            revids[0] = e.message
+        Branch.hooks["pre_commit"] = []
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        for i in range(1, 3):
+            revids[i] = tree.commit('third revision')
+        self.assertEqual([
+            ('pre_commit', 0, NULL_REVISION, 1, revids[0], [], []),
+            ('pre_commit', 0, NULL_REVISION, 1, revids[1], [], []),
+            ('pre_commit', 1, revids[1], 2, revids[2], [], [])
+            ],
+            self.hook_calls)
+        tree.unlock()
+    
+    def test_pre_commit_paths(self):
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('')
+        tree.add('file', 'bang')
+        tree.put_file_bytes_non_atomic('bang', 'die')
+        tree.mkdir('dir', 'dirid')
+        tree.add('dir/file', 'swoosh')
+        tree.put_file_bytes_non_atomic('swoosh', 'swaash')
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        rev1 = tree.commit('first revision')
+        tree.unversion(['dirid'])
+        rev2 = tree.commit('second revision')
+        self.assertEqual([
+            ('pre_commit', 0, NULL_REVISION, 1, rev1, [], ['dir', 'dir/file', 'file']),
+            ('pre_commit', 1, rev1, 2, rev2, ['dir', 'dir/file'], [])
             ],
             self.hook_calls)
         tree.unlock()

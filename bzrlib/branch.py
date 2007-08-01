@@ -1026,6 +1026,15 @@ class BranchHooks(Hooks):
         # is read locked and the target branches write locked. The local
         # branch is the low-latency branch.
         self['post_pull'] = []
+        # invoked before a commit operation takes place.
+        # the api signature is
+        # (local, master, old_revno, old_revid, future_revno, future_revid,
+        #  deleted_paths, added_paths, future_revision_tree).
+        # old_revid is NULL_REVISION for the first commit to a branch
+        # future_revision_tree is an in-memory tree obtained from
+        # CommitBuilder.revision_tree()
+        # renamed paths appear in both deleted_paths and added_paths.
+        self['pre_commit'] = []
         # invoked after a commit operation completes.
         # the api signature is 
         # (local, master, old_revno, old_revid, new_revno, new_revid)
