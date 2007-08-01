@@ -116,9 +116,8 @@ class ListBranchingScheme(BranchingScheme):
         :param branch_list: List of know branch locations.
         """
         if isinstance(branch_list, basestring):
-            self.branch_list = bz2.decompress(base64.b64decode(branch_list)).splitlines()
-        else:
-            self.branch_list = [p.strip("/") for p in branch_list]
+            branch_list = bz2.decompress(base64.b64decode(branch_list)).splitlines()
+        self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):

@@ -310,6 +310,8 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.trace import info
         from scheme import ListBranchingScheme
         def scheme_str(scheme):
+            if scheme is None:
+                return ""
             return "".join(map(lambda x: x+"\n", scheme.to_lines()))
         repos = Repository.open(location)
         if repository_wide:

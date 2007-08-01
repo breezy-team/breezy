@@ -9,6 +9,8 @@ todo:
 - support tags (#81102)
 - more efficient implementation of get_revision_delta() to speed up bzr log -v
 - nestedtree support
+- simplify listbranchingscheme to trunkbranchingscheme or nonebranchingscheme
+  when possible
 
 .svn working trees:
 - implement apply_inventory_delta()
