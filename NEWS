@@ -95,6 +95,15 @@ IN DEVELOPMENT
       ``other`` is large. This improves ``VF.get_graph([version_id])`` for
       a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
 
+    * The ``--lsprof-file`` option now generates output for KCacheGrind if
+      the file starts with ``callgrind.out``. This matches the default file
+      filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
+
+    * Fix ``bzr update`` to avoid an unnecessary
+      ``branch.get_master_branch`` call, which avoids 1 extra connection
+      to the remote server. (Partial fix for #128076, John Arbash Meinel)
+      
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -167,6 +176,14 @@ IN DEVELOPMENT
 
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
+
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
 
     * New methods on Repository - ``start_write_group``,
       ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
