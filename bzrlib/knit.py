@@ -365,7 +365,7 @@ class KnitVersionedFile(VersionedFile):
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
                  create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None, index=None):
+                 dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -399,8 +399,11 @@ class KnitVersionedFile(VersionedFile):
                 dir_mode=dir_mode)
         else:
             self._index = index
-        _access = _KnitAccess(transport, relpath + DATA_SUFFIX, file_mode, dir_mode,
-            ((create and not len(self)) and delay_create), create_parent_dir)
+        if access_method is None:
+            _access = _KnitAccess(transport, relpath + DATA_SUFFIX, file_mode, dir_mode,
+                ((create and not len(self)) and delay_create), create_parent_dir)
+        else:
+            _access = access_method
         if create and not len(self) and not delay_create:
             _access.create()
         self._data = _KnitData(_access)
