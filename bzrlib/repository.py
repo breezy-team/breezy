@@ -624,6 +624,54 @@ class Repository(object):
             pb.finished()
         return result
 
+    def get_data_about_revision_ids(self, revision_ids, files_pb=None):
+        """Get an iterable about data for a given set of revision IDs.
+
+        The named data will be ordered so that it can be fetched and inserted in
+        that order safely.
+        
+        :returns: (knit-kind, file-id, versions)
+        """
+        # XXX: it's a bit weird to control the inventory weave caching in this
+        # generator.  Ideally the caching would be done in fetch.py I think.  Or
+        # maybe this generator should explicitly have the contract that it
+        # should not be iterated until the previously yielded item has been
+        # processed?
+        inv_w = self.get_inventory_weave()
+        inv_w.enable_cache()
+
+        # file ids that changed
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        count = 0
+        num_file_ids = len(file_ids)
+        for file_id, altered_versions in file_ids.iteritems():
+            if files_pb is not None:
+                files_pb.update("fetch texts", count, num_file_ids)
+            count += 1
+            yield ("file", file_id, altered_versions)
+        # We're done with the files_pb.  Note that it finished by the caller,
+        # just as it was created by the caller.
+        del files_pb
+
+        # inventory
+        yield ("inventory", None, revision_ids)
+        inv_w.clear_cache()
+
+        # signatures
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
+
+        # revisions
+        yield ("revisions", None, revision_ids)
+
     @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',
