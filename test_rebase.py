@@ -18,6 +18,7 @@
 from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.trace import mutter
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
                     replay_snapshot, generate_simple_plan,
@@ -94,7 +95,9 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
-                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                generate_simple_plan(b.revision_history(), "bla2", None, 
+                    "bloe", 
+                    ["bloe", "bla"],
                     b.repository.revision_parents, 
                     lambda y: "new"+y))
      
@@ -114,7 +117,8 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello again', rev_id="bla3")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
-                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
+                    ["bloe", "bla"],
                     b.repository.revision_parents,
                     lambda y: "new"+y))
  
@@ -185,8 +189,9 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "D": ["A"],
                 "E": ["D", "B"]
         }
-        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'", "B"])}, 
-                generate_simple_plan(["A", "D", "E"], "D", "C", 
+        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
+                generate_simple_plan(["A", "D", "E"], 
+                                     "D", None, "C", ["A", "B", "C"], 
                     parents_map.get, lambda y: y+"'"))
  
 
@@ -512,23 +517,34 @@ class TestReplayWorkingtree(TestCaseWithTransport):
 
         Rebasing E on C should result in:
 
-        A -> B -> C -> D -> E
+        A -> B -> C -> D' -> E'
+
+        Ancestry:
+        A: 
+        B: A
+        C: A, B
+        D: A
+        E: A, B, D
+        D': A, B, C
+        E': A, B, C, D'
+
         """
         oldwt = self.make_branch_and_tree("old")
         self.build_tree(['old/afile'])
+        file("old/afile", "w").write("A\n" * 10)
         oldwt.add(["afile"])
         oldwt.commit("base", rev_id="A")
-
         newwt = oldwt.bzrdir.sprout("new").open_workingtree()
-        file("old/afile", "w").write("bloe")
+        file("old/afile", "w").write("A\n"*10 + "B\n")
         oldwt.commit("bla", rev_id="B")
-        file("old/afile", "w").write("blaaah")
+        file("old/afile", "w").write("A\n" * 10 + "C\n")
         oldwt.commit("bla", rev_id="C")
         self.build_tree(['new/bfile'])
         newwt.add(["bfile"])
+        file("new/bfile", "w").write("D\n")
         newwt.commit("bla", rev_id="D")
-        file("old/bfile", "w").write("blaaah")
-        file("old/afile", "w").write("bloe")
+        file("new/afile", "w").write("E\n" + "A\n"*10 + "B\n")
+        file("new/bfile", "w").write("D\nE\n")
         newwt.add_pending_merge("B")
         newwt.commit("bla", rev_id="E")
         newwt.branch.repository.fetch(oldwt.branch.repository)
@@ -536,10 +552,14 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
-        replay_delta_workingtree(newwt, "E", "E'", ["D'", "B"])
+        self.assertRaises(ConflictsInTree, 
+            lambda: replay_delta_workingtree(newwt, "E", "E'", ["D'"]))
+        self.assertEquals("E\n" + "A\n" * 10 + "C\n",
+                open("new/afile", 'r').read())
+        mutter("bfile: %s" % open("new/bfile", "r").read())
         oldrev = newwt.branch.repository.get_revision("E")
         newrev = newwt.branch.repository.get_revision("E'")
-        self.assertEquals(["D'", "B"], newrev.parent_ids)
+        self.assertEquals(["D'"], newrev.parent_ids)
         self.assertEquals(["A", "B", "C", "D'", "E'"], 
                           newwt.branch.revision_history())
 
@@ -552,3 +572,4 @@ class TestReplaySnapshotError(TestCase):
 class TestReplayParentsInconsistent(TestCase):
     def test_create(self):
         ReplayParentsInconsistent("afileid", "arevid")
+

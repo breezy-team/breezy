@@ -84,6 +84,7 @@ class cmd_rebase(Command):
         wt.lock_write()
         if upstream_location is None:
             upstream_location = wt.branch.get_parent()
+            info("Rebasing on %s" % upstream_location)
         upstream = Branch.open(upstream_location)
         upstream_repository = upstream.repository
         upstream_revision = upstream.last_revision()
@@ -118,10 +119,12 @@ class cmd_rebase(Command):
 
             start_revid = wt.branch.get_rev_id(
                     wt.branch.revision_id_to_revno(common_revid)+1)
+            stop_revid = wt.branch.last_revision()
 
             # Create plan
             replace_map = generate_simple_plan(
-                    wt.branch.revision_history(), start_revid, onto,
+                    wt.branch.revision_history(), start_revid, stop_revid, onto,
+                    wt.branch.repository.get_ancestry(onto),
                     wt.branch.repository.revision_parents,
                     lambda revid: regenerate_default_revid(wt.branch.repository, revid)
                     )
