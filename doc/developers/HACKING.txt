@@ -6,7 +6,7 @@ Bazaar Developer Guide
 
 (The current version of this document is available in the file ``HACKING``
 in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/developers/HACKING.htm)
+http://doc.bazaar-vcs.org/bzr.dev/developers/HACKING.html)
 
 
 Getting Started

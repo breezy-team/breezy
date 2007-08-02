@@ -222,7 +222,7 @@ bzr 0.18rc1  2007-07-10
     * Use exact encoding for merge directives. (Adeodato Simó, #120591)
 
     * Fix tempfile permissions error in smart server tar bundling under
-      Windows. (Martin_, #119330)
+      Windows. (Martin _, #119330)
 
     * Fix detection of directory entries in the inventory. (James Westby)
 
@@ -231,7 +231,7 @@ bzr 0.18rc1  2007-07-10
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
-     (Vincent Ladeuil, #120678)
+      (Vincent Ladeuil, #120678)
 
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
@@ -323,7 +323,7 @@ bzr 0.18rc1  2007-07-10
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
-     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.repository_implementations``;
       ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.interrepository_implementations``;

@@ -11,54 +11,40 @@ in the event of a discrepancy between what is documented here
 and what is documented on the wiki.
 
 
-* `Tutorial <tutorial.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/IntroductionToBzr)
+* `Tutorial <tutorial.html>`_ |--| Explains how to use bzr.
+  Loaded with examples.
 
-    Explains how to use bzr. Loaded with examples.
+* `Configuration <configuration.html>`_ |--| Information on how to configure
+  Bazaar.
 
-* `Configuration <configuration.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/ConfiguringBzr)
+* `Setting up email <setting_up_email.html>`_ |--| The various ways that exist
+  to tell Bazaar your email address for commits.
 
-    Information on how to configure Bazaar.
+* `Conflict handling <conflicts.html>`_ |--| The various kind of conflicts
+  you may encounter, and how to handle them.
 
-* `Setting up email <setting_up_email.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrSettingEmail)
+* `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
 
-    The various ways that exist to tell Bazaar your email address for
-    commits.
+* `Specifying revision <specifying_revisions.html>`_ |--| Description 
+  of the subarguments for ``-r`` as used by commands such as
+  **bzr log** and **bzr merge**.
 
-* `Conflict handling <conflicts.htm>`_
+* `Using aliases <using_aliases.html>`_ |--| How to set up 
+  and use command aliases.
 
-    The various kind of conflicts you may encounter, and how to handle them.
+* `Running a Bazaar server <server.html>`_ |--| How to run a server 
+  to allow remote access to Bazaar branches.
 
-* `Plugins <plugins.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrPlugins)
-    
-    Information on how to use plugins in Bazaar.
+* `Running a Bazaar HTTP server <http_smart_server.html>`_ |--| How to run 
+  a smart HTTP server to allow remote access to Bazaar branches.
 
-* `Specifying revision <specifying_revisions.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrRevisionSpec)
+* `Guidelines for modifying bzr <developers/index.html>`_ |--| Guide 
+  to policies and tools for working on Bazaar itself.
 
-    Description of the subarguments for ``-r`` as used by commands such as
-    **bzr log** and **bzr merge**.
-
-* `Using aliases <using_aliases.htm>`_
-  (wiki page: http://bazaar-vcs.org/CommandAliases)
-
-    How to set up and use command aliases.
-
-* `Running a Bazaar server <server.htm>`_
-  
-    How to run a server to allow remote access to Bazaar branches.
-
-* `Running a Bazaar HTTP server <http_smart_server.htm>`_
-
-    How to run a smart HTTP server to allow remote access to Bazaar branches.
-
-* `Guidelines for modifying bzr <developers/index.htm>`_
-
-    Guide to policies and tools for working on Bazaar itself.
 
 This document automatically created based on output of **bzr help**:
 
 * `Man page (help for bzr commands) <bzr_man.htm>`_
+
+
+.. |--| unicode:: U+2014
