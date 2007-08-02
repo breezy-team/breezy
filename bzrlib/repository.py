@@ -342,8 +342,8 @@ class Repository(object):
             elif knit_name == 'inventory':
                 knit = self.get_inventory_weave()
             elif knit_name == 'revisions':
-                knit = self.control_weaves.get_weave(
-                    'revisions', self.get_transaction())
+                knit = self._revision_store.get_revision_file(
+                    self.get_transaction())
             elif knit_name == 'signatures':
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
