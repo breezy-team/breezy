@@ -133,7 +133,8 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
 
     :return: replace map
     """
-    assert start_revid in history
+    assert start_revid is None or start_revid in history
+    assert stop_revid is None or stop_revid in history
     replace_map = {}
     if start_revid is not None:
         start_revno = history.index(start_revid)

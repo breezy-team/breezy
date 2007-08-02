@@ -29,6 +29,14 @@ from bzrlib.trace import info
 __version__ = '0.1'
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
+def find_last_common_revid(revhistory1, revhistory2):
+    for revid in reversed(revhistory1):
+        if revid in revhistory2:
+            return revid
+
+    raise UnrelatedBranches()
+
+
 class cmd_rebase(Command):
     """Re-base a branch.
 
@@ -93,33 +101,8 @@ class cmd_rebase(Command):
             if rebase_plan_exists(wt):
                 raise BzrCommandError("A rebase operation was interrupted. Continue using 'bzr rebase-continue' or abort using 'bzr rebase-abort'")
 
-            # Pull required revisions
-            wt.branch.repository.fetch(upstream_repository, upstream_revision)
-            if onto is None:
-                onto = upstream.last_revision()
-            else:
-                rev_spec = RevisionSpec.from_string(onto)
-                onto = rev_spec.in_history(upstream).rev_id
-
-            wt.branch.repository.fetch(upstream_repository, onto)
-
-            revhistory = wt.branch.revision_history()
-            revhistory.reverse()
-            common_revid = None
-            for revid in revhistory:
-                if revid in upstream.revision_history():
-                    common_revid = revid
-                    break
-
-            if common_revid is None:
-                raise UnrelatedBranches()
-
-            if common_revid == upstream.last_revision():
-                raise BzrCommandError("Already rebased on %s" % upstream)
-
-            start_revid = wt.branch.get_rev_id(
-                    wt.branch.revision_id_to_revno(common_revid)+1)
-            stop_revid = wt.branch.last_revision()
+            start_revid = None
+            stop_revid = None
             if revision is not None:
                 if len(revision) == 1:
                     if revision[0] is not None:
@@ -130,11 +113,34 @@ class cmd_rebase(Command):
                     if revision[1] is not None:
                         stop_revid = revision[1].in_history(wt.branch).rev_id
                 else:
-                    raise BzrCommandError("--revision takes only one or two arguments")
+                    raise BzrCommandError(
+                        "--revision takes only one or two arguments")
+
+            # Pull required revisions
+            wt.branch.repository.fetch(upstream_repository, upstream_revision)
+            if onto is None:
+                onto = upstream.last_revision()
+            else:
+                rev_spec = RevisionSpec.from_string(onto)
+                onto = rev_spec.in_history(upstream).rev_id
+
+            wt.branch.repository.fetch(upstream_repository, onto)
+
+            if stop_revid is not None:
+                wt.branch.generate_revision_history(stop_revid)
+            revhistory = wt.branch.revision_history()
+
+            if start_revid is None:
+                common_revid = find_last_common_revid(revhistory, 
+                                                 upstream.revision_history())
+                if common_revid == upstream.last_revision():
+                    raise BzrCommandError("Already rebased on %s" % upstream)
+                start_revid = wt.branch.get_rev_id(
+                        wt.branch.revision_id_to_revno(common_revid)+1)
 
             # Create plan
             replace_map = generate_simple_plan(
-                    wt.branch.revision_history(), start_revid, stop_revid, onto,
+                    revhistory, start_revid, stop_revid, onto,
                     wt.branch.repository.get_ancestry(onto),
                     wt.branch.repository.revision_parents,
                     lambda revid: regenerate_default_revid(wt.branch.repository, revid)
