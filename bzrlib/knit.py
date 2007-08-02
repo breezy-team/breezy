@@ -490,8 +490,8 @@ class KnitVersionedFile(VersionedFile):
         options.append('line-delta')
         store_lines = self.factory.lower_line_delta(delta)
 
-        where, size = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, where, size, parents)
+        access_memo = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, access_memo, parents)
 
     def _add_raw_records(self, records, data):
         """Add all the records 'records' with data pre-joined in 'data'.
@@ -506,9 +506,9 @@ class KnitVersionedFile(VersionedFile):
         positions = self._data.add_raw_records(raw_record_sizes, data)
         offset = 0
         index_entries = []
-        for (version_id, options, parents, size), (pos, length) in zip(
+        for (version_id, options, parents, size), access_memo in zip(
             records, positions):
-            index_entries.append((version_id, options, pos, size, parents))
+            index_entries.append((version_id, options, access_memo, parents))
             if self._data._do_cache:
                 self._data._cache[version_id] = data[offset:offset+size]
             offset += size
@@ -552,9 +552,8 @@ class KnitVersionedFile(VersionedFile):
         current_values = self._index._cache[version_id]
         assert set(current_values[4]).difference(set(new_parents)) == set()
         self._index.add_version(version_id,
-                                current_values[1], 
-                                current_values[2],
-                                current_values[3],
+                                current_values[1],
+                                (current_values[2], current_values[3]),
                                 new_parents)
 
     def _extract_blocks(self, version_id, source, target):
@@ -805,8 +804,8 @@ class KnitVersionedFile(VersionedFile):
             options.append('fulltext')
             store_lines = self.factory.lower_fulltext(lines)
 
-        where, size = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, where, size, parents)
+        access_memo = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, access_memo, parents)
         return lines
 
     def check(self, progress_bar=None):
@@ -1272,9 +1271,9 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append('.' + version)
         return ' '.join(result_list)
 
-    def add_version(self, version_id, options, pos, size, parents):
+    def add_version(self, version_id, options, (pos, size), parents):
         """Add a version record to the index."""
-        self.add_versions(((version_id, options, pos, size, parents),))
+        self.add_versions(((version_id, options, (pos, size), parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1287,7 +1286,7 @@ class _KnitIndex(_KnitComponentFile):
         orig_cache = self._cache.copy()
 
         try:
-            for version_id, options, pos, size, parents in versions:
+            for version_id, options, (pos, size), parents in versions:
                 line = "\n%s %s %s %s %s :" % (version_id,
                                                ','.join(options),
                                                pos,
@@ -1600,9 +1599,9 @@ class KnitGraphIndex(object):
         if missing:
             raise RevisionNotPresent(missing.pop(), self)
 
-    def add_version(self, version_id, options, pos, size, parents):
+    def add_version(self, version_id, options, (pos, size), parents):
         """Add a version record to the index."""
-        return self.add_versions(((version_id, options, pos, size, parents),))
+        return self.add_versions(((version_id, options, (pos, size), parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1622,7 +1621,7 @@ class KnitGraphIndex(object):
         # check for dups
 
         keys = {}
-        for (version_id, options, pos, size, parents) in versions:
+        for (version_id, options, (pos, size), parents) in versions:
             # index keys are tuples:
             key = (version_id, )
             parents = tuple((parent, ) for parent in parents)
