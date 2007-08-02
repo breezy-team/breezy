@@ -35,6 +35,9 @@ IN DEVELOPMENT
     * ``bzr add *`` no more fails on Windows if working tree contains
       non-ascii file names. (Kuno Meyer, #127361)
 
+    * allow ``easy_install bzr`` runs without fatal errors. 
+      (Alexander Belchenko, #125521)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -103,6 +106,9 @@ IN DEVELOPMENT
     * Fix ``bzr update`` to avoid an unnecessary
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
+
+    * Log errors from the smart server in the trace file, to make debugging 
+      test failures (and live failures!) easier.  (Andrew Bennetts)
       
 
   LIBRARY API BREAKS:
@@ -180,6 +186,14 @@ IN DEVELOPMENT
 
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
+
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
 
   TESTING:
 
