@@ -18,14 +18,16 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
         file_names,
+        pack,
         )
 from bzrlib.index import (
-    InMemoryGraphIndex,
     GraphIndex,
+    InMemoryGraphIndex,
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
-from bzrlib.knit import KnitGraphIndex
+from bzrlib.knit import KnitGraphIndex, _PackAccess
+from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
 """)
 from bzrlib import (
@@ -350,25 +352,33 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             return self.repo._revision_knit
         indices = []
         self.repo._data_names.ensure_loaded()
+        pack_map = {}
         for name in self.repo._data_names.names():
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             index_name = self.name_to_revision_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
+            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._revision_write_index)
+            pack_map[self.repo._revision_write_index] = self.repo._open_pack_tuple
+            writer = self.repo._open_pack_writer, self.repo._revision_write_index
             add_callback = self.repo._revision_write_index.add_nodes
         else:
+            writer = None
             add_callback = None # no data-adding permitted.
         self.repo._revision_all_indices = CombinedGraphIndex(indices)
         knit_index = KnitGraphIndex(self.repo._revision_all_indices,
             add_callback=add_callback)
+        knit_access = _PackAccess(pack_map, writer)
+        self.repo._revision_knit_access = knit_access
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo.control_files._lock_mode,
-            index=knit_index, delta=False, factory=knit.KnitPlainFactory())
+            index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
+            access_method=knit_access)
         return self.repo._revision_knit
 
     def get_signature_file(self, transaction):
@@ -377,25 +387,33 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             return self.repo._signature_knit
         indices = []
         self.repo._data_names.ensure_loaded()
+        pack_map = {}
         for name in self.repo._data_names.names():
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             index_name = self.name_to_signature_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
+            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._signature_write_index)
+            pack_map[self.repo._signature_write_index] = self.repo._open_pack_tuple
+            writer = self.repo._open_pack_writer, self.repo._signature_write_index
             add_callback = self.repo._signature_write_index.add_nodes
         else:
+            writer = None
             add_callback = None # no data-adding permitted.
         self.repo._signature_all_indices = CombinedGraphIndex(indices)
         knit_index = KnitGraphIndex(self.repo._signature_all_indices,
             add_callback=add_callback, parents=False)
+        knit_access = _PackAccess(pack_map, writer)
+        self.repo._signature_knit_access = knit_access
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo.control_files._lock_mode,
-            index=knit_index, delta=False, factory=knit.KnitPlainFactory())
+            index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
+            access_method=knit_access)
         return self.repo._signature_knit
 
     def data_inserted(self):
@@ -422,6 +440,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._revision_all_indices._indices[-1]
+            # reset the knit access writer
+            self.repo._revision_knit_access.set_writer(None, None, (None, None))
         # write a signatures index (might be empty)
         new_index_name = self.name_to_signature_index_name(new_name)
         self.transport.put_file(new_index_name,
@@ -434,6 +454,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._signature_all_indices._indices[-1]
+            # reset the knit access writer
+            self.repo._signature_knit_access.set_writer(None, None, (None, None))
 
     def name_to_revision_index_name(self, name):
         """The revision index is the name + .rix."""
@@ -449,10 +471,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         self.repo._revision_knit = None
         self.repo._revision_write_index = None
         self.repo._revision_all_indices = None
+        self.repo._revision_knit_access = None
         # cached signature data
         self.repo._signature_knit = None
         self.repo._signature_write_index = None
         self.repo._signature_all_indices = None
+        self.repo._signature_knit_access = None
 
     def setup(self):
         # setup in-memory indices to accumulate data.
@@ -463,9 +487,13 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if self.repo._revision_knit is not None:
             self.repo._revision_all_indices.insert_index(0, self.repo._revision_write_index)
             self.repo._revision_knit._index._add_callback = self.repo._revision_write_index.add_nodes
+            self.repo._revision_knit_access.set_writer(self.repo._open_pack_writer,
+                self.repo._revision_write_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
             self.repo._signature_all_indices.insert_index(0, self.repo._signature_write_index)
             self.repo._signature_knit._index._add_callback = self.repo._signature_write_index.add_nodes
+            self.repo._signature_knit_access.set_writer(self.repo._open_pack_writer,
+                self.repo._signature_write_index, self.repo._open_pack_tuple)
 
 
 class GraphKnitTextStore(VersionedFileStore):
@@ -512,11 +540,13 @@ class GraphKnitTextStore(VersionedFileStore):
             return
         indices = []
         self.repo._data_names.ensure_loaded()
+        self.repo._text_pack_map = {}
         for name in self.repo._data_names.names():
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             index_name = self.name_to_text_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
+            self.repo._text_pack_map[indices[-1]] = (self.repo._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._text_write_index)
@@ -548,17 +578,22 @@ class GraphKnitTextStore(VersionedFileStore):
         filename = self.weavestore.filename(file_id)
         if self.repo.is_in_write_group():
             add_callback = self.repo._text_write_index.add_nodes
+            self.repo._text_pack_map[self.repo._text_write_index] = self.repo._open_pack_tuple
+            writer = self.repo._open_pack_writer, self.repo._text_write_index
         else:
             add_callback = None # no data-adding permitted.
+            writer = None
 
         file_id_index = GraphIndexPrefixAdapter(self.repo._text_all_indices,
             (file_id, ), 1, add_nodes_callback=add_callback)
         knit_index = KnitGraphIndex(file_id_index,
             add_callback=file_id_index.add_nodes,
             deltas=True, parents=True)
+        knit_access = _PackAccess(self.repo._text_pack_map, writer)
         return knit.KnitVersionedFile(filename, self.weavestore._transport,
             self.weavestore._file_mode,
             index=knit_index,
+            access_method=knit_access,
             **self.weavestore._versionedfile_kwargs)
 
     get_weave = get_weave_or_empty
@@ -567,7 +602,7 @@ class GraphKnitTextStore(VersionedFileStore):
         """Generate a list of the fileids inserted, for use by check."""
         self._ensure_all_index()
         ids = set()
-        for key, value, refs in self.repo._text_all_indices.iter_all_entries():
+        for index, key, value, refs in self.repo._text_all_indices.iter_all_entries():
             ids.add(key[0])
         return iter(ids)
 
@@ -581,6 +616,8 @@ class GraphKnitTextStore(VersionedFileStore):
         self.repo._text_write_index = None
         # remove all constructed text data indices
         self.repo._text_all_indices = None
+        # and the pack map
+        self.repo._text_pack_map = None
 
     def setup(self):
         # setup in-memory indices to accumulate data.
@@ -617,15 +654,18 @@ class InventoryKnitThunk(object):
             return
         indices = []
         self.repo._data_names.ensure_loaded()
+        pack_map = {}
         for name in self.repo._data_names.names():
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             index_name = self.name_to_inv_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
+            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._inv_write_index)
         self.repo._inv_all_indices = CombinedGraphIndex(indices)
+        self.repo._inv_pack_map = pack_map
 
     def flush(self, new_name):
         """Write the index out to new_name."""
@@ -643,6 +683,8 @@ class InventoryKnitThunk(object):
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._inv_all_indices._indices[-1]
+            self.repo._inv_knit_access.set_writer(None, None, (None, None))
+        self.repo._inv_pack_map = None
 
     def get_weave(self):
         """Get a 'Knit' that contains inventory data."""
@@ -650,16 +692,22 @@ class InventoryKnitThunk(object):
         filename = 'inventory'
         if self.repo.is_in_write_group():
             add_callback = self.repo._inv_write_index.add_nodes
+            self.repo._inv_pack_map[self.repo._inv_write_index] = self.repo._open_pack_tuple
+            writer = self.repo._open_pack_writer, self.repo._inv_write_index
         else:
             add_callback = None # no data-adding permitted.
+            writer = None
 
         knit_index = KnitGraphIndex(self.repo._inv_all_indices,
             add_callback=add_callback,
             deltas=True, parents=True)
         # TODO - mode support. self.weavestore._file_mode,
+        knit_access = _PackAccess(self.repo._inv_pack_map, writer)
+        self.repo._inv_knit_access = knit_access
         return knit.KnitVersionedFile('inventory', self.transport.clone('..'),
             index=knit_index,
-            factory=knit.KnitPlainFactory())
+            factory=knit.KnitPlainFactory(),
+            access_method=knit_access)
 
     def name_to_inv_index_name(self, name):
         """The inv index is the name + .iix."""
@@ -671,6 +719,9 @@ class InventoryKnitThunk(object):
         self.repo._inv_write_index = None
         # remove all constructed inv data indices
         self.repo._inv_all_indices = None
+        # remove the knit access object
+        self.repo._inv_knit_access = None
+        self.repo._inv_pack_map = None
 
     def setup(self):
         # setup in-memory indices to accumulate data.
@@ -697,6 +748,8 @@ class GraphKnitRepository1(KnitRepository):
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
+        self._upload_transport = control_files._transport.clone('upload')
+        self._pack_transport = control_files._transport.clone('packs')
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
@@ -705,6 +758,10 @@ class GraphKnitRepository1(KnitRepository):
         self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
+
+    def _pack_tuple(self, name):
+        """Return a tuple with the transport and file name for a pack name."""
+        return self._pack_transport, name + '.pack'
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
@@ -715,6 +772,12 @@ class GraphKnitRepository1(KnitRepository):
             self._data_names.reset()
 
     def _start_write_group(self):
+        random_name = self.control_files._lock.nonce
+        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
+        def write_data(bytes):
+            self._upload_transport.append_bytes(random_name + '.pack', bytes)
+        self._open_pack_writer = pack.ContainerWriter(write_data)
+        self._open_pack_writer.begin()
         self._data_names.setup()
         self._revision_store.setup()
         self.weave_store.setup()
@@ -729,7 +792,12 @@ class GraphKnitRepository1(KnitRepository):
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
+            self._upload_transport.rename(self._open_pack_tuple[1],
+                '../packs/' + new_name + '.pack')
             self._data_names.save()
+        else:
+            # can the pending upload
+            self._upload_transport.delete(self._open_pack_tuple[1])
         self._revision_store.reset()
         self.weave_store.reset()
         self._inv_thunk.reset()
@@ -753,6 +821,8 @@ class GraphKnitRepository3(KnitRepository3):
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
+        self._upload_transport = control_files._transport.clone('upload')
+        self._pack_transport = control_files._transport.clone('packs')
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
@@ -761,6 +831,10 @@ class GraphKnitRepository3(KnitRepository3):
         self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
+
+    def _pack_tuple(self, name):
+        """Return a tuple with the transport and file name for a pack name."""
+        return self._pack_transport, name + '.pack'
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
@@ -771,6 +845,12 @@ class GraphKnitRepository3(KnitRepository3):
             self._data_names.reset()
 
     def _start_write_group(self):
+        random_name = self.control_files._lock.nonce
+        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
+        def write_data(bytes):
+            self._upload_transport.append_bytes(random_name + '.pack', bytes)
+        self._open_pack_writer = pack.ContainerWriter(write_data)
+        self._open_pack_writer.begin()
         self._data_names.setup()
         self._revision_store.setup()
         self.weave_store.setup()
@@ -785,7 +865,12 @@ class GraphKnitRepository3(KnitRepository3):
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
+            self._upload_transport.rename(self._open_pack_tuple[1],
+                '../packs/' + new_name + '.pack')
             self._data_names.save()
+        else:
+            # can the pending upload
+            self._upload_transport.delete(self._open_pack_tuple[1])
         self._revision_store.reset()
         self.weave_store.reset()
         self._inv_thunk.reset()
@@ -1043,15 +1128,16 @@ def _knit_to_experimental(result, a_bzrdir):
     mutter('changing to GraphKnit1 repository in %s.', a_bzrdir.transport.base)
     repo_transport = a_bzrdir.get_repository_transport(None)
     repo_transport.mkdir('indices')
+    repo_transport.mkdir('packs')
+    repo_transport.mkdir('upload')
+    repo_transport.rmdir('knits')
     names = file_names.FileNames(
         repo_transport.clone('indices'), 'index')
     names.initialise()
     names.save()
-    repo_transport.delete('revisions.kndx')
-    repo_transport.delete('signatures.kndx')
-    for first in '0123456789abcdef':
-        for second in '0123456789abcdef':
-            repo_transport.mkdir('knits/%s%s' % (first, second))
+    for knit in ('inventory', 'revisions', 'signatures'):
+        repo_transport.delete(knit + '.kndx')
+        repo_transport.delete(knit + '.knit')
 
 
 class RepositoryFormatGraphKnit3(RepositoryFormatKnit3):

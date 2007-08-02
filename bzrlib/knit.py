@@ -429,7 +429,7 @@ class KnitVersionedFile(VersionedFile):
         for count in xrange(self._max_delta_chain):
             parent = delta_parents[0]
             method = self._index.get_method(parent)
-            pos, size = self._index.get_position(parent)
+            index, pos, size = self._index.get_position(parent)
             if method == 'fulltext':
                 fulltext_size = size
                 break
@@ -577,8 +577,8 @@ class KnitVersionedFile(VersionedFile):
             parent = parents[0]
         else:
             parent = None
-        data_pos, data_size = self._index.get_position(version_id)
-        data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
+        index_memo = self._index.get_position(version_id)
+        data, sha1 = self._data.read_records(((version_id, index_memo),))[version_id]
         noeol = 'no-eol' in self._index.get_options(version_id)
         if 'fulltext' == self._index.get_method(version_id):
             new_content = self.factory.parse_fulltext(data, version_id)
@@ -702,8 +702,8 @@ class KnitVersionedFile(VersionedFile):
                     next = None
                 else:
                     next = self.get_parents(cursor)[0]
-                data_pos, data_size = self._index.get_position(cursor)
-                component_data[cursor] = (method, data_pos, data_size, next)
+                index_memo = self._index.get_position(cursor)
+                component_data[cursor] = (method, index_memo, next)
                 cursor = next
         return component_data
        
@@ -836,12 +836,12 @@ class KnitVersionedFile(VersionedFile):
         If the method is fulltext, next will be None.
         """
         position_map = self._get_components_positions(version_ids)
-        # c = component_id, m = method, p = position, s = size, n = next
-        records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
+        # c = component_id, m = method, i_m = index_memo, n = next
+        records = [(c, i_m) for c, (m, i_m, n) in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in \
                 self._data.read_records_iter(records):
-            method, position, size, next = position_map[component_id]
+            method, index_memo, next = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
         return record_map
@@ -939,8 +939,8 @@ class KnitVersionedFile(VersionedFile):
         # get a in-component-order queue:
         for version_id in self.versions():
             if version_id in requested_versions:
-                data_pos, length = self._index.get_position(version_id)
-                version_id_records.append((version_id, data_pos, length))
+                index_memo = self._index.get_position(version_id)
+                version_id_records.append((version_id, index_memo))
 
         total = len(version_id_records)
         for version_idx, (version_id, data, sha_value) in \
@@ -1274,9 +1274,9 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append('.' + version)
         return ' '.join(result_list)
 
-    def add_version(self, version_id, options, (pos, size), parents):
+    def add_version(self, version_id, options, index_memo, parents):
         """Add a version record to the index."""
-        self.add_versions(((version_id, options, (pos, size), parents),))
+        self.add_versions(((version_id, options, index_memo, parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1289,7 +1289,7 @@ class _KnitIndex(_KnitComponentFile):
         orig_cache = self._cache.copy()
 
         try:
-            for version_id, options, (pos, size), parents in versions:
+            for version_id, options, (index, pos, size), parents in versions:
                 line = "\n%s %s %s %s %s :" % (version_id,
                                                ','.join(options),
                                                pos,
@@ -1324,7 +1324,7 @@ class _KnitIndex(_KnitComponentFile):
     def get_position(self, version_id):
         """Return data position and size of specified version."""
         entry = self._cache[version_id]
-        return entry[2], entry[3]
+        return None, entry[2], entry[3]
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
@@ -1544,9 +1544,14 @@ class KnitGraphIndex(object):
         return tuple(key[0] for key in keys)
 
     def get_position(self, version_id):
-        """Return data position and size of specified version."""
-        bits = self._get_node(version_id)[2][1:].split(' ')
-        return int(bits[0]), int(bits[1])
+        """Return details needed to access the version.
+        
+        :return: a tuple (index, data position, size) to hand to the access
+            logic to get the record.
+        """
+        node = self._get_node(version_id)
+        bits = node[2][1:].split(' ')
+        return node[0], int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
@@ -1602,9 +1607,9 @@ class KnitGraphIndex(object):
         if missing:
             raise RevisionNotPresent(missing.pop(), self)
 
-    def add_version(self, version_id, options, (pos, size), parents):
+    def add_version(self, version_id, options, access_memo, parents):
         """Add a version record to the index."""
-        return self.add_versions(((version_id, options, (pos, size), parents),))
+        return self.add_versions(((version_id, options, access_memo, parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1624,8 +1629,12 @@ class KnitGraphIndex(object):
         # check for dups
 
         keys = {}
-        for (version_id, options, (pos, size), parents) in versions:
+        for (version_id, options, access_memo, parents) in versions:
             # index keys are tuples:
+            try:
+                pos, size = access_memo
+            except ValueError:
+                index, pos, size = access_memo
             key = (version_id, )
             parents = tuple((parent, ) for parent in parents)
             if 'no-eol' in options:
@@ -1711,7 +1720,7 @@ class _KnitAccess(object):
             base = 0
         result = []
         for size in sizes:
-            result.append((base, size))
+            result.append((None, base, size))
             base += size
         return result
 
@@ -1745,7 +1754,8 @@ class _KnitAccess(object):
             a readv tuple.
         :return: An iterator over the bytes of the records.
         """
-        for pos, data in self._transport.readv(self._filename, memos_for_retrieval):
+        read_vector = [(pos, size) for (index, pos, size) in memos_for_retrieval]
+        for pos, data in self._transport.readv(self._filename, read_vector):
             yield data
 
 
@@ -1978,16 +1988,16 @@ class _KnitData(object):
             # grab the disk data needed.
             if self._cache:
                 # Don't check _cache if it is empty
-                needed_offsets = [(pos, size) for version_id, pos, size
+                needed_offsets = [index_memo for version_id, index_memo
                                               in records
                                               if version_id not in self._cache]
             else:
-                needed_offsets = [(pos, size) for version_id, pos, size
+                needed_offsets = [index_memo for version_id, index_memo
                                                in records]
 
             raw_records = self._access.get_raw_records(needed_offsets)
 
-        for version_id, pos, size in records:
+        for version_id, index_memo in records:
             if version_id in self._cache:
                 # This data has already been validated
                 data = self._cache[version_id]
@@ -2038,9 +2048,9 @@ class _KnitData(object):
         # The transport optimizes the fetching as well 
         # (ie, reads continuous ranges.)
         raw_data = self._access.get_raw_records(
-            [(pos, size) for version_id, pos, size in needed_records])
+            [index_memo for version_id, index_memo in needed_records])
 
-        for (version_id, pos, size), data in \
+        for (version_id, index_memo), data in \
                 izip(iter(needed_records), raw_data):
             content, digest = self._parse_record(version_id, data)
             if self._do_cache:
@@ -2136,8 +2146,8 @@ class InterKnit(InterVersionedFile):
                     assert (self.target.has_version(parent) or
                             parent in copy_set or
                             not self.source.has_version(parent))
-                data_pos, data_size = self.source._index.get_position(version_id)
-                copy_queue_records.append((version_id, data_pos, data_size))
+                index_memo = self.source._index.get_position(version_id)
+                copy_queue_records.append((version_id, index_memo))
                 copy_queue.append((version_id, options, parents))
                 copy_set.add(version_id)
 
