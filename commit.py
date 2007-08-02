@@ -406,8 +406,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
                                             self.pool)
 
-            branch_batons.reverse()
-            for baton in branch_batons:
+            for baton in reversed(branch_batons):
                 self.editor.close_directory(baton, self.pool)
 
             self.editor.close()

@@ -383,7 +383,6 @@ class InterFromSvnRepository(InterRepository):
 
         repos_root = self.source.transport.get_repos_root()
 
-        needed.reverse()
         prev_revid = None
         transport = self.source.transport
         self.target.lock_write()
@@ -395,7 +394,7 @@ class InterFromSvnRepository(InterRepository):
         num = 0
         prev_inv = None
         try:
-            for revid in needed:
+            for revid in reversed(needed):
                 (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 

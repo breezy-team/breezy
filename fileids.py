@@ -168,13 +168,11 @@ class FileIdMap(object):
             else:
                 map = {}
 
-        todo.reverse()
-        
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1
-            for (revid, global_changes) in todo:
+            for (revid, global_changes) in reversed(todo):
                 changes = get_local_changes(global_changes, scheme,
                                             self.repos.generate_revision_id, 
                                             self.repos._log.find_children)

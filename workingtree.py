@@ -516,9 +516,8 @@ class SvnWorkingTree(WorkingTree):
             files = [files]
             if isinstance(ids, str):
                 ids = [ids]
-        if ids:
-            ids = copy(ids)
-            ids.reverse()
+        if ids is not None:
+            ids = iter(ids)
         assert isinstance(files, list)
         for f in files:
             wc = self._get_wc(os.path.dirname(f), write_lock=True)
@@ -526,8 +525,8 @@ class SvnWorkingTree(WorkingTree):
                 try:
                     svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
                             None, None, None)
-                    if ids:
-                        self._change_fileid_mapping(ids.pop(), f, wc)
+                    if ids is not None:
+                        self._change_fileid_mapping(ids.next(), f, wc)
                 except SubversionException, (_, num):
                     if num == svn.core.SVN_ERR_ENTRY_EXISTS:
                         continue
