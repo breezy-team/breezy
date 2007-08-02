@@ -27,7 +27,7 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
                     ReplaySnapshotError, ReplayParentsInconsistent, 
-                    replay_delta_workingtree)
+                    replay_delta_workingtree, replay_determine_base)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -95,6 +95,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
                 generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                    ["bloe", "bla"],
                     b.repository.revision_parents, 
                     lambda y: "new"+y))
      
@@ -115,6 +116,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
                 generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                    ["bloe", "bla"],
                     b.repository.revision_parents,
                     lambda y: "new"+y))
  
@@ -185,8 +187,9 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "D": ["A"],
                 "E": ["D", "B"]
         }
-        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'", "B"])}, 
-                generate_simple_plan(["A", "D", "E"], "D", "C", 
+        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
+                generate_simple_plan(["A", "D", "E"], 
+                                     "D", "C", ["A", "B", "C"], 
                     parents_map.get, lambda y: y+"'"))
  
 
@@ -512,23 +515,32 @@ class TestReplayWorkingtree(TestCaseWithTransport):
 
         Rebasing E on C should result in:
 
-        A -> B -> C -> D -> E
+        A -> B -> C -> D' -> E'
+
+        Ancestry:
+        A: 
+        B: A
+        C: A, B
+        D: A
+        E: A, B, D
+        D': A, B, C
+        E': A, B, C, D'
+
         """
         oldwt = self.make_branch_and_tree("old")
         self.build_tree(['old/afile'])
+        file("old/afile", "w").write("A\n")
         oldwt.add(["afile"])
         oldwt.commit("base", rev_id="A")
-
         newwt = oldwt.bzrdir.sprout("new").open_workingtree()
-        file("old/afile", "w").write("bloe")
+        file("old/afile", "w").write("B\n")
         oldwt.commit("bla", rev_id="B")
-        file("old/afile", "w").write("blaaah")
+        file("old/afile", "w").write("C\n")
         oldwt.commit("bla", rev_id="C")
         self.build_tree(['new/bfile'])
         newwt.add(["bfile"])
         newwt.commit("bla", rev_id="D")
-        file("old/bfile", "w").write("blaaah")
-        file("old/afile", "w").write("bloe")
+        file("new/bfile", "w").write("blaaah")
         newwt.add_pending_merge("B")
         newwt.commit("bla", rev_id="E")
         newwt.branch.repository.fetch(oldwt.branch.repository)
@@ -536,10 +548,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
-        replay_delta_workingtree(newwt, "E", "E'", ["D'", "B"])
+        replay_delta_workingtree(newwt, "E", "E'", ["D'"])
         oldrev = newwt.branch.repository.get_revision("E")
         newrev = newwt.branch.repository.get_revision("E'")
-        self.assertEquals(["D'", "B"], newrev.parent_ids)
+        self.assertEquals(["D'"], newrev.parent_ids)
         self.assertEquals(["A", "B", "C", "D'", "E'"], 
                           newwt.branch.revision_history())
 
@@ -552,3 +564,47 @@ class TestReplaySnapshotError(TestCase):
 class TestReplayParentsInconsistent(TestCase):
     def test_create(self):
         ReplayParentsInconsistent("afileid", "arevid")
+
+class DetermineWorkingTree(TestCase):
+    def test_simple(self):
+        self.assertEquals("B",
+                replay_determine_base({"B": ["A"], "B'": ["A"], "C": ["B"]}, 
+                "C", ["B'"]))
+
+    def test_diverged(self):
+        """
+        A
+        | \ 
+        B  D
+        |  |
+        C  E
+        """
+        graph = {
+                "A": [],
+                "B": ["A"],
+                "C": ["B"],
+                "D": ["A"],
+                "E": ["D"]}
+        self.assertEquals("D", 
+                replay_determine_base(graph, "E", ["D'"]))
+        self.assertEquals("A", 
+                replay_determine_base(graph, "D", ["C"]))
+
+    def test_merged(self):
+        """
+        A
+        |\ 
+        B D
+        |\|
+        C E
+        """
+        graph = {
+                "A": [],
+                "B": ["A"],
+                "C": ["B"],
+                "D": ["A"],
+                "E": ["D", "B"]}
+        self.assertEquals("D", 
+                replay_determine_base(graph, "E", ["D'"]))
+        self.assertEquals("A", 
+                replay_determine_base(graph, "D", ["C"]))

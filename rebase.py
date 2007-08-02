@@ -118,13 +118,14 @@ def regenerate_default_revid(repository, revid):
 
 
 def generate_simple_plan(history, start_revid, onto_revid, 
-                         get_parents, generate_revid):
+                         onto_ancestry, get_parents, generate_revid):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
 
     :param history: Revision history
     :param start_revid: Id of revision at which to start replaying
     :param onto_revid: Id of revision on top of which to replay
+    :param onto_ancestry: Ancestry of onto_revid
     :param get_parents: Function for obtaining the parents of a revision
     :param generate_revid: Function for generating new revision ids
 
@@ -139,6 +140,8 @@ def generate_simple_plan(history, start_revid, onto_revid,
         assert len(parents) == 0 or \
                 parents[0] == history[history.index(oldrevid)-1]
         parents[0] = new_parent
+        parents = filter(lambda p: p not in onto_ancestry or p == onto_revid, 
+                         parents) 
         newrevid = generate_revid(oldrevid)
         assert newrevid != oldrevid
         replace_map[oldrevid] = (newrevid, parents)
@@ -347,8 +350,13 @@ def commit_rebase(wt, oldrev, newrevid):
     write_active_rebase_revid(wt, None)
 
 
-def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
-        merge_type=None):
+def replay_determine_base(graph, oldrevid, newparents):
+    # TODO: This is not the most appropriate base tree. 
+    return graph[oldrevid][0]
+
+
+def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
+                             map_ids=False, merge_type=None):
     """Replay a commit in a working tree, with a different base.
 
     :param wt: Working tree in which to do the replays.
@@ -371,10 +379,11 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, map_ids=False,
     assert not wt.changes_from(wt.basis_tree()).has_changed()
 
     oldtree = repository.revision_tree(oldrevid)
-    # TODO: This is not the most appropriate base tree. 
-    basetree = repository.revision_tree(oldrev.parent_ids[0])
+    baserevid = replay_determine_base(repository.get_revision_graph(), 
+                                      oldrevid, newparents)
+    basetree = repository.revision_tree(baserevid)
     if map_ids:
-        fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
+        fileid_map = map_file_ids(repository, oldrev.parent_ids, newparents)
         oldtree = MapTree(repository, oldtree, fileid_map)
         basetree = MapTree(repository, basetree, fileid_map)
 

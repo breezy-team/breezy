@@ -122,6 +122,7 @@ class cmd_rebase(Command):
             # Create plan
             replace_map = generate_simple_plan(
                     wt.branch.revision_history(), start_revid, onto,
+                    wt.branch.repository.get_ancestry(onto),
                     wt.branch.repository.revision_parents,
                     lambda revid: regenerate_default_revid(wt.branch.repository, revid)
                     )
