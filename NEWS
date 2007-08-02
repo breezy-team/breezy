@@ -182,6 +182,9 @@ IN DEVELOPMENT
       during pack creation, without needing a separate pass across the output
       pack to gather such details. (Robert Collins)
 
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
