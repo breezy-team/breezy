@@ -253,6 +253,21 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual(['1234567890', 'alpha'],
             list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
+    def test_set_writer(self):
+        """The writer should be settable post construction."""
+        access = _PackAccess({})
+        transport = self.get_transport()
+        packname = 'packfile'
+        index = 'foo'
+        def write_data(bytes):
+            transport.append_bytes(packname, bytes)
+        writer = pack.ContainerWriter(write_data)
+        writer.begin()
+        access.set_writer(writer, index, (transport, packname))
+        memos = access.add_raw_records([10], '1234567890')
+        writer.end()
+        self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
+
 
 class LowLevelKnitDataTests(TestCase):
 

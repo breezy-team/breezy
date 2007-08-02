@@ -1829,6 +1829,12 @@ class _PackAccess(object):
         """Pack based knits have no single file."""
         return None
 
+    def set_writer(self, writer, index, (transport, packname)):
+        """Set a writer to use for adding data."""
+        self.indices[index] = (transport, packname)
+        self.container_writer = writer
+        self.write_index = index
+
 
 class _KnitData(object):
     """Manage extraction of data from a KnitAccess, caching and decompressing."""
