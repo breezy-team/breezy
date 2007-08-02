@@ -1,5 +1,7 @@
 0.2		UNRELEASED
 
+ * Support the -r argument to rebase.
+
  * Add --dry-run option to rebase command. 
 
  * Fix compatibility wit Bazaar 0.19.

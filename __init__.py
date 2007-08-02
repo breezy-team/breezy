@@ -120,6 +120,17 @@ class cmd_rebase(Command):
             start_revid = wt.branch.get_rev_id(
                     wt.branch.revision_id_to_revno(common_revid)+1)
             stop_revid = wt.branch.last_revision()
+            if revision is not None:
+                if len(revision) == 1:
+                    if revision[0] is not None:
+                        stop_revid = revision[0].in_history(wt.branch).rev_id
+                elif len(revision) == 2:
+                    if revision[0] is not None:
+                        start_revid = revision[0].in_history(wt.branch).rev_id
+                    if revision[1] is not None:
+                        stop_revid = revision[1].in_history(wt.branch).rev_id
+                else:
+                    raise BzrCommandError("--revision takes only one or two arguments")
 
             # Create plan
             replace_map = generate_simple_plan(

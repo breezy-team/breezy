@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Couple of blackbox tests for the rebase plugin."""
 
+from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
 
 import os
@@ -51,6 +52,41 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m this')
         self.check_output('', 'rebase ../main')
         self.check_output('3\n', 'revno')
+
+    def test_range(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hoi', "my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.make_file('hooi', "your data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m that')
+        self.make_file('hoooi', "someone else's data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m these')
+        self.check_output('', 'rebase -r2..3 ../main')
+        self.check_output('4\n', 'revno')
+
+    def test_range_open_end(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hoi', "my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.make_file('hooi', "your data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m that')
+        self.make_file('hoooi', "someone else's data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m these')
+        self.check_output('', 'rebase -r4.. ../main')
+        self.check_output('3\n', 'revno')
+        branch = Branch.open(".")
+        self.assertEquals("these", 
+            branch.repository.get_revision(branch.last_revision()).message)
 
     def test_conflicting(self):
         self.make_file('hello', '42')
