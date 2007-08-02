@@ -66,18 +66,34 @@ class ContainerWriter(object):
         :param write_func: a callable that will be called when this
             ContainerWriter needs to write some bytes.
         """
-        self.write_func = write_func
+        self._write_func = write_func
+        self.current_offset = 0
 
     def begin(self):
         """Begin writing a container."""
         self.write_func(FORMAT_ONE + "\n")
+
+    def write_func(self, bytes):
+        self._write_func(bytes)
+        self.current_offset += len(bytes)
 
     def end(self):
         """Finish writing a container."""
         self.write_func("E")
 
     def add_bytes_record(self, bytes, names):
-        """Add a Bytes record with the given names."""
+        """Add a Bytes record with the given names.
+        
+        :param bytes: The bytes to insert.
+        :param names: The names to give the inserted bytes.
+        :return: An offset, length tuple. The offset is the offset
+            of the record within the container, and the length is the
+            length of data that will need to be read to reconstitute the
+            record. These offset and length can only be used with the pack
+            interface - they might be offset by headers or other such details
+            and thus are only suitable for use by a ContainerReader.
+        """
+        current_offset = self.current_offset
         # Kind marker
         self.write_func("B")
         # Length
@@ -92,6 +108,8 @@ class ContainerWriter(object):
         self.write_func("\n")
         # Finally, the contents.
         self.write_func(bytes)
+        # return a memo of where we wrote data to allow random access.
+        return current_offset, self.current_offset - current_offset
 
 
 class BaseReader(object):

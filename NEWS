@@ -177,6 +177,11 @@ IN DEVELOPMENT
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
 
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and

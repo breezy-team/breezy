@@ -54,7 +54,8 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=[])
+        offset, length = writer.add_bytes_record('abc', names=[])
+        self.assertEqual((42, 7), (offset, length))
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc',
                          output.getvalue())
 
@@ -63,7 +64,8 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=['name1'])
+        offset, length = writer.add_bytes_record('abc', names=['name1'])
+        self.assertEqual((42, 13), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\n\nabc',
@@ -74,10 +76,24 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=['name1', 'name2'])
+        offset, length = writer.add_bytes_record('abc', names=['name1', 'name2'])
+        self.assertEqual((42, 19), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\nname2\n\nabc',
+            output.getvalue())
+
+    def test_add_second_bytes_record_gets_higher_offset(self):
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('abc', names=[])
+        offset, length = writer.add_bytes_record('abc', names=[])
+        self.assertEqual((49, 7), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\n\nabc'
+            'B3\n\nabc',
             output.getvalue())
 
     def test_add_bytes_record_invalid_name(self):
