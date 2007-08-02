@@ -26,6 +26,7 @@ from bzrlib import (
     errors,
     generate_ids,
     knit,
+    pack,
     )
 from bzrlib.errors import (
     RevisionAlreadyPresent,
@@ -40,13 +41,20 @@ from bzrlib.knit import (
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
+    _KnitAccess,
     _KnitData,
     _KnitIndex,
+    _PackAccess,
     WeaveToKnit,
     KnitSequenceMatcher,
     )
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCase, TestCaseWithTransport, Feature
+from bzrlib.tests import (
+    Feature,
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    )
 from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.weave import Weave
@@ -145,6 +153,76 @@ class MockTransport(object):
         return queue_call
 
 
+class KnitRecordAccessTestsMixin(object):
+    """Tests for getting and putting knit records."""
+
+    def assertAccessExists(self, access):
+        """Ensure the data area for access has been initialised/exists."""
+        raise NotImplementedError(self.assertAccessExists)
+
+    def test_add_raw_records(self):
+        """Add_raw_records adds records retrievable later."""
+        access = self.get_access()
+        memos = access.add_raw_records([10], '1234567890')
+        self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
+    
+    def test_create(self):
+        """create() should make a file on disk."""
+        access = self.get_access()
+        access.create()
+        self.assertAccessExists(access)
+
+    def test_open_file(self):
+        """open_file never errors."""
+        access = self.get_access()
+        access.open_file()
+
+# what is the key interface elements - what code do I want to write:
+# insertion:
+# here is a raw record. please write it somewhere and return the readv I should
+# make to get it back.
+# here are many records -> returns many readvs
+# here is a readv I was given earlier, please return the raw data
+
+
+class TestKnitKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
+    """Tests for the .kndx implementation."""
+
+    def assertAccessExists(self, access):
+        self.assertNotEqual(None, access.open_file())
+
+    def get_access(self):
+        """Get a .knit style access instance."""
+        access = _KnitAccess(self.get_transport(), "foo.knit", None, None,
+            False, False)
+        return access
+    
+
+class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
+    """Tests for the pack based access."""
+
+    def assertAccessExists(self, access):
+        # as pack based access has no backing unless an index maps data, this
+        # is a no-op.
+        pass
+
+    def get_access(self):
+        transport = self.get_transport()
+        def write_data(bytes):
+            transport.append_bytes('packfile', bytes)
+        writer = pack.ContainerWriter(write_data)
+        writer.begin()
+        index = "FOO"
+        indices = {"FOO":(transport, 'packfile')}
+        access = _PackAccess(indices, writer=(writer, 'FOO'))
+        return access
+
+# missing tests:
+# - add several records
+# - read from several packs
+# - add data readonly?
+
+
 class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
@@ -162,7 +240,8 @@ class LowLevelKnitDataTests(TestCase):
                                         'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         records = [('rev-id-1', 0, len(gz_txt))]
 
         contents = data.read_records(records)
@@ -179,7 +258,8 @@ class LowLevelKnitDataTests(TestCase):
                                         'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         records = [('rev-id-1', 0, len(gz_txt))]
         self.assertRaises(errors.KnitCorrupt, data.read_records, records)
 
@@ -196,7 +276,8 @@ class LowLevelKnitDataTests(TestCase):
                                         'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         records = [('rev-id-1', 0, len(gz_txt))]
         self.assertRaises(errors.KnitCorrupt, data.read_records, records)
 
@@ -212,7 +293,8 @@ class LowLevelKnitDataTests(TestCase):
                                         'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         # We are asking for rev-id-2, but the data is rev-id-1
         records = [('rev-id-2', 0, len(gz_txt))]
         self.assertRaises(errors.KnitCorrupt, data.read_records, records)
@@ -229,7 +311,8 @@ class LowLevelKnitDataTests(TestCase):
                'end rev-id-1\n'
                % (sha1sum,))
         transport = MockTransport([txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         records = [('rev-id-1', 0, len(txt))]
 
         # We don't have valid gzip data ==> corrupt
@@ -249,7 +332,8 @@ class LowLevelKnitDataTests(TestCase):
         # Change 2 bytes in the middle to \xff
         gz_txt = gz_txt[:10] + '\xff\xff' + gz_txt[12:]
         transport = MockTransport([gz_txt])
-        data = _KnitData(transport, 'filename', mode='r')
+        access = _KnitAccess(transport, 'filename', None, None, False, False)
+        data = _KnitData(access=access)
         records = [('rev-id-1', 0, len(gz_txt))]
 
         self.assertRaises(errors.KnitCorrupt, data.read_records, records)
