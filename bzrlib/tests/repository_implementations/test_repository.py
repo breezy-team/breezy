@@ -16,6 +16,7 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
+from cStringIO import StringIO
 import re
 
 import bzrlib
@@ -415,6 +416,11 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_serializer_format(self):
+        repo = self.make_repository('.')
+        format = repo.get_serializer_format()
+        self.assertEqual(repo._serializer.format_num, format)
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -533,24 +539,24 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_revision_graph(self):
         # we can get a mapping of id->parents for the entire revision graph or bits thereof.
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1'],
-                          'rev3':['rev2'],
-                          'rev4':['rev3'],
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', ),
+                          'rev3':('rev2', ),
+                          'rev4':('rev3', ),
                           },
                          self.bzrdir.open_repository().get_revision_graph(None))
-        self.assertEqual({'rev1':[]},
+        self.assertEqual({'rev1':()},
                          self.bzrdir.open_repository().get_revision_graph('rev1'))
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1']},
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', )},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
         # and ghosts are not mentioned
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1'],
-                          'rev3':['rev2'],
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', ),
+                          'rev3':('rev2', ),
                           },
                          self.bzrdir.open_repository().get_revision_graph('rev3'))
         # and we can ask for the NULLREVISION graph
@@ -679,3 +685,11 @@ class TestEscaping(TestCaseWithTransport):
         revtree = branch.repository.revision_tree(REV_ID)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
+
+    def test_create_bundle(self):
+        wt = self.make_branch_and_tree('repo')
+        self.build_tree(['repo/file1'])
+        wt.add('file1')
+        wt.commit('file1', rev_id='rev1')
+        fileobj = StringIO()
+        wt.branch.repository.create_bundle('rev1', NULL_REVISION, fileobj)

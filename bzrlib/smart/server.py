@@ -22,6 +22,7 @@ import threading
 
 from bzrlib.hooks import Hooks
 from bzrlib import (
+    errors,
     trace,
     transport,
 )
@@ -65,8 +66,30 @@ class SmartTCPServer(object):
 
     def serve(self):
         self._should_terminate = False
+        # for hooks we are letting code know that a server has started (and
+        # later stopped).
+        # There are three interesting urls:
+        # The URL the server can be contacted on. (e.g. bzr://host/)
+        # The URL that a commit done on the same machine as the server will
+        # have within the servers space. (e.g. file:///home/user/source)
+        # The URL that will be given to other hooks in the same process -
+        # the URL of the backing transport itself. (e.g. chroot+:///)
+        # We need all three because:
+        #  * other machines see the first
+        #  * local commits on this machine should be able to be mapped to
+        #    this server 
+        #  * commits the server does itself need to be mapped across to this
+        #    server.
+        # The latter two urls are different aliases to the servers url,
+        # so we group those in a list - as there might be more aliases 
+        # in the future.
+        backing_urls = [self.backing_transport.base]
+        try:
+            backing_urls.append(self.backing_transport.external_url())
+        except errors.InProcessTransport:
+            pass
         for hook in SmartTCPServer.hooks['server_started']:
-            hook(self.backing_transport.base, self.get_url())
+            hook(backing_urls, self.get_url())
         self._started.set()
         try:
             try:
@@ -100,7 +123,7 @@ class SmartTCPServer(object):
                 # ignore errors on close
                 pass
             for hook in SmartTCPServer.hooks['server_stopped']:
-                hook(self.backing_transport.base, self.get_url())
+                hook(backing_urls, self.get_url())
 
     def get_url(self):
         """Return the url of the server"""
@@ -163,11 +186,11 @@ class SmartServerHooks(Hooks):
         Hooks.__init__(self)
         # Introduced in 0.16:
         # invoked whenever the server starts serving a directory.
-        # The api signature is (backing url, public url).
+        # The api signature is (backing urls, public url).
         self['server_started'] = []
         # Introduced in 0.16:
         # invoked whenever the server stops serving a directory.
-        # The api signature is (backing url, public url).
+        # The api signature is (backing urls, public url).
         self['server_stopped'] = []
 
 SmartTCPServer.hooks = SmartServerHooks()

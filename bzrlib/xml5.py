@@ -151,6 +151,7 @@ class Serializer_v5(Serializer):
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = set(['file', 'directory', 'symlink'])
+    format_num = '5'
 
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
