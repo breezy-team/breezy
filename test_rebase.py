@@ -18,6 +18,7 @@
 from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.trace import mutter
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
                     replay_snapshot, generate_simple_plan,
@@ -27,7 +28,7 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
                     ReplaySnapshotError, ReplayParentsInconsistent, 
-                    replay_delta_workingtree, replay_determine_base)
+                    replay_delta_workingtree)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -529,18 +530,20 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         """
         oldwt = self.make_branch_and_tree("old")
         self.build_tree(['old/afile'])
-        file("old/afile", "w").write("A\n")
+        file("old/afile", "w").write("A\n" * 10)
         oldwt.add(["afile"])
         oldwt.commit("base", rev_id="A")
         newwt = oldwt.bzrdir.sprout("new").open_workingtree()
-        file("old/afile", "w").write("B\n")
+        file("old/afile", "w").write("A\n"*10 + "B\n")
         oldwt.commit("bla", rev_id="B")
-        file("old/afile", "w").write("C\n")
+        file("old/afile", "w").write("A\n" * 10 + "C\n")
         oldwt.commit("bla", rev_id="C")
         self.build_tree(['new/bfile'])
         newwt.add(["bfile"])
+        file("new/bfile", "w").write("D\n")
         newwt.commit("bla", rev_id="D")
-        file("new/bfile", "w").write("blaaah")
+        file("new/afile", "w").write("E\n" + "A\n"*10 + "B\n")
+        file("new/bfile", "w").write("D\nE\n")
         newwt.add_pending_merge("B")
         newwt.commit("bla", rev_id="E")
         newwt.branch.repository.fetch(oldwt.branch.repository)
@@ -548,7 +551,11 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
-        replay_delta_workingtree(newwt, "E", "E'", ["D'"])
+        self.assertRaises(ConflictsInTree, 
+            lambda: replay_delta_workingtree(newwt, "E", "E'", ["D'"]))
+        self.assertEquals("E\n" + "A\n" * 10 + "C\n",
+                open("new/afile", 'r').read())
+        mutter("bfile: %s" % open("new/bfile", "r").read())
         oldrev = newwt.branch.repository.get_revision("E")
         newrev = newwt.branch.repository.get_revision("E'")
         self.assertEquals(["D'"], newrev.parent_ids)
@@ -565,46 +572,3 @@ class TestReplayParentsInconsistent(TestCase):
     def test_create(self):
         ReplayParentsInconsistent("afileid", "arevid")
 
-class DetermineWorkingTree(TestCase):
-    def test_simple(self):
-        self.assertEquals("B",
-                replay_determine_base({"B": ["A"], "B'": ["A"], "C": ["B"]}, 
-                "C", ["B'"]))
-
-    def test_diverged(self):
-        """
-        A
-        | \ 
-        B  D
-        |  |
-        C  E
-        """
-        graph = {
-                "A": [],
-                "B": ["A"],
-                "C": ["B"],
-                "D": ["A"],
-                "E": ["D"]}
-        self.assertEquals("D", 
-                replay_determine_base(graph, "E", ["D'"]))
-        self.assertEquals("A", 
-                replay_determine_base(graph, "D", ["C"]))
-
-    def test_merged(self):
-        """
-        A
-        |\ 
-        B D
-        |\|
-        C E
-        """
-        graph = {
-                "A": [],
-                "B": ["A"],
-                "C": ["B"],
-                "D": ["A"],
-                "E": ["D", "B"]}
-        self.assertEquals("D", 
-                replay_determine_base(graph, "E", ["D'"]))
-        self.assertEquals("A", 
-                replay_determine_base(graph, "D", ["C"]))

@@ -16,8 +16,9 @@
 """Rebase."""
 
 from bzrlib.config import Config
-from bzrlib.errors import BzrError, NoSuchFile, UnknownFormatError
+from bzrlib.errors import BzrError, NoSuchFile, UnknownFormatError, UnrelatedBranches
 from bzrlib.generate_ids import gen_revision_id
+from bzrlib.merge import Merger
 from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -350,21 +351,14 @@ def commit_rebase(wt, oldrev, newrevid):
     write_active_rebase_revid(wt, None)
 
 
-def replay_determine_base(graph, oldrevid, newparents):
-    # TODO: This is not the most appropriate base tree. 
-    return graph[oldrevid][0]
-
-
 def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
-                             map_ids=False, merge_type=None):
+                             merge_type=None):
     """Replay a commit in a working tree, with a different base.
 
     :param wt: Working tree in which to do the replays.
     :param oldrevid: Old revision id
     :param newrevid: New revision id
     :param newparents: New parent revision ids
-    :param map_ids: Whether to map file ids from the rebased revision using 
-        the old and new parent tree file ids.
     """
     repository = wt.branch.repository
     if merge_type is None:
@@ -375,21 +369,21 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     # in the working tree
     if wt.changes_from(wt.basis_tree()).has_changed():
         raise BzrError("Working tree has uncommitted changes.")
-    complete_revert(wt, newparents)
+    complete_revert(wt, [newparents[0]])
     assert not wt.changes_from(wt.basis_tree()).has_changed()
 
     oldtree = repository.revision_tree(oldrevid)
-    baserevid = replay_determine_base(repository.get_revision_graph(), 
-                                      oldrevid, newparents)
-    basetree = repository.revision_tree(baserevid)
-    if map_ids:
-        fileid_map = map_file_ids(repository, oldrev.parent_ids, newparents)
-        oldtree = MapTree(repository, oldtree, fileid_map)
-        basetree = MapTree(repository, basetree, fileid_map)
-
     write_active_rebase_revid(wt, oldrevid)
-    merge = merge_type(working_tree=wt, this_tree=wt, base_tree=basetree,
-                       other_tree=oldtree)
+    merger = Merger(wt.branch, this_tree=wt)
+    merger.set_other_revision(oldrevid, wt.branch)
+    try:
+        merger.find_base()
+    except UnrelatedBranches:
+        merger.set_base_revision(NULL_REVISION, wt.branch)
+    merger.merge_type = merge_type
+    merger.do_merge()
+    for newparent in newparents[1:]:
+        wt.add_pending_merge(newparent)
 
     commit_rebase(wt, oldrev, newrevid)
 
