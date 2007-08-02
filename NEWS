@@ -106,6 +106,9 @@ IN DEVELOPMENT
     * Fix ``bzr update`` to avoid an unnecessary
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
+
+    * Log errors from the smart server in the trace file, to make debugging 
+      test failures (and live failures!) easier.  (Andrew Bennetts)
       
 
   LIBRARY API BREAKS:
