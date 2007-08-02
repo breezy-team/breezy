@@ -95,7 +95,8 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
-                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                generate_simple_plan(b.revision_history(), "bla2", None, 
+                    "bloe", 
                     ["bloe", "bla"],
                     b.repository.revision_parents, 
                     lambda y: "new"+y))
@@ -116,7 +117,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello again', rev_id="bla3")
 
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
-                generate_simple_plan(b.revision_history(), "bla2", "bloe", 
+                generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
                     ["bloe", "bla"],
                     b.repository.revision_parents,
                     lambda y: "new"+y))
@@ -190,7 +191,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         }
         self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
                 generate_simple_plan(["A", "D", "E"], 
-                                     "D", "C", ["A", "B", "C"], 
+                                     "D", None, "C", ["A", "B", "C"], 
                     parents_map.get, lambda y: y+"'"))
  
 

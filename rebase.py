@@ -118,13 +118,14 @@ def regenerate_default_revid(repository, revid):
     return gen_revision_id(rev.committer, rev.timestamp)
 
 
-def generate_simple_plan(history, start_revid, onto_revid, 
+def generate_simple_plan(history, start_revid, stop_revid, onto_revid, 
                          onto_ancestry, get_parents, generate_revid):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
 
     :param history: Revision history
     :param start_revid: Id of revision at which to start replaying
+    :param stop_revid: Id of revision until which to stop replaying
     :param onto_revid: Id of revision on top of which to replay
     :param onto_ancestry: Ancestry of onto_revid
     :param get_parents: Function for obtaining the parents of a revision
@@ -134,9 +135,16 @@ def generate_simple_plan(history, start_revid, onto_revid,
     """
     assert start_revid in history
     replace_map = {}
-    i = history.index(start_revid)
+    if start_revid is not None:
+        start_revno = history.index(start_revid)
+    else:
+        start_revno = None
+    if stop_revid is not None:
+        stop_revno = history.index(stop_revid)+1
+    else:
+        stop_revno = None
     new_parent = onto_revid
-    for oldrevid in history[i:]: 
+    for oldrevid in history[start_revno:stop_revno]: 
         parents = get_parents(oldrevid)
         assert len(parents) == 0 or \
                 parents[0] == history[history.index(oldrevid)-1]
