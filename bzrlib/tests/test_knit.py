@@ -165,7 +165,22 @@ class KnitRecordAccessTestsMixin(object):
         access = self.get_access()
         memos = access.add_raw_records([10], '1234567890')
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
-    
+ 
+    def test_add_several_raw_records(self):
+        """add_raw_records with many records and read some back."""
+        access = self.get_access()
+        memos = access.add_raw_records([10, 2, 5], '12345678901234567')
+        self.assertEqual(['1234567890', '12', '34567'],
+            list(access.get_raw_records(memos)))
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[0:1])))
+        self.assertEqual(['12'],
+            list(access.get_raw_records(memos[1:2])))
+        self.assertEqual(['34567'],
+            list(access.get_raw_records(memos[2:3])))
+        self.assertEqual(['1234567890', '34567'],
+            list(access.get_raw_records(memos[0:1] + memos[2:3])))
+
     def test_create(self):
         """create() should make a file on disk."""
         access = self.get_access()
@@ -176,13 +191,6 @@ class KnitRecordAccessTestsMixin(object):
         """open_file never errors."""
         access = self.get_access()
         access.open_file()
-
-# what is the key interface elements - what code do I want to write:
-# insertion:
-# here is a raw record. please write it somewhere and return the readv I should
-# make to get it back.
-# here are many records -> returns many readvs
-# here is a readv I was given earlier, please return the raw data
 
 
 class TestKnitKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
@@ -207,20 +215,43 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         pass
 
     def get_access(self):
+        return self._get_access()[0]
+
+    def _get_access(self, packname='packfile', index='FOO'):
         transport = self.get_transport()
         def write_data(bytes):
-            transport.append_bytes('packfile', bytes)
+            transport.append_bytes(packname, bytes)
         writer = pack.ContainerWriter(write_data)
         writer.begin()
-        index = "FOO"
-        indices = {"FOO":(transport, 'packfile')}
-        access = _PackAccess(indices, writer=(writer, 'FOO'))
-        return access
+        indices = {index:(transport, packname)}
+        access = _PackAccess(indices, writer=(writer, index))
+        return access, writer
 
-# missing tests:
-# - add several records
-# - read from several packs
-# - add data readonly?
+    def test_read_from_several_packs(self):
+        access, writer = self._get_access()
+        memos = []
+        memos.extend(access.add_raw_records([10], '1234567890'))
+        writer.end()
+        access, writer = self._get_access('pack2', 'FOOBAR')
+        memos.extend(access.add_raw_records([5], '12345'))
+        writer.end()
+        access, writer = self._get_access('pack3', 'BAZ')
+        memos.extend(access.add_raw_records([5], 'alpha'))
+        writer.end()
+        transport = self.get_transport()
+        access = _PackAccess({"FOO":(transport, 'packfile'),
+            "FOOBAR":(transport, 'pack2'),
+            "BAZ":(transport, 'pack3')})
+        self.assertEqual(['1234567890', '12345', 'alpha'],
+            list(access.get_raw_records(memos)))
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[0:1])))
+        self.assertEqual(['12345'],
+            list(access.get_raw_records(memos[1:2])))
+        self.assertEqual(['alpha'],
+            list(access.get_raw_records(memos[2:3])))
+        self.assertEqual(['1234567890', 'alpha'],
+            list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
 
 class LowLevelKnitDataTests(TestCase):
