@@ -266,6 +266,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
     def test_run_bzr_subprocess(self):
         """The run_bzr_helper_external comand behaves nicely."""
         result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
         self.assertContainsRe(result[0], 'is free software')
         self.assertRaises(AssertionError, self.run_bzr_subprocess, 
@@ -273,7 +274,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
+        err = self.run_bzr_subprocess('merge --merge-type magic\ merge',
                                       retcode=3)[1]
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
@@ -388,7 +389,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
         raise _DontSpawnProcess()
 
     def test_run_bzr_subprocess_no_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
+        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess, '')
         command = self._popen_args[0]
         self.assertEqual(sys.executable, command[0])
         self.assertEqual(self.get_bzr_path(), command[1])
@@ -396,7 +397,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess,
-                          self.run_bzr_subprocess, allow_plugins=True)
+                          self.run_bzr_subprocess, '', allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
