@@ -729,11 +729,12 @@ class InventoryKnitThunk(object):
         # been updated enough to understand that, so we have a regular 2-list
         # index giving parents and compression source.
         self.repo._inv_write_index = InMemoryGraphIndex(reference_lists=2)
-        # we require that inv 'knits' be accessed from within the write 
-        # group to be able to be written to, simply because it makes this
-        # code cleaner - we don't need to track all 'open' knits and 
-        # adjust them. As the inventory knit is neither precious, nor the
-        # regular interface for data access, this seems sufficient.
+        # if we have created an inventory index, add the new write index to it
+        if getattr(self.repo, '_inv_all_indices', None) is not None:
+            self.repo._inv_all_indices.insert_index(0, self.repo._inv_write_index)
+            # we don't bother updating the knit layer, because there is not
+            # defined interface for adding inventories that should need the 
+            # existing knit to be changed - its all behind 'repo.add_inventory'.
 
 
 class GraphKnitRepository1(KnitRepository):
