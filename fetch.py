@@ -33,7 +33,7 @@ import svn.core
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
-                SVN_PROP_SVK_MERGE,
+                SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SVN_PROP_BZR_BRANCHING_SCHEME,
                 SvnRepositoryFormat, parse_revision_metadata,
@@ -188,6 +188,8 @@ class RevisionBuildEditor(svn.delta.Editor):
                 return
             
             self._bzr_merges = parse_merge_property(value.splitlines()[-1])
+        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
+            pass
         elif name == SVN_PROP_SVK_MERGE:
             self._svk_merges = None # Force Repository.revision_parents() to look it up
         elif name == SVN_PROP_BZR_REVISION_INFO:
@@ -204,6 +206,8 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_EXECUTABLE):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+            pass
+        elif name == SVN_PROP_BZR_MERGE:
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
