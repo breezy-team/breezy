@@ -31,7 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.container import ContainerReader
+from bzrlib.pack import ContainerReader
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.trace import note

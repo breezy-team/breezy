@@ -24,7 +24,7 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.container import ContainerWriter
+from bzrlib.pack import ContainerWriter
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
