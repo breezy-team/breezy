@@ -1284,16 +1284,6 @@ class KnitError(BzrError):
     internal_error = True
 
 
-class KnitHeaderError(KnitError):
-
-    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
-
-    def __init__(self, badline, filename):
-        KnitError.__init__(self)
-        self.badline = badline
-        self.filename = filename
-
-
 class KnitCorrupt(KnitError):
 
     _fmt = "Knit %(filename)s corrupt: %(how)s"
@@ -1302,6 +1292,25 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class KnitDataStreamIncompatible(KnitError):
+
+    _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
+
+    def __init__(self, stream_format, target_format):
+        self.stream_format = stream_format
+        self.target_format = target_format
+        
+
+class KnitHeaderError(KnitError):
+
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
+
+    def __init__(self, badline, filename):
+        KnitError.__init__(self)
+        self.badline = badline
+        self.filename = filename
 
 
 class KnitIndexUnknownMethod(KnitError):

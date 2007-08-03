@@ -85,6 +85,7 @@ from bzrlib.errors import (
     KnitError,
     InvalidRevisionId,
     KnitCorrupt,
+    KnitDataStreamIncompatible,
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
@@ -99,6 +100,7 @@ from bzrlib.osutils import (
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.ui
+from bzrlib.util import bencode
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
@@ -550,6 +552,87 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def get_data_stream(self, required_versions):
+        """Get a data stream for the specified versions.
+
+        Versions may be returned in any order, not necessarily the order
+        specified.
+
+        :param required_versions: the exact set of versions to be returned, i.e.
+            not a transitive closure.
+        
+        :returns: format_signature, list of (version, options, length, parents),
+            reader_callable.
+        """
+        required_versions = set([osutils.safe_revision_id(v) for v in
+            required_versions])
+        # we don't care about inclusions, the caller cares.
+        # but we need to setup a list of records to visit.
+        for version_id in required_versions:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+        # Pick the desired versions out of the index in oldest-to-newest order
+        version_list = []
+        for version_id in self.versions():
+            if version_id in required_versions:
+                version_list.append(version_id)
+
+        # create the list of version information for the result
+        copy_queue_records = []
+        copy_set = set()
+        result_version_list = []
+        for version_id in version_list:
+            options = self._index.get_options(version_id)
+            parents = self._index.get_parents_with_ghosts(version_id)
+            data_pos, data_size = self._index.get_position(version_id)
+            copy_queue_records.append((version_id, data_pos, data_size))
+            copy_set.add(version_id)
+            # version, options, length, parents
+            result_version_list.append((version_id, options, data_size,
+                parents))
+
+        # Read the compressed record data.
+        # XXX:
+        # From here down to the return should really be logic in the returned
+        # callable -- in a class that adapts read_records_iter_raw to read
+        # requests.
+        raw_datum = []
+        for (version_id, raw_data), \
+            (version_id2, options, _, parents) in \
+            izip(self._data.read_records_iter_raw(copy_queue_records),
+                 result_version_list):
+            assert version_id == version_id2, 'logic error, inconsistent results'
+            raw_datum.append(raw_data)
+        pseudo_file = StringIO(''.join(raw_datum))
+        def read(length):
+            if length is None:
+                return pseudo_file.read()
+            else:
+                return pseudo_file.read(length)
+        return (self.get_format_signature(), result_version_list, read)
+
+    def get_stream_as_bytes(self, required_versions):
+        """Generate a serialised data stream.
+
+        The format is a bencoding of a list.  The first element of the list is a
+        string of the format signature, then each subsequent element is a list
+        corresponding to a record.  Those lists contain:
+
+          * a version id
+          * a list of options
+          * a list of parents
+          * the bytes
+
+        :returns: a bencoded list.
+        """
+        knit_stream = self.get_data_stream(required_versions)
+        format_signature, data_list, callable = knit_stream
+        data = []
+        data.append(format_signature)
+        for version, options, length, parents in data_list:
+            data.append([version, options, parents, callable(length)])
+        return bencode.bencode(data)
+
     def _extract_blocks(self, version_id, source, target):
         if self._index.get_method(version_id) != 'line-delta':
             return None
@@ -584,6 +667,14 @@ class KnitVersionedFile(VersionedFile):
         else:
             delta = self.factory.parse_line_delta(data, version_id)
             return parent, sha1, noeol, delta
+
+    def get_format_signature(self):
+        """See VersionedFile.get_format_signature()."""
+        if self.factory.annotated:
+            annotated_part = "annotated"
+        else:
+            annotated_part = "plain"
+        return "knit-%s" % (annotated_part,)
         
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
@@ -619,6 +710,49 @@ class KnitVersionedFile(VersionedFile):
                     if parent == version_id:
                         return True
         return False
+
+    def insert_data_stream(self, (format, data_list, reader_callable)):
+        """Insert knit records from a data stream into this knit.
+
+        If a version in the stream is already present in this knit, it will not
+        be inserted a second time.  It will be checked for consistency with the
+        stored version however, and may cause a KnitCorrupt error to be raised
+        if the data in the stream disagrees with the already stored data.
+        
+        :seealso: get_data_stream
+        """
+        if format != self.get_format_signature():
+            mutter('incompatible format signature inserting to %r', self)
+            raise KnitDataStreamIncompatible(
+                format, self.get_format_signature())
+
+        for version_id, options, length, parents in data_list:
+            if self.has_version(version_id):
+                # First check: the list of parents.
+                my_parents = self.get_parents_with_ghosts(version_id)
+                if my_parents != parents:
+                    # XXX: KnitCorrupt is not quite the right exception here.
+                    raise KnitCorrupt(
+                        self.filename,
+                        'parents list %r from data stream does not match '
+                        'already recorded parents %r for %s'
+                        % (parents, my_parents, version_id))
+
+                # Also check the SHA-1 of the fulltext this content will
+                # produce.
+                raw_data = reader_callable(length)
+                my_fulltext_sha1 = self.get_sha1(version_id)
+                df, rec = self._data._parse_record_header(version_id, raw_data)
+                stream_fulltext_sha1 = rec[3]
+                if my_fulltext_sha1 != stream_fulltext_sha1:
+                    # Actually, we don't know if it's this knit that's corrupt,
+                    # or the data stream we're trying to insert.
+                    raise KnitCorrupt(
+                        self.filename, 'sha-1 does not match %s' % version_id)
+            else:
+                self._add_raw_records(
+                    [(version_id, options, parents, length)],
+                    reader_callable(length))
 
     def versions(self):
         """See VersionedFile.versions."""

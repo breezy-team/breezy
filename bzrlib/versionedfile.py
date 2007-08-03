@@ -267,6 +267,13 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def get_format_signature(self):
+        """Get a text description of the data encoding in this file.
+        
+        :since: 0.19
+        """
+        raise NotImplementedError(self.get_format_signature)
+
     def make_mpdiffs(self, version_ids):
         """Create multiparent diffs for specified versions"""
         knit_versions = set()
