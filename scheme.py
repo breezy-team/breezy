@@ -396,6 +396,20 @@ def guess_scheme_from_history(changed_paths, last_revnum,
 
     return guess_scheme_from_branch_path(relpath)
 
+
+def scheme_from_branch_list(branch_list):
+    """Determine a branching scheme for a branch list.
+
+    :param branch_list: List of branch paths, may contain wildcards.
+    :return: New branching scheme.
+    """
+    if branch_list == ["."] or branch_list == []:
+        return NoBranchingScheme()
+    if branch_list == TrunkBranchingScheme(0).branch_list:
+        return TrunkBranchingScheme(0)
+    return ListBranchingScheme(branch_list) 
+
+
 help_schemes = """Subversion Branching Schemes
 
 Subversion is basically a versioned file system. It does not have 

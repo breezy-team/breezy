@@ -308,7 +308,7 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.repository import Repository
         from bzrlib.trace import info
-        from scheme import ListBranchingScheme
+        from scheme import scheme_from_branch_list
         def scheme_str(scheme):
             if scheme is None:
                 return ""
@@ -321,7 +321,8 @@ class cmd_svn_branching_scheme(Command):
         if set:
             schemestr = edit_commit_message("", 
                                             start_message=scheme_str(scheme))
-            scheme = ListBranchingScheme(map(lambda x:x.strip("\n"), schemestr.splitlines()))
+            scheme = scheme_from_branch_list(
+                map(lambda x:x.strip("\n"), schemestr.splitlines()))
             if repository_wide:
                 repos.set_property_scheme(scheme)
             else:
