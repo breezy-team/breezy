@@ -48,6 +48,7 @@ from tree import SvnRevisionTree
 SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_ANCESTRY = 'bzr:ancestry:v%d-' % MAPPING_VERSION
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
+SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
@@ -225,6 +226,9 @@ class SvnRepository(Repository):
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
+    
+    def get_transaction(self):
+        raise NotImplementedError(self.get_transaction)
 
     def get_scheme(self):
         if self._scheme is not None:

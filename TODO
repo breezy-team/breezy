@@ -8,6 +8,8 @@ todo:
 - support tags (#81102)
 - more efficient implementation of get_revision_delta() to speed up bzr log -v
 - nestedtree support
+- lookup_revision_id()'s result depends on the current branching scheme, 
+  causing weird errors when pushing
 
 .svn working trees:
 - implement apply_inventory_delta()

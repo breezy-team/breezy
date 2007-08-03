@@ -20,7 +20,7 @@ from svn.core import Pool, SubversionException
 
 from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
-from bzrlib.errors import InvalidRevisionId, DivergedBranches
+from bzrlib.errors import InvalidRevisionId, DivergedBranches, UnrelatedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
@@ -454,7 +454,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             return
 
         previous_entries = ie.find_previous_heads(parent_invs, 
-            self.repository.weave_store, self.repository.get_transaction())
+            self.repository.weave_store, None)
 
         # we are creating a new revision for ie in the history store
         # and inventory.
@@ -675,7 +675,7 @@ class InterToSvnRepository(InterRepository):
             todo.append(revision_id)
             revision_id = self.source.revision_parents(revision_id)[0]
             if revision_id == NULL_REVISION:
-                raise "Unrelated repositories."
+                raise UnrelatedBranches()
         mutter("pushing %r into svn" % todo)
         target_branch = None
         for revision_id in todo:
