@@ -397,6 +397,11 @@ class SvnCommitBuilder(RootCommitBuilder):
             branch_batons = self.open_branch_batons(root, bp_parts,
                 existing_bp_parts, self.base_path, self.base_revnum)
 
+            # Make sure the root id is stored properly
+            if (self.old_inv.root is None or 
+                self.new_inventory.root.file_id != self.old_inv.root.file_id):
+                self._record_file_id(self.new_inventory.root, "")
+
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])
 

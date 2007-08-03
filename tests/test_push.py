@@ -324,6 +324,11 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         revid = bzrwt.commit("Do a commit")
         newdir = BzrDir.open(repos_url+"/trunk")
         newbranch = newdir.import_branch(bzrwt.branch)
+        newtree = newbranch.repository.revision_tree(revid)
+        bzrwt.lock_read()
+        self.assertEquals(bzrwt.inventory.root.file_id,
+                          newtree.inventory.root.file_id)
+        bzrwt.unlock()
         self.assertEquals(revid, newbranch.last_revision())
         self.assertEquals([revid], newbranch.revision_history())
 
