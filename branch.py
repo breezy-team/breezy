@@ -64,7 +64,6 @@ class SvnBranch(Branch):
         super(SvnBranch, self).__init__()
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
-        self._branch_path = branch_path.strip("/")
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
@@ -73,6 +72,7 @@ class SvnBranch(Branch):
         self._revision_history = None
         self._revision_history_revnum = None
         self.scheme = self.repository.get_scheme()
+        self.set_branch_path(branch_path)
         if (not self.scheme.is_branch(branch_path) and 
             not self.scheme.is_tag(branch_path)):
             raise NotSvnBranchPath(branch_path, scheme=self.scheme)
@@ -84,6 +84,9 @@ class SvnBranch(Branch):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
+
+    def set_branch_path(self, branch_path):
+        self._branch_path = branch_path.strip("/")
 
     def get_branch_path(self, revnum=None):
         """Find the branch path of this branch in the specified revnum.

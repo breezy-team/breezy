@@ -688,8 +688,11 @@ class InterToSvnRepository(InterRepository):
             revision_id = self.source.revision_parents(revision_id)[0]
             if revision_id == NULL_REVISION:
                 raise UnrelatedBranches()
+        if todo == []:
+            # Nothing to do
+            return
         mutter("pushing %r into svn" % todo)
-        target_branch = None
+        target_branch = Branch.open(urlutils.join(self.target.base, bp))
         for revision_id in todo:
             if pb is not None:
                 pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -702,8 +705,8 @@ class InterToSvnRepository(InterRepository):
             base_tree = self.source.revision_tree(parent_revid)
 
             (bp, _, scheme) = self.target.lookup_revision_id(parent_revid)
-            if target_branch is None or target_branch.get_branch_path() != bp:
-                target_branch = Branch.open(urlutils.join(self.target.base, bp))
+            if target_branch.get_branch_path() != bp:
+                target_branch.set_branch_path(bp)
 
             builder = SvnCommitBuilder(self.target, target_branch, 
                                rev.parent_ids,
