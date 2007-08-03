@@ -391,7 +391,7 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertEqual('', get_bytes(99))
 
 
-class TestReadvReader(tests.TestCaseWithTransport):
+class TestMakeReadvReader(tests.TestCaseWithTransport):
 
     def test_read_skipping_records(self):
         pack_data = StringIO()
@@ -404,8 +404,7 @@ class TestReadvReader(tests.TestCaseWithTransport):
         memos.append(writer.add_bytes_record('jkl', names=[]))
         writer.end()
         transport = self.get_transport()
-        pack_data.seek(0)
-        transport.put_file('mypack', pack_data)
+        transport.put_bytes('mypack', pack_data.getvalue())
         requested_records = [memos[0], memos[2]]
         reader = pack.make_readv_reader(transport, 'mypack', requested_records)
         result = []
@@ -415,9 +414,15 @@ class TestReadvReader(tests.TestCaseWithTransport):
 
 
 class TestReadvFile(tests.TestCaseWithTransport):
+    """Tests of the ReadVFile class.
+
+    Error cases are deliberately undefined: this code adapts the underlying
+    transport interface to a single 'streaming read' interface as 
+    ContainerReader needs.
+    """
 
     def test_read_bytes(self):
-        # this tests byte reading - solo, all in a hunk at once
+        """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
         transport.put_bytes('sample', '0123456789')
         f = pack.ReadVFile(transport.readv('sample', [(0,1), (1,2), (4,1), (6,2)]))
@@ -430,8 +435,10 @@ class TestReadvFile(tests.TestCaseWithTransport):
         self.assertEqual(['0', '12', '4', '6', '7'], results)
 
     def test_readline(self):
-        # this tests readline as the ContainerReader needs it - 
-        # just within a record, never across.
+        """Test using readline() as ContainerReader does.
+
+        This is always within a readv hunk, never across it.
+        """
         transport = self.get_transport()
         transport.put_bytes('sample', '0\n2\n4\n')
         f = pack.ReadVFile(transport.readv('sample', [(0,2), (2,4)]))
@@ -442,7 +449,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
         self.assertEqual(['0\n', '2\n', '4\n'], results)
 
     def test_readline_and_read(self):
-        # this tests read, then readline, then read again 
+        """Test exercising one byte reads, readline, and then read again."""
         transport = self.get_transport()
         transport.put_bytes('sample', '0\n2\n4\n')
         f = pack.ReadVFile(transport.readv('sample', [(0,6)]))

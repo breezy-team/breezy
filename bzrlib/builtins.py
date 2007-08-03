@@ -581,7 +581,6 @@ class cmd_pull(Command):
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
             directory=None):
-        from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -595,7 +594,7 @@ class cmd_pull(Command):
             branch_to = Branch.open_containing(directory)[0]
 
         if location is not None:
-            mergeable, location_transport = _get_bundle_helper(location)
+            mergeable, location_transport = _get_mergeable_helper(location)
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -2639,135 +2638,174 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
+        # This is actually a branch (or merge-directive) *location*.
+        location = branch
+        del branch
+
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
         if directory is None: directory = u'.'
-        # XXX: jam 20070225 WorkingTree should be locked before you extract its
-        #      inventory. Because merge is a mutating operation, it really
-        #      should be a lock_write() for the whole cmd_merge operation.
-        #      However, cmd_merge open's its own tree in _merge_helper, which
-        #      means if we lock here, the later lock_write() will always block.
-        #      Either the merge helper code should be updated to take a tree,
-        #      (What about tree.merge_from_branch?)
+        possible_transports = []
+        merger = None
+        allow_pending = True
+        verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored)
+        cleanups = []
+        try:
+            pb = ui.ui_factory.nested_progress_bar()
+            cleanups.append(pb.finished)
+            tree.lock_write()
+            cleanups.append(tree.unlock)
+            if location is not None:
+                mergeable, other_transport = _get_mergeable_helper(location)
+                if mergeable:
+                    if uncommitted:
+                        raise errors.BzrCommandError('Cannot use --uncommitted'
+                            ' with bundles or merge directives.')
 
-        other_transport = None
-        other_revision_id = None
-        base_revision_id = None
-        possible_transports = []
+                    if revision is not None:
+                        raise errors.BzrCommandError(
+                            'Cannot use -r with merge directives or bundles')
+                    merger, verified = _mod_merge.Merger.from_mergeable(tree,
+                       mergeable, pb)
+                possible_transports.append(other_transport)
 
-        if branch is not None:
-            mergeable, other_transport = _get_bundle_helper(branch)
-            if mergeable:
-                if revision is not None:
-                    raise errors.BzrCommandError(
-                        'Cannot use -r with merge directives or bundles')
-                mergeable.install_revisions(tree.branch.repository)
-                base_revision_id, other_revision_id, verified =\
-                    mergeable.get_merge_request(tree.branch.repository)
-                if (base_revision_id != _mod_revision.NULL_REVISION and
-                    tree.branch.repository.get_graph().is_ancestor(
-                    base_revision_id, tree.branch.last_revision())):
-                    base_revision_id = None
-                other_branch = None
-                path = ''
-                other = None
-                base = None
-            possible_transports.append(other_transport)
-
-        if other_revision_id is None:
-            verified = 'inapplicable'
-            if revision is None \
-                    or len(revision) < 1 or revision[0].needs_branch():
-                branch = self._get_remembered_parent(tree, branch,
-                    'Merging from')
-
-            if revision is None or len(revision) < 1:
-                if uncommitted:
-                    base = [branch, -1]
-                    other = [branch, None]
-                else:
-                    base = [None, None]
-                    other = [branch, -1]
-                other_branch, path = Branch.open_containing(branch,
-                                                            possible_transports)
-            else:
-                if uncommitted:
+            if merger is None and uncommitted:
+                if revision is not None and len(revision) > 0:
                     raise errors.BzrCommandError('Cannot use --uncommitted and'
                         ' --revision at the same time.')
-                branch = revision[0].get_branch() or branch
-                if len(revision) == 1:
-                    base = [None, None]
-                    other_branch, path = Branch.open_containing(
-                        branch, possible_transports)
-                    revno = revision[0].in_history(other_branch).revno
-                    other = [branch, revno]
-                else:
-                    assert len(revision) == 2
-                    if None in revision:
-                        raise errors.BzrCommandError(
-                            "Merge doesn't permit empty revision specifier.")
-                    base_branch, path = Branch.open_containing(
-                        branch, possible_transports)
-                    branch1 = revision[1].get_branch() or branch
-                    other_branch, path1 = Branch.open_containing(
-                        branch1, possible_transports)
-                    if revision[0].get_branch() is not None:
-                        # then path was obtained from it, and is None.
-                        path = path1
+                location = self._select_branch_location(tree, location)[0]
+                other_tree, other_path = WorkingTree.open_containing(location)
+                merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
+                    pb)
+                allow_pending = False
 
-                    base = [branch, revision[0].in_history(base_branch).revno]
-                    other = [branch1,
-                             revision[1].in_history(other_branch).revno]
+            if merger is None:
+                merger, allow_pending = self._get_merger_from_branch(tree,
+                    location, revision, remember, possible_transports, pb)
 
-        # Remember where we merge from
-        if ((tree.branch.get_parent() is None or remember) and
-            other_branch is not None):
-            tree.branch.set_parent(other_branch.base)
-
-        # pull tags now... it's a bit inconsistent to do it ahead of copying
-        # the history but that's done inside the merge code
-        if other_branch is not None:
-            _merge_tags_if_possible(other_branch, tree.branch)
-
-        if path != "":
-            interesting_files = [path]
-        else:
-            interesting_files = None
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            try:
-                conflict_count = _merge_helper(
-                    other, base, other_rev_id=other_revision_id,
-                    base_rev_id=base_revision_id,
-                    check_clean=(not force),
-                    merge_type=merge_type,
-                    reprocess=reprocess,
-                    show_base=show_base,
-                    pull=pull,
-                    this_dir=directory,
-                    pb=pb, file_list=interesting_files,
-                    change_reporter=change_reporter,
-                    possible_transports=possible_transports)
-            finally:
-                pb.finished()
+            merger.merge_type = merge_type
+            merger.reprocess = reprocess
+            merger.show_base = show_base
+            merger.change_reporter = change_reporter
+            self.sanity_check_merger(merger)
+            if (merger.base_rev_id == merger.other_rev_id and
+                merger.other_rev_id != None):
+                note('Nothing to do.')
+                return 0
+            if pull:
+                if merger.interesting_files is not None:
+                    raise BzrCommandError('Cannot pull individual files')
+                if (merger.base_rev_id == tree.last_revision()):
+                    result = tree.pull(merger.other_branch, False,
+                                       merger.other_rev_id)
+                    result.report(self.outf)
+                    return 0
+            merger.check_basis(not force)
+            conflict_count = merger.do_merge()
+            if allow_pending:
+                merger.set_pending()
             if verified == 'failed':
                 warning('Preview patch does not match changes')
             if conflict_count != 0:
                 return 1
             else:
                 return 0
-        except errors.AmbiguousBase, e:
-            m = ("sorry, bzr can't determine the right merge base yet\n"
-                 "candidates are:\n  "
-                 + "\n  ".join(e.bases)
-                 + "\n"
-                 "please specify an explicit base with -r,\n"
-                 "and (if you want) report this to the bzr developers\n")
-            log_error(m)
+        finally:
+            for cleanup in reversed(cleanups):
+                cleanup()
+
+    def sanity_check_merger(self, merger):
+        if (merger.show_base and
+            not merger.merge_type is _mod_merge.Merge3Merger):
+            raise errors.BzrCommandError("Show-base is not supported for this"
+                                         " merge type. %s" % merge_type)
+        if merger.reprocess and not merger.merge_type.supports_reprocess:
+            raise errors.BzrCommandError("Conflict reduction is not supported"
+                                         " for merge type %s." % merge_type)
+        if merger.reprocess and merger.show_base:
+            raise errors.BzrCommandError("Cannot do conflict reduction and"
+                                         " show base.")
+
+    def _get_merger_from_branch(self, tree, location, revision, remember,
+                                possible_transports, pb):
+        """Produce a merger from a location, assuming it refers to a branch."""
+        from bzrlib.tag import _merge_tags_if_possible
+        assert revision is None or len(revision) < 3
+        # find the branch locations
+        other_loc, location = self._select_branch_location(tree, location,
+            revision, -1)
+        if revision is not None and len(revision) == 2:
+            base_loc, location = self._select_branch_location(tree, location,
+                                                              revision, 0)
+        else:
+            base_loc = other_loc
+        # Open the branches
+        other_branch, other_path = Branch.open_containing(other_loc,
+            possible_transports)
+        if base_loc == other_loc:
+            base_branch = other_branch
+        else:
+            base_branch, base_path = Branch.open_containing(base_loc,
+                possible_transports)
+        # Find the revision ids
+        if revision is None or len(revision) < 1 or revision[-1] is None:
+            other_revision_id = _mod_revision.ensure_null(
+                other_branch.last_revision())
+        else:
+            other_revision_id = \
+                _mod_revision.ensure_null(
+                    revision[-1].in_history(other_branch).rev_id)
+        if (revision is not None and len(revision) == 2
+            and revision[0] is not None):
+            base_revision_id = \
+                _mod_revision.ensure_null(
+                    revision[0].in_history(base_branch).rev_id)
+        else:
+            base_revision_id = None
+        # Remember where we merge from
+        if ((tree.branch.get_parent() is None or remember) and
+            other_branch is not None):
+            tree.branch.set_parent(other_branch.base)
+        _merge_tags_if_possible(other_branch, tree.branch)
+        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+            other_revision_id, base_revision_id, other_branch, base_branch)
+        if other_path != '':
+            allow_pending = False
+            merger.interesting_files = [other_path]
+        else:
+            allow_pending = True
+        return merger, allow_pending
+
+    def _select_branch_location(self, tree, location, revision=None,
+                                index=None):
+        """Select a branch location, according to possible inputs.
+
+        If provided, branches from ``revision`` are preferred.  (Both
+        ``revision`` and ``index`` must be supplied.)
+
+        Otherwise, the ``location`` parameter is used.  If it is None, then the
+        ``parent`` location is used, and a note is printed.
+
+        :param tree: The working tree to select a branch for merging into
+        :param location: The location entered by the user
+        :param revision: The revision parameter to the command
+        :param index: The index to use for the revision parameter.  Negative
+            indices are permitted.
+        :return: (selected_location, default_location).  The default location
+            will be the user-entered location, if any, or else the remembered
+            location.
+        """
+        if (revision is not None and index is not None
+            and revision[index] is not None):
+            branch = revision[index].get_branch()
+            if branch is not None:
+                return branch, location
+        location = self._get_remembered_parent(tree, location, 'Merging from')
+        return location, location
 
     # TODO: move up to common parent; this isn't merge-specific anymore. 
     def _get_remembered_parent(self, tree, supplied_location, verb_string):
@@ -2781,8 +2819,10 @@ class cmd_merge(Command):
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
-        display_url = urlutils.unescape_for_display(stored_location, self.outf.encoding)
-        self.outf.write("%s remembered location %s\n" % (verb_string, display_url))
+        display_url = urlutils.unescape_for_display(stored_location,
+            self.outf.encoding)
+        self.outf.write("%s remembered location %s\n" % (verb_string,
+            display_url))
         return stored_location
 
 
@@ -3683,7 +3723,7 @@ class cmd_merge_directive(Command):
             s.send_email(message)
 
 
-class cmd_submit(Command):
+class cmd_send(Command):
     """Create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -3714,6 +3754,7 @@ class cmd_submit(Command):
     _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
+
     takes_options = [
         Option('no-bundle',
                help='Do not include a bundle in the merge directive.'),
@@ -3736,6 +3777,9 @@ class cmd_submit(Command):
             **kwargs):
         from bzrlib.revision import ensure_null, NULL_REVISION
         if output is None:
+            raise errors.BzrCommandError('File must be specified with'
+                                         ' --output')
+        elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
@@ -3773,7 +3817,7 @@ class cmd_submit(Command):
             base_revision_id = None
             if revision is not None:
                 if len(revision) > 2:
-                    raise errors.BzrCommandError('bzr submit takes '
+                    raise errors.BzrCommandError('bzr send takes '
                         'at most two one revision identifiers')
                 revision_id = revision[-1].in_history(branch).rev_id
                 if len(revision) == 2:
@@ -3792,11 +3836,12 @@ class cmd_submit(Command):
                 base_revision_id=base_revision_id)
             outfile.writelines(directive.to_lines())
         finally:
-            if output is not None:
+            if output != '-':
                 outfile.close()
 
+
 class cmd_tag(Command):
-    """Create a tag naming a revision.
+    """Create, remove or modify a tag naming a revision.
     
     Tags give human-meaningful names to revisions.  Commands that take a -r
     (--revision) option can be given -rtag:X, where X is any previously
@@ -3879,109 +3924,6 @@ class cmd_tags(Command):
             self.outf.write('%-20s %s\n' % (tag_name, target))
 
 
-# command-line interpretation helper for merge-related commands
-def _merge_helper(other_revision, base_revision,
-                  check_clean=True, ignore_zero=False,
-                  this_dir=None, backup_files=False,
-                  merge_type=None,
-                  file_list=None, show_base=False, reprocess=False,
-                  pull=False,
-                  pb=DummyProgress(),
-                  change_reporter=None,
-                  other_rev_id=None, base_rev_id=None,
-                  possible_transports=None):
-    """Merge changes into a tree.
-
-    base_revision
-        list(path, revno) Base for three-way merge.  
-        If [None, None] then a base will be automatically determined.
-    other_revision
-        list(path, revno) Other revision for three-way merge.
-    this_dir
-        Directory to merge changes into; '.' by default.
-    check_clean
-        If true, this_dir must have no uncommitted changes before the
-        merge begins.
-    ignore_zero - If true, suppress the "zero conflicts" message when 
-        there are no conflicts; should be set when doing something we expect
-        to complete perfectly.
-    file_list - If supplied, merge only changes to selected files.
-
-    All available ancestors of other_revision and base_revision are
-    automatically pulled into the branch.
-
-    The revno may be -1 to indicate the last revision on the branch, which is
-    the typical case.
-
-    This function is intended for use from the command line; programmatic
-    clients might prefer to call merge.merge_inner(), which has less magic 
-    behavior.
-    """
-    # Loading it late, so that we don't always have to import bzrlib.merge
-    if merge_type is None:
-        merge_type = _mod_merge.Merge3Merger
-    if this_dir is None:
-        this_dir = u'.'
-    this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is _mod_merge.Merge3Merger:
-        raise errors.BzrCommandError("Show-base is not supported for this merge"
-                                     " type. %s" % merge_type)
-    if reprocess and not merge_type.supports_reprocess:
-        raise errors.BzrCommandError("Conflict reduction is not supported for merge"
-                                     " type %s." % merge_type)
-    if reprocess and show_base:
-        raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
-    # TODO: jam 20070226 We should really lock these trees earlier. However, we
-    #       only want to take out a lock_tree_write() if we don't have to pull
-    #       any ancestry. But merge might fetch ancestry in the middle, in
-    #       which case we would need a lock_write().
-    #       Because we cannot upgrade locks, for now we live with the fact that
-    #       the tree will be locked multiple times during a merge. (Maybe
-    #       read-only some of the time, but it means things will get read
-    #       multiple times.)
-    try:
-        merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
-                                   pb=pb, change_reporter=change_reporter)
-        merger.pp = ProgressPhase("Merge phase", 5, pb)
-        merger.pp.next_phase()
-        merger.check_basis(check_clean)
-        if other_rev_id is not None:
-            merger.set_other_revision(other_rev_id, this_tree.branch)
-        else:
-            merger.set_other(other_revision, possible_transports)
-        merger.pp.next_phase()
-        if base_rev_id is not None:
-            merger.set_base_revision(base_rev_id, this_tree.branch)
-        elif base_revision is not None:
-            merger.set_base(base_revision)
-        else:
-            merger.find_base()
-        if merger.base_rev_id == merger.other_rev_id:
-            note('Nothing to do.')
-            return 0
-        if file_list is None:
-            if pull and merger.base_rev_id == merger.this_rev_id:
-                # FIXME: deduplicate with pull
-                result = merger.this_tree.pull(merger.this_branch,
-                        False, merger.other_rev_id)
-                if result.old_revid == result.new_revid:
-                    note('No revisions to pull.')
-                else:
-                    note('Now on revision %d.' % result.new_revno)
-                return 0
-        merger.backup_files = backup_files
-        merger.merge_type = merge_type 
-        merger.set_interesting_files(file_list)
-        merger.show_base = show_base 
-        merger.reprocess = reprocess
-        conflicts = merger.do_merge()
-        if file_list is None:
-            merger.set_pending()
-    finally:
-        pb.clear()
-    return conflicts
-
-
 def _create_prefix(cur_transport):
     needed = [cur_transport]
     # Recurse upwards until we can create a directory successfully
@@ -4004,8 +3946,8 @@ def _create_prefix(cur_transport):
         cur_transport.ensure_base()
 
 
-def _get_bundle_helper(location):
-    """Get a bundle if 'location' points to one.
+def _get_mergeable_helper(location):
+    """Get a merge directive or bundle if 'location' points to one.
 
     Try try to identify a bundle and returns its mergeable form. If it's not,
     we return the tried transport anyway so that it can reused to access the
@@ -4030,10 +3972,6 @@ def _get_bundle_helper(location):
             # location_transport
             location_transport = location_transport.clone(filename)
     return mergeable, location_transport
-
-
-# Compatibility
-merge = _merge_helper
 
 
 # these get imported and then picked up by the scan for cmd_*
