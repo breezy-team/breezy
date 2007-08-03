@@ -29,30 +29,31 @@ class TestConflicts(ExternalBase):
 
     def setUp(self):
         super(ExternalBase, self).setUp()
-        try:
-            os.mkdir('a')
-        except:
-            raise os.getcwd()
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([
+            ('a/myfile',        'contentsa\n'),
+            ('a/my_other_file', 'contentsa\n'),
+            ('a/mydir/',                     ),
+            ])
+        a_tree.add('myfile')
+        a_tree.add('my_other_file')
+        a_tree.add('mydir')
+        a_tree.commit(message="new")
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([
+            ('b/myfile',        'contentsb\n'),
+            ('b/my_other_file', 'contentsb\n'),
+            ])
+        b_tree.rename_one('mydir', 'mydir2')
+        b_tree.commit(message="change")
+        self.build_tree_contents([
+            ('a/myfile',        'contentsa2\n'),
+            ('a/my_other_file', 'contentsa2\n'),
+            ])
+        a_tree.rename_one('mydir', 'mydir3')
+        a_tree.commit(message='change')
+        a_tree.merge_from_branch(b_tree.branch)
         os.chdir('a')
-        self.run_bzr('init')
-        file('myfile', 'wb').write('contentsa\n')
-        file('my_other_file', 'wb').write('contentsa\n')
-        os.mkdir('mydir')
-        self.run_bzr('add')
-        self.run_bzr('commit -m new')
-        os.chdir('..')
-        self.run_bzr('branch a b')
-        os.chdir('b')
-        file('myfile', 'wb').write('contentsb\n')
-        file('my_other_file', 'wb').write('contentsb\n')
-        self.run_bzr('mv mydir mydir2')
-        self.run_bzr('commit -m change')
-        os.chdir('../a')
-        file('myfile', 'wb').write('contentsa2\n')
-        file('my_other_file', 'wb').write('contentsa2\n')
-        self.run_bzr('mv mydir mydir3')
-        self.run_bzr('commit -m change')
-        self.run_bzr('merge ../b', retcode=1)
 
     def test_conflicts(self):
         conflicts, errs = self.run_bzr('conflicts')
