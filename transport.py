@@ -80,43 +80,55 @@ class Editor:
         self.editor = editor
         self.editor_baton = editor_baton
 
+    @convert_svn_error
     def open_root(self, base_revnum):
         return svn.delta.editor_invoke_open_root(self.editor, 
                 self.editor_baton, base_revnum)
 
+    @convert_svn_error
     def close_directory(self, *args, **kwargs):
         svn.delta.editor_invoke_close_directory(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def close(self):
         svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
 
+    @convert_svn_error
     def apply_textdelta(self, *args, **kwargs):
         return svn.delta.editor_invoke_apply_textdelta(self.editor, 
                 *args, **kwargs)
 
+    @convert_svn_error
     def change_dir_prop(self, *args, **kwargs):
         return svn.delta.editor_invoke_change_dir_prop(self.editor, *args, 
                                                        **kwargs)
 
+    @convert_svn_error
     def delete_entry(self, *args, **kwargs):
         return svn.delta.editor_invoke_delete_entry(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def add_file(self, *args, **kwargs):
         return svn.delta.editor_invoke_add_file(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def open_file(self, *args, **kwargs):
         return svn.delta.editor_invoke_open_file(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def change_file_prop(self, *args, **kwargs):
         svn.delta.editor_invoke_change_file_prop(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def close_file(self, *args, **kwargs):
         svn.delta.editor_invoke_close_file(self.editor, *args, **kwargs)
 
+    @convert_svn_error
     def add_directory(self, *args, **kwargs):
         return svn.delta.editor_invoke_add_directory(self.editor, *args, 
                                                      **kwargs)
 
+    @convert_svn_error
     def open_directory(self, *args, **kwargs):
         return svn.delta.editor_invoke_open_directory(self.editor, *args, 
                                                       **kwargs)
