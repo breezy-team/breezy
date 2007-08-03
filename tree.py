@@ -111,7 +111,7 @@ class TreeBuildEditor(svn.delta.Editor):
         from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_SVK_MERGE, 
                         SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
-                        SVN_PROP_BZR_BRANCHING_SCHEME)
+                        SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
 
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)

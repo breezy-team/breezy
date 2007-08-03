@@ -558,7 +558,8 @@ def push_as_merged(target, source, revision_id):
         raise
 
 
-def push_new(target_repository, target_branch_path, source, stop_revision=None):
+def push_new(target_repository, target_branch_path, source, 
+             stop_revision=None, validate=False):
     """Push a revision into Subversion, creating a new branch.
 
     This will do a new commit in the target branch.
@@ -566,6 +567,8 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
     :param target_branch_path: Path to create new branch at
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
+    :param validate: Whether to check the committed revision matches 
+        the source revision.
     """
     assert isinstance(source, Branch)
     if stop_revision is None:
@@ -612,10 +615,11 @@ def push_new(target_repository, target_branch_path, source, stop_revision=None):
                 revnum, self.get_branch_path(revnum), 
                 str(self.repository.get_scheme()))
 
-    push(ImaginaryBranch(target_repository), source, start_revid)
+    push(ImaginaryBranch(target_repository), source, start_revid, 
+         validate=validate)
 
 
-def push(target, source, revision_id):
+def push(target, source, revision_id, validate=False):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
@@ -623,6 +627,8 @@ def push(target, source, revision_id):
     :param target: Branch to push to
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
+    :param validate: Whether to check the committed revision matches 
+        the source revision.
     """
     assert isinstance(source, Branch)
     mutter('pushing %r' % (revision_id))
@@ -650,11 +656,17 @@ def push(target, source, revision_id):
     builder.new_inventory = source.repository.get_inventory(revision_id)
     replay_delta(builder, base_tree, old_tree)
     try:
-        return builder.commit(rev.message)
+        builder.commit(rev.message)
     except SubversionException, (msg, num):
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
+    if validate:
+        crev = target.repository.get_revision(revision_id)
+        ctree = target.repository.revision_tree(revision_id)
+        treedelta = ctree.changes_from(old_tree)
+        assert not treedelta.has_changed()
+        assert crev == rev
 
 
 class InterToSvnRepository(InterRepository):
