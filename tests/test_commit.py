@@ -521,4 +521,24 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         tree1 = master_branch.repository.revision_tree(revid1)
         tree2 = master_branch.repository.revision_tree(revid2)
         delta = tree2.changes_from(tree1)
+        self.assertEquals(0, len(delta.added))
+        self.assertEquals(0, len(delta.removed))
         self.assertEquals(1, len(delta.renamed))
+
+    def test_nested_fileid(self):
+        repos_url = self.make_client("d", "sc")
+        master_branch = Branch.open(repos_url)
+        os.mkdir("b")
+        local_dir = master_branch.bzrdir.sprout("b")
+        wt = local_dir.open_workingtree()
+        local_dir.open_branch().bind(master_branch)
+        self.build_tree({'b/dir/file': 'data'})
+        wt.add('dir')
+        wt.add('dir/file')
+        dirid = wt.path2id("dir")
+        fileid = wt.path2id("dir/file")
+        revid1 = wt.commit(message="Commit from Bzr")
+        master_branch = Branch.open(repos_url)
+        self.assertEquals("dir\t%s\n" % dirid +
+                          "dir/file\t%s\n" % fileid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 1))

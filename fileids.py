@@ -48,9 +48,7 @@ def generate_file_id(repos, revid, path):
 
 def get_local_changes(paths, scheme, generate_revid, get_children=None):
     new_paths = {}
-    names = paths.keys()
-    names.sort()
-    for p in names:
+    for p in sorted(paths.keys()):
         data = paths[p]
         new_p = scheme.unprefix(p)[1]
         if data[1] is not None:
@@ -221,9 +219,7 @@ class SimpleFileIdMap(FileIdMap):
     @staticmethod
     def _apply_changes(new_file_id, changes, find_children=None):
         map = {}
-        sorted_paths = changes.keys()
-        sorted_paths.sort()
-        for p in sorted_paths:
+        for p in sorted(changes.keys()):
             data = changes[p]
 
             if data[0] in ('A', 'R'):

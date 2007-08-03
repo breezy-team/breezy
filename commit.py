@@ -26,6 +26,7 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
+from copy import deepcopy
 import os
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
@@ -33,8 +34,8 @@ from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         generate_revision_metadata, SvnRepositoryFormat, 
                         SvnRepository)
 from revids import escape_svn_path
+import urllib
 
-from copy import deepcopy
 
 def _check_dirs_exist(transport, bp_parts, base_rev):
     for i in range(len(bp_parts), 0, -1):
@@ -430,7 +431,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _record_file_id(self, ie, path):
         mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
-        self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
+        self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (urllib.quote(path), ie.file_id)
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -665,8 +666,12 @@ def push(target, source, revision_id, validate=False):
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
         treedelta = ctree.changes_from(old_tree)
-        assert not treedelta.has_changed()
-        assert crev == rev
+        assert not treedelta.has_changed(), "treedelta: %r" % treedelta
+        assert crev.committer == rev.committer
+        assert crev.timezone == rev.timezone
+        assert crev.timestamp == rev.timestamp
+        assert crev.message == rev.message
+        assert crev.properties == rev.properties
 
 
 class InterToSvnRepository(InterRepository):
@@ -692,7 +697,7 @@ class InterToSvnRepository(InterRepository):
             # Nothing to do
             return
         mutter("pushing %r into svn" % todo)
-        target_branch = Branch.open(urlutils.join(self.target.base, bp))
+        target_branch = None
         for revision_id in todo:
             if pb is not None:
                 pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -705,6 +710,8 @@ class InterToSvnRepository(InterRepository):
             base_tree = self.source.revision_tree(parent_revid)
 
             (bp, _, scheme) = self.target.lookup_revision_id(parent_revid)
+            if target_branch is None:
+                target_branch = Branch.open(urlutils.join(self.target.base, bp))
             if target_branch.get_branch_path() != bp:
                 target_branch.set_branch_path(bp)
 

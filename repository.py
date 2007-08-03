@@ -44,6 +44,7 @@ from revids import (generate_svn_revision_id, parse_svn_revision_id,
 from scheme import (BranchingScheme, ListBranchingScheme, NoBranchingScheme,
                     parse_list_scheme_text, guess_scheme_from_history)
 from tree import SvnRevisionTree
+import urllib
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_ANCESTRY = 'bzr:ancestry:v%d-' % MAPPING_VERSION
@@ -414,7 +415,7 @@ class SvnRepository(Repository):
         ret = {}
         for line in fileids.splitlines():
             (path, key) = line.split("\t", 2)
-            ret[path] = osutils.safe_file_id(key)
+            ret[urllib.unquote(path)] = osutils.safe_file_id(key)
         return ret
 
     def _mainline_revision_parent(self, path, revnum, scheme):
@@ -777,9 +778,7 @@ class SvnRepository(Repository):
 
             # Path names need to be sorted so the longer paths 
             # override the shorter ones
-            path_names = paths.keys()
-            path_names.sort()
-            for p in path_names:
+            for p in sorted(paths.keys()):
                 if branch_path.startswith(p+"/"):
                     assert paths[p][1] is not None and paths[p][0] in ('A', 'R'), "Parent didn't exist yet, but child wasn't added !?"
 
@@ -889,9 +888,7 @@ class SvnRepository(Repository):
             for i in range(revnum+1):
                 pb.update("finding branches", i, revnum+1)
                 paths = self._log.get_revision_paths(i)
-                names = paths.keys()
-                names.sort()
-                for p in names:
+                for p in sorted(paths.keys()):
                     if scheme.is_branch(p) or scheme.is_tag(p):
                         if paths[p][0] in ('R', 'D'):
                             del created_branches[p]
