@@ -151,8 +151,7 @@ class SvnRaTransport(Transport):
         self._client.config = svn_config
 
         try:
-            if 'transport' in debug.debug_flags:
-                mutter('opening SVN RA connection to %r' % self.svn_url)
+            self.mutter('opening SVN RA connection to %r' % self.svn_url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
         except SubversionException, (_, num):
@@ -164,6 +163,10 @@ class SvnRaTransport(Transport):
 
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
+
+    def mutter(self, text):
+        if 'transport' in debug.debug_flags:
+            mutter(text)
 
     class Reporter:
         def __init__(self, (reporter, report_baton)):
@@ -210,27 +213,27 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def get_uuid(self):
-        mutter('svn get-uuid')
+        self.mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
     @convert_svn_error
     def get_repos_root(self):
-        mutter("svn get-repos-root")
+        self.mutter("svn get-repos-root")
         return svn.ra.get_repos_root(self._ra)
 
     @convert_svn_error
     def get_latest_revnum(self):
-        mutter("svn get-latest-revnum")
+        self.mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
     @convert_svn_error
     def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
-        mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
+        self.mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
         return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs))
 
     @convert_svn_error
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
-        mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
     @convert_svn_error
@@ -241,14 +244,14 @@ class SvnRaTransport(Transport):
         self.base = url
         self.svn_url = url
         if hasattr(svn.ra, 'reparent'):
-            mutter('svn reparent %r' % url)
+            self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url, self.pool)
         else:
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @convert_svn_error
     def get_dir(self, path, revnum, pool=None, kind=False):
-        mutter("svn ls -r %d '%r'" % (revnum, path))
+        self.mutter("svn ls -r %d '%r'" % (revnum, path))
         path = path.rstrip("/")
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
@@ -306,7 +309,7 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     def check_path(self, path, revnum, *args, **kwargs):
         assert len(path) == 0 or path[0] != "/"
-        mutter("svn check_path -r%d %s" % (revnum, path))
+        self.mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
 
     @convert_svn_error
@@ -323,7 +326,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_update(self, revnum, path, *args, **kwargs):
-        mutter('svn update -r %r %r' % (revnum, path))
+        self.mutter('svn update -r %r %r' % (revnum, path))
         return self.Reporter(svn.ra.do_update(self._ra, revnum, path, *args, **kwargs))
 
     @convert_svn_error
