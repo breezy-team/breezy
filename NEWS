@@ -195,6 +195,16 @@ IN DEVELOPMENT
     * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
       files that are stored on a transport. (Robert Collins)
 
+    * In ``bzrlib.knit`` the internal interface has been altered to use
+      3-tuples (index, pos, length) rather than two-tuples (pos, length) to
+      describe where data in a knit is, allowing knits to be split into 
+      many files. (Robert Collins)
+
+    * ``bzrlib.knit._KnitData`` split into cache management and physical access
+      with two access classes - ``_PackAccess`` and ``_KnitAccess`` defined.
+      The former provides access into a .pack file, and the latter provides the
+      current production repository form of .knit files. (Robert Collins)
+
     * New methods on Repository - ``start_write_group``,
       ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
       which provide a clean hook point for transactional Repositories - ones

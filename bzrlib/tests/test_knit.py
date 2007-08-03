@@ -1904,25 +1904,25 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(errors.ReadOnlyError, index.add_version,
-            'new', 'fulltext,no-eol', (50, 60), ['separate'])
+            'new', 'fulltext,no-eol', (None, 50, 60), ['separate'])
 
     def test_add_version_smoke(self):
         index = self.two_graph_index(catch_adds=True)
-        index.add_version('new', 'fulltext,no-eol', (50, 60), ['separate'])
+        index.add_version('new', 'fulltext,no-eol', (None, 50, 60), ['separate'])
         self.assertEqual([[(('new', ), 'N50 60', ((('separate',),),))]],
             self.caught_entries)
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'new', 'no-eol,line-delta', (0, 100), ['parent'])
+            'new', 'no-eol,line-delta', (None, 0, 100), ['parent'])
         self.assertEqual([], self.caught_entries)
 
     def test_add_version_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_version('tip', 'fulltext,no-eol', (0, 100), ['parent'])
-        index.add_version('tip', 'no-eol,fulltext', (0, 100), ['parent'])
+        index.add_version('tip', 'fulltext,no-eol', (None, 0, 100), ['parent'])
+        index.add_version('tip', 'no-eol,fulltext', (None, 0, 100), ['parent'])
         # but neither should have added data.
         self.assertEqual([[], []], self.caught_entries)
         
@@ -1930,26 +1930,26 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'no-eol,line-delta', (0, 100), ['parent'])
+            'tip', 'no-eol,line-delta', (None, 0, 100), ['parent'])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'line-delta,no-eol', (0, 100), ['parent'])
+            'tip', 'line-delta,no-eol', (None, 0, 100), ['parent'])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext', (0, 100), ['parent'])
+            'tip', 'fulltext', (None, 0, 100), ['parent'])
         # position/length
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (50, 100), ['parent'])
+            'tip', 'fulltext,no-eol', (None, 50, 100), ['parent'])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (0, 1000), ['parent'])
+            'tip', 'fulltext,no-eol', (None, 0, 1000), ['parent'])
         # parents
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (0, 100), [])
+            'tip', 'fulltext,no-eol', (None, 0, 100), [])
         self.assertEqual([], self.caught_entries)
         
     def test_add_versions_nodeltas(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_versions([
-                ('new', 'fulltext,no-eol', (50, 60), ['separate']),
-                ('new2', 'fulltext', (0, 6), ['new']),
+                ('new', 'fulltext,no-eol', (None, 50, 60), ['separate']),
+                ('new2', 'fulltext', (None, 0, 6), ['new']),
                 ])
         self.assertEqual([(('new', ), 'N50 60', ((('separate',),),)),
             (('new2', ), ' 0 6', ((('new',),),))],
@@ -1959,8 +1959,8 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_versions_deltas(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         index.add_versions([
-                ('new', 'fulltext,no-eol', (50, 60), ['separate']),
-                ('new2', 'line-delta', (0, 6), ['new']),
+                ('new', 'fulltext,no-eol', (None, 50, 60), ['separate']),
+                ('new2', 'line-delta', (None, 0, 6), ['new']),
                 ])
         self.assertEqual([(('new', ), 'N50 60', ((('separate',),), ())),
             (('new2', ), ' 0 6', ((('new',),), (('new',),), ))],
@@ -1970,14 +1970,14 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('new', 'no-eol,line-delta', (0, 100), ['parent'])])
+            [('new', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_versions([('tip', 'fulltext,no-eol', (0, 100), ['parent'])])
-        index.add_versions([('tip', 'no-eol,fulltext', (0, 100), ['parent'])])
+        index.add_versions([('tip', 'fulltext,no-eol', (None, 0, 100), ['parent'])])
+        index.add_versions([('tip', 'no-eol,fulltext', (None, 0, 100), ['parent'])])
         # but neither should have added data.
         self.assertEqual([[], []], self.caught_entries)
         
@@ -1985,23 +1985,23 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'no-eol,line-delta', (0, 100), ['parent'])])
+            [('tip', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'line-delta,no-eol', (0, 100), ['parent'])])
+            [('tip', 'line-delta,no-eol', (None, 0, 100), ['parent'])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext', (0, 100), ['parent'])])
+            [('tip', 'fulltext', (None, 0, 100), ['parent'])])
         # position/length
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (50, 100), ['parent'])])
+            [('tip', 'fulltext,no-eol', (None, 50, 100), ['parent'])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 1000), ['parent'])])
+            [('tip', 'fulltext,no-eol', (None, 0, 1000), ['parent'])])
         # parents
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 100), [])])
+            [('tip', 'fulltext,no-eol', (None, 0, 100), [])])
         # change options in the second record
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 100), ['parent']),
-             ('tip', 'no-eol,line-delta', (0, 100), ['parent'])])
+            [('tip', 'fulltext,no-eol', (None, 0, 100), ['parent']),
+             ('tip', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
     def test_iter_parents(self):
@@ -2173,25 +2173,25 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(errors.ReadOnlyError, index.add_version,
-            'new', 'fulltext,no-eol', (50, 60), ['separate'])
+            'new', 'fulltext,no-eol', (None, 50, 60), ['separate'])
 
     def test_add_version_smoke(self):
         index = self.two_graph_index(catch_adds=True)
-        index.add_version('new', 'fulltext,no-eol', (50, 60), [])
+        index.add_version('new', 'fulltext,no-eol', (None, 50, 60), [])
         self.assertEqual([[(('new', ), 'N50 60')]],
             self.caught_entries)
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'new', 'no-eol,line-delta', (0, 100), [])
+            'new', 'no-eol,line-delta', (None, 0, 100), [])
         self.assertEqual([], self.caught_entries)
 
     def test_add_version_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_version('tip', 'fulltext,no-eol', (0, 100), [])
-        index.add_version('tip', 'no-eol,fulltext', (0, 100), [])
+        index.add_version('tip', 'fulltext,no-eol', (None, 0, 100), [])
+        index.add_version('tip', 'no-eol,fulltext', (None, 0, 100), [])
         # but neither should have added data.
         self.assertEqual([[], []], self.caught_entries)
         
@@ -2199,26 +2199,26 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'no-eol,line-delta', (0, 100), [])
+            'tip', 'no-eol,line-delta', (None, 0, 100), [])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'line-delta,no-eol', (0, 100), [])
+            'tip', 'line-delta,no-eol', (None, 0, 100), [])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext', (0, 100), [])
+            'tip', 'fulltext', (None, 0, 100), [])
         # position/length
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (50, 100), [])
+            'tip', 'fulltext,no-eol', (None, 50, 100), [])
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (0, 1000), [])
+            'tip', 'fulltext,no-eol', (None, 0, 1000), [])
         # parents
         self.assertRaises(errors.KnitCorrupt, index.add_version,
-            'tip', 'fulltext,no-eol', (0, 100), ['parent'])
+            'tip', 'fulltext,no-eol', (None, 0, 100), ['parent'])
         self.assertEqual([], self.caught_entries)
         
     def test_add_versions(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_versions([
-                ('new', 'fulltext,no-eol', (50, 60), []),
-                ('new2', 'fulltext', (0, 6), []),
+                ('new', 'fulltext,no-eol', (None, 50, 60), []),
+                ('new2', 'fulltext', (None, 0, 6), []),
                 ])
         self.assertEqual([(('new', ), 'N50 60'), (('new2', ), ' 0 6')],
             sorted(self.caught_entries[0]))
@@ -2227,20 +2227,20 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('new', 'no-eol,line-delta', (0, 100), ['parent'])])
+            [('new', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_parents_not_parents_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('new', 'no-eol,fulltext', (0, 100), ['parent'])])
+            [('new', 'no-eol,fulltext', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_versions([('tip', 'fulltext,no-eol', (0, 100), [])])
-        index.add_versions([('tip', 'no-eol,fulltext', (0, 100), [])])
+        index.add_versions([('tip', 'fulltext,no-eol', (None, 0, 100), [])])
+        index.add_versions([('tip', 'no-eol,fulltext', (None, 0, 100), [])])
         # but neither should have added data.
         self.assertEqual([[], []], self.caught_entries)
         
@@ -2248,23 +2248,23 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'no-eol,line-delta', (0, 100), [])])
+            [('tip', 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'line-delta,no-eol', (0, 100), [])])
+            [('tip', 'line-delta,no-eol', (None, 0, 100), [])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext', (0, 100), [])])
+            [('tip', 'fulltext', (None, 0, 100), [])])
         # position/length
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (50, 100), [])])
+            [('tip', 'fulltext,no-eol', (None, 50, 100), [])])
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 1000), [])])
+            [('tip', 'fulltext,no-eol', (None, 0, 1000), [])])
         # parents
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 100), ['parent'])])
+            [('tip', 'fulltext,no-eol', (None, 0, 100), ['parent'])])
         # change options in the second record
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
-            [('tip', 'fulltext,no-eol', (0, 100), []),
-             ('tip', 'no-eol,line-delta', (0, 100), [])])
+            [('tip', 'fulltext,no-eol', (None, 0, 100), []),
+             ('tip', 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
     def test_iter_parents(self):

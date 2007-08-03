@@ -556,7 +556,7 @@ class KnitVersionedFile(VersionedFile):
         assert set(current_values[4]).difference(set(new_parents)) == set()
         self._index.add_version(version_id,
                                 current_values[1],
-                                (current_values[2], current_values[3]),
+                                (None, current_values[2], current_values[3]),
                                 new_parents)
 
     def _extract_blocks(self, version_id, source, target):
@@ -1322,7 +1322,14 @@ class _KnitIndex(_KnitComponentFile):
         return version_id in self._cache
 
     def get_position(self, version_id):
-        """Return data position and size of specified version."""
+        """Return details needed to access the version.
+        
+        .kndx indices do not support split-out data, so return None for the 
+        index field.
+
+        :return: a tuple (None, data position, size) to hand to the access
+            logic to get the record.
+        """
         entry = self._cache[version_id]
         return None, entry[2], entry[3]
 
@@ -1630,11 +1637,7 @@ class KnitGraphIndex(object):
 
         keys = {}
         for (version_id, options, access_memo, parents) in versions:
-            # index keys are tuples:
-            try:
-                pos, size = access_memo
-            except ValueError:
-                index, pos, size = access_memo
+            index, pos, size = access_memo
             key = (version_id, )
             parents = tuple((parent, ) for parent in parents)
             if 'no-eol' in options:
@@ -1702,10 +1705,9 @@ class _KnitAccess(object):
 
         :param sizes: An iterable containing the size of each raw data segment.
         :param raw_data: A bytestring containing the data.
-        :return: A list of memos to retrieve the record later. For the .knit access
-            method these are readv pairs - offset, length. Note that this is
-            matched to a particular index engine, so can vary between
-            access methods.
+        :return: A list of memos to retrieve the record later. Each memo is a
+            tuple - (index, pos, length), where the index field is always None
+            for the .knit access method.
         """
         assert type(raw_data) == str, \
             'data must be plain bytes was %s' % type(raw_data)
@@ -1749,9 +1751,9 @@ class _KnitAccess(object):
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
-        :param memos_for_retrieval: An iterable containing the access method
-            specific memo for retriving the bytes. For the .knit method this is
-            a readv tuple.
+        :param memos_for_retrieval: An iterable containing the (index, pos, 
+            length) memo for retrieving the bytes. The .knit method ignores
+            the index as there is always only a single file.
         :return: An iterator over the bytes of the records.
         """
         read_vector = [(pos, size) for (index, pos, size) in memos_for_retrieval]
@@ -1787,11 +1789,9 @@ class _PackAccess(object):
 
         :param sizes: An iterable containing the size of each raw data segment.
         :param raw_data: A bytestring containing the data.
-        :return: A list of memos to retrieve the record later. For the pack
-            access method these are the pack offset, lenth pairs with a 
-            pack key of the write index.
-            Note that this is matched to a particular index engine, so can vary
-            between access methods.
+        :return: A list of memos to retrieve the record later. Each memo is a
+            tuple - (index, pos, length), where the index field is the 
+            write_index object supplied to the PackAccess object.
         """
         assert type(raw_data) == str, \
             'data must be plain bytes was %s' % type(raw_data)
@@ -1810,9 +1810,10 @@ class _PackAccess(object):
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
-        :param memos_for_retrieval: An iterable containing the access method
-            specific memo for retriving the bytes. For the Pack access method
-            this is a tuple (index, offset, length).
+        :param memos_for_retrieval: An iterable containing the (index, pos, 
+            length) memo for retrieving the bytes. The Pack access method
+            looks up the pack to use for a given record in its index_to_pack
+            map.
         :return: An iterator over the bytes of the records.
         """
         # first pass, group into same-index requests
@@ -1847,7 +1848,11 @@ class _PackAccess(object):
 
 
 class _KnitData(object):
-    """Manage extraction of data from a KnitAccess, caching and decompressing."""
+    """Manage extraction of data from a KnitAccess, caching and decompressing.
+    
+    The KnitData class provides the logic for parsing and using knit records,
+    making use of an access method for the low level read and write operations.
+    """
 
     def __init__(self, access):
         """Create a KnitData object.
