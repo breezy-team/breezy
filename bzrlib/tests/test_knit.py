@@ -1541,22 +1541,6 @@ class BasicKnitTests(KnitTests):
             self.assertEqual(expected_parents, parents)
             self.assertRecordContentEqual(k1, version, bytes)
 
-
-    # permutations left to explicitly test:
-    #  * getting a version where all its parents are ghosts
-    #  * reader_func edge-cases:
-    #    * read too little
-    #    * read too much
-    #    * multiple read calls
-    #    * read(None)
-    #  * reading records with other data interspersed skips interspersed data.
-    #     insert [A [], B [A], C [A]], read [A, C].
-
-    #
-    # after that:
-    #  * move callable into own class (see XXX in get_data_stream)
-    #  * insert data stream into knits
-
     def assertKnitFilesEqual(self, knit1, knit2):
         """Assert that the contents of the index and data files of two knits are
         equal.

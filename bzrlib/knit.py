@@ -594,7 +594,7 @@ class KnitVersionedFile(VersionedFile):
         # Read the compressed record data.
         # XXX:
         # From here down to the return should really be logic in the returned
-        # callable -- in a class that adaptes read_records_iter_raw to read
+        # callable -- in a class that adapts read_records_iter_raw to read
         # requests.
         raw_datum = []
         for (version_id, raw_data), \
@@ -711,8 +711,7 @@ class KnitVersionedFile(VersionedFile):
                         return True
         return False
 
-    def insert_data_stream(self, (format, data_list, reader_callable),
-                           buffer_size=64*1024):
+    def insert_data_stream(self, (format, data_list, reader_callable)):
         """Insert knit records from a data stream into this knit.
 
         If a version in the stream is already present in this knit, it will not
@@ -720,9 +719,6 @@ class KnitVersionedFile(VersionedFile):
         stored version however, and may cause a KnitCorrupt error to be raised
         if the data in the stream disagrees with the already stored data.
         
-        :param buffer_size: maximum size of record content to batch together to
-            improve performance.  Default is 64k.
-
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
