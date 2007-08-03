@@ -90,7 +90,6 @@ from bzrlib.errors import (
     RevisionAlreadyPresent,
     )
 from bzrlib.tuned_gzip import GzipFile
-from bzrlib.trace import mutter
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,

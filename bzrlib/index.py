@@ -27,7 +27,11 @@ __all__ = [
 from cStringIO import StringIO
 import re
 
-from bzrlib import errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.trace import mutter
+""")
+from bzrlib import debug, errors
 
 _OPTION_KEY_ELEMENTS = "key_elements="
 _OPTION_NODE_REFS = "node_ref_lists="
@@ -240,6 +244,8 @@ class GraphIndex(object):
 
         Mutates self._nodes and self.keys_by_offset.
         """
+        if 'index' in debug.debug_flags:
+            mutter('Reading entire index %s', self._transport.abspath(self._name))
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
         expected_elements = 3 + self._key_length
