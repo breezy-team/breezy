@@ -21,16 +21,13 @@ import os
 class TestFindMergeBase(ExternalBase):
 
     def test_find_merge_base(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
-        self.run_bzr('commit -m foo --unchanged')
-        self.run_bzr('branch . ../b')
-        q = self.run_bzr('find-merge-base . ../b')[0]
-        self.run_bzr('commit -m bar --unchanged')
-        os.chdir('../b')
-        self.run_bzr('commit -m baz --unchanged')
-        r = self.run_bzr('find-merge-base . ../a')[0]
+        a_tree = self.make_branch_and_tree('a')
+        a_tree.commit(message='foo', allow_pointless=True)
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        q = self.run_bzr('find-merge-base a b')[0]
+        a_tree.commit(message='bar', allow_pointless=True)
+        b_tree.commit(message='baz', allow_pointless=True)
+        r = self.run_bzr('find-merge-base b a')[0]
         self.assertEqual(q, r)
         
     def test_find_null_merge_base(self):
