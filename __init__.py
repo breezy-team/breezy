@@ -274,7 +274,7 @@ class cmd_svn_push(Command):
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError
         bzrdir = BzrDir.open(location)
-        source_branch = Branch.open(".")
+        source_branch = Branch.open_containing(".")[0]
         if revision is not None:
             if len(revision) > 1:
                 raise errors.BzrCommandError(
