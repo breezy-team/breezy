@@ -79,59 +79,85 @@ class Editor:
     def __init__(self, (editor, editor_baton)):
         self.editor = editor
         self.editor_baton = editor_baton
+        self.recent_baton = []
 
     @convert_svn_error
     def open_root(self, base_revnum):
-        return svn.delta.editor_invoke_open_root(self.editor, 
+        assert self.recent_baton == [], "root already opened"
+        baton = svn.delta.editor_invoke_open_root(self.editor, 
                 self.editor_baton, base_revnum)
+        self.recent_baton.append(baton)
+        return baton
 
     @convert_svn_error
-    def close_directory(self, *args, **kwargs):
-        svn.delta.editor_invoke_close_directory(self.editor, *args, **kwargs)
+    def close_directory(self, baton, *args, **kwargs):
+        assert self.recent_baton.pop() == baton, \
+                "only most recently opened baton can be closed"
+        svn.delta.editor_invoke_close_directory(self.editor, baton, *args, **kwargs)
 
     @convert_svn_error
     def close(self):
+        assert self.recent_baton == []
         svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
 
     @convert_svn_error
-    def apply_textdelta(self, *args, **kwargs):
-        return svn.delta.editor_invoke_apply_textdelta(self.editor, 
+    def apply_textdelta(self, baton, *args, **kwargs):
+        assert self.recent_baton[-1] == baton
+        return svn.delta.editor_invoke_apply_textdelta(self.editor, baton,
                 *args, **kwargs)
 
     @convert_svn_error
-    def change_dir_prop(self, *args, **kwargs):
-        return svn.delta.editor_invoke_change_dir_prop(self.editor, *args, 
-                                                       **kwargs)
+    def change_dir_prop(self, baton, *args, **kwargs):
+        assert self.recent_baton[-1] == baton
+        return svn.delta.editor_invoke_change_dir_prop(self.editor, baton, 
+                                                       *args, **kwargs)
 
     @convert_svn_error
     def delete_entry(self, *args, **kwargs):
         return svn.delta.editor_invoke_delete_entry(self.editor, *args, **kwargs)
 
     @convert_svn_error
-    def add_file(self, *args, **kwargs):
-        return svn.delta.editor_invoke_add_file(self.editor, *args, **kwargs)
+    def add_file(self, path, parent_baton, *args, **kwargs):
+        assert self.recent_baton[-1] == parent_baton
+        baton = svn.delta.editor_invoke_add_file(self.editor, path, 
+            parent_baton, *args, **kwargs)
+        self.recent_baton.append(baton)
+        return baton
 
     @convert_svn_error
-    def open_file(self, *args, **kwargs):
-        return svn.delta.editor_invoke_open_file(self.editor, *args, **kwargs)
+    def open_file(self, path, parent_baton, *args, **kwargs):
+        assert self.recent_baton[-1] == parent_baton
+        baton = svn.delta.editor_invoke_open_file(self.editor, path, 
+                                                 parent_baton, *args, **kwargs)
+        self.recent_baton.append(baton)
+        return baton
 
     @convert_svn_error
-    def change_file_prop(self, *args, **kwargs):
-        svn.delta.editor_invoke_change_file_prop(self.editor, *args, **kwargs)
+    def change_file_prop(self, baton, *args, **kwargs):
+        assert self.recent_baton[-1] == baton
+        svn.delta.editor_invoke_change_file_prop(self.editor, baton, *args, 
+                                                 **kwargs)
 
     @convert_svn_error
-    def close_file(self, *args, **kwargs):
-        svn.delta.editor_invoke_close_file(self.editor, *args, **kwargs)
+    def close_file(self, baton, *args, **kwargs):
+        assert self.recent_baton.pop() == baton
+        svn.delta.editor_invoke_close_file(self.editor, baton, *args, **kwargs)
 
     @convert_svn_error
-    def add_directory(self, *args, **kwargs):
-        return svn.delta.editor_invoke_add_directory(self.editor, *args, 
-                                                     **kwargs)
+    def add_directory(self, path, parent_baton, *args, **kwargs):
+        assert self.recent_baton[-1] == parent_baton
+        baton = svn.delta.editor_invoke_add_directory(self.editor, path, 
+            parent_baton, *args, **kwargs)
+        self.recent_baton.append(baton)
+        return baton
 
     @convert_svn_error
-    def open_directory(self, *args, **kwargs):
-        return svn.delta.editor_invoke_open_directory(self.editor, *args, 
-                                                      **kwargs)
+    def open_directory(self, path, parent_baton, *args, **kwargs):
+        assert self.recent_baton[-1] == parent_baton
+        baton = svn.delta.editor_invoke_open_directory(self.editor, path, 
+            parent_baton, *args, **kwargs)
+        self.recent_baton.append(baton)
+        return baton
 
 
 class SvnRaTransport(Transport):
