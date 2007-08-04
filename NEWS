@@ -39,6 +39,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Fix incorrect delete when a child of a renamed directory is removed.
 
+   * Support pushing adding empty files. (#113667)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.

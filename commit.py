@@ -174,6 +174,11 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def _file_process(self, file_id, contents, baton):
         assert baton is not None
+        if contents == "" and not file_id in self.old_inv:
+            # Don't send diff if a new file with empty contents is 
+            # added, because it created weird exceptions over svn+ssh:// 
+            # or https://
+            return
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
@@ -434,7 +439,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         return revid
 
     def _record_file_id(self, ie, path):
-        mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
         self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (urllib.quote(path), ie.file_id)
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
