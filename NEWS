@@ -35,6 +35,9 @@ IN DEVELOPMENT
     * ``bzr add *`` no more fails on Windows if working tree contains
       non-ascii file names. (Kuno Meyer, #127361)
 
+    * allow ``easy_install bzr`` runs without fatal errors. 
+      (Alexander Belchenko, #125521)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -79,7 +82,8 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
     * New bundle and merge directive formats are faster to generate, and
-      more robust against email mangling.  (Aaron Bentley)
+      more robust against email mangling.  New `send` command replaces
+      `bundle-revisions` and `merge-directive`.  (Aaron Bentley)
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
@@ -95,6 +99,15 @@ IN DEVELOPMENT
       ``other`` is large. This improves ``VF.get_graph([version_id])`` for
       a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
 
+    * The ``--lsprof-file`` option now generates output for KCacheGrind if
+      the file starts with ``callgrind.out``. This matches the default file
+      filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
+
+    * Fix ``bzr update`` to avoid an unnecessary
+      ``branch.get_master_branch`` call, which avoids 1 extra connection
+      to the remote server. (Partial fix for #128076, John Arbash Meinel)
+      
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -103,6 +116,9 @@ IN DEVELOPMENT
       initial capital and final period. (Martin Pool)
 
     * KnitIndex.get_parents now returns tuples. (Robert Collins)
+
+    * Ancient unused ``Repository.text_store`` attribute has been removed.
+      (Robert Collins)
 
   INTERNALS:
 
@@ -164,6 +180,9 @@ IN DEVELOPMENT
     * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
       the parents of many knit nodes at once, reducing round trips to the 
       underlying index. (Robert Collins)
+
+    * Graph now has an is_ancestor method, various bits use it.
+      (Aaron Bentley)
 
   TESTING:
 
