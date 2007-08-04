@@ -2107,6 +2107,10 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    If author of the change is not the same person as the committer, you
+    can specify the author's name using the --author option. The name should
+    be in format "John Doe <jdoe@example.com>".
+
     A selected-file commit may fail in some cases where the committed
     tree would be invalid. Consider::
 
@@ -2153,6 +2157,9 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
+             Option('author', type=str,
+                    help="Set the author's name, if it's different "
+                         "from the committer."),
              Option('local',
                     help="Perform a local commit in a bound "
                          "branch.  Local commits are not pushed to "
@@ -2185,7 +2192,8 @@ class cmd_commit(Command):
         return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None):
+            unchanged=False, strict=False, local=False, fixes=None,
+            author=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2210,6 +2218,14 @@ class cmd_commit(Command):
         bug_property = self._get_bug_fix_properties(fixes, tree.branch)
         if bug_property:
             properties['bugs'] = bug_property
+
+        if author:
+            try:
+                config.extract_email_address(author)
+            except errors.NoEmailInUsername, e:
+                warning('"%s" does not seem to contain an email address.  '
+                        'This is allowed, but not recommended.', author)
+            properties['author'] = author
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()

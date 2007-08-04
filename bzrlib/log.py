@@ -633,6 +633,11 @@ class LongLogFormatter(LogFormatter):
             for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file, indent+'committer:', revision.rev.committer
+        try:
+            print >>to_file, indent+'author: %s' % \
+                revision.rev.properties['author']
+        except KeyError:
+            pass
 
         try:
             print >>to_file, indent+'branch nick: %s' % \
