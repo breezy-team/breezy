@@ -1987,7 +1987,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         else:
             self.failIf(osutils.lexists(path),path+" exists")
 
-    def assertInWorkingTree(self,path,root_path='.',tree=None):
+    def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -1998,7 +1998,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
 
-    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)

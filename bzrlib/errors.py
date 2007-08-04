@@ -1738,7 +1738,8 @@ class BzrRenameFailedError(BzrMoveFailedError):
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
 
-    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+    _fmt = ("Can't safely remove modified or unknown files:\n"
+        "%(changes_as_text)s"
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
