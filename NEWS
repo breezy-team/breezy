@@ -37,9 +37,13 @@ bzr-svn 0.4	UNRELEASED
 
    * Support possible_transports argument to BzrDir.sprout(). (#128500)
 
+   * Fix incorrect delete when a child of a renamed directory is removed.
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.
+
+   * Avoid muttering when possible.
 
   TESTS
 
