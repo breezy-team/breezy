@@ -193,11 +193,10 @@ class SvnCommitBuilder(RootCommitBuilder):
                     child_ie.parent_id != self.new_inventory[child_ie.file_id].parent_id or
                     # ... name changed
                     self.new_inventory[child_ie.file_id].name != child_name):
-                    mutter('removing %r' % child_ie.file_id)
+                    mutter('removing %r(%r)' % (child_name, child_ie.file_id))
                     self.editor.delete_entry(
                             urlutils.join(
-                                self.branch.get_branch_path(), 
-                                self.old_inv.id2path(child_ie.file_id)), 
+                                self.branch.get_branch_path(), path, child_name), 
                             self.base_revnum, baton, self.pool)
 
         # Loop over file children of file_id in self.new_inventory
