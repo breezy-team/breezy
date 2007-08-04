@@ -270,6 +270,7 @@ class SvnRepository(Repository):
         root = editor.open_root(-1)
         editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
                 "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
+        editor.close_directory(root)
         editor.close()
 
     def _guess_scheme(self, last_revnum, branch_path=None):
