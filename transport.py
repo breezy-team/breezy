@@ -163,9 +163,10 @@ class SvnRaTransport(Transport):
         return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
     @need_lock
-    def reparent(self, revision, low_water_mark, *args, **kwargs):
+    def replay(self, revision, low_water_mark, *args, **kwargs):
         mutter('svn reparent -r%r:%r' % (low_water_mark, revision))
-        return svn.ra.reparent(self._ra, revision, low_water_mark, *args, **kwargs)
+        return svn.ra.reparent(self._ra, revision, low_water_mark, *args, 
+                               **kwargs)
 
     @need_lock
     def reparent(self, url):
