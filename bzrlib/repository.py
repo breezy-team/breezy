@@ -890,6 +890,13 @@ class Repository(object):
         reconciler.reconcile()
         return reconciler
 
+    def reconcile_actions(self):
+        """Return a set of actions taken by reconcile on this repository.
+        
+        :return: A set of actions. e.g. set(['inventory_gc']).
+        """
+        return set(['inventory_gc'])
+
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.
 
