@@ -1805,10 +1805,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 for relpath, basename, kind, lstat, abspath in file_infos:
                     if kind == 'file':
                         if self.path2id(relpath): #is it versioned?
+                            # make sure we check if it chagned
                             new_files.add(relpath)
                         else:
                             unknown_files_in_directory.add(
                                 (relpath, None, kind))
+                    else:
+                        # make sure we delete subtrees
+                        new_files.add(relpath)
 
         for filename in files:
             # Get file name into canonical form.
@@ -1826,7 +1830,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # Sort needed to first handle directory content before the directory
         files.sort(reverse=True)
-        
+
         # Bail out if we are going to delete files we shouldn't
         if not keep_files and not force:
             has_changed_files = len(unknown_files_in_directory) > 0
@@ -1835,9 +1839,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # check if it's unknown OR 'changed but not deleted':
-                    if (versioned == (False, False)
-                        or (content_change and kind[1] != None)):
+                    # check if it's an unknown OR changed file:
+                    if kind[1] == 'file' and ( versioned == (False, False)
+                        or content_change ):
                         has_changed_files = True
                         break
 
@@ -1847,7 +1851,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     require_versioned=False, want_unversioned=True,
                     specific_files=files)
                 for unknown_file in unknown_files_in_directory:
-                    tree_delta.unversioned.extend((unknown_file,))
+                    if unknown_file not in tree_delta.unversioned:
+                        tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
         # Build inv_delta and delete files where applicaple,
@@ -1878,7 +1883,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         if force:
                             osutils.rmtree(abs_path)
                         else:
-                            message = "%s is not empty directory "\
+                            message = "%s is not an empty directory "\
                                 "and won't be deleted." % (f,)
                     else:
                         osutils.delete_any(abs_path)

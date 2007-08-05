@@ -170,14 +170,17 @@ class TestRemove(TestCaseWithWorkingTree):
 
     def test_remove_nonempty_directory(self):
         """Unchanged non-empty directories should be deleted."""
-        tree = self.getTree()
-        tree.add(TestRemove.files)
+        tree = self.make_branch_and_tree('.')
+        files = ['b/', 'b/c', 'b/sub_directory/', 'b/sub_directory/with_file']
+        self.build_tree(files)
+        tree.add(files)
         tree.commit("make sure b is versioned")
-        self.assertInWorkingTree(TestRemove.files)
-        self.failUnlessExists(TestRemove.files)
-        tree.remove(TestRemove.b, keep_files=False)
-        self.assertNotInWorkingTree(TestRemove.b)
-        self.failIfExists(TestRemove.b)
+        self.assertInWorkingTree(files)
+        self.failUnlessExists(files)
+        self.build_tree(['b/unknown_directory/', 'b/unknown_directory/ud2/'])
+        tree.remove('b', keep_files=False)
+        self.assertNotInWorkingTree('b')
+        self.failIfExists('b')
 
     def test_remove_nonempty_directory_with_unknowns(self):
         """Unchanged non-empty directories should not be deleted."""
@@ -192,6 +195,7 @@ class TestRemove(TestCaseWithWorkingTree):
             TestRemove.b, keep_files=False)
         self.assertContainsRe(err.changes_as_text,
             '(?s)unknown:.*b/my_unknown_file')
+
         self.assertInWorkingTree(TestRemove.b)
         self.failUnlessExists(TestRemove.b)
 
@@ -202,7 +206,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.commit("make sure b is versioned")
 
         other_files = ['b/unknown_file', 'b/sub_directory/',
-            'b/sub_directory/with_file']
+            'b/sub_directory/with_file', 'b/sub_directory/sub_directory/']
         self.build_tree(other_files)
 
         self.assertInWorkingTree(TestRemove.files)
@@ -222,7 +226,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.commit("make sure b and c are versioned")
         self.build_tree_contents([('b/c', "some other new content!")])
         self.assertInWorkingTree(TestRemove.b_c)
-        
+
         err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.b, keep_files=False)
         self.assertContainsRe(err.changes_as_text, '(?s)modified:.*b/c')
