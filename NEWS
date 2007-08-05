@@ -195,6 +195,13 @@ IN DEVELOPMENT
     * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
       files that are stored on a transport. (Robert Collins)
 
+    * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
+      This provides a hint to users of transports as to the reasonable
+      minimum data to read. In principle this can take latency and
+      bandwidth into account on a per-connection basis, but for now it
+      just has hard coded values based on the url. (e.g. http:// has a large
+      page size, file:// has a small one.) (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and

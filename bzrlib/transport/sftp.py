@@ -257,6 +257,14 @@ class SFTPTransport(ConnectedTransport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For SFTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
     def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
 

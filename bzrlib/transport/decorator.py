@@ -130,6 +130,10 @@ class TransportDecorator(Transport):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
 
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size()."""
+        return self._decorated.recommended_page_size()
+
     def rename(self, rel_from, rel_to):
         return self._decorated.rename(rel_from, rel_to)
     

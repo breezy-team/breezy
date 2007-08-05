@@ -866,6 +866,11 @@ class TransportTests(TestTransportImplementation):
         # plain "listdir".
         # self.assertEqual([], os.listdir('.'))
 
+    def test_recommended_page_size(self):
+        """Transports recommend a page size for partial access to files."""
+        t = self.get_transport()
+        self.assertIsInstance(t.recommended_page_size(), int)
+
     def test_rmdir(self):
         t = self.get_transport()
         # Not much to do with a readonly transport

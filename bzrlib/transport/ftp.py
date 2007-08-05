@@ -323,6 +323,14 @@ class FtpTransport(ConnectedTransport):
             self._translate_perm_error(e, abspath,
                 unknown_exc=errors.FileExists)
 
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For FTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
         abspath = self._remote_path(rel_path)

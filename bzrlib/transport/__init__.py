@@ -460,6 +460,18 @@ class Transport(object):
             path = '/' + path
         return path
 
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport.
+
+        This is potentially different for every path in a given namespace.
+        For example, local transports might use an operating system call to 
+        get the block size for a given path, which can vary due to mount
+        points.
+
+        :return: The page size in bytes.
+        """
+        return 4 * 1024
+
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
 
