@@ -801,6 +801,13 @@ class Repository(object):
         reconciler.reconcile()
         return reconciler
 
+    def reconcile_actions(self):
+        """Return a set of actions taken by reconcile on this repository.
+        
+        :return: A set of actions. e.g. set(['inventory_gc']).
+        """
+        return set(['inventory_gc'])
+
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
