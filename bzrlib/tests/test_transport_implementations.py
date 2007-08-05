@@ -230,6 +230,29 @@ class TransportTests(TestTransportImplementation):
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
+    def test_get_with_open_file_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_file_stream('foo')
+        try:
+            handle('b')
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            t.close_file_stream('foo')
+
+    def test_get_bytes_with_open_file_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_file_stream('foo')
+        try:
+            handle('b')
+            self.assertEqual('b', t.get_bytes('foo'))
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            t.close_file_stream('foo')
+
     def test_put(self):
         t = self.get_transport()
 

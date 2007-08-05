@@ -144,6 +144,9 @@ class LocalTransport(Transport):
 
         :param relpath: The relative path to the file
         """
+        canonical_url = self.abspath(relpath)
+        if canonical_url in transport._file_streams:
+            transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
             return open(path, 'rb')
