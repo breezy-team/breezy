@@ -199,24 +199,29 @@ class SvnRaTransport(Transport):
             self._reporter = reporter
             self._baton = report_baton
 
+        @convert_svn_error
         def set_path(self, path, revnum, start_empty, lock_token, pool=None):
             svn.ra.reporter2_invoke_set_path(self._reporter, self._baton, 
                         path, revnum, start_empty, lock_token, pool)
 
+        @convert_svn_error
         def delete_path(self, path, pool=None):
             svn.ra.reporter2_invoke_delete_path(self._reporter, self._baton,
                     path, pool)
 
+        @convert_svn_error
         def link_path(self, path, url, revision, start_empty, lock_token, 
                       pool=None):
             svn.ra.reporter2_invoke_link_path(self._reporter, self._baton,
                     path, url, revision, start_empty, lock_token,
                     pool)
 
+        @convert_svn_error
         def finish_report(self, pool=None):
             svn.ra.reporter2_invoke_finish_report(self._reporter, 
                     self._baton, pool)
 
+        @convert_svn_error
         def abort_report(self, pool=None):
             svn.ra.reporter2_invoke_abort_report(self._reporter, 
                     self._baton, pool)

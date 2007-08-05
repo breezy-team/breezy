@@ -206,9 +206,17 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         if verbose:
             for revid in rebase_todo(repository, plan):
                 info("%s -> %s" % (revid, plan[revid][0]))
+        def fix_revid(revid):
+            try:
+                (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
+            except InvalidRevisionId:
+                return revid
+            if scheme is None:
+                scheme = guess_scheme_from_branch_path(bp)
+            return generate_svn_revision_id(uuid, rev, bp, scheme)
         def replay(repository, oldrevid, newrevid, new_parents):
             return replay_snapshot(repository, oldrevid, newrevid, new_parents,
-                                   revid_renames)
+                                   revid_renames, fix_revid)
         rebase(repository, plan, replay)
         return revid_renames
     finally:
