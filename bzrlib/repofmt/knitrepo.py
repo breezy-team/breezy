@@ -775,9 +775,8 @@ class GraphKnitRepository1(KnitRepository):
     def _start_write_group(self):
         random_name = self.control_files._lock.nonce
         self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        def write_data(bytes):
-            self._upload_transport.append_bytes(random_name + '.pack', bytes)
-        self._open_pack_writer = pack.ContainerWriter(write_data)
+        write_stream = self._upload_transport.open_file_stream(random_name + '.pack')
+        self._open_pack_writer = pack.ContainerWriter(write_stream)
         self._open_pack_writer.begin()
         self._data_names.setup()
         self._revision_store.setup()
@@ -793,6 +792,8 @@ class GraphKnitRepository1(KnitRepository):
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
+            self._open_pack_writer.end()
+            self._upload_transport.close_file_stream(self._open_pack_tuple[1])
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
             self._data_names.save()
