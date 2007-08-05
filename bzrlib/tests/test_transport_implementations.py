@@ -1582,6 +1582,17 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
+    def test_get_with_open_file_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_file_stream('foo')
+        try:
+            handle('bcd')
+            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0,1), (2,1)))))
+        finally:
+            t.close_file_stream('foo')
+
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.
         """

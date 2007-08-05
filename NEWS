@@ -202,6 +202,11 @@ IN DEVELOPMENT
       just has hard coded values based on the url. (e.g. http:// has a large
       page size, file:// has a small one.) (Robert Collins)
 
+    * New methods on ``bzrlib.transport.Transport`` ``open_file_stream`` and
+      ``close_file_stream`` allow incremental addition of data to a file
+      without requiring that all the data be buffered in memory.
+      (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
