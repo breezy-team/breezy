@@ -33,6 +33,7 @@ from bzrlib import (
     osutils,
     urlutils,
     symbol_versioning,
+    transport,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
@@ -83,6 +84,11 @@ class LocalTransport(Transport):
                 # we should stop at least at //HOST part
                 abspath = self.base
             return LocalTransport(abspath)
+
+    def close_file_stream(self, relpath):
+        """See Transport.close_file_stream."""
+        handle = transport._file_streams.pop(self.abspath(relpath))
+        handle.close()
 
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
@@ -138,6 +144,9 @@ class LocalTransport(Transport):
 
         :param relpath: The relative path to the file
         """
+        canonical_url = self.abspath(relpath)
+        if canonical_url in transport._file_streams:
+            transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
             return open(path, 'rb')
@@ -300,6 +309,14 @@ class LocalTransport(Transport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         self._mkdir(self._abspath(relpath), mode=mode)
+
+    def open_file_stream(self, relpath, mode=None):
+        """See Transport.open_file_stream."""
+        # initialise the file
+        self.put_bytes_non_atomic(relpath, "", mode=mode)
+        handle = open(self._abspath(relpath), 'wb')
+        transport._file_streams[self.abspath(relpath)] = handle
+        return handle.write
 
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""

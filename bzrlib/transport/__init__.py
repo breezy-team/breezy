@@ -66,6 +66,11 @@ from bzrlib.trace import (
 from bzrlib import registry
 
 
+# a dictionary of open file streams. Keys are absolute paths, values are
+# transport defined.
+_file_streams = {}
+
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return transport_list_registry
@@ -313,6 +318,15 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def close_file_stream(self, relpath):
+        """Close a file stream at relpath.
+
+        :raises: NoSuchFile if there is no open file stream for relpath.
+        :seealso: open_file_stream.
+        :return: None
+        """
+        raise NotImplementedError(self.close_file_stream)
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -459,6 +473,18 @@ class Transport(object):
         if not path.startswith('/'):
             path = '/' + path
         return path
+
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport.
+
+        This is potentially different for every path in a given namespace.
+        For example, local transports might use an operating system call to 
+        get the block size for a given path, which can vary due to mount
+        points.
+
+        :return: The page size in bytes.
+        """
+        return 4 * 1024
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -819,6 +845,22 @@ class Transport(object):
         def mkdir(path):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
+
+    def open_file_stream(self, relpath, mode=None):
+        """Open a file stream at relpath.
+
+        A file stream is a callback which adds data to the file. Buffering
+        may occur internally until the stream is closed with close_file_stream.
+        Calls to readv or the get_* methods will be synchronised with any
+        internal buffering that may be present.
+
+        :seealso: close_file_stream.
+        :param relpath: The relative path to the file.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
+        :return: A write callback to add data to the file.
+        """
+        raise NotImplementedError(self.open_file_stream)
 
     @deprecated_method(zero_eleven)
     def append(self, relpath, f, mode=None):
