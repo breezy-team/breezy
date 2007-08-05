@@ -53,6 +53,7 @@ from bzrlib.symbol_versioning import (
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    _file_streams,
     local,
     register_urlparse_netloc_protocol,
     Server,
@@ -155,6 +156,11 @@ class SFTPTransport(ConnectedTransport):
         assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
+
+    def close_file_stream(self, relpath):
+        """See Transport.close_file_stream."""
+        handle = _file_streams.pop(self.abspath(relpath))
+        handle.close()
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
@@ -532,6 +538,28 @@ class SFTPTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
+
+    def open_file_stream(self, relpath):
+        """See Transport.open_file_stream."""
+        # initialise the file to zero-length
+        # this is three round trips, but we don't use this 
+        # api more than once per write_group at the moment so 
+        # it is a tolerable overhead. Better would be to truncate
+        # the file after opening. RBC 20070805
+        self.put_bytes_non_atomic(relpath, "")
+        abspath = self._remote_path(relpath)
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+        handle = None
+        try:
+            handle = self._get_sftp().file(abspath, mode='wb')
+            handle.set_pipelined(True)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath,
+                                         ': unable to open')
+        _file_streams[self.abspath(relpath)] = handle
+        return handle.write
 
     def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):

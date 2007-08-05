@@ -633,6 +633,16 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dnomode', mode=None)
         self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
 
+    def test_opening_a_file_stream_creates_file(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_file_stream('foo')
+        try:
+            self.assertEqual('', t.get_bytes('foo'))
+        finally:
+            t.close_file_stream('foo')
+
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
         # same protocol two servers

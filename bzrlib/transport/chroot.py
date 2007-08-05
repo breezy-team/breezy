@@ -92,6 +92,9 @@ class ChrootTransport(Transport):
     def clone(self, relpath):
         return ChrootTransport(self.server, self.abspath(relpath))
 
+    def close_file_stream(self, relpath):
+        return self._call('close_file_stream', relpath)
+
     def delete(self, relpath):
         return self._call('delete', relpath)
 
@@ -132,6 +135,9 @@ class ChrootTransport(Transport):
 
     def mkdir(self, relpath, mode=None):
         return self._call('mkdir', relpath, mode)
+
+    def open_file_stream(self, relpath):
+        return self._call('open_file_stream', relpath)
 
     def put_file(self, relpath, f, mode=None):
         return self._call('put_file', relpath, f, mode)

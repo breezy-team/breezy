@@ -71,6 +71,10 @@ class TransportDecorator(Transport):
         return self.__class__(
             self._get_url_prefix() + decorated_clone.base, decorated_clone)
 
+    def close_file_stream(self, relpath):
+        """See Transport.close_file_stream."""
+        return self._decorated.close_file_stream(relpath)
+
     def delete(self, relpath):
         """See Transport.delete()."""
         return self._decorated.delete(relpath)
@@ -109,6 +113,10 @@ class TransportDecorator(Transport):
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
+
+    def open_file_stream(self, relpath):
+        """See Transport.open_file_stream."""
+        return self._decorated.open_file_stream(relpath)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
