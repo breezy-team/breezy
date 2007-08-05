@@ -17,7 +17,13 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
+__all__ = [
+    'KnitReconciler',
+    'PackReconciler',
+    'reconcile',
+    'Reconciler',
+    'RepoReconciler',
+    ]
 
 
 from bzrlib import ui
@@ -76,6 +82,11 @@ class Reconciler(object):
 
 class RepoReconciler(object):
     """Reconciler that reconciles a repository.
+
+    The goal of repository reconciliation is to make any derived daata
+    consistent with the core data committed by a user. This can involve 
+    reindexing, or removing unreferenced data if that can interfere with
+    queries in a given repository.
 
     Currently this consists of an inventory reweave with revision cross-checks.
     """
@@ -267,9 +278,7 @@ class RepoReconciler(object):
 class KnitReconciler(RepoReconciler):
     """Reconciler that reconciles a knit format repository.
 
-    This will detect garbage inventories and remove them.
-
-    Inconsistent parentage is checked for in the revision weave.
+    This will detect garbage inventories and remove them in thorough mode.
     """
 
     def _reconcile_steps(self):
@@ -337,3 +346,20 @@ class KnitReconciler(RepoReconciler):
         self.garbage_inventories = len(garbage)
         for revision_id in garbage:
             mutter('Garbage inventory {%s} found.', revision_id)
+
+
+class PackReconciler(RepoReconciler):
+    """Reconciler that reconciles a pack based repository.
+
+    Garbage inventories do not affect ancestry queries, and removal is
+    considerably more expensive as there is no separate versioned file for
+    them, so they are not cleaned. In short it is currently a no-op.
+
+    In future this may be a good place to hook in annotation cache checking,
+    index recreation etc.
+    """
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""
+        if self.thorough:
+            pass

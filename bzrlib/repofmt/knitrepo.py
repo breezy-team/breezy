@@ -810,6 +810,23 @@ class GraphKnitRepository1(KnitRepository):
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
 
+    @needs_write_lock
+    def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import PackReconciler
+        reconciler = PackReconciler(self, thorough=thorough)
+        reconciler.reconcile()
+        return reconciler
+
+    def reconcile_actions(self):
+        """Return a set of actions taken by reconcile on this repository.
+ 
+        Pack repositories currently perform no reconciliation.
+
+        :return: A set of actions. e.g. set(['inventory_gc']).
+        """
+        return set([])
+
 
 class GraphKnitRepository3(KnitRepository3):
     """Experimental graph-knit using subtrees repository."""
@@ -882,6 +899,21 @@ class GraphKnitRepository3(KnitRepository3):
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
+
+    @needs_write_lock
+    def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import PackReconciler
+        reconciler = PackReconciler(self, thorough=thorough)
+        reconciler.reconcile()
+        return reconciler
+
+    def reconcile_actions(self):
+        """Return a set of actions taken by reconcile on this repository.
+        
+        :return: A set of actions. e.g. set(['inventory_gc']).
+        """
+        return set([])
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
