@@ -539,14 +539,14 @@ class SFTPTransport(ConnectedTransport):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
         # initialise the file to zero-length
         # this is three round trips, but we don't use this 
         # api more than once per write_group at the moment so 
         # it is a tolerable overhead. Better would be to truncate
         # the file after opening. RBC 20070805
-        self.put_bytes_non_atomic(relpath, "")
+        self.put_bytes_non_atomic(relpath, "", mode)
         abspath = self._remote_path(relpath)
         # TODO: jam 20060816 paramiko doesn't publicly expose a way to
         #       set the file mode at create time. If it does, use it.

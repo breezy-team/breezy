@@ -643,6 +643,23 @@ class TransportTests(TestTransportImplementation):
         finally:
             t.close_file_stream('foo')
 
+    def test_opening_a_file_stream_can_set_mode(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        def check_mode(name, mode, expected):
+            handle = t.open_file_stream(name, mode=mode)
+            t.close_file_stream(name)
+            self.assertTransportMode(t, name, expected)
+        check_mode('mode644', 0644, 0644)
+        check_mode('mode666', 0666, 0666)
+        check_mode('mode600', 0600, 0600)
+        # The default permissions should be based on the current umask
+        check_mode('nomode', None, 0666 & ~osutils.get_umask())
+
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
         # same protocol two servers

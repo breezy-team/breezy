@@ -307,10 +307,10 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         self._mkdir(self._abspath(relpath), mode=mode)
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
         # initialise the file
-        self.put_bytes_non_atomic(relpath, "")
+        self.put_bytes_non_atomic(relpath, "", mode=mode)
         handle = open(self._abspath(relpath), 'wb')
         transport._file_streams[self.abspath(relpath)] = handle
         return handle.write

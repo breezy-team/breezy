@@ -846,7 +846,7 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """Open a file stream at relpath.
 
         A file stream is a callback which adds data to the file. Buffering
@@ -856,6 +856,8 @@ class Transport(object):
 
         :seealso: close_file_stream.
         :param relpath: The relative path to the file.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
         :return: A write callback to add data to the file.
         """
         raise NotImplementedError(self.open_file_stream)

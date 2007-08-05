@@ -65,6 +65,10 @@ class TransportDecorator(Transport):
         """See Transport.append_bytes()."""
         return self._decorated.append_bytes(relpath, bytes, mode=mode)
 
+    def _can_roundtrip_unix_modebits(self):
+        """See Transport._can_roundtrip_unix_modebits()."""
+        return self._decorated._can_roundtrip_unix_modebits()
+
     def clone(self, offset=None):
         """See Transport.clone()."""
         decorated_clone = self._decorated.clone(offset)
@@ -114,9 +118,9 @@ class TransportDecorator(Transport):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
-        return self._decorated.open_file_stream(relpath)
+        return self._decorated.open_file_stream(relpath, mode=mode)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
