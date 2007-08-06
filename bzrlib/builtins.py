@@ -2722,10 +2722,11 @@ class cmd_merge(Command):
         if (merger.show_base and
             not merger.merge_type is _mod_merge.Merge3Merger):
             raise errors.BzrCommandError("Show-base is not supported for this"
-                                         " merge type. %s" % merge_type)
+                                         " merge type. %s" % merger.merge_type)
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.BzrCommandError("Conflict reduction is not supported"
-                                         " for merge type %s." % merge_type)
+                                         " for merge type %s." %
+                                         merger.merge_type)
         if merger.reprocess and merger.show_base:
             raise errors.BzrCommandError("Cannot do conflict reduction and"
                                          " show base.")
