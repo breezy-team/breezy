@@ -34,7 +34,6 @@ from bzrlib import (
     errors,
     )
 import bzrlib.branch
-from bzrlib.builtins import merge
 from bzrlib.osutils import pathjoin
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_tree_status
@@ -145,7 +144,7 @@ class BranchStatus(TestCaseWithTransport):
         b_2 = b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
-        merge(["./branch", -1], [None, None], this_dir = './copy')
+        wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2)
         self.assertStartsWith(message, "pending merges:\n")
         self.assertEndsWith(message, "Empty commit 2\n")
@@ -153,7 +152,7 @@ class BranchStatus(TestCaseWithTransport):
         # must be long to make sure we see elipsis at the end
         wt.commit("Empty commit 3 " +
                    "blah blah blah blah " * 100)
-        merge(["./branch", -1], [None, None], this_dir = './copy')
+        wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2)
         self.assertStartsWith(message, "pending merges:\n")
         self.assert_("Empty commit 3" in message)

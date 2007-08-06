@@ -28,6 +28,7 @@ import re
 
 from bzrlib import errors
 
+_OPTION_KEY_ELEMENTS = "key_elements="
 _OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
@@ -55,26 +56,40 @@ class GraphIndexBuilder(object):
     VALUE          := no-newline-no-null-bytes
     """
 
-    def __init__(self, reference_lists=0):
+    def __init__(self, reference_lists=0, key_elements=1):
         """Create a GraphIndex builder.
 
         :param reference_lists: The number of node references lists for each
             entry.
+        :param key_elements: The number of bytestrings in each key.
         """
         self.reference_lists = reference_lists
         self._nodes = {}
+        self._nodes_by_key = {}
+        self._key_length = key_elements
+
+    def _check_key(self, key):
+        """Raise BadIndexKey if key is not a valid key for this index."""
+        if type(key) != tuple:
+            raise errors.BadIndexKey(key)
+        if self._key_length != len(key):
+            raise errors.BadIndexKey(key)
+        for element in key:
+            if not element or _whitespace_re.search(element) is not None:
+                raise errors.BadIndexKey(element)
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
 
-        :param key: The key. keys must be whitespace-free utf8.
+        :param key: The key. keys are non-empty tuples containing
+            as many whitespace-free utf8 bytestrings as the key length
+            defined for this index.
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        if not key or _whitespace_re.search(key) is not None:
-            raise errors.BadIndexKey(key)
+        self._check_key(key)
         if _newline_null_re.search(value) is not None:
             raise errors.BadIndexValue(value)
         if len(references) != self.reference_lists:
@@ -82,19 +97,32 @@ class GraphIndexBuilder(object):
         node_refs = []
         for reference_list in references:
             for reference in reference_list:
-                if _whitespace_re.search(reference) is not None:
-                    raise errors.BadIndexKey(reference)
+                self._check_key(reference)
                 if reference not in self._nodes:
                     self._nodes[reference] = ('a', (), '')
             node_refs.append(tuple(reference_list))
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = ('', tuple(node_refs), value)
+        if self._key_length > 1:
+            key_dict = self._nodes_by_key
+            if self.reference_lists:
+                key_value = key, value, tuple(node_refs)
+            else:
+                key_value = key, value
+            # possibly should do this on-demand, but it seems likely it is 
+            # always wanted
+            # For a key of (foo, bar, baz) create
+            # _nodes_by_key[foo][bar][baz] = key_value
+            for subkey in key[:-1]:
+                key_dict = key_dict.setdefault(subkey, {})
+            key_dict[key[-1]] = key_value
 
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        prefix_length = len(lines[0]) + len(lines[1])
+        lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
+        prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the 
         # file cannot be determined until all the inbetween references have
@@ -125,7 +153,12 @@ class GraphIndexBuilder(object):
                 # date - saves reaccumulating on the second pass
                 key_offset_info.append((key, non_ref_bytes, total_references))
                 # key is literal, value is literal, there are 3 null's, 1 NL
-                non_ref_bytes += len(key) + len(value) + 3 + 1
+                # key is variable length tuple, \x00 between elements
+                non_ref_bytes += sum(len(element) for element in key)
+                if self._key_length > 1:
+                    non_ref_bytes += self._key_length - 1
+                # value is literal bytes, there are 3 null's, 1 NL.
+                non_ref_bytes += len(value) + 3 + 1
                 # one byte for absent if set.
                 if absent:
                     non_ref_bytes += 1
@@ -159,7 +192,8 @@ class GraphIndexBuilder(object):
                 for reference in ref_list:
                     ref_addresses.append(format_string % key_addresses[reference])
                 flattened_references.append('\r'.join(ref_addresses))
-            lines.append("%s\0%s\0%s\0%s\n" % (key, absent,
+            string_key = '\x00'.join(key)
+            lines.append("%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
         result = StringIO(''.join(lines))
@@ -177,8 +211,8 @@ class GraphIndex(object):
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
     terminated string without any newlines. The storage of the index is 
-    hidden in the interface: keys and key references are always bytestrings,
-    never the internal representation (e.g. dictionary offsets).
+    hidden in the interface: keys and key references are always tuples of
+    bytestrings, never the internal representation (e.g. dictionary offsets).
 
     It is presumed that the index will not be mutated - it is static data.
 
@@ -196,6 +230,75 @@ class GraphIndex(object):
         """
         self._transport = transport
         self._name = name
+        self._nodes = None
+        self._keys_by_offset = None
+        self._nodes_by_key = None
+
+    def _buffer_all(self):
+        """Buffer all the index data.
+
+        Mutates self._nodes and self.keys_by_offset.
+        """
+        stream = self._transport.get(self._name)
+        self._read_prefix(stream)
+        expected_elements = 3 + self._key_length
+        line_count = 0
+        # raw data keyed by offset
+        self._keys_by_offset = {}
+        # ready-to-return key:value or key:value, node_ref_lists
+        self._nodes = {}
+        self._nodes_by_key = {}
+        trailers = 0
+        pos = stream.tell()
+        for line in stream.readlines():
+            if line == '\n':
+                trailers += 1
+                continue
+            elements = line.split('\0')
+            if len(elements) != expected_elements:
+                raise errors.BadIndexData(self)
+            # keys are tuples
+            key = tuple(elements[:self._key_length])
+            absent, references, value = elements[-3:]
+            value = value[:-1] # remove the newline
+            ref_lists = []
+            for ref_string in references.split('\t'):
+                ref_lists.append(tuple([
+                    int(ref) for ref in ref_string.split('\r') if ref
+                    ]))
+            ref_lists = tuple(ref_lists)
+            self._keys_by_offset[pos] = (key, absent, ref_lists, value)
+            pos += len(line)
+        for key, absent, references, value in self._keys_by_offset.itervalues():
+            if absent:
+                continue
+            # resolve references:
+            if self.node_ref_lists:
+                node_refs = []
+                for ref_list in references:
+                    node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
+                node_value = (value, tuple(node_refs))
+            else:
+                node_value = value
+            self._nodes[key] = node_value
+            if self._key_length > 1:
+                subkey = list(reversed(key[:-1]))
+                key_dict = self._nodes_by_key
+                if self.node_ref_lists:
+                    key_value = key, node_value[0], node_value[1]
+                else:
+                    key_value = key, node_value
+                # possibly should do this on-demand, but it seems likely it is 
+                # always wanted
+                # For a key of (foo, bar, baz) create
+                # _nodes_by_key[foo][bar][baz] = key_value
+                for subkey in key[:-1]:
+                    key_dict = key_dict.setdefault(subkey, {})
+                key_dict[key[-1]] = key_value
+        self._keys = set(self._nodes)
+        if trailers != 1:
+            # there must be one line - the empty trailer line.
+            raise errors.BadIndexData(self)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index.
@@ -206,40 +309,14 @@ class GraphIndex(object):
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
-        stream = self._transport.get(self._name)
-        self._read_prefix(stream)
-        line_count = 0
-        self.keys_by_offset = {}
-        trailers = 0
-        pos = stream.tell()
-        for line in stream.readlines():
-            if line == '\n':
-                trailers += 1
-                continue
-            key, absent, references, value = line.split('\0')
-            value = value[:-1] # remove the newline
-            ref_lists = []
-            for ref_string in references.split('\t'):
-                ref_lists.append(tuple([
-                    int(ref) for ref in ref_string.split('\r') if ref
-                    ]))
-            ref_lists = tuple(ref_lists)
-            self.keys_by_offset[pos] = (key, absent, ref_lists, value)
-            pos += len(line)
-        for key, absent, references, value in self.keys_by_offset.itervalues():
-            if absent:
-                continue
-            # resolve references:
-            if self.node_ref_lists:
-                node_refs = []
-                for ref_list in references:
-                    node_refs.append(tuple([self.keys_by_offset[ref][0] for ref in ref_list]))
-                yield (key, value, tuple(node_refs))
-            else:
-                yield (key, value)
-        if trailers != 1:
-            # there must be one line - the empty trailer line.
-            raise errors.BadIndexData(self)
+        if self._nodes is None:
+            self._buffer_all()
+        if self.node_ref_lists:
+            for key, (value, node_ref_lists) in self._nodes.iteritems():
+                yield key, value, node_ref_lists
+        else:
+            for key, value in self._nodes.iteritems():
+                yield key, value
 
     def _read_prefix(self, stream):
         signature = stream.read(len(self._signature()))
@@ -250,6 +327,13 @@ class GraphIndex(object):
             raise errors.BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
+        except ValueError:
+            raise errors.BadIndexOptions(self)
+        options_line = stream.readline()
+        if not options_line.startswith(_OPTION_KEY_ELEMENTS):
+            raise errors.BadIndexOptions(self)
+        try:
+            self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
         except ValueError:
             raise errors.BadIndexOptions(self)
 
@@ -264,12 +348,88 @@ class GraphIndex(object):
         keys = set(keys)
         if not keys:
             return
-        for node in self.iter_all_entries():
-            if not keys:
-                return
-            if node[0] in keys:
-                yield node
-                keys.remove(node[0])
+        if self._nodes is None:
+            self._buffer_all()
+        keys = keys.intersection(self._keys)
+        if self.node_ref_lists:
+            for key in keys:
+                value, node_refs = self._nodes[key]
+                yield key, value, node_refs
+        else:
+            for key in keys:
+                yield key, self._nodes[key]
+
+    def iter_entries_prefix(self, keys):
+        """Iterate over keys within the index using prefix matching.
+
+        Prefix matching is applied within the tuple of a key, not to within
+        the bytestring of each key element. e.g. if you have the keys ('foo',
+        'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
+        only the former key is returned.
+
+        :param keys: An iterable providing the key prefixes to be retrieved.
+            Each key prefix takes the form of a tuple the length of a key, but
+            with the last N elements 'None' rather than a regular bytestring.
+            The first element cannot be 'None'.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys with a matching prefix to those supplied. No additional keys
+            will be returned, and every match that is in the index will be
+            returned.
+        """
+        keys = set(keys)
+        if not keys:
+            return
+        # load data - also finds key lengths
+        if self._nodes is None:
+            self._buffer_all()
+        if self._key_length == 1:
+            for key in keys:
+                # sanity check
+                if key[0] is None:
+                    raise errors.BadIndexKey(key)
+                if len(key) != self._key_length:
+                    raise errors.BadIndexKey(key)
+                if self.node_ref_lists:
+                    value, node_refs = self._nodes[key]
+                    yield key, value, node_refs
+                else:
+                    yield key, self._nodes[key]
+            return
+        for key in keys:
+            # sanity check
+            if key[0] is None:
+                raise errors.BadIndexKey(key)
+            if len(key) != self._key_length:
+                raise errors.BadIndexKey(key)
+            # find what it refers to:
+            key_dict = self._nodes_by_key
+            elements = list(key)
+            # find the subdict whose contents should be returned.
+            try:
+                while len(elements) and elements[0] is not None:
+                    key_dict = key_dict[elements[0]]
+                    elements.pop(0)
+            except KeyError:
+                # a non-existant lookup.
+                continue
+            if len(elements):
+                dicts = [key_dict]
+                while dicts:
+                    key_dict = dicts.pop(-1)
+                    # can't be empty or would not exist
+                    item, value = key_dict.iteritems().next()
+                    if type(value) == dict:
+                        # push keys 
+                        dicts.extend(key_dict.itervalues())
+                    else:
+                        # yield keys
+                        for value in key_dict.itervalues():
+                            # each value is the key:value:node refs tuple
+                            # ready to yield.
+                            yield value
+            else:
+                # the last thing looked up was a terminal element
+                yield key_dict
 
     def _signature(self):
         """The file signature for this index type."""
@@ -346,6 +506,37 @@ class CombinedGraphIndex(object):
                 keys.remove(node[0])
                 yield node
 
+    def iter_entries_prefix(self, keys):
+        """Iterate over keys within the index using prefix matching.
+
+        Duplicate keys across child indices are presumed to have the same
+        value and are only reported once.
+
+        Prefix matching is applied within the tuple of a key, not to within
+        the bytestring of each key element. e.g. if you have the keys ('foo',
+        'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
+        only the former key is returned.
+
+        :param keys: An iterable providing the key prefixes to be retrieved.
+            Each key prefix takes the form of a tuple the length of a key, but
+            with the last N elements 'None' rather than a regular bytestring.
+            The first element cannot be 'None'.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys with a matching prefix to those supplied. No additional keys
+            will be returned, and every match that is in the index will be
+            returned.
+        """
+        keys = set(keys)
+        if not keys:
+            return
+        seen_keys = set()
+        for index in self._indices:
+            for node in index.iter_entries_prefix(keys):
+                if node[0] in seen_keys:
+                    continue
+                seen_keys.add(node[0])
+                yield node
+
     def validate(self):
         """Validate that everything in the index can be accessed."""
         for index in self._indices:
@@ -365,8 +556,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
         :param nodes: An iterable of (key, node_refs, value) entries to add.
         """
-        for (key, value, node_refs) in nodes:
-            self.add_node(key, value, node_refs)
+        if self.reference_lists:
+            for (key, value, node_refs) in nodes:
+                self.add_node(key, value, node_refs)
+        else:
+            for (key, value) in nodes:
+                self.add_node(key, value)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
@@ -403,6 +598,76 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 node = self._nodes[key]
                 if not node[0]:
                     yield key, node[2]
+
+    def iter_entries_prefix(self, keys):
+        """Iterate over keys within the index using prefix matching.
+
+        Prefix matching is applied within the tuple of a key, not to within
+        the bytestring of each key element. e.g. if you have the keys ('foo',
+        'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
+        only the former key is returned.
+
+        :param keys: An iterable providing the key prefixes to be retrieved.
+            Each key prefix takes the form of a tuple the length of a key, but
+            with the last N elements 'None' rather than a regular bytestring.
+            The first element cannot be 'None'.
+        :return: An iterable as per iter_all_entries, but restricted to the
+            keys with a matching prefix to those supplied. No additional keys
+            will be returned, and every match that is in the index will be
+            returned.
+        """
+        # XXX: To much duplication with the GraphIndex class; consider finding
+        # a good place to pull out the actual common logic.
+        keys = set(keys)
+        if not keys:
+            return
+        if self._key_length == 1:
+            for key in keys:
+                # sanity check
+                if key[0] is None:
+                    raise errors.BadIndexKey(key)
+                if len(key) != self._key_length:
+                    raise errors.BadIndexKey(key)
+                node = self._nodes[key]
+                if node[0]:
+                    continue 
+                if self.reference_lists:
+                    yield key, node[2], node[1]
+                else:
+                    yield key, node[2]
+            return
+        for key in keys:
+            # sanity check
+            if key[0] is None:
+                raise errors.BadIndexKey(key)
+            if len(key) != self._key_length:
+                raise errors.BadIndexKey(key)
+            # find what it refers to:
+            key_dict = self._nodes_by_key
+            elements = list(key)
+            # find the subdict to return
+            try:
+                while len(elements) and elements[0] is not None:
+                    key_dict = key_dict[elements[0]]
+                    elements.pop(0)
+            except KeyError:
+                # a non-existant lookup.
+                continue
+            if len(elements):
+                dicts = [key_dict]
+                while dicts:
+                    key_dict = dicts.pop(-1)
+                    # can't be empty or would not exist
+                    item, value = key_dict.iteritems().next()
+                    if type(value) == dict:
+                        # push keys 
+                        dicts.extend(key_dict.itervalues())
+                    else:
+                        # yield keys
+                        for value in key_dict.itervalues():
+                            yield value
+            else:
+                yield key_dict
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""

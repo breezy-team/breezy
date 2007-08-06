@@ -800,7 +800,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.put(filename, my_file)
 
     @needs_write_lock # because merge pulls data into the branch.
-    def merge_from_branch(self, branch, to_revision=None):
+    def merge_from_branch(self, branch, to_revision=None, from_revision=None,
+        merge_type=None):
         """Merge from a branch into this working tree.
 
         :param branch: The branch to merge from.
@@ -831,11 +832,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 merger.other_rev_id)
             merger.other_branch = branch
             merger.pp.next_phase()
-            merger.find_base()
+            if from_revision is None:
+                merger.find_base()
+            else:
+                merger.set_base_revision(from_revision, branch)
             if merger.base_rev_id == merger.other_rev_id:
                 raise errors.PointlessMerge
             merger.backup_files = False
-            merger.merge_type = Merge3Merger
+            if merge_type is None:
+                merger.merge_type = Merge3Merger
+            else:
+                merger.merge_type = merge_type
             merger.set_interesting_files(None)
             merger.show_base = False
             merger.reprocess = False

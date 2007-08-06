@@ -127,7 +127,7 @@ class TestUpgrade(TestCaseWithTransport):
         # 'dir-20051005095101-da1441ea3fa6917a'
         self.assertNotEqual(
             [],
-            repo.text_store.get_weave(
+            repo.weave_store.get_weave(
                 'dir-20051005095101-da1441ea3fa6917a',
                 repo.get_transaction()))
 
