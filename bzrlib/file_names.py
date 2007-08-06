@@ -58,10 +58,13 @@ class FileNames(object):
         """Allocate name in the names collection.
 
         :param name: The name to allocate.
+        :raises: bzrlib.errors.DuplicateKey if the name is already allocated.
         """
         if name is not None:
             if len(self._names) >= self._cap:
                 raise errors.BzrError('too many files')
+            if name in self._names:
+                raise errors.DuplicateKey(name)
             self._names.add(name)
             return name
 

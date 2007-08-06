@@ -33,6 +33,13 @@ class TestFileNames(TestCaseWithMemoryTransport):
             names.save()
             self.assertEqual('', t.get_bytes(name))
         
+    def test_allocate_duplicate_name_errors(self):
+        t = self.get_transport()
+        names = FileNames(t, 'index')
+        names.initialise()
+        names.allocate('0')
+        self.assertRaises(errors.DuplicateKey, names.allocate, '0')
+
     def test_allocate_name_does_not_error(self):
         t = self.get_transport()
         names = FileNames(t, 'index')
