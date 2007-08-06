@@ -250,6 +250,13 @@ class RemoteRepository(object):
         self._lock_count = 0
         self._leave_lock = False
 
+    def __eq__(self, other):
+        return (self.__class__ == other.__class__ and
+                self.bzrdir.transport.base == other.bzrdir.transport.base)
+        
+    def __ne__(self, other):
+        return not self == other
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 

@@ -236,6 +236,15 @@ class Repository(object):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
 
+    def __eq__(self, other):
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
+
+    def __ne__(self, other):
+        return not self == other
+
     def is_locked(self):
         return self.control_files.is_locked()
 
