@@ -40,7 +40,11 @@ class FileNames(object):
     The save method must be called to cause the state to be saved to the
     transport.
 
-    Finally, load is used to obtain a previously saved set.
+    The load method is used to obtain a previously saved set.
+
+    There is a cap in the _cap method which will error if more names are
+    added than the names collection can sensibly manage. Currently this
+    cap is 10000.
     """
 
     def __init__(self, transport, index_name):
@@ -50,12 +54,16 @@ class FileNames(object):
         self._names = None
         self._cap = 10000
 
-    def allocate(self):
-        for number in xrange(self._cap):
-            if str(number) not in self._names:
-                self._names.add(str(number))
-                return str(number)
-        raise errors.BzrError('too many files')
+    def allocate(self, name=None):
+        """Allocate name in the names collection.
+
+        :param name: The name to allocate.
+        """
+        if name is not None:
+            if len(self._names) >= self._cap:
+                raise errors.BzrError('too many files')
+            self._names.add(name)
+            return name
 
     def initialise(self):
         """Initialise the collection."""

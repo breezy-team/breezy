@@ -33,32 +33,36 @@ class TestFileNames(TestCaseWithMemoryTransport):
             names.save()
             self.assertEqual('', t.get_bytes(name))
         
-    def test_allocate_trivial(self):
+    def test_allocate_name_does_not_error(self):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
-        name = names.allocate()
-        self.assertEqual('0', name)
-        self.assertFalse(t.has('index'))
-        name = names.allocate()
-        self.assertEqual('1', name)
+        names.allocate('0')
         self.assertFalse(t.has('index'))
 
-    def test_allocate_overrun(self):
+    def test_allocate_two_names_succeeds(self):
+        t = self.get_transport()
+        names = FileNames(t, 'index')
+        names.initialise()
+        names.allocate('0')
+        names.allocate('1')
+        self.assertFalse(t.has('index'))
+
+    def test_exceeding_the_allocation_cap_errors(self):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
         names._cap = 5
         for number in xrange(5):
-            name = names.allocate()
-        self.assertRaises(errors.BzrError, names.allocate)
+            name = names.allocate(str(number))
+        self.assertRaises(errors.BzrError, names.allocate, '6')
 
     def test_load(self):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
-        names.allocate()
-        names.allocate()
+        names.allocate('0')
+        names.allocate('1')
         names.save()
         names = FileNames(t, 'index')
         names.load()
@@ -77,16 +81,16 @@ class TestFileNames(TestCaseWithMemoryTransport):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
-        names.allocate()
-        names.allocate()
+        names.allocate('0')
+        names.allocate('1')
         self.assertEqual(set(['0', '1']), names.names())
 
     def test_names_on_unlistable_works(self):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
-        names.allocate()
-        names.allocate()
+        names.allocate('0')
+        names.allocate('1')
         names.save()
         names = FileNames(
             get_transport('unlistable+' + self.get_url()), 'index')
@@ -97,7 +101,19 @@ class TestFileNames(TestCaseWithMemoryTransport):
         t = self.get_transport()
         names = FileNames(t, 'index')
         names.initialise()
-        name1 = names.allocate()
-        name2 = names.allocate()
-        names.remove(name1)
-        self.assertEqual(set([name2]), names.names())
+        names.allocate('0')
+        names.allocate('1')
+        names.remove('0')
+        self.assertEqual(set(['1']), names.names())
+
+    def test_roundtrip_hash_name(self):
+        t = self.get_transport()
+        names = FileNames(t, 'index')
+        names.initialise()
+        names.allocate('0123456789abcdef0123456789abcdef')
+        names.save()
+        names = FileNames(t, 'index')
+        names.load()
+        self.assertEqual(set(['0123456789abcdef0123456789abcdef']),
+            names.names())
+
