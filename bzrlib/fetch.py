@@ -89,7 +89,9 @@ class RepoFetcher(object):
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
-        if self._same_repo(to_repository, from_repository, last_revision):
+        if to_repository == from_repository:
+            if last_revision not in (None, NULL_REVISION):
+                to_repository.get_revision(last_revision)
             return
         self.to_repository = to_repository
         self.from_repository = from_repository
@@ -112,14 +114,6 @@ class RepoFetcher(object):
                 self.to_repository.unlock()
         finally:
             self.from_repository.unlock()
-
-    def _same_repo(self, to_repository, from_repository, last_revision):
-        if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
-            # check that last_revision is in 'from' and then return a no-operation.
-            if last_revision not in (None, NULL_REVISION):
-                to_repository.get_revision(last_revision)
-            return True
-        return False
 
     def __fetch(self):
         """Primary worker function.
