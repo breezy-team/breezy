@@ -50,8 +50,9 @@ class TestCommandHelp(tests.TestCase):
             """A sample command."""
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertStartsWith(helptext, 'usage: bzr Demo')
-        self.assertEndsWith(helptext, 'Show help message.\n')
+        self.assertStartsWith(helptext, 'Purpose: A sample command.')
+        self.assertContainsRe(helptext, 'Usage:   bzr Demo')
+        self.assertEndsWith(helptext, 'Show help message.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):

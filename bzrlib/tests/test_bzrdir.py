@@ -138,11 +138,11 @@ class TestFormatRegistry(TestCase):
                         'Directory formats')
         topic = topics.get_detail('formats')
         new, deprecated = topic.split('Deprecated formats')
-        self.assertContainsRe(new, 'Bazaar directory formats')
+        self.assertContainsRe(new, 'These formats can be used')
         self.assertContainsRe(new, 
-            '  knit/default:\n    \(native\) Format using knits\n')
+                ':knit/default:\n    \(native\) Format using knits\n')
         self.assertContainsRe(deprecated, 
-            '  lazy:\n    \(native\) Format registered lazily\n')
+                ':lazy:\n    \(native\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
