@@ -195,6 +195,9 @@ IN DEVELOPMENT
     * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
       files that are stored on a transport. (Robert Collins)
 
+    * ``Repository`` objects can now be compared with ``==`` and ``!=`` to
+      determine if they are the same repository.  (Andrew Bennetts)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
