@@ -19,7 +19,8 @@ from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
-                           NoWorkingTree, AlreadyBranchError)
+                           NoWorkingTree, AlreadyBranchError, 
+                           IncompatibleFormat)
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
 
@@ -178,8 +179,6 @@ class SvnRemoteAccess(BzrDir):
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
-        if shared:
-            raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
 

@@ -18,7 +18,7 @@
 Support for Subversion branches
 """
 import bzrlib
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
 from bzrlib.lazy_import import lazy_import
@@ -107,6 +107,9 @@ topic_registry.register_lazy('svn-branching-schemes',
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
+format_registry.register("subversion", format.SvnFormat, 
+                         "Subversion repository. ", 
+                         native=False)
 
 versions_checked = False
 def lazy_check_versions():
