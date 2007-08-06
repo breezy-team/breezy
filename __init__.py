@@ -25,7 +25,6 @@ from bzrlib.lazy_import import lazy_import
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 from bzrlib.repository import InterRepository
-from bzrlib.workingtree import WorkingTreeFormat
 
 lazy_import(globals(), """
 import branch
@@ -108,13 +107,6 @@ topic_registry.register_lazy('svn-branching-schemes',
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
-
-bzrlib.branch.BranchFormat.register_format(branch.SvnBranchFormat())
-bzrlib.repository.format_registry.register_lazy(
-        "Subversion Repository Format",
-        "bzrlib.plugins.svn.repository",
-        "SvnRepositoryFormat")
-WorkingTreeFormat.register_format(workingtree.SvnWorkingTreeFormat())
 
 versions_checked = False
 def lazy_check_versions():

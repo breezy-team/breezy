@@ -176,6 +176,12 @@ class SvnRemoteAccess(BzrDir):
         branch.bzrdir = self
         return branch
 
+    def create_repository(self, shared=False):
+        """See BzrDir.create_repository."""
+        if shared:
+            raise errors.IncompatibleFormat('shared repository', self._format)
+        return self.open_repository()
+
 
 class SvnFormat(BzrDirFormat):
     """Format for the Subversion smart server."""
