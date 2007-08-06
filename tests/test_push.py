@@ -411,3 +411,6 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertTrue(tree.inventory.has_filename("registry.moved"))
         self.assertTrue(tree.inventory.has_filename("registry/generic.c"))
         self.assertFalse(tree.inventory.has_filename("registry.moved/generic.c"))
+        os.mkdir("n")
+        BzrDir.open(repos_url+"/trunk").sprout("n")
+    
