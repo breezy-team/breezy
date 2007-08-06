@@ -251,7 +251,7 @@ class RemoteRepository(object):
 
     def __eq__(self, other):
         return (self.__class__ == other.__class__ and
-                self._client == other._client)
+                self.bzrdir.transport.base == other.bzrdir.transport.base)
         
     def __ne__(self, other):
         return not self == other

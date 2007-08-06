@@ -25,12 +25,6 @@ class _SmartClient(object):
     def __init__(self, shared_medium):
         self._shared_medium = shared_medium
 
-    def __eq__(self, other):
-        return self._shared_medium == other._shared_medium
-
-    def __ne__(self, other):
-        return not self == other
-
     def get_smart_medium(self):
         return self._shared_medium.connection
 
