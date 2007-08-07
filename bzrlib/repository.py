@@ -235,7 +235,7 @@ class Repository(object):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
 
-    def is_same_repository(self, other):
+    def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
         location as another repository.
 

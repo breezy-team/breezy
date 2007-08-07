@@ -423,32 +423,32 @@ class TestRepository(TestCaseWithRepository):
 
 
 class TestRepositoryComparison(TestCaseWithRepository):
-    """Tests for Repository.is_same_repository method."""
+    """Tests for Repository.has_same_location method."""
 
     def assertSameRepo(self, a, b):
         """Asserts that two objects are the same repository.
 
-        This method does the comparison both ways (`a.is_same_repository(b)` as
-        well as `b.is_same_repository(a)`) to make sure both objects'
-        `is_same_repository` methods give the same results.
+        This method does the comparison both ways (`a.has_same_location(b)` as
+        well as `b.has_same_location(a)`) to make sure both objects'
+        `has_same_location` methods give the same results.
         """
-        self.assertTrue(a.is_same_repository(b),
+        self.assertTrue(a.has_same_location(b),
                         "%r is not the same repository as %r" % (a, b))
-        self.assertTrue(b.is_same_repository(a),
+        self.assertTrue(b.has_same_location(a),
                         "%r is the same as %r, but not vice versa" % (a, b))
 
     def assertDifferentRepo(self, a, b):
         """Asserts that two objects are the not same repository.
 
-        This method does the comparison both ways (`a.is_same_repository(b)` as
-        well as `b.is_same_repository(a)`) to make sure both objects'
-        `is_same_repository` methods give the same results.
+        This method does the comparison both ways (`a.has_same_location(b)` as
+        well as `b.has_same_location(a)`) to make sure both objects'
+        `has_same_location` methods give the same results.
 
         :seealso: assertDifferentRepo
         """
-        self.assertFalse(a.is_same_repository(b),
+        self.assertFalse(a.has_same_location(b),
                          "%r is not the same repository as %r" % (a, b))
-        self.assertFalse(b.is_same_repository(a),
+        self.assertFalse(b.has_same_location(a),
                          "%r is the same as %r, but not vice versa" % (a, b))
 
     def test_same_repo_instance(self):
