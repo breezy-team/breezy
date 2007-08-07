@@ -202,7 +202,8 @@ class MutableTree(tree.Tree):
         if not 'branch-nick' in revprops:
             revprops['branch-nick'] = self.branch.nick
         author = kwargs.pop('author', None)
-        if not 'author' in revprops and author:
+        if author is not None:
+            assert 'author' not in revprops
             revprops['author'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args

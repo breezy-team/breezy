@@ -714,3 +714,12 @@ class TestCommit(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
                          rev.properties['author'])
+
+    def test_commit_author_conflict(self):
+        """Passing both author kwarg and 'author' key in revprops should
+        raise AssertionError.
+        """
+        tree = self.make_branch_and_tree('foo')
+        self.assertRaises(AssertionError, tree.commit, 'commit 1',
+                          author='John Doe <jdoe@example.com>',
+                          revprops={'author': ''})

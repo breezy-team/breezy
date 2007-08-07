@@ -441,7 +441,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  revprops={'author': 'John Doe <jdoe@example.com>'})
+                  author='John Doe <jdoe@example.com>')
         sio = StringIO()
         formatter = LongLogFormatter(to_file=sio)
         show_log(b, formatter)
