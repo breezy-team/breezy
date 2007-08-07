@@ -107,6 +107,14 @@ IN DEVELOPMENT
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
       
+    * The HTML version of the man page has been superceded by a more
+      comprehensive manual called the Bazaar User Reference. This manual
+      is completed generated from the online help topics. As part of this
+      change, limited reStructuredText is now explicitly supported in help
+      topics and command help with 'unnatural' markup being removed prior
+      to display by the online help or inclusion in the man page.
+      (Ian Clatworthy)
+
 
   LIBRARY API BREAKS:
 
