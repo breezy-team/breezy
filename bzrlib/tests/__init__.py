@@ -1430,7 +1430,7 @@ class TestCase(unittest.TestCase):
                 args = list(shlex.split(args[0]))
         else:
             symbol_versioning.warn(zero_nineteen %
-                                   "passing varargs to run_bzr",
+                                   "passing varargs to run_bzr_subprocess",
                                    DeprecationWarning, stacklevel=3)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,

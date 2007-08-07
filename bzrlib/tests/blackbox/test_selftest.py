@@ -274,10 +274,14 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge --merge-type magic\ merge',
-                                      retcode=3)[1]
+        err = self.run_bzr_subprocess(['merge', '--merge-type',
+                                      'magic merge'], retcode=3)[1]
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
+        self.callDeprecated(['passing varargs to run_bzr_subprocess was'
+                             ' deprecated in version 0.19.'],
+                            self.run_bzr_subprocess,
+                            'arg1', 'arg2', 'arg3', retcode=3)
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.
