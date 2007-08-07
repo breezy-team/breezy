@@ -91,7 +91,7 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
             return repo
         else:
             return super(TestCaseWithRepository, self).make_repository(
-                relpath, format)
+                relpath, format=format)
 
 
 

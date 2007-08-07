@@ -103,13 +103,13 @@ class my_install_scripts(install_scripts):
 
         if sys.platform == "win32":
             try:
-                scripts_dir = self.install_dir
+                scripts_dir = os.path.join(sys.prefix, 'Scripts')
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "bzr"))
                 python_exe = self._quoted_path(sys.executable)
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
-                batch_path = script_path + ".bat"
+                batch_path = os.path.join(self.install_dir, "bzr.bat")
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
@@ -283,9 +283,15 @@ elif 'py2exe' in sys.argv:
           zipfile='lib/library.zip')
 
 else:
+    # ad-hoc for easy_install
+    DATA_FILES = []
+    if not 'bdist_egg' in sys.argv:
+        # generate and install bzr.1 only with plain install, not easy_install one
+        DATA_FILES = [('man/man1', ['bzr.1'])]
+
     # std setup
     ARGS = {'scripts': ['bzr'],
-            'data_files': [('man/man1', ['bzr.1'])],
+            'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
            }
