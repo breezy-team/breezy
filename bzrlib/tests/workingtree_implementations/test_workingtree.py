@@ -836,3 +836,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('file added')
         os.unlink('file')
         self.assertIs(None, tree.get_file_sha1('file-id'))
+
+    def test_no_file_sha1(self):
+        """If a file is not present, get_file_sha1 should raise NoSuchId"""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+        self.build_tree(['file'])
+        tree.add('file', 'file-id')
+        tree.commit('foo')
+        tree.remove('file')
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')

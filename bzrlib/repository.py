@@ -245,7 +245,6 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         self._revision_store = _revision_store
-        self.text_store = text_store
         # backwards compatibility
         self.weave_store = text_store
         # not right yet - should be more semantically clear ? 
@@ -260,6 +259,18 @@ class Repository(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
+
+    def has_same_location(self, other):
+        """Returns a boolean indicating if this repository is at the same
+        location as another repository.
+
+        This might return False even when two repository objects are accessing
+        the same physical repository via different URLs.
+        """
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -787,7 +798,7 @@ class Repository(object):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, a_weave.get_parents(node)) for 
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
                              node in all_revisions])
         if revision_id is None:
             return entire_graph

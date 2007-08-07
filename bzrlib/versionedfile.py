@@ -390,22 +390,19 @@ class VersionedFile(object):
         :param version_ids: Versions to select.
                             None means retrieve all versions.
         """
-        result = {}
         if version_ids is None:
-            for version in self.versions():
-                result[version] = self.get_parents(version)
-        else:
-            pending = set(osutils.safe_revision_id(v) for v in version_ids)
-            while pending:
-                version = pending.pop()
-                if version in result:
-                    continue
-                parents = self.get_parents(version)
+            return dict(self.iter_parents(self.versions()))
+        result = {}
+        pending = set(osutils.safe_revision_id(v) for v in version_ids)
+        while pending:
+            this_iteration = pending
+            pending = set()
+            for version, parents in self.iter_parents(this_iteration):
+                result[version] = parents
                 for parent in parents:
                     if parent in result:
                         continue
                     pending.add(parent)
-                result[version] = parents
         return result
 
     def get_graph_with_ghosts(self):
@@ -500,6 +497,21 @@ class VersionedFile(object):
                Lines are returned in arbitrary order.
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
+
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        for version_id in version_ids:
+            try:
+                yield version_id, tuple(self.get_parents(version_id))
+            except errors.RevisionNotPresent:
+                pass
 
     def transaction_finished(self):
         """The transaction that this file was opened in has finished.

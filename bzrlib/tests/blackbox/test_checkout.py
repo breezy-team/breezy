@@ -22,8 +22,12 @@ import re
 import shutil
 import sys
 
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    errors,
+    workingtree,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -98,3 +102,14 @@ class TestCheckout(ExternalBase):
         branch.bzrdir.open_workingtree()
         # with no diff
         out, err = self.run_bzr('diff')
+
+    def test_checkout_in_branch_with_r(self):
+        branch = _mod_branch.Branch.open('branch')
+        branch.bzrdir.destroy_workingtree()
+        os.chdir('branch')
+        self.run_bzr('checkout -r 1')
+        tree = workingtree.WorkingTree.open('.')
+        self.assertEqual('1', tree.last_revision())
+        branch.bzrdir.destroy_workingtree()
+        self.run_bzr('checkout -r 0')
+        self.assertIs(None, tree.last_revision())

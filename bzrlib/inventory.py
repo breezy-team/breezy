@@ -609,14 +609,14 @@ class InventoryFile(InventoryEntry):
 
         if self.file_id not in checker.checked_weaves:
             mutter('check weave {%s}', self.file_id)
-            w = tree.get_weave(self.file_id)
+            w = tree._get_weave(self.file_id)
             # Not passing a progress bar, because it creates a new
             # progress, which overwrites the current progress,
             # and doesn't look nice
             w.check()
             checker.checked_weaves[self.file_id] = True
         else:
-            w = tree.get_weave(self.file_id)
+            w = tree._get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1
@@ -665,7 +665,8 @@ class InventoryFile(InventoryEntry):
                 label_pair = (to_label, from_label)
             else:
                 label_pair = (from_label, to_label)
-            print >> output_to, "Binary files %s and %s differ" % label_pair
+            print >> output_to, \
+                  ("Binary files %s and %s differ" % label_pair).encode('utf8')
 
     def has_text(self):
         """See InventoryEntry.has_text."""
