@@ -96,10 +96,12 @@ def _help_commands_to_text(topic):
 
 help_topics.topic_registry.register("commands",
                                     _help_commands_to_text,
-                                    "Basic help for all commands")
+                                    "Basic help for all commands",
+                                    help_topics.SECT_HIDDEN)
 help_topics.topic_registry.register("hidden-commands",
                                     _help_commands_to_text,
-                                    "All hidden commands")
+                                    "All hidden commands",
+                                    help_topics.SECT_HIDDEN)
 
 
 class HelpIndices(object):
