@@ -106,6 +106,9 @@ IN DEVELOPMENT
     * Fix ``bzr update`` to avoid an unnecessary
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
+
+    * Log errors from the smart server in the trace file, to make debugging 
+      test failures (and live failures!) easier.  (Andrew Bennetts)
       
     * The HTML version of the man page has been superceded by a more
       comprehensive manual called the Bazaar User Reference. This manual
@@ -191,6 +194,17 @@ IN DEVELOPMENT
 
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
+
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
+
+    * ``Repository`` objects can now be compared with ``==`` and ``!=`` to
+      determine if they are the same repository.  (Andrew Bennetts)
 
   TESTING:
 
