@@ -398,7 +398,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
-        def a_hook(_, _2, _3, _4, _5, _6, _7, _8, _9):
+        def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
         branch.Branch.hooks.install_hook('pre_commit', a_hook)
         branch.Branch.hooks.name_hook(a_hook, 'hook name')

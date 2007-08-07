@@ -235,8 +235,7 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
-        self.deleted_paths = set()
-        self.added_paths = set()
+        self.affected_ids = {}
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -488,6 +487,9 @@ class Commit(object):
         self._process_hooks("post_commit", old_revno, new_revno)
 
     def _process_hooks(self, hook_name, old_revno, new_revno):
+        if not Branch.hooks[hook_name]:
+            return
+        
         # new style commit hooks:
         if not self.bound_branch:
             hook_master = self.branch
@@ -502,6 +504,7 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
+            
         for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
@@ -517,14 +520,9 @@ class Commit(object):
                 hook(hook_local, hook_master, old_revno, old_revid, new_revno,
                      self.rev_id)
             elif hook_name == "pre_commit":
-                future_tree = self.builder.revision_tree()
-                added = list(self.added_paths)
-                added.sort()
-                deleted = list(self.deleted_paths)
-                deleted.sort()
                 hook(hook_local, hook_master,
                      old_revno, old_revid, new_revno, self.rev_id,
-                     deleted, added, future_tree)
+                     self.affected_ids, self.builder.revision_tree())
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -637,7 +635,6 @@ class Commit(object):
                 ie.revision = None
                 self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                    self.basis_tree)
-                self.added_paths.add(path)
 
         # Report what was deleted. We could skip this when no deletes are
         # detected to gain a performance win, but it arguably serves as a
@@ -645,7 +642,7 @@ class Commit(object):
         for path, ie in self.basis_inv.iter_entries():
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
-                self.deleted_paths.add(path)
+                self.affected_ids.setdefault('deleted', []).append(ie.file_id)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -763,16 +760,14 @@ class Commit(object):
         else:
             basis_ie = None
         change = ie.describe_change(basis_ie, ie)
+        if change != 'unchanged' and path != '':
+            self.affected_ids.setdefault(change, []).append(ie.file_id)
         if change in (InventoryEntry.RENAMED, 
             InventoryEntry.MODIFIED_AND_RENAMED):
             old_path = self.basis_inv.id2path(ie.file_id)
             self.reporter.renamed(change, old_path, path)
-            self.deleted_paths.add(old_path)
-            self.added_paths.add(path)
         else:
             self.reporter.snapshot_change(change, path)
-            if change == 'added' and path != '':
-                self.added_paths.add(path)
 
     def _set_progress_stage(self, name, entries_title=None):
         """Set the progress stage and emit an update to the progress bar."""

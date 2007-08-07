@@ -1735,14 +1735,14 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_get_options_deltas(self):
         index = self.two_graph_index(deltas=True)
-        self.assertEqual('fulltext,no-eol', index.get_options('tip'))
-        self.assertEqual('line-delta', index.get_options('parent'))
+        self.assertEqual(['fulltext', 'no-eol'], index.get_options('tip'))
+        self.assertEqual(['line-delta'], index.get_options('parent'))
 
     def test_get_options_no_deltas(self):
         # check that the parent-history lookup is ignored with deltas=False.
         index = self.two_graph_index(deltas=False)
-        self.assertEqual('fulltext,no-eol', index.get_options('tip'))
-        self.assertEqual('fulltext', index.get_options('parent'))
+        self.assertEqual(['fulltext', 'no-eol'], index.get_options('tip'))
+        self.assertEqual(['fulltext'], index.get_options('parent'))
 
     def test_get_parents(self):
         # get_parents ignores ghosts
@@ -2008,12 +2008,12 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_get_method(self):
         index = self.two_graph_index()
         self.assertEqual('fulltext', index.get_method('tip'))
-        self.assertEqual('fulltext', index.get_options('parent'))
+        self.assertEqual(['fulltext'], index.get_options('parent'))
 
     def test_get_options(self):
         index = self.two_graph_index()
-        self.assertEqual('fulltext,no-eol', index.get_options('tip'))
-        self.assertEqual('fulltext', index.get_options('parent'))
+        self.assertEqual(['fulltext', 'no-eol'], index.get_options('tip'))
+        self.assertEqual(['fulltext'], index.get_options('parent'))
 
     def test_get_parents(self):
         index = self.two_graph_index()

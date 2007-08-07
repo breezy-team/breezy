@@ -302,7 +302,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
-            mutter('hpss call: %r', args)
+            mutter('hpss call:   %r', args)
         self._write_args(args)
         self._request.finished_writing()
 

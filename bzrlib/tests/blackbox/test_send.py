@@ -30,7 +30,7 @@ def read_bundle(fileobj):
     return serializer.read_bundle(StringIO(md.get_raw_bundle()))
 
 
-class TestSubmit(tests.TestCaseWithTransport):
+class TestSend(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
@@ -45,10 +45,10 @@ class TestSubmit(tests.TestCaseWithTransport):
         """Parent location is used as a basis by default"""
         self.make_trees()
         os.chdir('grandparent')
-        errmsg = self.run_bzr('submit', retcode=3)[1]
+        errmsg = self.run_bzr('send -o-', retcode=3)[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
-        stdout, stderr = self.run_bzr('submit')
+        stdout, stderr = self.run_bzr('send -o-')
         self.assertEqual(stderr.count('Using saved location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
@@ -61,39 +61,39 @@ class TestSubmit(tests.TestCaseWithTransport):
         """Submit location can be used and set"""
         self.make_trees()
         os.chdir('branch')
-        br = read_bundle(StringIO(self.run_bzr('submit')[0]))
+        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3'])
-        br = read_bundle(StringIO(self.run_bzr('submit ../grandparent')[0]))
+        br = read_bundle(StringIO(self.run_bzr('send ../grandparent -o-')[0]))
         self.assertRevisions(br, ['revision3', 'revision2'])
         # submit location should be auto-remembered
-        br = read_bundle(StringIO(self.run_bzr('submit')[0]))
+        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('submit ../parent')
-        br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
+        self.run_bzr('send ../parent -o-')
+        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('submit ../parent --remember')
-        br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
+        self.run_bzr('send ../parent --remember -o-')
+        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3'])
-        err = self.run_bzr('submit --remember', retcode=3)[1]
+        err = self.run_bzr('send --remember -o-', retcode=3)[1]
         self.assertContainsRe(err, 
                               '--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
         self.make_trees()
         os.chdir('branch')
-        bi = read_bundle(StringIO(self.run_bzr('bundle ../grandparent')[0]))
+        bi = read_bundle(StringIO(self.run_bzr('send ../grandparent -o-')[0]))
         self.assertRevisions(bi, ['revision3', 'revision2'])
-        out = StringIO(self.run_bzr('submit ../grandparent -r -2')[0])
+        out = StringIO(self.run_bzr('send ../grandparent -r -2 -o-')[0])
         bi = read_bundle(out)
         self.assertRevisions(bi, ['revision2'])
-        sio = StringIO(self.run_bzr('submit -r -2..-1')[0])
+        sio = StringIO(self.run_bzr('send -r -2..-1 -o-')[0])
         md = merge_directive.MergeDirective.from_lines(sio.readlines())
         self.assertEqual('revision2', md.base_revision_id)
         self.assertEqual('revision3', md.revision_id)
         sio.seek(0)
         bi = read_bundle(sio)
         self.assertRevisions(bi, ['revision2', 'revision3'])
-        self.run_bzr('submit ../grandparent -r -2..-1')
+        self.run_bzr('send ../grandparent -r -2..-1 -o-')
 
     def test_output(self):
         # check output for consistency
@@ -101,7 +101,7 @@ class TestSubmit(tests.TestCaseWithTransport):
         # which would break patch-based bundles
         self.make_trees()        
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('submit')[0]
+        stdout = self.run_bzr_subprocess('send', '-o-')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -111,42 +111,48 @@ class TestSubmit(tests.TestCaseWithTransport):
         bar = self.make_branch_and_tree('bar')
         bar.commit('rev b')
         os.chdir('foo')
-        self.run_bzr('submit ../bar')
+        self.run_bzr('send ../bar -o-')
 
-    def submit_directive(self, args):
-        sio = StringIO(self.run_bzr(['submit'] + args)[0])
+    def send_directive(self, args):
+        sio = StringIO(self.run_bzr(['send', '-o-'] + args)[0])
         return merge_directive.MergeDirective.from_lines(sio.readlines())
 
     def test_content_options(self):
         """--no-patch and --no-bundle should work and be independant"""
         self.make_trees()
         os.chdir('branch')
-        md = self.submit_directive([])
+        md = self.send_directive([])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)
-        md = self.submit_directive(['--no-patch'])
+        md = self.send_directive(['--no-patch'])
         self.assertIsNot(None, md.bundle)
         self.assertIs(None, md.patch)
-        md = self.submit_directive(['--no-bundle', '.', '.'])
+        md = self.send_directive(['--no-bundle', '.', '.'])
         self.assertIs(None, md.bundle)
         self.assertIsNot(None, md.patch)
-        md = self.submit_directive(['--no-bundle', '--no-patch', '.', '.'])
+        md = self.send_directive(['--no-bundle', '--no-patch', '.', '.'])
         self.assertIs(None, md.bundle)
         self.assertIs(None, md.patch)
 
     def test_from_option(self):
         self.make_trees()
-        self.run_bzr('submit', retcode=3)
-        md = self.submit_directive(['--from', 'branch'])
+        self.run_bzr('send', retcode=3)
+        md = self.send_directive(['--from', 'branch'])
         self.assertEqual('revision3', md.revision_id)
-        md = self.submit_directive(['-f', 'branch'])
+        md = self.send_directive(['-f', 'branch'])
         self.assertEqual('revision3', md.revision_id)
 
     def test_output_option(self):
         self.make_trees()
-        stdout = self.run_bzr('submit -f branch --output file1')[0]
+        stdout = self.run_bzr('send -f branch --output file1')[0]
         self.assertEqual('', stdout)
         md_file = open('file1', 'rb')
         self.addCleanup(md_file.close)
         self.assertContainsRe(md_file.read(), 'revision3')
+        stdout = self.run_bzr('send -f branch --output -')[0]
+        self.assertContainsRe(stdout, 'revision3')
 
+    def test_output_option_required(self):
+        self.make_trees()
+        self.run_bzr_error(('File must be specified with --output',),
+                           'send -f branch')

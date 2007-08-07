@@ -82,7 +82,8 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
     * New bundle and merge directive formats are faster to generate, and
-      more robust against email mangling.  (Aaron Bentley)
+      more robust against email mangling.  New `send` command replaces
+      `bundle-revisions` and `merge-directive`.  (Aaron Bentley)
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
@@ -102,6 +103,11 @@ IN DEVELOPMENT
       the file starts with ``callgrind.out``. This matches the default file
       filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
 
+    * Fix ``bzr update`` to avoid an unnecessary
+      ``branch.get_master_branch`` call, which avoids 1 extra connection
+      to the remote server. (Partial fix for #128076, John Arbash Meinel)
+      
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -110,6 +116,9 @@ IN DEVELOPMENT
       initial capital and final period. (Martin Pool)
 
     * KnitIndex.get_parents now returns tuples. (Robert Collins)
+
+    * Ancient unused ``Repository.text_store`` attribute has been removed.
+      (Robert Collins)
 
   INTERNALS:
 

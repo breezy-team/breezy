@@ -60,9 +60,16 @@ class TestCommitHook(TestCaseWithBranch):
              new_revno, new_revid, local_locked, master.is_locked()))
 
     def capture_pre_commit_hook(self, local, master, old_revno, old_revid,
-                                new_revno, new_revid, deleted, added, tree):
+                                new_revno, new_revid, affected, tree):
+        # replacing ids with paths
+        # notice that we leave deleted ids in tact
+        for change, ids in affected.iteritems():
+            if change == 'deleted':
+                continue
+            for i, id in enumerate(ids):
+                ids[i] = tree.id2path(id)
         self.hook_calls.append(('pre_commit', old_revno, old_revid,
-                                new_revno, new_revid, deleted, added))
+                                new_revno, new_revid, affected))
 
     def test_post_commit_to_origin(self):
         tree = self.make_branch_and_memory_tree('branch')
@@ -126,8 +133,8 @@ class TestCommitHook(TestCaseWithBranch):
         revid1 = tree.commit('first revision')
         revid2 = tree.commit('second revision')
         self.assertEqual([
-            ('pre_commit', 0, NULL_REVISION, 1, revid1, [], []),
-            ('pre_commit', 1, revid1, 2, revid2, [], [])
+            ('pre_commit', 0, NULL_REVISION, 1, revid1, {}),
+            ('pre_commit', 1, revid1, 2, revid2, {})
             ],
             self.hook_calls)
         tree.unlock()
@@ -137,23 +144,27 @@ class TestCommitHook(TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         class PreCommitException(Exception): pass
-        def hook_func(_1, _2, _3, _4, _5, new_revid, _7, _8, _9):
+        def hook_func(_1, _2, _3, _4, _5, new_revid, _7, _8):
             raise PreCommitException(new_revid)
         Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
         Branch.hooks.install_hook("pre_commit", hook_func)
         revids = [None, None, None]
-        try:
-            tree.commit('message')
-        except PreCommitException, e:
-            revids[0] = e.message
+        # this commit will raise exception
+        # so the commit is rollbacked and revno unchanged
+        err = self.assertRaises(PreCommitException, tree.commit, 'message')
+        # we have to record the revid to use in assertEqual later
+        revids[0] = err.message
+        # unregister all pre_commit hooks
         Branch.hooks["pre_commit"] = []
+        # and re-register the capture hook
         Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        # now these commits should go through
         for i in range(1, 3):
-            revids[i] = tree.commit('third revision')
+            revids[i] = tree.commit('message')
         self.assertEqual([
-            ('pre_commit', 0, NULL_REVISION, 1, revids[0], [], []),
-            ('pre_commit', 0, NULL_REVISION, 1, revids[1], [], []),
-            ('pre_commit', 1, revids[1], 2, revids[2], [], [])
+            ('pre_commit', 0, NULL_REVISION, 1, revids[0], {}),
+            ('pre_commit', 0, NULL_REVISION, 1, revids[1], {}),
+            ('pre_commit', 1, revids[1], 2, revids[2], {})
             ],
             self.hook_calls)
         tree.unlock()
@@ -172,8 +183,10 @@ class TestCommitHook(TestCaseWithBranch):
         tree.unversion(['dirid'])
         rev2 = tree.commit('second revision')
         self.assertEqual([
-            ('pre_commit', 0, NULL_REVISION, 1, rev1, [], ['dir', 'dir/file', 'file']),
-            ('pre_commit', 1, rev1, 2, rev2, ['dir', 'dir/file'], [])
+            ('pre_commit', 0, NULL_REVISION, 1, rev1,
+             {'added': ['dir', 'dir/file', 'file']} ),
+            ('pre_commit', 1, rev1, 2, rev2,
+             {'deleted': ['dirid', 'swoosh']} )
             ],
             self.hook_calls)
         tree.unlock()
