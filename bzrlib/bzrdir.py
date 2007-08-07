@@ -2370,7 +2370,7 @@ class BzrDirFormatRegistry(registry.Registry):
             return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped('%s/default' % default_realkey, default_help,
+        output += wrapped(default_realkey, '(default) %s' % default_help,
                           self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:

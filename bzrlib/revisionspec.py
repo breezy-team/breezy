@@ -526,6 +526,7 @@ class RevisionSpec_date(RevisionSpec):
     at a specified time).
 
     One way to display all the changes since yesterday would be::
+
         bzr log -r date:yesterday..-1
 
     Examples::

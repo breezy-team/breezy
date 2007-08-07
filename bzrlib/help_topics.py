@@ -463,18 +463,21 @@ Column 3 - execute::
 _env_variables = \
 """Environment Variables
 
-:BZRPATH:         Path where bzr is to look for shell plugin external commands
-:BZR_EMAIL:       E-Mail address of the user. Overrides default user config.
-:EMAIL:           E-Mail address of the user. Overrides default user config.
-:BZR_EDITOR:      Editor for editing commit messages
-:EDITOR:          Editor for editing commit messages
-:BZR_PLUGIN_PATH: Paths where bzr should look for plugins
-:BZR_HOME:        Home directory for bzr
+================ =================================================================
+BZRPATH          Path where bzr is to look for shell plugin external commands.
+BZR_EMAIL        E-Mail address of the user. Overrides EMAIL.
+EMAIL            E-Mail address of the user.
+BZR_EDITOR       Editor for editing commit messages. Overrides EDITOR.
+EDITOR           Editor for editing commit messages.
+BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
+BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
+BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
+================ =================================================================
 """
 
 
 _files = \
-"""Files
+r"""Files
 
 :On Linux:   ~/.bazaar/bazaar.conf
 :On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf

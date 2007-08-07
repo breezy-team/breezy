@@ -2029,7 +2029,7 @@ class cmd_export(Command):
       =================       =========================
       Supported formats       Autodetected by extension
       =================       =========================
-         dir                            -
+         dir                         (none)
          tar                          .tar
          tbz2                    .tar.bz2, .tbz2
          tgz                      .tar.gz, .tgz
