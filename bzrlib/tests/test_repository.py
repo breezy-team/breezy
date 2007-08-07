@@ -517,7 +517,6 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_databases(t)
 
     def check_format(self, t):
@@ -533,23 +532,27 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         """Assert that knit_name has no index on t."""
         self.assertFalse(t.has(knit_name + '.kndx'))
 
-    def assertHasKnit(self, t, knit_name):
+    def assertHasNoKnit(self, t, knit_name):
         """Assert that knit_name exists on t."""
         # no default content
-        self.assertTrue(t.has(knit_name + '.knit'))
+        self.assertFalse(t.has(knit_name + '.knit'))
 
     def check_databases(self, t):
         """check knit content for a repository."""
+        # check conversion worked
         self.assertHasNoKndx(t, 'inventory')
-        self.assertHasKnit(t, 'inventory')
+        self.assertHasNoKnit(t, 'inventory')
         self.assertHasNoKndx(t, 'revisions')
-        self.assertHasKnit(t, 'revisions')
+        self.assertHasNoKnit(t, 'revisions')
         self.assertHasNoKndx(t, 'signatures')
-        self.assertHasKnit(t, 'signatures')
+        self.assertHasNoKnit(t, 'signatures')
+        self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
         names = FileNames(t.clone('indices'), 'index')
         names.load()
         self.assertEqual(set(), names.names())
+        self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
 
     def test_shared_disk_layout(self):
         format = self.get_format()
@@ -566,7 +569,6 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_databases(t)
 
     def test_shared_no_tree_disk_layout(self):
@@ -588,44 +590,63 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
-        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_databases(t)
 
-    def test_add_revision_creates_zero_dot_rix(self):
+    def test_add_revision_creates_dot_rix(self):
         """Adding a revision makes a 0.rix (Revision IndeX) file."""
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertFalse(trans.has('indices/0.rix'))
+        names = FileNames(trans.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(0, len(names.names()))
         tree.commit('foobarbaz')
-        self.assertTrue(trans.has('indices/0.rix'))
+        names.load()
+        self.assertEqual(1, len(names.names()))
+        name = list(names.names())[0]
+        self.assertTrue(trans.has('indices/%s.rix' % name))
 
-    def test_add_revision_creates_zero_dot_six(self):
+    def test_add_revision_creates_dot_six(self):
         """Adding a revision makes a 0.six (Signature IndeX) file."""
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertFalse(trans.has('indices/0.six'))
+        names = FileNames(trans.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(0, len(names.names()))
         tree.commit('foobarbaz')
-        self.assertTrue(trans.has('indices/0.six'))
+        names.load()
+        self.assertEqual(1, len(names.names()))
+        name = list(names.names())[0]
+        self.assertTrue(trans.has('indices/%s.six' % name))
 
-    def test_add_revision_creates_zero_dot_iix(self):
+    def test_add_revision_creates_dot_iix(self):
         """Adding a revision makes a 0.iix (Inventory IndeX) file."""
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertFalse(trans.has('indices/0.iix'))
+        names = FileNames(trans.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(0, len(names.names()))
         tree.commit('foobarbaz')
-        self.assertTrue(trans.has('indices/0.iix'))
+        names.load()
+        self.assertEqual(1, len(names.names()))
+        name = list(names.names())[0]
+        self.assertTrue(trans.has('indices/%s.iix' % name))
 
-    def test_add_revision_creates_zero_dot_tix(self):
+    def test_add_revision_creates_dot_tix(self):
         """Adding a revision makes a 0.tix (Text IndeX) file."""
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertFalse(trans.has('indices/0.tix'))
+        names = FileNames(trans.clone('indices'), 'index')
+        names.load()
+        self.assertEqual(0, len(names.names()))
         tree.commit('foobarbaz')
-        self.assertTrue(trans.has('indices/0.tix'))
+        names.load()
+        self.assertEqual(1, len(names.names()))
+        name = list(names.names())[0]
+        self.assertTrue(trans.has('indices/%s.tix' % name))
 
     def test_pulling_nothing_leads_to_no_new_names(self):
         format = self.get_format()
@@ -633,10 +654,6 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('2', format=format)
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertFalse(trans.has('indices/0.iix'))
-        self.assertFalse(trans.has('indices/0.rix'))
-        self.assertFalse(trans.has('indices/0.six'))
-        self.assertFalse(trans.has('indices/0.tix'))
         names = FileNames(trans.clone('indices'), 'index')
         names.load()
         self.assertEqual(set(), names.names())

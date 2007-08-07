@@ -16,6 +16,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import md5
+
 from bzrlib import (
         file_names,
         pack,
@@ -300,13 +302,12 @@ class RepositoryDataNames(object):
             self._names = file_names.FileNames(self.transport, 'index')
             self._names.load()
 
-    def allocate(self):
-        return self._names.allocate()
+    def allocate(self, name):
+        return self._names.allocate(name)
 
     def names(self):
-        """Provide order to the underlying names."""
-        def _cmp(x, y): return cmp(int(x), int(y))
-        return sorted(self._names.names(), cmp=_cmp, reverse=True)
+        """Provide an order to the underlying names."""
+        return sorted(self._names.names())
 
     def reset(self):
         self._names = None
@@ -759,6 +760,7 @@ class GraphKnitRepository1(KnitRepository):
         self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
+        self._open_pack_hash = None
 
     def _pack_tuple(self, name):
         """Return a tuple with the transport and file name for a pack name."""
@@ -776,7 +778,11 @@ class GraphKnitRepository1(KnitRepository):
         random_name = self.control_files._lock.nonce
         self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
         write_stream = self._upload_transport.open_file_stream(random_name + '.pack')
-        self._open_pack_writer = pack.ContainerWriter(write_stream)
+        self._open_pack_hash = md5.new()
+        def write_data(bytes):
+            write_stream(bytes)
+            self._open_pack_hash.update(bytes)
+        self._open_pack_writer = pack.ContainerWriter(write_data)
         self._open_pack_writer.begin()
         self._data_names.setup()
         self._revision_store.setup()
@@ -788,11 +794,18 @@ class GraphKnitRepository1(KnitRepository):
             self.weave_store.data_inserted() or 
             self._inv_thunk.data_inserted())
         if data_inserted:
-            new_name = self._data_names.allocate()
+            self._open_pack_writer.end()
+            new_name = self._open_pack_hash.hexdigest()
+            # If this fails, its a hash collision. We should:
+            # - determine if its a collision or
+            # - the same content or
+            # - the existing name is not the actual hash - e.g.
+            #   its a deliberate attack or data corruption has
+            #   occuring during the write of that file.
+            self._data_names.allocate(new_name)
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
-            self._open_pack_writer.end()
             self._upload_transport.close_file_stream(self._open_pack_tuple[1])
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
@@ -806,6 +819,7 @@ class GraphKnitRepository1(KnitRepository):
         # forget what names there are - should just refresh and deal with the
         # delta.
         self._data_names.reset()
+        self._open_pack_hash = None
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
@@ -850,6 +864,7 @@ class GraphKnitRepository3(KnitRepository3):
         self._inv_thunk.reset()
         # forget what names there are
         self._data_names.reset()
+        self._open_pack_hash = None
 
     def _pack_tuple(self, name):
         """Return a tuple with the transport and file name for a pack name."""
@@ -866,8 +881,11 @@ class GraphKnitRepository3(KnitRepository3):
     def _start_write_group(self):
         random_name = self.control_files._lock.nonce
         self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
+        write_stream = self._upload_transport.open_file_stream(random_name + '.pack')
+        self._open_pack_hash = md5.new()
         def write_data(bytes):
-            self._upload_transport.append_bytes(random_name + '.pack', bytes)
+            write_stream(bytes)
+            self._open_pack_hash.update(bytes)
         self._open_pack_writer = pack.ContainerWriter(write_data)
         self._open_pack_writer.begin()
         self._data_names.setup()
@@ -880,10 +898,19 @@ class GraphKnitRepository3(KnitRepository3):
             self.weave_store.data_inserted() or 
             self._inv_thunk.data_inserted())
         if data_inserted:
-            new_name = self._data_names.allocate()
+            self._open_pack_writer.end()
+            new_name = self._open_pack_hash.hexdigest()
+            # If this fails, its a hash collision. We should:
+            # - determine if its a collision or
+            # - the same content or
+            # - the existing name is not the actual hash - e.g.
+            #   its a deliberate attack or data corruption has
+            #   occuring during the write of that file.
+            self._data_names.allocate(new_name)
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
+            self._upload_transport.close_file_stream(self._open_pack_tuple[1])
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
             self._data_names.save()
@@ -896,6 +923,7 @@ class GraphKnitRepository3(KnitRepository3):
         # forget what names there are - should just refresh and deal with the
         # delta.
         self._data_names.reset()
+        self._open_pack_hash = None
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
