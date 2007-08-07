@@ -633,17 +633,15 @@ class LongLogFormatter(LogFormatter):
             for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file, indent+'committer:', revision.rev.committer
-        try:
-            print >>to_file, indent+'author: %s' % \
-                revision.rev.properties['author']
-        except KeyError:
-            pass
 
-        try:
-            print >>to_file, indent+'branch nick: %s' % \
-                revision.rev.properties['branch-nick']
-        except KeyError:
-            pass
+        author = revision.rev.properties.get('author', None)
+        if author is not None:
+            print >>to_file, indent+'author:', author
+
+        branch_nick = revision.rev.properties.get('branch-nick', None)
+        if branch_nick is not None:
+            print >>to_file, indent+'branch nick:', branch_nick
+
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)

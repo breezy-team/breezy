@@ -2107,9 +2107,9 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
-    If author of the change is not the same person as the committer, you
-    can specify the author's name using the --author option. The name should
-    be in format "John Doe <jdoe@example.com>".
+    If author of the change is not the same person as the committer, you can
+    specify the author's name using the --author option. The name should be
+    in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
 
     A selected-file commit may fail in some cases where the committed
     tree would be invalid. Consider::
@@ -2219,14 +2219,6 @@ class cmd_commit(Command):
         if bug_property:
             properties['bugs'] = bug_property
 
-        if author:
-            try:
-                config.extract_email_address(author)
-            except errors.NoEmailInUsername, e:
-                warning('"%s" does not seem to contain an email address.  '
-                        'This is allowed, but not recommended.', author)
-            properties['author'] = author
-
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
@@ -2258,7 +2250,8 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties)
+                        reporter=reporter, revprops=properties,
+                        author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
