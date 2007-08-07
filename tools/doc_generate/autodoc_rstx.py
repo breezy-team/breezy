@@ -68,6 +68,7 @@ def _get_section(registry, section, title, hdg_level1="=", hdg_level2="-"):
     """Build the manual part from topics matching that section."""
     topics = sorted(registry.get_topics_for_section(section))
     lines = [title, hdg_level1 * len(title), ""]
+    links_to_topics = []
     for topic in topics:
         help = registry.get_detail(topic)
         heading,text = help.split("\n", 1)
@@ -75,6 +76,9 @@ def _get_section(registry, section, title, hdg_level1="=", hdg_level2="-"):
         lines.append(hdg_level2 * len(heading))
         lines.append(text)
         lines.append('')
+        if topic != heading.lower():
+            links_to_topics.append((topic, heading))
+    lines.extend([".. _%s: `%s`_" % i for i in links_to_topics])
     return "\n" + "\n".join(lines) + "\n"
 
 
@@ -88,7 +92,7 @@ def _get_commands_section(registry, title="Commands", hdg_level1="=",
         if cmd_object.hidden:
             continue
         heading = cmd_name
-        text = cmd_object.get_help_text(plain=False)
+        text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
         lines.append(heading)
         lines.append(hdg_level2 * len(heading))
         lines.append(text)
