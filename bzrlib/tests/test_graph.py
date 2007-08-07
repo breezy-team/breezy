@@ -145,6 +145,18 @@ class InstrumentedParentsProvider(object):
         return self._real_parents_provider.get_parents(nodes)
 
 
+class DictParentsProvider(object):
+
+    def __init__(self, ancestry):
+        self.ancestry = ancestry
+
+    def __repr__(self):
+        return 'DictParentsProvider(%r)' % self.ancestry
+
+    def get_parents(self, revisions):
+        return [self.ancestry.get(r, None) for r in revisions]
+
+
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
@@ -291,16 +303,8 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_stacked_parents_provider(self):
 
-        class ParentsProvider(object):
-
-            def __init__(self, ancestry):
-                self.ancestry = ancestry
-
-            def get_parents(self, revisions):
-                return [self.ancestry.get(r, None) for r in revisions]
-
-        parents1 = ParentsProvider({'rev2': ['rev3']})
-        parents2 = ParentsProvider({'rev1': ['rev4']})
+        parents1 = DictParentsProvider({'rev2': ['rev3']})
+        parents2 = DictParentsProvider({'rev1': ['rev4']})
         stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
         self.assertEqual([['rev4',], ['rev3']],
                          stacked.get_parents(['rev1', 'rev2']))
@@ -346,3 +350,16 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor('a', 'c'))
         self.assertTrue('null:' not in instrumented_provider.calls)
+
+    def test_filter_candidate_lca(self):
+        """Test filter_candidate_lca for a corner case
+
+        This tests the case where we encounter the end of iteration for 'd'
+        in the same pass as we discover that 'c' is an ancestor of 'd', and
+        therefore 'd' can't be an lca.
+        """
+        # This test is sensitive to the iteration order of dicts.  It will
+        # pass incorrectly if 'e' and 'a' sort before 'c'
+        graph = self.make_graph({'c': ['b', 'd'], 'd': ['e'], 'b': ['a'],
+                                 'a': [NULL_REVISION], 'e': [NULL_REVISION]})
+        self.assertEqual(['c'], graph._filter_candidate_lca(['a', 'c', 'e']))
