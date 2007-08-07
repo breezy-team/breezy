@@ -805,11 +805,6 @@ class Repository(object):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
 
-    def has_same_location(self, other_repository):
-        """Determine whether this repo and other have the same location"""
-        return (self.bzrdir.root_transport.base ==
-                other_repository.bzrdir.root_transport.base)
-
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""

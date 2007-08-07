@@ -348,10 +348,6 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
-    def has_same_location(self, other_repository):
-        self._ensure_real()
-        return self._real_repository.has_same_location(other_repository)
-
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
