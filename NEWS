@@ -38,6 +38,9 @@ IN DEVELOPMENT
     * allow ``easy_install bzr`` runs without fatal errors. 
       (Alexander Belchenko, #125521)
 
+    * Graph._filter_candidate_lca does not raise KeyError if a candidate
+      is eliminated just before it would normally be examined.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
