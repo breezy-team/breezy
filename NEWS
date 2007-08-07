@@ -118,6 +118,7 @@ IN DEVELOPMENT
       to display by the online help or inclusion in the man page.
       (Ian Clatworthy)
 
+    * HTML documentation now use files extension *.html (Alexander Belchenko)
 
   LIBRARY API BREAKS:
 
