@@ -17,7 +17,7 @@
 """Generate ReStructuredText source for the User Reference Manual.
 Loosely based on the manpage generator autodoc_man.py.
 
-Written by Alexander Belchenko and the Bazaar community.
+Written by Bazaar community.
 """
 
 import os
