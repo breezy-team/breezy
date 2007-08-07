@@ -232,7 +232,7 @@ class Graph(object):
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
-            x = searcher.next()
+            searcher.next()
         while len(active_searchers) > 0:
             for candidate in active_searchers.keys():
                 try:
