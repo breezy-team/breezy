@@ -206,6 +206,9 @@ IN DEVELOPMENT
     * ``Repository`` objects can now be compared with ``==`` and ``!=`` to
       determine if they are the same repository.  (Andrew Bennetts)
 
+    * InterTree.compare now passes require_versioned on correctly.
+      (Marius Kruger)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
