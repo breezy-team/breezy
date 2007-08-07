@@ -19,6 +19,7 @@
 "Containers" and "records" are described in doc/developers/container-format.txt.
 """
 
+from cStringIO import StringIO
 import re
 
 from bzrlib import errors
@@ -66,18 +67,34 @@ class ContainerWriter(object):
         :param write_func: a callable that will be called when this
             ContainerWriter needs to write some bytes.
         """
-        self.write_func = write_func
+        self._write_func = write_func
+        self.current_offset = 0
 
     def begin(self):
         """Begin writing a container."""
         self.write_func(FORMAT_ONE + "\n")
+
+    def write_func(self, bytes):
+        self._write_func(bytes)
+        self.current_offset += len(bytes)
 
     def end(self):
         """Finish writing a container."""
         self.write_func("E")
 
     def add_bytes_record(self, bytes, names):
-        """Add a Bytes record with the given names."""
+        """Add a Bytes record with the given names.
+        
+        :param bytes: The bytes to insert.
+        :param names: The names to give the inserted bytes.
+        :return: An offset, length tuple. The offset is the offset
+            of the record within the container, and the length is the
+            length of data that will need to be read to reconstitute the
+            record. These offset and length can only be used with the pack
+            interface - they might be offset by headers or other such details
+            and thus are only suitable for use by a ContainerReader.
+        """
+        current_offset = self.current_offset
         # Kind marker
         self.write_func("B")
         # Length
@@ -92,6 +109,54 @@ class ContainerWriter(object):
         self.write_func("\n")
         # Finally, the contents.
         self.write_func(bytes)
+        # return a memo of where we wrote data to allow random access.
+        return current_offset, self.current_offset - current_offset
+
+
+class ReadVFile(object):
+    """Adapt a readv result iterator to a file like protocol."""
+
+    def __init__(self, readv_result):
+        self.readv_result = readv_result
+        # the most recent readv result block
+        self._string = None
+
+    def _next(self):
+        if (self._string is None or
+            self._string.tell() == self._string_length):
+            length, data = self.readv_result.next()
+            self._string_length = len(data)
+            self._string = StringIO(data)
+
+    def read(self, length):
+        self._next()
+        result = self._string.read(length)
+        if len(result) < length:
+            raise errors.BzrError('request for too much data from a readv hunk.')
+        return result
+
+    def readline(self):
+        """Note that readline will not cross readv segments."""
+        self._next()
+        result = self._string.readline()
+        if self._string.tell() == self._string_length and result[-1] != '\n':
+            raise errors.BzrError('short readline in the readvfile hunk.')
+        return result
+
+
+def make_readv_reader(transport, filename, requested_records):
+    """Create a ContainerReader that will read selected records only.
+
+    :param transport: The transport the pack file is located on.
+    :param filename: The filename of the pack file.
+    :param requested_records: The record offset, length tuples as returned
+        by add_bytes_record for the desired records.
+    """
+    readv_blocks = [(0, len(FORMAT_ONE)+1)]
+    readv_blocks.extend(requested_records)
+    result = ContainerReader(ReadVFile(
+        transport.readv(filename, readv_blocks)))
+    return result
 
 
 class BaseReader(object):
