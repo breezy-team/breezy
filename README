@@ -50,9 +50,7 @@ The following features are currently present:
 
 - Committing to Subversion from Bazaar.
 
-- Push Bazaar revisions to Subversion. These revisions will 
-  show up in Subversion as a commit with the pushed revision 
-  as one of the parents.
+- Push Bazaar revisions to Subversion. 
 
 - Follow branch copies. Revision history is not 
   truncated when a branch was copied in Subversion.
@@ -154,3 +152,16 @@ Installation
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr. Make sure the directory 
 name is 'svn'.
+
+============
+Memory Usage
+============
+bzr-svn can use a lot of memory cloning big branches. The problem appears to be 
+caused both by a memory leak in the python-subversion bindings or Subversion
+(the svn_ra_get_log() function) and the memory overhead from Bazaar.
+
+The easiest way to work around this problem is to Ctrl+C the branch operation 
+and restart it.
+
+More information can be found in the bug report at 
+https://launchpad.net/bugs/54253

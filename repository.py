@@ -232,6 +232,10 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.get_transaction)
 
     def get_scheme(self):
+        """Determine the branching scheme to use for this repository.
+
+        :return: Branching scheme.
+        """
         if self._scheme is not None:
             return self._scheme
 

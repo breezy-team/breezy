@@ -19,7 +19,8 @@ from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
-                           NoWorkingTree, AlreadyBranchError)
+                           NoWorkingTree, AlreadyBranchError, 
+                           IncompatibleFormat)
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
 
@@ -175,6 +176,10 @@ class SvnRemoteAccess(BzrDir):
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
         return branch
+
+    def create_repository(self, shared=False):
+        """See BzrDir.create_repository."""
+        return self.open_repository()
 
 
 class SvnFormat(BzrDirFormat):

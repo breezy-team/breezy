@@ -689,7 +689,7 @@ class InterToSvnRepository(InterRepository):
 
     @staticmethod
     def _get_repo_format_to_test():
-        return SvnRepositoryFormat()
+        return None
 
     def copy_content(self, revision_id=None, basis=None, pb=None):
         """See InterRepository.copy_content."""

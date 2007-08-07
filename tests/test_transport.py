@@ -25,7 +25,8 @@ import os
 
 class SvnRaTest(TestCaseWithSubversionRepository):
     def test_open_nonexisting(self):
-        self.assertRaises(NotBranchError, SvnRaTransport, "svn+nonexisting://foo/bar")
+        self.assertRaises(NotBranchError, SvnRaTransport, 
+                          "svn+nonexisting://foo/bar")
 
     def test_create(self):
         repos_url = self.make_client('a', 'ac')
