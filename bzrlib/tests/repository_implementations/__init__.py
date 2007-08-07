@@ -101,6 +101,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_break_lock',
         'bzrlib.tests.repository_implementations.test_commit_builder',
         'bzrlib.tests.repository_implementations.test_fileid_involved',
+        'bzrlib.tests.repository_implementations.test_has_same_location',
         'bzrlib.tests.repository_implementations.test_iter_reverse_revision_history',
         'bzrlib.tests.repository_implementations.test_pack',
         'bzrlib.tests.repository_implementations.test_reconcile',
