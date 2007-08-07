@@ -235,14 +235,17 @@ class Repository(object):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
 
-    def __eq__(self, other):
+    def is_same_repository(self, other):
+        """Returns a boolean indicating if this repository is at the same
+        location as another repository.
+
+        This might return False even when two repository objects are accessing
+        the same physical repository via different URLs.
+        """
         if self.__class__ is not other.__class__:
             return False
         return (self.control_files._transport.base ==
                 other.control_files._transport.base)
-
-    def __ne__(self, other):
-        return not self == other
 
     def is_locked(self):
         return self.control_files.is_locked()

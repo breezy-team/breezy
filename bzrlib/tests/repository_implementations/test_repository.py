@@ -422,64 +422,59 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(repo._serializer.format_num, format)
 
 
-class TestRepositoryEquality(TestCaseWithRepository):
+class TestRepositoryComparison(TestCaseWithRepository):
+    """Tests for Repository.is_same_repository method."""
 
-    def strictAssertEqual(self, a, b):
-        """Like assertEqual, but also checks the `!=` operator is consistent.
+    def assertSameRepo(self, a, b):
+        """Asserts that two objects are the same repository.
 
-        i.e. if `a == b` *and* `a != b`, this method will fail.
-
-        This can happen when a class defines an `__eq__` but doesn't define an
-        `__ne__`.
+        This method does the comparison both ways (`a.is_same_repository(b)` as
+        well as `b.is_same_repository(a)`) to make sure both objects'
+        `is_same_repository` methods give the same results.
         """
-        self.assertEqual(a, b)
-        self.failIf(
-            a != b,
-            "%r and %r are both equal and not equal!  Class probably defines "
-            "__eq__ without also defining __ne__." % (a, b))
+        self.assertTrue(a.is_same_repository(b),
+                        "%r is not the same repository as %r" % (a, b))
+        self.assertTrue(b.is_same_repository(a),
+                        "%r is the same as %r, but not vice versa" % (a, b))
 
-    def strictAssertNotEqual(self, a, b):
-        """Like assertNotEqual, but also checks the `==` operator is consistent.
+    def assertDifferentRepo(self, a, b):
+        """Asserts that two objects are the not same repository.
 
-        i.e. if `a != b` *and* `a == b`, this method will fail.
+        This method does the comparison both ways (`a.is_same_repository(b)` as
+        well as `b.is_same_repository(a)`) to make sure both objects'
+        `is_same_repository` methods give the same results.
 
-        This can happen when a class defines an `__eq__` but doesn't define an
-        `__ne__`.
-
-        :seealso: strictAssertEqual
+        :seealso: assertDifferentRepo
         """
-        self.assertNotEqual(a, b)
-        self.failIf(
-            a == b,
-            "%r and %r are both equal and not equal!  Class probably defines "
-            "__eq__ without also defining __ne__." % (a, b))
+        self.assertFalse(a.is_same_repository(b),
+                         "%r is not the same repository as %r" % (a, b))
+        self.assertFalse(b.is_same_repository(a),
+                         "%r is the same as %r, but not vice versa" % (a, b))
 
-    def test_same_repo_instance_is_equal(self):
-        """A repository object is always equal to itself."""
+    def test_same_repo_instance(self):
+        """A repository object is the same repository as itself."""
         repo = self.make_repository('.')
-        self.strictAssertEqual(repo, repo)
+        self.assertSameRepo(repo, repo)
 
-    def test_same_repo_location_is_equal(self):
-        """Different repository objects connected to the same location are
-        equal.
-        """
+    def test_same_repo_location(self):
+        """Different repository objects for the same location are the same."""
         repo = self.make_repository('.')
         reopened_repo = repo.bzrdir.open_repository()
         self.failIf(
             repo is reopened_repo,
             "This test depends on reopened_repo being a different instance of "
             "the same repo.")
-        self.strictAssertEqual(repo, reopened_repo)
+        self.assertSameRepo(repo, reopened_repo)
 
     def test_different_repos_not_equal(self):
-        """Repositories at different locations are not equal."""
+        """Repositories at different locations are not the same."""
         repo_one = self.make_repository('one')
         repo_two = self.make_repository('two')
-        self.strictAssertNotEqual(repo_one, repo_two)
+        self.assertDifferentRepo(repo_one, repo_two)
 
     def test_same_bzrdir_different_control_files_not_equal(self):
         """Repositories in the same bzrdir, but with different control files,
-        are not equal.
+        are not the same.
 
         This can happens e.g. when upgrading a repository.  This test mimics how
         CopyConverter creates a second repository in one bzrdir.
@@ -500,10 +495,10 @@ class TestRepositoryEquality(TestCaseWithRepository):
         backup_repo = repo._format.open(repo.bzrdir, _found=True,
                                         _override_transport=backup_transport)
 
-        self.strictAssertNotEqual(repo, backup_repo)
+        self.assertDifferentRepo(repo, backup_repo)
 
     def test_different_format_not_equal(self):
-        """Different format repositories are comparable and not equal.
+        """Different format repositories are comparable and not the same.
 
         Comparing different format repository objects should give a negative
         result, rather than trigger an exception (which could happen with a
@@ -519,10 +514,7 @@ class TestRepositoryEquality(TestCaseWithRepository):
         # Make sure the other_repo is not a RemoteRepository.
         other_bzrdir = bzrdir.BzrDir.open(self.get_vfs_only_url('other'))
         other_repo = other_bzrdir.open_repository()
-        # Compare both ways, to make sure the __eq__ on both repositories cope
-        # with comparing against a different class.
-        self.strictAssertNotEqual(repo, other_repo)
-        self.strictAssertNotEqual(other_repo, repo)
+        self.assertDifferentRepo(repo, other_repo)
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
