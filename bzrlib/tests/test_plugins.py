@@ -167,12 +167,12 @@ class TestPluginHelp(TestCaseInTempDir):
                 # some commands have no help
                 pass
             else:
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
             if cmd_name in help_commands.keys():
                 # some commands are hidden
                 help = help_commands[cmd_name]
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
     def test_plugin_help_shows_plugin(self):
         # Create a test plugin
@@ -186,7 +186,7 @@ class TestPluginHelp(TestCaseInTempDir):
             bzrlib.plugin.load_from_path(['plugin_test'])
             bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
             help = self.run_bzr('help myplug')[0]
-            self.assertContainsRe(help, 'From plugin "myplug"')
+            self.assertContainsRe(help, 'plugin "myplug"')
             help = self.split_help_commands()['myplug']
             self.assertContainsRe(help, '\[myplug\]')
         finally:
