@@ -140,7 +140,7 @@ class TestFormatRegistry(TestCase):
         new, deprecated = topic.split('Deprecated formats')
         self.assertContainsRe(new, 'These formats can be used')
         self.assertContainsRe(new, 
-                ':knit/default:\n    \(native\) Format using knits\n')
+                ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(deprecated, 
                 ':lazy:\n    \(native\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
