@@ -283,7 +283,7 @@ class Command(object):
         :param plain: if False, raw help (reStructuredText) is
             returned instead of plain text.
         :param see_also_as_links: if True, convert items in 'See also'
-            list to internal links (used by bzr_man generator)
+            list to internal links (used by bzr_man rstx generator)
         """
         doc = self.help()
         if doc is None:
@@ -341,9 +341,17 @@ class Command(object):
             result += ':From:     plugin "%s"\n' % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
-            if see_also_as_links:
-                see_also = [(item != "topics" and "`%s`_" or "%s") % item
-                            for item in see_also]
+            if not plain and see_also_as_links:
+                see_also_links = []
+                for item in see_also:
+                    if item == 'topics':
+                        # topics doesn't have an independent section
+                        # so don't create a real link
+                        see_also_links.append(item)
+                    else:
+                        # Use a reST link for this entry
+                        see_also_links.append("`%s`_" % (item,))
+                see_also = see_also_links
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
 
