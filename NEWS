@@ -35,6 +35,12 @@ IN DEVELOPMENT
     * ``bzr add *`` no more fails on Windows if working tree contains
       non-ascii file names. (Kuno Meyer, #127361)
 
+    * allow ``easy_install bzr`` runs without fatal errors. 
+      (Alexander Belchenko, #125521)
+
+    * Graph._filter_candidate_lca does not raise KeyError if a candidate
+      is eliminated just before it would normally be examined.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -104,9 +110,21 @@ IN DEVELOPMENT
       ``branch.get_master_branch`` call, which avoids 1 extra connection
       to the remote server. (Partial fix for #128076, John Arbash Meinel)
 
+    * Log errors from the smart server in the trace file, to make debugging 
+      test failures (and live failures!) easier.  (Andrew Bennetts)
+
     * ``pull -v`` no longer includes deltas, making it much faster.
       (Aaron Bentley)
       
+    * The HTML version of the man page has been superceded by a more
+      comprehensive manual called the Bazaar User Reference. This manual
+      is completed generated from the online help topics. As part of this
+      change, limited reStructuredText is now explicitly supported in help
+      topics and command help with 'unnatural' markup being removed prior
+      to display by the online help or inclusion in the man page.
+      (Ian Clatworthy)
+
+    * HTML documentation now use files extension *.html (Alexander Belchenko)
 
   LIBRARY API BREAKS:
 
@@ -184,6 +202,21 @@ IN DEVELOPMENT
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
 
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
+
+    * New ``Repository.has_same_location`` method that reports if two
+      repository objects refer to the same repository (although with some risk
+      of false negatives).  (Andrew Bennetts)
+
+    * InterTree.compare now passes require_versioned on correctly.
+      (Marius Kruger)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
@@ -222,7 +255,7 @@ bzr 0.18rc1  2007-07-10
     * Use exact encoding for merge directives. (Adeodato Simó, #120591)
 
     * Fix tempfile permissions error in smart server tar bundling under
-      Windows. (Martin_, #119330)
+      Windows. (Martin _, #119330)
 
     * Fix detection of directory entries in the inventory. (James Westby)
 
@@ -231,7 +264,7 @@ bzr 0.18rc1  2007-07-10
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
-     (Vincent Ladeuil, #120678)
+      (Vincent Ladeuil, #120678)
 
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
@@ -323,7 +356,7 @@ bzr 0.18rc1  2007-07-10
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
-     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.repository_implementations``;
       ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.interrepository_implementations``;

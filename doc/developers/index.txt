@@ -9,40 +9,31 @@ Documentation index
 Process
 =======
 
-* `General HACKING HOWTO <HACKING.htm>`_
+* `General HACKING HOWTO <HACKING.html>`_ |--| Guide to policies and tools 
+  for working on Bazaar itself.
 
-  Guide to policies and tools for working on Bazaar itself.
-
-* `Profiling notes <profiling.htm>`_
-
-  Instructions on how to profile bzr code and visualize the results.
+* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
+  bzr code and visualize the results.
 
 Plans
 =====
 
-* `Performance roadmap <performance-roadmap.htm>`_
-
-  The roadmap for fixing performance in bzr over the next few releases.
+* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
+  for fixing performance in bzr over the next few releases.
 
 Specifications
 ==============
 
-* `API versioning <api-versioning.htm>`_
+* `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
 
-  bzrlib API versioning.
+* `Bundles <bundles.html>`_ |--| All about bzr bundles.
 
-* `Bundles <bundles.htm>`_
+* `Container format <container-format.html>`_ |--| Notes on a container format
+  for streaming and storing Bazaar data.
 
-  All about bzr bundles.
+* `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
-* `Container format <container-format.htm>`_
+* `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
-  Notes on a container format for streaming and storing Bazaar data.
 
-* `Indices <indices.txt>`_
-
-  The index facilities available within bzrlib.
-
-* `Repositories <repository.htm>`_
-
-  What repositories do and are used for.
+.. |--| unicode:: U+2014
