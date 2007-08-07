@@ -308,6 +308,9 @@ class Command(object):
         options = option.get_optparser(self.options()).format_option_help()
         if options.startswith('Options:'):
             result += ':' + options
+        elif options.startswith('options:'):
+            # Python 2.4 version of optparse
+            result += ':Options:' + options[len('options:'):]
         else:
             result += options
         result += '\n'
