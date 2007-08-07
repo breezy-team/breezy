@@ -44,7 +44,7 @@ and what is documented on the wiki.
 
 This document automatically created based on output of **bzr help**:
 
-* `Man page (help for bzr commands) <bzr_man.htm>`_
+* `Bazaar User Reference <bzr_man.htm>`_
 
 
 .. |--| unicode:: U+2014

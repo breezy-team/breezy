@@ -72,6 +72,10 @@ class TestMerge(ExternalBase):
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.run_bzr('revert --no-backup')
+        self.run_bzr_error(['Show-base is not supported for this merge type'],
+                           'merge ../b -r last:1..last:1 --merge-type weave'
+                           ' --show-base')
+        self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1')

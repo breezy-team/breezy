@@ -235,6 +235,18 @@ class Repository(object):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
 
+    def has_same_location(self, other):
+        """Returns a boolean indicating if this repository is at the same
+        location as another repository.
+
+        This might return False even when two repository objects are accessing
+        the same physical repository via different URLs.
+        """
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
