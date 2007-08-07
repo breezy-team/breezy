@@ -488,7 +488,7 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>'"
+        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>' "
                      "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
@@ -499,7 +499,7 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        out, err = self.run_bzr("commit -m hello --author='John Doe'"
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
