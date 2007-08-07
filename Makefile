@@ -74,29 +74,26 @@ html-docs: docs
 # translate txt docs to html
 doc_dir := doc 
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
-htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
+htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
-dev_htm_files := $(patsubst %.txt, %.htm, $(dev_txt_files)) 
+dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 pretty-html-docs: pretty_files
 
 pretty_docs:
 	python -c "import os; os.mkdir('$(PRETTYDIR)')"
 
-pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
+pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.html, $(txt_files))
 
-doc/developers/%.htm: doc/developers/%.txt
+doc/developers/%.html: doc/developers/%.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
-doc/developers/HACKING.htm: doc/developers/HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
-
-%.htm: %.txt
+%.html: %.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
 
-$(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
+$(PRETTYDIR)/%.html: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
-	$(PRETTYDIR)/$*.htm
+	$(PRETTYDIR)/$*.html
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
@@ -114,15 +111,14 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-ALL_DOCS = $(htm_files) $(MAN_PAGES) doc/developers/HACKING.htm $(dev_htm_files) doc/developers/performance.png
+ALL_DOCS = $(htm_files) $(MAN_PAGES) $(dev_htm_files) doc/developers/performance.png
 docs: $(ALL_DOCS)
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) \
 		doc/default.css NEWS README \
 		win32_bzr.exe/doc
-	python tools/win32/ostools.py copytodir doc/developers/HACKING.htm \
-		$(dev_htm_files) \
+	python tools/win32/ostools.py copytodir $(dev_htm_files) \
 		win32_bzr.exe/doc/developers
 
 # clean produced docs
@@ -159,12 +155,10 @@ python-installer: docs
 
 
 # clean on win32 all installer-related files and directories
-clean-win32:
+clean-win32: clean-docs
 	python tools/win32/ostools.py remove build
 	python tools/win32/ostools.py remove win32_bzr.exe
 	python tools/win32/ostools.py remove py2exe.log
-	python tools/win32/ostools.py remove doc/*.htm
-	python tools/win32/ostools.py remove doc/developers/*.htm
 	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe
