@@ -363,6 +363,14 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         # This test is sensitive to the iteration order of dicts.  It will
         # pass incorrectly if 'e' and 'a' sort before 'c'
+        #
+        # NULL_REVISION
+        #     / \
+        #    a   e
+        #    |   |
+        #    b   d
+        #     \ /
+        #      c
         graph = self.make_graph({'c': ['b', 'd'], 'd': ['e'], 'b': ['a'],
                                  'a': [NULL_REVISION], 'e': [NULL_REVISION]})
         self.assertEqual(['c'], graph._filter_candidate_lca(['a', 'c', 'e']))
