@@ -354,9 +354,12 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_filter_candidate_lca(self):
         """Test filter_candidate_lca for a corner case
 
-        This tests the case where we encounter the end of iteration for 'd'
-        in the same pass as we discover that 'c' is an ancestor of 'd', and
-        therefore 'd' can't be an lca.
+        This tests the case where we encounter the end of iteration for 'e'
+        in the same pass as we discover that 'd' is an ancestor of 'e', and
+        therefore 'e' can't be an lca.
+
+        To compensate for different dict orderings on other Python
+        implementations, we mirror 'd' and 'e' with 'b' and 'a'.
         """
         # This test is sensitive to the iteration order of dicts.  It will
         # pass incorrectly if 'e' and 'a' sort before 'c'
