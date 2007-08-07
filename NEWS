@@ -110,6 +110,8 @@ IN DEVELOPMENT
     * Log errors from the smart server in the trace file, to make debugging 
       test failures (and live failures!) easier.  (Andrew Bennetts)
       
+    * New option ``--author`` in ``bzr commit`` to specify the author of the
+      change, if it's different from the committer.  (Lukáš Lalinský)
 
   LIBRARY API BREAKS:
 
