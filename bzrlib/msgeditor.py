@@ -131,10 +131,10 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                 if stripped_line != "":
                     lastline = nlines
                 msg.append(line)
-            f.close()
         except UnicodeDecodeError:
-            f.close()
             raise BadCommitMessageEncoding()
+        finally:
+            f.close()
 
         if len(msg) == 0:
             return ""

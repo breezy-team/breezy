@@ -34,6 +34,9 @@ IN DEVELOPMENT
       succeed even if pyrex is not available.
       (John Arbash Meinel)
 
+    * Parameters passed on the command line are checked to ensure they are
+      supported by the encoding in use. (Daniel Watkins)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.

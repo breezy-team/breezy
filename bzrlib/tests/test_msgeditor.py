@@ -219,10 +219,11 @@ if len(sys.argv) == 2:
 
     def test_unsupported_encoding_commit_message(self):
         old_env = osutils.set_or_unset_env('LANG', 'C')
-        self.make_fake_editor(message='\xff')
+        try:
+            self.make_fake_editor(message='\xff')
 
-        working_tree = self.make_uncommitted_tree()
-        self.assertRaises(errors.BadCommitMessageEncoding,
+            working_tree = self.make_uncommitted_tree()
+            self.assertRaises(errors.BadCommitMessageEncoding,
                                     bzrlib.msgeditor.edit_commit_message, '')
-
-        osutils.set_or_unset_env('LANG', old_env)
+        finally:
+            osutils.set_or_unset_env('LANG', old_env)

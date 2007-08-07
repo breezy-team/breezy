@@ -721,7 +721,7 @@ def main(argv):
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%s' is unsupported by the current "
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
