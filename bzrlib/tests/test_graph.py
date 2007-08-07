@@ -359,6 +359,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         therefore 'd' can't be an lca.
         """
         # This test is sensitive to the iteration order of dicts.  It will
-        # pass incorrectly if 'd' sorts before 'b'
-        graph = self.make_graph({'b': ['c'], 'c': ['d'], 'd': [NULL_REVISION]})
-        self.assertEqual(['b'], graph._filter_candidate_lca(['b', 'd']))
+        # pass incorrectly if 'e' and 'a' sort before 'c'
+        graph = self.make_graph({'c': ['b', 'd'], 'd': ['e'], 'b': ['a'],
+                                 'a': [NULL_REVISION], 'e': [NULL_REVISION]})
+        self.assertEqual(['c'], graph._filter_candidate_lca(['a', 'c', 'e']))
