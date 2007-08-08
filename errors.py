@@ -16,7 +16,8 @@
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
 from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
-                           NotBranchError, PermissionDenied, DependencyNotPresent)
+                           NotBranchError, PermissionDenied, 
+                           DependencyNotPresent, NoRepositoryPresent)
 
 import svn.core
 
@@ -28,6 +29,12 @@ See 'bzr help svn-branching-schemes' for details."""
     def __init__(self, branch_path, scheme=None):
         NotBranchError.__init__(self, branch_path)
         self.scheme = scheme
+
+
+class NoSvnRepositoryPresent(NoRepositoryPresent):
+
+    def __init__(self, url):
+        self.path = url
 
 
 def convert_error(err):

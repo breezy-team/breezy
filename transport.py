@@ -27,7 +27,7 @@ import svn.ra
 import svn.core
 import svn.client
 
-from errors import convert_svn_error
+from errors import convert_svn_error, NoSvnRepositoryPresent
 
 svn_config = svn.core.svn_config_get_config(None)
 
@@ -185,6 +185,8 @@ class SvnRaTransport(Transport):
                        svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
                        svn.core.SVN_ERR_BAD_URL):
                 raise NotBranchError(path=url)
+            if num in (svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND,):
+                raise NoSvnRepositoryPresent(url=url)
             raise
 
         from bzrlib.plugins.svn import lazy_check_versions
