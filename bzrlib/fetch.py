@@ -89,7 +89,7 @@ class RepoFetcher(object):
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
-        if to_repository == from_repository:
+        if to_repository.has_same_location(from_repository):
             if last_revision not in (None, NULL_REVISION):
                 to_repository.get_revision(last_revision)
             return
