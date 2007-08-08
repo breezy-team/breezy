@@ -32,7 +32,7 @@ from bzrlib.dirstate import DirState
 cdef extern from *:
     ctypedef unsigned long size_t
 
-cdef extern from "stdint.h":
+cdef extern from "_dirstate_helpers_c.h":
     ctypedef int intptr_t
 
 
@@ -108,7 +108,7 @@ def _py_memrchr(s, c):
     found = _my_memrchr(_s, _c[0], length)
     if found == NULL:
         return None
-    return found - _s
+    return <char*>found - <char*>_s
 
 
 cdef int _is_aligned(void *ptr):
