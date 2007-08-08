@@ -38,6 +38,9 @@ IN DEVELOPMENT
     * allow ``easy_install bzr`` runs without fatal errors. 
       (Alexander Belchenko, #125521)
 
+    * Graph._filter_candidate_lca does not raise KeyError if a candidate
+      is eliminated just before it would normally be examined.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -110,6 +113,15 @@ IN DEVELOPMENT
     * Log errors from the smart server in the trace file, to make debugging 
       test failures (and live failures!) easier.  (Andrew Bennetts)
       
+    * The HTML version of the man page has been superceded by a more
+      comprehensive manual called the Bazaar User Reference. This manual
+      is completed generated from the online help topics. As part of this
+      change, limited reStructuredText is now explicitly supported in help
+      topics and command help with 'unnatural' markup being removed prior
+      to display by the online help or inclusion in the man page.
+      (Ian Clatworthy)
+
+    * HTML documentation now use files extension *.html (Alexander Belchenko)
 
   LIBRARY API BREAKS:
 
@@ -195,6 +207,20 @@ IN DEVELOPMENT
     * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
       files that are stored on a transport. (Robert Collins)
 
+    * New ``Repository.has_same_location`` method that reports if two
+      repository objects refer to the same repository (although with some risk
+      of false negatives).  (Andrew Bennetts)
+
+    * InterTree.compare now passes require_versioned on correctly.
+      (Marius Kruger)
+
+    * New methods on Repository - ``start_write_group``,
+      ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
+      which provide a clean hook point for transactional Repositories - ones
+      where all the data for a fetch or commit needs to be made atomically
+      available in one step. This allows the write lock to remain while making
+      a series of data insertions.  (e.g. data conversion). (Robert Collins)
+
     * In ``bzrlib.knit`` the internal interface has been altered to use
       3-tuples (index, pos, length) rather than two-tuples (pos, length) to
       describe where data in a knit is, allowing knits to be split into 
@@ -204,13 +230,6 @@ IN DEVELOPMENT
       with two access classes - ``_PackAccess`` and ``_KnitAccess`` defined.
       The former provides access into a .pack file, and the latter provides the
       current production repository form of .knit files. (Robert Collins)
-
-    * New methods on Repository - ``start_write_group``,
-      ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
-      which provide a clean hook point for transactional Repositories - ones
-      where all the data for a fetch or commit needs to be made atomically
-      available in one step. This allows the write lock to remain while making
-      a series of data insertions.  (e.g. data conversion). (Robert Collins)
 
     * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
       This provides a hint to users of transports as to the reasonable
@@ -266,7 +285,7 @@ bzr 0.18rc1  2007-07-10
     * Use exact encoding for merge directives. (Adeodato Simó, #120591)
 
     * Fix tempfile permissions error in smart server tar bundling under
-      Windows. (Martin_, #119330)
+      Windows. (Martin _, #119330)
 
     * Fix detection of directory entries in the inventory. (James Westby)
 
@@ -275,7 +294,7 @@ bzr 0.18rc1  2007-07-10
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
-     (Vincent Ladeuil, #120678)
+      (Vincent Ladeuil, #120678)
 
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
@@ -367,7 +386,7 @@ bzr 0.18rc1  2007-07-10
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
-     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.repository_implementations``;
       ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.interrepository_implementations``;

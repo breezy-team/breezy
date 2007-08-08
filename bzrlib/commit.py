@@ -319,7 +319,7 @@ class Commit(object):
                 # perhaps this should be done by the CommitBuilder ?
                 self.work_tree.branch.repository.abort_write_group()
                 raise
-            
+
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:

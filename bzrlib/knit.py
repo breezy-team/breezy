@@ -1770,8 +1770,8 @@ class _PackAccess(object):
         :param index_to_packs: A dict mapping index objects to the transport
             and file names for obtaining data.
         :param writer: A tuple (pack.ContainerWriter, write_index) which
-            is contains the pack to write, and the index that reads from
-            it will be associated with.
+            contains the pack to write, and the index that reads from it will
+            be associated with.
         """
         if writer:
             self.container_writer = writer[0]
@@ -1784,7 +1784,7 @@ class _PackAccess(object):
     def add_raw_records(self, sizes, raw_data):
         """Add raw knit bytes to a storage area.
 
-        The data is spooled to the container writer in one bytes record per
+        The data is spooled to the container writer in one bytes-record per
         raw data item.
 
         :param sizes: An iterable containing the size of each raw data segment.

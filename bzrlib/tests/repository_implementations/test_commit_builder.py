@@ -48,45 +48,50 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_finish_inventory(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
-        builder = tree.branch.get_commit_builder([])
-        self.record_root(builder, tree)
-        builder.finish_inventory()
-        tree.branch.repository.commit_write_group()
-        tree.unlock()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            tree.branch.repository.commit_write_group()
+        finally:
+            tree.unlock()
 
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
-        builder = tree.branch.get_commit_builder([])
-        self.record_root(builder, tree)
-        builder.finish_inventory()
-        rev_id = builder.commit('foo bar blah')
-        tree.unlock()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar blah')
+        finally:
+            tree.unlock()
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
     def test_commit_with_revision_id(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
-        # use a unicode revision id to test more corner cases.
-        # The repository layer is meant to handle this.
-        revision_id = u'\xc8abc'.encode('utf8')
         try:
+            # use a unicode revision id to test more corner cases.
+            # The repository layer is meant to handle this.
+            revision_id = u'\xc8abc'.encode('utf8')
             try:
-                builder = tree.branch.get_commit_builder([],
-                    revision_id=revision_id)
-            except NonAsciiRevisionId:
-                revision_id = 'abc'
-                builder = tree.branch.get_commit_builder([],
-                    revision_id=revision_id)
-        except CannotSetRevisionId:
-            # This format doesn't support supplied revision ids
+                try:
+                    builder = tree.branch.get_commit_builder([],
+                        revision_id=revision_id)
+                except NonAsciiRevisionId:
+                    revision_id = 'abc'
+                    builder = tree.branch.get_commit_builder([],
+                        revision_id=revision_id)
+            except CannotSetRevisionId:
+                # This format doesn't support supplied revision ids
+                return
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            self.assertEqual(revision_id, builder.commit('foo bar'))
+        finally:
             tree.unlock()
-            return
-        self.record_root(builder, tree)
-        builder.finish_inventory()
-        self.assertEqual(revision_id, builder.commit('foo bar'))
-        tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision(revision_id))
         # the revision id must be set on the inventory when saving it. This
         # does not precisely test that - a repository that wants to can add it
@@ -117,11 +122,13 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
-        builder = tree.branch.get_commit_builder([])
-        self.record_root(builder, tree)
-        builder.finish_inventory()
-        rev_id = builder.commit('foo bar')
-        tree.unlock()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar')
+        finally:
+            tree.unlock()
         self.assertNotEqual(None, rev_id)
         self.assertTrue(tree.branch.repository.has_revision(rev_id))
         # the revision id must be set on the inventory when saving it. This does not
@@ -132,11 +139,13 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_revision_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
-        builder = tree.branch.get_commit_builder([])
-        self.record_root(builder, tree)
-        builder.finish_inventory()
-        rev_id = builder.commit('foo bar')
-        tree.unlock()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar')
+        finally:
+            tree.unlock()
         rev_tree = builder.revision_tree()
         # Just a couple simple tests to ensure that it actually follows
         # the RevisionTree api.
