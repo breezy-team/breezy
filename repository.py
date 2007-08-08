@@ -213,8 +213,8 @@ class SvnRepository(Repository):
         self.config = SvnRepositoryConfig(self.uuid)
         self.config.add_location(self.base)
         self._revids_seen = {}
-        cache_file = os.path.join(self.create_cache_dir(), 
-                                  'cache-v%d' % MAPPING_VERSION)
+        cache_dir = self.create_cache_dir()
+        cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
@@ -223,7 +223,7 @@ class SvnRepository(Repository):
                                         cache_db=self.cachedb)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
-        self.fileid_map = SimpleFileIdMap(self, self.cachedb)
+        self.fileid_map = SimpleFileIdMap(self, cache_dir)
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
