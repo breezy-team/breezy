@@ -2288,7 +2288,6 @@ def test_suite():
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
-                   'bzrlib.tests.test_file_names',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',

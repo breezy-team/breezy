@@ -176,9 +176,6 @@ IN DEVELOPMENT
     * New transport decorator 'unlistable+' which disables the list_dir
       functionality for testing.
 
-    * New ``file_names.FileNames`` support class which mananges names
-      for unlistable transport situations. (Robert Collins)
-
     * Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
 
     * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
