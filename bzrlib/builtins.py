@@ -1253,7 +1253,7 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
 
-    _see_also = ['init-repo', 'branch', 'checkout']
+    _see_also = ['init-repository', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
         Option('create-prefix',

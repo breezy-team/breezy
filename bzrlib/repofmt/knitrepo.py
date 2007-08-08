@@ -19,11 +19,11 @@ lazy_import(globals(), """
 import md5
 
 from bzrlib import (
-        file_names,
         pack,
         )
 from bzrlib.index import (
     GraphIndex,
+    GraphIndexBuilder,
     InMemoryGraphIndex,
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
@@ -299,21 +299,26 @@ class RepositoryDataNames(object):
 
     def ensure_loaded(self):
         if self._names is None:
-            self._names = file_names.FileNames(self.transport, 'index')
-            self._names.load()
+            self._names = set(node[1][0] for node in 
+                GraphIndex(self.transport, 'index').iter_all_entries())
 
     def allocate(self, name):
-        return self._names.allocate(name)
+        if name in self._names:
+            raise errors.DuplicateKey(name)
+        self._names.add(name)
 
     def names(self):
         """Provide an order to the underlying names."""
-        return sorted(self._names.names())
+        return sorted(self._names)
 
     def reset(self):
         self._names = None
 
     def save(self):
-        return self._names.save()
+        builder = GraphIndexBuilder()
+        for name in self._names:
+            builder.add_node((name, ), '')
+        self.transport.put_file('index', builder.finish())
 
     def setup(self):
         # cannot add names if we're not in a 'write lock'.
@@ -1193,10 +1198,8 @@ def _knit_to_experimental(result, a_bzrdir):
     repo_transport.mkdir('packs')
     repo_transport.mkdir('upload')
     repo_transport.rmdir('knits')
-    names = file_names.FileNames(
-        repo_transport.clone('indices'), 'index')
-    names.initialise()
-    names.save()
+    builder = GraphIndexBuilder()
+    repo_transport.clone('indices').put_file('index', builder.finish())
     for knit in ('inventory', 'revisions', 'signatures'):
         repo_transport.delete(knit + '.kndx')
         repo_transport.delete(knit + '.knit')

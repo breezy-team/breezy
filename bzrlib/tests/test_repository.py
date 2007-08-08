@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib.file_names import FileNames
+from bzrlib.index import GraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
@@ -548,9 +548,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertHasNoKnit(t, 'signatures')
         self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
-        names = FileNames(t.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(set(), names.names())
+        self.assertEqual([],
+            list(GraphIndex(t.clone('indices'), 'index').iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
 
@@ -597,13 +596,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        names = FileNames(trans.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(0, len(names.names()))
+        self.assertEqual([],
+            list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
         tree.commit('foobarbaz')
-        names.load()
-        self.assertEqual(1, len(names.names()))
-        name = list(names.names())[0]
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        name = list(index.iter_all_entries())[0][1][0]
         self.assertTrue(trans.has('indices/%s.rix' % name))
 
     def test_add_revision_creates_dot_six(self):
@@ -611,13 +609,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        names = FileNames(trans.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(0, len(names.names()))
+        self.assertEqual([],
+            list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
         tree.commit('foobarbaz')
-        names.load()
-        self.assertEqual(1, len(names.names()))
-        name = list(names.names())[0]
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        name = list(index.iter_all_entries())[0][1][0]
         self.assertTrue(trans.has('indices/%s.six' % name))
 
     def test_add_revision_creates_dot_iix(self):
@@ -625,13 +622,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        names = FileNames(trans.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(0, len(names.names()))
+        self.assertEqual([],
+            list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
         tree.commit('foobarbaz')
-        names.load()
-        self.assertEqual(1, len(names.names()))
-        name = list(names.names())[0]
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        name = list(index.iter_all_entries())[0][1][0]
         self.assertTrue(trans.has('indices/%s.iix' % name))
 
     def test_add_revision_creates_dot_tix(self):
@@ -639,13 +635,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        names = FileNames(trans.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(0, len(names.names()))
+        self.assertEqual([],
+            list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
         tree.commit('foobarbaz')
-        names.load()
-        self.assertEqual(1, len(names.names()))
-        name = list(names.names())[0]
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        name = list(index.iter_all_entries())[0][1][0]
         self.assertTrue(trans.has('indices/%s.tix' % name))
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -654,9 +649,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('2', format=format)
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
-        names = FileNames(trans.clone('indices'), 'index')
-        names.load()
-        self.assertEqual(set(), names.names())
+        self.assertEqual([],
+            list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
