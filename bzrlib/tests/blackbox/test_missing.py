@@ -29,35 +29,30 @@ from bzrlib.tests import TestCaseWithTransport
 class TestMissing(TestCaseWithTransport):
 
     def test_missing(self):
-        def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
         missing = "You are missing 1 revision(s):"
 
         # create a source branch
-        os.mkdir('a')
-        os.chdir('a')
-        bzr('init')
-        open('a', 'wb').write('initial\n')
-        bzr('add a')
-        bzr('commit -m inital')
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
 
         # clone and add a differing revision
-        bzr('branch . ../b')
-        os.chdir('../b')
-        open('a', 'ab').write('more\n')
-        bzr('commit -m more')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        b_tree.commit(message='more')
 
         # run missing in a against b
-        os.chdir('../a')
         # this should not require missing to take out a write lock on a 
         # or b. So we take a write lock on both to test that at the same
         # time. This may let the test pass while the default branch is an
         # os-locking branch, but it will trigger failures with lockdir based
         # branches.
-        branch_a = Branch.open('.')
-        branch_a.lock_write()
-        branch_b = Branch.open('../b')
-        branch_b.lock_write()
+        a_branch = a_tree.branch
+        a_branch.lock_write()
+        b_branch = b_tree.branch
+        b_branch.lock_write()
+        os.chdir('a')
         out,err = self.run_bzr('missing ../b', retcode=1)
         lines = out.splitlines()
         # we're missing the extra revision here
@@ -68,68 +63,67 @@ class TestMissing(TestCaseWithTransport):
         # we do not expect any error output.
         self.assertEqual('', err)
         # unlock the branches for the rest of the test
-        branch_a.unlock()
-        branch_b.unlock()
+        a_branch.unlock()
+        b_branch.unlock()
 
         # get extra revision from b
-        bzr('merge ../b')
-        bzr('commit -m merge')
+        a_tree.merge_from_branch(b_branch)
+        a_tree.commit(message='merge')
 
         # compare again, but now we have the 'merge' commit extra
-        lines = bzr('missing ../b', retcode=1).splitlines()
+        lines = self.run_bzr('missing ../b', retcode=1)[0].splitlines()
         self.assertEqual("You have 1 extra revision(s):", lines[0])
         self.assertEqual(8, len(lines))
-        lines2 = bzr('missing ../b --mine-only', retcode=1)
+        lines2 = self.run_bzr('missing ../b --mine-only', retcode=1)[0]
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
-        lines3 = bzr('missing ../b --theirs-only', retcode=1)
+        lines3 = self.run_bzr('missing ../b --theirs-only', retcode=1)[0]
         lines3 = lines3.splitlines()
         self.assertEqual(0, len(lines3))
 
         # relative to a, missing the 'merge' commit 
         os.chdir('../b')
-        lines = bzr('missing ../a', retcode=1).splitlines()
+        lines = self.run_bzr('missing ../a', retcode=1)[0].splitlines()
         self.assertEqual(missing, lines[0])
         self.assertEqual(8, len(lines))
-        lines2 = bzr('missing ../a --theirs-only', retcode=1)
+        lines2 = self.run_bzr('missing ../a --theirs-only', retcode=1)[0]
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
-        lines3 = bzr('missing ../a --mine-only', retcode=1)
+        lines3 = self.run_bzr('missing ../a --mine-only', retcode=1)[0]
         lines3 = lines3.splitlines()
         self.assertEqual(0, len(lines3))
-        lines4 = bzr('missing ../a --short', retcode=1)
+        lines4 = self.run_bzr('missing ../a --short', retcode=1)[0]
         lines4 = lines4.splitlines()
         self.assertEqual(4, len(lines4))
-        lines5 = bzr('missing ../a --line', retcode=1)
+        lines5 = self.run_bzr('missing ../a --line', retcode=1)[0]
         lines5 = lines5.splitlines()
         self.assertEqual(2, len(lines5))
-        lines6 = bzr('missing ../a --reverse', retcode=1)
+        lines6 = self.run_bzr('missing ../a --reverse', retcode=1)[0]
         lines6 = lines6.splitlines()
         self.assertEqual(lines6, lines)
-        lines7 = bzr('missing ../a --show-ids', retcode=1)
+        lines7 = self.run_bzr('missing ../a --show-ids', retcode=1)[0]
         lines7 = lines7.splitlines()
         self.assertEqual(11, len(lines7))
-        lines8 = bzr('missing ../a --verbose', retcode=1)
+        lines8 = self.run_bzr('missing ../a --verbose', retcode=1)[0]
         lines8 = lines8.splitlines()
         self.assertEqual("modified:", lines8[-2])
         self.assertEqual("  a", lines8[-1])
 
         # after a pull we're back on track
-        bzr('pull')
-        self.assertEqual("Branches are up to date.\n", bzr('missing ../a'))
+        b_tree.pull(a_branch)
+        self.assertEqual("Branches are up to date.\n", self.run_bzr('missing ../a')[0])
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL
 
         # create a source branch
-        os.mkdir('a')
-        os.chdir('a')
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree('a')
         b = wt.branch
-        self.build_tree(['foo'])
+        self.build_tree(['a/foo'])
         wt.add('foo')
         wt.commit('initial')
 
+        os.chdir('a')
         location = osutils.getcwd() + '/'
 
         # clone
