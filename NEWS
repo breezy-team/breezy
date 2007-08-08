@@ -123,6 +123,9 @@ IN DEVELOPMENT
 
     * HTML documentation now use files extension *.html (Alexander Belchenko)
 
+    * The cache of ignore definitions is now cleared in WorkingTree.unlock()
+      so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
