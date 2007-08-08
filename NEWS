@@ -181,6 +181,9 @@ IN DEVELOPMENT
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
 
+    * The ``-Dhpss`` flag now includes timing information. As well as
+      logging when a new connection is opened. (John Arbash Meinel)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
