@@ -135,6 +135,13 @@ IN DEVELOPMENT
     * Ancient unused ``Repository.text_store`` attribute has been removed.
       (Robert Collins)
 
+    * The ``bzrlib.pack`` interface has changed to use tuples of bytestrings
+      rather than just bytestrings, making it easier to represent multiple
+      element names. As this interface was not used by any internal facilities
+      since it was introduced in 0.18 no API compatibility is being preserved.
+      The serialised form of these packs is identical with 0.18 when a single
+      element tuple is in use. (Robert Collins)
+
   INTERNALS:
 
     * merge now uses ``iter_changes`` to calculate changes, which makes room for
