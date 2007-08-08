@@ -3802,8 +3802,6 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    aliases = ['bundle', 'bundle-revisions']
-
     _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
@@ -3828,11 +3826,17 @@ class cmd_send(Command):
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
             **kwargs):
-        from bzrlib.revision import ensure_null, NULL_REVISION
         if output is None:
             raise errors.BzrCommandError('File must be specified with'
                                          ' --output')
-        elif output == '-':
+        return self._run(submit_branch, public_branch, no_bundle, no_patch,
+                         revision, remember, output, **kwargs)
+
+    def _run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False, output=None,
+            **kwargs):
+        from bzrlib.revision import ensure_null, NULL_REVISION
+        if output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
@@ -3891,6 +3895,49 @@ class cmd_send(Command):
         finally:
             if output != '-':
                 outfile.close()
+
+
+class cmd_bundle_revisions(cmd_send):
+
+    """Create a merge-directive for submiting changes.
+
+    A merge directive provides many things needed for requesting merges:
+
+    * A machine-readable description of the merge to perform
+
+    * An optional patch that is a preview of the changes requested
+
+    * An optional bundle of revision data, so that the changes can be applied
+      directly from the merge directive, without retrieving data from a
+      branch.
+
+    If --no-bundle is specified, then public_branch is needed (and must be
+    up-to-date), so that the receiver can perform the merge using the
+    public_branch.  The public_branch is always included if known, so that
+    people can check it later.
+
+    The submit branch defaults to the parent, but can be overridden.  Both
+    submit branch and public branch will be remembered if supplied.
+
+    If a public_branch is known for the submit_branch, that public submit
+    branch is used in the merge instructions.  This means that a local mirror
+    can be used as your actual submit branch, once you have set public_branch
+    for that mirror.
+    """
+
+    aliases = ['bundle']
+
+    _see_also = ['send', 'merge']
+
+    hidden = True
+
+    def run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False, output=None,
+            **kwargs):
+        if output is None:
+            output = '-'
+        return self._run(submit_branch, public_branch, no_bundle, no_patch,
+                         revision, remember, output, **kwargs)
 
 
 class cmd_tag(Command):

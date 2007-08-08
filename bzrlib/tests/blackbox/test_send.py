@@ -53,6 +53,18 @@ class TestSend(tests.TestCaseWithTransport):
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
+    def test_bundle(self):
+        """Bundle works like send, except -o is not required"""
+        self.make_trees()
+        os.chdir('grandparent')
+        errmsg = self.run_bzr('bundle', retcode=3)[1]
+        self.assertContainsRe(errmsg, 'No submit branch known or specified')
+        os.chdir('../branch')
+        stdout, stderr = self.run_bzr('bundle')
+        self.assertEqual(stderr.count('Using saved location'), 1)
+        br = read_bundle(StringIO(stdout))
+        self.assertRevisions(br, ['revision3'])
+
     def assertRevisions(self, bi, expected):
         self.assertEqual(set(r.revision_id for r in bi.revisions),
             set(expected))
