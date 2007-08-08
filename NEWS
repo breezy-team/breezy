@@ -214,6 +214,13 @@ IN DEVELOPMENT
     * InterTree.compare now passes require_versioned on correctly.
       (Marius Kruger)
 
+    * New methods on Repository - ``start_write_group``,
+      ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
+      which provide a clean hook point for transactional Repositories - ones
+      where all the data for a fetch or commit needs to be made atomically
+      available in one step. This allows the write lock to remain while making
+      a series of data insertions.  (e.g. data conversion). (Robert Collins)
+
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
