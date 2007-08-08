@@ -36,7 +36,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import (InstallFailed,
                            )
 from bzrlib.progress import ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import is_null, NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
         zero_eight,
@@ -94,7 +94,9 @@ class RepoFetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
-            if last_revision not in (None, NULL_REVISION):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if last_revision is not None and not is_null(last_revision):
                 to_repository.get_revision(last_revision)
             return
         self.to_repository = to_repository
@@ -151,18 +153,18 @@ class RepoFetcher(object):
         if revs is None:
             return
         # The first phase is "file".  We pass the progress bar for it directly
-        # into get_data_about_revision_ids, which has more information about how
+        # into item_keys_introduced_by, which has more information about how
         # that phase is progressing than we do.  Progress updates for the other
         # phases are taken care of in this function.
         # XXX: there should be a clear owner of the progress reporting.  Perhaps
-        # get_data_about_revision_ids should have a richer API than it does at
-        # the moment, so that it can feed the progress information back to this
+        # item_keys_introduced_by should have a richer API than it does at the
+        # moment, so that it can feed the progress information back to this
         # function?
         phase = 'file'
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            what_to_do = self.from_repository.get_data_about_revision_ids(revs, pb)
-            for knit_kind, file_id, revisions in what_to_do:
+            data_to_fetch = self.from_repository.item_keys_introduced_by(revs, pb)
+            for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:
                     phase = knit_kind
                     # Make a new progress bar for this phase

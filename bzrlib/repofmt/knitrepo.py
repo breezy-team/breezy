@@ -130,7 +130,7 @@ class KnitRepository(MetaDirRepository):
     def get_data_stream(self, revision_ids):
         """See Repository.get_data_stream."""
         # XXX: is this generic enough to move to the Repository base class?
-        for knit_kind, file_id, versions in self.get_data_about_revision_ids(revision_ids):
+        for knit_kind, file_id, versions in self.item_keys_introduced_by(revision_ids):
             name = knit_kind
             if knit_kind == 'file':
                 name = 'file:' + file_id
