@@ -195,10 +195,6 @@ IN DEVELOPMENT
     * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
       files that are stored on a transport. (Robert Collins)
 
-    * Add a new method ``bzrlib.repository.Repository.reconcile_actions``
-      allowing conditional test cases on the sorts of things reconcile
-      will actually perform. (Robert Collins)
-
   TESTING:
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and

@@ -223,6 +223,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -800,13 +802,6 @@ class Repository(object):
         reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
-
-    def reconcile_actions(self):
-        """Return a set of actions taken by reconcile on this repository.
-        
-        :return: A set of actions. e.g. set(['inventory_gc']).
-        """
-        return set(['inventory_gc'])
 
     @needs_read_lock
     def revision_tree(self, revision_id):

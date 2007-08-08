@@ -248,6 +248,8 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # for tests
+        self._reconcile_does_inventory_gc = True
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
