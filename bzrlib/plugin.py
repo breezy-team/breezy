@@ -79,11 +79,14 @@ def disable_plugins():
     global _loaded
     _loaded = True
 
+def strip_trailing_sep(path):
+    return path.rstrip(os.sep)
 
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    path = map(strip_trailing_sep, path)
     # search the plugin path before the bzrlib installed dir
     path.append(os.path.dirname(plugins.__file__))
     plugins.__path__ = path
@@ -123,7 +126,7 @@ def load_from_path(dirs):
 
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
-    plugins.__path__ = dirs
+    plugins.__path__ = map(strip_trailing_sep, dirs)
     for d in dirs:
         if not d:
             continue
