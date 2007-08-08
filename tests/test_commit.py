@@ -206,7 +206,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("3 my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
 
-        self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 
+        self.assertEqual(
+                "timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n",
                 self.client_get_prop("dc", "bzr:revision-info", 2))
 
     def test_mwh(self):

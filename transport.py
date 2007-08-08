@@ -15,12 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Simple transport for accessing Subversion smart servers."""
 
-from bzrlib import debug
+from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
                            FileExists, NotLocalUrl)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
-import bzrlib.urlutils as urlutils
 
 from svn.core import SubversionException, Pool
 import svn.ra
@@ -260,14 +259,14 @@ class SvnRaTransport(Transport):
         return svn.ra.get_latest_revnum(self._ra)
 
     @convert_svn_error
-    def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
-        self.mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
-        return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs))
+    def do_switch(self, switch_rev, recurse, switch_url, *args, **kwargs):
+        self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
+        return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, "", recurse, switch_url, *args, **kwargs))
 
     @convert_svn_error
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
-        return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
+        return svn.ra.get_log(self._ra, [self._request_path(path)], from_revnum, to_revnum, *args, **kwargs)
 
     @convert_svn_error
     def reparent(self, url):
@@ -285,7 +284,7 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     def get_dir(self, path, revnum, pool=None, kind=False):
         self.mutter("svn ls -r %d '%r'" % (revnum, path))
-        path = path.rstrip("/")
+        path = self._request_path(path)
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
         assert len(path) == 0 or path[0] != "/"
@@ -297,13 +296,16 @@ class SvnRaTransport(Transport):
         else:
             return svn.ra.get_dir(self._ra, path, revnum)
 
+    def _request_path(self, relpath):
+        return relpath.rstrip("/")
+
     @convert_svn_error
     def list_dir(self, relpath):
         assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
             relpath = ""
         try:
-            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), 
+            (dirents, _, _) = self.get_dir(self._request_path(relpath),
                                            self.get_latest_revnum())
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
@@ -341,13 +343,14 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def check_path(self, path, revnum, *args, **kwargs):
+        path = self._request_path(path)
         assert len(path) == 0 or path[0] != "/"
         self.mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
 
     @convert_svn_error
     def mkdir(self, relpath, mode=None):
-        path = "%s/%s" % (self.svn_url, relpath)
+        path = urlutils.join(self.svn_url, relpath)
         try:
             svn.client.mkdir([path.encode("utf-8")], self._client)
         except SubversionException, (msg, num):
@@ -358,9 +361,9 @@ class SvnRaTransport(Transport):
             raise
 
     @convert_svn_error
-    def do_update(self, revnum, path, *args, **kwargs):
-        self.mutter('svn update -r %r %r' % (revnum, path))
-        return self.Reporter(svn.ra.do_update(self._ra, revnum, path, *args, **kwargs))
+    def do_update(self, revnum, *args, **kwargs):
+        self.mutter('svn update -r %r' % revnum)
+        return self.Reporter(svn.ra.do_update(self._ra, revnum, "", *args, **kwargs))
 
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):

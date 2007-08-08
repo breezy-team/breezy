@@ -16,12 +16,11 @@
 """Fetching revisions from Subversion repositories in batches."""
 
 import bzrlib
+from bzrlib import osutils, ui, urlutils
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
-import bzrlib.ui as ui
 
 from copy import copy
 from cStringIO import StringIO
@@ -426,25 +425,25 @@ class InterFromSvnRepository(InterRepository):
                 edit, edit_baton = svn.delta.make_editor(editor, pool)
 
                 if parent_revid is None:
-                    transport.reparent("%s/%s" % (repos_root, branch))
+                    transport.reparent(urlutils.join(repos_root, branch))
                     reporter = transport.do_update(
-                                   revnum, "", True, edit, edit_baton, pool)
+                                   revnum, True, edit, edit_baton, pool)
 
                     # Report status of existing paths
                     reporter.set_path("", revnum, True, None, pool)
                 else:
                     (parent_branch, parent_revnum, scheme) = \
                             self.source.lookup_revision_id(parent_revid)
-                    transport.reparent("%s/%s" % (repos_root, parent_branch))
+                    transport.reparent(urlutils.join(repos_root, parent_branch))
 
                     if parent_branch != branch:
-                        switch_url = "%s/%s" % (repos_root, branch)
                         reporter = transport.do_switch(
-                                   revnum, "", True, 
-                                   switch_url, edit, edit_baton, pool)
+                                   revnum, True, 
+                                   urlutils.join(repos_root, branch), 
+                                   edit, edit_baton, pool)
                     else:
                         reporter = transport.do_update(
-                                   revnum, "", True, edit, edit_baton, pool)
+                                   revnum, True, edit, edit_baton, pool)
 
                     # Report status of existing paths
                     reporter.set_path("", parent_revnum, False, None, pool)

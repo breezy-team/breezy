@@ -299,7 +299,7 @@ class LogWalker(object):
             root_repos = self.transport.get_repos_root()
             self.transport.reparent(urlutils.join(root_repos, path))
             reporter = self.transport.do_update(
-                            revnum, "", True, edit, baton, pool)
+                            revnum,  True, edit, baton, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:

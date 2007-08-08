@@ -186,7 +186,7 @@ class SvnWorkingTree(WorkingTree):
                 svn.wc.delete2(self.abspath(entry), from_wc, None, None, None)
             finally:
                 svn.wc.adm_close(from_wc)
-            new_name = "%s/%s" % (to_dir, os.path.basename(entry))
+            new_name = urlutils.join(to_dir, os.path.basename(entry))
             self._change_fileid_mapping(self.inventory.path2id(entry), new_name)
             self._change_fileid_mapping(None, entry)
 
@@ -714,8 +714,7 @@ class SvnCheckout(BzrDir):
             svn.wc.adm_close(wc)
 
         remote_transport = SvnRaTransport(svn_url)
-        self.svn_root_transport = SvnRaTransport(
-            remote_transport.get_repos_root())
+        self.svn_root_transport = SvnRaTransport(remote_transport.get_repos_root())
         self.root_transport = self.transport = transport
 
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
