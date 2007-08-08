@@ -9,6 +9,8 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Raise proper exception when repository can't be found remotely.
 
+   * Use knits to store file id maps.
+
 bzr-svn 0.4.0	2007-08-04	
   
   BUG FIXES

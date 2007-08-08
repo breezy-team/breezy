@@ -16,9 +16,12 @@
 """Generation of file-ids."""
 
 from bzrlib import osutils, ui
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, RevisionNotPresent
+from bzrlib.knit import KnitVersionedFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
+
+import urllib
 
 import sha
 
@@ -74,6 +77,8 @@ def get_local_changes(paths, scheme, generate_revid, get_children=None):
     return new_paths
 
 
+FILEIDMAP_VERSION = 1
+
 class FileIdMap(object):
     """ File id store. 
 
@@ -81,25 +86,22 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, repos, cache_db):
+    def __init__(self, repos, cache_transport):
         self.repos = repos
-        self.cachedb = cache_db
-        self.cachedb.executescript("""
-        create table if not exists filemap (filename text, id integer, create_revid text, revid text);
-        create index if not exists revid on filemap(revid);
-        """)
-        self.cachedb.commit()
+        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
-        for filename in _map:
-            self.cachedb.execute("insert into filemap (filename, id, create_revid, revid) values(?,?,?,?)", (filename, _map[filename][0], _map[filename][1], revid))
-        self.cachedb.commit()
+                
+        self.idmap_knit.add_lines_with_ghosts(revid, parent_revids, 
+                ["%s\t%s\t%s\n" % (urllib.quote(filename), urllib.quote(_map[filename][0]), 
+                                        urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
 
     def load(self, revid):
         map = {}
-        for filename, create_revid, id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
-            map[filename] = (id.encode("utf-8"), create_revid.encode("utf-8"))
+        for l in self.idmap_knit.get_lines(revid):
+            (filename, id, create_revid) = l.rstrip("\n").split("\t", 3)
+            map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
             assert isinstance(map[filename][0], str)
 
         return map
@@ -149,12 +151,13 @@ class FileIdMap(object):
                                              revnum, scheme):
             revid = self.repos.generate_revision_id(rev, bp.encode("utf-8"), 
                                                     str(scheme))
-            map = self.load(revid)
-            if map != {}:
+            try:
+                map = self.load(revid)
                 # found the nearest cached map
                 next_parent_revs = [revid]
                 break
-            todo.append((revid, paths))
+            except RevisionNotPresent:
+                todo.append((revid, paths))
    
         # target revision was present
         if len(todo) == 0:
@@ -171,14 +174,18 @@ class FileIdMap(object):
         try:
             i = 1
             for (revid, global_changes) in reversed(todo):
+                expensive = False
+                def log_find_children(path, revnum):
+                    expensive = True
+                    return self.repos._log.find_children(path, revnum)
                 changes = get_local_changes(global_changes, scheme,
                                             self.repos.generate_revision_id, 
-                                            self.repos._log.find_children)
+                                            log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
                     (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
-                    for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                    for p in log_find_children(bp+"/"+path, revnum):
                         yield scheme.unprefix(p)[1]
 
                 parent_revs = next_parent_revs
@@ -207,11 +214,16 @@ class FileIdMap(object):
                             break
                         map[parent] = map[parent][0], revid
                         
+                saved = False
+                if i % 500 == 0 or expensive:
+                    self.save(revid, parent_revs, map)
+                    saved = True
                 next_parent_revs = [revid]
                 i += 1
         finally:
             pb.finished()
-        self.save(revid, parent_revs, map)
+        if not saved:
+            self.save(revid, parent_revs, map)
         return map
 
 

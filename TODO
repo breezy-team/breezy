@@ -1,4 +1,5 @@
 todo:
+- generate deltas rather than fulltexts when creating file id maps
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - avoid extra connect in logwalker?
 - free memory! (#54253)
