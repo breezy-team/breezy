@@ -83,6 +83,30 @@ class Repository(object):
         r'.*revision="(?P<revision_id>[^"]+)"'
         )
 
+    def abort_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._abort_write_group()
+        self._write_group = None
+
+    def _abort_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called during abort before the write group is considered to be 
+        finished and should cleanup any internal state accrued during the write
+        group. There is no requirement that data handed to the repository be
+        *not* made available - this is not a rollback - but neither should any
+        attempt be made to ensure that data added is fully commited. Abort is
+        invoked when an error has occured so futher disk or network operations
+        may not be possible or may error and if possible should not be
+        attempted.
+        """
+
     @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
@@ -231,6 +255,7 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
+        self._write_group = None
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -248,11 +273,22 @@ class Repository(object):
         return (self.control_files._transport.base ==
                 other.control_files._transport.base)
 
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        :seealso: start_write_group.
+        """
+        return self._write_group is not None
+
     def is_locked(self):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
         """Lock this repository for writing.
+
+        This causes caching within the repository obejct to start accumlating
+        data during reads, and allows a 'write_group' to be obtained. Write
+        groups must be used for actual data insertion.
         
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
@@ -261,6 +297,7 @@ class Repository(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+        :seealso: start_write_group.
 
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
@@ -268,10 +305,13 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
-        return self.control_files.lock_write(token=token)
+        result = self.control_files.lock_write(token=token)
+        self._refresh_data()
+        return result
 
     def lock_read(self):
         self.control_files.lock_read()
+        self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -401,6 +441,26 @@ class Repository(object):
         revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id)
 
+    def commit_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._commit_write_group()
+        self._write_group = None
+
+    def _commit_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called before the write group is considered to be 
+        finished and should ensure that all data handed to the repository
+        for writing during the write group is safely committed (to the 
+        extent possible considering file system caching etc).
+        """
+
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
@@ -431,10 +491,17 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return _CommitBuilder(self, parents, config, timestamp, timezone,
+        result =_CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
     def unlock(self):
+        if (self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'w'):
+            if self._write_group is not None:
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self.control_files.unlock()
 
     @needs_read_lock
@@ -451,6 +518,35 @@ class Repository(object):
         dest_repo = self._create_sprouting_repo(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(dest_repo, revision_id)
         return dest_repo
+
+    def start_write_group(self):
+        """Start a write group in the repository.
+
+        Write groups are used by repositories which do not have a 1:1 mapping
+        between file ids and backend store to manage the insertion of data from
+        both fetch and commit operations.
+
+        A write lock is required around the start_write_group/commit_write_group
+        for the support of lock-requiring repository formats.
+
+        One can only insert data into a repository inside a write group.
+
+        :return: None.
+        """
+        if not self.is_locked() or self.control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        if self._write_group:
+            raise errors.BzrError('already in a write group')
+        self._start_write_group()
+        # so we can detect unlock/relock - the write group is now entered.
+        self._write_group = self.get_transaction()
+
+    def _start_write_group(self):
+        """Template method for per-repository write group startup.
+        
+        This is called before the write group is considered to be 
+        entered.
+        """
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
@@ -891,6 +987,16 @@ class Repository(object):
         reconciler.reconcile()
         return reconciler
 
+    def _refresh_data(self):
+        """Helper called from lock_* to ensure coherency with disk.
+
+        The default implementation does nothing; it is however possible
+        for repositories to maintain loaded indices across multiple locks
+        by checking inside their implementation of this method to see
+        whether their indices are still valid. This depends of course on
+        the disk format being validatable in this manner.
+        """
+
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1137,7 +1243,7 @@ def install_revision(repository, rev, revision_tree):
 
     inv = revision_tree.inventory
     entries = inv.iter_entries()
-    # backwards compatability hack: skip the root id.
+    # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():
         path, root = entries.next()
         if root.revision != rev.revision_id:
@@ -2059,8 +2165,9 @@ class CommitBuilder(object):
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
         rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev, 
+        self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self.repository.commit_write_group()
         return self._new_revision_id
 
     def revision_tree(self):

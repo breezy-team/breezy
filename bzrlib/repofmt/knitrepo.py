@@ -288,8 +288,10 @@ class KnitRepository3(KnitRepository):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return RootCommitBuilder(self, parents, config, timestamp, timezone,
+        result = RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
