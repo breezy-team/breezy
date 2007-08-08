@@ -33,14 +33,16 @@ from bzrlib.workingtree import WorkingTree
 
 class TestMerge(ExternalBase):
 
-    def example_branch(test):
-        test.run_bzr('init')
-        file('hello', 'wt').write('foo')
-        test.run_bzr('add hello')
-        test.run_bzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.run_bzr('add goodbye')
-        test.run_bzr('commit -m setup goodbye')
+    def example_branch(self, path='.'):
+        tree = self.make_branch_and_tree(path)
+        self.build_tree_contents([
+            (path + '/hello',   'foo'),
+            (path + '/goodbye', 'baz')])
+        tree.add('hello')
+        tree.commit(message='setup')
+        tree.add('goodbye')
+        tree.commit(message='setup')
+        return tree
 
     def test_merge_reprocess(self):
         d = BzrDir.create_standalone_workingtree('.')
@@ -49,31 +51,27 @@ class TestMerge(ExternalBase):
 
     def test_merge(self):
         from bzrlib.branch import Branch
-        
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        ancestor = Branch.open('.').revno()
-        os.chdir('..')
-        self.run_bzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.run_bzr(['commit',  '-m',  "more u's are always good"])
 
-        os.chdir('../a')
-        file('hello', 'wt').write('quuux')
+        a_tree = self.example_branch('a')
+        ancestor = Branch.open('a').revno()
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('b/goodbye', 'quux')])
+        b_tree.commit(message="more u's are always good")
+
+        self.build_tree_contents([('a/hello', 'quuux')])
         # We can't merge when there are in-tree changes
+        os.chdir('a')
         self.run_bzr('merge ../b', retcode=3)
         a = WorkingTree.open('.')
         a_tip = a.commit("Like an epidemic of u's")
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        self.run_bzr('revert --no-backup')
+        a_tree.revert([], backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
-        self.run_bzr('revert --no-backup')
+        a_tree.revert([], backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
-        self.run_bzr('revert --no-backup')
+        a_tree.revert([], backups=False)
         self.run_bzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
@@ -81,7 +79,7 @@ class TestMerge(ExternalBase):
         b_tip = b.last_revision()
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
-        self.run_bzr('revert --no-backup')
+        a_tree.revert([], backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3)
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
@@ -89,7 +87,7 @@ class TestMerge(ExternalBase):
         self.assertEquals(a.get_parent_ids(), 
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
-        self.run_bzr('revert --no-backup')
+        a_tree.revert([], backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
@@ -99,37 +97,39 @@ class TestMerge(ExternalBase):
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.run_bzr('init')
-        self.run_bzr('add')
-        self.run_bzr(['commit', '-m', 'added a'])
-        self.run_bzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.run_bzr(['commit', '-m', 'Added there'])
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.run_bzr(['commit', '-m', 'Removed a.txt'])
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.run_bzr(['commit', '-m', 'Modified a.txt'])
+        self.build_tree_contents([
+            ('a/',                   ),
+            ('a/sub/',               ),
+            ('a/sub/a.txt', 'hello\n'),
+            ('a/b.txt',     'hello\n'),
+            ('a/sub/c.txt', 'hello\n')])
+        a_tree = self.make_branch_and_tree('a')
+        a_tree.add(['sub', 'b.txt', 'sub/c.txt', 'sub/a.txt'])
+        a_tree.commit(message='added a')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([
+            ('a/sub/a.txt', 'hello\nthere\n'),
+            ('a/b.txt',     'hello\nthere\n'),
+            ('a/sub/c.txt', 'hello\nthere\n')])
+        a_tree.commit(message='Added there')
+        os.remove('a/sub/a.txt')
+        os.remove('a/sub/c.txt')
+        os.rmdir('a/sub')
+        os.remove('a/b.txt')
+        a_tree.commit(message='Removed a.txt')
+        self.build_tree_contents([
+            ('b/sub/a.txt', 'hello\nsomething\n'),
+            ('b/b.txt',     'hello\nsomething\n'),
+            ('b/sub/c.txt', 'hello\nsomething\n')])
+        b_tree.commit(message='Modified a.txt')
+        os.chdir('b')
         self.run_bzr('merge ../a/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.THIS'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
+        self.assertTrue(os.path.exists('sub/a.txt.THIS'))
+        self.assertTrue(os.path.exists('sub/a.txt.BASE'))
         os.chdir('../a')
         self.run_bzr('merge ../b/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.OTHER'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
+        self.assertTrue(os.path.exists('sub/a.txt.OTHER'))
+        self.assertTrue(os.path.exists('sub/a.txt.BASE'))
 
     def test_merge_remember(self):
         """Merge changes from one branch to another and test parent location."""
@@ -188,21 +188,15 @@ class TestMerge(ExternalBase):
     def test_merge_bundle(self):
         from bzrlib.testament import Testament
         tree_a = self.make_branch_and_tree('branch_a')
-        f = file('branch_a/a', 'wb')
-        f.write('hello')
-        f.close()
+        self.build_tree_contents([('branch_a/a', 'hello')])
         tree_a.add('a')
         tree_a.commit('message')
 
         tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
-        f = file('branch_a/a', 'wb')
-        f.write('hey there')
-        f.close()
+        self.build_tree_contents([('branch_a/a', 'hey there')])
         tree_a.commit('message')
 
-        f = file('branch_b/a', 'wb')
-        f.write('goodbye')
-        f.close()
+        self.build_tree_contents([('branch_b/a', 'goodbye')])
         tree_b.commit('message')
         os.chdir('branch_b')
         self.run_bzr('bundle ../branch_a -o ../bundle')
@@ -242,22 +236,11 @@ class TestMerge(ExternalBase):
                            'merge /a --uncommitted -r1 -d b')
 
     def pullable_branch(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.run_bzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.run_bzr(['commit', '-m', "mode u's are always good"])
-        os.chdir('../a')
-
-    def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file'])
         tree_a.add(['file'])
         self.id1 = tree_a.commit('commit 1')
-        
+
         tree_b = self.make_branch_and_tree('b')
         tree_b.pull(tree_a.branch)
         file('b/file', 'wb').write('foo')
