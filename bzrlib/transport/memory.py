@@ -36,6 +36,7 @@ from bzrlib.errors import (
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
+    AppendBasedFileStream,
     _file_streams,
     LateReadError,
     register_transport,
@@ -89,10 +90,6 @@ class MemoryTransport(Transport):
         result._files = self._files
         result._locks = self._locks
         return result
-
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del _file_streams[self.abspath(relpath)]
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
@@ -170,13 +167,12 @@ class MemoryTransport(Transport):
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
-        def append_data(bytes):
-            self.append_bytes(relpath, bytes)
-        self.put_bytes(relpath, "")
-        _file_streams[self.abspath(relpath)] = append_data
-        return append_data
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
 
     def listable(self):
         """See Transport.listable."""

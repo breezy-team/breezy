@@ -257,6 +257,49 @@ class LateReadError(object):
         self._fail()
 
 
+class FileStream(object):
+    """Base class for FileStreams."""
+
+    def __init__(self, transport, relpath):
+        """Create a FileStream for relpath on transport."""
+        self.transport = transport
+        self.relpath = relpath
+
+    def _close(self):
+        """A hook point for subclasses that need to take action on close."""
+
+    def close(self):
+        self._close()
+        del _file_streams[self.transport.abspath(self.relpath)]
+
+
+class FileFileStream(FileStream):
+    """A file stream object returned by open_file_stream.
+    
+    This version uses a file like object to perform writes.
+    """
+
+    def __init__(self, transport, relpath, file_handle):
+        FileStream.__init__(self, transport, relpath)
+        self.file_handle = file_handle
+
+    def _close(self):
+        self.file_handle.close()
+
+    def write(self, bytes):
+        self.file_handle.write(bytes)
+
+
+class AppendBasedFileStream(FileStream):
+    """A file stream object returned by open_file_stream.
+    
+    This version uses append on a transport to perform writes.
+    """
+
+    def write(self, bytes):
+        self.transport.append_bytes(self.relpath, bytes)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -317,15 +360,6 @@ class Transport(object):
         to be pooled, rather than a new one needed for each subdir.
         """
         raise NotImplementedError(self.clone)
-
-    def close_file_stream(self, relpath):
-        """Close a file stream at relpath.
-
-        :raises: NoSuchFile if there is no open file stream for relpath.
-        :seealso: open_file_stream.
-        :return: None
-        """
-        raise NotImplementedError(self.close_file_stream)
 
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
@@ -858,7 +892,10 @@ class Transport(object):
         :param relpath: The relative path to the file.
         :param mode: The mode for the newly created file, 
                      None means just use the default
-        :return: A write callback to add data to the file.
+        :return: A FileStream. FileStream objects have two methods, write() and
+            close(). There is no guarantee that data is committed to the file
+            if close() has not been called (even if get() is called on the same
+            path).
         """
         raise NotImplementedError(self.open_file_stream)
 

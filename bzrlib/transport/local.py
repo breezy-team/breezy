@@ -85,11 +85,6 @@ class LocalTransport(Transport):
                 abspath = self.base
             return LocalTransport(abspath)
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        handle = transport._file_streams.pop(self.abspath(relpath))
-        handle.close()
-
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
 
@@ -316,7 +311,7 @@ class LocalTransport(Transport):
         self.put_bytes_non_atomic(relpath, "", mode=mode)
         handle = open(self._abspath(relpath), 'wb')
         transport._file_streams[self.abspath(relpath)] = handle
-        return handle.write
+        return transport.FileFileStream(self, relpath, handle)
 
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""

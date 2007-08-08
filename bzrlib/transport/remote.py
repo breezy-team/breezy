@@ -127,10 +127,6 @@ class RemoteTransport(transport.ConnectedTransport):
         # No credentials
         return None, None
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del transport._file_streams[self.abspath(relpath)]
-
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         resp = self._call2('Transport.is_readonly')
@@ -217,13 +213,12 @@ class RemoteTransport(transport.ConnectedTransport):
             self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
-        def append_data(bytes):
-            self.append_bytes(relpath, bytes)
-        self.put_bytes(relpath, "")
-        transport._file_streams[self.abspath(relpath)] = append_data
-        return append_data
+        self.put_bytes(relpath, "", mode)
+        result = transport.AppendBasedFileStream(self, relpath)
+        transport._file_streams[self.abspath(relpath)] = result
+        return result
 
     def put_bytes(self, relpath, upload_contents, mode=None):
         # FIXME: upload_file is probably not safe for non-ascii characters -

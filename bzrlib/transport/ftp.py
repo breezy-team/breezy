@@ -46,6 +46,7 @@ from bzrlib import (
     )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    AppendBasedFileStream,
     _file_streams,
     Server,
     ConnectedTransport,
@@ -105,10 +106,6 @@ class FtpTransport(ConnectedTransport):
             connection, credentials = self._create_connection()
             self._set_connection(connection, credentials)
         return connection
-
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del _file_streams[self.abspath(relpath)]
 
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
@@ -328,13 +325,12 @@ class FtpTransport(ConnectedTransport):
             self._translate_perm_error(e, abspath,
                 unknown_exc=errors.FileExists)
 
-    def open_file_stream(self, relpath):
+    def open_file_stream(self, relpath, mode=None):
         """See Transport.open_file_stream."""
-        def append_data(bytes):
-            self.append_bytes(relpath, bytes)
-        self.put_bytes(relpath, "")
-        _file_streams[self.abspath(relpath)] = append_data
-        return append_data
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size().

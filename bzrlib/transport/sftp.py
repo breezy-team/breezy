@@ -53,6 +53,7 @@ from bzrlib.symbol_versioning import (
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    FileFileStream,
     _file_streams,
     local,
     register_urlparse_netloc_protocol,
@@ -156,11 +157,6 @@ class SFTPTransport(ConnectedTransport):
         assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
-
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        handle = _file_streams.pop(self.abspath(relpath))
-        handle.close()
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
@@ -559,7 +555,7 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, abspath,
                                          ': unable to open')
         _file_streams[self.abspath(relpath)] = handle
-        return handle.write
+        return FileFileStream(self, relpath, handle)
 
     def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):
