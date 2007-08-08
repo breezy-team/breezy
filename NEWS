@@ -7,6 +7,8 @@ bzr-svn 0.4.1	UNRELEASED
    * Support initializing Subversion repositories. 
      `bzr init-repo --format=subversion` now works.
 
+   * Use knits to store file id maps.
+
 bzr-svn 0.4.0	2007-08-04	
   
   BUG FIXES

@@ -20,7 +20,6 @@ from bzrlib.errors import NotBranchError, RevisionNotPresent
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 
 import urllib
 
@@ -87,9 +86,9 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, repos, cache_dir):
+    def __init__(self, repos, cache_transport):
         self.repos = repos
-        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, get_transport(cache_dir), create=True)
+        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
@@ -175,14 +174,18 @@ class FileIdMap(object):
         try:
             i = 1
             for (revid, global_changes) in reversed(todo):
+                expensive = False
+                def log_find_children(path, revnum):
+                    expensive = True
+                    return self.repos._log.find_children(path, revnum)
                 changes = get_local_changes(global_changes, scheme,
                                             self.repos.generate_revision_id, 
-                                            self.repos._log.find_children)
+                                            log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
                     (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
-                    for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                    for p in log_find_children(bp+"/"+path, revnum):
                         yield scheme.unprefix(p)[1]
 
                 parent_revs = next_parent_revs
@@ -211,11 +214,16 @@ class FileIdMap(object):
                             break
                         map[parent] = map[parent][0], revid
                         
-                self.save(revid, parent_revs, map)
+                saved = False
+                if i % 500 == 0 or expensive:
+                    self.save(revid, parent_revs, map)
+                    saved = True
                 next_parent_revs = [revid]
                 i += 1
         finally:
             pb.finished()
+        if not saved:
+            self.save(revid, parent_revs, map)
         return map
 
 

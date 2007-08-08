@@ -25,7 +25,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
-from bzrlib.transport import Transport
+from bzrlib.transport import Transport, get_transport
 from bzrlib.timestamp import unpack_highres_date, format_highres_date
 from bzrlib.trace import mutter
 
@@ -214,6 +214,7 @@ class SvnRepository(Repository):
         self.config.add_location(self.base)
         self._revids_seen = {}
         cache_dir = self.create_cache_dir()
+        cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
@@ -223,7 +224,7 @@ class SvnRepository(Repository):
                                         cache_db=self.cachedb)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
-        self.fileid_map = SimpleFileIdMap(self, cache_dir)
+        self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
