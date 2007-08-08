@@ -101,6 +101,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/sign_my_commits.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
+		 tools/doc_generate/autodoc_man.py \
 		 tools/doc_generate/autodoc_rstx.py
 
 doc/bzr_man.txt: $(MAN_DEPENDENCIES)
@@ -123,7 +124,7 @@ copy-docs: docs
 # clean produced docs
 clean-docs:
 	python tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt doc/developers/performance.png
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt
 
 
 # build a png of our performance task list

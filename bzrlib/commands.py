@@ -274,13 +274,16 @@ class Command(object):
         s = s[:-1]
         return s
 
-    def get_help_text(self, additional_see_also=None, plain=True):
+    def get_help_text(self, additional_see_also=None, plain=True,
+                      see_also_as_links=False):
         """Return a text string with help for this command.
         
         :param additional_see_also: Additional help topics to be
             cross-referenced.
         :param plain: if False, raw help (reStructuredText) is
             returned instead of plain text.
+        :param see_also_as_links: if True, convert items in 'See also'
+            list to internal links (used by bzr_man rstx generator)
         """
         doc = self.help()
         if doc is None:
@@ -338,6 +341,17 @@ class Command(object):
             result += ':From:     plugin "%s"\n' % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
+            if not plain and see_also_as_links:
+                see_also_links = []
+                for item in see_also:
+                    if item == 'topics':
+                        # topics doesn't have an independent section
+                        # so don't create a real link
+                        see_also_links.append(item)
+                    else:
+                        # Use a reST link for this entry
+                        see_also_links.append("`%s`_" % (item,))
+                see_also = see_also_links
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
 
@@ -389,7 +403,7 @@ class Command(object):
         return self.name()
 
     def get_see_also(self, additional_terms=None):
-        """Return a list of help topics that are related to this ommand.
+        """Return a list of help topics that are related to this command.
         
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
