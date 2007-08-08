@@ -633,7 +633,7 @@ class Repository(object):
             pb.finished()
         return result
 
-    def get_data_about_revision_ids(self, revision_ids, files_pb=None):
+    def get_data_to_fetch_for_revision_ids(self, revision_ids, files_pb=None):
         """Get an iterable about data for a given set of revision IDs.
 
         The named data will be ordered so that it can be fetched and inserted in
