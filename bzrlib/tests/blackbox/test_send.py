@@ -34,11 +34,14 @@ class TestSend(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
+        self.build_tree_contents([('grandparent/file1', 'grandparent')])
+        grandparent_tree.add('file1')
         grandparent_tree.commit('initial commit', rev_id='revision1')
         parent_bzrdir = grandparent_tree.bzrdir.sprout('parent')
         parent_tree = parent_bzrdir.open_workingtree()
         parent_tree.commit('next commit', rev_id='revision2')
         branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
+        self.build_tree_contents([('branch/file1', 'branch')])
         branch_tree.commit('last commit', rev_id='revision3')
 
     def test_uses_parent(self):
@@ -136,13 +139,32 @@ class TestSend(tests.TestCaseWithTransport):
         md = self.send_directive([])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)
+
+        md = self.send_directive(['--format=0.9'])
+        self.assertIsNot(None, md.bundle)
+        self.assertIsNot(None, md.patch)
+
         md = self.send_directive(['--no-patch'])
         self.assertIsNot(None, md.bundle)
         self.assertIs(None, md.patch)
+        self.run_bzr_error(['Format 0.9 does not permit bundle with no patch'],
+                      'send --no-patch --format=0.9 -o-')
+
         md = self.send_directive(['--no-bundle', '.', '.'])
         self.assertIs(None, md.bundle)
         self.assertIsNot(None, md.patch)
+
+        md = self.send_directive(['--no-bundle', '--format=0.9', '../parent',
+                                  '.'])
+        self.assertIs(None, md.bundle)
+        self.assertIsNot(None, md.patch)
+
         md = self.send_directive(['--no-bundle', '--no-patch', '.', '.'])
+        self.assertIs(None, md.bundle)
+        self.assertIs(None, md.patch)
+
+        md = self.send_directive(['--no-bundle', '--no-patch', '--format=0.9',
+                                  '../parent', '.'])
         self.assertIs(None, md.bundle)
         self.assertIs(None, md.patch)
 
@@ -168,3 +190,14 @@ class TestSend(tests.TestCaseWithTransport):
         self.make_trees()
         self.run_bzr_error(('File must be specified with --output',),
                            'send -f branch')
+
+    def test_format(self):
+        self.make_trees()
+        s = StringIO(self.run_bzr('send -f branch -o- --format=4')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertIs(merge_directive.MergeDirective2, md.__class__)
+        s = StringIO(self.run_bzr('send -f branch -o- --format=0.9')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertIs(merge_directive.MergeDirective, md.__class__)
+        self.run_bzr_error(['Bad value .* for option .format.'],
+                            'send -f branch -o- --format=0.999')[0]

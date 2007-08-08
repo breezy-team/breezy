@@ -3821,27 +3821,29 @@ class cmd_send(Command):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
+        RegistryOption.from_kwargs('format', 'Output format',
+        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
+           '0.9': 'Bundle format 4, Merge Directive 2 (default)',})
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            **kwargs):
+            format='4', **kwargs):
         if output is None:
             raise errors.BzrCommandError('File must be specified with'
                                          ' --output')
-        return self._run(submit_branch, public_branch, no_bundle, no_patch,
-                         revision, remember, output, **kwargs)
+        return self._run(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'))
 
-    def _run(self, submit_branch=None, public_branch=None, no_bundle=False,
-            no_patch=False, revision=None, remember=False, output=None,
-            **kwargs):
+    def _run(self, submit_branch, revision, public_branch, remember, format,
+             no_bundle, no_patch, output, from_,):
         from bzrlib.revision import ensure_null, NULL_REVISION
         if output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
         try:
-            from_ = kwargs.get('from', '.')
             branch = Branch.open_containing(from_)[0]
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
@@ -3885,12 +3887,31 @@ class cmd_send(Command):
             revision_id = ensure_null(revision_id)
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
-            directive = merge_directive.MergeDirective2.from_objects(
-                branch.repository, revision_id, time.time(),
-                osutils.local_time_offset(), submit_branch,
-                public_branch=public_branch, include_patch=not no_patch,
-                include_bundle=not no_bundle, message=None,
-                base_revision_id=base_revision_id)
+            if format == '4':
+                directive = merge_directive.MergeDirective2.from_objects(
+                    branch.repository, revision_id, time.time(),
+                    osutils.local_time_offset(), submit_branch,
+                    public_branch=public_branch, include_patch=not no_patch,
+                    include_bundle=not no_bundle, message=None,
+                    base_revision_id=base_revision_id)
+            elif format == '0.9':
+                if not no_bundle:
+                    if not no_patch:
+                        patch_type = 'bundle'
+                    else:
+                        raise errors.BzrCommandError('Format 0.9 does not'
+                            ' permit bundle with no patch')
+                else:
+                    if not no_patch:
+                        patch_type = 'diff'
+                    else:
+                        patch_type = None
+                directive = merge_directive.MergeDirective.from_objects(
+                    branch.repository, revision_id, time.time(),
+                    osutils.local_time_offset(), submit_branch,
+                    public_branch=public_branch, patch_type=patch_type,
+                    message=None)
+
             outfile.writelines(directive.to_lines())
         finally:
             if output != '-':
@@ -3933,11 +3954,12 @@ class cmd_bundle_revisions(cmd_send):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            **kwargs):
+            format='4', **kwargs):
         if output is None:
             output = '-'
-        return self._run(submit_branch, public_branch, no_bundle, no_patch,
-                         revision, remember, output, **kwargs)
+        return self._run(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'))
 
 
 class cmd_tag(Command):
