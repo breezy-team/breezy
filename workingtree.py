@@ -16,6 +16,7 @@
 """Checkouts and working trees (working copies)."""
 
 import bzrlib
+from bzrlib import urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
