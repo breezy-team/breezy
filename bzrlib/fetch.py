@@ -142,17 +142,17 @@ class RepoFetcher(object):
         if revs is None:
             return
         # The first phase is "file".  We pass the progress bar for it directly
-        # into get_data_to_fetch_for_revision_ids, which has more information
-        # about how that phase is progressing than we do.  Progress updates for
-        # the other phases are taken care of in this function.
+        # into item_keys_introduced_by, which has more information about how
+        # that phase is progressing than we do.  Progress updates for the other
+        # phases are taken care of in this function.
         # XXX: there should be a clear owner of the progress reporting.  Perhaps
-        # get_data_to_fetch_for_revision_ids should have a richer API than it
-        # does at the moment, so that it can feed the progress information back
-        # to this function?
+        # item_keys_introduced_by should have a richer API than it does at the
+        # moment, so that it can feed the progress information back to this
+        # function?
         phase = 'file'
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            data_to_fetch = self.from_repository.get_data_to_fetch_for_revision_ids(revs, pb)
+            data_to_fetch = self.from_repository.item_keys_introduced_by(revs, pb)
             for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:
                     phase = knit_kind

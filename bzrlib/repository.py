@@ -636,13 +636,16 @@ class Repository(object):
             pb.finished()
         return result
 
-    def get_data_to_fetch_for_revision_ids(self, revision_ids, files_pb=None):
-        """Get an iterable about data for a given set of revision IDs.
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get an iterable listing the keys of all the data introduced by a set
+        of revision IDs.
 
-        The named data will be ordered so that it can be fetched and inserted in
-        that order safely.
-        
-        :returns: (knit-kind, file-id, versions)
+        The keys will be ordered so that the corresponding items can be safely
+        fetched and inserted in that order.
+
+        :returns: An iterable producing tuples of (knit-kind, file-id,
+            versions).  knit-kind is one of 'file', 'inventory', 'signatures',
+            'revisions'.  file-id is None unless knit-kind is 'file'.
         """
         # XXX: it's a bit weird to control the inventory weave caching in this
         # generator.  Ideally the caching would be done in fetch.py I think.  Or
@@ -657,13 +660,13 @@ class Repository(object):
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
-            if files_pb is not None:
-                files_pb.update("fetch texts", count, num_file_ids)
+            if _files_pb is not None:
+                _files_pb.update("fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
         # We're done with the files_pb.  Note that it finished by the caller,
         # just as it was created by the caller.
-        del files_pb
+        del _files_pb
 
         # inventory
         yield ("inventory", None, revision_ids)
