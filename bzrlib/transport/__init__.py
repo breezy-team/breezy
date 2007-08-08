@@ -884,11 +884,10 @@ class Transport(object):
         """Open a file stream at relpath.
 
         A file stream is a callback which adds data to the file. Buffering
-        may occur internally until the stream is closed with close_file_stream.
+        may occur internally until the stream is closed with stream.close().
         Calls to readv or the get_* methods will be synchronised with any
         internal buffering that may be present.
 
-        :seealso: close_file_stream.
         :param relpath: The relative path to the file.
         :param mode: The mode for the newly created file, 
                      None means just use the default
