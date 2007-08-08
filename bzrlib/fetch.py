@@ -36,7 +36,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import (InstallFailed,
                            )
 from bzrlib.progress import ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import is_null, NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
         zero_eight,
@@ -90,7 +90,9 @@ class RepoFetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
-            if last_revision not in (None, NULL_REVISION):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if last_revision is not None and not is_null(last_revision):
                 to_repository.get_revision(last_revision)
             return
         self.to_repository = to_repository
