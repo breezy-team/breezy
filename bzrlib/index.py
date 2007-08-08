@@ -674,7 +674,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 if self.reference_lists:
                     yield self, key, node[2], node[1]
                 else:
-                    yield self ,key, node[2]
+                    yield self, key, node[2]
             return
         for key in keys:
             # sanity check
@@ -730,11 +730,12 @@ class GraphIndexPrefixAdapter(object):
     nodes and references being added will have prefix prepended.
     """
 
-    def __init__(self, adapted, prefix, missing_key_length, add_nodes_callback=None):
+    def __init__(self, adapted, prefix, missing_key_length,
+        add_nodes_callback=None):
         """Construct an adapter against adapted with prefix."""
         self.adapted = adapted
         self.prefix = prefix + (None,)*missing_key_length
-        self.prefix_key = prefix
+        self.prefix = prefix
         self.prefix_len = len(prefix)
         self.add_nodes_callback = add_nodes_callback
 
@@ -747,18 +748,20 @@ class GraphIndexPrefixAdapter(object):
         nodes = tuple(nodes)
         translated_nodes = []
         try:
+            # Add prefix_key to each reference node_refs is a tuple of tuples,
+            # so split it apart, and add prefix_key to the internal reference
             for (key, value, node_refs) in nodes:
                 adjusted_references = (
-                    tuple(tuple(self.prefix_key + ref_node for ref_node in ref_list)
+                    tuple(tuple(self.prefix + ref_node for ref_node in ref_list)
                         for ref_list in node_refs))
-                translated_nodes.append((self.prefix_key + key, value,
+                translated_nodes.append((self.prefix + key, value,
                     adjusted_references))
         except ValueError:
             # XXX: TODO add an explicit interface for getting the reference list
             # status, to handle this bit of user-friendliness in the API more 
             # explicitly.
             for (key, value) in nodes:
-                translated_nodes.append((self.prefix_key + key, value))
+                translated_nodes.append((self.prefix + key, value))
         self.add_nodes_callback(translated_nodes)
 
     def add_node(self, key, value, references=()):
@@ -778,11 +781,11 @@ class GraphIndexPrefixAdapter(object):
         """Strip prefix data from nodes and return it."""
         for node in an_iter:
             # cross checks
-            if node[1][:self.prefix_len] != self.prefix_key:
+            if node[1][:self.prefix_len] != self.prefix:
                 raise errors.BadIndexData(self)
             for ref_list in node[3]:
                 for ref_node in ref_list:
-                    if ref_node[:self.prefix_len] != self.prefix_key:
+                    if ref_node[:self.prefix_len] != self.prefix:
                         raise errors.BadIndexData(self)
             yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
@@ -809,7 +812,7 @@ class GraphIndexPrefixAdapter(object):
             efficient order for the index (keys iteration order in this case).
         """
         return self._strip_prefix(self.adapted.iter_entries(
-            self.prefix_key + key for key in keys))
+            self.prefix + key for key in keys))
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -829,7 +832,7 @@ class GraphIndexPrefixAdapter(object):
             returned.
         """
         return self._strip_prefix(self.adapted.iter_entries_prefix(
-            self.prefix_key + key for key in keys))
+            self.prefix + key for key in keys))
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.

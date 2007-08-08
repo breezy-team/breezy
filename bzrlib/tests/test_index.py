@@ -354,8 +354,8 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
         builder = GraphIndexBuilder(ref_lists, key_elements=key_elements)
-        for node, value, references in nodes:
-            builder.add_node(node, value, references)
+        for key, value, references in nodes:
+            builder.add_node(key, value, references)
         stream = builder.finish()
         trans = self.get_transport()
         trans.put_file('index', stream)
@@ -535,8 +535,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
     def make_index(self, name, ref_lists=0, key_elements=1, nodes=[]):
         builder = GraphIndexBuilder(ref_lists, key_elements=key_elements)
-        for node, value, references in nodes:
-            builder.add_node(node, value, references)
+        for key, value, references in nodes:
+            builder.add_node(key, value, references)
         stream = builder.finish()
         trans = self.get_transport()
         trans.put_file(name, stream)
@@ -822,9 +822,9 @@ class TestGraphIndexPrefixAdapter(TestCaseWithMemoryTransport):
         result = InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
         if add_callback:
-            add_nodes_callback=result.add_nodes
+            add_nodes_callback = result.add_nodes
         else:
-            add_nodes_callback=None
+            add_nodes_callback = None
         adapter = GraphIndexPrefixAdapter(result, ('prefix', ), key_elements - 1,
             add_nodes_callback=add_nodes_callback)
         return result, adapter
