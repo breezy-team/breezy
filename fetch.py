@@ -460,7 +460,7 @@ class InterFromSvnRepository(InterRepository):
             self.target.unlock()
             if nested_pb is not None:
                 nested_pb.finished()
-        self.source.transport.reparent(repos_root)
+        self.source.transport.reparent_root()
 
     def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """

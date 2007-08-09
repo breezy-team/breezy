@@ -102,7 +102,7 @@ class SvnRemoteAccess(BzrDir):
         """
         transport = self.root_transport
         if self.svn_root_url != transport.base:
-            transport = SvnRaTransport(self.svn_root_url)
+            transport = transport.clone_root()
         return SvnRepository(self, transport, self.branch_path)
 
     def open_workingtree(self, _unsupported=False,
@@ -225,7 +225,7 @@ class SvnFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         svn.repos.create(local_path, '', '', None, None)
-        return self.open(SvnRaTransport(transport.base), _found=True)
+        return self.open(get_svn_ra_transport(transport), _found=True)
 
     def is_supported(self):
         """See BzrDir.is_supported()."""

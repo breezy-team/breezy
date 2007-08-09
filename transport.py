@@ -165,10 +165,15 @@ class SvnRaTransport(Transport):
     This implements just as much of Transport as is necessary 
     to fool Bazaar. """
     @convert_svn_error
-    def __init__(self, url=""):
+    def __init__(self, url="", _backing_url=None):
         self.pool = Pool()
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
+        # _backing_url is an evil hack so the root directory of a repository 
+        # can be accessed on some HTTP repositories. 
+        if _backing_url is None:
+            _backing_url = self.svn_url
+        self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
         self._client = svn.client.create_context(self.pool)
@@ -176,8 +181,8 @@ class SvnRaTransport(Transport):
         self._client.config = svn_config
 
         try:
-            self.mutter('opening SVN RA connection to %r' % self.svn_url)
-            self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
+            self.mutter('opening SVN RA connection to %r' % self._backing_url)
+            self._ra = svn.client.open_ra_session(self._backing_url.encode('utf8'), 
                     self._client, self.pool)
         except SubversionException, (_, num):
             if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
@@ -260,6 +265,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_switch(self, switch_rev, recurse, switch_url, *args, **kwargs):
+        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
         self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
         return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, "", recurse, switch_url, *args, **kwargs))
 
@@ -268,6 +274,12 @@ class SvnRaTransport(Transport):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         return svn.ra.get_log(self._ra, [self._request_path(path)], from_revnum, to_revnum, *args, **kwargs)
 
+    def reparent_root(self):
+        if self._is_http_transport():
+            self.svn_url = self.base = self.get_repos_root()
+        else:
+            self.reparent(self.get_repos_root())
+
     @convert_svn_error
     def reparent(self, url):
         url = url.rstrip("/")
@@ -275,12 +287,14 @@ class SvnRaTransport(Transport):
             return
         self.base = url
         self.svn_url = url
+        self._backing_url = url
         if hasattr(svn.ra, 'reparent'):
             self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url, self.pool)
         else:
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
+
     @convert_svn_error
     def get_dir(self, path, revnum, pool=None, kind=False):
         self.mutter("svn ls -r %d '%r'" % (revnum, path))
@@ -297,7 +311,12 @@ class SvnRaTransport(Transport):
             return svn.ra.get_dir(self._ra, path, revnum)
 
     def _request_path(self, relpath):
-        return relpath.rstrip("/")
+        if self._backing_url != self.svn_url:
+            relpath = urlutils.join(
+                    urlutils.relative_url(self._backing_url, self.svn_url),
+                    relpath)
+        relpath = relpath.rstrip("/")
+        return relpath
 
     @convert_svn_error
     def list_dir(self, relpath):
@@ -362,11 +381,13 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_update(self, revnum, *args, **kwargs):
+        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
         self.mutter('svn update -r %r' % revnum)
         return self.Reporter(svn.ra.do_update(self._ra, revnum, "", *args, **kwargs))
 
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
+        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
         return Editor(svn.ra.get_commit_editor(self._ra, *args, **kwargs))
 
     def listable(self):
@@ -384,6 +405,15 @@ class SvnRaTransport(Transport):
     def lock_read(self, relpath):
         """See Transport.lock_read()."""
         return self.PhonyLock()
+
+    def _is_http_transport(self):
+        return (self.svn_url.startswith("http://") or 
+                self.svn_url.startswith("https://"))
+
+    def clone_root(self):
+        if self._is_http_transport():
+            return SvnRaTransport(self.get_repos_root(), self.base)
+        return SvnRaTransport(self.get_repos_root())
 
     def clone(self, offset=None):
         """See Transport.clone()."""
