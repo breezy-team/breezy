@@ -169,6 +169,7 @@ class SvnRaTransport(Transport):
         self.pool = Pool()
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
+        self._root = None
         # _backing_url is an evil hack so the root directory of a repository 
         # can be accessed on some HTTP repositories. 
         if _backing_url is None:
@@ -255,8 +256,10 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def get_repos_root(self):
-        self.mutter("svn get-repos-root")
-        return svn.ra.get_repos_root(self._ra)
+        if self._root is None:
+            self.mutter("svn get-repos-root")
+            self._root = svn.ra.get_repos_root(self._ra)
+        return self._root
 
     @convert_svn_error
     def get_latest_revnum(self):
@@ -292,6 +295,7 @@ class SvnRaTransport(Transport):
             self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url, self.pool)
         else:
+            self.mutter('svn reparent (reconnect) %r' % url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
 
