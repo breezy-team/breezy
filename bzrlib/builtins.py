@@ -1085,7 +1085,7 @@ class cmd_remove(Command):
     takes_options = ['verbose',
         Option('new', help='Remove newly-added files.'),
         RegistryOption.from_kwargs('file-deletion-strategy',
-            'The file deletion mode to be used',
+            'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Only delete files if they can be'
                  ' safely recovered (default).',
@@ -3697,11 +3697,11 @@ class cmd_merge_directive(Command):
 
     hidden = True
 
-    _see_also = ['submit']
+    _see_also = ['send']
 
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
-            'The type of patch to include in the directive',
+            'The type of patch to include in the directive.',
             title='Patch type',
             value_switches=True,
             enum_switch=False,
@@ -3801,11 +3801,15 @@ class cmd_send(Command):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     encoding_type = 'exact'
-
-    aliases = ['bundle', 'bundle-revisions']
 
     _see_also = ['merge']
 
@@ -3826,21 +3830,30 @@ class cmd_send(Command):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
+        RegistryOption.from_kwargs('format',
+        'Use the specified output format.',
+        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
+           '0.9': 'Bundle format 0.9, Merge Directive 1',})
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            **kwargs):
-        from bzrlib.revision import ensure_null, NULL_REVISION
+            format='4', **kwargs):
         if output is None:
             raise errors.BzrCommandError('File must be specified with'
                                          ' --output')
-        elif output == '-':
+        return self._run(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'))
+
+    def _run(self, submit_branch, revision, public_branch, remember, format,
+             no_bundle, no_patch, output, from_,):
+        from bzrlib.revision import ensure_null, NULL_REVISION
+        if output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
         try:
-            from_ = kwargs.get('from', '.')
             branch = Branch.open_containing(from_)[0]
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
@@ -3884,16 +3897,85 @@ class cmd_send(Command):
             revision_id = ensure_null(revision_id)
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
-            directive = merge_directive.MergeDirective2.from_objects(
-                branch.repository, revision_id, time.time(),
-                osutils.local_time_offset(), submit_branch,
-                public_branch=public_branch, include_patch=not no_patch,
-                include_bundle=not no_bundle, message=None,
-                base_revision_id=base_revision_id)
+            if format == '4':
+                directive = merge_directive.MergeDirective2.from_objects(
+                    branch.repository, revision_id, time.time(),
+                    osutils.local_time_offset(), submit_branch,
+                    public_branch=public_branch, include_patch=not no_patch,
+                    include_bundle=not no_bundle, message=None,
+                    base_revision_id=base_revision_id)
+            elif format == '0.9':
+                if not no_bundle:
+                    if not no_patch:
+                        patch_type = 'bundle'
+                    else:
+                        raise errors.BzrCommandError('Format 0.9 does not'
+                            ' permit bundle with no patch')
+                else:
+                    if not no_patch:
+                        patch_type = 'diff'
+                    else:
+                        patch_type = None
+                directive = merge_directive.MergeDirective.from_objects(
+                    branch.repository, revision_id, time.time(),
+                    osutils.local_time_offset(), submit_branch,
+                    public_branch=public_branch, patch_type=patch_type,
+                    message=None)
+
             outfile.writelines(directive.to_lines())
         finally:
             if output != '-':
                 outfile.close()
+
+
+class cmd_bundle_revisions(cmd_send):
+
+    """Create a merge-directive for submiting changes.
+
+    A merge directive provides many things needed for requesting merges:
+
+    * A machine-readable description of the merge to perform
+
+    * An optional patch that is a preview of the changes requested
+
+    * An optional bundle of revision data, so that the changes can be applied
+      directly from the merge directive, without retrieving data from a
+      branch.
+
+    If --no-bundle is specified, then public_branch is needed (and must be
+    up-to-date), so that the receiver can perform the merge using the
+    public_branch.  The public_branch is always included if known, so that
+    people can check it later.
+
+    The submit branch defaults to the parent, but can be overridden.  Both
+    submit branch and public branch will be remembered if supplied.
+
+    If a public_branch is known for the submit_branch, that public submit
+    branch is used in the merge instructions.  This means that a local mirror
+    can be used as your actual submit branch, once you have set public_branch
+    for that mirror.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
+    """
+
+    aliases = ['bundle']
+
+    _see_also = ['send', 'merge']
+
+    hidden = True
+
+    def run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False, output=None,
+            format='4', **kwargs):
+        if output is None:
+            output = '-'
+        return self._run(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'))
 
 
 class cmd_tag(Command):
