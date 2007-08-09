@@ -34,9 +34,9 @@ from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
                 SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                SVN_PROP_BZR_BRANCHING_SCHEME,
-                SvnRepositoryFormat, parse_revision_metadata,
-                parse_merge_property)
+                SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                SVN_PROP_BZR_FILEIDS, SvnRepositoryFormat, 
+                parse_revision_metadata, parse_merge_property)
 from tree import apply_txdelta_handler
 
 
@@ -187,7 +187,8 @@ class RevisionBuildEditor(svn.delta.Editor):
                 return
             
             self._bzr_merges = parse_merge_property(value.splitlines()[-1])
-        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
+        elif (name.startswith(SVN_PROP_BZR_ANCESTRY) or 
+              name.startswith(SVN_PROP_BZR_REVISION_ID)):
             pass
         elif name == SVN_PROP_SVK_MERGE:
             self._svk_merges = None # Force Repository.revision_parents() to look it up
@@ -206,11 +207,11 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        elif name == SVN_PROP_BZR_MERGE:
+        elif name in (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS):
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
