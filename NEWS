@@ -7,7 +7,7 @@ bzr-svn 0.4.1	UNRELEASED
    * Support initializing Subversion repositories. 
      `bzr init-repo --format=subversion` now works.
 
-   * Raise proper exception when repository can't be found remotely.
+   * Raise proper exception when repository can't be found remotely. (#130633)
 
    * Use knits to store file id maps.
 

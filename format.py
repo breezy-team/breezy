@@ -161,7 +161,7 @@ class SvnRemoteAccess(BzrDir):
 
         if self.branch_path != "":
             # TODO: Set NULL_REVISION in SVN_PROP_BZR_BRANCHING_SCHEME
-            repos.transport.mkdir(self.branch_path)
+            repos.transport.mkdir(self.branch_path.strip("/"))
         elif repos.transport.get_latest_revnum() > 0:
             # Bail out if there are already revisions in this repository
             raise AlreadyBranchError(self.root_transport.base)

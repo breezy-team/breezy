@@ -369,6 +369,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def mkdir(self, relpath, mode=None):
+        assert len(relpath) == 0 or relpath[0] != "/"
         path = urlutils.join(self.svn_url, relpath)
         try:
             svn.client.mkdir([path.encode("utf-8")], self._client)
