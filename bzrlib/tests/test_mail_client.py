@@ -24,7 +24,7 @@ from bzrlib import (
 class TestThunderbird(tests.TestCase):
 
     def test_commandline(self):
-        tbird = mail_client.Thunderbird()
+        tbird = mail_client.Thunderbird(None)
         commandline = tbird._get_compose_commandline(None, None,
                                                      'file%')
         self.assertEqual(['-compose', "attachment='%s'" %

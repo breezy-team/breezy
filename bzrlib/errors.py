@@ -2308,3 +2308,8 @@ class SMTPError(BzrError):
 
     def __init__(self, error):
         self.error = error
+
+
+class NoMessageSupplied(BzrError):
+
+    _fmt = "No message supplied."

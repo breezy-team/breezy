@@ -3826,7 +3826,10 @@ class cmd_send(Command):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
+        Option('mail-to', help='Mail the request to this address',
+               type=unicode),
         'revision',
+        'message',
         RegistryOption.from_kwargs('format',
         'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
@@ -3835,15 +3838,17 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
+            format='4', mail_to=None, message=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'))
+                         kwargs.get('from', '.'), mail_to, message)
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_,):
+             no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import ensure_null, NULL_REVISION
         if output is None:
+            if mail_to is None:
+                raise errors.BzrCommandError('No mail-to address specified')
             outfile = StringIO()
         elif output == '-':
             outfile = self.outf
@@ -3898,7 +3903,7 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=None,
+                    include_bundle=not no_bundle, message=message,
                     base_revision_id=base_revision_id)
             elif format == '0.9':
                 if not no_bundle:
@@ -3916,11 +3921,17 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, patch_type=patch_type,
-                    message=None)
+                    message=message)
 
             outfile.writelines(directive.to_lines())
             if output is None:
-                branch.get_config().get_mail_client().compose(None, None,
+                subject = '[MERGE] '
+                if message is not None:
+                    subject += message
+                else:
+                    revision = branch.repository.get_revision(revision_id)
+                    subject += revision.message
+                branch.get_config().get_mail_client().compose(mail_to, subject,
                     outfile.getvalue())
         finally:
             if output != '-':
@@ -3961,6 +3972,26 @@ class cmd_bundle_revisions(cmd_send):
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive.'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive.'),
+        Option('remember',
+               help='Remember submit and public branch.'),
+        Option('from',
+               help='Branch to generate the submission from, '
+               'rather than the one containing the working directory.',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o', help='Write directive to this file.',
+               type=unicode),
+        'revision',
+        RegistryOption.from_kwargs('format',
+        'Use the specified output format.',
+        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
+           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        ]
     aliases = ['bundle']
 
     _see_also = ['send', 'merge']

@@ -151,7 +151,7 @@ class Config(object):
             None : mail_client.Editor,
             'editor': mail_client.Editor,
             'thunderbird': mail_client.Thunderbird,
-        }[selected_client]()
+        }[selected_client](self)
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""

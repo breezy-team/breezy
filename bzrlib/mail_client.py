@@ -18,10 +18,18 @@ import os
 import subprocess
 import tempfile
 
-from bzrlib import urlutils
+from bzrlib import (
+    email_message,
+    errors,
+    msgeditor,
+    urlutils,
+    )
 
 
 class MailClient(object):
+
+    def __init__(self, config):
+        self.config = config
 
     def compose(self, to, subject, attachment):
         raise NotImplementedError
@@ -29,7 +37,19 @@ class MailClient(object):
 
 class Editor(MailClient):
 
-    pass
+    def compose(self, to, subject, attachment):
+        info = ("Please describe these changes:\n\nTo: %s\nSubject: %s\n\n%s"
+                % (to, subject, attachment))
+        body = msgeditor.edit_commit_message(info)
+        if body == '':
+            raise errors.NoMessageSupplied()
+        email_message.EmailMessage.send(self.config,
+                                        self.config.username(),
+                                        to,
+                                        subject,
+                                        body,
+                                        attachment,
+                                        attachment_mime_subtype='x-patch')
 
 
 class Thunderbird(MailClient):

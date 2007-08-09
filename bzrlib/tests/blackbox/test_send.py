@@ -207,3 +207,11 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
+
+    def test_message_option(self):
+        self.make_trees()
+        self.run_bzr('send', retcode=3)
+        md = self.send_directive(['--from', 'branch'])
+        self.assertIs(None, md.message)
+        md = self.send_directive(['--from', 'branch', '-m', 'my message'])
+        self.assertEqual('my message', md.message)
