@@ -3933,7 +3933,8 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.message
-                mail_client.compose(mail_to, subject, outfile.getvalue())
+                mail_client.compose_merge_request(mail_to, subject,
+                                                  outfile.getvalue())
         finally:
             if output != '-':
                 outfile.close()

@@ -27,19 +27,27 @@ from bzrlib import (
 
 
 class MailClient(object):
+    """A mail client that can send messages with attachements."""
 
     def __init__(self, config):
         self.config = config
 
-    def compose(self, to, subject, attachment):
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
         raise NotImplementedError
+
+    def compose_merge_request(self, to, subject, directive):
+        self.compose("Please describe these changes:", to, subject, directive,
+            'x-patch', '.patch')
 
 
 class Editor(MailClient):
+    """DIY mail client that uses commit message editor"""
 
-    def compose(self, to, subject, attachment):
-        info = ("Please describe these changes:\n\nTo: %s\nSubject: %s\n\n%s"
-                % (to, subject, attachment))
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
+        info = ("%s\n\nTo: %s\nSubject: %s\n\n%s" % (prompt, to, subject,
+                attachment))
         body = msgeditor.edit_commit_message(info)
         if body == '':
             raise errors.NoMessageSupplied()
@@ -49,13 +57,22 @@ class Editor(MailClient):
                                         subject,
                                         body,
                                         attachment,
-                                        attachment_mime_subtype='x-patch')
+                                        attachment_mime_subtype=mime_subtype)
 
 
 class Thunderbird(MailClient):
+    """Mozilla Thunderbird (or Icedove)
 
-    def compose(self, to, subject, attachment):
-        fd, pathname = tempfile.mkstemp('.patch', 'bzr-mail-')
+    Note that Thunderbird 1.5 is buggy and does not support setting
+    "to" simultaneously with including a attachment.
+
+    There is a workaround if no attachment is present, but we always need to
+    send attachments.
+    """
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
+        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
         try:
             os.write(fd, attachment)
         finally:
