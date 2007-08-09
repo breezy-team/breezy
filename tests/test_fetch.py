@@ -57,7 +57,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
-    def test_fetch_complex_ids(self):
+    def test_fetch_complex_ids_dirs(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/dir/adir': None})
         self.client_add("dc/dir")
@@ -67,7 +67,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_copy("dc/dir/adir", "dc/bdir")
         self.client_delete("dc/dir/adir")
-        self.client_set_prop("dc", "bzr:revision-info", "\n")
+        self.client_set_prop("dc", "bzr:revision-info", "properties: \n")
         self.client_set_prop("dc", "bzr:file-ids", "bdir\tbla\n")
         self.client_commit("dc", "My Message")
         self.client_update("dc")
@@ -79,7 +79,30 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.assertEquals("bloe", tree.path2id("dir"))
         self.assertIs(None, tree.path2id("dir/adir"))
         self.assertEquals("bla", tree.path2id("bdir"))
-        self.fail()
+
+    def test_fetch_complex_ids_files(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/dir/adir': 'contents'})
+        self.client_add("dc/dir")
+        self.client_set_prop("dc", "bzr:revision-info", "")
+        self.client_set_prop("dc", "bzr:file-ids", "dir\tbloe\ndir/adir\tbla\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.client_copy("dc/dir/adir", "dc/bdir")
+        self.client_delete("dc/dir/adir")
+        self.client_set_prop("dc", "bzr:revision-info", "properties: \n")
+        self.client_set_prop("dc", "bzr:file-ids", "bdir\tbla\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        self.assertEquals("bloe", tree.path2id("dir"))
+        self.assertIs(None, tree.path2id("dir/adir"))
+        mutter('entries: %r' % tree.inventory.entries())
+        self.assertEquals("bla", tree.path2id("bdir"))
 
     def test_fetch_special_char(self):
         repos_url = self.make_client('d', 'dc')

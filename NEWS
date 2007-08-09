@@ -12,6 +12,8 @@ bzr-svn 0.4.1	UNRELEASED
    * Use knits to store file id maps.
 
    * Don't try to open repository root for http:// or https:// URLs. (#80553)
+   
+   * Handle corner cases fetching renames.
 
 bzr-svn 0.4.0	2007-08-04	
   

@@ -71,6 +71,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._svk_merges = []
         self._revinfo = None
         self._svn_revprops = svn_revprops
+        self._premature_deletes = set()
         self.pool = Pool()
 
     def _get_revision(self, revid):
@@ -136,7 +137,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")
-        self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
+        if path in self._premature_deletes:
+            self._premature_deletes.remove(path)
+        else:
+            self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
 
     def close_directory(self, id):
         self.inventory[id].revision = self.revid
@@ -153,7 +157,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
-        ie = self.inventory.add_path(path, 'directory', file_id)
+        if file_id in self.inventory:
+            # This directory was moved here from somewhere else, but the 
+            # other location hasn't been removed yet. 
+            if copyfrom_path is None:
+                # FIXME: This should never happen!
+                copyfrom_path = self.old_inventory.id2path(file_id)
+            assert copyfrom_path == self.old_inventory.id2path(file_id)
+            assert copyfrom_path not in self._premature_deletes
+            self._premature_deletes.add(copyfrom_path)
+            self.inventory.rename(file_id, parent_id, urlutils.basename(path))
+            ie = self.inventory[file_id]
+        else:
+            ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = self.revid
 
         return file_id
@@ -215,7 +231,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported dir property %r (%r)' % (name, value))
+            mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
@@ -248,6 +264,16 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_parents = []
         self.file_stream = None
         self.file_id = self._get_new_id(parent_id, path)
+        if self.file_id in self.inventory:
+            # This file was moved here from somewhere else, but the 
+            # other location hasn't been removed yet. 
+            if copyfrom_path is None:
+                # FIXME: This should never happen!
+                copyfrom_path = self.old_inventory.id2path(self.file_id)
+            assert copyfrom_path == self.old_inventory.id2path(self.file_id)
+            assert copyfrom_path not in self._premature_deletes
+            self._premature_deletes.add(copyfrom_path)
+            self.inventory.rename(self.file_id, parent_id, urlutils.basename(path))
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
@@ -306,6 +332,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_stream = None
 
     def close_edit(self):
+        assert len(self._premature_deletes) == 0
         rev = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         rev.inventory_sha1 = osutils.sha_string(
