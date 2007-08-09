@@ -198,6 +198,12 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(merge_directive.MergeDirective2, md.__class__)
         s = StringIO(self.run_bzr('send -f branch -o- --format=0.9')[0])
         md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
+        s = StringIO(self.run_bzr('bundle -f branch -o- --format=0.9')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
         self.assertIs(merge_directive.MergeDirective, md.__class__)
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
