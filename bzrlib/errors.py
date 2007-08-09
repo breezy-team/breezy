@@ -2313,3 +2313,11 @@ class SMTPError(BzrError):
 class NoMessageSupplied(BzrError):
 
     _fmt = "No message supplied."
+
+
+class UnknownMailClient(BzrError):
+
+    _fmt = "Unknown mail client: %(mail_client)s"
+
+    def __init__(self, mail_client):
+        BzrError.__init__(self, mail_client=mail_client)

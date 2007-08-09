@@ -3856,6 +3856,8 @@ class cmd_send(Command):
             outfile = open(output, 'wb')
         try:
             branch = Branch.open_containing(from_)[0]
+            if output is None:
+                mail_client = branch.get_config().get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
@@ -3931,8 +3933,7 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.message
-                branch.get_config().get_mail_client().compose(mail_to, subject,
-                    outfile.getvalue())
+                mail_client.compose(mail_to, subject, outfile.getvalue())
         finally:
             if output != '-':
                 outfile.close()
