@@ -1240,19 +1240,24 @@ Node-copyfrom-path: x
                          'dc/trunk/hosts': 'hej1'})
         self.client_add("dc/trunk")
         self.client_commit("dc", "created trunk and added hosts") #1
+        self.client_update("dc")
 
         self.build_tree({'dc/trunk/hosts': 'hej2'})
         self.client_commit("dc", "rev 2") #2
+        self.client_update("dc")
 
         self.build_tree({'dc/trunk/hosts': 'hej3'})
         self.client_commit("dc", "rev 3") #3
+        self.client_update("dc")
 
         self.build_tree({'dc/branches': None})
         self.client_add("dc/branches")
         self.client_commit("dc", "added branches") #4
+        self.client_update("dc")
 
         self.client_copy("dc/trunk", "dc/branches/foobranch")
         self.client_commit("dc", "added branch foobranch") #5
+        self.client_update("dc")
 
         self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
         self.client_commit("dc", "foohosts") #6

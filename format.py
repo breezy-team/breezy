@@ -25,6 +25,7 @@ from bzrlib.transport.local import LocalTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
+from errors import NoSvnRepositoryPresent
 from repository import SvnRepository
 from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
 
@@ -94,7 +95,7 @@ class SvnRemoteAccess(BzrDir):
         """
         if self.branch_path == "":
             return SvnRepository(self, self.root_transport)
-        raise NoRepositoryPresent(self)
+        raise NoSvnRepositoryPresent(self.root_transport.base)
 
     def find_repository(self):
         """Open the repository associated with this BzrDir.
