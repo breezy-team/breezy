@@ -3823,7 +3823,7 @@ class cmd_send(Command):
         'revision',
         RegistryOption.from_kwargs('format', 'Output format',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 4, Merge Directive 2 (default)',})
+           '0.9': 'Bundle format 0.9, Merge Directive 1',})
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
