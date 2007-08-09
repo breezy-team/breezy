@@ -72,9 +72,6 @@ class SvnBranch(Branch):
         self._revision_history_revnum = None
         self.scheme = self.repository.get_scheme()
         self._branch_path = branch_path.strip("/")
-        if (not self.scheme.is_branch(branch_path) and 
-            not self.scheme.is_tag(branch_path)):
-            raise NotSvnBranchPath(branch_path, scheme=self.scheme)
         try:
             if self.repository.transport.check_path(branch_path.strip("/"), 
                 self.get_revnum()) != svn.core.svn_node_dir:
@@ -83,6 +80,9 @@ class SvnBranch(Branch):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
+        if (not self.scheme.is_branch(branch_path) and 
+            not self.scheme.is_tag(branch_path)):
+            raise NotSvnBranchPath(branch_path, scheme=self.scheme)
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
