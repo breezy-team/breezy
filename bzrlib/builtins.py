@@ -3694,7 +3694,7 @@ class cmd_merge_directive(Command):
 
     hidden = True
 
-    _see_also = ['submit']
+    _see_also = ['send']
 
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
