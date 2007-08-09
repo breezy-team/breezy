@@ -526,6 +526,17 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertFalse(os.path.exists("dc/.bzr"))
         tree.read_working_inventory()
 
+    def test_update(self):
+        repos_url = self.make_client('a', 'dc')
+        self.make_checkout(repos_url, "de")
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "msg")
+        tree = self.open_checkout("de")
+        tree.update()
+        self.assertTrue(os.path.exists("de/.svn"))
+        self.assertTrue(os.path.exists("de/bla"))
+
     def test_status_bzrdir(self):
         self.make_client('a', 'dc')
         bzrdir = self.open_checkout_bzrdir("dc")

@@ -145,6 +145,11 @@ class SvnWorkingTree(WorkingTree):
     def apply_inventory_delta(self, changes):
         raise NotImplementedError(self.apply_inventory_delta)
 
+    def update(self, change_reporter=None):
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_head
+        svn.client.update(self.basedir, rev, True, self.client_ctx)
+
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument
         # FIXME: Use verbose argument
