@@ -200,6 +200,24 @@ is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 
+mail_client
+-----------
+A mail client to use for sending merge requests.  Supported values are:
+:editor: Use your editor to compose the merge request.  This also uses
+    smtp_server and (optionally) smtp_username and smtp_password
+:thunderbird: Use Mozilla Thunderbird or Icedove
+
+submit_branch
+-------------
+The branch you intend to submit your current work to.  This is automatically
+set by ``bzr send``, and is also used by the ``submit:`` revision spec.  This
+should usually be set on a per-branch or per-location basis.
+
+public_branch
+-------------
+A publically-accessible version of this branch (implying that this version is
+not publically-accessible).  Used (and set) by ``bzr send``.
+
 
 Branch 6 Options
 ================
