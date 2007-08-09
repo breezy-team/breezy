@@ -136,7 +136,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")
-        del self.inventory[self._get_old_id(parent_id, path)]
+        self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
 
     def close_directory(self, id):
         self.inventory[id].revision = self.revid

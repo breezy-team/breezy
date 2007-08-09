@@ -107,6 +107,22 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         oldrepos.copy_content_into(newrepos)
         self.assertTrue(oldrepos.has_revision(oldrepos.generate_revision_id(2, "", "none")))
 
+    def test_fetch_delete_recursive(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.client_delete("dc/foo")
+        self.client_commit("dc", "Second Message")
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(1, "", "none"))
+        self.assertEquals(3, len(tree.inventory))
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        self.assertEquals(1, len(tree.inventory))
+
     def test_fetch_local(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
