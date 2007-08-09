@@ -501,8 +501,9 @@ class cmd_inventory(Command):
 class cmd_mv(Command):
     """Move or rename a file.
 
-    usage:
+    :Usage:
         bzr mv OLDNAME NEWNAME
+
         bzr mv SOURCE... DESTINATION
 
     If the last argument is a versioned directory, all the other names
@@ -1243,7 +1244,8 @@ class cmd_init(Command):
     If there is already a branch at the location but it has no working tree,
     the tree can be populated with 'bzr checkout'.
 
-    Recipe for importing a tree of files:
+    Recipe for importing a tree of files::
+
         cd ~/project
         bzr init
         bzr add .
@@ -1251,7 +1253,7 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
 
-    _see_also = ['init-repo', 'branch', 'checkout']
+    _see_also = ['init-repository', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
         Option('create-prefix',
@@ -1328,17 +1330,20 @@ class cmd_init_repository(Command):
     If the --no-trees option is used then the branches in the repository
     will not have working trees by default.
 
-    example:
-        bzr init-repo --no-trees repo
-        bzr init repo/trunk
-        bzr checkout --lightweight repo/trunk trunk-checkout
-        cd trunk-checkout
-        (add files here)
+    :Examples:
+        Create a shared repositories holding just branches::
 
-    See 'bzr help repositories' for more information.
+            bzr init-repo --no-trees repo
+            bzr init repo/trunk
+
+        Make a lightweight checkout elsewhere::
+
+            bzr checkout --lightweight repo/trunk trunk-checkout
+            cd trunk-checkout
+            (add files here)
     """
 
-    _see_also = ['init', 'branch', 'checkout']
+    _see_also = ['init', 'branch', 'checkout', 'repositories']
     takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
@@ -1376,19 +1381,30 @@ class cmd_diff(Command):
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
-    examples:
-        bzr diff
-            Shows the difference in the working tree versus the last commit
-        bzr diff -r1
-            Difference between the working tree and revision 1
-        bzr diff -r1..2
-            Difference between revision 2 and revision 1
-        bzr diff --prefix old/:new/
-            Same as 'bzr diff' but prefix paths with old/ and new/
-        bzr diff bzr.mine bzr.dev
-            Show the differences between the two working trees
-        bzr diff foo.c
-            Show just the differences for 'foo.c'
+    :Examples:
+        Shows the difference in the working tree versus the last commit::
+
+            bzr diff
+
+        Difference between the working tree and revision 1::
+
+            bzr diff -r1
+
+        Difference between revision 2 and revision 1::
+
+            bzr diff -r1..2
+
+        Same as 'bzr diff' but prefix paths with old/ and new/::
+
+            bzr diff --prefix old/:new/
+
+        Show the differences between the two working trees::
+
+            bzr diff bzr.mine bzr.dev
+
+        Show just the differences for 'foo.c'::
+
+            bzr diff foo.c
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1592,10 +1608,18 @@ class cmd_log(Command):
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
 
-    examples:
-        bzr log
-        bzr log foo.c
-        bzr log -r -10.. http://server/branch
+    :Examples:
+        Log the current branch::
+
+            bzr log
+
+        Log a file::
+
+            bzr log foo.c
+
+        Log the last 10 revisions of a branch::
+
+            bzr log -r -10.. http://server/branch
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
@@ -1858,7 +1882,8 @@ class cmd_ignore(Command):
 
     Ignore patterns specifying absolute paths are not allowed.
 
-    Ignore patterns may include globbing wildcards such as:
+    Ignore patterns may include globbing wildcards such as::
+
       ? - Matches any single character except '/'
       * - Matches 0 or more characters except '/'
       /**/ - Matches 0 or more directories in a path
@@ -1872,11 +1897,22 @@ class cmd_ignore(Command):
     Note: ignore patterns containing shell wildcards must be quoted from 
     the shell on Unix.
 
-    examples:
-        bzr ignore ./Makefile
-        bzr ignore '*.class'
-        bzr ignore 'lib/**/*.o'
-        bzr ignore 'RE:lib/.*\.o'
+    :Examples:
+        Ignore the top level Makefile::
+
+            bzr ignore ./Makefile
+
+        Ignore class files in all directories::
+
+            bzr ignore '*.class'
+
+        Ignore .o files under the lib directory::
+
+            bzr ignore 'lib/**/*.o'
+
+        Ignore .o files under the lib directory::
+
+            bzr ignore 'RE:lib/.*\.o'
     """
 
     _see_also = ['status', 'ignored']
@@ -1956,7 +1992,7 @@ class cmd_ignored(Command):
 class cmd_lookup_revision(Command):
     """Lookup the revision-id from a revision-number
 
-    example:
+    :Examples:
         bzr lookup-revision 33
     """
     hidden = True
@@ -1990,13 +2026,15 @@ class cmd_export(Command):
 
     Note: Export of tree with non-ASCII filenames to zip is not supported.
 
-     Supported formats       Autodetected by extension
-     -----------------       -------------------------
-         dir                            -
+      =================       =========================
+      Supported formats       Autodetected by extension
+      =================       =========================
+         dir                         (none)
          tar                          .tar
          tbz2                    .tar.bz2, .tbz2
          tgz                      .tar.gz, .tgz
          zip                          .zip
+      =================       =========================
     """
     takes_args = ['dest', 'branch?']
     takes_options = [
@@ -2312,9 +2350,14 @@ class cmd_upgrade(Command):
 class cmd_whoami(Command):
     """Show or set bzr user id.
     
-    examples:
-        bzr whoami --email
-        bzr whoami 'Frank Chu <fchu@example.com>'
+    :Examples:
+        Show the email of the current user::
+
+            bzr whoami --email
+
+        Set the current user::
+
+            bzr whoami 'Frank Chu <fchu@example.com>'
     """
     takes_options = [ Option('email',
                              help='Display email address only.'),
@@ -2409,11 +2452,14 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory, 
     typically inside $TMPDIR or /tmp.
 
-    examples::
-        bzr selftest ignore
-            run only tests relating to 'ignore'
-        bzr --no-plugins selftest -v
-            disable plugins and list tests as they're run
+    :Examples:
+        Run only tests relating to 'ignore'::
+
+            bzr selftest ignore
+
+        Disable plugins and list tests as they're run::
+
+            bzr --no-plugins selftest -v
     """
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
@@ -2591,20 +2637,22 @@ class cmd_merge(Command):
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
     committed to record the result of the merge.
-
-    Examples:
-
-    To merge the latest revision from bzr.dev:
-        bzr merge ../bzr.dev
-
-    To merge changes up to and including revision 82 from bzr.dev:
-        bzr merge -r 82 ../bzr.dev
-
-    To merge the changes introduced by 82, without previous changes:
-        bzr merge -r 81..82 ../bzr.dev
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
+
+    :Examples:
+        To merge the latest revision from bzr.dev::
+
+            bzr merge ../bzr.dev
+
+        To merge changes up to and including revision 82 from bzr.dev::
+
+            bzr merge -r 82 ../bzr.dev
+
+        To merge the changes introduced by 82, without previous changes::
+
+            bzr merge -r 81..82 ../bzr.dev
     """
 
     _see_also = ['update', 'remerge', 'status-flags']
@@ -2722,10 +2770,11 @@ class cmd_merge(Command):
         if (merger.show_base and
             not merger.merge_type is _mod_merge.Merge3Merger):
             raise errors.BzrCommandError("Show-base is not supported for this"
-                                         " merge type. %s" % merge_type)
+                                         " merge type. %s" % merger.merge_type)
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.BzrCommandError("Conflict reduction is not supported"
-                                         " for merge type %s." % merge_type)
+                                         " for merge type %s." %
+                                         merger.merge_type)
         if merger.reprocess and merger.show_base:
             raise errors.BzrCommandError("Cannot do conflict reduction and"
                                          " show base.")
@@ -2837,15 +2886,16 @@ class cmd_remerge(Command):
     merge.  The difference is that remerge can (only) be run when there is a
     pending merge, and it lets you specify particular files.
 
-    Examples:
-
-    $ bzr remerge --show-base
+    :Examples:
         Re-do the merge of all conflicted files, and show the base text in
-        conflict regions, in addition to the usual THIS and OTHER texts.
+        conflict regions, in addition to the usual THIS and OTHER texts::
+      
+            bzr remerge --show-base
 
-    $ bzr remerge --merge-type weave --reprocess foobar
         Re-do the merge of "foobar", using the weave merge algorithm, with
-        additional processing to reduce the size of conflict regions.
+        additional processing to reduce the size of conflict regions::
+      
+            bzr remerge --merge-type weave --reprocess foobar
     """
     takes_args = ['file*']
     takes_options = [
@@ -3447,7 +3497,7 @@ class cmd_break_lock(Command):
 
     You can get information on what locks are open via the 'bzr info' command.
     
-    example:
+    :Examples:
         bzr break-lock
     """
     takes_args = ['location?']
@@ -3727,9 +3777,12 @@ class cmd_send(Command):
     """Create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
-    - A machine-readable description of the merge to perform
-    - An optional patch that is a preview of the changes requested
-    - An optional bundle of revision data, so that the changes can be applied
+
+    * A machine-readable description of the merge to perform
+
+    * An optional patch that is a preview of the changes requested
+
+    * An optional bundle of revision data, so that the changes can be applied
       directly from the merge directive, without retrieving data from a
       branch.
 

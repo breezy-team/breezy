@@ -367,8 +367,12 @@ class TestBranch(TestCaseWithBranch):
         result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
-        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            repository.CommitBuilder)
+        branch = self.make_branch(".")
+        branch.lock_write()
+        builder = branch.get_commit_builder([])
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        branch.repository.commit_write_group()
+        branch.unlock()
 
     def test_generate_revision_history(self):
         """Create a fake revision history easily."""

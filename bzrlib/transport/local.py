@@ -127,7 +127,7 @@ class LocalTransport(Transport):
             abspath = u'.'
 
         return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(self.base),
             urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):

@@ -24,7 +24,7 @@ from cStringIO import StringIO
 from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import request
-from bzrlib.trace import mutter
+from bzrlib.trace import log_exception_quietly, mutter
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -110,6 +110,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
+                log_exception_quietly()
                 self._send_response(request.FailedSmartServerResponse(
                     ('error', str(exception))))
                 return
