@@ -186,10 +186,10 @@ class TestSend(tests.TestCaseWithTransport):
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
 
-    def test_output_option_required(self):
+    def test_mailto_option_required(self):
         self.make_trees()
-        self.run_bzr_error(('File must be specified with --output',),
-                           'send -f branch')
+        self.run_bzr_error(('No mail-to address specified',), 'send -f branch')
+        self.run_bzr('send -f branch -o-')
 
     def test_format(self):
         self.make_trees()
