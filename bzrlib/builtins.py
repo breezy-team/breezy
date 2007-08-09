@@ -3798,6 +3798,12 @@ class cmd_send(Command):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     encoding_type = 'exact'
@@ -3944,6 +3950,12 @@ class cmd_bundle_revisions(cmd_send):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     aliases = ['bundle']
