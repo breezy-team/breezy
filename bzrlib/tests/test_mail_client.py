@@ -33,3 +33,15 @@ class TestThunderbird(tests.TestCase):
                                                      'Hi there!', None)
         self.assertEqual(['-compose', "subject='Hi there!',"
                                       "to='jrandom@example.org'"], commandline)
+
+
+class TestEvolution(tests.TestCase):
+
+    def test_commandline(self):
+        evo = mail_client.Evolution(None)
+        commandline = evo._get_compose_commandline(None, None, 'file%')
+        self.assertEqual('mailto:?attach=file%25', commandline)
+        commandline = evo._get_compose_commandline('jrandom@example.org',
+                                                   'Hi there!', None)
+        self.assertEqual('mailto:jrandom@example.org?subject=Hi%20there%21',
+                         commandline)

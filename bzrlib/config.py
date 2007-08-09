@@ -152,6 +152,7 @@ class Config(object):
                 None : mail_client.Editor,
                 'editor': mail_client.Editor,
                 'thunderbird': mail_client.Thunderbird,
+                'evolution': mail_client.Evolution,
             }[selected_client]
         except KeyError:
             raise errors.UnknownMailClient(selected_client)

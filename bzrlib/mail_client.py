@@ -93,3 +93,28 @@ class Thunderbird(MailClient):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
+
+
+class Evolution(MailClient):
+    """Evolution mail client."""
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
+        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
+        try:
+            os.write(fd, attachment)
+        finally:
+            os.close(fd)
+        cmdline = ['evolution']
+        cmdline.append(self._get_compose_commandline(to, subject, pathname))
+        subprocess.call(cmdline)
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        message_options = {}
+        if subject is not None:
+            message_options['subject'] = subject
+        if attach_path is not None:
+            message_options['attach'] = attach_path
+        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
+                        message_options.iteritems()]
+        return 'mailto:%s?%s' % (to or '', '&'.join(options_list))
