@@ -206,6 +206,9 @@ IN DEVELOPMENT
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
 
+    * The ``-Dhpss`` flag now includes timing information. As well as
+      logging when a new connection is opened. (John Arbash Meinel)
+
     * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
       callers when inserting data, allowing generation of readv style access
       during pack creation, without needing a separate pass across the output
