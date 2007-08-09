@@ -3774,7 +3774,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -3798,6 +3798,14 @@ class cmd_send(Command):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
+
+    By default, mail is sent using your editor to enter a submit message.  You
+    can use Mozilla Thunderbird or Icedove by setting the configuration option
+    mail_client=thunderbird.
+
+    If mail is being sent, a to address is required.  This can be supplied
+    either on the commandline, or by setting the submit_to configuration
+    option.
 
     Two formats are currently supported: "4" uses revision bundle format 4 and
     merge directive format 2.  It is significantly faster and smaller than
@@ -3847,8 +3855,6 @@ class cmd_send(Command):
              no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import ensure_null, NULL_REVISION
         if output is None:
-            if mail_to is None:
-                raise errors.BzrCommandError('No mail-to address specified')
             outfile = StringIO()
         elif output == '-':
             outfile = self.outf
@@ -3857,7 +3863,13 @@ class cmd_send(Command):
         try:
             branch = Branch.open_containing(from_)[0]
             if output is None:
-                mail_client = branch.get_config().get_mail_client()
+                config = branch.get_config()
+                if mail_to is None:
+                    mail_to = config.get_user_option('submit_to')
+                if mail_to is None:
+                    raise errors.BzrCommandError('No mail-to address'
+                                                 ' specified')
+                mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
