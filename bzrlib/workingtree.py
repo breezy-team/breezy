@@ -1840,8 +1840,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
                     # check if it's an unknown OR changed file:
-                    if kind[1] == 'file' and ( versioned == (False, False)
-                        or content_change ):
+                    if versioned == (False, False) or (
+                        content_change and kind[1] != None):
                         has_changed_files = True
                         break
 
