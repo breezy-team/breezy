@@ -31,7 +31,7 @@ OUTPUT1 = """# Bazaar merge directive format 1
 #\x20
 booga"""
 
-OUTPUT1_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
+OUTPUT1_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -51,7 +51,7 @@ OUTPUT2 = """# Bazaar merge directive format 1
 #\x20
 booga"""
 
-OUTPUT2_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
+OUTPUT2_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -96,7 +96,7 @@ Here it is.
 
 Aaron
 
-# Bazaar merge directive format 2 (Bazaar 0.19)\r
+# Bazaar merge directive format 2 (Bazaar 0.90)\r
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -270,7 +270,7 @@ Subject: Commit of rev2a
 To: pqm@example.com
 User-Agent: Bazaar \(.*\)
 
-# Bazaar merge directive format 2 \\(Bazaar 0.19\\)
+# Bazaar merge directive format 2 \\(Bazaar 0.90\\)
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*
@@ -298,7 +298,7 @@ Subject: Commit of rev2a with special message
 To: pqm@example.com
 User-Agent: Bazaar \(.*\)
 
-# Bazaar merge directive format 2 \\(Bazaar 0.19\\)
+# Bazaar merge directive format 2 \\(Bazaar 0.90\\)
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*
