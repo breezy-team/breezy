@@ -126,6 +126,9 @@ IN DEVELOPMENT
     * The cache of ignore definitions is now cleared in WorkingTree.unlock()
       so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
 
+    * ``bzr selftest --strict'' fails if there are any missing features or
+      expected test failures. (Daniel Watkins, #111914)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
