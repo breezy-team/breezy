@@ -48,7 +48,9 @@ class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         """See BzrDir.__init__()."""
         _transport = get_svn_ra_transport(_transport)
-        super(SvnRemoteAccess, self).__init__(_transport, _format)
+        self._format = _format
+        self.transport = None
+        self.root_transport = _transport
 
         svn_url = bzr_to_svn_url(self.root_transport.base)
         self.svn_root_url = _transport.get_repos_root()
