@@ -27,6 +27,7 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    mail_client,
     urlutils,
     trace,
     )
@@ -1004,6 +1005,19 @@ class TestBranchConfigItems(TestCaseInTempDir):
                                       location_config=precedence_location,
                                       location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
+
+    def test_get_mail_client(self):
+        config = self.get_branch_config()
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Editor)
+
+        config.set_user_option('mail_client', 'editor')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Editor)
+
+        config.set_user_option('mail_client', 'thunderbird')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Thunderbird)
 
 
 class TestMailAddressExtraction(TestCase):

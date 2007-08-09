@@ -75,6 +75,7 @@ from StringIO import StringIO
 import bzrlib
 from bzrlib import (
     errors,
+    mail_client,
     osutils,
     symbol_versioning,
     trace,
@@ -142,6 +143,15 @@ class Config(object):
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
+
+    def get_mail_client(self):
+        """Get a mail client to use"""
+        selected_client = self.get_user_option('mail_client')
+        return {
+            None : mail_client.Editor,
+            'editor': mail_client.Editor,
+            'thunderbird': mail_client.Thunderbird,
+        }[selected_client]()
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""

@@ -3836,9 +3836,6 @@ class cmd_send(Command):
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
             format='4', **kwargs):
-        if output is None:
-            raise errors.BzrCommandError('File must be specified with'
-                                         ' --output')
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
                          kwargs.get('from', '.'))
@@ -3846,7 +3843,9 @@ class cmd_send(Command):
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_,):
         from bzrlib.revision import ensure_null, NULL_REVISION
-        if output == '-':
+        if output is None:
+            outfile = StringIO()
+        elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
@@ -3920,6 +3919,9 @@ class cmd_send(Command):
                     message=None)
 
             outfile.writelines(directive.to_lines())
+            if output is None:
+                branch.get_config().get_mail_client().compose(None, None,
+                    outfile.getvalue())
         finally:
             if output != '-':
                 outfile.close()
