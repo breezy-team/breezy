@@ -57,6 +57,30 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
+    def test_fetch_complex_ids(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/dir/adir': None})
+        self.client_add("dc/dir")
+        self.client_set_prop("dc", "bzr:revision-info", "")
+        self.client_set_prop("dc", "bzr:file-ids", "dir\tbloe\ndir/adir\tbla\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.client_copy("dc/dir/adir", "dc/bdir")
+        self.client_delete("dc/dir/adir")
+        self.client_set_prop("dc", "bzr:revision-info", "\n")
+        self.client_set_prop("dc", "bzr:file-ids", "bdir\tbla\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        self.assertEquals("bloe", tree.path2id("dir"))
+        self.assertIs(None, tree.path2id("dir/adir"))
+        self.assertEquals("bla", tree.path2id("bdir"))
+        self.fail()
+
     def test_fetch_special_char(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({u'dc/trunk/f\x2cle': "data"})
@@ -1163,8 +1187,7 @@ Node-copyfrom-path: x
         self.client_copy("dc/trunk", "dc/branches/foobranch")
         self.client_commit("dc", "added branch foobranch") #3
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).find_repository()
+        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
@@ -1195,8 +1218,7 @@ Node-copyfrom-path: x
         self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
         self.client_commit("dc", "foohosts") #6
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).find_repository()
+        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(6, "branches/foobranch", "trunk0"))
