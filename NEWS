@@ -126,6 +126,8 @@ IN DEVELOPMENT
     * The cache of ignore definitions is now cleared in WorkingTree.unlock()
       so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
 
+    * Link to registration survey added to README. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
