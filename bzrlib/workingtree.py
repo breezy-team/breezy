@@ -1839,7 +1839,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # check if it's an unknown OR changed file:
+                    # check if it's an unknown OR changed (but not deleted):
                     if versioned == (False, False) or (
                         content_change and kind[1] != None):
                         has_changed_files = True

@@ -232,13 +232,14 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertNotInWorkingTree(files)
         self.failIfExists(files)
 
-    def test_remove_directory_with_rename_out(self):
-        """Delete directory with renames out."""
+    def test_remove_directory_with_renames(self):
+        """Delete directory with renames in or out."""
 
-        files = ['a/', 'b/', 'a/file', 'a/directory/']
+        files = ['a/', 'a/file', 'a/directory/', 'b/']
         files_to_move = ['a/file', 'a/directory/']
 
         tree = self.getCommittedTree(files)
+        #move stuff from a=>b
         tree.move(['a/file', 'a/directory'], to_dir='b')
 
         moved_files = ['b/file', 'b/directory/']
@@ -247,9 +248,15 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertInWorkingTree(moved_files)
         self.failUnlessExists(moved_files)
 
+        # check if it works with renames out
         tree.remove('a', keep_files=False)
-        self.assertNotInWorkingTree(['a/', 'a/file', 'a/directory/'])
-        self.failIfExists(['a/', 'a/file', 'a/directory/'])
+        self.assertNotInWorkingTree(['a/'])
+        self.failIfExists(['a/'])
+
+        # check if it works with renames in
+        tree.remove('b', keep_files=False)
+        self.assertNotInWorkingTree(['b/'])
+        self.failIfExists(['b/'])
 
     def test_non_cwd(self):
         tree = self.make_branch_and_tree('tree')
