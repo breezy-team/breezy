@@ -2527,7 +2527,12 @@ class cmd_selftest(Command):
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if not list_only:
-            show_version(show_config=False, show_copyright=False)
+            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
+            print '   %s (%s python%s)' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    '.'.join(map(str, sys.version_info)),
+                    )
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
