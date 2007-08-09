@@ -37,7 +37,7 @@ __all__ = ['deprecated_function',
            'zero_sixteen',
            'zero_seventeen',
            'zero_eighteen',
-           'zero_nineteen',
+           'zero_ninety',
            ]
 
 from warnings import warn
@@ -56,7 +56,7 @@ zero_fifteen = "%s was deprecated in version 0.15."
 zero_sixteen = "%s was deprecated in version 0.16."
 zero_seventeen = "%s was deprecated in version 0.17."
 zero_eighteen = "%s was deprecated in version 0.18."
-zero_nineteen = "%s was deprecated in version 0.19."
+zero_ninety = "%s was deprecated in version 0.19."
 
 
 def set_warning_method(method):
