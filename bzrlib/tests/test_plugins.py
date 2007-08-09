@@ -124,22 +124,22 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # directory in the path has a trailing slash.
         tempattribute = "0"
         self.failIf(tempattribute in self.activeattributes)
-        # set a place for the plugins to record their loading, and at the same
-        # time validate that the location the plugins should record to is
+        # set a place for the plugin to record its loading, and at the same
+        # time validate that the location the plugin should record to is
         # valid and correct.
         bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
         self.failUnless(tempattribute in self.activeattributes)
-        # create two plugin directories
-        os.mkdir('first')
+        # create a directory for the plugin
+        os.mkdir('plugin_test')
         # write a plugin that will record when its loaded in the 
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
-        print >> file(os.path.join('first', 'plugin.py'), 'w'), template % (tempattribute, 'first\\'+os.sep)
+        print >> file(os.path.join('plugin_test', 'plugin.py'), 'w'), template % (tempattribute, 'plugin')
         try:
-            bzrlib.plugin.load_from_path(['first'+os.sep])
-            self.assertEqual(['first'+os.sep], self.activeattributes[tempattribute])
+            bzrlib.plugin.load_from_path(['plugin_test'+os.sep])
+            self.assertEqual(['plugin'], self.activeattributes[tempattribute])
         finally:
             # remove the plugin 'plugin'
             del self.activeattributes[tempattribute]
