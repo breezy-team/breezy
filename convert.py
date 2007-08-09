@@ -14,25 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Conversion of full repositories."""
-import os
-import tempfile
-
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, Converter
+from bzrlib import ui, urlutils
+from bzrlib.bzrdir import BzrDir, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
                            NoRepositoryPresent, NoSuchRevision)
-import bzrlib.osutils as osutils
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-import bzrlib.urlutils as urlutils
-import bzrlib.ui as ui
 
 from format import get_rich_root_format
-from repository import SvnRepository
 
 import svn.core, svn.repos
 
 def transport_makedirs(transport, location_url):
+    """Create missing directories.
+    
+    :param transport: Transport to use.
+    :param location_url: URL for which parents should be created.
+    """
     needed = [(transport, transport.relpath(location_url))]
     while needed:
         try:
@@ -54,6 +52,12 @@ class NotDumpFile(BzrError):
 
 
 def load_dumpfile(dumpfile, outputdir):
+    """Load a Subversion dump file.
+
+    :param dumpfile: Path to dump file.
+    :param outputdir: Directory in which Subversion repository should be 
+        created.
+    """
     from cStringIO import StringIO
     repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
     try:
@@ -162,11 +166,12 @@ def convert_repository(source_repos, output_url, scheme=None,
 class SvnConverter(Converter):
     """Converts from a Subversion directory to a bzr dir."""
     def __init__(self, target_format):
-        """Create a CopyConverter.
+        """Create a SvnConverter.
         :param target_format: The format the resulting repository should be.
         """
         self.target_format = target_format
 
     def convert(self, to_convert, pb):
+        """See Converter.convert()."""
         convert_repository(to_convert.open_repository(), to_convert.base, 
                            format=self.target_format, all=True, pb=pb)

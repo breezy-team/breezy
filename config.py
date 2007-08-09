@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Stores per-repository settings."""
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils
 from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists
 
 import os
@@ -41,26 +41,47 @@ class SvnRepositoryConfig(IniBasedConfig):
             self._get_parser()[self.uuid] = {}
 
     def set_branching_scheme(self, scheme):
+        """Change the branching scheme.
+
+        :param scheme: New branching scheme.
+        """
         self.set_user_option('branching-scheme', str(scheme))
 
     def get_branching_scheme(self):
+        """Get the branching scheme.
+
+        :return: BranchingScheme instance.
+        """
         try:
             return BranchingScheme.find_scheme(self._get_parser()[self.uuid]['branching-scheme'])
         except KeyError:
             return None
 
     def get_locations(self):
+        """Find the locations this repository has been seen at.
+
+        :return: Set with URLs.
+        """
         try:
             return set(self._get_parser()[self.uuid]['locations'].split(";"))
         except KeyError:
             return set()
 
     def add_location(self, location):
+        """Add a location for this repository.
+
+        :param location: URL of location to add.
+        """
         locations = self.get_locations()
         locations.add(location.rstrip("/"))
         self.set_user_option('locations', ";".join(list(locations)))
 
     def set_user_option(self, name, value):
+        """Change a user option.
+
+        :param name: Name of the option.
+        :param value: Value of the option.
+        """
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
         self._get_parser()[self.uuid][name] = value

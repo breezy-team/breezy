@@ -114,19 +114,6 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
 
-    def test_get_root_id_empty(self):
-        repos_url = self.make_client('a', 'dc')
-        branch = Branch.open("svn+"+repos_url)
-        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 0, "", ""), branch.get_root_id())
-
-    def test_get_root_id_trunk(self):
-        repos_url = self.make_client('a', 'dc')
-        self.build_tree({'dc/trunk': None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "msg")
-        branch = Branch.open("svn+"+repos_url+"/trunk")
-        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 1, "trunk", ""), branch.get_root_id())
-
     def test_break_lock(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)

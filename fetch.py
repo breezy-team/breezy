@@ -25,7 +25,6 @@ from bzrlib.trace import mutter
 from copy import copy
 from cStringIO import StringIO
 import md5
-import os
 
 from svn.core import Pool
 import svn.core
@@ -41,6 +40,11 @@ from tree import apply_txdelta_handler
 
 
 def md5_strings(strings):
+    """Return the MD5sum of the concatenation of strings.
+
+    :param strings: Strings to find the MD5sum of.
+    :return: MD5sum
+    """
     s = md5.new()
     map(s.update, strings)
     return s.hexdigest()
@@ -123,7 +127,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return self._get_old_id(parent_id, path)
 
     def _get_old_id(self, parent_id, old_path):
-        return self.old_inventory[parent_id].children[os.path.basename(old_path)].file_id
+        return self.old_inventory[parent_id].children[urlutils.basename(old_path)].file_id
 
     def _get_new_id(self, parent_id, new_path):
         if self.id_map.has_key(new_path):
@@ -211,7 +215,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported dir property %r' % name)
+            mutter('unsupported dir property %r (%r)' % (name, value))
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
@@ -343,6 +347,12 @@ class InterFromSvnRepository(InterRepository):
         return (needed, parents)
 
     def _find_until(self, revision_id):
+        """Find all missing revisions until revision_id
+
+        :param revision_id: Stop revision
+        :return: Tuple with revisions missing and a dictionary with 
+            parents for those revision.
+        """
         needed = []
         parents = {}
         (path, until_revnum, scheme) = self.source.lookup_revision_id(

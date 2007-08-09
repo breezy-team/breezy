@@ -34,10 +34,16 @@ See 'bzr help svn-branching-schemes' for details."""
 class NoSvnRepositoryPresent(NoRepositoryPresent):
 
     def __init__(self, url):
+        BzrError.__init__(self)
         self.path = url
 
 
 def convert_error(err):
+    """Convert a Subversion exception to the matching BzrError.
+
+    :param err: SubversionException.
+    :return: BzrError instance if it could be converted, err otherwise
+    """
     (msg, num) = err.args
 
     if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:

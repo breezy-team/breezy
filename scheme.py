@@ -17,7 +17,6 @@
 
 from bzrlib import ui
 from bzrlib.errors import NotBranchError, BzrError
-from bzrlib.osutils import sha_strings
 from bzrlib.trace import mutter
 
 import base64
@@ -28,6 +27,9 @@ class BranchingScheme:
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.
     """
+    def __init__(self):
+        pass
+
     def is_branch(self, path):
         """Check whether a location refers to a branch.
         
@@ -45,6 +47,11 @@ class BranchingScheme:
 
     @staticmethod
     def find_scheme(name):
+        """Find a branching scheme by name.
+
+        :param name: Name of branching scheme.
+        :return: Branching scheme instance.
+        """
         if name.startswith("trunk"):
             if name == "trunk":
                 return TrunkBranchingScheme()
@@ -101,15 +108,22 @@ class BranchingScheme:
 
 
 def parse_list_scheme_text(text):
+    """Parse a text containing the branches for a ListBranchingScheme.
+
+    :param text: Text.
+    :return: List of branch paths.
+    """
     branches = []
-    for l in text.splitlines():
-        if l.startswith("#"):
+    for line in text.splitlines():
+        if line.startswith("#"):
             continue
-        branches.append(l.strip("/"))
+        branches.append(line.strip("/"))
     return branches
 
 
 class ListBranchingScheme(BranchingScheme):
+    """Branching scheme that keeps a list of branch paths, including 
+    wildcards."""
     def __init__(self, branch_list):
         """Create new ListBranchingScheme instance.
 

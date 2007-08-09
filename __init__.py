@@ -157,10 +157,8 @@ class cmd_svn_import(Command):
             standalone=False, scheme=None, all=False, prefix=None):
         from bzrlib.errors import NoRepositoryPresent
         from bzrlib.bzrdir import BzrDir
-        from bzrlib.trace import info
         from convert import convert_repository
         import os
-        from scheme import TrunkBranchingScheme
 
         if to_location is None:
             to_location = os.path.basename(from_location.rstrip("/\\"))
@@ -267,12 +265,12 @@ class cmd_svn_push(Command):
     def run(self, location, revision=None):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
-        from bzrlib.errors import NotBranchError
+        from bzrlib.errors import NotBranchError, BzrCommandError
         bzrdir = BzrDir.open(location)
         source_branch = Branch.open_containing(".")[0]
         if revision is not None:
             if len(revision) > 1:
-                raise errors.BzrCommandError(
+                raise BzrCommandError(
                     'bzr svn-push --revision takes exactly one revision' 
                     ' identifier')
             revision_id = revision[0].in_history(source_branch).rev_id

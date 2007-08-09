@@ -23,6 +23,7 @@ from svn.core import SubversionException, Pool
 import svn.core
 
 class BranchPropertyList:
+    """Simple class that retrieves file properties set on branches."""
     def __init__(self, log, cachedb):
         self.log = log
         self.cachedb = cachedb
@@ -36,6 +37,12 @@ class BranchPropertyList:
         self.pool = Pool()
 
     def _get_dir_props(self, path, revnum):
+        """Obtain all the directory properties set on a path/revnum pair.
+
+        :param path: Subversion path
+        :param revnum: Subversion revision number
+        :return: Dictionary with properties
+        """
         assert isinstance(path, str)
         path = path.lstrip("/")
 
@@ -50,6 +57,14 @@ class BranchPropertyList:
         return props
 
     def get_properties(self, path, origrevnum):
+        """Obtain the file properties set on a path/revnum pair.
+
+        Will use the cache.
+
+        :param path: Subversion path.
+        :param origrevnum: Subversion revision number.
+        :return: Dictionary with properties
+        """
         assert path is not None
         assert isinstance(path, str)
         assert isinstance(origrevnum, int) and origrevnum >= 0
@@ -75,6 +90,15 @@ class BranchPropertyList:
         return proplist
 
     def get_property(self, path, revnum, name, default=None):
+        """Get the contents of a Subversion file property.
+
+        Will use the cache.
+
+        :param path: Subversion path.
+        :param revnum: Subversion revision number.
+        :param default: Default value to return if property wasn't found.
+        :return: Contents of property or default if property didn't exist.
+        """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         props = self.get_properties(path, revnum)

@@ -99,8 +99,8 @@ class FileIdMap(object):
 
     def load(self, revid):
         map = {}
-        for l in self.idmap_knit.get_lines(revid):
-            (filename, id, create_revid) = l.rstrip("\n").split("\t", 3)
+        for line in self.idmap_knit.get_lines(revid):
+            (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
             map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
             assert isinstance(map[filename][0], str)
 

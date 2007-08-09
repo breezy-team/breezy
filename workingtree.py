@@ -44,7 +44,6 @@ from transport import (SvnRaTransport, svn_config, bzr_to_svn_url,
                        _create_auth_baton) 
 from tree import SvnBasisTree
 
-from copy import copy
 import os
 import urllib
 

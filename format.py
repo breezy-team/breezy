@@ -16,11 +16,9 @@
 """Subversion BzrDir formats."""
 
 from bzrlib import urlutils
-from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
-                           NoWorkingTree, AlreadyBranchError, 
-                           IncompatibleFormat)
+                           NoWorkingTree, AlreadyBranchError)
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
 
@@ -47,7 +45,7 @@ class SvnRemoteAccess(BzrDir):
     This is used for all non-checkout connections 
     to Subversion repositories.
     """
-    def __init__(self, _transport, _format, scheme=None):
+    def __init__(self, _transport, _format):
         """See BzrDir.__init__()."""
         _transport = get_svn_ra_transport(_transport)
         super(SvnRemoteAccess, self).__init__(_transport, _format)
@@ -68,6 +66,7 @@ class SvnRemoteAccess(BzrDir):
     def sprout(self, url, revision_id=None, force_new_repo=False,
             recurse='down', possible_transports=None):
         """See BzrDir.sprout()."""
+        # FIXME: Use possible_transports
         # FIXME: Use recurse
         format = get_rich_root_format()
         result = format.initialize(url)
@@ -86,7 +85,7 @@ class SvnRemoteAccess(BzrDir):
             result.create_workingtree()
         return result
 
-    def open_repository(self):
+    def open_repository(self, _unsupported=False):
         """Open the repository associated with this BzrDir.
         
         :return: instance of SvnRepository.
@@ -177,7 +176,7 @@ class SvnRemoteAccess(BzrDir):
         branch.bzrdir = self
         return branch
 
-    def create_repository(self, shared=False):
+    def create_repository(self, shared=False, format=None):
         """See BzrDir.create_repository."""
         return self.open_repository()
 
