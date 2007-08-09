@@ -1085,7 +1085,7 @@ class cmd_remove(Command):
     takes_options = ['verbose',
         Option('new', help='Remove newly-added files.'),
         RegistryOption.from_kwargs('file-deletion-strategy',
-            'The file deletion mode to be used',
+            'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Only delete files if they can be'
                  ' safely recovered (default).',
@@ -3698,7 +3698,7 @@ class cmd_merge_directive(Command):
 
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
-            'The type of patch to include in the directive',
+            'The type of patch to include in the directive.',
             title='Patch type',
             value_switches=True,
             enum_switch=False,
@@ -3827,7 +3827,8 @@ class cmd_send(Command):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
-        RegistryOption.from_kwargs('format', 'Output format',
+        RegistryOption.from_kwargs('format',
+        'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
            '0.9': 'Bundle format 0.9, Merge Directive 1',})
         ]
