@@ -1,50 +1,92 @@
-======
-Bazaar
-======
--------------------
-Documentation index
--------------------
+=================
+Bazaar User Guide
+=================
 
-These documents originally came from the Bazaar wiki hosted at
-http://bazaar-vcs.org. The documents on the wiki take precedence 
-in the event of a discrepancy between what is documented here 
-and what is documented on the wiki.
+.. Files are currently links but will become includes once the
+.. content makes more sense as a whole.
+.. Please mark sections in linked/included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
 
+.. later contents::
+.. later sectnum::
+
+
+.. later Introduction
+.. later ############
+
+.. later include:: introducing_bazaar.txt
+.. later include:: workflows.txt
+
+
+Setting Up Bazaar
+#################
+
+.. later include:: download.txt
+
+* `Introducing yourself <setting_up_email.html>`_ |--| The various ways that exist
+  to tell Bazaar your email address for commits.
+
+* `Using configuration files <configuration.html>`_ |--| Information on how to configure
+  Bazaar.
+
+
+Basic Topics
+############
 
 * `Tutorial <tutorial.html>`_ |--| Explains how to use bzr.
   Loaded with examples.
 
-* `Configuration <configuration.html>`_ |--| Information on how to configure
-  Bazaar.
-
-* `Setting up email <setting_up_email.html>`_ |--| The various ways that exist
-  to tell Bazaar your email address for commits.
-
-* `Conflict handling <conflicts.html>`_ |--| The various kind of conflicts
-  you may encounter, and how to handle them.
-
-* `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
-
-* `Specifying revision <specifying_revisions.html>`_ |--| Description 
+* `Specifying revision identifiers <specifying_revisions.html>`_ |--| Description 
   of the subarguments for ``-r`` as used by commands such as
   **bzr log** and **bzr merge**.
-
-* `Using aliases <using_aliases.html>`_ |--| How to set up 
-  and use command aliases.
 
 * `Running a Bazaar server <server.html>`_ |--| How to run a server 
   to allow remote access to Bazaar branches.
 
-* `Running a Bazaar HTTP server <http_smart_server.html>`_ |--| How to run 
+
+Advanced Topics
+###############
+
+* `Conflict handling <conflicts.html>`_ |--| The various kind of conflicts
+  you may encounter, and how to handle them.
+
+* `Centralized workflow <centralized_workflow.html>`_ |--| How to use Bazaar in
+  a centralized way like CVS or Subversion.
+
+.. later include:: using_bound_branches.txt
+.. later include:: shared_repositories.txt
+
+
+Best Practices
+##############
+
+* `Running a Bazaar smart server <http_smart_server.html>`_ |--| How to run 
   a smart HTTP server to allow remote access to Bazaar branches.
 
-* `Guidelines for modifying bzr <developers/index.html>`_ |--| Guide 
-  to policies and tools for working on Bazaar itself.
+* `Shared repositories layouts <shared_repository_layouts.html>`_ |--| The
+  pros and cons of various repository layouts.
+
+.. later include:: tracking_upstream.txt
+.. later include:: useful_tips.txt
+ 
+
+Extending Bazaar
+################
+
+* `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
+
+* `Using aliases <using_aliases.html>`_ |--| How to set up 
+  and use command aliases.
 
 
-This document automatically created based on output of **bzr help**:
+Integrating Bazaar With Other Systems
+#####################################
 
-* `Bazaar User Reference <bzr_man.html>`_
+* `Bug trackers <bug_trackers.html>`_ |--| Information on how to integrate with bug trackers.
 
+* `Exporting version information <version_info.html>`_ |--| How to export version numbers to a build system.
 
 .. |--| unicode:: U+2014
