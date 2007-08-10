@@ -511,10 +511,14 @@ class MergeDirective2(_BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 
-    def register(self, directive):
-        registry.Registry.register(self, directive._format_string, directive)
+    def register(self, directive, format_string=None):
+        if format_string is None:
+            format_string  = directive._format_string
+        registry.Registry.register(self, format_string, directive)
 
 
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+_format_registry.register(MergeDirective2,
+                          'Bazaar merge directive format 2 (Bazaar 0.19)')
