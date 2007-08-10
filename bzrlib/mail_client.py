@@ -14,23 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
-import sys
-
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), '''
 import errno
+import os
 import subprocess
+import sys
 import tempfile
 
 from bzrlib import (
     email_message,
     errors,
     msgeditor,
+    osutils,
     urlutils,
     )
-from bzrlib.util import simplemapi
-''')
 
 
 class MailClient(object):
@@ -77,8 +73,6 @@ class Editor(MailClient):
 class ExternalMailClient(MailClient):
     """An external mail client."""
 
-    _client_commands = []
-
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
@@ -105,14 +99,7 @@ class ExternalMailClient(MailClient):
             raise errors.MailClientNotFound(self._client_commands)
 
     def _get_compose_commandline(self, to, subject, attach_path):
-        message_options = {}
-        if subject is not None:
-            message_options['subject'] = subject
-        if attach_path is not None:
-            message_options['attach'] = attach_path
-        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        message_options.iteritems()]
-        return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
+        raise NotImplementedError
 
 
 class Evolution(ExternalMailClient):
@@ -176,7 +163,11 @@ class MAPIClient(ExternalMailClient):
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                  extension):
-        simplemapi.SendMail(to or '', subject or '', '', attach_path)
+        from bzrlib.util import simplemapi
+        try:
+            simplemapi.SendMail(to or '', subject or '', '', attach_path)
+        except WindowsError:
+            raise errors.MailClientNotFound(['MAPI supported mail client'])
 
 
 class DefaultMail(MailClient):
@@ -184,7 +175,7 @@ class DefaultMail(MailClient):
     falls back to Editor"""
 
     def _mail_client(self):
-        if sys.platform == 'win32':
+        if osutils.supports_mapi():
             return MAPIClient(self.config)
         else:
             return XDGEmail(self.config)

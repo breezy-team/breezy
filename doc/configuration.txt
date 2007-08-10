@@ -208,10 +208,10 @@ A mail client to use for sending merge requests.  Supported values are:
   uses smtp_server and (optionally) smtp_username and smtp_password.
 :evolution: Use Evolution.
 :thunderbird: Use Mozilla Thunderbird or Icedove.
-:windows: Use default e-mail client on Windows.
-:xdg-email: The default e-mail client defined by xdg-email.
+:mapi: Use the default e-mail client on Windows.
+:xdg-email: Use the default e-mail client defined by xdg-email.
 
-By default will bzr try to use 'xdg-email' or 'windows', depending on
+By default will bzr try to use 'xdg-email' or 'mail', depending on
 the platform. If this fails, it will fall back to 'editor'
 
 submit_branch
