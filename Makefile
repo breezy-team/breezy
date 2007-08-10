@@ -72,8 +72,12 @@ html-docs: docs
 
 
 # translate txt docs to html
-doc_dir := doc 
-txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
+derived_txt_files := \
+	doc/en/user-reference/bzr_man.txt \
+	doc/en/developer-guide/HACKING.txt \
+	doc/en/release-notes/NEWS.txt
+doc_dir := doc/en/user-guide
+txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) doc/en/index.txt
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
@@ -88,8 +92,11 @@ pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.html, $(txt_files))
 doc/developers/%.html: doc/developers/%.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
+doc/en/index.html: doc/en/index.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
+
 %.html: %.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
+	python tools/rst2html.py --link-stylesheet --stylesheet=../../default.css --footnote-references=superscript $< $@
 
 $(PRETTYDIR)/%.html: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
@@ -104,8 +111,14 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 tools/doc_generate/autodoc_man.py \
 		 tools/doc_generate/autodoc_rstx.py
 
-doc/bzr_man.txt: $(MAN_DEPENDENCIES)
+doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ rstx
+
+doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
+	python tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
+
+doc/en/release-notes/NEWS.txt: NEWS
+	python -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
@@ -124,7 +137,7 @@ copy-docs: docs
 # clean produced docs
 clean-docs:
 	python tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt
+	$(HTMLDIR) $(PRETTYDIR) $(derived_txt_files)
 
 
 # build a png of our performance task list
@@ -159,7 +172,6 @@ clean-win32: clean-docs
 	python tools/win32/ostools.py remove build
 	python tools/win32/ostools.py remove win32_bzr.exe
 	python tools/win32/ostools.py remove py2exe.log
-	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe
 	python tools/win32/ostools.py remove bzr-*win32.exe
