@@ -17,6 +17,7 @@
 import errno
 import os
 import subprocess
+import sys
 import tempfile
 
 from bzrlib import (
@@ -25,6 +26,10 @@ from bzrlib import (
     msgeditor,
     urlutils,
     )
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import win32utils
+""")
 
 
 class MailClient(object):
@@ -73,6 +78,12 @@ class Evolution(MailClient):
 
     _client_commands = ['evolution']
 
+    def _get_client_commands(self):
+        if sys.platform == 'win32':
+            return [win32utils.get_app_path(i) for i in self._client_commands]
+        else:
+            return self._client_commands
+
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
@@ -80,7 +91,7 @@ class Evolution(MailClient):
             os.write(fd, attachment)
         finally:
             os.close(fd)
-        for name in self._client_commands:
+        for name in self._get_client_commands():
             cmdline = [name]
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          pathname))
