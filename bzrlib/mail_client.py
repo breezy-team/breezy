@@ -129,3 +129,17 @@ class Thunderbird(Evolution):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
+
+
+class XDGEmail(Evolution):
+    """xdg-email attempts to invoke the user's preferred mail client"""
+
+    _client_commands = ['xdg-email']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        commandline = [to]
+        if subject is not None:
+            commandline.extend(['--subject', subject])
+        if attach_path is not None:
+            commandline.extend(['--attach', attach_path])
+        return commandline

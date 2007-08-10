@@ -35,6 +35,19 @@ class TestThunderbird(tests.TestCase):
                                       "to='jrandom@example.org'"], commandline)
 
 
+class TestXDGEmail(tests.TestCase):
+
+    def test_commandline(self):
+        xdg_email = mail_client.XDGEmail(None)
+        commandline = xdg_email._get_compose_commandline(None, None,
+                                                         'file%')
+        self.assertEqual([None, '--attach', 'file%'], commandline)
+        commandline = xdg_email._get_compose_commandline(
+            'jrandom@example.org', 'Hi there!', None)
+        self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!'],
+                         commandline)
+
+
 class TestEvolution(tests.TestCase):
 
     def test_commandline(self):
