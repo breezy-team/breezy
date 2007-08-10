@@ -109,6 +109,45 @@ Aaron
 booga""".splitlines(True)
 
 
+INPUT1_2_OLD = """
+I was thinking today about creating a merge directive.
+
+So I did.
+
+Here it is.
+
+(I've pasted it in the body of this message)
+
+Aaron
+
+# Bazaar merge directive format 2 (Bazaar 0.19)\r
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+# source_branch: http://example.org
+# base_revision_id: null:
+# message: Hi mom!
+#\x20
+# Begin patch
+booga""".splitlines(True)
+
+
+OLD_DIRECTIVE_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
+# revision_id: abentley@panoramicfeedback.com-20070807234458-\
+#   nzhkoyza56lan7z5
+# target_branch: http://panoramicfeedback.com/opensource/bzr/repo\
+#   /bzr.ab
+# testament_sha1: d825a5cdb267a90ec2ba86b00895f3d8a9bed6bf
+# timestamp: 2007-08-10 16:15:02 -0400
+# source_branch: http://panoramicfeedback.com/opensource/bzr/repo\
+#   /bzr.ab
+# base_revision_id: abentley@panoramicfeedback.com-20070731163346-\
+#   623xwcycwij91xen
+#
+""".splitlines(True)
+
+
 class TestMergeDirective(object):
 
     def test_merge_source(self):
@@ -599,3 +638,18 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         md2.patch = md2.patch.replace('content_c', 'content_d')
         self.assertFalse(md2._verify_patch(tree_a.branch.repository))
+
+
+class TestParseOldMergeDirective2(tests.TestCase):
+
+    def test_parse_old_merge_directive(self):
+        md = merge_directive.MergeDirective.from_lines(INPUT1_2_OLD)
+        self.assertEqual('example:', md.revision_id)
+        self.assertEqual('sha', md.testament_sha1)
+        self.assertEqual('http://example.com', md.target_branch)
+        self.assertEqual('http://example.org', md.source_branch)
+        self.assertEqual(453, md.time)
+        self.assertEqual(120, md.timezone)
+        self.assertEqual('booga', md.patch)
+        self.assertEqual('diff', md.patch_type)
+        self.assertEqual('Hi mom!', md.message)
