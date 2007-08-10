@@ -154,6 +154,7 @@ class Config(object):
                 'editor': mail_client.Editor,
                 'thunderbird': mail_client.Thunderbird,
                 'evolution': mail_client.Evolution,
+                'windows': mail_client.Windows,
                 'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:
