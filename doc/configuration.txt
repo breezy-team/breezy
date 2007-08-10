@@ -204,9 +204,10 @@ mail_client
 -----------
 A mail client to use for sending merge requests.  Supported values are:
 
-:editor: Use your editor to compose the merge request.  This also uses
-    smtp_server and (optionally) smtp_username and smtp_password
-:thunderbird: Use Mozilla Thunderbird or Icedove
+:editor: (default)  Use your editor to compose the merge request.  This also
+  uses smtp_server and (optionally) smtp_username and smtp_password.
+:evolution: Use Evolution.
+:thunderbird: Use Mozilla Thunderbird or Icedove.
 
 submit_branch
 -------------
