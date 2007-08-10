@@ -131,6 +131,9 @@ IN DEVELOPMENT
 
     * Link to registration survey added to README. (Ian Clatworthy)
 
+    * Windows standalone installer show link to registration survey
+      when installation finished. (Alexander Belchenko)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
