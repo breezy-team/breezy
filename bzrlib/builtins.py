@@ -3948,7 +3948,7 @@ class cmd_send(Command):
                     subject += message
                 else:
                     revision = branch.repository.get_revision(revision_id)
-                    subject += revision.message
+                    subject += revision.get_summary()
                 mail_client.compose_merge_request(mail_to, subject,
                                                   outfile.getvalue())
         finally:
