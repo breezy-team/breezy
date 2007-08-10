@@ -513,7 +513,7 @@ class MergeDirectiveFormatRegistry(registry.Registry):
 
     def register(self, directive, format_string=None):
         if format_string is None:
-            format_string  = directive._format_string
+            format_string = directive._format_string
         registry.Registry.register(self, format_string, directive)
 
 
