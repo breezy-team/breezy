@@ -143,3 +143,23 @@ class XDGEmail(Evolution):
         if attach_path is not None:
             commandline.extend(['--attach', attach_path])
         return commandline
+
+
+class DefaultMail(MailClient):
+    """Default mail handling.  Tries XDGEmail, falls back to Editor"""
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
+        try:
+            return XDGEmail(self.config).compose(prompt, to, subject,
+                            attachment, mimie_subtype, extension)
+        except errors.MailClientNotFound:
+            return Editor(self.config).compose(prompt, to, subject,
+                          attachment, mimie_subtype, extension)
+
+    def compose_merge_request(self, to, subject, directive):
+        try:
+            return XDGEmail(self.config).compose_merge_request(to, subject,
+                            directive)
+        except errors.MailClientNotFound:
+            return Editor(self.config).compose_merge_request(to, subject,
+                          directive)

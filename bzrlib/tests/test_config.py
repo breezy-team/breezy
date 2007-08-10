@@ -1009,7 +1009,11 @@ class TestBranchConfigItems(TestCaseInTempDir):
     def test_get_mail_client(self):
         config = self.get_branch_config()
         client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        config.set_user_option('mail_client', 'default')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
 
         config.set_user_option('mail_client', 'editor')
         client = config.get_mail_client()
