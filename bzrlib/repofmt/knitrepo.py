@@ -348,29 +348,8 @@ class RepositoryPackCollection(object):
                 # a matching distribution.
                 continue
             existing_packs.append((revision_count, transport_and_name))
-        existing_packs.sort(reverse=True)
-        pack_operations = [[0, []]]
-        # plan out what packs to keep, and what to reorganise
-        while len(existing_packs):
-            # take the largest pack, and if its less than the head of the
-            # distribution chart we will include its contents in the new pack for
-            # that position. If its larger, we remove its size from the
-            # distribution chart
-            next_pack_rev_count, next_pack_details = existing_packs.pop(0)
-            if next_pack_rev_count >= pack_distribution[0]:
-                # don't shrink packs, we want to aggregate them
-                #raise NotImplementedError
-                return False
-            else:
-                # add the revisions we're going to add to the next output pack
-                pack_operations[-1][0] += next_pack_rev_count
-                # allocate this pack to the next pack sub operation
-                pack_operations[-1][1].append(next_pack_details)
-                if pack_operations[-1][0] >= pack_distribution[0]:
-                    # this pack is used up, shift left.
-                    del pack_distribution[0]
-                    pack_operations.append([0, []])
-
+        pack_operations = self.plan_autopack_combinations(
+            existing_packs, pack_distribution)
         for revision_count, pack_details in pack_operations:
             if revision_count == 0:
                 continue
@@ -388,6 +367,41 @@ class RepositoryPackCollection(object):
             self._obsolete_packs(pack_details)
 
         return True
+
+    def plan_autopack_combinations(self, existing_packs, pack_distribution):
+        if len(existing_packs) <= len(pack_distribution):
+            return []
+        existing_packs.sort(reverse=True)
+        pack_operations = [[0, []]]
+        # plan out what packs to keep, and what to reorganise
+        while len(existing_packs):
+            # take the largest pack, and if its less than the head of the
+            # distribution chart we will include its contents in the new pack for
+            # that position. If its larger, we remove its size from the
+            # distribution chart
+            next_pack_rev_count, next_pack_details = existing_packs.pop(0)
+            if next_pack_rev_count >= pack_distribution[0]:
+                # this is already packed 'better' than this, so we can
+                # not waste time packing it.
+                while next_pack_rev_count > 0:
+                    next_pack_rev_count -= pack_distribution[0]
+                    if next_pack_rev_count >= 0:
+                        # more to go
+                        del pack_distribution[0]
+                    else:
+                        # didn't use that entire bucket up
+                        pack_distribution[0] = -next_pack_rev_count
+            else:
+                # add the revisions we're going to add to the next output pack
+                pack_operations[-1][0] += next_pack_rev_count
+                # allocate this pack to the next pack sub operation
+                pack_operations[-1][1].append(next_pack_details)
+                if pack_operations[-1][0] >= pack_distribution[0]:
+                    # this pack is used up, shift left.
+                    del pack_distribution[0]
+                    pack_operations.append([0, []])
+        
+        return pack_operations
 
     def _combine_packs(self, pack_details):
         """Combine the data from the packs listed in pack_details.
@@ -1173,7 +1187,7 @@ class GraphKnitRepository1(KnitRepository):
             if not self._packs.autopack():
                 self._packs.save()
         else:
-            # can the pending upload
+            # remove the pending upload
             self._upload_transport.delete(self._open_pack_tuple[1])
         self._revision_store.reset()
         self.weave_store.reset()
@@ -1278,7 +1292,7 @@ class GraphKnitRepository3(KnitRepository3):
             if not self._packs.autopack():
                 self._packs.save()
         else:
-            # can the pending upload
+            # remove the pending upload
             self._upload_transport.delete(self._open_pack_tuple[1])
         self._revision_store.reset()
         self.weave_store.reset()

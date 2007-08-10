@@ -774,6 +774,37 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([100, 100, 1], packs.pack_distribution(201))
         self.assertEqual([100, 100, 10, 1], packs.pack_distribution(211))
 
+    def test_plan_pack_operations_2009_revisions_skip_all_packs(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        existing_packs = [(2000, "big"), (9, "medium")]
+        # rev count - 2009 -> 2x1000 + 9x1
+        pack_operations = packs.plan_autopack_combinations(
+            existing_packs, [1000, 1000, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        self.assertEqual([], pack_operations)
+
+    def test_plan_pack_operations_2010_revisions_skip_all_packs(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        existing_packs = [(2000, "big"), (9, "medium"), (1, "single")]
+        # rev count - 2010 -> 2x1000 + 1x10
+        pack_operations = packs.plan_autopack_combinations(
+            existing_packs, [1000, 1000, 10])
+        self.assertEqual([], pack_operations)
+
+    def test_plan_pack_operations_2010_combines_smallest_two(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
+            (1, "single1")]
+        # rev count - 2010 -> 2x1000 + 1x10 (3)
+        pack_operations = packs.plan_autopack_combinations(
+            existing_packs, [1000, 1000, 10])
+        self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
+
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
 
