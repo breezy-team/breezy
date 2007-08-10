@@ -147,6 +147,7 @@ class XDGEmail(Evolution):
 
 class DefaultMail(MailClient):
     """Default mail handling.  Tries XDGEmail, falls back to Editor"""
+
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         try:
