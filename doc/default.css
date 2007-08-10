@@ -144,3 +144,7 @@ a:hover {
   color: #b52727;
   text-decoration: none;
   }
+
+span, th.field-name {
+  white-space: nowrap;
+}

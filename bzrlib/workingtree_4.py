@@ -1114,6 +1114,9 @@ class WorkingTree4(WorkingTree3):
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
+        # do non-implementation specific cleanup
+        self._cleanup()
+
         if self._control_files._lock_count == 1:
             # eventually we should do signature checking during read locks for
             # dirstate updates.
@@ -1494,7 +1497,7 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_nineteen)
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
     def get_weave(self, file_id):
         return self._get_weave(file_id)
 
