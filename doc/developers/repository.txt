@@ -271,7 +271,9 @@ As long as the file name is unique it does not really matter. It might be
 interesting to have it be deterministic based on content, but there are no
 specific problems we have solved by doing that, and doing so would require
 hashing the full file. OTOH hashing the full file is a cheap way to detect
-bit-errors in transfer (such as windows corruption).
+bit-errors in transfer (such as windows corruption). Non-reused file names
+are required for data integrity, as clients having read an index will
+readv at arbitrary times later. 
 
 Discovery of files
 ~~~~~~~~~~~~~~~~~~
@@ -297,6 +299,49 @@ increase the packedness of the local repo.
 
 Choosing compression/delta support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sketched notes on packs
+~~~~~~~~~~~~~~~~~~~~~~~
+
+ fast pull:
+ - query and pull revs
+ - query and pull references
+ - query and pull further references
+ - etc
+ - for now:
+ - query and pull revs and sigs
+ - query and pull inventory with cache on
+ - query and pull all of texts
+
+ pack:
+  - two modes - complete and incremental
+  - complete:
+    - grab all revisions, regenerate deltas, etc.
+    - may want data grouping by recreation not by
+      origin. i.e. 'tip' pack has everything to construct
+      revision -1, older packs have data that is not needed
+      for current revisions.
+
+  - incremental:
+    - leave most data untouched most of the time
+    - therefore can't really promote old data to be current.
+    - possible approach:
+      upper number of packs = sum of digits in the commit count
+      so we need to combine packs whenever a commit rolls over a power
+      of 10 - at most once every 10 commit, possibly much less.
+      exponential backoff of commits per pack file. So the number of
+      revisions per pack is log10(revisions in repository).
+      up to 10 commits - 1 revision per pack
+      up to 100 commits - 2 revisions per pack
+      10 commits - 1 packs, 100 commits - 2 packs
+ 
+      - count number of 1-revision packs, if 10 group them
+        into one larger pack.
+      - count number of 10-unit packs. if 10, group those 
+        into one larger pack.
+      - etc
+      this approach reads 10 entire packs every 10 commits,
+      100 every 100, 1000 every 1000
 
 
 Caching and writeing of data

@@ -652,6 +652,128 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertEqual([],
             list(GraphIndex(trans.clone('indices'), 'index').iter_all_entries()))
 
+    def test_commit_across_pack_shape_boundary_autopacks(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        # This test could be a little cheaper by replacing the packs
+        # attribute on the repository to allow a different pack distribution
+        # and max packs policy - so we are hecking the policy is honoured
+        # in the test. But for now 11 commits is not a big deal in a single
+        # test.
+        for x in range(9):
+            tree.commit('commit %s' % x)
+        # there should be 9 packs:
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(9, len(list(index.iter_all_entries())))
+        # committing one more should coalesce to 1 of 10.
+        tree.commit('commit triggering pack')
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        # packing should not damage data
+        tree = tree.bzrdir.open_workingtree()
+        check_result = tree.branch.repository.check(
+            [tree.branch.last_revision()])
+        # XXX: Todo check packs obsoleted correctly - old packs and indices
+        # in the obsolete_packs directory.
+        large_pack_name = list(index.iter_all_entries())[0][1][0]
+        # finally, committing again should not touch the large pack.
+        tree.commit('commit not triggering pack')
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(2, len(list(index.iter_all_entries())))
+        pack_names = [node[1][0] for node in index.iter_all_entries()]
+        self.assertTrue(large_pack_name in pack_names)
+
+# TESTS TO WRITE:
+# XXX: signatures must be preserved. add a test.
+# XXX: packs w/o revisions are ignored by autopack
+# XXX: packs w/o revisions are packed by explicit pack
+# XXX: packs bigger than the planned distribution chart
+#      are skipped over by autopack, and their revision
+#      counts removed from the large end of the distribution
+#      chart.
+    
+
+
+class TestRepositoryPackCollection(TestCaseWithTransport):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir('experimental')
+
+    def test__max_pack_count(self):
+        """The maximum pack count is geared from the number of revisions."""
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        # no revisions - one pack, so that we can have a revision free repo
+        # without it blowing up
+        self.assertEqual(1, packs._max_pack_count(0))
+        # after that the sum of the digits, - check the first 1-9
+        self.assertEqual(1, packs._max_pack_count(1))
+        self.assertEqual(2, packs._max_pack_count(2))
+        self.assertEqual(3, packs._max_pack_count(3))
+        self.assertEqual(4, packs._max_pack_count(4))
+        self.assertEqual(5, packs._max_pack_count(5))
+        self.assertEqual(6, packs._max_pack_count(6))
+        self.assertEqual(7, packs._max_pack_count(7))
+        self.assertEqual(8, packs._max_pack_count(8))
+        self.assertEqual(9, packs._max_pack_count(9))
+        # check the boundary cases with two digits for the next decade
+        self.assertEqual(1, packs._max_pack_count(10))
+        self.assertEqual(2, packs._max_pack_count(11))
+        self.assertEqual(10, packs._max_pack_count(19))
+        self.assertEqual(2, packs._max_pack_count(20))
+        self.assertEqual(3, packs._max_pack_count(21))
+        # check some arbitrary big numbers
+        self.assertEqual(25, packs._max_pack_count(112894))
+
+    def test_pack_distribution_zero(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        self.assertEqual([0], packs.pack_distribution(0))
+        
+    def test_pack_distribution_one_to_nine(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        self.assertEqual([1],
+            packs.pack_distribution(1))
+        self.assertEqual([1, 1],
+            packs.pack_distribution(2))
+        self.assertEqual([1, 1, 1],
+            packs.pack_distribution(3))
+        self.assertEqual([1, 1, 1, 1],
+            packs.pack_distribution(4))
+        self.assertEqual([1, 1, 1, 1, 1],
+            packs.pack_distribution(5))
+        self.assertEqual([1, 1, 1, 1, 1, 1],
+            packs.pack_distribution(6))
+        self.assertEqual([1, 1, 1, 1, 1, 1, 1],
+            packs.pack_distribution(7))
+        self.assertEqual([1, 1, 1, 1, 1, 1, 1, 1],
+            packs.pack_distribution(8))
+        self.assertEqual([1, 1, 1, 1, 1, 1, 1, 1, 1],
+            packs.pack_distribution(9))
+
+    def test_pack_distribution_stable_at_boundaries(self):
+        """When there are multi-rev packs the counts are stable."""
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        packs = repo._packs
+        # in 10s:
+        self.assertEqual([10], packs.pack_distribution(10))
+        self.assertEqual([10, 1], packs.pack_distribution(11))
+        self.assertEqual([10, 10], packs.pack_distribution(20))
+        self.assertEqual([10, 10, 1], packs.pack_distribution(21))
+        # 100s
+        self.assertEqual([100], packs.pack_distribution(100))
+        self.assertEqual([100, 1], packs.pack_distribution(101))
+        self.assertEqual([100, 10, 1], packs.pack_distribution(111))
+        self.assertEqual([100, 100], packs.pack_distribution(200))
+        self.assertEqual([100, 100, 1], packs.pack_distribution(201))
+        self.assertEqual([100, 100, 10, 1], packs.pack_distribution(211))
+
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
 
