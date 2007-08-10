@@ -124,7 +124,7 @@ IN DEVELOPMENT
     * HTML documentation now use files extension *.html (Alexander Belchenko)
 
     * ``send`` now sends the directive as an attachment by default.
-      (Aaron Bentley)
+      (Aaron Bentley, Lukáš Lalinský)
 
   LIBRARY API BREAKS:
 
