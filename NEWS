@@ -139,6 +139,8 @@ IN DEVELOPMENT
 
     * Link to registration survey added to README. (Ian Clatworthy)
 
+    * Organise documentation into multiple directories. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.

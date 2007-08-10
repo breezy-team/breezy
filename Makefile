@@ -77,7 +77,9 @@ derived_txt_files := \
 	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
 doc_dir := doc/en/user-guide
-txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) doc/en/index.txt
+txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
+	doc/en/index.txt \
+	doc/index.txt
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
@@ -94,6 +96,9 @@ doc/developers/%.html: doc/developers/%.txt
 
 doc/en/index.html: doc/en/index.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
+
+doc/index.html: doc/index.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
 
 %.html: %.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=../../default.css --footnote-references=superscript $< $@
