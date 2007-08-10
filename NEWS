@@ -123,6 +123,14 @@ IN DEVELOPMENT
 
     * HTML documentation now use files extension *.html (Alexander Belchenko)
 
+    * The cache of ignore definitions is now cleared in WorkingTree.unlock()
+      so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
+
+    * ``bzr selftest --strict'' fails if there are any missing features or
+      expected test failures. (Daniel Watkins, #111914)
+
+    * Link to registration survey added to README. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -134,6 +142,13 @@ IN DEVELOPMENT
 
     * Ancient unused ``Repository.text_store`` attribute has been removed.
       (Robert Collins)
+
+    * The ``bzrlib.pack`` interface has changed to use tuples of bytestrings
+      rather than just bytestrings, making it easier to represent multiple
+      element names. As this interface was not used by any internal facilities
+      since it was introduced in 0.18 no API compatibility is being preserved.
+      The serialised form of these packs is identical with 0.18 when a single
+      element tuple is in use. (Robert Collins)
 
   INTERNALS:
 
@@ -195,6 +210,9 @@ IN DEVELOPMENT
 
     * Graph now has an is_ancestor method, various bits use it.
       (Aaron Bentley)
+
+    * The ``-Dhpss`` flag now includes timing information. As well as
+      logging when a new connection is opened. (John Arbash Meinel)
 
     * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
       callers when inserting data, allowing generation of readv style access

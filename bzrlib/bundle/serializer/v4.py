@@ -131,7 +131,7 @@ class BundleWriter(object):
         """
         name = self.encode_name(repo_kind, revision_id, file_id)
         encoded_metadata = bencode.bencode(metadata)
-        self._container.add_bytes_record(encoded_metadata, [name])
+        self._container.add_bytes_record(encoded_metadata, [(name, )])
         if metadata['storage_kind'] != 'header':
             self._container.add_bytes_record(bytes, [])
 
@@ -200,7 +200,7 @@ class BundleReader(object):
             else:
                 _unused, bytes = iterator.next()
                 bytes = bytes(None)
-            yield (bytes, metadata) + self.decode_name(names[0])
+            yield (bytes, metadata) + self.decode_name(names[0][0])
 
 
 class BundleSerializerV4(serializer.BundleSerializer):
