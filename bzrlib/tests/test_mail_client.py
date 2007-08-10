@@ -45,3 +45,17 @@ class TestEvolution(tests.TestCase):
                                                    'Hi there!', None)
         self.assertEqual(['mailto:jrandom@example.org?subject=Hi%20there%21'],
                          commandline)
+
+
+class TestEditor(tests.TestCase):
+
+    def test_get_merge_prompt_unicode(self):
+        """Prompt, to and subject are unicode, the attachement is binary"""
+        editor = mail_client.Editor(None)
+        prompt = editor._get_merge_prompt(u'foo\u1234',
+                                        u'bar\u1234',
+                                        u'baz\u1234',
+                                        u'qux\u1234'.encode('utf-8'))
+        self.assertContainsRe(prompt, u'foo\u1234(.|\n)*bar\u1234'
+                              u'(.|\n)*baz\u1234(.|\n)*qux\u1234')
+        editor._get_merge_prompt(u'foo', u'bar', u'baz', 'qux\xff')

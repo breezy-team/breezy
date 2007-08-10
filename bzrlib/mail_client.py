@@ -38,18 +38,25 @@ class MailClient(object):
         raise NotImplementedError
 
     def compose_merge_request(self, to, subject, directive):
-        self.compose("Please describe these changes:", to, subject, directive,
+        prompt = self._get_merge_prompt("Please describe these changes:", to,
+                                        subject, directive)
+        self.compose(prompt, to, subject, directive,
             'x-patch', '.patch')
+
+    def _get_merge_prompt(self, prompt, to, subject, attachment):
+        return ''
 
 
 class Editor(MailClient):
     """DIY mail client that uses commit message editor"""
 
+    def _get_merge_prompt(self, prompt, to, subject, attachment):
+        return "%s\n\nTo: %s\nSubject: %s\n\n%s" % (prompt, to, subject,
+                attachment.decode('utf-8', 'replace'))
+
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
-        info = ("%s\n\nTo: %s\nSubject: %s\n\n%s" % (prompt, to, subject,
-                attachment))
-        body = msgeditor.edit_commit_message(info)
+        body = msgeditor.edit_commit_message(prompt)
         if body == '':
             raise errors.NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
