@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import errno
 import os
 import subprocess
 import tempfile
@@ -60,7 +61,44 @@ class Editor(MailClient):
                                         attachment_mime_subtype=mime_subtype)
 
 
-class Thunderbird(MailClient):
+class Evolution(MailClient):
+    """Evolution mail client."""
+
+    _client_commands = ['evolution']
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension):
+        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
+        try:
+            os.write(fd, attachment)
+        finally:
+            os.close(fd)
+        for name in self._client_commands:
+            cmdline = [name]
+            cmdline.extend(self._get_compose_commandline(to, subject,
+                                                         pathname))
+            try:
+                subprocess.call(cmdline)
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+            else:
+                break
+        else:
+            raise errors.MailClientNotFound(self._client_commands)
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        message_options = {}
+        if subject is not None:
+            message_options['subject'] = subject
+        if attach_path is not None:
+            message_options['attach'] = attach_path
+        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
+                        message_options.iteritems()]
+        return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
+
+
+class Thunderbird(Evolution):
     """Mozilla Thunderbird (or Icedove)
 
     Note that Thunderbird 1.5 is buggy and does not support setting
@@ -70,16 +108,7 @@ class Thunderbird(MailClient):
     send attachments.
     """
 
-    def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
-        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
-        try:
-            os.write(fd, attachment)
-        finally:
-            os.close(fd)
-        cmdline = ['thunderbird']
-        cmdline.extend(self._get_compose_commandline(to, subject, pathname))
-        subprocess.call(cmdline)
+    _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove']
 
     def _get_compose_commandline(self, to, subject, attach_path):
         message_options = {}
@@ -93,28 +122,3 @@ class Thunderbird(MailClient):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
-
-
-class Evolution(MailClient):
-    """Evolution mail client."""
-
-    def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
-        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
-        try:
-            os.write(fd, attachment)
-        finally:
-            os.close(fd)
-        cmdline = ['evolution']
-        cmdline.append(self._get_compose_commandline(to, subject, pathname))
-        subprocess.call(cmdline)
-
-    def _get_compose_commandline(self, to, subject, attach_path):
-        message_options = {}
-        if subject is not None:
-            message_options['subject'] = subject
-        if attach_path is not None:
-            message_options['attach'] = attach_path
-        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        message_options.iteritems()]
-        return 'mailto:%s?%s' % (to or '', '&'.join(options_list))

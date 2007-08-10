@@ -3801,7 +3801,8 @@ class cmd_send(Command):
 
     By default, mail is sent using your editor to enter a submit message.  You
     can use Mozilla Thunderbird or Icedove by setting the configuration option
-    mail_client=thunderbird.
+    mail_client=thunderbird.  You can use Evolution by setting the
+    configuration option mail_client=evolution
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration
