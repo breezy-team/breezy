@@ -129,6 +129,8 @@ IN DEVELOPMENT
     * ``bzr selftest --strict'' fails if there are any missing features or
       expected test failures. (Daniel Watkins, #111914)
 
+    * Link to registration survey added to README. (Ian Clatworthy)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
