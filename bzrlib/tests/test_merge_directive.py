@@ -132,6 +132,7 @@ Aaron
 # Begin patch
 booga""".splitlines(True)
 
+
 OLD_DIRECTIVE_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
 # revision_id: abentley@panoramicfeedback.com-20070807234458-\
 #   nzhkoyza56lan7z5
