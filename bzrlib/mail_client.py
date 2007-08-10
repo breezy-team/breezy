@@ -14,8 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
 import os
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), '''
+import errno
 import subprocess
 import tempfile
 
@@ -25,6 +29,8 @@ from bzrlib import (
     msgeditor,
     urlutils,
     )
+from bzrlib.util import simplemapi
+''')
 
 
 class MailClient(object):
@@ -68,10 +74,10 @@ class Editor(MailClient):
                                         attachment_mime_subtype=mime_subtype)
 
 
-class Evolution(MailClient):
-    """Evolution mail client."""
+class ExternalMailClient(MailClient):
+    """An external mail client."""
 
-    _client_commands = ['evolution']
+    _client_commands = []
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
@@ -80,10 +86,14 @@ class Evolution(MailClient):
             os.write(fd, attachment)
         finally:
             os.close(fd)
+        self._compose(prompt, to, subject, pathname, mime_subtype, extension)
+
+    def _compose(self, prompt, to, subject, attach_path, mime_subtype,
+                extension):
         for name in self._client_commands:
             cmdline = [name]
-            cmdline.extend(self._get_compose_commandline(to, subject,
-                                                         pathname))
+            cmdline.extend(self._get_compose_commandline(to, subject, 
+                                                         attach_path))
             try:
                 subprocess.call(cmdline)
             except OSError, e:
@@ -105,7 +115,23 @@ class Evolution(MailClient):
         return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
 
 
-class Thunderbird(Evolution):
+class Evolution(ExternalMailClient):
+    """Evolution mail client."""
+
+    _client_commands = ['evolution']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        message_options = {}
+        if subject is not None:
+            message_options['subject'] = subject
+        if attach_path is not None:
+            message_options['attach'] = attach_path
+        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
+                        message_options.iteritems()]
+        return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
+
+
+class Thunderbird(ExternalMailClient):
     """Mozilla Thunderbird (or Icedove)
 
     Note that Thunderbird 1.5 is buggy and does not support setting
@@ -131,7 +157,7 @@ class Thunderbird(Evolution):
         return ['-compose', ','.join(options_list)]
 
 
-class XDGEmail(Evolution):
+class XDGEmail(ExternalMailClient):
     """xdg-email attempts to invoke the user's preferred mail client"""
 
     _client_commands = ['xdg-email']
@@ -145,21 +171,38 @@ class XDGEmail(Evolution):
         return commandline
 
 
+class MAPIClient(ExternalMailClient):
+    """Default Windows mail client launched using MAPI."""
+
+    def _compose(self, prompt, to, subject, attach_path, mime_subtype,
+                 extension):
+        simplemapi.SendMail(to or '', subject or '', '', attach_path)
+
+
 class DefaultMail(MailClient):
-    """Default mail handling.  Tries XDGEmail, falls back to Editor"""
+    """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
+    falls back to Editor"""
+
+    def _mail_client(self):
+        if sys.platform == 'win32':
+            return MAPIClient(self.config)
+        else:
+            return XDGEmail(self.config)
+
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         try:
-            return XDGEmail(self.config).compose(prompt, to, subject,
-                            attachment, mimie_subtype, extension)
+            return self._mail_client().compose(prompt, to, subject,
+                                               attachment, mimie_subtype,
+                                               extension)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mimie_subtype, extension)
 
     def compose_merge_request(self, to, subject, directive):
         try:
-            return XDGEmail(self.config).compose_merge_request(to, subject,
-                            directive)
+            return self._mail_client().compose_merge_request(to, subject,
+                                                             directive)
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive)
