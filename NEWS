@@ -16,6 +16,10 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Mark as supporting Bazaar 0.90 rather than 0.19.
 
+  INTERNALS
+
+   * Support `topo_sorted` argument to by Repository.get_ancestry().
+
   FEATURES
 
    * Support initializing Subversion repositories. 

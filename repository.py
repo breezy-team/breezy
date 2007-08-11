@@ -344,7 +344,7 @@ class SvnRepository(Repository):
         """
         return False
 
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
         
         Note: only the first bit is topologically ordered!
