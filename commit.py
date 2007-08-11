@@ -18,7 +18,7 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
-from bzrlib import osutils, urlutils
+from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches, UnrelatedBranches
 from bzrlib.inventory import Inventory
@@ -120,6 +120,10 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = set()
+
+    def mutter(self, text):
+        if 'commit' in debug.debug_flags:
+            mutter(text)
 
     def _record_revision_id(self, revid):
         """Store the revision id in a file property.
@@ -227,7 +231,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     child_ie.parent_id != self.new_inventory[child_ie.file_id].parent_id or
                     # ... name changed
                     self.new_inventory[child_ie.file_id].name != child_name):
-                    mutter('removing %r(%r)' % (child_name, child_ie.file_id))
+                    self.mutter('removing %r(%r)' % (child_name, child_ie.file_id))
                     self.editor.delete_entry(
                             urlutils.join(
                                 self.branch.get_branch_path(), path, child_name), 
@@ -244,7 +248,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             new_child_path = self.new_inventory.id2path(child_ie.file_id)
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
-                mutter('adding %s %r' % (child_ie.kind, new_child_path))
+                self.mutter('adding %s %r' % (child_ie.kind, new_child_path))
                 self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_file(
                     urlutils.join(self.branch.get_branch_path(), 
@@ -253,7 +257,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
-                mutter('copy %s %r -> %r' % (child_ie.kind, 
+                self.mutter('copy %s %r -> %r' % (child_ie.kind, 
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path))
                 self._record_file_id(child_ie, new_child_path)
@@ -264,7 +268,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # open if they existed at the same location
             elif child_ie.revision is None:
-                mutter('open %s %r' % (child_ie.kind, new_child_path))
+                self.mutter('open %s %r' % (child_ie.kind, new_child_path))
 
                 child_baton = self.editor.open_file(
                     urlutils.join(self.branch.get_branch_path(), 
@@ -318,7 +322,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             new_child_path = self.new_inventory.id2path(child_ie.file_id)
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
-                mutter('adding dir %r' % child_ie.name)
+                self.mutter('adding dir %r' % child_ie.name)
                 self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), 
@@ -327,7 +331,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
                 old_child_path = self.old_inv.id2path(child_ie.file_id)
-                mutter('copy dir %r -> %r' % (old_child_path, new_child_path))
+                self.mutter('copy dir %r -> %r' % (old_child_path, new_child_path))
                 self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), new_child_path),
@@ -337,7 +341,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             # open if they existed at the same location and 
             # the directory was touched
             elif self.new_inventory[child_ie.file_id].revision is None:
-                mutter('open dir %r' % new_child_path)
+                self.mutter('open dir %r' % new_child_path)
 
                 child_baton = self.editor.open_directory(
                         urlutils.join(self.branch.get_branch_path(), new_child_path), 
@@ -364,7 +368,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         ret = [root]
 
-        mutter('opening branch %r (base %r:%r)' % (elements, base_path, 
+        self.mutter('opening branch %r (base %r:%r)' % (elements, base_path, 
                                                    base_rev))
 
         # Open paths leading up to branch
@@ -462,7 +466,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         assert self._new_revision_id is None or self._new_revision_id == revid
 
-        mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
+        self.mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
                (self.revnum, self.author, self.date, revid))
 
         return revid

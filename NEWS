@@ -16,6 +16,8 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Mark as supporting Bazaar 0.90 rather than 0.19.
 
+   * Don't mutter during commit unless explicitly enabled with -Dcommit.
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().
