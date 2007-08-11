@@ -4,9 +4,6 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Convert errors to bzr errors when fetching data (avoids backtraces).
 
-   * Support initializing Subversion repositories. 
-     `bzr init-repo --format=subversion` now works.
-
    * Raise proper exception when repository can't be found remotely. (#130633)
 
    * Use knits to store file id maps.
@@ -16,6 +13,14 @@ bzr-svn 0.4.1	UNRELEASED
    * Handle corner cases fetching renames.
 
    * Support WorkingTree.update()
+
+   * Mark as supporting Bazaar 0.90 rather than 0.19.
+
+  FEATURES
+
+   * Support initializing Subversion repositories. 
+     `bzr init-repo --format=subversion` now works.
+
 
 bzr-svn 0.4.0	2007-08-04	
   
