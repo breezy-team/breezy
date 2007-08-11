@@ -3,8 +3,10 @@ todo:
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
 - avoid extra connect in logwalker?
 - free memory! (#54253)
+- tests for setting svk:merge from .bzr checkout
 - more blackbox tests
  - svn-import without scheme specified should guess
+ - bzr missing
 - transform file ids in workingtree in svn-upgrade
 - support tags (#81102)
 - more efficient implementation of get_revision_delta() to speed up bzr log -v

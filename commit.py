@@ -152,7 +152,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if self.base_revid is not None:
             old = self.repository.branchprop_list.get_property(
-                self.base_path, self.base_revnum, SVN_PROP_SVK_MERGE)
+                self.base_path, self.base_revnum, SVN_PROP_SVK_MERGE, "")
         else:
             old = ""
 
