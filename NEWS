@@ -9,9 +9,8 @@ IN DEVELOPMENT
       unknown files.
       Directories with renames in or out (but not changed otherwise)
       will now be removed without needing ``--force``.
-      Changed or new ignored files will still not be deleted without
-      ``--force``.
-      (Marius Kruger, partial fix for #111665)
+      Unknown ignored files will be deleted without needing ``--force``.
+      (Marius Kruger, #111665)
 
     * ``bzr init`` should connect to the remote location one time only.  We
       have been connecting several times because we forget to pass around the
