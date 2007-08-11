@@ -1804,8 +1804,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     directory):
                 for relpath, basename, kind, lstat, abspath in file_infos:
                     if kind == 'file':
-                        if self.path2id(relpath): #is it versioned?
-                            # make sure we check if it chagned
+                        #is it versioned or ignored?
+                        if self.path2id(relpath) or self.is_ignored(relpath):
+                            # add subtree content for deletion
                             new_files.add(relpath)
                         else:
                             unknown_files_in_directory.add(
@@ -1839,8 +1840,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # check if it's an unknown OR changed (but not deleted):
-                    if versioned == (False, False) or (
+                    # check if it's an unknown (but not ignored) OR
+                    # changed (but not deleted) :
+                    if not self.is_ignored(path[1]) and (
+                        versioned == (False, False) or
                         content_change and kind[1] != None):
                         has_changed_files = True
                         break

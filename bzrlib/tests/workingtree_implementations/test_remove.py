@@ -17,7 +17,7 @@
 """Tests for interface conformance of 'WorkingTree.remove'"""
 
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
-from bzrlib import errors, osutils
+from bzrlib import errors, ignores, osutils
 
 class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""
@@ -162,10 +162,28 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove([''], keep_files=False)
         tree.remove(['xyz', 'abc/def'], keep_files=False)
 
-    def test_remove_nonempty_directory(self):
+    def test_remove_unchanged_directory(self):
         """Unchanged directories should be deleted."""
         files = ['b/', 'b/c', 'b/sub_directory/', 'b/sub_directory/with_file']
         tree = self.getCommittedTree(files)
+        tree.remove('b', keep_files=False)
+        self.assertNotInWorkingTree('b')
+        self.failIfExists('b')
+
+    def test_remove_unknown_ignored_files(self):
+        """unknown ignored files should be deleted."""
+        tree = self.getCommittedTree(['b/'])
+        ignores.add_runtime_ignores(["*ignored*"])
+
+        self.build_tree(['unknown_ignored_file'])
+        self.assertTrue(tree.is_ignored('unknown_ignored_file') != None)
+        tree.remove('unknown_ignored_file', keep_files=False)
+        self.assertNotInWorkingTree('unknown_ignored_file')
+        self.failIfExists('unknown_ignored_file')
+
+        self.build_tree(['b/unknown_ignored_file', 'b/unknown_ignored_dir/'])
+        self.assertTrue(tree.is_ignored('b/unknown_ignored_file') != None)
+        self.assertTrue(tree.is_ignored('b/unknown_ignored_dir') != None)
         tree.remove('b', keep_files=False)
         self.assertNotInWorkingTree('b')
         self.failIfExists('b')
