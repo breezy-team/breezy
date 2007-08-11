@@ -22,7 +22,6 @@ Only one dependency: ctypes should be installed.
 import os
 import struct
 import sys
-import _winreg
 
 
 # Windows version
@@ -300,6 +299,7 @@ def get_app_path(appname):
     :return:    full path to aplication executable from registry,
                 or appname itself if nothing found.
     """
+    import _winreg
     try:
         hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
                                r'SOFTWARE\Microsoft\Windows'
