@@ -325,7 +325,7 @@ class RepositoryPackCollection(object):
             return False
         # XXX: the following may want to be a class, to pack with a given
         # policy.
-        mutter('Packing repository %s, which has %d pack files, '
+        mutter('Auto-packing repository %s, which has %d pack files, '
             'containing %d revisions into %d packs.', self, total_packs,
             total_revisions, self._max_pack_count(total_revisions))
         # determine which packs need changing
@@ -350,23 +350,59 @@ class RepositoryPackCollection(object):
             existing_packs.append((revision_count, transport_and_name))
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
+        self._execute_pack_operations(pack_operations)
+        return True
+
+    def _execute_pack_operations(self, pack_operations):
+        """Execute a series of pack operations.
+
+        :param pack_operations: A list of [revision_count, packs_to_combine].
+        :return: None.
+        """
         for revision_count, pack_details in pack_operations:
-            if revision_count == 0:
+            # we may have no-ops from the setup logic
+            if len(pack_details) == 0:
                 continue
             # have a progress bar?
             self._combine_packs(pack_details)
             for pack_detail in pack_details:
                 self._remove_pack_name(pack_detail[1])
-    
         # record the newly available packs and stop advertising the old
         # packs
         self.save()
-
         # move the old packs out of the way
         for revision_count, pack_details in pack_operations:
             self._obsolete_packs(pack_details)
 
-        return True
+    def pack(self):
+        """Pack the pack collection totally."""
+        self.ensure_loaded()
+        try:
+            total_packs = len(self._names)
+            if total_packs < 2:
+                return
+            if self.repo._revision_all_indices is None:
+                # trigger creation of the all revision index.
+                self.repo._revision_store.get_revision_file(self.repo.get_transaction())
+            total_revisions = len(list(self.repo._revision_all_indices.iter_all_entries()))
+            # XXX: the following may want to be a class, to pack with a given
+            # policy.
+            mutter('Packing repository %s, which has %d pack files, '
+                'containing %d revisions into %d packs.', self, total_packs,
+                total_revisions, self._max_pack_count(total_revisions))
+            # determine which packs need changing
+            pack_distribution = [1]
+            pack_operations = [[0, []]]
+            for index, transport_and_name in self.repo._revision_pack_map.iteritems():
+                if index is None:
+                    continue
+                revision_count = len(list(index.iter_all_entries()))
+                pack_operations[-1][0] += revision_count
+                pack_operations[-1][1].append(transport_and_name)
+            self._execute_pack_operations(pack_operations)
+        finally:
+            if not self.repo.is_in_write_group():
+                self.reset()
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         if len(existing_packs) <= len(pack_distribution):
@@ -1201,6 +1237,15 @@ class GraphKnitRepository1(KnitRepository):
         return self._inv_thunk.get_weave()
 
     @needs_write_lock
+    def pack(self):
+        """Compress the data within the repository.
+
+        This will pack all the data to a single pack. In future it may
+        recompress deltas or do other such expensive operations.
+        """
+        self._packs.pack()
+
+    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import PackReconciler
@@ -1304,6 +1349,15 @@ class GraphKnitRepository3(KnitRepository3):
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
+
+    @needs_write_lock
+    def pack(self):
+        """Compress the data within the repository.
+
+        This will pack all the data to a single pack. In future it may
+        recompress deltas or do other such expensive operations.
+        """
+        self._packs.pack()
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):

@@ -684,6 +684,18 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
 
+    def test_pack_after_two_commits_packs_everything(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        tree.commit('start')
+        tree.commit('more work')
+        tree.branch.repository.pack()
+        # there should be 1 packs:
+        index = GraphIndex(trans.clone('indices'), 'index')
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
+
 # TESTS TO WRITE:
 # XXX: signatures must be preserved. add a test.
 # XXX: packs w/o revisions are ignored by autopack
