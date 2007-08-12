@@ -133,7 +133,7 @@ encode_func[DictType] = encode_dict
 
 try:
     from types import BooleanType
-    encode_func[BooleanType] = encode_int
+    encode_func[BooleanType] = lambda x,r: encode_int(int(x),r)
 except ImportError:
     pass
 

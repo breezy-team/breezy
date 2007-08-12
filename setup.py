@@ -197,6 +197,7 @@ def add_pyrex_extension(module_name, **kwargs):
 
 add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._bencode_c')
 
 
 if unavailable_files:

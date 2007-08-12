@@ -38,3 +38,4 @@ doc/**/*.html
 doc/developers/performance.png
 bzrlib/_dirstate_helpers_c.c
 bzrlib/_knit_load_data_c.c
+bzrlib/_bencode_c.c

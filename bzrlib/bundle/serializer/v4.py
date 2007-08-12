@@ -30,7 +30,7 @@ from bzrlib import (
     xml_serializer,
     )
 from bzrlib.bundle import bundle_data, serializer
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 class BundleWriter(object):

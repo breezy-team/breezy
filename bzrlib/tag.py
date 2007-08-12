@@ -32,7 +32,7 @@ from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 class _Tags(object):

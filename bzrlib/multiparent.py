@@ -27,7 +27,7 @@ from bzrlib import (
     trace,
     ui,
     )
-from bzrlib.util import bencode
+from bzrlib import bencode
 """)
 from bzrlib.tuned_gzip import GzipFile
 
