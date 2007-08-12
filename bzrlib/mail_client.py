@@ -166,8 +166,10 @@ class MAPIClient(ExternalMailClient):
         from bzrlib.util import simplemapi
         try:
             simplemapi.SendMail(to or '', subject or '', '', attach_path)
-        except WindowsError:
-            raise errors.MailClientNotFound(['MAPI supported mail client'])
+        except simplemapi.MAPIError, e:
+            if e.code != simplemapi.MAPI_USER_ABORT:
+                raise errors.MailClientNotFound(['MAPI supported mail client'
+                                                 ' (error %d)' % (e.code,)])
 
 
 class DefaultMail(MailClient):

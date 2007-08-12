@@ -1,18 +1,39 @@
 """
-Based on this original script: http://www.kirbyfooty.com/simplemapi.py
+Copyright (c) 2007 Ian Cook and John Popplewell
 
-Now works (and tested) with:
-    Outlook Express, Outlook 97 and 2000, 
-    Eudora, Incredimail and Mozilla Thunderbird (1.5.0.2)
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
 
-Date   : 30 May 2006
-Version: 1.0.0
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
 
-John Popplewell
-john@johnnypops.demon.co.uk
-http://www.johnnypops.demon.co.uk/python/
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Thanks to Werner F. Bruhin and Michele Petrazzo on the ctypes list.
+Date    : 11 August 2007
+Version : 1.0.1
+Contact : John Popplewell
+Email   : john@johnnypops.demon.co.uk
+Web     : http://www.johnnypops.demon.co.uk/python/
+Origin  : Based on the original script by Ian Cook
+          http://www.kirbyfooty.com/simplemapi.py
+Comments: Works (and tested) with:
+          Outlook Express, Outlook 97 and 2000, 
+          Eudora, Incredimail and Mozilla Thunderbird (1.5.0.2)
+Thanks  : Werner F. Bruhin and Michele Petrazzo on the ctypes list.
+
+If you have any bug-fixes, enhancements or suggestions regarding this 
+software, please contact me at the above email address.
 """
 
 import os
@@ -23,8 +44,35 @@ LHANDLE = c_ulong
 LPLHANDLE = POINTER(LHANDLE)
 
 # Return codes
-SUCCESS_SUCCESS = 0
-MAPI_USER_ABORT = 1
+SUCCESS_SUCCESS                 = 0
+MAPI_USER_ABORT                 = 1
+MAPI_E_USER_ABORT               = MAPI_USER_ABORT
+MAPI_E_FAILURE                  = 2
+MAPI_E_LOGON_FAILURE            = 3
+MAPI_E_LOGIN_FAILURE            = MAPI_E_LOGON_FAILURE
+MAPI_E_DISK_FULL                = 4
+MAPI_E_INSUFFICIENT_MEMORY      = 5
+MAPI_E_ACCESS_DENIED            = 6
+MAPI_E_TOO_MANY_SESSIONS        = 8
+MAPI_E_TOO_MANY_FILES           = 9
+MAPI_E_TOO_MANY_RECIPIENTS      = 10
+MAPI_E_ATTACHMENT_NOT_FOUND     = 11
+MAPI_E_ATTACHMENT_OPEN_FAILURE  = 12
+MAPI_E_ATTACHMENT_WRITE_FAILURE = 13
+MAPI_E_UNKNOWN_RECIPIENT        = 14
+MAPI_E_BAD_RECIPTYPE            = 15
+MAPI_E_NO_MESSAGES              = 16
+MAPI_E_INVALID_MESSAGE          = 17
+MAPI_E_TEXT_TOO_LARGE           = 18
+MAPI_E_INVALID_SESSION          = 19
+MAPI_E_TYPE_NOT_SUPPORTED       = 20
+MAPI_E_AMBIGUOUS_RECIPIENT      = 21
+MAPI_E_AMBIG_RECIP              = MAPI_E_AMBIGUOUS_RECIPIENT
+MAPI_E_MESSAGE_IN_USE           = 22
+MAPI_E_NETWORK_FAILURE          = 23
+MAPI_E_INVALID_EDITFIELDS       = 24
+MAPI_E_INVALID_RECIPS           = 25
+MAPI_E_NOT_SUPPORTED            = 26
 # Recipient class
 MAPI_ORIG       = 0
 MAPI_TO         = 1
@@ -94,30 +142,40 @@ MAPILogoff.restype      = c_ulong
 MAPILogoff.argtypes     = (LHANDLE, c_ulong, FLAGS, c_ulong)
 
 
+class MAPIError(WindowsError):
+
+    def __init__(self, code):
+        WindowsError.__init__(self)
+        self.code = code
+
+    def __str__(self):
+        return 'MAPI error %d' % (self.code,)
+
+
 def _logon(profileName=None, password=None):
     pSession = LHANDLE()
     rc = MAPILogon(0, profileName, password, MAPI_LOGON_UI, 0, byref(pSession))
     if rc != SUCCESS_SUCCESS:
-        raise WindowsError, "MAPI error %i" % rc
+        raise MAPIError, rc
     return pSession
 
 
 def _logoff(session):
     rc = MAPILogoff(session, 0, 0, 0)
     if rc != SUCCESS_SUCCESS:
-        raise WindowsError, "MAPI error %i" % rc
+        raise MAPIError, rc
 
 
 def _resolveName(session, name):
     pRecipDesc = lpMapiRecipDesc()
     rc = MAPIResolveName(session, 0, name, 0, 0, byref(pRecipDesc))
     if rc != SUCCESS_SUCCESS:
-        raise WindowsError, "MAPI error %i" % rc
+        raise MAPIError, rc
     rd = pRecipDesc.contents
     name, address = rd.lpszName, rd.lpszAddress
     rc = MAPIFreeBuffer(pRecipDesc)
     if rc != SUCCESS_SUCCESS:
-        raise WindowsError, "MAPI error %i" % rc
+        raise MAPIError, rc
     return name, address
 
 
@@ -158,8 +216,8 @@ def _sendMail(session, recipient, subject, body, attach):
                       nFileCount, lpFiles)
 
     rc = MAPISendMail(session, 0, byref(msg), MAPI_DIALOG, 0)
-    if rc != SUCCESS_SUCCESS and rc != MAPI_USER_ABORT:
-        raise WindowsError, "MAPI error %i" % rc
+    if rc != SUCCESS_SUCCESS:
+        raise MAPIError, rc
 
 
 def SendMail(recipient, subject="", body="", attachfiles=""):
@@ -196,3 +254,4 @@ if __name__ == '__main__':
     body = "Hi,\r\n\r\nthis is a quick test message,\r\n\r\ncheers,\r\nJohn."
     attachment = sys.argv[0]
     SendMail(recipient, subject, body, attachment)
+
