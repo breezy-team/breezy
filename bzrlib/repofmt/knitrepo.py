@@ -575,7 +575,7 @@ class RepositoryPackCollection(object):
     def ensure_loaded(self):
         if self._names is None:
             self._names = set(node[1][0] for node in 
-                GraphIndex(self.transport, 'index').iter_all_entries())
+                GraphIndex(self.transport, 'pack-names').iter_all_entries())
 
     def allocate(self, name):
         if name in self._names:
@@ -711,7 +711,7 @@ class RepositoryPackCollection(object):
         builder = GraphIndexBuilder()
         for name in self._names:
             builder.add_node((name, ), '')
-        self.transport.put_file('index', builder.finish())
+        self.transport.put_file('pack-names', builder.finish())
 
     def setup(self):
         # cannot add names if we're not in a 'write lock'.
@@ -1157,7 +1157,7 @@ class GraphKnitRepository1(KnitRepository):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, index_transport)
+        self._packs = RepositoryPackCollection(self, control_files._transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1270,8 +1270,8 @@ class GraphKnitRepository3(KnitRepository3):
                  control_store, text_store):
         KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
-        index_transport = a_bzrdir.get_repository_transport(None).clone('indices')
-        self._packs = RepositoryPackCollection(self, index_transport)
+        index_transport = control_files._transport.clone('indices')
+        self._packs = RepositoryPackCollection(self, control_files._transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1626,7 +1626,7 @@ def _knit_to_experimental(result, a_bzrdir):
     repo_transport.mkdir('upload')
     repo_transport.rmdir('knits')
     builder = GraphIndexBuilder()
-    repo_transport.clone('indices').put_file('index', builder.finish())
+    repo_transport.put_file('pack-names', builder.finish())
     for knit in ('inventory', 'revisions', 'signatures'):
         repo_transport.delete(knit + '.kndx')
         repo_transport.delete(knit + '.knit')
