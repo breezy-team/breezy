@@ -29,3 +29,7 @@ specifying_revisions.txt
 using_aliases.txt
     How to setup and use command aliases.
 
+bug_trackers.txt
+    How to allow revisions to be associated with the bugs that they try
+    and fix in the project's bug tracking system.
+

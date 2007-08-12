@@ -23,7 +23,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.graph import Graph
+from bzrlib.deprecated_graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,

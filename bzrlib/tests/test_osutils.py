@@ -247,6 +247,28 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
 
+    def test_changing_access(self):
+        f = file('file', 'w')
+        f.write('monkey')
+        f.close()
+
+        # Make a file readonly
+        osutils.make_readonly('file')
+        mode = osutils.lstat('file').st_mode
+        self.assertEqual(mode, mode & 0777555)
+
+        # Make a file writable
+        osutils.make_writable('file')
+        mode = osutils.lstat('file').st_mode
+        self.assertEqual(mode, mode | 0200)
+
+        if osutils.has_symlinks():
+            # should not error when handed a symlink
+            os.symlink('nonexistent', 'dangling')
+            osutils.make_readonly('dangling')
+            osutils.make_writable('dangling')
+
+
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))

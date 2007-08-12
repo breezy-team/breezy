@@ -60,7 +60,7 @@ class TestAll(TestCaseWithTransport):
 
     def test_has_None(self):
         # has of None -> True
-        self.assertTrue(self.store.has_revision_id(None, self.transaction))
+        self.assertTrue(self.store.has_revision_id('null:', self.transaction))
 
     def test_get_revision_none(self):
         # get_revision(None) -> raises NoSuchRevision

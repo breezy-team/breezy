@@ -19,13 +19,17 @@
 These are proxy objects which act on remote objects by sending messages
 through a smart client.  The proxies are to be created when attempting to open
 the object given a transport that supports smartserver rpc operations. 
+
+These tests correspond to tests.test_smart, which exercises the server side.
 """
 
 from cStringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
     errors,
     remote,
+    repository,
     tests,
     )
 from bzrlib.branch import Branch
@@ -37,9 +41,10 @@ from bzrlib.remote import (
     RemoteRepository,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import server
+from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.transport.remote import RemoteTransport
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -55,12 +60,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def tearDown(self):
         self.transport.disconnect()
         tests.TestCaseWithTransport.tearDown(self)
-
-    def test_is_readonly(self):
-        # XXX: this is a poor way to test RemoteTransport, but currently there's
-        # no easy way to substitute in a fake client on a transport like we can
-        # with RemoteBzrDir/Branch/Repository.
-        self.assertEqual(self.transport.is_readonly(), False)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport)
@@ -99,19 +98,9 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
 
-
-class ReadonlyRemoteTransportTests(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        self.transport_server = server.ReadonlySmartTCPServer_for_testing
-        super(ReadonlyRemoteTransportTests, self).setUp()
-
-    def test_is_readonly_yes(self):
-        # XXX: this is a poor way to test RemoteTransport, but currently there's
-        # no easy way to substitute in a fake client on a transport like we can
-        # with RemoteBzrDir/Branch/Repository.
-        transport = self.get_readonly_transport()
-        self.assertEqual(transport.is_readonly(), True)
+    def test_remote_branch_repr(self):
+        b = BzrDir.open_from_transport(self.transport).open_branch()
+        self.assertStartsWith(str(b), 'RemoteBranch(')
 
 
 class FakeProtocol(object):
@@ -202,6 +191,38 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.check_open_repository(False, True)
         self.check_open_repository(True, False)
         self.check_open_repository(False, False)
+
+    def test_old_server(self):
+        """RemoteBzrDirFormat should fail to probe if the server version is too
+        old.
+        """
+        self.assertRaises(errors.NotBranchError,
+            RemoteBzrDirFormat.probe_transport, OldServerTransport())
+
+
+class OldSmartClient(object):
+    """A fake smart client for test_old_version that just returns a version one
+    response to the 'hello' (query version) command.
+    """
+
+    def get_request(self):
+        input_file = StringIO('ok\x011\n')
+        output_file = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            input_file, output_file)
+        return medium.SmartClientStreamMediumRequest(client_medium)
+
+
+class OldServerTransport(object):
+    """A fake transport for test_old_server that reports it's smart server
+    protocol version as version one.
+    """
+
+    def __init__(self):
+        self.base = 'fake:'
+
+    def get_smart_client(self):
+        return OldSmartClient()
 
 
 class TestBranchLastRevisionInfo(tests.TestCase):
@@ -368,10 +389,75 @@ class TestBranchLockWrite(tests.TestCase):
             client._calls)
 
 
+class TestTransportIsReadonly(tests.TestCase):
+
+    def test_true(self):
+        client = FakeClient([(('yes',), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(True, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_false(self):
+        client = FakeClient([(('no',), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_error_from_old_server(self):
+        """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
+        
+        Clients should treat it as a "no" response, because is_readonly is only
+        advisory anyway (a transport could be read-write, but then the
+        underlying filesystem could be readonly anyway).
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request 'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_error_from_old_0_11_server(self):
+        """Same as test_error_from_old_server, but with the slightly different
+        error message from bzr 0.11 servers.
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request u'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+
 class TestRemoteRepository(tests.TestCase):
+    """Base for testing RemoteRepository protocol usage.
+    
+    These tests contain frozen requests and responses.  We want any changes to 
+    what is sent or expected to be require a thoughtful update to these tests
+    because they might break compatibility with different-versioned servers.
+    """
 
     def setup_fake_client_and_repository(self, responses, transport_path):
-        """Create the fake client and repository for testing with."""
+        """Create the fake client and repository for testing with.
+        
+        There's no real server here; we just have canned responses sent
+        back one by one.
+        
+        :param transport_path: Path below the root of the MemoryTransport
+            where the repository will be created.
+        """
         client = FakeClient(responses)
         transport = MemoryTransport()
         transport.mkdir(transport_path)
@@ -471,7 +557,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('///sinhala/', ''))],
             client._calls)
-        self.assertEqual({r1: [], r2: [r1]}, result)
+        self.assertEqual({r1: (), r2: (r1, )}, result)
 
     def test_specific_revision(self):
         # with a specific revision we want the graph for that
@@ -491,7 +577,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('///sinhala/', r2))],
             client._calls)
-        self.assertEqual({r11: [], r12: [], r2: [r11, r12], }, result)
+        self.assertEqual({r11: (), r12: (), r2: (r11, r12), }, result)
 
     def test_no_such_revision(self):
         revid = '123'
@@ -609,3 +695,77 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
+
+
+class TestRepositoryTarball(TestRemoteRepository):
+
+    # This is a canned tarball reponse we can validate against
+    tarball_content = (
+        'QlpoOTFBWSZTWdGkj3wAAWF/k8aQACBIB//A9+8cIX/v33AACEAYABAECEACNz'
+        'JqsgJJFPTSnk1A3qh6mTQAAAANPUHkagkSTEkaA09QaNAAAGgAAAcwCYCZGAEY'
+        'mJhMJghpiaYBUkKammSHqNMZQ0NABkNAeo0AGneAevnlwQoGzEzNVzaYxp/1Uk'
+        'xXzA1CQX0BJMZZLcPBrluJir5SQyijWHYZ6ZUtVqqlYDdB2QoCwa9GyWwGYDMA'
+        'OQYhkpLt/OKFnnlT8E0PmO8+ZNSo2WWqeCzGB5fBXZ3IvV7uNJVE7DYnWj6qwB'
+        'k5DJDIrQ5OQHHIjkS9KqwG3mc3t+F1+iujb89ufyBNIKCgeZBWrl5cXxbMGoMs'
+        'c9JuUkg5YsiVcaZJurc6KLi6yKOkgCUOlIlOpOoXyrTJjK8ZgbklReDdwGmFgt'
+        'dkVsAIslSVCd4AtACSLbyhLHryfb14PKegrVDba+U8OL6KQtzdM5HLjAc8/p6n'
+        '0lgaWU8skgO7xupPTkyuwheSckejFLK5T4ZOo0Gda9viaIhpD1Qn7JqqlKAJqC'
+        'QplPKp2nqBWAfwBGaOwVrz3y1T+UZZNismXHsb2Jq18T+VaD9k4P8DqE3g70qV'
+        'JLurpnDI6VS5oqDDPVbtVjMxMxMg4rzQVipn2Bv1fVNK0iq3Gl0hhnnHKm/egy'
+        'nWQ7QH/F3JFOFCQ0aSPfA='
+        ).decode('base64')
+
+    def test_repository_tarball(self):
+        # Test that Repository.tarball generates the right operations
+        transport_path = 'repo'
+        expected_responses = [(('ok',), self.tarball_content),
+            ]
+        expected_calls = [('call_expecting_body', 'Repository.tarball',
+                           ('///repo/', 'bz2',),),
+            ]
+        remote_repo, client = self.setup_fake_client_and_repository(
+            expected_responses, transport_path)
+        # Now actually ask for the tarball
+        tarball_file = remote_repo._get_tarball('bz2')
+        try:
+            self.assertEqual(expected_calls, client._calls)
+            self.assertEqual(self.tarball_content, tarball_file.read())
+        finally:
+            tarball_file.close()
+
+    def test_sprout_uses_tarball(self):
+        # RemoteRepository.sprout should try to use the
+        # tarball command rather than accessing all the files
+        transport_path = 'srcrepo'
+        expected_responses = [(('ok',), self.tarball_content),
+            ]
+        expected_calls = [('call2', 'Repository.tarball', ('///srcrepo/', 'bz2',),),
+            ]
+        remote_repo, client = self.setup_fake_client_and_repository(
+            expected_responses, transport_path)
+        # make a regular local repository to receive the results
+        dest_transport = MemoryTransport()
+        dest_transport.mkdir('destrepo')
+        bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
+        dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
+        # try to copy...
+        remote_repo.sprout(dest_bzrdir)
+
+
+class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
+    """RemoteRepository.copy_content_into optimizations"""
+
+    def test_copy_content_remote_to_local(self):
+        self.transport_server = server.SmartTCPServer_for_testing
+        src_repo = self.make_repository('repo1')
+        src_repo = repository.Repository.open(self.get_url('repo1'))
+        # At the moment the tarball-based copy_content_into can't write back
+        # into a smart server.  It would be good if it could upload the
+        # tarball; once that works we'd have to create repositories of
+        # different formats. -- mbp 20070410
+        dest_url = self.get_vfs_only_url('repo2')
+        dest_bzrdir = BzrDir.create(dest_url)
+        dest_repo = dest_bzrdir.create_repository()
+        self.assertFalse(isinstance(dest_repo, RemoteRepository))
+        self.assertTrue(isinstance(src_repo, RemoteRepository))
+        src_repo.copy_content_into(dest_repo)

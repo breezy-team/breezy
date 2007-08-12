@@ -115,6 +115,12 @@ class TestUrlToPath(TestCase):
         eq('http://host/ab/%C2%B5/%C2%B5',
             normalize_url(u'http://host/ab/%C2%B5/\xb5'))
 
+        # Unescape characters that don't need to be escaped
+        eq('http://host/~bob%2525-._',
+                normalize_url('http://host/%7Ebob%2525%2D%2E%5F'))
+        eq('http://host/~bob%2525-._',
+                normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
+
         # Normalize verifies URLs when they are not unicode
         # (indicating they did not come from the user)
         self.assertRaises(InvalidURL, normalize_url, 'http://host/\xb5')
@@ -564,3 +570,21 @@ class TestCwdToURL(TestCaseInTempDir):
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')
+
+
+class TestDeriveToLocation(TestCase):
+    """Test that the mapping of FROM_LOCATION to TO_LOCATION works."""
+
+    def test_to_locations_derived_from_paths(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("bar"))
+        self.assertEqual("bar", derive("../bar"))
+        self.assertEqual("bar", derive("/foo/bar"))
+        self.assertEqual("bar", derive("c:/foo/bar"))
+        self.assertEqual("bar", derive("c:bar"))
+
+    def test_to_locations_derived_from_urls(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("http://foo/bar"))
+        self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
+        self.assertEqual("foo-bar", derive("lp:foo-bar"))

@@ -290,12 +290,26 @@ if sys.platform == 'win32':
 
 
 _url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
+_url_hex_escapes_re = re.compile(r'(%[0-9a-fA-F]{2})')
+
+
+def _unescape_safe_chars(matchobj):
+    """re.sub callback to convert hex-escapes to plain characters (if safe).
+    
+    e.g. '%7E' will be converted to '~'.
+    """
+    hex_digits = matchobj.group(0)[1:]
+    char = chr(int(hex_digits, 16))
+    if char in _url_dont_escape_characters:
+        return char
+    else:
+        return matchobj.group(0).upper()
 
 
 def normalize_url(url):
     """Make sure that a path string is in fully normalized URL form.
     
-    This handles URLs which have unicode characters, spaces, 
+    This handles URLs which have unicode characters, spaces,
     special characters, etc.
 
     It has two basic modes of operation, depending on whether the
@@ -314,21 +328,27 @@ def normalize_url(url):
     m = _url_scheme_re.match(url)
     if not m:
         return local_path_to_url(url)
+    scheme = m.group('scheme')
+    path = m.group('path')
     if not isinstance(url, unicode):
         for c in url:
             if c not in _url_safe_characters:
                 raise errors.InvalidURL(url, 'URLs can only contain specific'
                                             ' safe characters (not %r)' % c)
-        return url
-    # We have a unicode (hybrid) url
-    scheme = m.group('scheme')
-    path = list(m.group('path'))
+        path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
+        return str(scheme + '://' + ''.join(path))
 
-    for i in xrange(len(path)):
-        if path[i] not in _url_safe_characters:
-            chars = path[i].encode('utf-8')
-            path[i] = ''.join(['%%%02X' % ord(c) for c in path[i].encode('utf-8')])
-    return str(scheme + '://' + ''.join(path))
+    # We have a unicode (hybrid) url
+    path_chars = list(path)
+
+    for i in xrange(len(path_chars)):
+        if path_chars[i] not in _url_safe_characters:
+            chars = path_chars[i].encode('utf-8')
+            path_chars[i] = ''.join(
+                ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
+    path = ''.join(path_chars)
+    path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
+    return str(scheme + '://' + path)
 
 
 def relative_url(base, other):
@@ -514,6 +534,15 @@ _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
 #These entries get mapped to themselves
 _hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 
+# These characters shouldn't be percent-encoded, and it's always safe to
+# unencode them if they are.
+_url_dont_escape_characters = set(
+   "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Uppercase alpha
+   "0123456789" # Numbers
+   "-._~"  # Unreserved characters
+)
+
 # These characters should not be escaped
 _url_safe_characters = set(
    "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
@@ -579,3 +608,24 @@ def unescape_for_display(url, encoding):
                 # Otherwise take the url decoded one
                 res[i] = decoded
     return u'/'.join(res)
+
+
+def derive_to_location(from_location):
+    """Derive a TO_LOCATION given a FROM_LOCATION.
+
+    The normal case is a FROM_LOCATION of http://foo/bar => bar.
+    The Right Thing for some logical destinations may differ though
+    because no / may be present at all. In that case, the result is
+    the full name without the scheme indicator, e.g. lp:foo-bar => foo-bar.
+    This latter case also applies when a Windows drive
+    is used without a path, e.g. c:foo-bar => foo-bar.
+    If no /, path separator or : is found, the from_location is returned.
+    """
+    if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
+        return os.path.basename(from_location.rstrip("/\\"))
+    else:
+        sep = from_location.find(":")
+        if sep > 0:
+            return from_location[sep+1:]
+        else:
+            return from_location

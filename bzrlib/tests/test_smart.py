@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the smart wire/domain protococl."""
+"""Tests for the smart wire/domain protocol."""
+
+from StringIO import StringIO
+import tempfile
+import tarfile
 
 from bzrlib import bzrdir, errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
@@ -738,6 +742,30 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
             SmartServerResponse(('TokenMismatch',)), response)
 
 
+class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
+
+    def test_repository_tarball(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryTarball(backing)
+        repository = self.make_repository('.')
+        # make some extraneous junk in the repository directory which should
+        # not be copied
+        self.build_tree(['.bzr/repository/extra-junk'])
+        response = request.execute(backing.local_abspath(''), 'bz2')
+        self.assertEqual(('ok',), response.args)
+        # body should be a tbz2
+        body_file = StringIO(response.body)
+        body_tar = tarfile.open('body_tar.tbz2', fileobj=body_file,
+            mode='r|bz2')
+        # let's make sure there are some key repository components inside it.
+        # the tarfile returns directories with trailing slashes...
+        names = set([n.rstrip('/') for n in body_tar.getnames()])
+        self.assertTrue('.bzr/repository/lock' in names)
+        self.assertTrue('.bzr/repository/format' in names)
+        self.assertTrue('.bzr/repository/extra-junk' not in names,
+            "extraneous file present in tar file")
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
 
     def test_is_readonly_no(self):
@@ -805,6 +833,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.unlock'),
             smart.repository.SmartServerRepositoryUnlock)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.tarball'),
+            smart.repository.SmartServerRepositoryTarball)
         self.assertEqual(
             smart.request.request_handlers.get('Transport.is_readonly'),
             smart.request.SmartServerIsReadonly)

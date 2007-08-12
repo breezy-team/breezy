@@ -64,14 +64,18 @@ class HasRequest(VfsRequest):
 
     def do(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        return request.SmartServerResponse((r,))
+        return request.SuccessfulSmartServerResponse((r,))
 
 
 class GetRequest(VfsRequest):
 
     def do(self, relpath):
-        backing_bytes = self._backing_transport.get_bytes(relpath)
-        return request.SmartServerResponse(('ok',), backing_bytes)
+        try:
+            backing_bytes = self._backing_transport.get_bytes(relpath)
+        except errors.ReadError:
+            # cannot read the file
+            return request.FailedSmartServerResponse(('ReadError', ))
+        return request.SuccessfulSmartServerResponse(('ok',), backing_bytes)
 
 
 class AppendRequest(VfsRequest):
@@ -83,14 +87,14 @@ class AppendRequest(VfsRequest):
     def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
             self._relpath, body_bytes, self._mode)
-        return request.SmartServerResponse(('appended', '%d' % old_length))
+        return request.SuccessfulSmartServerResponse(('appended', '%d' % old_length))
 
 
 class DeleteRequest(VfsRequest):
 
     def do(self, relpath):
         self._backing_transport.delete(relpath)
-        return request.SmartServerResponse(('ok', ))
+        return request.SuccessfulSmartServerResponse(('ok', ))
 
 
 class IterFilesRecursiveRequest(VfsRequest):
@@ -98,14 +102,14 @@ class IterFilesRecursiveRequest(VfsRequest):
     def do(self, relpath):
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
-        return request.SmartServerResponse(('names',) + tuple(filenames))
+        return request.SuccessfulSmartServerResponse(('names',) + tuple(filenames))
 
 
 class ListDirRequest(VfsRequest):
 
     def do(self, relpath):
         filenames = self._backing_transport.list_dir(relpath)
-        return request.SmartServerResponse(('names',) + tuple(filenames))
+        return request.SuccessfulSmartServerResponse(('names',) + tuple(filenames))
 
 
 class MkdirRequest(VfsRequest):
@@ -113,14 +117,14 @@ class MkdirRequest(VfsRequest):
     def do(self, relpath, mode):
         self._backing_transport.mkdir(relpath,
                                       _deserialise_optional_mode(mode))
-        return request.SmartServerResponse(('ok',))
+        return request.SuccessfulSmartServerResponse(('ok',))
 
 
 class MoveRequest(VfsRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.move(rel_from, rel_to)
-        return request.SmartServerResponse(('ok',))
+        return request.SuccessfulSmartServerResponse(('ok',))
 
 
 class PutRequest(VfsRequest):
@@ -131,7 +135,7 @@ class PutRequest(VfsRequest):
 
     def do_body(self, body_bytes):
         self._backing_transport.put_bytes(self._relpath, body_bytes, self._mode)
-        return request.SmartServerResponse(('ok',))
+        return request.SuccessfulSmartServerResponse(('ok',))
 
 
 class PutNonAtomicRequest(VfsRequest):
@@ -149,7 +153,7 @@ class PutNonAtomicRequest(VfsRequest):
                 mode=self._mode,
                 create_parent_dir=self._create_parent,
                 dir_mode=self._dir_mode)
-        return request.SmartServerResponse(('ok',))
+        return request.SuccessfulSmartServerResponse(('ok',))
 
 
 class ReadvRequest(VfsRequest):
@@ -162,7 +166,7 @@ class ReadvRequest(VfsRequest):
         offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = ''.join(bytes for offset, bytes in
             self._backing_transport.readv(self._relpath, offsets))
-        return request.SmartServerResponse(('readv',), backing_bytes)
+        return request.SuccessfulSmartServerResponse(('readv',), backing_bytes)
 
     def _deserialise_offsets(self, text):
         # XXX: FIXME this should be on the protocol object.
@@ -179,20 +183,20 @@ class RenameRequest(VfsRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
-        return request.SmartServerResponse(('ok', ))
+        return request.SuccessfulSmartServerResponse(('ok', ))
 
 
 class RmdirRequest(VfsRequest):
 
     def do(self, relpath):
         self._backing_transport.rmdir(relpath)
-        return request.SmartServerResponse(('ok', ))
+        return request.SuccessfulSmartServerResponse(('ok', ))
 
 
 class StatRequest(VfsRequest):
 
     def do(self, relpath):
         stat = self._backing_transport.stat(relpath)
-        return request.SmartServerResponse(
+        return request.SuccessfulSmartServerResponse(
             ('stat', str(stat.st_size), oct(stat.st_mode)))
 

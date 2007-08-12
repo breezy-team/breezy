@@ -92,7 +92,7 @@ class RepoFetcher(object):
         if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
             # check that last_revision is in 'from' and then return a no-operation.
             if last_revision not in (None, NULL_REVISION):
-                from_repository.get_revision(last_revision)
+                to_repository.get_revision(last_revision)
             return
         self.to_repository = to_repository
         self.from_repository = from_repository
@@ -108,7 +108,14 @@ class RepoFetcher(object):
         try:
             self.to_repository.lock_write()
             try:
-                self.__fetch()
+                self.to_repository.start_write_group()
+                try:
+                    self.__fetch()
+                except:
+                    self.to_repository.abort_write_group()
+                    raise
+                else:
+                    self.to_repository.commit_write_group()
             finally:
                 if self.nested_pb is not None:
                     self.nested_pb.finished()

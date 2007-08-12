@@ -232,17 +232,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.log('contents of inventory: %r' % inv.entries())
 
         self.check_inventory_shape(inv,
-                                   ['dir', 'dir/sub', 'dir/sub/file'])
+                                   ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()
         self.check_inventory_shape(wt.inventory,
-                                   ['newdir', 'newdir/sub', 'newdir/sub/file'])
+                                   ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
         self.check_inventory_shape(wt.inventory,
-                                   ['newdir', 'newdir/newsub',
+                                   ['newdir/', 'newdir/newsub/',
                                     'newdir/newsub/file'])
         wt.unlock()
 
@@ -301,11 +301,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # set last-revision to one not in the history
         wt.set_last_revision('A')
         # set it back to None for an empty tree.
-        wt.set_last_revision(None)
+        wt.set_last_revision('null:')
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertEqual(['A'], wt.get_parent_ids())
         # None is aways in the branch
-        wt.set_last_revision(None)
+        wt.set_last_revision('null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
@@ -825,3 +825,26 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             actual_kind = tree.kind(names[i-1] + '-id')
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
+
+    def test_missing_file_sha1(self):
+        """If a file is missing, its sha1 should be reported as None."""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['file'])
+        tree.add('file', 'file-id')
+        tree.commit('file added')
+        os.unlink('file')
+        self.assertIs(None, tree.get_file_sha1('file-id'))
+
+    def test_no_file_sha1(self):
+        """If a file is not present, get_file_sha1 should raise NoSuchId"""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+        self.build_tree(['file'])
+        tree.add('file', 'file-id')
+        tree.commit('foo')
+        tree.remove('file')
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')

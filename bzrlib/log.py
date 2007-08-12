@@ -42,7 +42,7 @@ calling in here.
 
 In verbose mode we show a summary of what changed in each particular
 revision.  Note that this is the delta for changes in that revision
-relative to its mainline parent, not the delta relative to the last
+relative to its left-most parent, not the delta relative to the last
 logged revision.  So for example if you ask for a verbose log of
 changes touching hello.c you will get a list of those revisions also
 listing other things that were changed in the same revision, but not
@@ -54,14 +54,21 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib import(
+from bzrlib import (
     registry,
     symbol_versioning,
     )
 import bzrlib.errors as errors
-from bzrlib.symbol_versioning import deprecated_method, zero_eleven
+from bzrlib.revisionspec import(
+    RevisionInfo
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eleven,
+    zero_seventeen,
+    )
 from bzrlib.trace import mutter
-from bzrlib.tsort import(
+from bzrlib.tsort import (
     merge_sort,
     topo_sort,
     )
@@ -111,7 +118,6 @@ def find_touching_revisions(branch, file_id):
         revno += 1
 
 
-
 def _enumerate_history(branch):
     rh = []
     revno = 1
@@ -128,7 +134,8 @@ def show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Write out human-readable log of commits to this branch.
 
     lf
@@ -150,14 +157,26 @@ def show_log(branch,
 
     end_revision
         If not None, only show revisions <= end_revision
+
+    search
+        If not None, only show revisions with matching commit messages
+
+    limit
+        If not None or 0, only show limit revisions
     """
     branch.lock_read()
     try:
+        if getattr(lf, 'begin_log', None):
+            lf.begin_log()
+
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search)
+                  start_revision, end_revision, search, limit)
+
+        if getattr(lf, 'end_log', None):
+            lf.end_log()
     finally:
         branch.unlock()
-    
+
 def _show_log(branch,
              lf,
              specific_fileid=None,
@@ -165,7 +184,8 @@ def _show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
@@ -184,22 +204,170 @@ def _show_log(branch,
     else:
         searchRE = None
 
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
+        _get_mainline_revs(branch, start_revision, end_revision)
+    if not mainline_revs:
+        return
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
+        
+    legacy_lf = getattr(lf, 'log_revision', None) is None
+    if legacy_lf:
+        # pre-0.17 formatters use show for mainline revisions.
+        # how should we show merged revisions ?
+        #   pre-0.11 api: show_merge
+        #   0.11-0.16 api: show_merge_revno
+        show_merge_revno = getattr(lf, 'show_merge_revno', None)
+        show_merge = getattr(lf, 'show_merge', None)
+        if show_merge is None and show_merge_revno is None:
+            # no merged-revno support
+            generate_merge_revisions = False
+        else:
+            generate_merge_revisions = True
+        # tell developers to update their code
+        symbol_versioning.warn('LogFormatters should provide log_revision '
+            'instead of show and show_merge_revno since bzr 0.17.',
+            DeprecationWarning, stacklevel=3)
+    else:
+        generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
+                                           False)
+    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
+                          direction, include_merges=generate_merge_revisions)
+    view_revisions = _filter_revision_range(list(view_revs_iter),
+                                            start_rev_id,
+                                            end_rev_id)
+    if specific_fileid:
+        view_revisions = _filter_revisions_touching_file_id(branch,
+                                                         specific_fileid,
+                                                         mainline_revs,
+                                                         view_revisions)
+
+    # rebase merge_depth - unless there are no revisions or 
+    # either the first or last revision have merge_depth = 0.
+    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
+        min_depth = min([d for r,n,d in view_revisions])
+        if min_depth != 0:
+            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+        
+    rev_tag_dict = {}
+    generate_tags = getattr(lf, 'supports_tags', False)
+    if generate_tags:
+        if branch.supports_tags():
+            rev_tag_dict = branch.tags.get_reverse_tag_dict()
+
+    generate_delta = verbose and getattr(lf, 'supports_delta', False)
+
+    def iter_revisions():
+        # r = revision, n = revno, d = merge depth
+        revision_ids = [r for r, n, d in view_revisions]
+        num = 9
+        repository = branch.repository
+        while revision_ids:
+            cur_deltas = {}
+            revisions = repository.get_revisions(revision_ids[:num])
+            if generate_delta:
+                deltas = repository.get_deltas_for_revisions(revisions)
+                cur_deltas = dict(izip((r.revision_id for r in revisions),
+                                       deltas))
+            for revision in revisions:
+                yield revision, cur_deltas.get(revision.revision_id)
+            revision_ids  = revision_ids[num:]
+            num = min(int(num * 1.5), 200)
+
+    # now we just print all the revisions
+    log_count = 0
+    for ((rev_id, revno, merge_depth), (rev, delta)) in \
+         izip(view_revisions, iter_revisions()):
+
+        if searchRE:
+            if not searchRE.search(rev.message):
+                continue
+
+        if not legacy_lf:
+            lr = LogRevision(rev, revno, merge_depth, delta,
+                             rev_tag_dict.get(rev_id))
+            lf.log_revision(lr)
+        else:
+            # support for legacy (pre-0.17) LogFormatters
+            if merge_depth == 0:
+                if generate_tags:
+                    lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
+                else:
+                    lf.show(revno, rev, delta)
+            else:
+                if show_merge_revno is None:
+                    lf.show_merge(rev, merge_depth)
+                else:
+                    if generate_tags:
+                        lf.show_merge_revno(rev, merge_depth, revno,
+                                            rev_tag_dict.get(rev_id))
+                    else:
+                        lf.show_merge_revno(rev, merge_depth, revno)
+        if limit:
+            log_count += 1
+            if log_count >= limit:
+                break
+
+
+def _get_mainline_revs(branch, start_revision, end_revision):
+    """Get the mainline revisions from the branch.
+    
+    Generates the list of mainline revisions for the branch.
+    
+    :param  branch: The branch containing the revisions. 
+
+    :param  start_revision: The first revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :param  end_revision: The last revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
+    """
     which_revs = _enumerate_history(branch)
-    
+    if not which_revs:
+        return None, None, None, None
+
+    # For mainline generation, map start_revision and end_revision to 
+    # mainline revnos. If the revision is not on the mainline choose the 
+    # appropriate extreme of the mainline instead - the extra will be 
+    # filtered later.
+    # Also map the revisions to rev_ids, to be used in the later filtering
+    # stage.
+    start_rev_id = None 
     if start_revision is None:
-        start_revision = 1
+        start_revno = 1
     else:
-        branch.check_real_revno(start_revision)
+        if isinstance(start_revision,RevisionInfo):
+            start_rev_id = start_revision.rev_id
+            start_revno = start_revision.revno or 1
+        else:
+            branch.check_real_revno(start_revision)
+            start_revno = start_revision
     
+    end_rev_id = None
     if end_revision is None:
-        end_revision = len(which_revs)
+        end_revno = len(which_revs)
     else:
-        branch.check_real_revno(end_revision)
+        if isinstance(end_revision,RevisionInfo):
+            end_rev_id = end_revision.rev_id
+            end_revno = end_revision.revno or len(which_revs)
+        else:
+            branch.check_real_revno(end_revision)
+            end_revno = end_revision
+
+    if start_revno > end_revno:
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError("Start revision must be older than "
+                              "the end revision.")
 
     # list indexes are 0-based; revisions are 1-based
-    cut_revs = which_revs[(start_revision-1):(end_revision)]
+    cut_revs = which_revs[(start_revno-1):(end_revno)]
     if not cut_revs:
-        return
+        return None, None, None, None
 
     # convert the revision history to a dictionary:
     rev_nos = dict((k, v) for v, k in cut_revs)
@@ -209,88 +377,58 @@ def _show_log(branch,
     if cut_revs[0][0] == 1:
         mainline_revs.insert(0, None)
     else:
-        mainline_revs.insert(0, which_revs[start_revision-2][1])
-    # how should we show merged revisions ?
-    # old api: show_merge. New api: show_merge_revno
-    show_merge_revno = getattr(lf, 'show_merge_revno', None)
-    show_merge = getattr(lf, 'show_merge', None)
-    if show_merge is None and show_merge_revno is None:
-        # no merged-revno support
-        include_merges = False
-    else:
-        include_merges = True
-    if show_merge is not None and show_merge_revno is None:
-        # tell developers to update their code
-        symbol_versioning.warn('LogFormatters should provide show_merge_revno '
-            'instead of show_merge since bzr 0.11.',
-            DeprecationWarning, stacklevel=3)
-    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, include_merges=include_merges)
-    if specific_fileid:
-        view_revisions = _get_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         mainline_revs,
-                                                         view_revs_iter)
-    else:
-        view_revisions = list(view_revs_iter)
+        mainline_revs.insert(0, which_revs[start_revno-2][1])
+    return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
-    use_tags = getattr(lf, 'supports_tags', False)
-    if use_tags:
-        rev_tag_dict = {}
-        if branch.supports_tags():
-            rev_tag_dict = branch.tags.get_reverse_tag_dict()
 
-    def iter_revisions():
-        # r = revision, n = revno, d = merge depth
+def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
+    """Filter view_revisions based on revision ranges.
+
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth) 
+            tuples to be filtered.
+
+    :param start_rev_id: If not NONE specifies the first revision to be logged.
+            If NONE then all revisions up to the end_rev_id are logged.
+
+    :param end_rev_id: If not NONE specifies the last revision to be logged.
+            If NONE then all revisions up to the end of the log are logged.
+
+    :return: The filtered view_revisions.
+    """
+    if start_rev_id or end_rev_id: 
         revision_ids = [r for r, n, d in view_revisions]
-        zeros = set(r for r, n, d in view_revisions if d == 0)
-        num = 9
-        repository = branch.repository
-        while revision_ids:
-            cur_deltas = {}
-            revisions = repository.get_revisions(revision_ids[:num])
-            if verbose:
-                delta_revisions = [r for r in revisions if
-                                   r.revision_id in zeros]
-                deltas = repository.get_deltas_for_revisions(delta_revisions)
-                cur_deltas = dict(izip((r.revision_id for r in 
-                                        delta_revisions), deltas))
-            for revision in revisions:
-                # The delta value will be None unless
-                # 1. verbose is specified, and
-                # 2. the revision is a mainline revision
-                yield revision, cur_deltas.get(revision.revision_id)
-            revision_ids  = revision_ids[num:]
-            num = min(int(num * 1.5), 200)
-            
-    # now we just print all the revisions
-    for ((rev_id, revno, merge_depth), (rev, delta)) in \
-         izip(view_revisions, iter_revisions()):
-
-        if searchRE:
-            if not searchRE.search(rev.message):
-                continue
-
-        if merge_depth == 0:
-            if use_tags:
-                lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
-            else:
-                lf.show(revno, rev, delta)
+        if start_rev_id:
+            start_index = revision_ids.index(start_rev_id)
         else:
-            if show_merge_revno is None:
-                lf.show_merge(rev, merge_depth)
+            start_index = 0
+        if start_rev_id == end_rev_id:
+            end_index = start_index
+        else:
+            if end_rev_id:
+                end_index = revision_ids.index(end_rev_id)
             else:
-                if use_tags:
-                    lf.show_merge_revno(rev, merge_depth, revno,
-                                        rev_tag_dict.get(rev_id))
-                else:
-                    lf.show_merge_revno(rev, merge_depth, revno)
+                end_index = len(view_revisions) - 1
+        # To include the revisions merged into the last revision, 
+        # extend end_rev_id down to, but not including, the next rev
+        # with the same or lesser merge_depth
+        end_merge_depth = view_revisions[end_index][2]
+        try:
+            for index in xrange(end_index+1, len(view_revisions)+1):
+                if view_revisions[index][2] <= end_merge_depth:
+                    end_index = index - 1
+                    break
+        except IndexError:
+            # if the search falls off the end then log to the end as well
+            end_index = len(view_revisions) - 1
+        view_revisions = view_revisions[start_index:end_index+1]
+    return view_revisions
 
 
-def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                    view_revs_iter):
+def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
+                                       view_revs_iter):
     """Return the list of revision ids which touch a given file id.
 
+    The function filters view_revisions and returns a subset.
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::
@@ -398,14 +536,59 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     return result
 
 
+class LogRevision(object):
+    """A revision to be logged (by LogFormatter.log_revision).
+
+    A simple wrapper for the attributes of a revision to be logged.
+    The attributes may or may not be populated, as determined by the 
+    logging options and the log formatter capabilities.
+    """
+
+    def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
+                 tags=None):
+        self.rev = rev
+        self.revno = revno
+        self.merge_depth = merge_depth
+        self.delta = delta
+        self.tags = tags
+
+
 class LogFormatter(object):
-    """Abstract class to display log messages."""
+    """Abstract class to display log messages.
+
+    At a minimum, a derived class must implement the log_revision method.
+
+    If the LogFormatter needs to be informed of the beginning or end of
+    a log it should implement the begin_log and/or end_log hook methods.
+
+    A LogFormatter should define the following supports_XXX flags 
+    to indicate which LogRevision attributes it supports:
+
+    - supports_delta must be True if this log formatter supports delta.
+        Otherwise the delta attribute may not be populated.
+    - supports_merge_revisions must be True if this log formatter supports 
+        merge revisions.  If not, only mainline revisions (those 
+        with merge_depth == 0) will be passed to the formatter.
+    - supports_tags must be True if this log formatter supports tags.
+        Otherwise the tags attribute may not be populated.
+    """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
 
+# TODO: uncomment this block after show() has been removed.
+# Until then defining log_revision would prevent _show_log calling show() 
+# in legacy formatters.
+#    def log_revision(self, revision):
+#        """Log a revision.
+#
+#        :param  revision:   The LogRevision to be logged.
+#        """
+#        raise NotImplementedError('not implemented in abstract base')
+
+    @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
 
@@ -415,92 +598,112 @@ class LogFormatter(object):
 
 class LongLogFormatter(LogFormatter):
 
-    supports_tags = True    # must exist and be True
-                            # if this log formatter support tags.
-                            # .show() and .show_merge_revno() must then accept
-                            # the 'tags'-argument with list of tags
+    supports_merge_revisions = True
+    supports_delta = True
+    supports_tags = True
 
+    @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta, tags=None):
-        return self._show_helper(revno=revno, rev=rev, delta=delta, tags=tags)
+        lr = LogRevision(rev, revno, 0, delta, tags)
+        return self.log_revision(lr)
 
     @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
-        return self._show_helper(rev=rev, indent='    '*merge_depth,
-                                 merged=True, delta=None)
+        lr = LogRevision(rev, merge_depth=merge_depth)
+        return self.log_revision(lr)
 
+    @deprecated_method(zero_seventeen)
     def show_merge_revno(self, rev, merge_depth, revno, tags=None):
         """Show a merged revision rev, with merge_depth and a revno."""
-        return self._show_helper(rev=rev, revno=revno,
-            indent='    '*merge_depth, merged=True, delta=None, tags=tags)
+        lr = LogRevision(rev, revno, merge_depth, tags=tags)
+        return self.log_revision(lr)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False,
-                     delta=None, tags=None):
-        """Show a revision, either merged or not."""
+    def log_revision(self, revision):
+        """Log a revision, either merged or not."""
         from bzrlib.osutils import format_date
+        indent = '    '*revision.merge_depth
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
-        if revno is not None:
-            print >>to_file,  indent+'revno:', revno
-        if tags:
-            print >>to_file, indent+'tags: %s' % (', '.join(tags))
-        if merged:
-            print >>to_file,  indent+'merged:', rev.revision_id
-        elif self.show_ids:
-            print >>to_file,  indent+'revision-id:', rev.revision_id
+        if revision.revno is not None:
+            print >>to_file,  indent+'revno:', revision.revno
+        if revision.tags:
+            print >>to_file, indent+'tags: %s' % (', '.join(revision.tags))
         if self.show_ids:
-            for parent_id in rev.parent_ids:
+            print >>to_file, indent+'revision-id:', revision.rev.revision_id
+            for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
-        print >>to_file,  indent+'committer:', rev.committer
+        print >>to_file, indent+'committer:', revision.rev.committer
 
         try:
             print >>to_file, indent+'branch nick: %s' % \
-                rev.properties['branch-nick']
+                revision.rev.properties['branch-nick']
         except KeyError:
             pass
-        date_str = format_date(rev.timestamp,
-                               rev.timezone or 0,
+        date_str = format_date(revision.rev.timestamp,
+                               revision.rev.timezone or 0,
                                self.show_timezone)
         print >>to_file,  indent+'timestamp: %s' % date_str
 
         print >>to_file,  indent+'message:'
-        if not rev.message:
+        if not revision.rev.message:
             print >>to_file,  indent+'  (no message)'
         else:
-            message = rev.message.rstrip('\r\n')
+            message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
-        if delta is not None:
-            delta.show(to_file, self.show_ids)
+        if revision.delta is not None:
+            revision.delta.show(to_file, self.show_ids, indent=indent)
 
 
 class ShortLogFormatter(LogFormatter):
+
+    supports_delta = True
+
+    @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
+        lr = LogRevision(rev, revno, 0, delta)
+        return self.log_revision(lr)
+
+    def log_revision(self, revision):
         from bzrlib.osutils import format_date
 
         to_file = self.to_file
-        date_str = format_date(rev.timestamp, rev.timezone or 0,
-                            self.show_timezone)
-        print >>to_file, "%5s %s\t%s" % (revno, self.short_committer(rev),
-                format_date(rev.timestamp, rev.timezone or 0,
+        date_str = format_date(revision.rev.timestamp,
+                               revision.rev.timezone or 0,
+                               self.show_timezone)
+        is_merge = ''
+        if len(revision.rev.parent_ids) > 1:
+            is_merge = ' [merge]'
+        print >>to_file, "%5s %s\t%s%s" % (revision.revno,
+                self.short_committer(revision.rev),
+                format_date(revision.rev.timestamp,
+                            revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
-                           show_offset=False))
+                            show_offset=False),
+                is_merge)
         if self.show_ids:
-            print >>to_file,  '      revision-id:', rev.revision_id
-        if not rev.message:
+            print >>to_file,  '      revision-id:', revision.rev.revision_id
+        if not revision.rev.message:
             print >>to_file,  '      (no message)'
         else:
-            message = rev.message.rstrip('\r\n')
+            message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
                 print >>to_file,  '      ' + l
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
-        if delta is not None:
-            delta.show(to_file, self.show_ids)
+        if revision.delta is not None:
+            revision.delta.show(to_file, self.show_ids)
         print >>to_file, ''
 
 
 class LineLogFormatter(LogFormatter):
+
+    def __init__(self, *args, **kwargs):
+        from bzrlib.osutils import terminal_width
+        super(LineLogFormatter, self).__init__(*args, **kwargs)
+        self._max_chars = terminal_width() - 1
+
     def truncate(self, str, max_len):
         if len(str) <= max_len:
             return str
@@ -518,9 +721,14 @@ class LineLogFormatter(LogFormatter):
         else:
             return rev.message
 
+    @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
         from bzrlib.osutils import terminal_width
         print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
+
+    def log_revision(self, revision):
+        print >>self.to_file, self.log_string(revision.revno, revision.rev,
+                                              self._max_chars)
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string
@@ -593,6 +801,7 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 
+
 def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
     """Show the change in revision history comparing the old revision history to the new one.
 
@@ -633,7 +842,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         to_file.write('\nRemoved Revisions:\n')
         for i in range(base_idx, len(old_rh)):
             rev = branch.repository.get_revision(old_rh[i])
-            lf.show(i+1, rev, None)
+            lr = LogRevision(rev, i+1, 0, None)
+            lf.log_revision(lr)
         to_file.write('*'*60)
         to_file.write('\n\n')
     if base_idx < len(new_rh):

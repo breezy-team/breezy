@@ -23,6 +23,7 @@ import pprint
 
 from bzrlib import (
     osutils,
+    timestamp,
     )
 import bzrlib.errors
 from bzrlib.bundle import apply_bundle
@@ -76,19 +77,37 @@ class RevisionInfo(object):
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
-                assert key_end is not None
-                key = property[:key_end].encode('utf-8')
-                value = property[key_end+2:].encode('utf-8')
+                if key_end == -1:
+                    assert property.endswith(':')
+                    key = str(property[:-1])
+                    value = ''
+                else:
+                    key = str(property[:key_end])
+                    value = property[key_end+2:]
                 rev.properties[key] = value
 
         return rev
+
+    @staticmethod
+    def from_revision(revision):
+        revision_info = RevisionInfo(revision.revision_id)
+        date = timestamp.format_highres_date(revision.timestamp,
+                                             revision.timezone)
+        revision_info.date = date
+        revision_info.timezone = revision.timezone
+        revision_info.timestamp = revision.timestamp
+        revision_info.message = revision.message.split('\n')
+        revision_info.properties = [': '.join(p) for p in
+                                    revision.properties.iteritems()]
+        return revision_info
 
 
 class BundleInfo(object):
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
-    def __init__(self):
+    def __init__(self, bundle_format=None):
+        self.bundle_format = None
         self.committer = None
         self.date = None
         self.message = None
@@ -104,6 +123,9 @@ class BundleInfo(object):
 
         self.timestamp = None
         self.timezone = None
+
+        # Have we checked the repository yet?
+        self._validated_revisions_against_repo = False
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -176,7 +198,8 @@ class BundleInfo(object):
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
         assert base != revision_id
-        self._validate_references_from_repository(repository)
+        if not self._validated_revisions_against_repo:
+            self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
         bundle_tree = BundleTree(repository.revision_tree(base), 
@@ -258,6 +281,7 @@ class BundleInfo(object):
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the bundle.' % count)
+        self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):
         """At this point we should have generated the BundleTree,
@@ -437,6 +461,13 @@ class BundleInfo(object):
         """Install revisions and return the target revision"""
         apply_bundle.install_bundle(target_repo, self)
         return self.target
+
+    def get_merge_request(self, target_repo):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.target, 'inapplicable'
 
 
 class BundleTree(Tree):

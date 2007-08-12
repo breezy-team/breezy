@@ -51,7 +51,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
 
         out = cStringIO.StringIO()
         rev_ids = write_bundle(wt.branch.repository,
-                               wt.get_parent_ids()[0], None, out)
+                               wt.get_parent_ids()[0], 'null:', out)
         out.seek(0)
         if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
@@ -69,8 +69,8 @@ class TestReadBundleFromURL(TestTransportImplementation):
             return
         info = bzrlib.bundle.read_bundle_from_url(
                     unicode(self.get_url('test_bundle')))
-        bundle_tree = info.revision_tree(wt.branch.repository, info.target)
-        self.assertEqual('commit-1', bundle_tree.revision_id)
+        revision = info.real_revisions[-1]
+        self.assertEqual('commit-1', revision.revision_id)
 
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file

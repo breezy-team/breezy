@@ -69,10 +69,10 @@ class TestBranch(TestCaseWithBranch):
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
         ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':[],
-                          'rev-2':['rev-1'],
-                          'rev-1.1.1':['rev-1'],
-                          'rev-3':['rev-2', 'rev-1.1.1'],
+        self.assertEqual({'rev-1':(),
+                          'rev-2':('rev-1', ),
+                          'rev-1.1.1':('rev-1', ),
+                          'rev-3':('rev-2', 'rev-1.1.1', ),
                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
@@ -167,22 +167,6 @@ class TestBranch(TestCaseWithBranch):
         br_b = branch.clone(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
-    def test_sprout_partial(self):
-        # test sprouting with a prefix of the revision-history.
-        # also needs not-on-revision-history behaviour defined.
-        wt_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/one'])
-        wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
-        self.build_tree(['a/two'])
-        wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
-        repo_b = self.make_repository('b')
-        repo_a = wt_a.branch.repository
-        repo_a.copy_content_into(repo_b)
-        br_b = wt_a.branch.sprout(repo_b.bzrdir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
-
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
@@ -213,15 +197,6 @@ class TestBranch(TestCaseWithBranch):
         branch_b.repository.copy_content_into(repo_d)
         branch_d = branch_b.clone(repo_d.bzrdir)
         self.assertEqual(random_parent, branch_d.get_parent())
-
-    def test_sprout_branch_nickname(self):
-        # test the nick name is reset always
-        raise TestSkipped('XXX branch sprouting is not yet tested..')
-
-    def test_sprout_branch_parent(self):
-        source = self.make_branch('source')
-        target = source.bzrdir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
 
     def test_submit_branch(self):
         """Submit location can be queried and set"""
@@ -392,8 +367,12 @@ class TestBranch(TestCaseWithBranch):
         result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
-        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            repository.CommitBuilder)
+        branch = self.make_branch(".")
+        branch.lock_write()
+        builder = branch.get_commit_builder([])
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        branch.repository.commit_write_group()
+        branch.unlock()
 
     def test_generate_revision_history(self):
         """Create a fake revision history easily."""

@@ -607,7 +607,7 @@ class Weave(VersionedFile):
         else:
             return self.get_ancestry(version_ids)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(version_ids, basestring):
             version_ids = [version_ids]
@@ -890,6 +890,10 @@ class Weave(VersionedFile):
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
         return self._sha1s[self._lookup(version_id)]
+
+    def get_sha1s(self, version_ids):
+        """See VersionedFile.get_sha1s()."""
+        return [self._sha1s[self._lookup(v)] for v in version_ids]
 
     @deprecated_method(zero_eight)
     def numversions(self):

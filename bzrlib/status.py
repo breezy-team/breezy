@@ -163,12 +163,15 @@ def show_tree_status(wt, show_unchanged=None,
                            show_ids=show_ids,
                            show_unchanged=show_unchanged,
                            short_status=False)
-            conflict_title = False
-            # show the new conflicts only for now. XXX: get them from the delta.
-            for conflict in new.conflicts():
-                if not short and conflict_title is False:
-                    print >> to_file, "conflicts:"
-                    conflict_title = True
+            # show the new conflicts only for now. XXX: get them from the
+            # delta.
+            conflicts = new.conflicts()
+            if specific_files is not None:
+                conflicts = conflicts.select_conflicts(new, specific_files,
+                    ignore_misses=True, recurse=True)[1]
+            if len(conflicts) > 0 and not short:
+                print >> to_file, "conflicts:"
+            for conflict in conflicts:
                 if short:
                     prefix = 'C  '
                 else:
@@ -194,7 +197,8 @@ def show_pending_merges(new, to_file, short=False):
         print >>to_file, 'pending merges:'
     if last_revision is not None:
         try:
-            ignore = set(branch.repository.get_ancestry(last_revision))
+            ignore = set(branch.repository.get_ancestry(last_revision,
+                                                        topo_sorted=False))
         except errors.NoSuchRevision:
             # the last revision is a ghost : assume everything is new 
             # except for it

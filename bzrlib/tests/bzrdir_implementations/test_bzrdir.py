@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision as _mod_revision,
     transactions,
     transport,
     ui,
@@ -48,28 +49,13 @@ from bzrlib.tests import (
                           TestCaseWithTransport,
                           TestSkipped,
                           )
+from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.repofmt import weaverepo
-
-
-class TestCaseWithBzrDir(TestCaseWithTransport):
-
-    def setUp(self):
-        super(TestCaseWithBzrDir, self).setUp()
-        self.bzrdir = None
-
-    def get_bzrdir(self):
-        if self.bzrdir is None:
-            self.bzrdir = self.make_bzrdir(None)
-        return self.bzrdir
-
-    def make_bzrdir(self, relpath, format=None):
-        return super(TestCaseWithBzrDir, self).make_bzrdir(
-            relpath, format=self.bzrdir_format)
-
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -144,11 +130,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
         TestSkipped.  Returns the newly sprouted bzrdir.
         """
-        try:
-            target = from_bzrdir.sprout(to_url, revision_id=revision_id,
-                                        force_new_repo=force_new_repo)
-        except errors.NotLocalUrl:
+        to_transport = get_transport(to_url)
+        if not isinstance(to_transport, LocalTransport):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
+        target = from_bzrdir.sprout(to_url, revision_id=revision_id,
+                                    force_new_repo=force_new_repo,
+                                    possible_transports=[to_transport])
         return target
 
     def test_create_null_workingtree(self):
@@ -191,7 +178,15 @@ class TestBzrDir(TestCaseWithBzrDir):
             # so this test is irrelevant.
             return
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
-            
+
+    def test_clone_on_transport(self):
+        a_dir = self.make_bzrdir('source')
+        target_transport = a_dir.root_transport.clone('..').clone('target')
+        target = a_dir.clone_on_transport(target_transport)
+        self.assertNotEqual(a_dir.transport.base, target.transport.base)
+        self.assertDirectoriesEqual(a_dir.root_transport, target.root_transport,
+                                    ['./.bzr/merge-hashes'])
+
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'))
@@ -594,7 +589,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
         try:
-            self.assertIs(dir.open_branch().last_revision(), None)
+            self.assertTrue(
+                _mod_revision.is_null(_mod_revision.ensure_null(
+                dir.open_branch().last_revision())))
         except errors.NotBranchError:
             pass
         target = self.sproutOrSkip(dir, self.get_url('target'))

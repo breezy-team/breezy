@@ -16,9 +16,13 @@
 
 from cStringIO import StringIO
 import errno
+import md5
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import re
+import sha
 import socket
+import time
+import urllib2
 import urlparse
 
 from bzrlib.smart import protocol
@@ -146,6 +150,36 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.wfile.write(out_buffer.getvalue())
 
 
+class LimitedRangeRequestHandler(TestingHTTPRequestHandler):
+    """Errors out when range specifiers exceed the limit"""
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        """Refuses the multiple ranges request"""
+        tcs = self.server.test_case_server
+        if tcs.range_limit is not None and len(ranges) > tcs.range_limit:
+            file.close()
+            # Emulate apache behavior
+            self.send_error(400, "Bad Request")
+            return
+        return TestingHTTPRequestHandler.get_multiple_ranges(self, file,
+                                                             file_size, ranges)
+
+    def do_GET(self):
+        tcs = self.server.test_case_server
+        tcs.GET_request_nb += 1
+        return TestingHTTPRequestHandler.do_GET(self)
+
+
+class LimitedRangeHTTPServer(HttpServer):
+    """An HttpServer erroring out on requests with too much range specifiers"""
+
+    def __init__(self, request_handler=LimitedRangeRequestHandler,
+                 range_limit=None):
+        HttpServer.__init__(self, request_handler)
+        self.range_limit = range_limit
+        self.GET_request_nb = 0
+
+
 class SingleRangeRequestHandler(TestingHTTPRequestHandler):
     """Always reply to range request as if they were single.
 
@@ -154,6 +188,19 @@ class SingleRangeRequestHandler(TestingHTTPRequestHandler):
 
     def get_multiple_ranges(self, file, file_size, ranges):
         """Answer as if it was a single range request and ignores the rest"""
+        (start, end) = ranges[0]
+        return self.get_single_range(file, file_size, start, end)
+
+
+class SingleOnlyRangeRequestHandler(TestingHTTPRequestHandler):
+    """Only reply to simple range requests, errors out on multiple"""
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        """Refuses the multiple ranges request"""
+        if len(ranges) > 1:
+            file.close()
+            self.send_error(416, "Requested range not satisfiable")
+            return
         (start, end) = ranges[0]
         return self.get_single_range(file, file_size, start, end)
 
@@ -204,26 +251,10 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self.__secondary_server
 
 
-class FakeProxyRequestHandler(TestingHTTPRequestHandler):
-    """Append a '-proxied' suffix to file served"""
+class ProxyServer(HttpServer):
+    """A proxy test server for http transports."""
 
-    def translate_path(self, path):
-        # We need to act as a proxy and accept absolute urls,
-        # which SimpleHTTPRequestHandler (grand parent) is not
-        # ready for. So we just drop the protocol://host:port
-        # part in front of the request-url (because we know we
-        # would not forward the request to *another* proxy).
-
-        # So we do what SimpleHTTPRequestHandler.translate_path
-        # do beginning with python 2.4.3: abandon query
-        # parameters, scheme, host port, etc (which ensure we
-        # provide the right behaviour on all python versions).
-        path = urlparse.urlparse(path)[2]
-        # And now, we can apply *our* trick to proxy files
-        self.path += '-proxied'
-        # An finally we leave our mother class do whatever it
-        # wants with the path
-        return TestingHTTPRequestHandler.translate_path(self, path)
+    proxy_requests = True
 
 
 class RedirectRequestHandler(TestingHTTPRequestHandler):
@@ -307,5 +338,229 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.new_server = self.get_readonly_server()
        # The requests to the old server will be redirected
        self.old_server = self.get_secondary_server()
+
+
+class AuthRequestHandler(TestingHTTPRequestHandler):
+    """Requires an authentication to process requests.
+
+    This is intended to be used with a server that always and
+    only use one authentication scheme (implemented by daughter
+    classes).
+    """
+
+    # The following attributes should be defined in the server
+    # - auth_header_sent: the header name sent to require auth
+    # - auth_header_recv: the header received containing auth
+    # - auth_error_code: the error code to indicate auth required
+
+    def do_GET(self):
+        if self.authorized():
+            return TestingHTTPRequestHandler.do_GET(self)
+        else:
+            # Note that we must update test_case_server *before*
+            # sending the error or the client may try to read it
+            # before we have sent the whole error back.
+            tcs = self.server.test_case_server
+            tcs.auth_required_errors += 1
+            self.send_response(tcs.auth_error_code)
+            self.send_header_auth_reqed()
+            self.end_headers()
+            return
+
+
+class BasicAuthRequestHandler(AuthRequestHandler):
+    """Implements the basic authentication of a request"""
+
+    def authorized(self):
+        tcs = self.server.test_case_server
+        if tcs.auth_scheme != 'basic':
+            return False
+
+        auth_header = self.headers.get(tcs.auth_header_recv, None)
+        if auth_header:
+            scheme, raw_auth = auth_header.split(' ', 1)
+            if scheme.lower() == tcs.auth_scheme:
+                user, password = raw_auth.decode('base64').split(':')
+                return tcs.authorized(user, password)
+
+        return False
+
+    def send_header_auth_reqed(self):
+        tcs = self.server.test_case_server
+        self.send_header(tcs.auth_header_sent,
+                         'Basic realm="%s"' % tcs.auth_realm)
+
+
+# FIXME: We could send an Authentication-Info header too when
+# the authentication is succesful
+
+class DigestAuthRequestHandler(AuthRequestHandler):
+    """Implements the digest authentication of a request.
+
+    We need persistence for some attributes and that can't be
+    achieved here since we get instantiated for each request. We
+    rely on the DigestAuthServer to take care of them.
+    """
+
+    def authorized(self):
+        tcs = self.server.test_case_server
+        if tcs.auth_scheme != 'digest':
+            return False
+
+        auth_header = self.headers.get(tcs.auth_header_recv, None)
+        if auth_header is None:
+            return False
+        scheme, auth = auth_header.split(None, 1)
+        if scheme.lower() == tcs.auth_scheme:
+            auth_dict = urllib2.parse_keqv_list(urllib2.parse_http_list(auth))
+
+            return tcs.digest_authorized(auth_dict, self.command)
+
+        return False
+
+    def send_header_auth_reqed(self):
+        tcs = self.server.test_case_server
+        header = 'Digest realm="%s", ' % tcs.auth_realm
+        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+                                                              'MD5')
+        self.send_header(tcs.auth_header_sent,header)
+
+
+class AuthServer(HttpServer):
+    """Extends HttpServer with a dictionary of passwords.
+
+    This is used as a base class for various schemes which should
+    all use or redefined the associated AuthRequestHandler.
+
+    Note that no users are defined by default, so add_user should
+    be called before issuing the first request.
+    """
+
+    # The following attributes should be set dy daughter classes
+    # and are used by AuthRequestHandler.
+    auth_header_sent = None
+    auth_header_recv = None
+    auth_error_code = None
+    auth_realm = "Thou should not pass"
+
+    def __init__(self, request_handler, auth_scheme):
+        HttpServer.__init__(self, request_handler)
+        self.auth_scheme = auth_scheme
+        self.password_of = {}
+        self.auth_required_errors = 0
+
+    def add_user(self, user, password):
+        """Declare a user with an associated password.
+
+        password can be empty, use an empty string ('') in that
+        case, not None.
+        """
+        self.password_of[user] = password
+
+    def authorized(self, user, password):
+        """Check that the given user provided the right password"""
+        expected_password = self.password_of.get(user, None)
+        return expected_password is not None and password == expected_password
+
+
+# FIXME: There is some code duplication with
+# _urllib2_wrappers.py.DigestAuthHandler. If that duplciation
+# grows, it may require a refactoring. Also, we don't implement
+# SHA algorithm nor MD5-sess here, but that does not seem worth
+# it.
+class DigestAuthServer(AuthServer):
+    """A digest authentication server"""
+
+    auth_nonce = 'now!'
+
+    def __init__(self, request_handler, auth_scheme):
+        AuthServer.__init__(self, request_handler, auth_scheme)
+
+    def digest_authorized(self, auth, command):
+        nonce = auth['nonce']
+        if nonce != self.auth_nonce:
+            return False
+        realm = auth['realm']
+        if realm != self.auth_realm:
+            return False
+        user = auth['username']
+        if not self.password_of.has_key(user):
+            return False
+        algorithm= auth['algorithm']
+        if algorithm != 'MD5':
+            return False
+        qop = auth['qop']
+        if qop != 'auth':
+            return False
+
+        password = self.password_of[user]
+
+        # Recalculate the response_digest to compare with the one
+        # sent by the client
+        A1 = '%s:%s:%s' % (user, realm, password)
+        A2 = '%s:%s' % (command, auth['uri'])
+
+        H = lambda x: md5.new(x).hexdigest()
+        KD = lambda secret, data: H("%s:%s" % (secret, data))
+
+        nonce_count = int(auth['nc'], 16)
+
+        ncvalue = '%08x' % nonce_count
+
+        cnonce = auth['cnonce']
+        noncebit = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
+        response_digest = KD(H(A1), noncebit)
+
+        return response_digest == auth['response']
+
+class HTTPAuthServer(AuthServer):
+    """An HTTP server requiring authentication"""
+
+    def init_http_auth(self):
+        self.auth_header_sent = 'WWW-Authenticate'
+        self.auth_header_recv = 'Authorization'
+        self.auth_error_code = 401
+
+
+class ProxyAuthServer(AuthServer):
+    """A proxy server requiring authentication"""
+
+    def init_proxy_auth(self):
+        self.proxy_requests = True
+        self.auth_header_sent = 'Proxy-Authenticate'
+        self.auth_header_recv = 'Proxy-Authorization'
+        self.auth_error_code = 407
+
+
+class HTTPBasicAuthServer(HTTPAuthServer):
+    """An HTTP server requiring basic authentication"""
+
+    def __init__(self):
+        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+        self.init_http_auth()
+
+
+class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
+    """An HTTP server requiring digest authentication"""
+
+    def __init__(self):
+        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+        self.init_http_auth()
+
+
+class ProxyBasicAuthServer(ProxyAuthServer):
+    """A proxy server requiring basic authentication"""
+
+    def __init__(self):
+        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+        self.init_proxy_auth()
+
+
+class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
+    """A proxy server requiring basic authentication"""
+
+    def __init__(self):
+        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+        self.init_proxy_auth()
 
 

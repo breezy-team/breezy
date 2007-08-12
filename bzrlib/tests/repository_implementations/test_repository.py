@@ -16,6 +16,7 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
+from cStringIO import StringIO
 import re
 
 import bzrlib
@@ -29,22 +30,10 @@ from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-
-
-class TestCaseWithRepository(TestCaseWithBzrDir):
-
-    def make_repository(self, relpath, format=None):
-        if format is None:
-            # Create a repository of the type we are trying to test.
-            made_control = self.make_bzrdir(relpath)
-            return self.repository_format.initialize(made_control)
-        else:
-            return super(TestCaseWithRepository, self).make_repository(
-                relpath, format)
 
 
 class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
@@ -274,7 +263,11 @@ class TestRepository(TestCaseWithRepository):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         old_signature = repo.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
@@ -427,6 +420,11 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_serializer_format(self):
+        repo = self.make_repository('.')
+        format = repo.get_serializer_format()
+        self.assertEqual(repo._serializer.format_num, format)
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -538,26 +536,31 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
 
+    def test_get_unsorted_ancestry(self):
+        repo = self.bzrdir.open_repository()
+        self.assertEqual(set(repo.get_ancestry('rev3')),
+                         set(repo.get_ancestry('rev3', topo_sorted=False)))
+
     def test_get_revision_graph(self):
         # we can get a mapping of id->parents for the entire revision graph or bits thereof.
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1'],
-                          'rev3':['rev2'],
-                          'rev4':['rev3'],
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', ),
+                          'rev3':('rev2', ),
+                          'rev4':('rev3', ),
                           },
                          self.bzrdir.open_repository().get_revision_graph(None))
-        self.assertEqual({'rev1':[]},
+        self.assertEqual({'rev1':()},
                          self.bzrdir.open_repository().get_revision_graph('rev1'))
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1']},
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', )},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
         # and ghosts are not mentioned
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1'],
-                          'rev3':['rev2'],
+        self.assertEqual({'rev1':(),
+                          'rev2':('rev1', ),
+                          'rev3':('rev2', ),
                           },
                          self.bzrdir.open_repository().get_revision_graph('rev3'))
         # and we can ask for the NULLREVISION graph
@@ -605,6 +608,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
+        repo.lock_write()
+        repo.start_write_group()
         inv = Inventory(revision_id = 'ghost')
         inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
@@ -631,6 +636,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
         self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
@@ -686,3 +693,11 @@ class TestEscaping(TestCaseWithTransport):
         revtree = branch.repository.revision_tree(REV_ID)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
+
+    def test_create_bundle(self):
+        wt = self.make_branch_and_tree('repo')
+        self.build_tree(['repo/file1'])
+        wt.add('file1')
+        wt.commit('file1', rev_id='rev1')
+        fileobj = StringIO()
+        wt.branch.repository.create_bundle('rev1', NULL_REVISION, fileobj)

@@ -21,6 +21,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     inventory,
+    revision as _mod_revision,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
@@ -150,6 +151,7 @@ class Serializer_v5(Serializer):
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = set(['file', 'directory', 'symlink'])
+    format_num = '5'
 
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
@@ -256,6 +258,7 @@ class Serializer_v5(Serializer):
             pelts.tail = pelts.text = '\n'
             for parent_id in rev.parent_ids:
                 assert isinstance(parent_id, basestring)
+                _mod_revision.check_not_reserved_id(parent_id)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
                 if isinstance(parent_id, str):

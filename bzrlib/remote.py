@@ -19,8 +19,13 @@
 
 from cStringIO import StringIO
 
-from bzrlib import branch, errors, lockdir, repository
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib import (
+    branch,
+    errors,
+    lockdir,
+    repository,
+)
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -28,6 +33,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -46,14 +52,13 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._medium = transport.get_smart_client()
-            self._client = client._SmartClient(self._medium)
+            self._shared_medium = transport.get_shared_medium()
+            self._client = client._SmartClient(self._shared_medium)
         else:
             self._client = _client
-            self._medium = None
+            self._shared_medium = None
             return
 
-        self._ensure_real()
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:
@@ -105,7 +110,7 @@ class RemoteBzrDir(BzrDir):
         elif response == ('nobranch',):
             raise errors.NotBranchError(path=self.root_transport.base)
         else:
-            assert False, 'unexpected response code %r' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
@@ -235,7 +240,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         else:
             self._client = _client
         self._format = format
@@ -243,6 +248,28 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+
+    def abort_write_group(self):
+        """Complete a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.abort_write_group()
+
+    def commit_write_group(self):
+        """Complete a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.commit_write_group()
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
@@ -275,7 +302,7 @@ class RemoteRepository(object):
             lines = coded.split('\n')
             revision_graph = {}
             for line in lines:
-                d = list(line.split())
+                d = tuple(line.split())
                 revision_graph[d[0]] = d[1:]
                 
             return revision_graph
@@ -293,6 +320,14 @@ class RemoteRepository(object):
         response = self._client.call('Repository.has_revision', path, revision_id)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def has_same_location(self, other):
+        return (self.__class__ == other.__class__ and
+                self.bzrdir.transport.base == other.bzrdir.transport.base)
+        
+    def get_graph(self, other_repository=None):
+        """Return the graph for this repository format"""
+        return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -328,6 +363,17 @@ class RemoteRepository(object):
         """See Repository.get_physical_lock_status()."""
         return False
 
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        write groups are only applicable locally for the smart server..
+        """
+        if self._real_repository:
+            return self._real_repository.is_in_write_group()
+
+    def is_locked(self):
+        return self._lock_count >= 1
+
     def is_shared(self):
         """See Repository.is_shared()."""
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -358,7 +404,7 @@ class RemoteRepository(object):
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def lock_write(self, token=None):
         if not self._lock_mode:
@@ -399,6 +445,17 @@ class RemoteRepository(object):
         elif self._lock_mode == 'r':
             self._real_repository.lock_read()
 
+    def start_write_group(self):
+        """Start a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.start_write_group()
+
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.unlock', path, token)
@@ -407,9 +464,14 @@ class RemoteRepository(object):
         elif response[0] == 'TokenMismatch':
             raise errors.TokenMismatch(token, '(remote token)')
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
+        if self._lock_count == 1 and self._lock_mode == 'w':
+            # don't unlock if inside a write group.
+            if self.is_in_write_group():
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self._lock_count -= 1
         if not self._lock_count:
             mode = self._lock_mode
@@ -431,11 +493,39 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.break_lock()
 
+    def _get_tarball(self, compression):
+        """Return a TemporaryFile containing a repository tarball"""
+        import tempfile
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.tarball', path, compression)
+        assert response[0] in ('ok', 'failure'), \
+            'unexpected response code %s' % (response,)
+        if response[0] == 'ok':
+            # Extract the tarball and return it
+            t = tempfile.NamedTemporaryFile()
+            # TODO: rpc layer should read directly into it...
+            t.write(protocol.read_body_bytes())
+            t.seek(0)
+            return t
+        else:
+            raise errors.SmartServerError(error_code=response)
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        # TODO: Option to control what format is created?
+        to_repo = to_bzrdir.create_repository()
+        self._copy_repository_tarball(to_repo, revision_id)
+        return to_repo
+
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
         self._ensure_real()
         return self._real_repository.revision_tree(revision_id)
+
+    def get_serializer_format(self):
+        self._ensure_real()
+        return self._real_repository.get_serializer_format()
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -494,15 +584,19 @@ class RemoteRepository(object):
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
 
+    def create_bundle(self, target, base, fileobj, format=None):
+        self._ensure_real()
+        self._real_repository.create_bundle(target, base, fileobj, format)
+
     @property
     def control_weaves(self):
         self._ensure_real()
         return self._real_repository.control_weaves
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id)
+        return self._real_repository.get_ancestry(revision_id, topo_sorted)
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -570,6 +664,44 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.copy_content_into(
             destination, revision_id=revision_id)
+
+    def _copy_repository_tarball(self, destination, revision_id=None):
+        # get a tarball of the remote repository, and copy from that into the
+        # destination
+        from bzrlib import osutils
+        import tarfile
+        import tempfile
+        from StringIO import StringIO
+        # TODO: Maybe a progress bar while streaming the tarball?
+        note("Copying repository content as tarball...")
+        tar_file = self._get_tarball('bz2')
+        try:
+            tar = tarfile.open('repository', fileobj=tar_file,
+                mode='r|bz2')
+            tmpdir = tempfile.mkdtemp()
+            try:
+                _extract_tar(tar, tmpdir)
+                tmp_bzrdir = BzrDir.open(tmpdir)
+                tmp_repo = tmp_bzrdir.open_repository()
+                tmp_repo.copy_content_into(destination, revision_id)
+            finally:
+                osutils.rmtree(tmpdir)
+        finally:
+            tar_file.close()
+        # TODO: if the server doesn't support this operation, maybe do it the
+        # slow way using the _real_repository?
+        #
+        # TODO: Suggestion from john: using external tar is much faster than
+        # python's tarfile library, but it may not work on windows.
+
+    @needs_write_lock
+    def pack(self):
+        """Compress the data within the repository.
+
+        This is not currently implemented within the smart server.
+        """
+        self._ensure_real()
+        return self._real_repository.pack()
 
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)
@@ -688,7 +820,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._shared_medium)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
@@ -710,6 +842,11 @@ class RemoteBranch(branch.Branch):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
 
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
@@ -782,7 +919,7 @@ class RemoteBranch(branch.Branch):
         elif response[0] == 'ReadOnlyError':
             raise errors.ReadOnlyError(self)
         else:
-            assert False, 'unexpected response code %r' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
             
     def lock_write(self, token=None):
         if not self._lock_mode:
@@ -832,7 +969,7 @@ class RemoteBranch(branch.Branch):
             raise errors.TokenMismatch(
                 str((branch_token, repo_token)), '(remote tokens)')
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
         self._lock_count -= 1
@@ -927,9 +1064,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        self._ensure_real()
         result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
-        self._real_branch.copy_content_into(result, revision_id=revision_id)
+        self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
@@ -939,16 +1075,24 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             **kwargs):
+        # FIXME: This asks the real branch to run the hooks, which means
+        # they're called with the wrong target branch parameter. 
+        # The test suite specifically allows this at present but it should be
+        # fixed.  It should get a _override_hook_target branch,
+        # as push does.  -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision)
+            source, overwrite=overwrite, stop_revision=stop_revision,
+            **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision)
+            target, overwrite=overwrite, stop_revision=stop_revision,
+            _override_hook_source_branch=self)
 
     def is_locked(self):
         return self._lock_count >= 1
@@ -991,3 +1135,11 @@ class RemoteBranchConfig(BranchConfig):
             self._branch_data_config = TreeConfig(self.branch._real_branch)
         return self._branch_data_config
 
+
+def _extract_tar(tar, to_dir):
+    """Extract all the contents of a tarfile object.
+
+    A replacement for extractall, which is not present in python2.4
+    """
+    for tarinfo in tar:
+        tar.extract(tarinfo, to_dir)

@@ -9,7 +9,7 @@ body {
   margin-bottom: 70px;
   font-family: Verdana, Geneva, Arial, sans-serif;
   font-size: small;
-  line-height: 180%
+  line-height: 140%
   }
 
 /* p {
@@ -111,6 +111,7 @@ dt:active
 
 tt, .literal-block {
   font-family: monospace;
+  line-height: 100%
   }
 
 tt {
@@ -120,6 +121,7 @@ tt {
 
 .literal-block {
   margin-left: 5em;
+  margin-right: 5em;
   color: #000000;
   font-weight: normal;
   background-color: #c1d1ff;
@@ -142,3 +144,7 @@ a:hover {
   color: #b52727;
   text-decoration: none;
   }
+
+span, th.field-name {
+  white-space: nowrap;
+}

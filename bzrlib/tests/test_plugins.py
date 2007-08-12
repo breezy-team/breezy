@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.capture('help commands').splitlines():
+        for line in self.run_bzr('help commands')[0].splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -167,12 +167,12 @@ class TestPluginHelp(TestCaseInTempDir):
                 # some commands have no help
                 pass
             else:
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
             if cmd_name in help_commands.keys():
                 # some commands are hidden
                 help = help_commands[cmd_name]
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
     def test_plugin_help_shows_plugin(self):
         # Create a test plugin
@@ -185,8 +185,8 @@ class TestPluginHelp(TestCaseInTempDir):
             # Check its help
             bzrlib.plugin.load_from_path(['plugin_test'])
             bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
-            help = self.capture('help myplug')
-            self.assertContainsRe(help, 'From plugin "myplug"')
+            help = self.run_bzr('help myplug')[0]
+            self.assertContainsRe(help, 'plugin "myplug"')
             help = self.split_help_commands()['myplug']
             self.assertContainsRe(help, '\[myplug\]')
         finally:
@@ -208,7 +208,10 @@ class TestPluginFromZip(TestCaseInTempDir):
     def check_plugin_load(self, zip_name, plugin_name):
         self.assertFalse(plugin_name in dir(bzrlib.plugins),
                          'Plugin already loaded')
+        old_path = bzrlib.plugins.__path__
         try:
+            # this is normally done by load_plugins -> set_plugins_path
+            bzrlib.plugins.__path__ = [zip_name]
             bzrlib.plugin.load_from_zip(zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')
@@ -216,6 +219,8 @@ class TestPluginFromZip(TestCaseInTempDir):
             # unregister plugin
             if getattr(bzrlib.plugins, plugin_name, None):
                 delattr(bzrlib.plugins, plugin_name)
+                del sys.modules['bzrlib.plugins.' + plugin_name]
+            bzrlib.plugins.__path__ = old_path
 
     def test_load_module(self):
         self.make_zipped_plugin('./test.zip', 'ziplug.py')
@@ -250,17 +255,21 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         self.assertEqual([], index.get_topics(None))
 
-    def test_get_topics_launchpad(self):
-        """Searching for 'launchpad' returns the launchpad plugin docstring."""
+    def test_get_topics_for_plugin(self):
+        """Searching for plugin name gets its docstring."""
         index = plugin.PluginsHelpIndex()
-        # if bzr was run with '--no-plugins' we need to manually load the
-        # reference plugin. Its shipped with bzr, and loading at this point
-        # won't add additional tests to run.
-        import bzrlib.plugins.launchpad
-        topics = index.get_topics('launchpad')
-        self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
-        self.assertEqual(bzrlib.plugins.launchpad, topics[0].module)
+        # make a new plugin here for this test, even if we're run with
+        # --no-plugins
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
+        sys.modules['bzrlib.plugins.demo_module'] = demo_module
+        try:
+            topics = index.get_topics('demo_module')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.demo_module']
 
     def test_get_topics_no_topic(self):
         """Searching for something that is not a plugin returns []."""
@@ -274,17 +283,19 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         self.assertEqual('plugins/', index.prefix)
 
-    def test_get_topic_with_prefix(self):
-        """Searching for plugins/launchpad returns launchpad module help."""
+    def test_get_plugin_topic_with_prefix(self):
+        """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        # if bzr was run with '--no-plugins' we need to manually load the
-        # reference plugin. Its shipped with bzr, and loading at this point
-        # won't add additional tests to run.
-        import bzrlib.plugins.launchpad
-        topics = index.get_topics('plugins/launchpad')
-        self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
-        self.assertEqual(bzrlib.plugins.launchpad, topics[0].module)
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
+        sys.modules['bzrlib.plugins.demo_module'] = demo_module
+        try:
+            topics = index.get_topics('plugins/demo_module')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.demo_module']
 
 
 class FakeModule(object):

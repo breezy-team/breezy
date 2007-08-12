@@ -189,18 +189,19 @@ class TestCaseWithDirState(TestCaseWithTransport):
               c
               d/
                 e
+            b-c
             f
         """
         tree = self.make_branch_and_tree('tree')
-        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'f']
-        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id']
+        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'b-c', 'f']
+        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'b-c-id', 'f-id']
         self.build_tree(['tree/' + p for p in paths])
         tree.set_root_id('TREE_ROOT')
         tree.add([p.rstrip('/') for p in paths], file_ids)
         tree.commit('initial', rev_id='rev-1')
         revision_id = 'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
-        t = self.get_transport().clone('tree')
+        t = self.get_transport('tree')
         a_text = t.get_bytes('a')
         a_sha = osutils.sha_string(a_text)
         a_len = len(a_text)
@@ -214,6 +215,9 @@ class TestCaseWithDirState(TestCaseWithTransport):
         e_text = t.get_bytes('b/d/e')
         e_sha = osutils.sha_string(e_text)
         e_len = len(e_text)
+        b_c_text = t.get_bytes('b-c')
+        b_c_sha = osutils.sha_string(b_c_text)
+        b_c_len = len(b_c_text)
         # f_packed_stat = dirstate.pack_stat(os.stat('tree/f'))
         f_text = t.get_bytes('f')
         f_sha = osutils.sha_string(f_text)
@@ -243,6 +247,10 @@ class TestCaseWithDirState(TestCaseWithTransport):
             'b/d/e':(('b/d', 'e', 'e-id'), [
                       ('f', '', 0, False, null_stat),
                       ('f', e_sha, e_len, False, revision_id),
+                     ]),
+            'b-c':(('', 'b-c', 'b-c-id'), [
+                      ('f', '', 0, False, null_stat),
+                      ('f', b_c_sha, b_c_len, False, revision_id),
                      ]),
             'f':(('', 'f', 'f-id'), [
                   ('f', '', 0, False, null_stat),
@@ -276,12 +284,12 @@ class TestCaseWithDirState(TestCaseWithTransport):
         tree, state, expected = self.create_basic_dirstate()
         # Now we will just remove and add every file so we get an extra entry
         # per entry. Unversion in reverse order so we handle subdirs
-        tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
-        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
-                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
+        tree.unversion(['f-id', 'b-c-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
+        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f'],
+                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'b-c-id2', 'f-id2'])
 
         # Update the expected dictionary.
-        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
+        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f']:
             orig = expected[path]
             path2 = path + '2'
             # This record was deleted in the current tree
@@ -343,6 +351,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         finally:
             state.lock_read()
         return tree, state, expected
+
 
 class TestTreeToDirState(TestCaseWithDirState):
 
@@ -558,6 +567,9 @@ class TestDirStateOnFile(TestCaseWithDirState):
             self.assertEqual('', entry[1][0][1])
             # We should have a real entry.
             self.assertNotEqual((None, None), entry)
+            # Make sure everything is old enough
+            state._sha_cutoff_time()
+            state._cutoff_time += 10
             sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
             # We should have gotten a real sha1
             self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
@@ -687,6 +699,47 @@ class TestDirStateManipulations(TestCaseWithDirState):
         else:
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_inventory_mixed_paths(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
+                         'tree1/a/b/foo', 'tree1/a-b/bar'])
+        tree1.lock_write()
+        try:
+            tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
+                      ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
+            tree1.commit('rev1', rev_id='rev1')
+            root_id = tree1.get_root_id()
+            inv = tree1.inventory
+        finally:
+            tree1.unlock()
+        expected_result1 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a', 'b', 'b-id', 'd'),
+                            ('a/b', 'foo', 'foo-id', 'f'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        expected_result2 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result1, values)
+            del inv['b-id']
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result2, values)
+        finally:
+            state.unlock()
 
     def test_set_path_id_no_parents(self):
         """The id of a path can be changed trivally with no parents."""
@@ -1421,8 +1474,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
 
-        # The dirblock entry should be updated with the new info
-        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+        # The dirblock entry should not cache the file's sha1
+        self.assertEqual([('f', '', 14, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
@@ -1447,32 +1500,35 @@ class TestUpdateEntry(TestCaseWithDirState):
                          link_or_sha1)
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
+        self.assertEqual([('f', '', 14, False, dirstate.DirState.NULLSTAT)],
+                         entry[1])
         state.save()
 
         # However, if we move the clock forward so the file is considered
-        # "stable", it should just returned the cached value.
-        state.adjust_time(20)
+        # "stable", it should just cache the value.
+        state.adjust_time(+20)
         link_or_sha1 = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
                           ('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
                          ], state._log)
+        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+                         entry[1])
 
-    def test_update_entry_no_stat_value(self):
-        """Passing the stat_value is optional."""
-        state, entry = self.get_state_with_a()
-        state.adjust_time(-10) # Make sure the file looks new
-        self.build_tree(['a'])
-        # Add one where we don't provide the stat or sha already
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        # Subsequent calls will just return the cached value
+        link_or_sha1 = state.update_entry(entry, abspath='a',
+                                          stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
-        stat_value = os.lstat('a')
-        self.assertEqual([('lstat', 'a'), ('sha1', 'a'),
-                          ('is_exec', stat_value.st_mode, False),
+        self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
                          ], state._log)
+        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+                         entry[1])
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
@@ -1492,8 +1548,8 @@ class TestUpdateEntry(TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
         self.assertEqual([('read_link', 'a', '')], state._log)
-        # Dirblock is updated
-        self.assertEqual([('l', link_or_sha1, 6, False, packed_stat)],
+        # Dirblock is not updated (the link is too new)
+        self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
@@ -1503,23 +1559,70 @@ class TestUpdateEntry(TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
         self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', 'target'),
+                          ('read_link', 'a', ''),
                          ], state._log)
+        self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
+                         entry[1])
         state.adjust_time(+20) # Skip into the future, all files look old
         link_or_sha1 = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
-        # There should not be a new read_link call.
-        # (this is a weak assertion, because read_link is fairly inexpensive,
-        # versus the number of symlinks that we would have)
+        # We need to re-read the link because only now can we cache it
         self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', 'target'),
+                          ('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
                          ], state._log)
+        self.assertEqual([('l', 'target', 6, False, packed_stat)],
+                         entry[1])
+
+        # Another call won't re-read the link
+        self.assertEqual([('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
+                          ('read_link', 'a', ''),
+                         ], state._log)
+        link_or_sha1 = state.update_entry(entry, abspath='a',
+                                          stat_value=stat_value)
+        self.assertEqual('target', link_or_sha1)
+        self.assertEqual([('l', 'target', 6, False, packed_stat)],
+                         entry[1])
+
+    def do_update_entry(self, state, entry, abspath):
+        stat_value = os.lstat(abspath)
+        return state.update_entry(entry, abspath, stat_value)
 
     def test_update_entry_dir(self):
         state, entry = self.get_state_with_a()
         self.build_tree(['a/'])
-        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+
+    def test_update_entry_dir_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a/'])
+        state.adjust_time(+20)
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+    def test_update_entry_file_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a'])
+        sha1sum = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        state.adjust_time(+20)
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
     def create_and_test_file(self, state, entry):
         """Create a file at 'a' and verify the state finds it.
@@ -1531,7 +1634,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
@@ -1548,7 +1651,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertIs(None, link_or_sha1)
         self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
 
@@ -1569,50 +1672,19 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('path/to/foo', link_or_sha1)
         self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
                          entry[1])
         return packed_stat
-
-    def test_update_missing_file(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_file(state, entry)
-        # Now if we delete the file, update_entry should recover and
-        # return None.
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
-        self.assertEqual([('f', digest, 14, False, packed_stat)],
-                         entry[1])
-
-    def test_update_missing_dir(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_dir(state, entry)
-        # Now if we delete the directory, update_entry should recover and
-        # return None.
-        os.rmdir('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
-
-    def test_update_missing_symlink(self):
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_symlink(state, entry)
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
-                         entry[1])
 
     def test_update_file_to_dir(self):
         """If a file changes to a directory we return None for the sha.
         We also update the inventory record.
         """
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_file(state, entry)
         os.remove('a')
         self.create_and_test_dir(state, entry)
@@ -1623,6 +1695,8 @@ class TestUpdateEntry(TestCaseWithDirState):
             # PlatformDeficiency / TestSkipped
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_file(state, entry)
         os.remove('a')
         self.create_and_test_symlink(state, entry)
@@ -1630,6 +1704,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_dir_to_file(self):
         """Directory becoming a file updates the entry."""
         state, entry = self.get_state_with_a()
+        # The file sha1 won't be cached unless the file is old
+        state.adjust_time(+10)
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
         self.create_and_test_file(state, entry)
@@ -1640,6 +1716,8 @@ class TestUpdateEntry(TestCaseWithDirState):
             # PlatformDeficiency / TestSkipped
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink target won't be cached if it isn't old
+        state.adjust_time(+10)
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
         self.create_and_test_symlink(state, entry)
@@ -1649,6 +1727,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink and file info won't be cached unless old
+        state.adjust_time(+10)
         self.create_and_test_symlink(state, entry)
         os.remove('a')
         self.create_and_test_file(state, entry)
@@ -1658,6 +1738,8 @@ class TestUpdateEntry(TestCaseWithDirState):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
+        # The symlink target won't be cached if it isn't old
+        state.adjust_time(+10)
         self.create_and_test_symlink(state, entry)
         os.remove('a')
         self.create_and_test_dir(state, entry)
@@ -1677,11 +1759,16 @@ class TestUpdateEntry(TestCaseWithDirState):
         packed_stat = dirstate.pack_stat(stat_value)
 
         state.adjust_time(-10) # Make sure everything is new
-        # Make sure it wants to kkkkkkkk
         state.update_entry(entry, abspath='a', stat_value=stat_value)
 
         # The row is updated, but the executable bit stays set.
+        self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
+                         entry[1])
+
+        # Make the disk object look old enough to cache
+        state.adjust_time(+20)
         digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        state.update_entry(entry, abspath='a', stat_value=stat_value)
         self.assertEqual([('f', digest, 14, True, packed_stat)], entry[1])
 
 
@@ -1740,7 +1827,6 @@ class TestPackStat(TestCaseWithTransport):
 class TestBisect(TestCaseWithDirState):
     """Test the ability to bisect into the disk format."""
 
-
     def assertBisect(self, expected_map, map_keys, state, paths):
         """Assert that bisecting for paths returns the right result.
 
@@ -1751,23 +1837,24 @@ class TestBisect(TestCaseWithDirState):
                       (dir, name) tuples, and sorted according to how _bisect
                       requires.
         """
-        dir_names = sorted(osutils.split(p) for p in paths)
-        result = state._bisect(dir_names)
+        result = state._bisect(paths)
         # For now, results are just returned in whatever order we read them.
         # We could sort by (dir, name, file_id) or something like that, but in
         # the end it would still be fairly arbitrary, and we don't want the
         # extra overhead if we can avoid it. So sort everything to make sure
         # equality is true
-        assert len(map_keys) == len(dir_names)
+        assert len(map_keys) == len(paths)
         expected = {}
-        for dir_name, keys in zip(dir_names, map_keys):
+        for path, keys in zip(paths, map_keys):
             if keys is None:
                 # This should not be present in the output
                 continue
-            expected[dir_name] = sorted(expected_map[k] for k in keys)
+            expected[path] = sorted(expected_map[k] for k in keys)
 
-        for dir_name in result:
-            result[dir_name].sort()
+        # The returned values are just arranged randomly based on when they
+        # were read, for testing, make sure it is properly sorted.
+        for path in result:
+            result[path].sort()
 
         self.assertEqual(expected, result)
 
@@ -1810,8 +1897,7 @@ class TestBisect(TestCaseWithDirState):
             dir_name_id, trees_info = entry
             expected[dir_name_id] = trees_info
 
-        dir_names = sorted(osutils.split(p) for p in paths)
-        result = state._bisect_recursive(dir_names)
+        result = state._bisect_recursive(paths)
 
         self.assertEqual(expected, result)
 
@@ -1826,6 +1912,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected, [['b/c']], state, ['b/c'])
         self.assertBisect(expected, [['b/d']], state, ['b/d'])
         self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
+        self.assertBisect(expected, [['b-c']], state, ['b-c'])
         self.assertBisect(expected, [['f']], state, ['f'])
 
     def test_bisect_multi(self):
@@ -1834,9 +1921,10 @@ class TestBisect(TestCaseWithDirState):
         # Bisect should be capable of finding multiple entries at the same time
         self.assertBisect(expected, [['a'], ['b'], ['f']],
                           state, ['a', 'b', 'f'])
-        # ('', 'f') sorts before the others
         self.assertBisect(expected, [['f'], ['b/d'], ['b/d/e']],
-                          state, ['b/d', 'b/d/e', 'f'])
+                          state, ['f', 'b/d', 'b/d/e'])
+        self.assertBisect(expected, [['b'], ['b-c'], ['b/c']],
+                          state, ['b', 'b-c', 'b/c'])
 
     def test_bisect_one_page(self):
         """Test bisect when there is only 1 page to read"""
@@ -1848,12 +1936,14 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected,[['b/c']], state, ['b/c'])
         self.assertBisect(expected,[['b/d']], state, ['b/d'])
         self.assertBisect(expected,[['b/d/e']], state, ['b/d/e'])
+        self.assertBisect(expected,[['b-c']], state, ['b-c'])
         self.assertBisect(expected,[['f']], state, ['f'])
         self.assertBisect(expected,[['a'], ['b'], ['f']],
                           state, ['a', 'b', 'f'])
-        # ('', 'f') sorts before the others
-        self.assertBisect(expected, [['f'], ['b/d'], ['b/d/e']],
+        self.assertBisect(expected, [['b/d'], ['b/d/e'], ['f']],
                           state, ['b/d', 'b/d/e', 'f'])
+        self.assertBisect(expected, [['b'], ['b/c'], ['b-c']],
+                          state, ['b', 'b/c', 'b-c'])
 
     def test_bisect_duplicate_paths(self):
         """When bisecting for a path, handle multiple entries."""
@@ -1867,6 +1957,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected, [['b/d', 'b/d2']], state, ['b/d'])
         self.assertBisect(expected, [['b/d/e', 'b/d/e2']],
                           state, ['b/d/e'])
+        self.assertBisect(expected, [['b-c', 'b-c2']], state, ['b-c'])
         self.assertBisect(expected, [['f', 'f2']], state, ['f'])
 
     def test_bisect_page_size_too_small(self):
@@ -1879,6 +1970,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected, [['b/c']], state, ['b/c'])
         self.assertBisect(expected, [['b/d']], state, ['b/d'])
         self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
+        self.assertBisect(expected, [['b-c']], state, ['b-c'])
         self.assertBisect(expected, [['f']], state, ['f'])
 
     def test_bisect_missing(self):
@@ -1887,6 +1979,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected, [None], state, ['foo'])
         self.assertBisect(expected, [None], state, ['b/foo'])
         self.assertBisect(expected, [None], state, ['bar/foo'])
+        self.assertBisect(expected, [None], state, ['b-c/foo'])
 
         self.assertBisect(expected, [['a'], None, ['b/d']],
                           state, ['a', 'foo', 'b/d'])
@@ -1908,13 +2001,14 @@ class TestBisect(TestCaseWithDirState):
     def test_bisect_dirblocks(self):
         tree, state, expected = self.create_duplicated_dirstate()
         self.assertBisectDirBlocks(expected,
-            [['', 'a', 'a2', 'b', 'b2', 'f', 'f2']], state, [''])
+            [['', 'a', 'a2', 'b', 'b2', 'b-c', 'b-c2', 'f', 'f2']],
+            state, [''])
         self.assertBisectDirBlocks(expected,
             [['b/c', 'b/c2', 'b/d', 'b/d2']], state, ['b'])
         self.assertBisectDirBlocks(expected,
             [['b/d/e', 'b/d/e2']], state, ['b/d'])
         self.assertBisectDirBlocks(expected,
-            [['', 'a', 'a2', 'b', 'b2', 'f', 'f2'],
+            [['', 'a', 'a2', 'b', 'b2', 'b-c', 'b-c2', 'f', 'f2'],
              ['b/c', 'b/c2', 'b/d', 'b/d2'],
              ['b/d/e', 'b/d/e2'],
             ], state, ['', 'b', 'b/d'])
@@ -1935,11 +2029,12 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisectRecursive(expected, ['a'], state, ['a'])
         self.assertBisectRecursive(expected, ['b/c'], state, ['b/c'])
         self.assertBisectRecursive(expected, ['b/d/e'], state, ['b/d/e'])
+        self.assertBisectRecursive(expected, ['b-c'], state, ['b-c'])
         self.assertBisectRecursive(expected, ['b/d', 'b/d/e'],
                                    state, ['b/d'])
         self.assertBisectRecursive(expected, ['b', 'b/c', 'b/d', 'b/d/e'],
                                    state, ['b'])
-        self.assertBisectRecursive(expected, ['', 'a', 'b', 'f', 'b/c',
+        self.assertBisectRecursive(expected, ['', 'a', 'b', 'b-c', 'f', 'b/c',
                                               'b/d', 'b/d/e'],
                                    state, [''])
 
@@ -1967,90 +2062,6 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisectRecursive(expected, ['a', 'b', 'b/c', 'b/d',
                                               'b/d/e', 'b/g', 'h', 'h/e'],
                                    state, ['b'])
-
-
-class TestBisectDirblock(TestCase):
-    """Test that bisect_dirblock() returns the expected values.
-
-    bisect_dirblock is intended to work like bisect.bisect_left() except it
-    knows it is working on dirblocks and that dirblocks are sorted by ('path',
-    'to', 'foo') chunks rather than by raw 'path/to/foo'.
-    """
-
-    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
-        """Assert that bisect_split works like bisect_left on the split paths.
-
-        :param dirblocks: A list of (path, [info]) pairs.
-        :param split_dirblocks: A list of ((split, path), [info]) pairs.
-        :param path: The path we are indexing.
-
-        All other arguments will be passed along.
-        """
-        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path,
-                                                 *args, **kwargs)
-        split_dirblock = (path.split('/'), [])
-        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
-                                             *args)
-        self.assertEqual(bisect_left_idx, bisect_split_idx,
-                         'bisect_split disagreed. %s != %s'
-                         ' for key %s'
-                         % (bisect_left_idx, bisect_split_idx, path)
-                         )
-
-    def paths_to_dirblocks(self, paths):
-        """Convert a list of paths into dirblock form.
-
-        Also, ensure that the paths are in proper sorted order.
-        """
-        dirblocks = [(path, []) for path in paths]
-        split_dirblocks = [(path.split('/'), []) for path in paths]
-        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
-        return dirblocks, split_dirblocks
-
-    def test_simple(self):
-        """In the simple case it works just like bisect_left"""
-        paths = ['', 'a', 'b', 'c', 'd']
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-        self.assertBisect(dirblocks, split_dirblocks, '_')
-        self.assertBisect(dirblocks, split_dirblocks, 'aa')
-        self.assertBisect(dirblocks, split_dirblocks, 'bb')
-        self.assertBisect(dirblocks, split_dirblocks, 'cc')
-        self.assertBisect(dirblocks, split_dirblocks, 'dd')
-        self.assertBisect(dirblocks, split_dirblocks, 'a/a')
-        self.assertBisect(dirblocks, split_dirblocks, 'b/b')
-        self.assertBisect(dirblocks, split_dirblocks, 'c/c')
-        self.assertBisect(dirblocks, split_dirblocks, 'd/d')
-
-    def test_involved(self):
-        """This is where bisect_left diverges slightly."""
-        paths = ['', 'a',
-                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
-                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
-                 'a-a', 'a-z',
-                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
-                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
-                 'z-a', 'z-z',
-                ]
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-
-    def test_involved_cached(self):
-        """This is where bisect_left diverges slightly."""
-        paths = ['', 'a',
-                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
-                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
-                 'a-a', 'a-z',
-                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
-                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
-                 'z-a', 'z-z',
-                ]
-        cache = {}
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
 
 
 class TestDirstateValidation(TestCaseWithDirState):
@@ -2108,3 +2119,4 @@ class TestDirstateValidation(TestCaseWithDirState):
             state._validate)
         self.assertContainsRe(str(e),
             'file a-id is absent in row')
+

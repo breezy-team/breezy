@@ -27,8 +27,11 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    debug,
     errors,
+    trace,
     transport,
+    urlutils,
     )
 from bzrlib.smart import client, medium, protocol
 
@@ -50,7 +53,7 @@ class _SmartStat(object):
         self.st_mode = mode
 
 
-class RemoteTransport(transport.Transport):
+class RemoteTransport(transport.ConnectedTransport):
     """Connection to a smart server.
 
     The connection holds references to the medium that can be used to send
@@ -73,47 +76,56 @@ class RemoteTransport(transport.Transport):
     # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
-    def __init__(self, url, clone_from=None, medium=None):
+    # FIXME: the medium parameter should be private, only the tests requires
+    # it. It may be even clearer to define a TestRemoteTransport that handles
+    # the specific cases of providing a _client and/or a _medium, and leave
+    # RemoteTransport as an abstract class.
+    def __init__(self, url, _from_transport=None, medium=None, _client=None):
         """Constructor.
 
+        :param _from_transport: Another RemoteTransport instance that this
+            one is being cloned from.  Attributes such as the medium will
+            be reused.
+
         :param medium: The medium to use for this RemoteTransport. This must be
-            supplied if clone_from is None.
-        """
-        ### Technically super() here is faulty because Transport's __init__
-        ### fails to take 2 parameters, and if super were to choose a silly
-        ### initialisation order things would blow up. 
-        if not url.endswith('/'):
-            url += '/'
-        super(RemoteTransport, self).__init__(url)
-        self._scheme, self._username, self._password, self._host, self._port, self._path = \
-                transport.split_url(url)
-        if clone_from is None:
-            self._medium = medium
-        else:
-            # credentials may be stripped from the base in some circumstances
-            # as yet to be clearly defined or documented, so copy them.
-            self._username = clone_from._username
-            # reuse same connection
-            self._medium = clone_from._medium
-        assert self._medium is not None
+            supplied if _from_transport is None.
 
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
+        :param _client: Override the _SmartClient used by this transport.  This
+            should only be used for testing purposes; normally this is
+            determined from the medium.
         """
-        return self._unparse_url(self._remote_path(relpath))
-    
-    def clone(self, relative_url):
-        """Make a new RemoteTransport related to me, sharing the same connection.
+        super(RemoteTransport, self).__init__(url,
+                                              _from_transport=_from_transport)
 
-        This essentially opens a handle on a different remote directory.
-        """
-        if relative_url is None:
-            return RemoteTransport(self.base, self)
+        # The medium is the connection, except when we need to share it with
+        # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
+        # what we want to share is really the shared connection.
+
+        if _from_transport is None:
+            # If no _from_transport is specified, we need to intialize the
+            # shared medium.
+            credentials = None
+            if medium is None:
+                medium, credentials = self._build_medium()
+                if 'hpss' in debug.debug_flags:
+                    trace.mutter('hpss: Built a new medium: %s',
+                                 medium.__class__.__name__)
+            self._shared_connection = transport._SharedConnection(medium,
+                                                                  credentials)
+
+        if _client is None:
+            self._client = client._SmartClient(self.get_shared_medium())
         else:
-            return RemoteTransport(self.abspath(relative_url), self)
+            self._client = _client
+
+    def _build_medium(self):
+        """Create the medium if _from_transport does not provide one.
+
+        The medium is analogous to the connection for ConnectedTransport: it
+        allows connection sharing.
+        """
+        # No credentials
+        return None, None
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -122,32 +134,26 @@ class RemoteTransport(transport.Transport):
             return True
         elif resp == ('no', ):
             return False
+        elif (resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request 'Transport.is_readonly'") or
+              resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request u'Transport.is_readonly'")):
+            # XXX: nasty hack: servers before 0.16 don't have a
+            # 'Transport.is_readonly' verb, so we do what clients before 0.16
+            # did: assume False.
+            return False
         else:
             self._translate_error(resp)
-        assert False, 'weird response %r' % (resp,)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
     def get_smart_client(self):
-        return self._medium
+        return self._get_connection()
 
     def get_smart_medium(self):
-        return self._medium
-                                                   
-    def _unparse_url(self, path):
-        """Return URL for a path.
+        return self._get_connection()
 
-        :see: SFTPUrlHandling._unparse_url
-        """
-        # TODO: Eventually it should be possible to unify this with
-        # SFTPUrlHandling._unparse_url?
-        if path == '':
-            path = '/'
-        path = urllib.quote(path)
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
+    def get_shared_medium(self):
+        return self._get_shared_connection()
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
@@ -159,12 +165,11 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return client._SmartClient(self._medium).call(method, *args)
+        return self._client.call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        smart_client = client._SmartClient(self._medium)
-        return smart_client.call_with_body_bytes(method, args, body)
+        return self._client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -188,7 +193,7 @@ class RemoteTransport(transport.Transport):
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call('get', remote)
         resp = smart_protocol.read_response_tuple(True)
@@ -273,6 +278,11 @@ class RemoteTransport(transport.Transport):
         resp = self._call2('delete', self._remote_path(relpath))
         self._translate_error(resp)
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # the external path for RemoteTransports is the base
+        return self.base
+
     def readv(self, relpath, offsets):
         if not offsets:
             return
@@ -287,7 +297,7 @@ class RemoteTransport(transport.Transport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_readv_array(
             ('readv', self._remote_path(relpath)),
@@ -371,11 +381,17 @@ class RemoteTransport(transport.Transport):
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
         elif what == "ReadOnlyError":
             raise errors.TransportNotPossible('readonly transport')
+        elif what == "ReadError":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.ReadError(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
     def disconnect(self):
-        self._medium.disconnect()
+        self.get_smart_medium().disconnect()
 
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
@@ -425,19 +441,11 @@ class RemoteTCPTransport(RemoteTransport):
         SmartTCPClientMedium).
     """
 
-    def __init__(self, url):
-        _scheme, _username, _password, _host, _port, _path = \
-            transport.split_url(url)
-        if _port is None:
-            _port = BZR_DEFAULT_PORT
-        else:
-            try:
-                _port = int(_port)
-            except (ValueError, TypeError), e:
-                raise errors.InvalidURL(
-                    path=url, extra="invalid port %s" % _port)
-        client_medium = medium.SmartTCPClientMedium(_host, _port)
-        super(RemoteTCPTransport, self).__init__(url, medium=client_medium)
+    def _build_medium(self):
+        assert self.base.startswith('bzr://')
+        if self._port is None:
+            self._port = BZR_DEFAULT_PORT
+        return medium.SmartTCPClientMedium(self._host, self._port), None
 
 
 class RemoteSSHTransport(RemoteTransport):
@@ -447,18 +455,13 @@ class RemoteSSHTransport(RemoteTransport):
         SmartSSHClientMedium).
     """
 
-    def __init__(self, url):
-        _scheme, _username, _password, _host, _port, _path = \
-            transport.split_url(url)
-        try:
-            if _port is not None:
-                _port = int(_port)
-        except (ValueError, TypeError), e:
-            raise errors.InvalidURL(path=url, extra="invalid port %s" % 
-                _port)
-        client_medium = medium.SmartSSHClientMedium(_host, _port,
-                                                    _username, _password)
-        super(RemoteSSHTransport, self).__init__(url, medium=client_medium)
+    def _build_medium(self):
+        assert self.base.startswith('bzr+ssh://')
+        # ssh will prompt the user for a password if needed and if none is
+        # provided but it will not give it back, so no credentials can be
+        # stored.
+        return medium.SmartSSHClientMedium(self._host, self._port,
+                                           self._user, self._password), None
 
 
 class RemoteHTTPTransport(RemoteTransport):
@@ -472,31 +475,32 @@ class RemoteHTTPTransport(RemoteTransport):
     HTTP path into a local path.
     """
 
-    def __init__(self, url, http_transport=None):
-        assert url.startswith('bzr+http://')
+    def __init__(self, base, _from_transport=None, http_transport=None):
+        assert base.startswith('bzr+http://')
 
         if http_transport is None:
-            http_url = url[len('bzr+'):]
+            # FIXME: the password may be lost here because it appears in the
+            # url only for an intial construction (when the url came from the
+            # command-line).
+            http_url = base[len('bzr+'):]
             self._http_transport = transport.get_transport(http_url)
         else:
             self._http_transport = http_transport
-        http_medium = self._http_transport.get_smart_medium()
-        super(RemoteHTTPTransport, self).__init__(url, medium=http_medium)
+        super(RemoteHTTPTransport, self).__init__(
+            base, _from_transport=_from_transport)
+
+    def _build_medium(self):
+        # We let http_transport take care of the credentials
+        return self._http_transport.get_smart_medium(), None
 
     def _remote_path(self, relpath):
-        """After connecting HTTP Transport only deals in relative URLs."""
-        if relpath == '.':
-            return ''
-        else:
-            return relpath
-
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-        
-        :param relpath: the relative path or path components
-        :type relpath: str or list
-        """
-        return self._unparse_url(self._combine_paths(self._path, relpath))
+        """After connecting, HTTP Transport only deals in relative URLs."""
+        # Adjust the relpath based on which URL this smart transport is
+        # connected to.
+        http_base = urlutils.normalize_url(self._http_transport.base)
+        url = urlutils.join(self.base[len('bzr+'):], relpath)
+        url = urlutils.normalize_url(url)
+        return urlutils.relative_url(http_base, url)
 
     def clone(self, relative_url):
         """Make a new RemoteHTTPTransport related to me.
@@ -504,15 +508,32 @@ class RemoteHTTPTransport(RemoteTransport):
         This is re-implemented rather than using the default
         RemoteTransport.clone() because we must be careful about the underlying
         http transport.
+
+        Also, the cloned smart transport will POST to the same .bzr/smart
+        location as this transport (although obviously the relative paths in the
+        smart requests may be different).  This is so that the server doesn't
+        have to handle .bzr/smart requests at arbitrary places inside .bzr
+        directories, just at the initial URL the user uses.
+
+        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # By cloning the underlying http_transport, we are able to share the
-        # connection.
-        new_transport = self._http_transport.clone(relative_url)
-        return RemoteHTTPTransport(abs_url, http_transport=new_transport)
+        # We either use the exact same http_transport (for child locations), or
+        # a clone of the underlying http_transport (for parent locations).  This
+        # means we share the connection.
+        norm_base = urlutils.normalize_url(self.base)
+        norm_abs_url = urlutils.normalize_url(abs_url)
+        normalized_rel_url = urlutils.relative_url(norm_base, norm_abs_url)
+        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
+            http_transport = self._http_transport.clone(normalized_rel_url)
+        else:
+            http_transport = self._http_transport
+        return RemoteHTTPTransport(abs_url,
+                                   _from_transport=self,
+                                   http_transport=http_transport)
 
 
 def get_test_permutations():

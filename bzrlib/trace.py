@@ -75,6 +75,7 @@ _stderr_quiet = False
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
+_bzr_log_filename = None
 
 
 # configure convenient aliases for output routines
@@ -141,7 +142,7 @@ def open_tracefile(tracefilename=None):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
-    global _file_handler, _bzr_log_file
+    global _file_handler, _bzr_log_file, _bzr_log_filename
     import codecs
 
     if tracefilename is None:
@@ -150,14 +151,16 @@ def open_tracefile(tracefilename=None):
             home = win32utils.get_home_location()
         else:
             home = os.path.expanduser('~')
-        tracefilename = os.path.join(home, '.bzr.log')
+        _bzr_log_filename = os.path.join(home, '.bzr.log')
+    else:
+        _bzr_log_filename = tracefilename
 
-    trace_fname = os.path.expanduser(tracefilename)
-    _rollover_trace_maybe(trace_fname)
+    _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
+    _rollover_trace_maybe(_bzr_log_filename)
     try:
         LINE_BUFFERED = 1
         #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
-        tf = open(trace_fname, 'at', LINE_BUFFERED)
+        tf = open(_bzr_log_filename, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
         # tf.tell() on windows always return 0 until some writing done
         tf.write('\n')
