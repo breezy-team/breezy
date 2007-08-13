@@ -131,6 +131,23 @@ class Thunderbird(Evolution):
         return ['-compose', ','.join(options_list)]
 
 
+class KMail(Evolution):
+    """KDE mail client."""
+
+    _client_commands = ['kmail']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        message_options = []
+        if subject is not None:
+            message_options.extend( ['-s', subject ] )
+        if attach_path is not None:
+            message_options.extend( ['--attach', attach_path] )
+        if to is not None:
+            message_options.extend( [ to ] )
+
+        return message_options
+
+
 class XDGEmail(Evolution):
     """xdg-email attempts to invoke the user's preferred mail client"""
 

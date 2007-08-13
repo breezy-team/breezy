@@ -155,6 +155,7 @@ class Config(object):
                 'thunderbird': mail_client.Thunderbird,
                 'evolution': mail_client.Evolution,
                 'xdg-email': mail_client.XDGEmail,
+                'kmail': mail_client.KMail,
             }[selected_client]
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
