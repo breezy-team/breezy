@@ -1840,7 +1840,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # check if it's an unknown (but not ignored) OR
+                    # Check if it's an unknown (but not ignored) OR
                     # changed (but not deleted) :
                     if not self.is_ignored(path[1]) and (
                         versioned == (False, False) or
@@ -1849,7 +1849,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         break
 
             if has_changed_files:
-                # make delta show ALL applicable changes in error message.
+                # Make delta show ALL applicable changes in error message.
                 tree_delta = self.changes_from(self.basis_tree(),
                     require_versioned=False, want_unversioned=True,
                     specific_files=files)
@@ -1859,7 +1859,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
         # Build inv_delta and delete files where applicaple,
-        # do this before any modifications to inventory
+        # do this before any modifications to inventory.
         for f in files:
             fid = self.path2id(f)
             message = None
@@ -1874,7 +1874,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = '?'
                     textui.show_status(new_status, self.kind(fid), f,
                                        to_file=to_file)
-                # unversion file
+                # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)
 
@@ -1892,10 +1892,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         osutils.delete_any(abs_path)
                         message = "deleted %s" % (f,)
                 elif message is not None:
-                    # only care if we haven't done anything yet.
-                    message ="%s does not exist." % (f,)
+                    # Only care if we haven't done anything yet.
+                    message = "%s does not exist." % (f,)
 
-            # print only one message (if any) per file.
+            # Print only one message (if any) per file.
             if message is not None:
                 note(message)
         self.apply_inventory_delta(inv_delta)
