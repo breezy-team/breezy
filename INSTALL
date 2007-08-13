@@ -14,8 +14,13 @@ pycrypto:
   http://www.lag.net/paramiko/
 
 bzr can optionally use compiled versions of some parts of the code
-for increased speed. If you wish to use these versions then you should
-install Pyrex before installing bzr.
+for increased speed. When installing bzr you should have the python-dev
+headers installed that are required for compiling extension modules.
+
+If you are installing bzr from a bzr branch rather than a release tarball,
+then you should also have the Pyrex package installed. This is not necessary
+for release tarballs as they already contain the C files that Pyrex is needed
+to create.
 
   http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/
 
