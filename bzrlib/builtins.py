@@ -3805,7 +3805,8 @@ class cmd_send(Command):
     On *nix, mail is sent using your preferred mail client.  This requires
     the xdg-email utility.  If that's not installed, we use your editor.
     To use a different client, set the mail_client option.  Supported values
-    are "evolution", "thunderbird", "editor", "xdg-email" and "default".
+    are "kmail", "evolution", "thunderbird", "editor", "xdg-email" and
+    "default".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration

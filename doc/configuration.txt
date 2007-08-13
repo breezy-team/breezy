@@ -211,6 +211,7 @@ A mail client to use for sending merge requests.  Supported values are:
 :editor: Use your editor to compose the merge request.  This also uses
     smtp_server and (optionally) smtp_username and smtp_password.
 :evolution: Use Evolution.
+:kmail: Use KMail.
 
 submit_branch
 -------------

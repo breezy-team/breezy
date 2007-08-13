@@ -60,6 +60,18 @@ class TestEvolution(tests.TestCase):
                          commandline)
 
 
+class TestKMail(tests.TestCase):
+
+    def test_commandline(self):
+        evo = mail_client.KMail(None)
+        commandline = evo._get_compose_commandline(None, None, 'file%')
+        self.assertEqual(['--attach', 'file%'], commandline)
+        commandline = evo._get_compose_commandline('jrandom@example.org',
+                                                   'Hi there!', None)
+        self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
+                         commandline)
+
+
 class TestEditor(tests.TestCase):
 
     def test_get_merge_prompt_unicode(self):
