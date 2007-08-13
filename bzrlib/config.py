@@ -149,11 +149,12 @@ class Config(object):
         selected_client = self.get_user_option('mail_client')
         try:
             mail_client_class = {
-                None : mail_client.DefaultMail,
-                'default' : mail_client.DefaultMail,
+                None: mail_client.DefaultMail,
+                'default': mail_client.DefaultMail,
                 'editor': mail_client.Editor,
                 'thunderbird': mail_client.Thunderbird,
                 'evolution': mail_client.Evolution,
+                'mapi': mail_client.MAPIClient,
                 'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:
