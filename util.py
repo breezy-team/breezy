@@ -77,7 +77,7 @@ def find_changelog(t, merge):
     finally:
       t.unlock()
     changelog = Changelog()
-    changelog.parse_changelog(contents, max_blocks=1)
+    changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
     return changelog, larstiq
 
 def tarball_name(package, version):
