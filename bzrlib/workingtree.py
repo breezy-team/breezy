@@ -1797,26 +1797,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv_delta = []
 
         new_files=set()
-        unknown_files_in_directory=set()
+        unknown_nested_files=set()
 
         def recurse_directory_to_add_files(directory):
-            # recurse directory and add all files
+            # Recurse directory and add all files
             # so we can check if they have changed.
             for parent_info, file_infos in\
                 osutils.walkdirs(self.abspath(directory),
                     directory):
                 for relpath, basename, kind, lstat, abspath in file_infos:
-                    if kind == 'file':
-                        # is it versioned or ignored?
-                        if self.path2id(relpath) or self.is_ignored(relpath):
-                            # add subtree content for deletion
-                            new_files.add(relpath)
-                        else:
-                            unknown_files_in_directory.add(
-                                (relpath, None, kind))
-                    else:
-                        # make sure we delete subtrees
+                    # Is it versioned or ignored?
+                    if self.path2id(relpath) or self.is_ignored(relpath):
+                        # Add nested content for deletion.
                         new_files.add(relpath)
+                    else:
+                        # Files which are not versioned and not ignored
+                        # should be treated as unknown.
+                        unknown_nested_files.add((relpath, None, kind))
 
         for filename in files:
             # Get file name into canonical form.
@@ -1837,7 +1834,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # Bail out if we are going to delete files we shouldn't
         if not keep_files and not force:
-            has_changed_files = len(unknown_files_in_directory) > 0
+            has_changed_files = len(unknown_nested_files) > 0
             if not has_changed_files:
                 for (file_id, path, content_change, versioned, parent_id, name,
                      kind, executable) in self._iter_changes(self.basis_tree(),
@@ -1856,7 +1853,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 tree_delta = self.changes_from(self.basis_tree(),
                     require_versioned=False, want_unversioned=True,
                     specific_files=files)
-                for unknown_file in unknown_files_in_directory:
+                for unknown_file in unknown_nested_files:
                     if unknown_file not in tree_delta.unversioned:
                         tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
