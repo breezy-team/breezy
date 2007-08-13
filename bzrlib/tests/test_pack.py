@@ -64,7 +64,7 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        offset, length = writer.add_bytes_record('abc', names=['name1'])
+        offset, length = writer.add_bytes_record('abc', names=[('name1', )])
         self.assertEqual((42, 13), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -76,11 +76,35 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        offset, length = writer.add_bytes_record('abc', names=['name1', 'name2'])
+        offset, length = writer.add_bytes_record('abc', names=[('name1', ), ('name2', )])
         self.assertEqual((42, 19), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\nname2\n\nabc',
+            output.getvalue())
+
+    def test_add_bytes_record_two_names(self):
+        """Add a bytes record with two names."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        offset, length = writer.add_bytes_record('abc', names=[('name1', ), ('name2', )])
+        self.assertEqual((42, 19), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\nname2\n\nabc',
+            output.getvalue())
+
+    def test_add_bytes_record_two_element_name(self):
+        """Add a bytes record with a two-element name."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        offset, length = writer.add_bytes_record('abc', names=[('name1', 'name2')])
+        self.assertEqual((42, 19), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\x00name2\n\nabc',
             output.getvalue())
 
     def test_add_second_bytes_record_gets_higher_offset(self):
@@ -105,7 +129,7 @@ class TestContainerWriter(tests.TestCase):
         writer.begin()
         self.assertRaises(
             errors.InvalidRecordError,
-            writer.add_bytes_record, 'abc', names=['bad name'])
+            writer.add_bytes_record, 'abc', names=[('bad name', )])
 
 
 class TestContainerReader(tests.TestCase):
@@ -263,7 +287,7 @@ class TestBytesRecordReader(tests.TestCase):
         """
         reader = self.get_reader_for("5\nname1\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual(['name1'], names)
+        self.assertEqual([('name1', )], names)
         self.assertEqual('aaaaa', get_bytes(None))
 
     def test_record_with_two_names(self):
@@ -271,7 +295,14 @@ class TestBytesRecordReader(tests.TestCase):
         """
         reader = self.get_reader_for("5\nname1\nname2\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual(['name1', 'name2'], names)
+        self.assertEqual([('name1', ), ('name2', )], names)
+        self.assertEqual('aaaaa', get_bytes(None))
+
+    def test_record_with_two_part_names(self):
+        """Reading a Bytes record with a two_part name reads both."""
+        reader = self.get_reader_for("5\nname1\x00name2\n\naaaaa")
+        names, get_bytes = reader.read()
+        self.assertEqual([('name1', 'name2', )], names)
         self.assertEqual('aaaaa', get_bytes(None))
 
     def test_invalid_length(self):
@@ -399,8 +430,8 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         writer.begin()
         memos = []
         memos.append(writer.add_bytes_record('abc', names=[]))
-        memos.append(writer.add_bytes_record('def', names=['name1']))
-        memos.append(writer.add_bytes_record('ghi', names=['name2']))
+        memos.append(writer.add_bytes_record('def', names=[('name1', )]))
+        memos.append(writer.add_bytes_record('ghi', names=[('name2', )]))
         memos.append(writer.add_bytes_record('jkl', names=[]))
         writer.end()
         transport = self.get_transport()
@@ -410,7 +441,7 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         result = []
         for names, reader_func in reader.iter_records():
             result.append((names, reader_func(None)))
-        self.assertEqual([([], 'abc'), (['name2'], 'ghi')], result)
+        self.assertEqual([([], 'abc'), ([('name2', )], 'ghi')], result)
 
 
 class TestReadvFile(tests.TestCaseWithTransport):

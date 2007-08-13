@@ -323,6 +323,13 @@ class ExtendedTestResult(unittest._TextTestResult):
     def report_success(self, test):
         pass
 
+    def wasStrictlySuccessful(self):
+        if self.unsupported or self.known_failure_count:
+            return False
+
+        return self.wasSuccessful()
+
+
 
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
@@ -2172,6 +2179,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
+              strict=False,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2210,6 +2218,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
     result = runner.run(suite)
+
+    if strict:
+        return result.wasStrictlySuccessful()
+
     return result.wasSuccessful()
 
 
@@ -2221,7 +2233,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              matching_tests_first=None,
              list_only=False,
              random_seed=None,
-             exclude_pattern=None):
+             exclude_pattern=None,
+             strict=False,
+             ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2247,7 +2261,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      matching_tests_first=matching_tests_first,
                      list_only=list_only,
                      random_seed=random_seed,
-                     exclude_pattern=exclude_pattern)
+                     exclude_pattern=exclude_pattern,
+                     strict=strict)
     finally:
         default_transport = old_transport
 
