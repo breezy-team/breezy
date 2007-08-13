@@ -48,6 +48,9 @@ IN DEVELOPMENT
     * Graph._filter_candidate_lca does not raise KeyError if a candidate
       is eliminated just before it would normally be examined.  (Aaron Bentley)
 
+    * SMTP connection failures produce a nice message, not a traceback.
+      (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
@@ -139,7 +142,17 @@ IN DEVELOPMENT
 
     * Link to registration survey added to README. (Ian Clatworthy)
 
-    * Organise documentation into multiple directories. (Ian Clatworthy)
+    * Windows standalone installer show link to registration survey
+      when installation finished. (Alexander Belchenko)
+
+    * Documentation is now organized into multiple directories with a level
+      added for different languages or locales. Added the Mini Tutorial
+      and Quick Start Summary (en) documents from the Wiki, improving the
+      content and readability of the former. Formatted NEWS as Release Notes
+      complete with a Table of Conents, one heading per release. Moved the
+      Developer Guide into the main document catalog and provided a link
+      from the developer document catalog back to the main one.
+      (Ian Clatworthy, Sabin Iacob)
 
   LIBRARY API BREAKS:
 
