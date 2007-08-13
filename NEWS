@@ -135,7 +135,7 @@ IN DEVELOPMENT
       when installation finished. (Alexander Belchenko)
 
     * ``send`` now sends the directive as an attachment by default.
-      (Aaron Bentley, Lukáš Lalinský)
+      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
 
   LIBRARY API BREAKS:
 

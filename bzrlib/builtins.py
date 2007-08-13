@@ -3802,10 +3802,13 @@ class cmd_send(Command):
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
 
-    On *nix, mail is sent using your preferred mail client.  This requires
-    the xdg-email utility.  If that's not installed, we use your editor.
-    To use a different client, set the mail_client option.  Supported values
-    are "evolution", "thunderbird", "editor", "xdg-email" and "default".
+    Mail is sent using your preferred mail program.  This should be transparent
+    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
+    the preferred client can't be found (or used), your editor will be used.
+    
+    To use a specific mail program, set the mail_client configuration option.
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
+    "thunderbird", "evolution", "editor", "xdg-email", "mapi" and "default".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration
@@ -3820,7 +3823,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge']
+    _see_also = ['merge', 'doc/configuration.txt']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
