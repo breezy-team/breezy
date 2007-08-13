@@ -747,7 +747,7 @@ class RemoteRepository(object):
             buffer = StringIO(protocol.read_body_bytes())
             reader = ContainerReader(buffer)
             # XXX: what if server sends pack with multiple names per record?
-            for [name], read_bytes in reader.iter_records():
+            for [(name,)], read_bytes in reader.iter_records():
                 yield name, read_bytes(None)
         else:
             raise errors.UnexpectedSmartServerResponse(response)

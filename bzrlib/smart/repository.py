@@ -251,7 +251,7 @@ class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest):
         pack = ContainerWriter(filelike.write)
         pack.begin()
         for name, bytes in stream:
-            pack.add_bytes_record(bytes, [name])
+            pack.add_bytes_record(bytes, [(name,)])
         pack.end()
         return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
 
