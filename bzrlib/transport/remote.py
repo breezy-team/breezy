@@ -27,7 +27,9 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    debug,
     errors,
+    trace,
     transport,
     urlutils,
     )
@@ -105,8 +107,11 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-            self._shared_connection= transport._SharedConnection(medium,
-                                                                 credentials)
+                if 'hpss' in debug.debug_flags:
+                    trace.mutter('hpss: Built a new medium: %s',
+                                 medium.__class__.__name__)
+            self._shared_connection = transport._SharedConnection(medium,
+                                                                  credentials)
 
         if _client is None:
             self._client = client._SmartClient(self.get_shared_medium())

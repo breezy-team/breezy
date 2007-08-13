@@ -111,7 +111,7 @@ Congratulation! Bzr successfully installed.
         directory_created(fldr)
 
     # link to documentation
-    docs = os.path.join(sys.exec_prefix, 'Doc', 'Bazaar', 'index.htm')
+    docs = os.path.join(sys.exec_prefix, 'Doc', 'Bazaar', 'index.html')
     dst = os.path.join(fldr, 'Documentation.lnk')
     create_shortcut(docs, 'Bazaar Documentation', dst)
     file_created(dst)

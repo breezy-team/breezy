@@ -441,7 +441,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     has_changes = 0
     for path, file_id, kind in delta.removed:
         has_changes = 1
-        print >>to_file, '=== removed %s %r' % (kind,
+        print >>to_file, "=== removed %s '%s'" % (kind,
                                                 path.encode(path_encoding,
                                                             "replace"))
         old_name = '%s%s\t%s' % (old_label, path,
@@ -451,7 +451,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                                          new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path.encode(path_encoding,
+        print >>to_file, "=== added %s '%s'" % (kind, path.encode(path_encoding,
                                                                 "replace"))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
@@ -463,7 +463,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
          text_modified, meta_modified) in delta.renamed:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== renamed %s %r => %r%s' % (
+        print >>to_file, "=== renamed %s '%s' => %r%s" % (
                     kind, old_path.encode(path_encoding, "replace"),
                     new_path.encode(path_encoding, "replace"), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
@@ -478,7 +478,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== modified %s %r%s' % (kind,
+        print >>to_file, "=== modified %s '%s'%s" % (kind,
                                                    path.encode(path_encoding,
                                                                "replace"),
                                                    prop_str)
