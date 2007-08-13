@@ -10,7 +10,7 @@ Core Documentation
 
 * `Mini Tutorial <en/mini-tutorial/index.html>`_ 
 
-* `Quick Reference <http://bazaar-vcs.org/BzrQuickReference>`_
+* `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
 
 * `User Guide <en/user-guide/index.html>`_ 
 
