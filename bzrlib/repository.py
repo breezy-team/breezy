@@ -45,6 +45,7 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
+from bzrlib.util import bencode
 
 """)
 
@@ -56,7 +57,6 @@ from bzrlib.symbol_versioning import (
         zero_nine,
         )
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 # Old formats display a warning, but only once
@@ -400,7 +400,8 @@ class Repository(object):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
             else:
-                raise XXX
+                raise RepositoryDataStreamError(
+                    "Unrecognised data stream key '%s'" % (knit_name,))
             decoded_list = bencode.bdecode(bytes)
             format = decoded_list.pop(0)
             data_list = []
@@ -408,8 +409,8 @@ class Repository(object):
             for version, options, parents, some_bytes in decoded_list:
                 data_list.append((version, options, len(some_bytes), parents))
                 knit_bytes += some_bytes
-            knit.insert_data_stream((format, data_list,
-                StringIO(knit_bytes).read))
+            knit.insert_data_stream(
+                (format, data_list, StringIO(knit_bytes).read))
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):

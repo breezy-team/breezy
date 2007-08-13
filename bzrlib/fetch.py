@@ -210,6 +210,8 @@ class RepoFetcher(object):
             return None
             
         try:
+            # XXX: this gets the full graph on both sides, and will make sure
+            # that ghosts are filled whether or not you care about them.
             return self.to_repository.missing_revision_ids(self.from_repository,
                                                            self._last_revision)
         except errors.NoSuchRevision:

@@ -250,8 +250,11 @@ class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest):
         filelike = StringIO()
         pack = ContainerWriter(filelike.write)
         pack.begin()
-        for name, bytes in stream:
-            pack.add_bytes_record(bytes, [(name,)])
+        try:
+            for name, bytes in stream:
+                pack.add_bytes_record(bytes, [(name,)])
+        except errors.RevisionNotPresent, e:
+            return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         pack.end()
         return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
 

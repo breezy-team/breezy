@@ -794,7 +794,15 @@ class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
             # XXX: assert that the bencoded knit records have the right
             # contents?
         
-    # test: no such revision error
+    def test_no_such_revision_error(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
+        repo = self.make_repository('.')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        response = request.execute(backing.local_abspath(''), rev_id1_utf8)
+        self.assertEqual(
+            SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
+            response)
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
