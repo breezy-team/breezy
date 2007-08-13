@@ -73,6 +73,7 @@ html-docs: docs
 
 # translate txt docs to html
 derived_txt_files := \
+	doc/en/mini-tutorial/index.txt \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt

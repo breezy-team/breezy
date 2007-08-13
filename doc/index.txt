@@ -8,7 +8,7 @@ documentation site, http://doc.bazaar-vcs.org.
 Core Documentation
 ==================
 
-* `Mini Tutorial <http://bazaar-vcs.org/QuickHackingWithBzr>`_ 
+* `Mini Tutorial <en/mini-tutorial/index.html>`_ 
 
 * `Quick Reference <http://bazaar-vcs.org/BzrQuickReference>`_
 
