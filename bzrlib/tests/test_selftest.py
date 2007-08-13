@@ -997,14 +997,18 @@ class TestTestResult(TestCase):
         feature = "Unsupported Feature"
         result.addNotSupported(test, feature)
         self.assertFalse(result.wasStrictlySuccessful())
+        # post from Alexander Belchenko aug 2007: "[bug] if first running test
+        # miss dependency then selftest fails horribly"
+        self.assertEqual(None, result._benchmarkTime)
 
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                                 verbosity=1)
         test = self.get_passing_test()
         err = (KnownFailure, KnownFailure('foo'), None)
-        result.addKnownFailure(test, err)
+        result._addKnownFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._benchmarkTime)
 
     def test_strict_with_success(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
@@ -1012,6 +1016,7 @@ class TestTestResult(TestCase):
         test = self.get_passing_test()
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._benchmarkTime)
 
 
 class TestRunner(TestCase):

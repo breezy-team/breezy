@@ -157,9 +157,15 @@ def packages_to_test():
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
-    Compared to this unittest version this class adds support for profiling,
-    benchmarking, stopping as soon as a test fails,  and skipping tests.
-    There are further-specialized subclasses for different types of display.
+    Compared to this unittest version this class adds support for
+    profiling, benchmarking, stopping as soon as a test fails,  and
+    skipping tests.  There are further-specialized subclasses for
+    different types of display.
+
+    When a test finishes, in whatever way, it calls one of the addSuccess,
+    addFailure or addError classes.  These in turn may redirect to a more
+    specific case for the special test results supported by our extended
+    tests.
     """
 
     stop_early = False
@@ -198,6 +204,9 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
+        # time in fractional seconds where the test was in a timed
+        # benchmark section
+        self._benchmarkTime = None
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -244,40 +253,45 @@ class ExtendedTestResult(unittest._TextTestResult):
             setKeepLogfile()
 
     def addError(self, test, err):
-        self.extractBenchmarkTime(test)
-        self._cleanupLogFile(test)
+        """Tell result that test finished with an error.
+
+        Called from the TestCase run() method when the test
+        fails with an unexpected error.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)
+            return self._addSkipped(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
-        unittest.TestResult.addError(self, test, err)
-        self.error_count += 1
-        self.report_error(test, err)
-        if self.stop_early:
-            self.stop()
+        else:
+            unittest.TestResult.addError(self, test, err)
+            self.error_count += 1
+            self.report_error(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addFailure(self, test, err):
-        self._cleanupLogFile(test)
-        self.extractBenchmarkTime(test)
+        """Tell result that test failed.
+
+        Called from the TestCase run() method when the test
+        fails because e.g. an assert() method failed.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], KnownFailure):
-            return self.addKnownFailure(test, err)
-        unittest.TestResult.addFailure(self, test, err)
-        self.failure_count += 1
-        self.report_failure(test, err)
-        if self.stop_early:
-            self.stop()
-
-    def addKnownFailure(self, test, err):
-        self.known_failure_count += 1
-        self.report_known_failure(test, err)
-
-    def addNotSupported(self, test, feature):
-        self.unsupported.setdefault(str(feature), 0)
-        self.unsupported[str(feature)] += 1
-        self.report_unsupported(test, feature)
+            return self._addKnownFailure(test, err)
+        else:
+            unittest.TestResult.addFailure(self, test, err)
+            self.failure_count += 1
+            self.report_failure(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addSuccess(self, test):
-        self.extractBenchmarkTime(test)
+        """Tell result that test completed successfully.
+
+        Called from the TestCase run()
+        """
+        self._testConcluded(test)
         if self._bench_history is not None:
             if self._benchmarkTime is not None:
                 self._bench_history.write("%s %s\n" % (
@@ -286,10 +300,35 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         unittest.TestResult.addSuccess(self, test)
 
-    def addSkipped(self, test, skip_excinfo):
+    def _testConcluded(self, test):
+        """Common code when a test has finished.
+
+        Called regardless of whether it succeded, failed, etc.
+        """
+        self._cleanupLogFile(test)
+        self.extractBenchmarkTime(test)
+
+    def _addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        """The test will not be run because of a missing feature.
+        """
+        # this can be called in two different ways: it may be that the
+        # test started running, and then raised (through addError) 
+        # UnavailableFeature.  Alternatively this method can be called
+        # while probing for features before running the tests; in that
+        # case we will see startTest and stopTest, but the test will never
+        # actually run.
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
+
+    def _addSkipped(self, test, skip_excinfo):
         self.report_skip(test, skip_excinfo)
-        # seems best to treat this as success from point-of-view of unittest
-        # -- it actually does nothing so it barely matters :)
+        # seems best to treat this as success from point-of-view of
+        # unittest -- it actually does nothing so it barely matters :)
         try:
             test.tearDown()
         except KeyboardInterrupt:
