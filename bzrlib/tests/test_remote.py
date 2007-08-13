@@ -28,6 +28,7 @@ from cStringIO import StringIO
 from bzrlib import (
     bzrdir,
     errors,
+    pack,
     remote,
     repository,
     tests,
@@ -751,3 +752,29 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         self.assertFalse(isinstance(dest_repo, RemoteRepository))
         self.assertTrue(isinstance(src_repo, RemoteRepository))
         src_repo.copy_content_into(dest_repo)
+
+
+class TestRepositoryFetchRevisions(TestRemoteRepository):
+
+    def make_pack_file(self, records):
+        pack_file = StringIO()
+        pack_writer = pack.ContainerWriter(pack_file.write)
+        pack_writer.begin()
+        for bytes, names in records:
+            pack_writer.add_bytes_record(bytes, names)
+        pack_writer.end()
+        pack_file.seek(0)
+        return pack_file
+
+    def test_bad_pack_from_server(self):
+        """A response with invalid data (e.g. it has a record with a name with
+        multiple elements) triggers an exception."""
+        record = ('bytes', [('three', 'elem', 'tuple')])
+        pack_file = self.make_pack_file([record])
+        responses = [(('ok',), pack_file.getvalue()), ]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        stream = repo.get_data_stream(['revid'])
+        self.assertRaises(errors.SmartProtocolError, list, stream)
+    

@@ -421,8 +421,6 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 class RemoteToOtherFetcher(GenericRepoFetcher):
     
     def _fetch_everything_for_revisions(self, revs, pp):
-        # XXX: this assumes that we want RemoteRepository.get_data_stream to
-        # deserialise the smart response.
         data_stream = self.from_repository.get_data_stream(revs)
         self.to_repository.insert_data_stream(data_stream)
 

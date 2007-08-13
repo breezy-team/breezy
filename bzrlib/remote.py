@@ -743,11 +743,18 @@ class RemoteRepository(object):
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
             'Repository.fetch_revisions', path, *revision_ids)
-        if response[0] == 'ok':
+        if response == ('ok',):
             buffer = StringIO(protocol.read_body_bytes())
             reader = ContainerReader(buffer)
-            # XXX: what if server sends pack with multiple names per record?
-            for [(name,)], read_bytes in reader.iter_records():
+            for record_names, read_bytes in reader.iter_records():
+                try:
+                    # These records should have only one name, and that name
+                    # should be a one-element tuple.
+                    [(name,)] = record_names
+                except ValueError:
+                    raise errors.SmartProtocolError(
+                        'Repository data stream had invalid record name %r'
+                        % (record_names,))
                 yield name, read_bytes(None)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
