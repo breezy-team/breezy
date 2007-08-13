@@ -27,10 +27,6 @@ from bzrlib import (
     osutils,
     urlutils,
     )
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-import win32utils
-""")
 
 
 class MailClient(object):
@@ -79,6 +75,7 @@ class ExternalMailClient(MailClient):
 
     def _get_client_commands(self):
         if sys.platform == 'win32':
+            import win32utils
             return [win32utils.get_app_path(i) for i in self._client_commands]
         else:
             return self._client_commands
