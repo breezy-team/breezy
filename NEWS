@@ -128,8 +128,7 @@ IN DEVELOPMENT
       the null revision, and consider using ``None`` for this purpose
       deprecated.  (Aaron Bentley)
 
-    * Add the option user_encoding to the function
-      - show_diff_trees
+    * Add the option user_encoding to the function 'show_diff_trees()'
       in order to move the user encoding at the UI level. (Goffredo Baroncelli)
 
     * Add the function make_commit_message_template_encoded() and the function

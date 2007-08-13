@@ -106,6 +106,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                                ignoreline,
                                start_message)
 
+
 def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                         start_message=None):
     """Let the user edit a commit message in a temp file.
@@ -254,14 +255,16 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.diff import show_diff_trees
 
+    if output_encoding is None:
+        output_encoding = 'utf-8'
+
     template = make_commit_message_template(working_tree, specific_files).encode(output_encoding, "replace")
 
     if diff:
         stream = StringIO()
-        template += "\n"
         show_diff_trees(working_tree.basis_tree(),
                 working_tree, stream, specific_files,
                 path_encoding=output_encoding)
-        template = template + stream.getvalue()
+        template = template + '\n' + stream.getvalue()
 
     return template
