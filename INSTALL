@@ -13,6 +13,12 @@ pycrypto:
 
   http://www.lag.net/paramiko/
 
+bzr can optionally use compiled versions of some parts of the code
+for increased speed. If you wish to use these versions then you should
+install Pyrex before installing bzr.
+
+  http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/
+
 Installation
 ------------
 
