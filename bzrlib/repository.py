@@ -1503,12 +1503,12 @@ format_registry.register_lazy(
 # allow ease of testing.
 format_registry.register_lazy(
     'Bazaar Experimental no-subtrees\n',
-    'bzrlib.repofmt.knitrepo',
+    'bzrlib.repofmt.pack_repo',
     'RepositoryFormatGraphKnit1',
     )
 format_registry.register_lazy(
     'Bazaar Experimental subtrees\n',
-    'bzrlib.repofmt.knitrepo',
+    'bzrlib.repofmt.pack_repo',
     'RepositoryFormatGraphKnit3',
     )
 
@@ -1827,6 +1827,65 @@ class InterKnitRepo(InterSameDataRepository):
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
+class InterPackRepo(InterSameDataRepository):
+    """Optimised code paths between Pack based repositories."""
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        from bzrlib.repofmt import pack_repo
+        return pack_repo.RepositoryFormatGraphKnit1()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Pack formats.
+        
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be 
+        overly general.
+        """
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        try:
+            are_knits = (isinstance(source._format, RepositoryFormatPack) and
+                isinstance(target._format, RepositoryFormatPack))
+        except AttributeError:
+            return False
+        return are_knits and InterRepository._same_model(source, target)
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import KnitRepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
+        f = KnitRepoFetcher(to_repository=self.target,
+                            from_repository=self.source,
+                            last_revision=revision_id,
+                            pb=pb)
+        return f.count_copied, f.failed_revisions
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """See InterRepository.missing_revision_ids()."""
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids[0] is None
+            source_ids.pop(0)
+        else:
+            source_ids = self.source._all_possible_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target._all_possible_ids())
+        actually_present_revisions = target_ids.intersection(source_ids_set)
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
+        return required_topo_revisions
+
+
 class InterModel1and2(InterRepository):
 
     @classmethod
@@ -1886,10 +1945,15 @@ class InterKnit1and2(InterKnitRepo):
         """Be compatible with Knit1 source and Knit3 target"""
         from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
-            from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1, \
-                    RepositoryFormatKnit3
-            return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit3)))
+            from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
+                RepositoryFormatKnit3)
+            from bzrlib.repofmt.pack_repo import (RepositoryFormatGraphKnit1,
+                RepositoryFormatGraphKnit3)
+            return (isinstance(source._format, RepositoryFormatKnit1) and
+                    isinstance(target._format, RepositoryFormatKnit3) or
+                    isinstance(source._format, (RepositoryFormatGraphKnit1)) and
+                    isinstance(target._format, (RepositoryFormatGraphKnit3))
+                    )
         except AttributeError:
             return False
 
