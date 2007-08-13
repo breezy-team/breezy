@@ -14,11 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 import sys
 
 from bzrlib import osutils
-from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
-from bzrlib.win32utils import glob_expand
+from bzrlib.tests import TestCase, TestCaseInTempDir, Feature, TestSkipped
+from bzrlib.win32utils import glob_expand, get_app_path
 
 
 # Features
@@ -128,3 +129,21 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             result.sort()
             self.assertEqual(expected, result, 'pattern %s' % pattern)
 
+
+class TestAppPaths(TestCase):
+
+    def test_iexplore(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('win32-specific')
+        # typical windows users should have IE installed
+        for a in ('iexplore', 'iexplore.exe'):
+            p = get_app_path(a)
+            d, b = os.path.split(p)
+            self.assertEquals('iexplore.exe', b)
+            self.assertNotEquals('', d)
+
+    def test_not_existing(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('win32-specific')
+        p = get_app_path('not-existing')
+        self.assertEquals('not-existing', p)

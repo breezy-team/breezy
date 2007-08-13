@@ -27,6 +27,10 @@ from bzrlib import (
     osutils,
     urlutils,
     )
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import win32utils
+""")
 
 
 class MailClient(object):
@@ -73,6 +77,12 @@ class Editor(MailClient):
 class ExternalMailClient(MailClient):
     """An external mail client."""
 
+    def _get_client_commands(self):
+        if sys.platform == 'win32':
+            return [win32utils.get_app_path(i) for i in self._client_commands]
+        else:
+            return self._client_commands
+
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
@@ -84,7 +94,7 @@ class ExternalMailClient(MailClient):
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                 extension):
-        for name in self._client_commands:
+        for name in self._get_client_commands():
             cmdline = [name]
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path))
