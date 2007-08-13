@@ -41,6 +41,9 @@ IN DEVELOPMENT
     * Graph._filter_candidate_lca does not raise KeyError if a candidate
       is eliminated just before it would normally be examined.  (Aaron Bentley)
 
+    * SMTP connection failures produce a nice message, not a traceback.
+      (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Don't show "dots" progress indicators when run non-interactively, such
