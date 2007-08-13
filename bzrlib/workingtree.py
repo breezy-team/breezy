@@ -1807,7 +1807,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     directory):
                 for relpath, basename, kind, lstat, abspath in file_infos:
                     if kind == 'file':
-                        #is it versioned or ignored?
+                        # is it versioned or ignored?
                         if self.path2id(relpath) or self.is_ignored(relpath):
                             # add subtree content for deletion
                             new_files.add(relpath)
@@ -1827,7 +1827,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if osutils.isdir(abspath):
                     recurse_directory_to_add_files(filename)
 
-        files = [f for f in new_files]
+        files = list(new_files)
 
         if len(files) == 0:
             return # nothing to do
