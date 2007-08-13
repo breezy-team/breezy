@@ -2,6 +2,9 @@ bzr-builddeb (0.19) unstable; urgency=low
 
   * Allow empty author information in the changelog for those that like to
     develop without filling it in, and then add it while releasing.
+  * Drop the dependency on python-deb822 as it is now part of python-debian.
+    Thanks to Loïc Minier and Lucas Nussbaum for noticing.
+    (Closes: #436386, #436089)
 
  -- James Westby <jw+debian@jameswestby.net>  Mon, 13 Aug 2007 22:03:03 +0100
 
