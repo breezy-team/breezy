@@ -12,13 +12,13 @@ Core Documentation
 
 * `Quick Reference <http://bazaar-vcs.org/BzrQuickReference>`_
 
-* `User Guide <user-guide/index.html>`_ 
+* `User Guide <en/user-guide/index.html>`_ 
 
-* `User Reference <user-reference/bzr_man.html>`_ 
+* `User Reference <en/user-reference/bzr_man.html>`_ 
 
-* `Release Notes <release-notes/NEWS.html>`_
+* `Release Notes <en/release-notes/NEWS.html>`_
 
-* `Developer Guide <developer-guide/HACKING.html>`_
+* `Developer Guide <en/developer-guide/HACKING.html>`_
 
 
 Other Documentation
