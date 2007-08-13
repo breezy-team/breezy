@@ -25,21 +25,22 @@ also see this file.
 from stat import S_ISDIR
 from StringIO import StringIO
 
-from bzrlib import symbol_versioning
 import bzrlib
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            NoSuchFile,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
 from bzrlib.repository import RepositoryFormat
+from bzrlib.smart import server
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib import (
+    bzrdir,
+    errors,
     repository,
+    symbol_versioning,
     upgrade,
     workingtree,
     )
@@ -446,6 +447,45 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         self.assertEqual(repository.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
+
+
+class TestInterRemoteToOther(TestCaseWithTransport):
+
+    def make_remote_repository(self, path, backing_format=None):
+        """Make a RemoteRepository object backed by a real repository that will
+        be created at the given path."""
+        self.make_repository(path, format=backing_format)
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_repo = remote_bzrdir.open_repository()
+        return remote_repo
+
+    def test_is_compatible_same_format(self):
+        """InterRemoteToOther is compatible with a remote repository and a
+        second repository that have the same format."""
+        local_repo = self.make_repository('local')
+        remote_repo = self.make_remote_repository('remote')
+        self.assertTrue(
+            repository.InterRemoteToOther.is_compatible(remote_repo, local_repo),
+            "InterRemoteToOther(%r, %r) is false" % (remote_repo, local_repo))
+          
+    def test_is_incompatible_different_format(self):
+        local_repo = self.make_repository('local', 'dirstate')
+        remote_repo = self.make_remote_repository('a', 'dirstate-with-subtree')
+        self.assertFalse(
+            repository.InterRemoteToOther.is_compatible(local_repo, remote_repo),
+            "InterRemoteToOther(%r, %r) is true" % (local_repo, remote_repo))
+
+    def test_is_incompatible_different_format_both_remote(self):
+        remote_repo_a = self.make_remote_repository('a', 'dirstate-with-subtree')
+        remote_repo_b = self.make_remote_repository('b', 'dirstate')
+        self.assertFalse(
+            repository.InterRemoteToOther.is_compatible(remote_repo_a,
+                remote_repo_b),
+            "InterRemoteToOther(%r, %r) is true" % (remote_repo_a, remote_repo_b))
 
 
 class TestRepositoryConverter(TestCaseWithTransport):

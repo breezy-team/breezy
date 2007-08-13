@@ -1970,42 +1970,30 @@ class InterRemoteToOther(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if isinstance(source, remote.RemoteRepository):
-            return True
-        return False
-
-    def _ensure_real_inter(self):
-        if self._real_inter is None:
-            self.source._ensure_real()
-            real_source = self.source._real_repository
-            self._real_inter = InterRepository.get(real_source, self.target)
-    
-    def copy_content(self, revision_id=None):
-        self._ensure_real_inter()
-        self._real_inter.copy_content(revision_id=revision_id)
+        if not isinstance(source, remote.RemoteRepository):
+            return False
+        source._ensure_real()
+        real_source = source._real_repository
+        # Is source's model compatible with target's model, and are they the
+        # same format?  Currently we can only optimise fetching from an
+        # identical model & format repo.
+        assert not isinstance(real_source, remote.RemoteRepository), (
+            "We don't support remote repos backed by remote repos yet.")
+        return real_source._format == target._format
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
-        # Is source's model compatible with target's model, and are they the
-        # same format?  Currently we can only optimise fetching from an
-        # identical model & format repo.
-        self.source._ensure_real()
-        real_source = self.source._real_repository
-        if InterSameDataRepository.is_compatible(real_source, self.target):
-            from bzrlib.fetch import RemoteToOtherFetcher
-            mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
-                   self.source, self.target, self.target._format)
-            # TODO: jam 20070210 This should be an assert, not a translate
-            revision_id = osutils.safe_revision_id(revision_id)
-            f = RemoteToOtherFetcher(to_repository=self.target,
-                                     from_repository=self.source,
-                                     last_revision=revision_id,
-                                     pb=pb)
-            return f.count_copied, f.failed_revisions
-        else:
-            self._ensure_real_inter()
-            return self._real_inter.fetch(revision_id=revision_id, pb=pb)
+        from bzrlib.fetch import RemoteToOtherFetcher
+        mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
+               self.source, self.target, self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
+        f = RemoteToOtherFetcher(to_repository=self.target,
+                                 from_repository=self.source,
+                                 last_revision=revision_id,
+                                 pb=pb)
+        return f.count_copied, f.failed_revisions
 
     @classmethod
     def _get_repo_format_to_test(self):
