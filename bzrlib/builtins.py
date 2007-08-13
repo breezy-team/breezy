@@ -3841,7 +3841,7 @@ class cmd_send(Command):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
-        Option('mail-to', help='Mail the request to this address',
+        Option('mail-to', help='Mail the request to this address.',
                type=unicode),
         'revision',
         'message',
