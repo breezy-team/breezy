@@ -108,7 +108,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
 
 def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
-                        start_message=None):
+                                start_message=None):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
