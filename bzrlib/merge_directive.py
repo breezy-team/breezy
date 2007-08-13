@@ -504,6 +504,8 @@ class MergeDirective2(_BaseMergeDirective):
             if self._verify_patch(repository):
                 return 'verified'
             else:
+                #FIXME patch verification is broken for CRLF files
+                return 'inapplicable'
                 return 'failed'
         else:
             return 'inapplicable'
