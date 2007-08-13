@@ -86,7 +86,7 @@ class ExternalMailClient(MailClient):
                 extension):
         for name in self._client_commands:
             cmdline = [name]
-            cmdline.extend(self._get_compose_commandline(to, subject, 
+            cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path))
             try:
                 subprocess.call(cmdline)

@@ -203,8 +203,9 @@ to send mail.
 mail_client
 -----------
 A mail client to use for sending merge requests.
-By default, bzr will try to use 'mapi' on Windows, or else xdg-email, depending
-on the platform. If this fails, it will fall back to 'editor'
+By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
+will try ``xdg-email``. If either of these fails, it will fall back to
+``editor``.
 
 Supported values are:
 
