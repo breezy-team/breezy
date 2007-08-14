@@ -33,6 +33,10 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_ninetyone,
+    )
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -1070,6 +1074,7 @@ class RemoteBranch(branch.Branch):
         return result
 
     @needs_write_lock
+    @deprecated_method(zero_ninetyone)
     def append_revision(self, *revision_ids):
         self._ensure_real()
         return self._real_branch.append_revision(*revision_ids)

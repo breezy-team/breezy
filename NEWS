@@ -7,6 +7,14 @@ IN DEVELOPMENT
      This format is compatible with Bazaar 0.15 and later.
      (Martin Pool)
 
+  API CHANGES:
+
+   * ``Branch.append_revision`` is deprecated; please use 
+     ``Branch.set_last_revision_info`` instead.  ``append_revision`` 
+     previously raised ``NotLeftParentDescendant`` in some situations 
+     on some branches; that is no longer part of the contract and 
+     that exception is deprecated.  (Martin Pool)
+
 IN DEVELOPMENT
 
   BUGFIXES:

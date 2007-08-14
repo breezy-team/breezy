@@ -1006,6 +1006,13 @@ class TestCase(unittest.TestCase):
         Note that this only captures warnings raised by symbol_versioning.warn,
         not other callers that go direct to the warning module.
 
+        To test that a deprecated method raises an error, do something like
+        this::
+
+        self.assertRaises(errors.ReservedId,
+            self.applyDeprecated, zero_ninetyone,
+                br.append_revision, 'current:')
+
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the
             parameter to deprecated_method/deprecated_function. If the

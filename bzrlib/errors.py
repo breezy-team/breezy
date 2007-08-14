@@ -971,6 +971,7 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+# zero_ninetyone: this exception is no longer raised and should be removed
 class NotLeftParentDescendant(BzrError):
 
     _fmt = ("Revision %(old_revision)s is not the left parent of"

@@ -235,32 +235,6 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
-    def test_append_revision(self):
-        tree = self.make_branch_and_tree('branch1',
-            format='dirstate-tags')
-        tree.lock_write()
-        try:
-            tree.commit('foo', rev_id='foo')
-            tree.commit('bar', rev_id='bar')
-            tree.commit('baz', rev_id='baz')
-            tree.set_last_revision('bar')
-            tree.branch.set_last_revision_info(2, 'bar')
-            tree.commit('qux', rev_id='qux')
-            tree.add_parent_tree_id('baz')
-            tree.commit('qux', rev_id='quxx')
-            tree.branch.set_last_revision_info(0, 'null:')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'bar')
-            tree.branch.append_revision('foo')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'baz')
-            tree.branch.append_revision('bar')
-            tree.branch.append_revision('baz')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'quxx')
-        finally:
-            tree.unlock()
-
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source', format='dirstate-with-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
@@ -286,7 +260,6 @@ class TestBranch6(TestCaseWithTransport):
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
         else:
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
-
 
     def test_checkout_with_references(self):
         self.do_checkout_test()
