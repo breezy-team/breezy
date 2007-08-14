@@ -325,7 +325,7 @@ class MergeDirective(_BaseMergeDirective):
 
 class MergeDirective2(_BaseMergeDirective):
 
-    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.19)'
+    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -504,6 +504,8 @@ class MergeDirective2(_BaseMergeDirective):
             if self._verify_patch(repository):
                 return 'verified'
             else:
+                #FIXME patch verification is broken for CRLF files
+                return 'inapplicable'
                 return 'failed'
         else:
             return 'inapplicable'
@@ -511,10 +513,14 @@ class MergeDirective2(_BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 
-    def register(self, directive):
-        registry.Registry.register(self, directive._format_string, directive)
+    def register(self, directive, format_string=None):
+        if format_string is None:
+            format_string = directive._format_string
+        registry.Registry.register(self, format_string, directive)
 
 
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+_format_registry.register(MergeDirective2,
+                          'Bazaar merge directive format 2 (Bazaar 0.19)')

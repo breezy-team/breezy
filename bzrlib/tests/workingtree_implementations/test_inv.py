@@ -80,6 +80,7 @@ class TestSnapshot(TestCaseWithWorkingTree):
             'fileid', 
             self.branch.repository.get_transaction()).get_lines('2')
         self.assertEqual(lines, ['contents of subdir/file\n'])
+        self.wt.branch.repository.commit_write_group()
 
     def test_snapshot_unchanged(self):
         #This tests that a simple commit does not make a new entry for
@@ -94,6 +95,7 @@ class TestSnapshot(TestCaseWithWorkingTree):
         self.assertRaises(errors.RevisionNotPresent,
                           vf.get_lines,
                           '2')
+        self.wt.branch.repository.commit_write_group()
 
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has
@@ -114,6 +116,7 @@ class TestSnapshot(TestCaseWithWorkingTree):
                                   {'1':self.file_1, 'other':other_ie},
                                   self.wt, self.builder)
         self.assertEqual(self.file_active.revision, '2')
+        self.wt.branch.repository.commit_write_group()
 
     def test_snapshot_changed(self):
         # This tests that a commit with one different parent results in a new
@@ -124,6 +127,7 @@ class TestSnapshot(TestCaseWithWorkingTree):
                                   self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
+        self.wt.branch.repository.commit_write_group()
 
 
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):

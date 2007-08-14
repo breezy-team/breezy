@@ -1,4 +1,8 @@
-IN DEVELOPMENT
+bzr 0.90rc1 2007-08-14
+
+  BUGFIXES:
+
+bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
 
@@ -34,6 +38,15 @@ IN DEVELOPMENT
 
     * ``bzr add *`` no more fails on Windows if working tree contains
       non-ascii file names. (Kuno Meyer, #127361)
+
+    * allow ``easy_install bzr`` runs without fatal errors. 
+      (Alexander Belchenko, #125521)
+
+    * Graph._filter_candidate_lca does not raise KeyError if a candidate
+      is eliminated just before it would normally be examined.  (Aaron Bentley)
+
+    * SMTP connection failures produce a nice message, not a traceback.
+      (Aaron Bentley)
 
   IMPROVEMENTS:
 
@@ -79,8 +92,6 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
     * New bundle and merge directive formats are faster to generate, and
-      more robust against email mangling.  New 'send' command replaces
-      'bundle' and 'merge-directive'.  (Aaron Bentley)
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
@@ -96,6 +107,38 @@ IN DEVELOPMENT
       ``other`` is large. This improves ``VF.get_graph([version_id])`` for
       a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
 
+    * The ``--lsprof-file`` option now generates output for KCacheGrind if
+      the file starts with ``callgrind.out``. This matches the default file
+      filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
+
+    * Fix ``bzr update`` to avoid an unnecessary
+      ``branch.get_master_branch`` call, which avoids 1 extra connection
+      to the remote server. (Partial fix for #128076, John Arbash Meinel)
+
+    * Log errors from the smart server in the trace file, to make debugging 
+      test failures (and live failures!) easier.  (Andrew Bennetts)
+      
+    * The HTML version of the man page has been superceded by a more
+      comprehensive manual called the Bazaar User Reference. This manual
+      is completed generated from the online help topics. As part of this
+      change, limited reStructuredText is now explicitly supported in help
+      topics and command help with 'unnatural' markup being removed prior
+      to display by the online help or inclusion in the man page.
+      (Ian Clatworthy)
+
+    * HTML documentation now use files extension *.html (Alexander Belchenko)
+
+    * The cache of ignore definitions is now cleared in WorkingTree.unlock()
+      so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
+
+    * ``bzr selftest --strict'' fails if there are any missing features or
+      expected test failures. (Daniel Watkins, #111914)
+
+    * Link to registration survey added to README. (Ian Clatworthy)
+
+    * Windows standalone installer show link to registration survey
+      when installation finished. (Alexander Belchenko)
+
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
@@ -104,6 +147,16 @@ IN DEVELOPMENT
       initial capital and final period. (Martin Pool)
 
     * KnitIndex.get_parents now returns tuples. (Robert Collins)
+
+    * Ancient unused ``Repository.text_store`` attribute has been removed.
+      (Robert Collins)
+
+    * The ``bzrlib.pack`` interface has changed to use tuples of bytestrings
+      rather than just bytestrings, making it easier to represent multiple
+      element names. As this interface was not used by any internal facilities
+      since it was introduced in 0.18 no API compatibility is being preserved.
+      The serialised form of these packs is identical with 0.18 when a single
+      element tuple is in use. (Robert Collins)
 
   INTERNALS:
 
@@ -146,9 +199,6 @@ IN DEVELOPMENT
     * New transport decorator 'unlistable+' which disables the list_dir
       functionality for testing.
 
-    * New ``file_names.FileNames`` support class which mananges names
-      for unlistable transport situations. (Robert Collins)
-
     * Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
 
     * RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
@@ -165,6 +215,44 @@ IN DEVELOPMENT
     * New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
       the parents of many knit nodes at once, reducing round trips to the 
       underlying index. (Robert Collins)
+
+    * Graph now has an is_ancestor method, various bits use it.
+      (Aaron Bentley)
+
+    * The ``-Dhpss`` flag now includes timing information. As well as
+      logging when a new connection is opened. (John Arbash Meinel)
+
+    * ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+      callers when inserting data, allowing generation of readv style access
+      during pack creation, without needing a separate pass across the output
+      pack to gather such details. (Robert Collins)
+
+    * ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+      files that are stored on a transport. (Robert Collins)
+
+    * New ``Repository.has_same_location`` method that reports if two
+      repository objects refer to the same repository (although with some risk
+      of false negatives).  (Andrew Bennetts)
+
+    * InterTree.compare now passes require_versioned on correctly.
+      (Marius Kruger)
+
+    * New methods on Repository - ``start_write_group``,
+      ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
+      which provide a clean hook point for transactional Repositories - ones
+      where all the data for a fetch or commit needs to be made atomically
+      available in one step. This allows the write lock to remain while making
+      a series of data insertions.  (e.g. data conversion). (Robert Collins)
+
+    * In ``bzrlib.knit`` the internal interface has been altered to use
+      3-tuples (index, pos, length) rather than two-tuples (pos, length) to
+      describe where data in a knit is, allowing knits to be split into 
+      many files. (Robert Collins)
+
+    * ``bzrlib.knit._KnitData`` split into cache management and physical access
+      with two access classes - ``_PackAccess`` and ``_KnitAccess`` defined.
+      The former provides access into a .pack file, and the latter provides the
+      current production repository form of .knit files. (Robert Collins)
 
   TESTING:
 
@@ -204,7 +292,7 @@ bzr 0.18rc1  2007-07-10
     * Use exact encoding for merge directives. (Adeodato Simó, #120591)
 
     * Fix tempfile permissions error in smart server tar bundling under
-      Windows. (Martin_, #119330)
+      Windows. (Martin _, #119330)
 
     * Fix detection of directory entries in the inventory. (James Westby)
 
@@ -213,7 +301,7 @@ bzr 0.18rc1  2007-07-10
 
     * Issue a CONNECT request when connecting to an https server
       via a proxy to enable SSL tunneling.
-     (Vincent Ladeuil, #120678)
+      (Vincent Ladeuil, #120678)
 
     * Fix ``bzr log -r`` to support selecting merge revisions, both 
       individually and as part of revision ranges.
@@ -305,7 +393,7 @@ bzr 0.18rc1  2007-07-10
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
-     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.repository_implementations``;
       ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
       to ``bzrlib.tests.interrepository_implementations``;

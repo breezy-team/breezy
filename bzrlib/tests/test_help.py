@@ -50,8 +50,10 @@ class TestCommandHelp(tests.TestCase):
             """A sample command."""
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertStartsWith(helptext, 'usage: bzr Demo')
-        self.assertEndsWith(helptext, 'Show help message.\n')
+        self.assertStartsWith(helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo')
+        self.assertEndsWith(helptext, 'Show help message.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -82,7 +84,86 @@ class TestCommandHelp(tests.TestCase):
             """A sample command."""
         cmd = cmd_foo_bar()
         self.assertEqual(cmd.name(), cmd.get_help_topic())
-    
+
+    def test_formatted_help_text(self):
+        """Help text should be plain text by default."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            :Examples:
+                Example 1::
+ 
+                    cmd arg1
+ 
+                Example 2::
+ 
+                    cmd arg2
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEquals(
+            helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  -h, --help  Show help message.\n'
+            '\n'
+            'Examples:\n'
+            '    Example 1:\n'
+            '\n'
+            '        cmd arg1\n'
+            '\n'
+            '    Example 2:\n'
+            '\n'
+            '        cmd arg2\n'
+            '\n')
+        helptext = cmd.get_help_text(plain=False)
+        self.assertEquals(helptext,
+            ':Purpose: A sample command.\n'
+            ':Usage:   bzr Demo\n'
+            '\n'
+            ':Options:\n'
+            '  -h, --help  Show help message.\n'
+            '\n'
+            ':Examples:\n'
+            '    Example 1::\n'
+            '\n'
+            '        cmd arg1\n'
+            '\n'
+            '    Example 2::\n'
+            '\n'
+            '        cmd arg2\n'
+            '\n')
+
+    def test_help_text_custom_usage(self):
+        """Help text may contain a custom usage section."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            :Usage:
+                cmd Demo [opts] args
+ 
+                cmd Demo -h
+ 
+            Blah blah blah.
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEquals(helptext,
+            'Purpose: A sample command.\n'
+            'Usage:\n'
+            '    cmd Demo [opts] args\n'
+            '\n'
+            '    cmd Demo -h\n'
+            '\n'
+            '\n'
+            'Options:\n'
+            '  -h, --help  Show help message.\n'
+            '\n'
+            'Description:\n'
+            '  Blah blah blah.\n\n')
+
 
 class TestRegisteredTopic(tests.TestCase):
     """Tests for the RegisteredTopic class."""

@@ -16,21 +16,35 @@
 
 from cStringIO import StringIO
 from email.Message import Message
+import errno
+import smtplib
+import socket
 
-from bzrlib import config
+from bzrlib import (
+    config,
+    errors,
+    )
 from bzrlib.email_message import EmailMessage
 from bzrlib.errors import NoDestinationAddress
 from bzrlib.tests import TestCase
 from bzrlib.smtp_connection import SMTPConnection
 
 
+def connection_refuser():
+    def connect(server):
+        raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
+    smtp = smtplib.SMTP()
+    smtp.connect = connect
+    return smtp
+
+
 class TestSMTPConnection(TestCase):
 
-    def get_connection(self, text):
+    def get_connection(self, text, smtp_factory=None):
         my_config = config.GlobalConfig()
         config_file = StringIO(text)
         my_config._get_parser(config_file)
-        return SMTPConnection(my_config)
+        return SMTPConnection(my_config, _smtp_factory=smtp_factory)
 
     def test_defaults(self):
         conn = self.get_connection('')
@@ -41,6 +55,13 @@ class TestSMTPConnection(TestCase):
     def test_smtp_server(self):
         conn = self.get_connection('[DEFAULT]\nsmtp_server=host:10\n')
         self.assertEqual('host:10', conn._smtp_server)
+
+    def test_missing_server(self):
+        conn = self.get_connection('', smtp_factory=connection_refuser)
+        self.assertRaises(errors.DefaultSMTPConnectionRefused, conn._connect)
+        conn = self.get_connection('[DEFAULT]\nsmtp_server=smtp.example.com\n',
+                                   smtp_factory=connection_refuser)
+        self.assertRaises(errors.SMTPConnectionRefused, conn._connect)
 
     def test_smtp_username(self):
         conn = self.get_connection('')

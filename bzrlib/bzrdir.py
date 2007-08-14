@@ -1950,7 +1950,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.text_store.get(ie.text_id)
+            text = self.branch.repository.weave_store.get(ie.text_id)
             file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
@@ -2349,9 +2349,6 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def help_topic(self, topic):
         output = textwrap.dedent("""\
-            Bazaar directory formats
-            ------------------------
-
             These formats can be used for creating branches, working trees, and
             repositories.
 
@@ -2370,10 +2367,10 @@ class BzrDirFormatRegistry(registry.Registry):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return '  %s:\n%s\n\n' % (key, 
+            return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped('%s/default' % default_realkey, default_help,
+        output += wrapped(default_realkey, '(default) %s' % default_help,
                           self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:
@@ -2385,7 +2382,7 @@ class BzrDirFormatRegistry(registry.Registry):
             else:
                 output += wrapped(key, help, info)
         if len(deprecated_pairs) > 0:
-            output += "Deprecated formats\n------------------\n\n"
+            output += "Deprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
                 output += wrapped(key, help, info)
