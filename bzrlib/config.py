@@ -156,6 +156,7 @@ class Config(object):
                 'evolution': mail_client.Evolution,
                 'mapi': mail_client.MAPIClient,
                 'xdg-email': mail_client.XDGEmail,
+                'kmail': mail_client.KMail,
             }[selected_client]
         except KeyError:
             raise errors.UnknownMailClient(selected_client)

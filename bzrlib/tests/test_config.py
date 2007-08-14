@@ -1027,6 +1027,10 @@ class TestBranchConfigItems(TestCaseInTempDir):
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.Evolution)
 
+        config.set_user_option('mail_client', 'kmail')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.KMail)
+
         config.set_user_option('mail_client', 'xdg-email')
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.XDGEmail)

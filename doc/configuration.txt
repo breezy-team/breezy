@@ -214,11 +214,11 @@ Supported values are:
 :thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
     this works around some bugs that xdg-email doesn't handle.
 :evolution: Use Evolution.
+:kmail: Use KMail.
 :editor: Use your editor to compose the merge request.  This also uses
     your commit id, (see ``bzr whoami``), smtp_server and (optionally)
     smtp_username and smtp_password.
 :default: See above.
-
 
 submit_branch
 -------------
