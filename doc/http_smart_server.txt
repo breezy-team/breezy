@@ -11,7 +11,7 @@ using Apache 2.0 and FastCGI or mod_python.
 For more information on the smart server, and other ways to configure it
 see the main `smart server documentation`_.
 
-.. _smart server documentation: server.htm
+.. _smart server documentation: server.html
 
 Example
 =======

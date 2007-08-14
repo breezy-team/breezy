@@ -72,6 +72,10 @@ class TestMerge(ExternalBase):
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.run_bzr('revert --no-backup')
+        self.run_bzr_error(['Show-base is not supported for this merge type'],
+                           'merge ../b -r last:1..last:1 --merge-type weave'
+                           ' --show-base')
+        self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1')
@@ -330,7 +334,9 @@ class TestMerge(ExternalBase):
         self.write_directive('directive', source.branch, 'target', 'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
-        self.assertContainsRe(err, 'Preview patch does not match changes')
+        self.expectFailure('Patch verification is disabled',
+                           self.assertContainsRe, err,
+                           'Preview patch does not match changes')
 
     def test_merge_arbitrary(self):
         target = self.make_branch_and_tree('target')
