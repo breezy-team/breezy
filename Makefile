@@ -69,12 +69,12 @@ TAGS: $(tag_files)
 
 # translate txt docs to html
 derived_txt_files := \
-	doc/en/mini-tutorial/index.txt \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
 doc_dir := doc/en/user-guide
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
+	doc/en/mini-tutorial/index.txt \
 	doc/index.txt
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
@@ -111,7 +111,11 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-ALL_DOCS = $(htm_files) $(MAN_PAGES) $(dev_htm_files) doc/developers/performance.png
+WEB_DOCS = $(htm_files) $(dev_htm_files) \
+	   doc/default.css \
+	   doc/en/quick-reference/quick-start-summary.svg \
+	   doc/developers/performance.png
+ALL_DOCS = $(WEB_DOCS) $(MAN_PAGES)
 docs: $(ALL_DOCS)
 
 # build a png of our performance task list
@@ -122,12 +126,12 @@ doc/developers/performance.png: doc/developers/performance.dot
 
 ### Pretty Documentation ###
 
-# Produce HTML docs to upload on Canonical server
 HTMLDIR := html_docs
 PRETTYDIR := pretty_docs
 
+# Produce HTML docs to upload on Canonical server
 html-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css $(HTMLDIR)
+	python tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
 $(PRETTYDIR)/%.html: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
@@ -169,11 +173,8 @@ python-installer: docs
 	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 copy-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) \
-		doc/default.css NEWS README \
-		win32_bzr.exe/doc
-	python tools/win32/ostools.py copytodir $(dev_htm_files) \
-		win32_bzr.exe/doc/developers
+	python tools/win32/ostools.py copytodir README win32_bzr.exe/doc
+	python tools/win32/ostools.py copytree $(WEB_DOCS) win32_bzr.exe
 
 # clean on win32 all installer-related files and directories
 clean-win32: clean-docs
