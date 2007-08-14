@@ -59,6 +59,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
                                       zero_eight, zero_nine, zero_sixteen,
+                                      zero_ninetyone,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -376,7 +377,12 @@ class Branch(object):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
+    @deprecated_method(zero_ninetyone)
     def append_revision(self, *revision_ids):
+        """Add a revision to the tip of this branch.
+
+        This method is deprecated, use set_last_revision_info instead.
+        """
         raise NotImplementedError(self.append_revision)
 
     def set_revision_history(self, rev_history):
@@ -1366,6 +1372,7 @@ class BzrBranch(Branch):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
+    @deprecated_method(zero_ninetyone)
     @needs_write_lock
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
@@ -1999,6 +2006,7 @@ class BzrBranch6(BzrBranch5):
             self._check_history_violation(last_revision)
         self._write_last_revision_info(len(history), last_revision)
 
+    @deprecated_method(zero_ninetyone)
     @needs_write_lock
     def append_revision(self, *revision_ids):
         revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]

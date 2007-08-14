@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,12 +47,16 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 
 
 class TestBranch(TestCaseWithBranch):
 
     def test_append_revisions(self):
-        """Test appending more than one revision"""
+        # note that append_revision is now deprecated; new code should call
+        # set_last_revision_info instead.
         wt = self.make_branch_and_tree('tree')
         wt.commit('f', rev_id='rev1')
         wt.commit('f', rev_id='rev2')
@@ -60,11 +64,19 @@ class TestBranch(TestCaseWithBranch):
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.append_revision("rev1")
+        self.applyDeprecated(zero_ninetyone,
+            br.append_revision, "rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
-        br.append_revision("rev2", "rev3")
+
+        # can append more than one revision
+        self.applyDeprecated(zero_ninetyone,
+            br.append_revision, "rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-        self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
+
+        # reserved ids are reserved
+        self.assertRaises(errors.ReservedId,
+            self.applyDeprecated, zero_ninetyone,
+                br.append_revision, 'current:')
 
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()

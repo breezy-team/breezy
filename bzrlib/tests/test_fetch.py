@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ import os
 import re
 import sys
 
+import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
@@ -26,8 +27,10 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-import bzrlib.errors
 from bzrlib.repofmt import knitrepo
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -94,11 +97,13 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
-    # InstallFailed should be raised if the branch is missing a revision
-    # from its own revision history
-    br_a2.append_revision('a-b-c')
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
+    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
+
+    # We try to pull a revision 'a-b-c' from a branch whose repository doesn't
+    # contain a-b-c; this should give InstallFailed.
+    self.applyDeprecated(zero_ninetyone,
+            br_a2.append_revision, 'a-b-c')
+    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2)
 
     # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
     #       revisions which are not present?  In that case, this test

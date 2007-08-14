@@ -1,5 +1,12 @@
 IN DEVELOPMENT
 
+  API CHANGES:
+
+   * ``Branch.append_revision`` is deprecated; please use 
+     ``Branch.set_last_revision_info`` instead.
+
+IN DEVELOPMENT
+
   BUGFIXES:
 
     * ``bzr init`` should connect to the remote location one time only.  We
