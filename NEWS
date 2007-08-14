@@ -1,3 +1,10 @@
+IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+  * ``pull`` and ``merge`` are much faster at installing bundle format 4.
+    (Aaron Bentley)
+
 bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
