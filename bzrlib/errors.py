@@ -2311,6 +2311,14 @@ class NoDestinationAddress(BzrError):
     internal_error = True
 
 
+class RepositoryDataStreamError(BzrError):
+
+    _fmt = "Corrupt or incompatible data stream: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
 class SMTPError(BzrError):
 
     _fmt = "SMTP error: %(error)s"
@@ -2319,10 +2327,15 @@ class SMTPError(BzrError):
         self.error = error
 
 
-class RepositoryDataStreamError(BzrError):
+class SMTPConnectionRefused(SMTPError):
 
-    _fmt = "Corrupt or incompatible data stream: %(reason)s"
+    _fmt = "SMTP connection to %(host)s refused"
 
-    def __init__(self, reason):
-        self.reason = reason
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
 
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."

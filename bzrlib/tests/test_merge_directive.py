@@ -528,7 +528,8 @@ class TestMergeDirectiveBranch(object):
             self.assertEqual('inapplicable', verified)
         else:
             self.assertEqual('rev1', base)
-            self.assertEqual('failed', verified)
+            self.expectFailure('Patch verification is disabled',
+                               self.assertEqual, 'failed', verified)
 
     def test_install_revisions_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
