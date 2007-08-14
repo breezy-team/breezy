@@ -60,6 +60,12 @@ class TestDefaultFormat(TestCase):
         self.assertIsInstance(BranchFormat.get_default_format(),
                 BzrBranchFormat6)
 
+    def test_default_format_is_same_as_bzrdir_default(self):
+        # XXX: it might be nice if there was only one place the default was
+        # set, but at the moment that's not true -- mbp 20070814 -- 
+        self.assertEqual(BranchFormat.get_default_format(),
+                BzrDirFormat.get_default_format().get_branch_format())
+
     def test_get_set_default_format(self):
         # set the format and then set it back again
         old_format = BranchFormat.get_default_format()

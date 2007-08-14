@@ -35,6 +35,10 @@ from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
+# These tests are a bit old; please instead add new tests into
+# interrepository_implementations/ so they'll run on all relevant
+# combinations.
+
 
 def has_revision(branch, revision_id):
     return branch.repository.has_revision(revision_id)
@@ -97,6 +101,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
     # InstallFailed should be raised if the branch is missing a revision
     # from its own revision history
+    import pdb;pdb.set_trace()
     br_a2.append_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
 
@@ -116,7 +121,7 @@ class TestFetch(TestCaseWithTransport):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches(self)
+        br_a, br_b = make_branches(self, format='dirstate-tags')
         fetch_steps(self, br_a, br_b, br_a)
 
     def test_fetch_self(self):

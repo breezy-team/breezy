@@ -962,11 +962,12 @@ class StrictCommitFailed(Exception):
 
 class NoSuchRevision(BzrError):
 
-    _fmt = "Branch %(branch)s has no revision %(revision)s"
+    _fmt = "%(branch)s has no revision %(revision)s"
 
     internal_error = True
 
     def __init__(self, branch, revision):
+        # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
