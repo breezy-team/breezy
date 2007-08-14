@@ -426,7 +426,7 @@ class OldTests(ExternalBase):
         self.run_bzr("help slartibartfast", retcode=3)
 
         out = self.run_bzr("help ci")[0]
-        out.index('aliases: ci, checkin\n')
+        out.index('Aliases:  ci, checkin\n')
 
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
