@@ -763,6 +763,11 @@ class RemoteRepository(object):
         self._ensure_real()
         self._real_repository.insert_data_stream(stream)
 
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        self._ensure_real()
+        return self._real_repository.item_keys_introduced_by(revision_ids,
+            _files_pb=_files_pb)
+
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
