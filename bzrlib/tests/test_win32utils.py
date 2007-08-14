@@ -18,7 +18,7 @@ import os
 import sys
 
 from bzrlib import osutils
-from bzrlib.tests import TestCase, TestCaseInTempDir, Feature, TestSkipped
+from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
 from bzrlib.win32utils import glob_expand, get_app_path
 
 
@@ -34,6 +34,21 @@ class _NeedsGlobExpansionFeature(Feature):
         return 'Internally performed glob expansion'
 
 NeedsGlobExpansionFeature = _NeedsGlobExpansionFeature()
+
+
+class _Win32RegistryFeature(Feature):
+
+    def _probe(self):
+        try:
+            import _winreg
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return '_winreg'
+
+Win32RegistryFeature = _Win32RegistryFeature()
 
 
 # Tests
@@ -132,9 +147,9 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
 class TestAppPaths(TestCase):
 
+    _test_needs_features = [Win32RegistryFeature]
+
     def test_iexplore(self):
-        if sys.platform != 'win32':
-            raise TestSkipped('win32-specific')
         # typical windows users should have IE installed
         for a in ('iexplore', 'iexplore.exe'):
             p = get_app_path(a)
@@ -143,7 +158,5 @@ class TestAppPaths(TestCase):
             self.assertNotEquals('', d)
 
     def test_not_existing(self):
-        if sys.platform != 'win32':
-            raise TestSkipped('win32-specific')
         p = get_app_path('not-existing')
         self.assertEquals('not-existing', p)
