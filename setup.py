@@ -207,17 +207,29 @@ if unavailable_files:
 
 
 if 'bdist_wininst' in sys.argv:
-    import glob
-    # doc files
-    docs = glob.glob('doc/*.html') + ['doc/default.css']
-    dev_docs = glob.glob('doc/developers/*.html')
+    def find_docs():
+        import fnmatch
+        docs = []
+        for root, dirs, files in os.walk('doc'):
+            r = []
+            for f in files:
+                if (fnmatch.fnmatch(f, '*.html') or
+                    fnmatch.fnmatch(f, '*.css')):
+                    r.append(os.path.join(root, f))
+            if r:
+                relative = root[4:]
+                if relative:
+                    target = os.path.join('Doc\\Bazaar', relative)
+                else:
+                    target = 'Doc\\Bazaar'
+                docs.append((target, r))
+        return docs
+
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
-            'data_files': [('Doc/Bazaar', docs),
-                           ('Doc/Bazaar/developers', dev_docs),
-                          ],
+            'data_files': find_docs(),
             # for building pyrex extensions
             'cmdclass': {'build_ext': build_ext},
            }
