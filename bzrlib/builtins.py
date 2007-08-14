@@ -3802,10 +3802,13 @@ class cmd_send(Command):
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
 
-    On *nix, mail is sent using your preferred mail client.  This requires
-    the xdg-email utility.  If that's not installed, we use your editor.
-    To use a different client, set the mail_client option.  Supported values
-    are "kmail", "evolution", "thunderbird", "editor", "xdg-email" and
+    Mail is sent using your preferred mail program.  This should be transparent
+    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
+    the preferred client can't be found (or used), your editor will be used.
+    
+    To use a specific mail program, set the mail_client configuration option.
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
+    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
     "default".
 
     If mail is being sent, a to address is required.  This can be supplied
@@ -3821,7 +3824,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge']
+    _see_also = ['merge', 'doc/configuration.txt']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
@@ -3839,7 +3842,7 @@ class cmd_send(Command):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
-        Option('mail-to', help='Mail the request to this address',
+        Option('mail-to', help='Mail the request to this address.',
                type=unicode),
         'revision',
         'message',
@@ -3949,7 +3952,7 @@ class cmd_send(Command):
                     subject += message
                 else:
                     revision = branch.repository.get_revision(revision_id)
-                    subject += revision.message
+                    subject += revision.get_summary()
                 mail_client.compose_merge_request(mail_to, subject,
                                                   outfile.getvalue())
         finally:

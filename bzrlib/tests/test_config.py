@@ -1035,6 +1035,10 @@ class TestBranchConfigItems(TestCaseInTempDir):
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.XDGEmail)
 
+        config.set_user_option('mail_client', 'mapi')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.MAPIClient)
+
         config.set_user_option('mail_client', 'firebird')
         self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
 

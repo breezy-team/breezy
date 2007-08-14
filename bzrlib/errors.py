@@ -2332,3 +2332,16 @@ class MailClientNotFound(BzrError):
         mail_command_list_string = ', '.join(mail_command_list)
         BzrError.__init__(self, mail_command_list=mail_command_list,
                           mail_command_list_string=mail_command_list_string)
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."
