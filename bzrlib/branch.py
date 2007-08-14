@@ -2098,8 +2098,12 @@ class BzrBranch6(BzrBranch5):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
-            revno, revision_id = self.last_revision_info()
+            revno, revision_id = source_revno, source_revision_id
+        elif source_revision_id == revision_id:
+            # we know the revno without needing to walk all of history
+            revno = source_revno
         else:
             # To figure out the revno for a random revision, we need to build
             # the revision history, and count its length.

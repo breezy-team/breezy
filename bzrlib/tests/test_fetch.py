@@ -101,8 +101,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
 
     # We try to pull a revision 'a-b-c' from a branch whose repository doesn't
     # contain a-b-c; this should give InstallFailed.
-    self.applyDeprecated(zero_ninetyone,
-            br_a2.append_revision, 'a-b-c')
+    br_a2.set_last_revision_info(42, 'a-b-c')
     self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2)
 
     # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
