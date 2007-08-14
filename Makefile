@@ -67,6 +67,13 @@ TAGS: $(tag_files)
 
 ### Documentation ###
 
+# set PRETTY to get docs that look like the Bazaar web site
+ifdef PRETTY
+rst2html := python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid 
+else
+rst2html := python tools/rst2html.py --link-stylesheet --footnote-references=superscript 
+endif
+
 # translate txt docs to html
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
@@ -76,18 +83,21 @@ doc_dir := doc/en/user-guide
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
 	doc/en/mini-tutorial/index.txt \
 	doc/index.txt
+non_txt_files := \
+       doc/default.css \
+       doc/en/quick-reference/quick-start-summary.svg
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/developers/%.html: doc/developers/%.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
+	$(rst2html) --stylesheet=../default.css $< $@
 
 doc/index.html: doc/index.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
+	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=../../default.css --footnote-references=superscript $< $@
+	$(rst2html) --stylesheet=../../default.css $< $@
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
@@ -111,43 +121,27 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-WEB_DOCS = $(htm_files) $(dev_htm_files) \
-	   doc/default.css \
-	   doc/en/quick-reference/quick-start-summary.svg \
-	   doc/developers/performance.png
-ALL_DOCS = $(WEB_DOCS) $(MAN_PAGES)
-docs: $(ALL_DOCS)
-
 # build a png of our performance task list
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
+derived_web_docs = $(htm_files) $(dev_htm_files) doc/developers/performance.png
+WEB_DOCS = $(derived_web_docs) $(non_txt_files)
+ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
-### Pretty Documentation ###
+# the main target to build all the docs
+docs: $(ALL_DOCS)
 
+# produce a tree containing just the final docs, ready for uploading to the web
 HTMLDIR := html_docs
-PRETTYDIR := pretty_docs
-
-# Produce HTML docs to upload on Canonical server
 html-docs: docs
 	python tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
-
-$(PRETTYDIR)/%.html: pretty_docs doc/%.txt
-	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
-	$(PRETTYDIR)/$*.html
-
-pretty-html-docs: pretty_files
-
-pretty_docs:
-	python -c "import os; os.mkdir('$(PRETTYDIR)')"
-
-pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.html, $(txt_files))
 
 # clean produced docs
 clean-docs:
 	python tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(PRETTYDIR) $(derived_txt_files)
+	$(HTMLDIR) $(derived_txt_files)
 
 
 ### Windows Support ###
