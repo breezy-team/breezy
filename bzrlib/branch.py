@@ -1139,13 +1139,14 @@ class BzrBranchFormat5(BranchFormat):
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
-    """Branch format with last-revision
+    """Branch format with last-revision and tags.
 
     Unlike previous formats, this has no explicit revision history. Instead,
     this just stores the last-revision, and the left-hand history leading
     up to there is the history.
 
     This format was introduced in bzr 0.15
+    and became the default in 0.91.
     """
 
     def get_format_string(self):
@@ -1264,10 +1265,10 @@ class BranchReferenceFormat(BranchFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__default_format = BzrBranchFormat5()
+__default_format = BzrBranchFormat6()
 BranchFormat.register_format(__default_format)
 BranchFormat.register_format(BranchReferenceFormat())
-BranchFormat.register_format(BzrBranchFormat6())
+BranchFormat.register_format(BzrBranchFormat5())
 BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]

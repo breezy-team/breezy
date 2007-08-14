@@ -39,6 +39,7 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     BzrBranch5,
     BzrBranchFormat5,
+    BzrBranchFormat6,
     PullResult,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
@@ -54,10 +55,14 @@ from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
+    def test_default_format(self):
+        # update this if you change the default branch format
+        self.assertIsInstance(BranchFormat.get_default_format(),
+                BzrBranchFormat6)
+
     def test_get_set_default_format(self):
+        # set the format and then set it back again
         old_format = BranchFormat.get_default_format()
-        # default is 5
-        self.assertTrue(isinstance(old_format, BzrBranchFormat5))
         BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
