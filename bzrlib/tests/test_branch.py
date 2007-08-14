@@ -63,6 +63,7 @@ class TestDefaultFormat(TestCase):
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
         # set, but at the moment that's not true -- mbp 20070814 -- 
+        # https://bugs.launchpad.net/bzr/+bug/132376
         self.assertEqual(BranchFormat.get_default_format(),
                 BzrDirFormat.get_default_format().get_branch_format())
 
