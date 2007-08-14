@@ -1854,16 +1854,41 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import KnitRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         # TODO: jam 20070210 This should be an assert, not a translate
         revision_id = osutils.safe_revision_id(revision_id)
-        f = KnitRepoFetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            pb=pb)
-        return f.count_copied, f.failed_revisions
+        self.count_copied = 0
+        if revision_id is None:
+            # nothing to do.
+            return
+        if _mod_revision.is_null(revision_id):
+            # TODO:
+            # everything to do - use pack logic
+            # to fetch from all packs to one without
+            # inventory parsing etc.
+            # till then:
+            revision_ids = self.source.all_revision_ids()
+        else:
+            try:
+                revision_ids = self.missing_revision_ids(revision_id)
+            except errors.NoSuchRevision:
+                raise errors.InstallFailed([revision_id])
+        packs = self.source._packs.all_pack_details()
+        revision_index_map = self.source._packs._revision_index_map(packs)
+        inventory_index_map = self.source._packs._inv_index_map(packs)
+        text_index_map = self.source._packs._text_index_map(packs)
+        signature_index_map = self.source._packs._signature_index_map(packs)
+        pack = self.target._packs.create_pack_from_packs(
+            revision_index_map,
+            inventory_index_map,
+            text_index_map,
+            signature_index_map,
+            revision_ids
+            )
+        self.target._packs.save()
+        self.target._packs.add_pack_to_memory(pack)
+        return pack.get_revision_count()
 
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None):
@@ -2017,6 +2042,7 @@ InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
+InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterRemoteRepository)
 
 

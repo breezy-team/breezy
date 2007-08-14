@@ -22,6 +22,7 @@ import md5
 
 from bzrlib import (
         pack,
+        ui,
         )
 from bzrlib.index import (
     GraphIndex,
@@ -30,7 +31,7 @@ from bzrlib.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
-from bzrlib.knit import KnitGraphIndex, _PackAccess
+from bzrlib.knit import KnitGraphIndex, _PackAccess, _KnitData
 from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
 """)
@@ -59,11 +60,69 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
 
 
+class Pack(object):
+    """An in memory proxy for a .pack and its indices."""
+
+    def __init__(self):
+        self.revision_index = None
+        self.inventory_index = None
+        self.text_index = None
+        self.signature_index = None
+        self.name = None
+        self.transport = None
+
+    def get_revision_count(self):
+        return len(list(self.revision_index.iter_all_entries()))
+
+
 class RepositoryPackCollection(object):
 
     def __init__(self, repo, transport):
         self.repo = repo
         self.transport = transport
+        self.packs = []
+
+    def add_pack_to_memory(self, pack):
+        """Make a Pack object available to the repository to satisfy queries.
+        
+        :param pack: A Pack object.
+        """
+        self.packs.append(pack)
+        if self.repo._revision_all_indices is None:
+            # to make this function more useful, perhaps we should make an
+            # all_indices object in future?
+            pass
+        else:
+            self.repo._revision_pack_map[pack.revision_index] = (
+                pack.transport, pack.name)
+            self.repo._revision_all_indices.insert_index(0, pack.revision_index)
+        if self.repo._inv_all_indices is not None:
+            # inv 'knit' has been used : update it.
+            self.repo._inv_all_indices.insert_index(0,
+                pack.inventory_index)
+        if self.repo._text_all_indices is not None:
+            # text 'knits' have been used : update it.
+            self.repo._text_all_indices.insert_index(0,
+                pack.text_index)
+        if self.repo._signature_all_indices is not None:
+            # sigatures 'knit' accessed : update it.
+            self.repo._signature_all_indices.insert_index(0,
+                pack.signature_index)
+
+    def all_pack_details(self):
+        """Return a list of all the packs as transport,name tuples.
+
+        :return: A list of (transport, name) tuples for all the packs in the
+            repository.
+        """
+        # XXX: fix me, should be direct rather than indirect
+        if self.repo._revision_all_indices is None:
+            # trigger creation of the all revision index.
+            self.repo._revision_store.get_revision_file(self.repo.get_transaction())
+        result = []
+        for index, transport_and_name in self.repo._revision_pack_map.iteritems():
+            result.append(transport_and_name)
+        return result
 
     def autopack(self):
         """Pack the pack collection incrementally.
@@ -118,6 +177,88 @@ class RepositoryPackCollection(object):
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
         return True
+
+    def create_pack_from_packs(self, revision_index_map, inventory_index_map,
+        text_index_map, signature_index_map, revision_ids=None):
+        """Create a new pack by reading data from other packs.
+
+        This does little more than a bulk copy of data. One key difference
+        is that data with the same item key across multiple packs is elided
+        from the output. The new pack is written into the current pack store
+        along with its indices, and the name added to the pack names. The 
+        source packs are not altered.
+
+        :param revision_index_map: A revision index map.
+        :param inventory_index_map: A inventory index map.
+        :param text_index_map: A text index map.
+        :param signature_index_map: A signature index map.
+        :param revision_ids: Either None, to copy all data, or a list
+            of revision_ids to limit the copied data to the data they
+            introduced.
+        :return: The number of revisions copied.
+        """
+        # open a pack - using the same name as the last temporary file
+        # - which has already been flushed, so its safe.
+        # XXX: - duplicate code warning with start_write_group; fix before
+        #      considering 'done'.
+        if getattr(self.repo, '_open_pack_tuple', None) is not None:
+            raise errors.BzrError('call to create_pack_from_packs while '
+                'another pack is being written.')
+        random_name = self.repo.control_files._lock.nonce + '.autopack'
+        write_stream = self.repo._upload_transport.open_file_stream(random_name)
+        pack_hash = md5.new()
+        def write_data(bytes, update=pack_hash.update):
+            write_stream(bytes)
+            update(bytes)
+        writer = pack.ContainerWriter(write_data)
+        writer.begin()
+        # open new indices
+        revision_index = InMemoryGraphIndex(reference_lists=1)
+        inv_index = InMemoryGraphIndex(reference_lists=2)
+        text_index = InMemoryGraphIndex(reference_lists=2, key_elements=2)
+        signature_index = InMemoryGraphIndex(reference_lists=0)
+        # select revision keys
+        revision_nodes = self._index_contents(revision_index_map)
+        # copy revision keys and adjust values
+        self._copy_nodes_graph(revision_nodes, revision_index_map, writer, revision_index)
+        # select inventory keys
+        inv_nodes = self._index_contents(inventory_index_map)
+        # copy inventory keys and adjust values
+        self._copy_nodes_graph(inv_nodes, inventory_index_map, writer, inv_index)
+        # select text keys
+        text_nodes = self._index_contents(text_index_map)
+        # copy text keys and adjust values
+        self._copy_nodes_graph(text_nodes, text_index_map, writer, text_index)
+        # select signature keys
+        signature_nodes = self._index_contents(signature_index_map)
+        # copy signature keys and adjust values
+        self._copy_nodes(signature_nodes, signature_index_map, writer, signature_index)
+        # finish the pack
+        writer.end()
+        new_name = pack_hash.hexdigest()
+        # add to names
+        self.allocate(new_name)
+        # rename into place
+        self.repo._upload_transport.close_file_stream(random_name)
+        self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
+        # write indices
+        index_transport = self.repo._upload_transport.clone('../indices')
+        rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
+        index_transport.put_file(rev_index_name, revision_index.finish())
+        inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
+        index_transport.put_file(inv_index_name, inv_index.finish())
+        text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
+        index_transport.put_file(text_index_name, text_index.finish())
+        signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
+        index_transport.put_file(signature_index_name, signature_index.finish())
+        result = Pack()
+        result.revision_index = revision_index
+        result.inventory_index = inv_index
+        result.text_index = text_index
+        result.signature_index = signature_index
+        result.name = new_name
+        result.transport = self.repo._upload_transport.clone('../packs/')
+        return result
 
     def _execute_pack_operations(self, pack_operations):
         """Execute a series of pack operations.
@@ -218,61 +359,16 @@ class RepositoryPackCollection(object):
             in use.
         :return: None
         """
-        # open new pack - using the same name as the last temporary file
-        # - which has already been flushed, so its safe.
-        # XXX: - duplicate code warning with start_write_group; fix before
-        #      considering 'done'.
-        random_name = self.repo.control_files._lock.nonce + '.autopack'
-        write_stream = self.repo._upload_transport.open_file_stream(random_name)
-        pack_hash = md5.new()
-        def write_data(bytes, update=pack_hash.update):
-            write_stream(bytes)
-            update(bytes)
-        writer = pack.ContainerWriter(write_data)
-        writer.begin()
-        # open new indices
-        revision_index = InMemoryGraphIndex(reference_lists=1)
-        inv_index = InMemoryGraphIndex(reference_lists=2)
-        text_index = InMemoryGraphIndex(reference_lists=2, key_elements=2)
-        signature_index = InMemoryGraphIndex(reference_lists=0)
         # select revision keys
         revision_index_map = self._revision_index_map(pack_details)
-        revision_nodes = self._index_contents(revision_index_map)
-        # copy revision keys and adjust values
-        self._copy_nodes_graph(revision_nodes, revision_index_map, writer, revision_index)
         # select inventory keys
         inv_index_map = self._inv_index_map(pack_details)
-        inv_nodes = self._index_contents(inv_index_map)
-        # copy inventory keys and adjust values
-        self._copy_nodes_graph(inv_nodes, inv_index_map, writer, inv_index)
         # select text keys
         text_index_map = self._text_index_map(pack_details)
-        text_nodes = self._index_contents(text_index_map)
-        # copy text keys and adjust values
-        self._copy_nodes_graph(text_nodes, text_index_map, writer, text_index)
         # select signature keys
         signature_index_map = self._signature_index_map(pack_details)
-        signature_nodes = self._index_contents(signature_index_map)
-        # copy signature keys and adjust values
-        self._copy_nodes(signature_nodes, signature_index_map, writer, signature_index)
-        # finish the pack
-        writer.end()
-        new_name = pack_hash.hexdigest()
-        # add to names
-        self.allocate(new_name)
-        # rename into place
-        self.repo._upload_transport.close_file_stream(random_name)
-        self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
-        # write indices
-        index_transport = self.repo._upload_transport.clone('../indices')
-        rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
-        index_transport.put_file(rev_index_name, revision_index.finish())
-        inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
-        index_transport.put_file(inv_index_name, inv_index.finish())
-        text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
-        index_transport.put_file(text_index_name, text_index.finish())
-        signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
-        index_transport.put_file(signature_index_name, signature_index.finish())
+        self.create_pack_from_packs(revision_index_map, inv_index_map,
+            text_index_map, signature_index_map)
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
         # plan a readv on each source pack:
@@ -307,6 +403,8 @@ class RepositoryPackCollection(object):
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
 
     def _copy_nodes_graph(self, nodes, index_map, writer, write_index):
+        # for record verification
+        knit_data = _KnitData(None)
         # plan a readv on each source pack:
         # group by pack
         nodes = sorted(nodes)
@@ -335,6 +433,8 @@ class RepositoryPackCollection(object):
             for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
+                df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
 
@@ -410,6 +510,7 @@ class RepositoryPackCollection(object):
 
     def reset(self):
         self._names = None
+        self.packs = []
 
     def _inv_index_map(self, pack_details):
         """Get a map of inv index -> packs for pack_details."""
@@ -986,6 +1087,7 @@ class GraphKnitRepository1(KnitRepository):
             self._upload_transport.close_file_stream(self._open_pack_tuple[1])
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
+            self._open_pack_tuple = None
             if not self._packs.autopack():
                 self._packs.save()
         else:
@@ -1100,6 +1202,7 @@ class GraphKnitRepository3(KnitRepository3):
             self._upload_transport.close_file_stream(self._open_pack_tuple[1])
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
+            self._open_pack_tuple = None
             if not self._packs.autopack():
                 self._packs.save()
         else:
