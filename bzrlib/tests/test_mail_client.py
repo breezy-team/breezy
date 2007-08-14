@@ -63,11 +63,11 @@ class TestEvolution(tests.TestCase):
 class TestKMail(tests.TestCase):
 
     def test_commandline(self):
-        evo = mail_client.KMail(None)
-        commandline = evo._get_compose_commandline(None, None, 'file%')
+        kmail = mail_client.KMail(None)
+        commandline = kmail._get_compose_commandline(None, None, 'file%')
         self.assertEqual(['--attach', 'file%'], commandline)
-        commandline = evo._get_compose_commandline('jrandom@example.org',
-                                                   'Hi there!', None)
+        commandline = kmail._get_compose_commandline('jrandom@example.org',
+                                                     'Hi there!', None)
         self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
                          commandline)
 
