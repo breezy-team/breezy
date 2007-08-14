@@ -801,6 +801,11 @@ class RemoteBranchFormat(branch.BranchFormat):
         assert isinstance(a_bzrdir, RemoteBzrDir)
         return a_bzrdir.create_branch()
 
+    def supports_tags(self):
+        # Remote branches might support tags, but we won't know until we
+        # access the real remote branch.
+        return True
+
 
 class RemoteBranch(branch.Branch):
     """Branch stored on a server accessed by HPSS RPC.
