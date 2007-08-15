@@ -15,10 +15,6 @@ bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
 
-bzr 0.90rc1 2007-08-14
-
-  BUGFIXES:
-
     * ``bzr init`` should connect to the remote location one time only.  We
       have been connecting several times because we forget to pass around the
       Transport object. This modifies ``BzrDir.create_branch_convenience``,
