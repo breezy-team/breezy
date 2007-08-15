@@ -28,6 +28,7 @@ import time
 
 import bzrlib
 import bzrlib.help
+import bzrlib.help_topics
 import bzrlib.commands
 
 
@@ -103,7 +104,7 @@ def format_command (params, cmd):
     """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
-    doc = cmd.help()
+    doc = bzrlib.help_topics.help_as_plain_text(cmd.help())
 
     option_str = ""
     options = cmd.options()

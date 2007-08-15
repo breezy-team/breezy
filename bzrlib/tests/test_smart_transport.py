@@ -1343,7 +1343,20 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(expected_tuple, smart_protocol.read_response_tuple())
 
 
-class TestSmartProtocolOne(TestSmartProtocol):
+class CommonSmartProtocolTestMixin(object):
+
+    def test_errors_are_logged(self):
+        """If an error occurs during testing, it is logged to the test log."""
+        out_stream = StringIO()
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        # This triggers a "bad request" error.
+        smart_protocol.accept_bytes('abc\n')
+        test_log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(test_log, 'Traceback')
+        self.assertContainsRe(test_log, 'SmartProtocolError')
+
+
+class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
     """Tests for the smart protocol version one."""
 
     client_protocol_class = protocol.SmartClientRequestProtocolOne
@@ -1564,7 +1577,7 @@ class TestSmartProtocolOne(TestSmartProtocol):
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
 
-class TestSmartProtocolTwo(TestSmartProtocol):
+class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
     """Tests for the smart protocol version two.
 
     This test case is mostly the same as TestSmartProtocolOne.

@@ -172,6 +172,10 @@ class TestRunBzr(ExternalBase):
         self.assertEqual('baz', self.working_dir)
         self.assertEqual(['foo', 'bar'], self.argv)
 
+    def test_reject_extra_keyword_arguments(self):
+        self.assertRaises(TypeError, self.run_bzr, "foo bar",
+                          error_regex=['error message'])
+
 
 class TestBenchmarkTests(TestCaseWithTransport):
 
