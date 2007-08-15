@@ -283,7 +283,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
         self.callDeprecated(['passing varargs to run_bzr_subprocess was'
-                             ' deprecated in version 0.19.'],
+                             ' deprecated in version 0.91.'],
                             self.run_bzr_subprocess,
                             'arg1', 'arg2', 'arg3', retcode=3)
 
