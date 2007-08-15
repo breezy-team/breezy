@@ -261,6 +261,12 @@ To skip a particular test (or set of tests), use the --exclude option
 
   ./bzr selftest -v -x blackbox  
 
+To ensure that all tests are being run and succeeding, you can use the
+--strict option which will fail if there are any missing features or known
+failures, like so::
+
+  ./bzr selftest --strict
+
 To list tests without running them, use the --list-only option like so::
 
   ./bzr selftest --list-only

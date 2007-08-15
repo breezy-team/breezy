@@ -17,7 +17,7 @@
 """Generate ReStructuredText source for the User Reference Manual.
 Loosely based on the manpage generator autodoc_man.py.
 
-Written by Alexander Belchenko and the Bazaar community.
+Written by the Bazaar community.
 """
 
 import os
@@ -68,6 +68,20 @@ def _get_section(registry, section, title, hdg_level1="=", hdg_level2="-"):
     """Build the manual part from topics matching that section."""
     topics = sorted(registry.get_topics_for_section(section))
     lines = [title, hdg_level1 * len(title), ""]
+
+    # docutils treats section heading as implicit link target.
+    # But in some cases topic and heading are different, e.g.:
+    #
+    # `bugs' vs. `Bug Trackers'
+    # `working-tree' vs. `Working Trees'
+    #
+    # So for building proper cross-reference between topic names
+    # and corresponding sections in document, we need provide
+    # simple glue in the form:
+    #
+    # .. _topic: `heading`_
+    links_glue = []
+
     for topic in topics:
         help = registry.get_detail(topic)
         heading,text = help.split("\n", 1)
@@ -75,6 +89,14 @@ def _get_section(registry, section, title, hdg_level1="=", hdg_level2="-"):
         lines.append(hdg_level2 * len(heading))
         lines.append(text)
         lines.append('')
+        # check that topic match heading
+        if topic != heading.lower():
+            links_glue.append((topic, heading))
+
+    # provide links glue for topics that don't match headings
+    lines.extend([".. _%s: `%s`_" % i for i in links_glue])
+    lines.append('')
+
     return "\n" + "\n".join(lines) + "\n"
 
 
@@ -88,7 +110,7 @@ def _get_commands_section(registry, title="Commands", hdg_level1="=",
         if cmd_object.hidden:
             continue
         heading = cmd_name
-        text = cmd_object.get_help_text(plain=False)
+        text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
         lines.append(heading)
         lines.append(hdg_level2 * len(heading))
         lines.append(text)

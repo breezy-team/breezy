@@ -49,7 +49,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_nineteen,
+        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
@@ -80,7 +80,7 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
