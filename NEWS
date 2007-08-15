@@ -2,8 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-  * ``pull`` and ``merge`` are much faster at installing bundle format 4.
-    (Aaron Bentley)
+    * ``pull`` and ``merge`` are much faster at installing bundle format 4.
+      (Aaron Bentley)
+
+    * ``pull -v`` no longer includes deltas, making it much faster.
+      (Aaron Bentley)
 
 bzr 0.90rc1 2007-08-14
 
@@ -124,7 +127,7 @@ bzr 0.90rc1 2007-08-14
 
     * Log errors from the smart server in the trace file, to make debugging 
       test failures (and live failures!) easier.  (Andrew Bennetts)
-      
+
     * The HTML version of the man page has been superceded by a more
       comprehensive manual called the Bazaar User Reference. This manual
       is completed generated from the online help topics. As part of this
