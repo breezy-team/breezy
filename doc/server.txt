@@ -60,7 +60,7 @@ for a shared repository in ``/srv/bzr/repo`` which has a branch at
 
 Running a Bazaar server from inetd requires an inetd.conf entry::
 
-    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
 
 When running client commands, the URL you supply is a `bzr://` URL relative to
 the ``--directory`` option given in inetd.conf::
