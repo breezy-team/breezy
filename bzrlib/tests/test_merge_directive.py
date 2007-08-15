@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import re
 
 from bzrlib import (
     errors,
@@ -352,13 +353,15 @@ class TestMergeDirectiveBranch(object):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.branch.get_config().set_user_option('email',
             'J. Random Hacker <jrandom@example.com>')
-        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n')])
-        tree_a.add('file')
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n'),
+                                  ('tree_a/file_2', 'content_x\rcontent_y\r')])
+        tree_a.add(['file', 'file_2'])
         tree_a.commit('message', rev_id='rev1')
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
-        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n')])
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n'),
+                                  ('tree_a/file_2', 'content_x\rcontent_z\r')])
         tree_a.commit('Commit of rev2a', rev_id='rev2a')
         return tree_a, tree_b, branch_c
 
@@ -627,14 +630,14 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         lines = md.to_lines()
         md2 = merge_directive.MergeDirective.from_lines(lines)
         md2._verify_patch(tree_a.branch.repository)
-        # Stript trailing whitespace
+        # Strip trailing whitespace
         md2.patch = md2.patch.replace(' \n', '\n')
         md2._verify_patch(tree_a.branch.repository)
         # Convert to Mac line-endings
-        md2.patch = md2.patch.replace('\n', '\r')
+        md2.patch = re.sub('(\r\n|\r|\n)', '\r', md2.patch)
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         # Convert to DOS line-endings
-        md2.patch = md2.patch.replace('\r', '\r\n')
+        md2.patch = re.sub('(\r\n|\r|\n)', '\r\n', md2.patch)
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         md2.patch = md2.patch.replace('content_c', 'content_d')
         self.assertFalse(md2._verify_patch(tree_a.branch.repository))

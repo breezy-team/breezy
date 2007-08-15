@@ -486,6 +486,7 @@ class MergeDirective2(_BaseMergeDirective):
                                                self.base_revision_id)
         # Convert line-endings to UNIX
         stored_patch = re.sub('\r\n?', '\n', self.patch)
+        calculated_patch = re.sub('\r\n?', '\n', calculated_patch)
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)
