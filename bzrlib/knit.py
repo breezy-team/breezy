@@ -78,6 +78,7 @@ from bzrlib import (
 """)
 from bzrlib import (
     cache_utf8,
+    diff,
     errors,
     osutils,
     patiencediff,
@@ -641,29 +642,32 @@ class KnitVersionedFile(VersionedFile):
     __contains__ = has_version
 
     def _merge_annotations(self, content, parents, parent_texts={},
-                           delta=None, annotated=None):
+                           delta=None, annotated=None,
+                           left_matching_blocks=None):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
-        if annotated:
+        if left_matching_blocks is not None:
+            delta_seq = diff._PrematchedMatcher(left_matching_blocks)
+        else:
             delta_seq = None
+        if annotated:
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = patiencediff.PatienceSequenceMatcher(
-                                   None, merge_content.text(), content.text())
-                if delta_seq is None:
-                    # setup a delta seq to reuse.
-                    delta_seq = seq
+                if (parent_id == parents[0] and delta_seq is not None):
+                    seq = delta_seq
+                else:
+                    seq = patiencediff.PatienceSequenceMatcher(
+                        None, merge_content.text(), content.text())
                 for i, j, n in seq.get_matching_blocks():
                     if n == 0:
                         continue
-                    # this appears to copy (origin, text) pairs across to the new
-                    # content for any line that matches the last-checked parent.
-                    # FIXME: save the sequence control data for delta compression
-                    # against the most relevant parent rather than rediffing.
+                    # this appears to copy (origin, text) pairs across to the
+                    # new content for any line that matches the last-checked
+                    # parent.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
         if delta:
-            if not annotated:
+            if delta_seq is None:
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
@@ -729,11 +733,13 @@ class KnitVersionedFile(VersionedFile):
         self._check_add(version_id, lines)
         return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks=None):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
-        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
+        return self._add(version_id, lines[:], parents, self.delta,
+                         parent_texts, left_matching_blocks)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -747,7 +753,8 @@ class KnitVersionedFile(VersionedFile):
         self._check_lines_not_unicode(lines)
         self._check_lines_are_lines(lines)
 
-    def _add(self, version_id, lines, parents, delta, parent_texts):
+    def _add(self, version_id, lines, parents, delta, parent_texts,
+             left_matching_blocks=None):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -797,8 +804,9 @@ class KnitVersionedFile(VersionedFile):
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
-            delta_hunks = self._merge_annotations(lines, present_parents, parent_texts,
-                                                  delta, self.factory.annotated)
+            delta_hunks = self._merge_annotations(lines, present_parents,
+                parent_texts, delta, self.factory.annotated,
+                left_matching_blocks)
 
         if delta:
             options.append('line-delta')
