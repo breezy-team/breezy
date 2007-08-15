@@ -611,6 +611,7 @@ class InterTree(InterObject):
             return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_files, include_root, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
     def _iter_changes(self, include_unchanged=False,

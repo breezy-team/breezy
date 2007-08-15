@@ -151,6 +151,7 @@ class OptionTests(TestCase):
             be_long='go long', value_switches=True)
         self.assertEqual(['my-option', 'be-long', 'short'],
             [x[0] for x in my_option.iter_switches()])
+        self.assertEqual('test option', my_option.help)
 
     def test_help(self):
         registry = bzrdir.BzrDirFormatRegistry()

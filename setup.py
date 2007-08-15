@@ -209,8 +209,8 @@ if unavailable_files:
 if 'bdist_wininst' in sys.argv:
     import glob
     # doc files
-    docs = glob.glob('doc/*.htm') + ['doc/default.css']
-    dev_docs = glob.glob('doc/developers/*.htm')
+    docs = glob.glob('doc/*.html') + ['doc/default.css']
+    dev_docs = glob.glob('doc/developers/*.html')
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
@@ -295,7 +295,7 @@ else:
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
            }
-    
+
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
