@@ -274,7 +274,7 @@ class FileStream(object):
 
 
 class FileFileStream(FileStream):
-    """A file stream object returned by open_file_stream.
+    """A file stream object returned by open_write_stream.
     
     This version uses a file like object to perform writes.
     """
@@ -291,7 +291,7 @@ class FileFileStream(FileStream):
 
 
 class AppendBasedFileStream(FileStream):
-    """A file stream object returned by open_file_stream.
+    """A file stream object returned by open_write_stream.
     
     This version uses append on a transport to perform writes.
     """
@@ -880,13 +880,13 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def open_file_stream(self, relpath, mode=None):
-        """Open a file stream at relpath.
+    def open_write_stream(self, relpath, mode=None):
+        """Open a writable file stream at relpath.
 
-        A file stream is a callback which adds data to the file. Buffering
-        may occur internally until the stream is closed with stream.close().
-        Calls to readv or the get_* methods will be synchronised with any
-        internal buffering that may be present.
+        A file stream is a file like object with a write() method that accepts
+        bytes to write.. Buffering may occur internally until the stream is
+        closed with stream.close().  Calls to readv or the get_* methods will
+        be synchronised with any internal buffering that may be present.
 
         :param relpath: The relative path to the file.
         :param mode: The mode for the newly created file, 
@@ -896,7 +896,7 @@ class Transport(object):
             if close() has not been called (even if get() is called on the same
             path).
         """
-        raise NotImplementedError(self.open_file_stream)
+        raise NotImplementedError(self.open_write_stream)
 
     @deprecated_method(zero_eleven)
     def append(self, relpath, f, mode=None):

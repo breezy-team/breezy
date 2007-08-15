@@ -213,8 +213,8 @@ class RemoteTransport(transport.ConnectedTransport):
             self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
-    def open_file_stream(self, relpath, mode=None):
-        """See Transport.open_file_stream."""
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
         self.put_bytes(relpath, "", mode)
         result = transport.AppendBasedFileStream(self, relpath)
         transport._file_streams[self.abspath(relpath)] = result

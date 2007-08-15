@@ -167,8 +167,8 @@ class MemoryTransport(Transport):
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
 
-    def open_file_stream(self, relpath, mode=None):
-        """See Transport.open_file_stream."""
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
         self.put_bytes(relpath, "", mode)
         result = AppendBasedFileStream(self, relpath)
         _file_streams[self.abspath(relpath)] = result

@@ -535,8 +535,8 @@ class SFTPTransport(ConnectedTransport):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
 
-    def open_file_stream(self, relpath, mode=None):
-        """See Transport.open_file_stream."""
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
         # initialise the file to zero-length
         # this is three round trips, but we don't use this 
         # api more than once per write_group at the moment so 

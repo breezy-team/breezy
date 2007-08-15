@@ -230,22 +230,22 @@ class TransportTests(TestTransportImplementation):
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
-    def test_get_with_open_file_stream_sees_all_content(self):
+    def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_file_stream('foo')
+        handle = t.open_write_stream('foo')
         try:
             handle.write('b')
             self.assertEqual('b', t.get('foo').read())
         finally:
             handle.close()
 
-    def test_get_bytes_with_open_file_stream_sees_all_content(self):
+    def test_get_bytes_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_file_stream('foo')
+        handle = t.open_write_stream('foo')
         try:
             handle.write('b')
             self.assertEqual('b', t.get_bytes('foo'))
@@ -660,7 +660,7 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_file_stream('foo')
+        handle = t.open_write_stream('foo')
         try:
             self.assertEqual('', t.get_bytes('foo'))
         finally:
@@ -674,7 +674,7 @@ class TransportTests(TestTransportImplementation):
             # Can't roundtrip, so no need to run this test
             return
         def check_mode(name, mode, expected):
-            handle = t.open_file_stream(name, mode=mode)
+            handle = t.open_write_stream(name, mode=mode)
             handle.close()
             self.assertTransportMode(t, name, expected)
         check_mode('mode644', 0644, 0644)
@@ -1582,11 +1582,11 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
-    def test_get_with_open_file_stream_sees_all_content(self):
+    def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_file_stream('foo')
+        handle = t.open_write_stream('foo')
         try:
             handle.write('bcd')
             self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0,1), (2,1)))))

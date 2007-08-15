@@ -136,8 +136,8 @@ class ChrootTransport(Transport):
     def mkdir(self, relpath, mode=None):
         return self._call('mkdir', relpath, mode)
 
-    def open_file_stream(self, relpath, mode=None):
-        return self._call('open_file_stream', relpath, mode)
+    def open_write_stream(self, relpath, mode=None):
+        return self._call('open_write_stream', relpath, mode)
 
     def put_file(self, relpath, f, mode=None):
         return self._call('put_file', relpath, f, mode)
