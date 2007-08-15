@@ -2,6 +2,11 @@ bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
 
+  INTERNALS:
+
+    * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
+      added via a public attribute records_written. (Robert Collins)
+
 bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
