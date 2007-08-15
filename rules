@@ -7,10 +7,11 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
+DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/env python"
 
 clean::
 	-rm -rf build test*.tmp doc/bzr_man.txt
-	find doc -name "*.htm" -print0 | xargs -r0 rm -f
+	find doc -name "*.html" -print0 | xargs -r0 rm -f
 	find . -name "*.pyc" -print0 | xargs -r0 rm -f
 	rm -f bzr.1 man1/bzr.1
 	rm -f debian/stamp-doc

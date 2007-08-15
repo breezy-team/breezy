@@ -1,3 +1,25 @@
+bzr (0.90~rc1-1) unstable; urgency=low
+
+  * New upstream release candidate:
+    + drop no_python2.4_shebangs.diff, applied upstream.
+    + adjust dont_build_developers_doc.diff.
+    + HTML docs are now .html instead of .htm; adjust bzr.doc-base,
+      bzr.install and rules accordingly.
+
+  * The package now includes Pyrex extensions, so:
+    + move Build-Depends-Indep to Build-Depends.
+    + add python-all-dev to Build-Depends.
+    + make the package arch:any.
+    + add ${shlibs:Depends} to Depends.
+
+  * Swap the order of the 'python (>> 2.5) | python-celementtree'
+    build-dependency to make sbuild in the buildds happy. (Closes: #436396)
+
+  * Pass --executable "/usr/bin/env python" to setup.py, to avoid spurious
+    dependencies on python2.X.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Wed, 15 Aug 2007 11:54:51 +0200
+
 bzr (0.18-1) unstable; urgency=low
 
   * New upstream version.
