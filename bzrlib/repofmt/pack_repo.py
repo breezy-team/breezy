@@ -19,8 +19,10 @@ lazy_import(globals(), """
 from itertools import izip
 import math
 import md5
+import time
 
 from bzrlib import (
+        debug,
         pack,
         ui,
         )
@@ -195,7 +197,7 @@ class RepositoryPackCollection(object):
         :param revision_ids: Either None, to copy all data, or a list
             of revision_ids to limit the copied data to the data they
             introduced.
-        :return: The number of revisions copied.
+        :return: A Pack object, or None if nothing was copied.
         """
         # open a pack - using the same name as the last temporary file
         # - which has already been flushed, so its safe.
@@ -205,7 +207,18 @@ class RepositoryPackCollection(object):
             raise errors.BzrError('call to create_pack_from_packs while '
                 'another pack is being written.')
         random_name = self.repo.control_files._lock.nonce + '.autopack'
+        if 'fetch' in debug.debug_flags:
+            plain_pack_list = ['%s%s' % (transport.base, name) for
+                transport, name in revision_index_map.itervalues()]
+            mutter('%s: create_pack: creating pack from source packs: %s%s %s t=0',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                plain_pack_list)
+            start_time = time.time()
         write_stream = self.repo._upload_transport.open_file_stream(random_name)
+        if 'fetch' in debug.debug_flags:
+            mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         pack_hash = md5.new()
         def write_data(bytes, update=pack_hash.update):
             write_stream(bytes)
@@ -221,43 +234,102 @@ class RepositoryPackCollection(object):
         revision_nodes = self._index_contents(revision_index_map)
         # copy revision keys and adjust values
         self._copy_nodes_graph(revision_nodes, revision_index_map, writer, revision_index)
+        if 'fetch' in debug.debug_flags:
+            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                len(list(revision_index.iter_all_entries())),
+                time.time() - start_time)
         # select inventory keys
         inv_nodes = self._index_contents(inventory_index_map)
         # copy inventory keys and adjust values
         self._copy_nodes_graph(inv_nodes, inventory_index_map, writer, inv_index)
+        if 'fetch' in debug.debug_flags:
+            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                len(list(inv_index.iter_all_entries())),
+                time.time() - start_time)
         # select text keys
         text_nodes = self._index_contents(text_index_map)
         # copy text keys and adjust values
         self._copy_nodes_graph(text_nodes, text_index_map, writer, text_index)
+        if 'fetch' in debug.debug_flags:
+            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                len(list(text_index.iter_all_entries())),
+                time.time() - start_time)
         # select signature keys
         signature_nodes = self._index_contents(signature_index_map)
         # copy signature keys and adjust values
         self._copy_nodes(signature_nodes, signature_index_map, writer, signature_index)
+        if 'fetch' in debug.debug_flags:
+            mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                len(list(signature_index.iter_all_entries())),
+                time.time() - start_time)
         # finish the pack
         writer.end()
         new_name = pack_hash.hexdigest()
+        # if nothing has been written, discard the new pack.
+        if 0 == sum((len(list(revision_index.iter_all_entries())),
+            len(list(inv_index.iter_all_entries())),
+            len(list(text_index.iter_all_entries())),
+            len(list(signature_index.iter_all_entries())),
+            )):
+            self.repo._upload_transport.delete(random_name)
+            return None
         # add to names
         self.allocate(new_name)
         # rename into place
         self.repo._upload_transport.close_file_stream(random_name)
         self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
+        result = Pack()
+        result.name = new_name
+        result.transport = self.repo._upload_transport.clone('../packs/')
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                result.transport, result.name,
+                time.time() - start_time)
         # write indices
         index_transport = self.repo._upload_transport.clone('../indices')
         rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
         index_transport.put_file(rev_index_name, revision_index.finish())
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
         index_transport.put_file(inv_index_name, inv_index.finish())
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
         index_transport.put_file(text_index_name, text_index.finish())
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: wrote file texts index: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
         index_transport.put_file(signature_index_name, signature_index.finish())
-        result = Pack()
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: wrote revision signatures index: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         result.revision_index = revision_index
         result.inventory_index = inv_index
         result.text_index = text_index
         result.signature_index = signature_index
-        result.name = new_name
-        result.transport = self.repo._upload_transport.clone('../packs/')
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: finished: %s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
         return result
 
     def _execute_pack_operations(self, pack_operations):
@@ -444,6 +516,7 @@ class RepositoryPackCollection(object):
                 GraphIndex(self.transport, 'pack-names').iter_all_entries())
 
     def allocate(self, name):
+        self.ensure_loaded()
         if name in self._names:
             raise errors.DuplicateKey(name)
         self._names.add(name)

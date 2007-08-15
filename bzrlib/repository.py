@@ -1062,7 +1062,14 @@ class Repository(object):
     def sign_revision(self, revision_id, gpg_strategy):
         revision_id = osutils.safe_revision_id(revision_id)
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        self.start_write_group()
+        try:
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        except:
+            self.abort_write_group()
+            raise
+        else:
+            self.commit_write_group()
 
     @needs_read_lock
     def has_signature_for_revision_id(self, revision_id):
@@ -1845,11 +1852,11 @@ class InterPackRepo(InterSameDataRepository):
         """
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
         try:
-            are_knits = (isinstance(source._format, RepositoryFormatPack) and
+            are_packs = (isinstance(source._format, RepositoryFormatPack) and
                 isinstance(target._format, RepositoryFormatPack))
         except AttributeError:
             return False
-        return are_knits and InterRepository._same_model(source, target)
+        return are_packs and InterRepository._same_model(source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
@@ -1860,15 +1867,15 @@ class InterPackRepo(InterSameDataRepository):
         revision_id = osutils.safe_revision_id(revision_id)
         self.count_copied = 0
         if revision_id is None:
-            # nothing to do.
-            return
-        if _mod_revision.is_null(revision_id):
             # TODO:
             # everything to do - use pack logic
             # to fetch from all packs to one without
             # inventory parsing etc.
             # till then:
             revision_ids = self.source.all_revision_ids()
+        elif _mod_revision.is_null(revision_id):
+            # nothing to do:
+            return
         else:
             try:
                 revision_ids = self.missing_revision_ids(revision_id)
@@ -1886,9 +1893,12 @@ class InterPackRepo(InterSameDataRepository):
             signature_index_map,
             revision_ids
             )
-        self.target._packs.save()
-        self.target._packs.add_pack_to_memory(pack)
-        return pack.get_revision_count()
+        if pack is not None:
+            self.target._packs.save()
+            self.target._packs.add_pack_to_memory(pack)
+            return pack.get_revision_count()
+        else:
+            return 0
 
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None):

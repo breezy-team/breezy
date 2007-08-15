@@ -23,6 +23,7 @@ These are set with eg ``-Dlock`` on the bzr command line.
 Options include:
     
  * error - show stack traces for all top level exceptions
+ * fetch - trace history copying between repositories
  * hooks 
  * hpss - trace smart protocol requests and responses
  * lock - trace when lockdir locks are taken or released
