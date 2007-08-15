@@ -46,17 +46,6 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-from bzrlib.symbol_versioning import (deprecated_function,
-                                      zero_seven,
-                                      zero_nine,
-                                      deprecated_list,
-                                     )
-
-# Kept for compatibility with 0.8, it is considered deprecated to modify it
-DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
-                    'Consider using bzrlib.ignores.add_unique_user_ignores'
-                    ' or bzrlib.ignores.add_runtime_ignores')
-
 # allow bzrlib plugins to be imported.
 import bzrlib.plugin
 bzrlib.plugin.set_plugins_path()

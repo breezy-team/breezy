@@ -53,7 +53,6 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_nine,
         )
 from bzrlib.trace import mutter, note, warning
 

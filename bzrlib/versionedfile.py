@@ -37,10 +37,6 @@ from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
-from bzrlib.symbol_versioning import (deprecated_function,
-        deprecated_method,
-        zero_eight,
-        )
 
 
 class VersionedFile(object):
@@ -68,14 +64,6 @@ class VersionedFile(object):
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
-
-    @deprecated_method(zero_eight)
-    def names(self):
-        """Return a list of all the versions in this versioned file.
-
-        Please use versionedfile.versions() now.
-        """
-        return self.versions()
 
     def versions(self):
         """Return a unsorted list of versions."""
@@ -413,14 +401,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_graph_with_ghosts)
 
-    @deprecated_method(zero_eight)
-    def parent_names(self, version):
-        """Return version names for parents of a version.
-        
-        See get_parents for the current api.
-        """
-        return self.get_parents(version)
-
     def get_parents(self, version_id):
         """Return version names for parents of a version.
 
@@ -520,27 +500,6 @@ class VersionedFile(object):
         operations to error.
         """
         self.finished = True
-
-    @deprecated_method(zero_eight)
-    def walk(self, version_ids=None):
-        """Walk the versioned file as a weave-like structure, for
-        versions relative to version_ids.  Yields sequence of (lineno,
-        insert, deletes, text) for each relevant line.
-
-        Must raise RevisionNotPresent if any of the specified versions
-        are not present in the file history.
-
-        :param version_ids: the version_ids to walk with respect to. If not
-                            supplied the entire weave-like structure is walked.
-
-        walk is deprecated in favour of iter_lines_added_or_present_in_versions
-        """
-        raise NotImplementedError(self.walk)
-
-    @deprecated_method(zero_eight)
-    def iter_names(self):
-        """Walk the names list."""
-        return iter(self.versions())
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
