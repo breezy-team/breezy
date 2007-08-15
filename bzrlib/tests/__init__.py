@@ -80,6 +80,7 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_eighteen,
+    zero_ninetyone,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -1433,6 +1434,15 @@ class TestCase(unittest.TestCase):
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
+        if len(args) == 1:
+            if isinstance(args[0], list):
+                args = args[0]
+            elif isinstance(args[0], basestring):
+                args = list(shlex.split(args[0]))
+        else:
+            symbol_versioning.warn(zero_ninetyone %
+                                   "passing varargs to run_bzr_subprocess",
+                                   DeprecationWarning, stacklevel=3)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)

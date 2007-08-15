@@ -270,6 +270,10 @@ bzr 0.90rc1 2007-08-14
     * The SSH_AUTH_SOCK environment variable is now reset to avoid 
       interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
 
+    * run_bzr_subprocess handles parameters the same way as run_bzr:
+      either a string or a list of strings should be passed as the first
+      parameter.  Varargs-style parameters are deprecated. (Aaron Bentley)
+
 
 bzr 0.18  2007-07-17
 
