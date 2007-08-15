@@ -486,13 +486,12 @@ class TestSelftestListOnly(TestCase):
     @staticmethod
     def _parse_test_list(lines, newlines_in_header=1):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
-
         in_header = True
         in_footer = False
         header = []
         body = []
         footer = []
-        header_newlines_found = 0 
+        header_newlines_found = 0
         for line in lines:
             if in_header:
                 if line == '':
@@ -510,7 +509,7 @@ class TestSelftestListOnly(TestCase):
                 footer.append(line)
         # If the last body line is blank, drop it off the list
         if len(body) > 0 and body[-1] == '':
-            body.pop()                
+            body.pop()
         return (header,body,footer)
 
     def test_list_only(self):
@@ -550,6 +549,11 @@ class TestSelftestListOnly(TestCase):
                                           'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
             out_rand.splitlines(), 2)
+        # XXX: The following line asserts that the randomized order is not the
+        # same as the default order.  It is just possible that they'll get
+        # randomized into the same order and this will falsely fail, but
+        # that's very unlikely in practice because there are thousands of
+        # tests.
         self.assertNotEqual(tests_all, tests_rand)
         self.assertEqual(sorted(tests_all), sorted(tests_rand))
         # Check that the seed can be reused to get the exact same order
