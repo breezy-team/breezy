@@ -61,13 +61,6 @@ class TestCommitHook(TestCaseWithBranch):
 
     def capture_pre_commit_hook(self, local, master, old_revno, old_revid,
                                 new_revno, new_revid, affected, tree):
-        # replacing ids with paths
-        # notice that we leave deleted ids in tact
-        for change, ids in affected.iteritems():
-            if change == 'deleted':
-                continue
-            for i, id in enumerate(ids):
-                ids[i] = tree.id2path(id)
         self.hook_calls.append(('pre_commit', old_revno, old_revid,
                                 new_revno, new_revid, affected))
 
@@ -169,24 +162,42 @@ class TestCommitHook(TestCaseWithBranch):
             self.hook_calls)
         tree.unlock()
     
-    def test_pre_commit_paths(self):
-        tree = self.make_branch_and_memory_tree('branch')
+    def test_pre_commit_ids(self):
+        self.build_tree(['rootfile', 'dir/', 'dir/subfile'])
+        tree = self.make_branch_and_tree('.')
         tree.lock_write()
-        tree.add('')
-        tree.add('file', 'bang')
-        tree.put_file_bytes_non_atomic('bang', 'die')
-        tree.mkdir('dir', 'dirid')
-        tree.add('dir/file', 'swoosh')
-        tree.put_file_bytes_non_atomic('swoosh', 'swaash')
+        tree.set_root_id('root_id')
+        tree.add('rootfile', 'rootfile_id')
+        tree.put_file_bytes_non_atomic('rootfile_id', 'abc')
+        tree.add('dir', 'dir_id')
+        tree.add('dir/subfile', 'dir_subfile_id')
+        tree.put_file_bytes_non_atomic('dir_subfile_id', 'def')
         Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
         rev1 = tree.commit('first revision')
-        tree.unversion(['dirid'])
+        tree.unversion(['dir_id'])
         rev2 = tree.commit('second revision')
+        tree.put_file_bytes_non_atomic('rootfile_id', 'ghi')
+        rev3 = tree.commit('third revision')
+        tree.unlock()
+        tree.lock_write()
+        tree.rename_one('rootfile', 'renamed')
+        rev4 = tree.commit('fourth revision')
+        tree.unlock()
+        tree.lock_write()
+        tree.put_file_bytes_non_atomic('rootfile_id', 'jkl')
+        tree.rename_one('renamed', 'rootfile')
+        rev5 = tree.commit('fifth revision')
+        tree.unlock()
         self.assertEqual([
             ('pre_commit', 0, NULL_REVISION, 1, rev1,
-             {'added': ['dir', 'dir/file', 'file']} ),
+             {'added': ['dir_id', 'dir_subfile_id', 'rootfile_id']} ),
             ('pre_commit', 1, rev1, 2, rev2,
-             {'deleted': ['dirid', 'swoosh']} )
+             {'deleted': ['dir_id', 'dir_subfile_id']} ),
+            ('pre_commit', 2, rev2, 3, rev3,
+             {'modified': ['rootfile_id']} ),
+            ('pre_commit', 3, rev3, 4, rev4,
+             {'renamed': ['rootfile_id']} ),
+            ('pre_commit', 4, rev4, 5, rev5,
+             {'modified and renamed': ['rootfile_id']} )
             ],
             self.hook_calls)
-        tree.unlock()

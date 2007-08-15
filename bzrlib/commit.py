@@ -318,11 +318,12 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-                self._process_pre_hooks(old_revno, new_revno)
             except:
                 # perhaps this should be done by the CommitBuilder ?
                 self.work_tree.branch.repository.abort_write_group()
                 raise
+
+            self._process_pre_hooks(old_revno, new_revno)
 
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
