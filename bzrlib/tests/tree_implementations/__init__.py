@@ -41,11 +41,13 @@ from bzrlib.tests import (
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.workingtree_implementations import (
+    WorkingTreeTestProviderAdapter,
+    )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTreeFormat3,
-    WorkingTreeTestProviderAdapter,
     _legacy_formats,
     )
 from bzrlib.workingtree_4 import (
@@ -180,16 +182,31 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_with_subdirs_and_all_content_types(self):
         """Return a test tree with subdirs and all content types.
+        See get_tree_with_subdirs_and_all_supported_content_types for details.
+        """
+        return self.get_tree_with_subdirs_and_all_supported_content_types(True)
+
+    def get_tree_with_subdirs_and_all_supported_content_types(self, symlinks):
+        """Return a test tree with subdirs and all supported content types.
+        Some content types may not be created on some platforms
+        (like symlinks on native win32)
+
+        :param  symlinks:   control is symlink should be created in the tree.
+                            Note: if you wish to automatically set this
+                            parameters depending on underlying system,
+                            please use value returned
+                            by bzrlib.osutils.has_symlinks() function.
 
         The returned tree has the following inventory:
             [('', inventory.ROOT_ID),
              ('0file', '2file'),
              ('1top-dir', '1top-dir'),
              (u'2utf\u1234file', u'0utf\u1234file'),
-             ('symlink', 'symlink'),
+             ('symlink', 'symlink'),            # only if symlinks arg is True
              ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
              ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
-        where each component has the type of its name - i.e. '1file..' is afile.
+        where each component has the type of its name -
+        i.e. '1file..' is afile.
 
         note that the order of the paths and fileids is deliberately 
         mismatched to ensure that the result order is path based.
@@ -215,9 +232,10 @@ class TestCaseWithTree(TestCaseWithBzrDir):
                 'This platform does not support unicode file paths.')
         tree.add(paths, ids)
         tt = transform.TreeTransform(tree)
-        root_transaction_id = tt.trans_id_tree_path('')
-        tt.new_symlink('symlink',
-            root_transaction_id, 'link-target', 'symlink')
+        if symlinks:
+            root_transaction_id = tt.trans_id_tree_path('')
+            tt.new_symlink('symlink',
+                root_transaction_id, 'link-target', 'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 
@@ -273,35 +291,33 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each Tree implementation in bzrlib.
 
-    Currently this covers all working tree formats, and RevisionTree by 
-    committing a working tree to create the revision tree.
+    Currently this covers all working tree formats, and RevisionTree and
+    DirStateRevisionTree by committing a working tree to create the revision
+    tree.
     """
 
-    def adapt(self, test):
-        result = super(TreeTestProviderAdapter, self).adapt(test)
-        for adapted_test in result:
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        super(TreeTestProviderAdapter, self).__init__(transport_server,
+            transport_readonly_server, formats)
+        # now adjust the scenarios and add the non-working-tree tree scenarios.
+        for scenario in self.scenarios:
             # for working tree adapted tests, preserve the tree
-            adapted_test.workingtree_to_test_tree = return_parameter
-        # this is the default in that it's used to test the generic InterTree
+            scenario[1]["workingtree_to_test_tree"] = return_parameter
+        # add RevisionTree scenario
+        # this is the 'default format' in that it's used to test the generic InterTree
         # code.
         default_format = WorkingTreeFormat3()
-        revision_tree_test = self._clone_test(
-            test,
-            default_format._matchingbzrdir, 
-            default_format,
-            RevisionTree.__name__)
-        revision_tree_test.workingtree_to_test_tree = revision_tree_from_workingtree
-        result.addTest(revision_tree_test)
-        # also explicity test WorkingTree4 against everything
+        self.scenarios.append(self.formats_to_scenarios([
+            (default_format, default_format._matchingbzrdir)])[0])
+        self.scenarios[-1] = (RevisionTree.__name__, self.scenarios[-1][1])
+        self.scenarios[-1][1]["workingtree_to_test_tree"] = revision_tree_from_workingtree
+
+        # also test WorkingTree4's RevisionTree implementation which is specialised.
         dirstate_format = WorkingTreeFormat4()
-        dirstate_revision_tree_test = self._clone_test(
-            test,
-            dirstate_format._matchingbzrdir,
-            dirstate_format,
-            DirStateRevisionTree.__name__)
-        dirstate_revision_tree_test.workingtree_to_test_tree = _dirstate_tree_from_workingtree
-        result.addTest(dirstate_revision_tree_test)
-        return result
+        self.scenarios.append(self.formats_to_scenarios([
+            (dirstate_format, dirstate_format._matchingbzrdir)])[0])
+        self.scenarios[-1] = (DirStateRevisionTree.__name__, self.scenarios[-1][1])
+        self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
 
 
 def test_suite():

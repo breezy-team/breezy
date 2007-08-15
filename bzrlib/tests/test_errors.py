@@ -1,5 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,10 +31,33 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_disabled_method(self):
+        error = errors.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
+
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
                              ' as foo', str(error))
+
+    def test_duplicate_help_prefix(self):
+        error = errors.DuplicateHelpPrefix('foo')
+        self.assertEqualDiff('The prefix foo is in the help search path twice.',
+            str(error))
+
+    def test_incompatibleAPI(self):
+        error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
+        self.assertEqualDiff(
+            'The API for "module" is not compatible with "(1, 2, 3)". '
+            'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            str(error))
+
+    def test_in_process_transport(self):
+        error = errors.InProcessTransport('fpp')
+        self.assertEqualDiff(
+            "The transport 'fpp' is only accessible within this process.",
+            str(error))
 
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
@@ -86,6 +110,12 @@ class TestErrors(TestCaseWithTransport):
             "smart protocol.",
             str(error))
 
+    def test_no_help_topic(self):
+        error = errors.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'bzr help topics' to obtain a list of topics.",
+            str(error))
+
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "
@@ -105,11 +135,16 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
+    def test_read_only_lock_error(self):
+        error = errors.ReadOnlyLockError('filename', 'error message')
+        self.assertEqualDiff("Cannot acquire write lock on filename."
+                             " error message", str(error))
+
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
-            "the current request that is open.",
+            "the currently open request.",
             str(error))
 
     def test_unknown_hook(self):
@@ -136,6 +171,42 @@ class TestErrors(TestCaseWithTransport):
                              "Please run bzr reconcile on this repository." %
                              repo.bzrdir.root_transport.base,
                              str(error))
+
+    def test_read_error(self):
+        # a unicode path to check that %r is being used.
+        path = u'a path'
+        error = errors.ReadError(path)
+        self.assertEqualDiff("Error reading from u'a path'.", str(error))
+
+    def test_bad_index_format_signature(self):
+        error = errors.BadIndexFormatSignature("foo", "bar")
+        self.assertEqual("foo is not an index of type bar.",
+            str(error))
+
+    def test_bad_index_data(self):
+        error = errors.BadIndexData("foo")
+        self.assertEqual("Error in data for index foo.",
+            str(error))
+
+    def test_bad_index_duplicate_key(self):
+        error = errors.BadIndexDuplicateKey("foo", "bar")
+        self.assertEqual("The key 'foo' is already in index 'bar'.",
+            str(error))
+
+    def test_bad_index_key(self):
+        error = errors.BadIndexKey("foo")
+        self.assertEqual("The key 'foo' is not a valid key.",
+            str(error))
+
+    def test_bad_index_options(self):
+        error = errors.BadIndexOptions("foo")
+        self.assertEqual("Could not parse options for index foo.",
+            str(error))
+
+    def test_bad_index_value(self):
+        error = errors.BadIndexValue("foo")
+        self.assertEqual("The value 'foo' is not a valid value.",
+            str(error))
 
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):
@@ -176,9 +247,9 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_transport_not_possible(self):
-        e = errors.TransportNotPossible('readonly', 'original error')
-        self.assertEqual('Transport operation not possible:'
-                         ' readonly original error', str(e))
+        error = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqualDiff('Transport operation not possible:'
+                         ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
         """Check the formatting of a SocketConnectionError exception"""
@@ -223,6 +294,67 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_malformed_bug_identifier(self):
+        """Test the formatting of MalformedBugIdentifier."""
+        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
+        self.assertEqual(
+            "Did not understand bug identifier bogus: reason for bogosity",
+            str(error))
+
+    def test_unknown_bug_tracker_abbreviation(self):
+        """Test the formatting of UnknownBugTrackerAbbreviation."""
+        branch = self.make_branch('some_branch')
+        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
+        self.assertEqual(
+            "Cannot find registered bug tracker called xxx on %s" % branch,
+            str(error))
+
+    def test_unexpected_smart_server_response(self):
+        e = errors.UnexpectedSmartServerResponse(('not yes',))
+        self.assertEqual(
+            "Could not understand response from smart server: ('not yes',)",
+            str(e))
+
+    def test_unknown_container_format(self):
+        """Test the formatting of UnknownContainerFormatError."""
+        e = errors.UnknownContainerFormatError('bad format string')
+        self.assertEqual(
+            "Unrecognised container format: 'bad format string'",
+            str(e))
+
+    def test_unexpected_end_of_container(self):
+        """Test the formatting of UnexpectedEndOfContainerError."""
+        e = errors.UnexpectedEndOfContainerError()
+        self.assertEqual(
+            "Unexpected end of container stream", str(e))
+
+    def test_unknown_record_type(self):
+        """Test the formatting of UnknownRecordTypeError."""
+        e = errors.UnknownRecordTypeError("X")
+        self.assertEqual(
+            "Unknown record type: 'X'",
+            str(e))
+
+    def test_invalid_record(self):
+        """Test the formatting of InvalidRecordError."""
+        e = errors.InvalidRecordError("xxx")
+        self.assertEqual(
+            "Invalid record: xxx",
+            str(e))
+
+    def test_container_has_excess_data(self):
+        """Test the formatting of ContainerHasExcessDataError."""
+        e = errors.ContainerHasExcessDataError("excess bytes")
+        self.assertEqual(
+            "Container has data after end marker: 'excess bytes'",
+            str(e))
+
+    def test_duplicate_record_name_error(self):
+        """Test the formatting of DuplicateRecordNameError."""
+        e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
+        self.assertEqual(
+            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
+            str(e))
 
 
 class PassThroughError(errors.BzrError):
@@ -270,4 +402,3 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat')
-

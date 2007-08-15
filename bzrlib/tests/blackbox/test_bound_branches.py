@@ -36,13 +36,13 @@ class TestLegacyFormats(TestCaseWithTransport):
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
-        self.run_bzr('init', 'master')
-        self.run_bzr('init', '--format=weave', 'child')
+        self.run_bzr('init master')
+        self.run_bzr('init --format=weave child')
         os.chdir('child')
     
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
-        out,err = self.run_bzr('bind', '../master', retcode=3)
+        out,err = self.run_bzr('bind ../master', retcode=3)
         self.assertEqual('', out)
         # TODO: jam 20060427 Probably something like this really should
         #       print out the actual path, rather than the URL
@@ -72,7 +72,7 @@ class TestBoundBranches(TestCaseWithTransport):
         tree.commit('init')
         tree.unlock()
 
-        self.run_bzr('checkout', 'base', 'child')
+        self.run_bzr('checkout base child')
 
         self.check_revno(1, 'child')
         d = BzrDir.open('child')
@@ -86,13 +86,13 @@ class TestBoundBranches(TestCaseWithTransport):
         self.build_tree(['base/', 'base/a', 'base/b'])
 
         self.init_meta_branch('base')
-        self.run_bzr('add', 'base')
-        self.run_bzr('commit', '-m', 'init', 'base')
+        self.run_bzr('add base')
+        self.run_bzr('commit -m init base')
 
-        self.run_bzr('branch', 'base', 'child')
+        self.run_bzr('branch base child')
 
         os.chdir('child')
-        self.run_bzr('bind', '../base')
+        self.run_bzr('bind ../base')
 
         d = BzrDir.open('')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
@@ -128,7 +128,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.assertContainsRe(error, 'old locations')
 
     def init_meta_branch(self, path):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = bzrdir.format_registry.make_bzrdir('default')
         return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):
@@ -137,7 +137,7 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('child')
         open('a', 'wb').write('new contents\n')
-        bzr('commit', '-m', 'child')
+        bzr('commit -m child')
 
         self.check_revno(2)
 
@@ -151,19 +151,19 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('base')
         open('a', 'wb').write('new base contents\n')
-        bzr('commit', '-m', 'base')
+        bzr('commit -m base')
         self.check_revno(2)
 
         os.chdir('../child')
         self.check_revno(1)
         open('b', 'wb').write('new b child contents\n')
-        bzr('commit', '-m', 'child', retcode=3)
+        bzr('commit -m child', retcode=3)
         self.check_revno(1)
 
         bzr('update')
         self.check_revno(2)
 
-        bzr('commit', '-m', 'child')
+        bzr('commit -m child')
         self.check_revno(3)
         self.check_revno(3, '../base')
 
@@ -171,13 +171,13 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr = self.run_bzr
         self.create_branches()
 
-        bzr('branch', 'child', 'child2')
+        bzr('branch child child2')
         os.chdir('child2')
 
         # Double binding succeeds, but committing to child2 should fail
-        bzr('bind', '../child')
+        bzr('bind ../child')
 
-        bzr('commit', '-m', 'child2', '--unchanged', retcode=3)
+        bzr('commit -m child2 --unchanged', retcode=3)
 
     def test_unbinding(self):
         bzr = self.run_bzr
@@ -185,16 +185,16 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('base')
         open('a', 'wb').write('new base contents\n')
-        bzr('commit', '-m', 'base')
+        bzr('commit -m base')
         self.check_revno(2)
 
         os.chdir('../child')
         open('b', 'wb').write('new b child contents\n')
         self.check_revno(1)
-        bzr('commit', '-m', 'child', retcode=3)
+        bzr('commit -m child', retcode=3)
         self.check_revno(1)
         bzr('unbind')
-        bzr('commit', '-m', 'child')
+        bzr('commit -m child')
         self.check_revno(2)
 
         bzr('bind', retcode=3)
@@ -204,30 +204,30 @@ class TestBoundBranches(TestCaseWithTransport):
         # which is bound to a branch which is bound
         bzr = self.run_bzr
         self.create_branches()
-        bzr('branch', 'base', 'newbase')
+        bzr('branch base newbase')
         os.chdir('base')
         
         # There is no way to know that B has already
         # been bound by someone else, otherwise it
         # might be nice if this would fail
-        bzr('bind', '../newbase')
+        bzr('bind ../newbase')
 
         os.chdir('../child')
-        bzr('commit', '-m', 'failure', '--unchanged', retcode=3)
+        bzr('commit -m failure --unchanged', retcode=3)
 
     def test_pull_updates_both(self):
         bzr = self.run_bzr
         self.create_branches()
-        bzr('branch', 'base', 'newchild')
+        bzr('branch base newchild')
         os.chdir('newchild')
         open('b', 'wb').write('newchild b contents\n')
-        bzr('commit', '-m', 'newchild')
+        bzr('commit -m newchild')
         self.check_revno(2)
 
         os.chdir('../child')
         # The pull should succeed, and update
         # the bound parent branch
-        bzr('pull', '../newchild')
+        bzr('pull ../newchild')
         self.check_revno(2)
 
         self.check_revno(2, '../base')
@@ -239,22 +239,22 @@ class TestBoundBranches(TestCaseWithTransport):
         os.chdir('child')
         bzr('unbind')
 
-        bzr('commit', '-m', 'child', '--unchanged')
+        bzr('commit -m child --unchanged')
         self.check_revno(2)
 
         os.chdir('../base')
         self.check_revno(1)
-        bzr('commit', '-m', 'base', '--unchanged')
+        bzr('commit -m base --unchanged')
         self.check_revno(2)
 
         os.chdir('../child')
         # These branches have diverged
-        bzr('bind', '../base', retcode=3)
+        bzr('bind ../base', retcode=3)
 
         # TODO: In the future, this might require actual changes
         # to have occurred, rather than just a new revision entry
-        bzr('merge', '../base')
-        bzr('commit', '-m', 'merged')
+        bzr('merge ../base')
+        bzr('commit -m merged')
         self.check_revno(3)
 
         # After binding, the revision history should be unaltered
@@ -266,7 +266,7 @@ class TestBoundBranches(TestCaseWithTransport):
 
         # After a merge, trying to bind again should succeed
         # keeping the new change as a local commit.
-        bzr('bind', '../base')
+        bzr('bind ../base')
         self.check_revno(3)
         self.check_revno(2, '../base')
 
@@ -282,11 +282,11 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('unbind')
 
         os.chdir('../base')
-        bzr('commit', '-m', 'base', '--unchanged')
+        bzr('commit -m base --unchanged')
 
         os.chdir('../child')
         self.check_revno(1)
-        bzr('bind', '../base')
+        bzr('bind ../base')
 
         # binding does not pull data:
         self.check_revno(1)
@@ -294,14 +294,14 @@ class TestBoundBranches(TestCaseWithTransport):
 
         # Check and make sure it also works if parent is ahead multiple
         os.chdir('../base')
-        bzr('commit', '-m', 'base 3', '--unchanged')
-        bzr('commit', '-m', 'base 4', '--unchanged')
-        bzr('commit', '-m', 'base 5', '--unchanged')
+        bzr(['commit', '-m', 'base 3', '--unchanged'])
+        bzr(['commit', '-m', 'base 4', '--unchanged'])
+        bzr(['commit', '-m', 'base 5', '--unchanged'])
         self.check_revno(5)
 
         os.chdir('../child')
         self.check_revno(1)
-        bzr('bind', '../base')
+        bzr('bind ../base')
         self.check_revno(1)
 
     def test_bind_child_ahead(self):
@@ -313,22 +313,22 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('child')
         bzr('unbind')
-        bzr('commit', '-m', 'child', '--unchanged')
+        bzr('commit -m child --unchanged')
         self.check_revno(2)
         self.check_revno(1, '../base')
 
-        bzr('bind', '../base')
+        bzr('bind ../base')
         self.check_revno(1, '../base')
 
         # Check and make sure it also works if child is ahead multiple
         bzr('unbind')
-        bzr('commit', '-m', 'child 3', '--unchanged')
-        bzr('commit', '-m', 'child 4', '--unchanged')
-        bzr('commit', '-m', 'child 5', '--unchanged')
+        bzr(['commit', '-m', 'child 3', '--unchanged'])
+        bzr(['commit', '-m', 'child 4', '--unchanged'])
+        bzr(['commit', '-m', 'child 5', '--unchanged'])
         self.check_revno(5)
 
         self.check_revno(1, '../base')
-        bzr('bind', '../base')
+        bzr('bind ../base')
         self.check_revno(1, '../base')
 
     def test_commit_after_merge(self):
@@ -340,66 +340,66 @@ class TestBoundBranches(TestCaseWithTransport):
         # the binding invariants.
         # But we can't fail afterwards
 
-        bzr('branch', 'child', 'other')
+        bzr('branch child other')
 
         os.chdir('other')
         open('c', 'wb').write('file c\n')
-        bzr('add', 'c')
-        bzr('commit', '-m', 'adding c')
+        bzr('add c')
+        bzr(['commit', '-m', 'adding c'])
         new_rev_id = bzr('revision-history')[0].strip().split('\n')[-1]
 
         os.chdir('../child')
-        bzr('merge', '../other')
+        bzr('merge ../other')
 
         self.failUnlessExists('c')
         tree = WorkingTree.open('.') # opens child
         self.assertEqual([new_rev_id], tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision
-        bzr('cat-revision', new_rev_id)
+        bzr(['cat-revision', new_rev_id])
         
         # And make sure that the base tree does not
         os.chdir('../base')
-        bzr('cat-revision', new_rev_id, retcode=3)
+        bzr(['cat-revision', new_rev_id], retcode=3)
 
         # Commit should succeed, and cause merged revisions to
         # be pulled into base
         os.chdir('../child')
-        bzr('commit', '-m', 'merge other')
+        bzr(['commit', '-m', 'merge other'])
 
         self.check_revno(2)
 
         os.chdir('../base')
         self.check_revno(2)
 
-        bzr('cat-revision', new_rev_id)
+        bzr(['cat-revision', new_rev_id])
 
     def test_pull_overwrite(self):
         # XXX: This test should be moved to branch-implemenations/test_pull
         bzr = self.run_bzr
         self.create_branches()
 
-        bzr('branch', 'child', 'other')
+        bzr('branch child other')
         
         os.chdir('other')
         open('a', 'wb').write('new contents\n')
-        bzr('commit', '-m', 'changed a')
+        bzr(['commit', '-m', 'changed a'])
         self.check_revno(2)
         open('a', 'ab').write('and then some\n')
-        bzr('commit', '-m', 'another a')
+        bzr(['commit', '-m', 'another a'])
         self.check_revno(3)
         open('a', 'ab').write('and some more\n')
-        bzr('commit', '-m', 'yet another a')
+        bzr(['commit', '-m', 'yet another a'])
         self.check_revno(4)
 
         os.chdir('../child')
         open('a', 'wb').write('also changed a\n')
-        bzr('commit', '-m', 'child modified a')
+        bzr(['commit', '-m', 'child modified a'])
 
         self.check_revno(2)
         self.check_revno(2, '../base')
 
-        bzr('pull', '--overwrite', '../other')
+        bzr('pull --overwrite ../other')
 
         # both the local and master should have been updated.
         self.check_revno(4)

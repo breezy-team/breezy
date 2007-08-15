@@ -4,12 +4,21 @@ Bazaar configuration
 
 Information on how to configure Bazaar.
 
-Location of configuration file
-==============================
+.. TODO: Should have some explanation of why you'd want things in
+.. branch.conf.
+
+Location of configuration files
+===============================
 Each user gets a pair of configurations files in ``$HOME/.bazaar``. The first
 one, named ``bazaar.conf``, includes default configuration options. The other
 file, ``locations.conf``, contains configuration information for specific
 branch locations.  These files are sometimes referred to as ``ini files``.
+
+Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at ``.bzr/branch/branch.conf`` within the
+branch. This file is visible to all users of a branch, if you wish to override
+one of the values for a branch with a setting that is specific to you then you
+can do so in ``locations.conf``.
 
 General Format
 ==============
@@ -40,7 +49,6 @@ the branch as the section header. Some examples include::
 
     [http://mybranches.isp.com/~jdoe/branchdir]
     [/home/jdoe/branches/]
-
 
 
 Section Variables
@@ -128,7 +136,7 @@ of::
 editor
 ------
 The path of the editor that you wish to use if *bzr commit* is run without
-a commit log message. This setting is trumped by the environment variable
+a commit message. This setting is trumped by the environment variable
 ``$BZR_EDITOR``, and overrides ``$VISUAL`` and ``$EDITOR``.
 
 check_signatures
@@ -139,7 +147,7 @@ require
     The gnupg signature for revisions must be present and must be valid.
 
 ignore
-    Do not check gnupg signatures of revisions. 
+    Do not check gnupg signatures of revisions.
 
 check-available
     (default) If gnupg signatures for revisions are present, check them.
@@ -171,7 +179,7 @@ true
 
 false
     This section only applies to the branch at this directory and not
-    branches below it. 
+    branches below it.
 
 gpg_signing_command
 -------------------
@@ -179,6 +187,18 @@ gpg_signing_command
 For example::
 
     gpg_signing_command = /usr/bin/gnpg
+
+smtp_server
+-----------
+(Default: "localhost"). SMTP server to use when Bazaar needs to send
+email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin.
+
+smtp_username, smtp_password
+----------------------------
+User and password to authenticate to the SMTP server. If smtp_username
+is set, and smtp_password is not, Bazaar will prompt for a password.
+These settings are only needed if the SMTP server requires authentication
+to send mail.
 
 
 Branch 6 Options
@@ -199,7 +219,7 @@ parent_location
 ---------------
 If present, the location of the default branch for pull or merge.
 This option is normally set by ``pull --remember`` or ``merge
---remember``
+--remember``.
 
 push_location
 -------------
@@ -215,3 +235,4 @@ bound
 -----
 If set to "True", the branch should act as a checkout, and push each commit to
 the bound_location.  This option is normally set by ``bind``/``unbind``.
+

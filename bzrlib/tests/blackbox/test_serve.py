@@ -26,12 +26,14 @@ import threading
 from bzrlib import (
     errors,
     osutils,
+    revision as _mod_revision,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
+from bzrlib.smart import medium
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport, smart
+from bzrlib.transport import get_transport, remote
 
 
 class TestBzrServe(TestCaseWithTransport):
@@ -43,7 +45,7 @@ class TestBzrServe(TestCaseWithTransport):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        result = self.finish_bzr_subprocess(process, retcode=0)
+        result = self.finish_bzr_subprocess(process)
         self.assertEqual('', result[0])
         self.assertEqual('', result[1])
     
@@ -68,9 +70,10 @@ class TestBzrServe(TestCaseWithTransport):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
-        medium = smart.SmartSimplePipesClientMedium(
+        client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin)
-        transport = smart.SmartTransport('bzr://localhost/', medium=medium)
+        transport = remote.RemoteTransport(
+            'bzr://localhost/', medium=client_medium)
         return process, transport
 
     def start_server_port(self, extra_options=()):
@@ -105,7 +108,8 @@ class TestBzrServe(TestCaseWithTransport):
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
         branch.repository.get_revision_graph()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         _mod_revision.ensure_null(branch.last_revision()))
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -126,7 +130,8 @@ class TestBzrServe(TestCaseWithTransport):
 
         # We get a working branch
         branch.repository.get_revision_graph()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(_mod_revision.NULL_REVISION,
+                         _mod_revision.ensure_null(branch.last_revision()))
 
         self.assertServerFinishesCleanly(process)
 
@@ -205,7 +210,8 @@ class TestBzrServe(TestCaseWithTransport):
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
             
             branch.repository.get_revision_graph()
-            self.assertEqual(None, branch.last_revision())
+            self.assertEqual(_mod_revision.NULL_REVISION,
+                             _mod_revision.ensure_null(branch.last_revision()))
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
         finally:

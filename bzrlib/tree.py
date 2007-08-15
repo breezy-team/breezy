@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib import (
     delta,
     osutils,
+    revision as _mod_revision,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -244,6 +245,23 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
+    def plan_file_merge(self, file_id, other):
+        """Generate a merge plan based on annotations
+
+        If the file contains uncommitted changes in this tree, they will be
+        attributed to the 'current:' pseudo-revision.  If the file contains
+        uncommitted changes in the other tree, they will be assigned to the
+        'other:' pseudo-revision.
+        """
+        from bzrlib import merge
+        annotated_a = list(self.annotate_iter(file_id,
+                                              _mod_revision.CURRENT_REVISION))
+        annotated_b = list(other.annotate_iter(file_id, 'other:'))
+        ancestors_a = self._get_ancestors(_mod_revision.CURRENT_REVISION)
+        ancestors_b = other._get_ancestors('other:')
+        return merge._plan_annotate_merge(annotated_a, annotated_b,
+                                          ancestors_a, ancestors_b)
+
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 
@@ -266,6 +284,7 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
+    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
         return self._inventory.path2id(path)
@@ -592,6 +611,7 @@ class InterTree(InterObject):
             return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_files, include_root, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
     def _iter_changes(self, include_unchanged=False,

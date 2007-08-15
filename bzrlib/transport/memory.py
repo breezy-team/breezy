@@ -27,9 +27,20 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
-from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
+from bzrlib.errors import (
+    FileExists,
+    LockError,
+    InProcessTransport,
+    NoSuchFile,
+    TransportError,
+    )
 from bzrlib.trace import mutter
-from bzrlib.transport import (Transport, register_transport, Server)
+from bzrlib.transport import (
+    LateReadError,
+    register_transport,
+    Server,
+    Transport,
+    )
 import bzrlib.urlutils as urlutils
 
 
@@ -117,18 +128,34 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         del self._files[_abspath]
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # MemoryTransport's are only accessible in-process
+        # so we raise here
+        raise InProcessTransport(self)
+
     def get(self, relpath):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
         if not _abspath in self._files:
-            raise NoSuchFile(relpath)
+            if _abspath in self._dirs:
+                return LateReadError(relpath)
+            else:
+                raise NoSuchFile(relpath)
         return StringIO(self._files[_abspath][0])
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = (f.read(), mode)
+        bytes = f.read()
+        if type(bytes) is not str:
+            # Although not strictly correct, we raise UnicodeEncodeError to be
+            # compatible with other transports.
+            raise UnicodeEncodeError(
+                'undefined', bytes, 0, 1,
+                'put_file must be given a file of bytes, not unicode.')
+        self._files[_abspath] = (bytes, mode)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""

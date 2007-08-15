@@ -449,7 +449,8 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks=None):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -607,7 +608,7 @@ class Weave(VersionedFile):
         else:
             return self.get_ancestry(version_ids)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(version_ids, basestring):
             version_ids = [version_ids]
@@ -641,20 +642,6 @@ class Weave(VersionedFile):
         """
         return len(other_parents.difference(my_parents)) == 0
 
-    def annotate(self, version_id):
-        if isinstance(version_id, int):
-            warnings.warn('Weave.annotate(int) is deprecated. Please use version names'
-                 ' in all circumstances as of 0.8',
-                 DeprecationWarning,
-                 stacklevel=2
-                 )
-            result = []
-            for origin, lineno, text in self._extract([version_id]):
-                result.append((origin, text))
-            return result
-        else:
-            return super(Weave, self).annotate(version_id)
-    
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified version.
 
@@ -905,6 +892,10 @@ class Weave(VersionedFile):
         """See VersionedFile.get_sha1()."""
         return self._sha1s[self._lookup(version_id)]
 
+    def get_sha1s(self, version_ids):
+        """See VersionedFile.get_sha1s()."""
+        return [self._sha1s[self._lookup(v)] for v in version_ids]
+
     @deprecated_method(zero_eight)
     def numversions(self):
         """How many versions are in this weave?
@@ -1119,7 +1110,8 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+        left_matching_blocks=None):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,

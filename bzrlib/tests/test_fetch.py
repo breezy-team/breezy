@@ -18,10 +18,14 @@ import os
 import re
 import sys
 
-from bzrlib import bzrdir, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    merge,
+    repository,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.builtins import merge
 import bzrlib.errors
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
@@ -155,6 +159,14 @@ class TestFetch(TestCaseWithTransport):
         # even though the text, name, parent_id, etc., were unchanged.
         self.assertTrue('rev2' in root_knit)
 
+    def test_fetch_incompatible(self):
+        knit_tree = self.make_branch_and_tree('knit', format='knit')
+        knit3_tree = self.make_branch_and_tree('knit3',
+            format='dirstate-with-subtree')
+        knit3_tree.commit('blah')
+        self.assertRaises(errors.IncompatibleRepositories,
+                          knit_tree.branch.fetch, knit3_tree.branch)
+
 
 class TestMergeFetch(TestCaseWithTransport):
 
@@ -167,8 +179,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
         wt2.commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=['br1', 0],
-              this_dir='br2')
+        wt2.merge_from_branch(br1, from_revision='null:')
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
@@ -179,9 +190,9 @@ class TestMergeFetch(TestCaseWithTransport):
         dir_2 = br1.bzrdir.sprout('br2')
         br2 = dir_2.open_branch()
         wt1.commit(message='rev 1-2', rev_id='1-2')
-        dir_2.open_workingtree().commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        wt2 = dir_2.open_workingtree()
+        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.merge_from_branch(br1)
         self._check_revs_present(br2)
 
     def _check_revs_present(self, br2):
@@ -216,8 +227,8 @@ class TestMergeFileHistory(TestCaseWithTransport):
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
         br2 = Branch.open('br2')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        br1 = Branch.open('br1')
+        wt2 = WorkingTree.open('br2').merge_from_branch(br1)
         for rev_id, text in [('1-2', 'original from 1\n'),
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),

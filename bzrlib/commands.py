@@ -44,6 +44,7 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    win32utils,
     )
 """)
 
@@ -137,6 +138,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     plugins_override
         If true, plugin commands can override builtins.
     """
+    try:
+        return _get_cmd_object(cmd_name, plugins_override)
+    except KeyError:
+        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+
+
+def _get_cmd_object(cmd_name, plugins_override=True):
+    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
     from bzrlib.externalcommand import ExternalCommand
 
     # We want only 'ascii' command names, but the user may have typed
@@ -159,8 +168,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
-
-    raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+    raise KeyError
 
 
 class Command(object):
@@ -233,12 +241,186 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def _maybe_expand_globs(self, file_list):
+        """Glob expand file_list if the platform does not do that itself.
+        
+        :return: A possibly empty list of unicode paths.
+
+        Introduced in bzrlib 0.18.
+        """
+        if not file_list:
+            file_list = []
+        if sys.platform == 'win32':
+            file_list = win32utils.glob_expand(file_list)
+        return list(file_list)
+
+    def _usage(self):
+        """Return single-line grammar for this command.
+
+        Only describes arguments, not options.
+        """
+        s = 'bzr ' + self.name() + ' '
+        for aname in self.takes_args:
+            aname = aname.upper()
+            if aname[-1] in ['$', '+']:
+                aname = aname[:-1] + '...'
+            elif aname[-1] == '?':
+                aname = '[' + aname[:-1] + ']'
+            elif aname[-1] == '*':
+                aname = '[' + aname[:-1] + '...]'
+            s += aname + ' '
+                
+        assert s[-1] == ' '
+        s = s[:-1]
+        return s
+
+    def get_help_text(self, additional_see_also=None, plain=True,
+                      see_also_as_links=False):
+        """Return a text string with help for this command.
+        
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        :param plain: if False, raw help (reStructuredText) is
+            returned instead of plain text.
+        :param see_also_as_links: if True, convert items in 'See also'
+            list to internal links (used by bzr_man rstx generator)
+        """
+        doc = self.help()
+        if doc is None:
+            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+
+        # Extract the summary (purpose) and sections out from the text
+        purpose,sections = self._get_help_parts(doc)
+
+        # If a custom usage section was provided, use it
+        if sections.has_key('Usage'):
+            usage = sections.pop('Usage')
+        else:
+            usage = self._usage()
+
+        # The header is the purpose and usage
+        result = ""
+        result += ':Purpose: %s\n' % purpose
+        if usage.find('\n') >= 0:
+            result += ':Usage:\n%s\n' % usage
+        else:
+            result += ':Usage:   %s\n' % usage
+        result += '\n'
+
+        # Add the options
+        options = option.get_optparser(self.options()).format_option_help()
+        if options.startswith('Options:'):
+            result += ':' + options
+        elif options.startswith('options:'):
+            # Python 2.4 version of optparse
+            result += ':Options:' + options[len('options:'):]
+        else:
+            result += options
+        result += '\n'
+
+        # Add the description, indenting it 2 spaces
+        # to match the indentation of the options
+        if sections.has_key(None):
+            text = sections.pop(None)
+            text = '\n  '.join(text.splitlines())
+            result += ':%s:\n  %s\n\n' % ('Description',text)
+
+        # Add the custom sections (e.g. Examples). Note that there's no need
+        # to indent these as they must be indented already in the source.
+        if sections:
+            labels = sorted(sections.keys())
+            for label in labels:
+                result += ':%s:\n%s\n\n' % (label,sections[label])
+
+        # Add the aliases, source (plug-in) and see also links, if any
+        if self.aliases:
+            result += ':Aliases:  '
+            result += ', '.join(self.aliases) + '\n'
+        plugin_name = self.plugin_name()
+        if plugin_name is not None:
+            result += ':From:     plugin "%s"\n' % plugin_name
+        see_also = self.get_see_also(additional_see_also)
+        if see_also:
+            if not plain and see_also_as_links:
+                see_also_links = []
+                for item in see_also:
+                    if item == 'topics':
+                        # topics doesn't have an independent section
+                        # so don't create a real link
+                        see_also_links.append(item)
+                    else:
+                        # Use a reST link for this entry
+                        see_also_links.append("`%s`_" % (item,))
+                see_also = see_also_links
+            result += ':See also: '
+            result += ', '.join(see_also) + '\n'
+
+        # If this will be rendered as plan text, convert it
+        if plain:
+            import bzrlib.help_topics
+            result = bzrlib.help_topics.help_as_plain_text(result)
+        return result
+
+    @staticmethod
+    def _get_help_parts(text):
+        """Split help text into a summary and named sections.
+
+        :return: (summary,sections) where summary is the top line and
+            sections is a dictionary of the rest indexed by section name.
+            A section starts with a heading line of the form ":xxx:".
+            Indented text on following lines is the section value.
+            All text found outside a named section is assigned to the
+            default section which is given the key of None.
+        """
+        def save_section(sections, label, section):
+            if len(section) > 0:
+                if sections.has_key(label):
+                    sections[label] += '\n' + section
+                else:
+                    sections[label] = section
+            
+        lines = text.rstrip().splitlines()
+        summary = lines.pop(0)
+        sections = {}
+        label,section = None,''
+        for line in lines:
+            if line.startswith(':') and line.endswith(':') and len(line) > 2:
+                save_section(sections, label, section)
+                label,section = line[1:-1],''
+            elif label != None and len(line) > 1 and not line[0].isspace():
+                save_section(sections, label, section)
+                label,section = None,line
+            else:
+                if len(section) > 0:
+                    section += '\n' + line
+                else:
+                    section = line
+        save_section(sections, label, section)
+        return summary, sections
+
+    def get_help_topic(self):
+        """Return the commands help topic - its name."""
+        return self.name()
+
+    def get_see_also(self, additional_terms=None):
+        """Return a list of help topics that are related to this command.
+        
+        The list is derived from the content of the _see_also attribute. Any
+        duplicates are removed and the result is in lexical order.
+        :param additional_terms: Additional help topics to cross-reference.
+        :return: A list of help topics.
+        """
+        see_also = set(getattr(self, '_see_also', []))
+        if additional_terms:
+            see_also.update(additional_terms)
+        return sorted(see_also)
+
     def options(self):
         """Return dict of valid options for this command.
 
         Maps from long option name to option object."""
         r = dict()
-        r['help'] = option.Option.OPTIONS['help']
+        r['help'] = option._help_option
         for o in self.takes_options:
             if isinstance(o, basestring):
                 o = option.Option.OPTIONS[o]
@@ -271,14 +453,6 @@ class Command(object):
         # bogus. So set the attribute, so we can find the correct encoding later.
         self.outf.encoding = output_encoding
 
-    @deprecated_method(zero_eight)
-    def run_argv(self, argv):
-        """Parse command line and run.
-        
-        See run_argv_aliases for the 0.8 and beyond api.
-        """
-        return self.run_argv_aliases(argv)
-
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         if argv is None:
@@ -287,8 +461,7 @@ class Command(object):
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
-            from bzrlib.help import help_on_command
-            help_on_command(self.name())
+            sys.stdout.write(self.get_help_text())
             return 0
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
@@ -463,15 +636,13 @@ def apply_profiled(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    import cPickle
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
-        stats.freeze()
-        cPickle.dump(stats, open(filename, 'w'), 2)
-        print 'Profile data written to %r.' % filename
+        stats.save(filename)
+        trace.note('Profile data written to "%s".', filename)
     return ret
 
 
@@ -596,12 +767,8 @@ def run_bzr(argv):
     # 'command not found' error later.
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
-        run = cmd_obj.run_argv
-        run_argv = [argv]
-    else:
-        run = cmd_obj.run_argv_aliases
-        run_argv = [argv, alias_argv]
+    run = cmd_obj.run_argv_aliases
+    run_argv = [argv, alias_argv]
 
     try:
         if opt_lsprof:
@@ -648,8 +815,6 @@ def main(argv):
 def run_bzr_catch_errors(argv):
     try:
         return run_bzr(argv)
-        # do this here inside the exception wrappers to catch EPIPE
-        sys.stdout.flush()
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
@@ -659,6 +824,30 @@ def run_bzr_catch_errors(argv):
             import pdb
             pdb.post_mortem(sys.exc_traceback)
         return 3
+
+
+class HelpCommandIndex(object):
+    """A index for bzr help that returns commands."""
+
+    def __init__(self):
+        self.prefix = 'commands/'
+
+    def get_topics(self, topic):
+        """Search for topic amongst commands.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            Command entry.
+        """
+        if topic and topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
+        try:
+            cmd = _get_cmd_object(topic)
+        except KeyError:
+            return []
+        else:
+            return [cmd]
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

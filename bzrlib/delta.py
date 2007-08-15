@@ -107,7 +107,7 @@ class TreeDelta(object):
             
 
     def show(self, to_file, show_ids=False, show_unchanged=False,
-             short_status=False):
+             short_status=False, indent=''):
         """output this delta in status-like form to to_file."""
         def show_list(files, short_status_letter=''):
             for item in files:
@@ -122,21 +122,21 @@ class TreeDelta(object):
                     path += '*'
 
                 if show_ids:
-                    print >>to_file, '%s  %-30s %s' % (short_status_letter,
+                    print >>to_file, indent + '%s  %-30s %s' % (short_status_letter,
                         path, fid)
                 else:
-                    print >>to_file, '%s  %s' % (short_status_letter, path)
+                    print >>to_file, indent + '%s  %s' % (short_status_letter, path)
             
         if self.removed:
             if not short_status:
-                print >>to_file, 'removed:'
+                print >>to_file, indent + 'removed:'
                 show_list(self.removed)
             else:
                 show_list(self.removed, 'D')
                 
         if self.added:
             if not short_status:
-                print >>to_file, 'added:'
+                print >>to_file, indent + 'added:'
                 show_list(self.added)
             else:
                 show_list(self.added, 'A')
@@ -146,7 +146,7 @@ class TreeDelta(object):
         if self.renamed:
             short_status_letter = 'R'
             if not short_status:
-                print >>to_file, 'renamed:'
+                print >>to_file, indent + 'renamed:'
                 short_status_letter = ''
             for (oldpath, newpath, fid, kind,
                  text_modified, meta_modified) in self.renamed:
@@ -156,45 +156,51 @@ class TreeDelta(object):
                 if meta_modified:
                     newpath += '*'
                 if show_ids:
-                    print >>to_file, '%s  %s => %s %s' % (
+                    print >>to_file, indent + '%s  %s => %s %s' % (
                         short_status_letter, oldpath, newpath, fid)
                 else:
-                    print >>to_file, '%s  %s => %s' % (
+                    print >>to_file, indent + '%s  %s => %s' % (
                         short_status_letter, oldpath, newpath)
 
         if self.kind_changed:
             if short_status:
                 short_status_letter = 'K'
             else:
-                print >>to_file, 'kind changed:'
+                print >>to_file, indent + 'kind changed:'
                 short_status_letter = ''
             for (path, fid, old_kind, new_kind) in self.kind_changed:
                 if show_ids:
                     suffix = ' '+fid
                 else:
                     suffix = ''
-                print >>to_file, '%s  %s (%s => %s)%s' % (
+                print >>to_file, indent + '%s  %s (%s => %s)%s' % (
                     short_status_letter, path, old_kind, new_kind, suffix)
 
         if self.modified or extra_modified:
             short_status_letter = 'M'
             if not short_status:
-                print >>to_file, 'modified:'
+                print >>to_file, indent + 'modified:'
                 short_status_letter = ''
             show_list(self.modified, short_status_letter)
             show_list(extra_modified, short_status_letter)
             
         if show_unchanged and self.unchanged:
             if not short_status:
-                print >>to_file, 'unchanged:'
+                print >>to_file, indent + 'unchanged:'
                 show_list(self.unchanged)
             else:
                 show_list(self.unchanged, 'S')
 
         if self.unversioned:
-            print >>to_file, 'unknown:'
+            print >>to_file, indent + 'unknown:'
             show_list(self.unversioned)
 
+    def get_changes_as_text(self, show_ids=False, show_unchanged=False,
+             short_status=False):
+        import StringIO
+        output = StringIO.StringIO()
+        self.show(output, show_ids, show_unchanged, short_status)
+        return output.getvalue()
 
 @deprecated_function(zero_nine)
 def compare_trees(old_tree, new_tree, want_unchanged=False,
@@ -211,7 +217,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
                    include_root, extra_trees=None,
-                   want_unversioned=False):
+                   require_versioned=False, want_unversioned=False):
     """Worker function that implements Tree.changes_from."""
     delta = TreeDelta()
     # mutter('start compare_trees')
@@ -219,6 +225,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree._iter_changes(old_tree, want_unchanged,
             specific_files, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned):
         if versioned == (False, False):
             delta.unversioned.append((path[1], None, kind[1]))

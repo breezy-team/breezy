@@ -21,18 +21,19 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
-import unittest
 
 from bzrlib import (
     errors,
     osutils,
+    multiparent,
     tsort,
     revision,
     ui,
     )
 from bzrlib.transport.memory import MemoryTransport
 """)
+
+from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
@@ -124,7 +125,8 @@ class VersionedFile(object):
             new_full[-1] = new_full[-1][:-1]
         self.add_lines(version_id, parents, new_full)
 
-    def add_lines(self, version_id, parents, lines, parent_texts=None):
+    def add_lines(self, version_id, parents, lines, parent_texts=None,
+                  left_matching_blocks=None):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -137,6 +139,9 @@ class VersionedFile(object):
              version_id to allow delta optimisations. 
              VERY IMPORTANT: the texts must be those returned
              by add_lines or data corruption can be caused.
+        :param left_matching_blocks: a hint about which areas are common
+            between the text and its left-hand-parent.  The format is
+            the SequenceMatcher.get_matching_blocks format.
         :return: An opaque representation of the inserted version which can be
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
@@ -144,9 +149,11 @@ class VersionedFile(object):
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
-        return self._add_lines(version_id, parents, lines, parent_texts)
+        return self._add_lines(version_id, parents, lines, parent_texts,
+                               left_matching_blocks)
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
@@ -266,10 +273,76 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def make_mpdiffs(self, version_ids):
+        """Create multiparent diffs for specified versions"""
+        knit_versions = set()
+        for version_id in version_ids:
+            knit_versions.add(version_id)
+            knit_versions.update(self.get_parents(version_id))
+        lines = dict(zip(knit_versions,
+            self._get_lf_split_line_list(knit_versions)))
+        diffs = []
+        for version_id in version_ids:
+            target = lines[version_id]
+            parents = [lines[p] for p in self.get_parents(version_id)]
+            if len(parents) > 0:
+                left_parent_blocks = self._extract_blocks(version_id,
+                                                          parents[0], target)
+            else:
+                left_parent_blocks = None
+            diffs.append(multiparent.MultiParent.from_lines(target, parents,
+                         left_parent_blocks))
+        return diffs
+
+    def _extract_blocks(self, version_id, source, target):
+        return None
+
+    def add_mpdiffs(self, records):
+        """Add mpdiffs to this versionedfile
+
+        Records should be iterables of version, parents, expected_sha1,
+        mpdiff.  mpdiff should be a MultiParent instance.
+        """
+        vf_parents = {}
+        mpvf = multiparent.MultiMemoryVersionedFile()
+        versions = []
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            versions.append(version)
+            mpvf.add_diff(mpdiff, version, parent_ids)
+        needed_parents = set()
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            needed_parents.update(p for p in parent_ids
+                                  if not mpvf.has_version(p))
+        for parent_id, lines in zip(needed_parents,
+                                 self._get_lf_split_line_list(needed_parents)):
+            mpvf.add_version(lines, parent_id, [])
+        for (version, parent_ids, expected_sha1, mpdiff), lines in\
+            zip(records, mpvf.get_line_list(versions)):
+            if len(parent_ids) == 1:
+                left_matching_blocks = list(mpdiff.get_matching_blocks(0,
+                    mpvf.get_diff(parent_ids[0]).num_lines()))
+            else:
+                left_matching_blocks = None
+            version_text = self.add_lines(version, parent_ids, lines,
+                vf_parents, left_matching_blocks=left_matching_blocks)
+            vf_parents[version] = version_text
+        for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
+             zip(records, self.get_sha1s(versions)):
+            if expected_sha1 != sha1:
+                raise errors.VersionedFileInvalidChecksum(version)
+
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
         :param name: The name of the version to lookup
+        """
+        raise NotImplementedError(self.get_sha1)
+
+    def get_sha1s(self, version_ids):
+        """Get the stored sha1 sums for the given revisions.
+
+        :param version_ids: The names of the versions to lookup
+        :return: a list of sha1s in order according to the version_ids
         """
         raise NotImplementedError(self.get_sha1)
 
@@ -302,9 +375,15 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_lines)
 
-    def get_ancestry(self, version_ids):
+    def _get_lf_split_line_list(self, version_ids):
+        return [StringIO(t).readlines() for t in self.get_texts(version_ids)]
+
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
+
+        This list will not be topologically sorted if topo_sorted=False is
+        passed.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""
@@ -331,22 +410,19 @@ class VersionedFile(object):
         :param version_ids: Versions to select.
                             None means retrieve all versions.
         """
-        result = {}
         if version_ids is None:
-            for version in self.versions():
-                result[version] = self.get_parents(version)
-        else:
-            pending = set(osutils.safe_revision_id(v) for v in version_ids)
-            while pending:
-                version = pending.pop()
-                if version in result:
-                    continue
-                parents = self.get_parents(version)
+            return dict(self.iter_parents(self.versions()))
+        result = {}
+        pending = set(osutils.safe_revision_id(v) for v in version_ids)
+        while pending:
+            this_iteration = pending
+            pending = set()
+            for version, parents in self.iter_parents(this_iteration):
+                result[version] = parents
                 for parent in parents:
                     if parent in result:
                         continue
                     pending.add(parent)
-                result[version] = parents
         return result
 
     def get_graph_with_ghosts(self):
@@ -441,6 +517,21 @@ class VersionedFile(object):
                Lines are returned in arbitrary order.
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
+
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        for version_id in version_ids:
+            try:
+                yield version_id, tuple(self.get_parents(version_id))
+            except errors.RevisionNotPresent:
+                pass
 
     def transaction_finished(self):
         """The transaction that this file was opened in has finished.
@@ -681,55 +772,3 @@ class InterVersionedFile(InterObject):
                     else:
                         new_version_ids.add(version)
                 return new_version_ids
-
-
-class InterVersionedFileTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple inter versioned-file classes.
-
-    This is done by copying the test once for each InterVersionedFile provider
-    and injecting the transport_server, transport_readonly_server,
-    versionedfile_factory and versionedfile_factory_to classes into each copy.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for (interversionedfile_class,
-             versionedfile_factory,
-             versionedfile_factory_to) in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.interversionedfile_class = interversionedfile_class
-            new_test.versionedfile_factory = versionedfile_factory
-            new_test.versionedfile_factory_to = versionedfile_factory_to
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), interversionedfile_class.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of interversionedfile permutations to test."""
-        from bzrlib.weave import WeaveFile
-        from bzrlib.knit import KnitVersionedFile
-        result = []
-        # test the fallback InterVersionedFile from annotated knits to weave
-        result.append((InterVersionedFile, 
-                       KnitVersionedFile,
-                       WeaveFile))
-        for optimiser in InterVersionedFile._optimisers:
-            result.append((optimiser,
-                           optimiser._matching_file_from_factory,
-                           optimiser._matching_file_to_factory
-                           ))
-        # if there are specific combinations we want to use, we can add them 
-        # here.
-        return result

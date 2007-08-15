@@ -1,6 +1,31 @@
-all:
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-check:
+# A relatively simple Makefile to assist in building parts of bzr. Mostly for
+# building documentation, etc.
+
+.PHONY: all clean extensions pyflakes api-docs
+
+all: extensions
+
+extensions:
+	@echo "building extension modules."
+	python setup.py build_ext -i
+
+check: docs extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
@@ -19,11 +44,17 @@ pyflakes-nounused:
 	pyflakes bzrlib | grep -v ' imported but unused'
 
 clean:
-	./setup.py clean
+	python setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp
 
-.PHONY: all
+docfiles = bzr bzrlib
+api-docs:
+	mkdir -p api/html
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/html --docformat 'restructuredtext en' $(docfiles)
+
+check-api-docs:
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
 
 
 # build emacs cross-reference
@@ -43,45 +74,69 @@ html-docs: docs
 # translate txt docs to html
 doc_dir := doc 
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
-htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
+htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
+dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 pretty-html-docs: pretty_files
 
 pretty_docs:
 	python -c "import os; os.mkdir('$(PRETTYDIR)')"
 
-pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
+pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.html, $(txt_files))
 
-doc/%.htm: doc/%.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
+doc/developers/%.html: doc/developers/%.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
-$(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
+%.html: %.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
+
+$(PRETTYDIR)/%.html: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
-	$(PRETTYDIR)/$*.htm
+	$(PRETTYDIR)/$*.html
 
-doc/bzr_man.txt: bzrlib/builtins.py \
+MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
 		 bzrlib/sign_my_commits.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
+		 tools/doc_generate/autodoc_man.py \
 		 tools/doc_generate/autodoc_rstx.py
-	python generate_docs.py -o doc/bzr_man.txt rstx
 
-docs: $(htm_files)
+doc/bzr_man.txt: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ rstx
+
+MAN_PAGES = man1/bzr.1
+man1/bzr.1: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ man
+
+ALL_DOCS = $(htm_files) $(MAN_PAGES) $(dev_htm_files) doc/developers/performance.png
+docs: $(ALL_DOCS)
 
 copy-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir $(htm_files) \
+		doc/default.css NEWS README \
+		win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir $(dev_htm_files) \
+		win32_bzr.exe/doc/developers
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove doc/bzr_man.txt $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR)
+	python tools/win32/ostools.py remove $(ALL_DOCS) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt
+
+
+# build a png of our performance task list
+doc/developers/performance.png: doc/developers/performance.dot
+	@echo Generating $@
+	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
 
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	python setup.py build_ext -i -f
 	python setup.py py2exe > py2exe.log
 	python tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
 	python tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
@@ -95,15 +150,15 @@ installer: exe copy-docs
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
 python-installer: docs
-	python setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 
 # clean on win32 all installer-related files and directories
-clean-win32:
+clean-win32: clean-docs
 	python tools/win32/ostools.py remove build
 	python tools/win32/ostools.py remove win32_bzr.exe
 	python tools/win32/ostools.py remove py2exe.log
-	python tools/win32/ostools.py remove doc/*.htm
 	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe

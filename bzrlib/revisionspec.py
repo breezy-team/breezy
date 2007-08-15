@@ -266,7 +266,8 @@ class RevisionSpec_revno(RevisionSpec):
     A negative number will count from the end of the branch (-1 is the
     last revision, -2 the previous one). If the negative number is larger
     than the branch's history, the first revision is returned.
-    examples:
+    Examples::
+
       revno:1                   -> return the first revision
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
@@ -321,14 +322,10 @@ class RevisionSpec_revno(RevisionSpec):
         if dotted:
             branch.lock_read()
             try:
-                last_rev = branch.last_revision()
-                merge_sorted_revisions = tsort.merge_sort(
-                    branch.repository.get_revision_graph(last_rev),
-                    last_rev,
-                    generate_revno=True)
-                def match(item):
-                    return item[3] == match_revno
-                revisions = filter(match, merge_sorted_revisions)
+                revision_id_to_revno = branch.get_revision_id_to_revno_map()
+                revisions = [revision_id for revision_id, revno
+                             in revision_id_to_revno.iteritems()
+                             if revno == match_revno]
             finally:
                 branch.unlock()
             if len(revisions) != 1:
@@ -336,7 +333,7 @@ class RevisionSpec_revno(RevisionSpec):
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return RevisionInfo(branch, None, revisions[0][1])
+                return RevisionInfo(branch, None, revisions[0])
         else:
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
@@ -374,7 +371,8 @@ class RevisionSpec_revid(RevisionSpec):
     Supply a specific revision id, that can be used to specify any
     revision id in the ancestry of the branch. 
     Including merges, and pending merges.
-    examples:
+    Examples::
+
       revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
     """    
     prefix = 'revid:'
@@ -396,7 +394,8 @@ class RevisionSpec_last(RevisionSpec):
 
     Supply a positive number to get the nth revision from the end.
     This is the same as supplying negative numbers to the 'revno:' spec.
-    examples:
+    Examples::
+
       last:1        -> return the last revision
       last:3        -> return the revision 2 before the end.
     """    
@@ -437,7 +436,8 @@ class RevisionSpec_before(RevisionSpec):
     This is mostly useful when inspecting revisions that are not in the
     revision history of a branch.
 
-    examples:
+    Examples::
+
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
                                             aaaa@bbbb-1234567890
@@ -525,10 +525,12 @@ class RevisionSpec_date(RevisionSpec):
     Matches the first entry after a given date (either at midnight or
     at a specified time).
 
-    One way to display all the changes since yesterday would be:
+    One way to display all the changes since yesterday would be::
+
         bzr log -r date:yesterday..-1
 
-    examples:
+    Examples::
+
       date:yesterday            -> select the first revision since yesterday
       date:2006-08-14,17:10:14  -> select the first revision after
                                    August 14th, 2006 at 5:10pm.
@@ -616,7 +618,8 @@ class RevisionSpec_ancestor(RevisionSpec):
     that your branch introduces, while excluding the changes that you
     have not merged from the remote branch.
 
-    examples:
+    Examples::
+
       ancestor:/path/to/branch
       $ bzr diff -r ancestor:../../mainline/branch
     """
@@ -638,8 +641,15 @@ class RevisionSpec_ancestor(RevisionSpec):
                 raise errors.NoCommits(b)
         revision_source = revision.MultipleRevisionSources(
                 branch.repository, other_branch.repository)
-        rev_id = revision.common_ancestor(revision_a, revision_b,
-                                          revision_source)
+        graph = branch.repository.get_graph(other_branch.repository)
+        revision_a = revision.ensure_null(revision_a)
+        revision_b = revision.ensure_null(revision_b)
+        if revision.NULL_REVISION in (revision_a, revision_b):
+            rev_id = revision.NULL_REVISION
+        else:
+            rev_id = graph.find_unique_lca(revision_a, revision_b)
+            if rev_id == revision.NULL_REVISION:
+                raise errors.NoCommonAncestor(revision_a, revision_b)
         try:
             revno = branch.revision_id_to_revno(rev_id)
         except errors.NoSuchRevision:
@@ -657,7 +667,8 @@ class RevisionSpec_branch(RevisionSpec):
 
     Supply the path to a branch to select its last revision.
 
-    examples:
+    Examples::
+
       branch:/path/to/branch
     """
     prefix = 'branch:'
@@ -693,7 +704,8 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
     branches. Usually this is the branch point, but it could also be
     a revision that was merged.
 
-    examples:
+    Examples::
+
       $ bzr diff -r submit:
     """
 

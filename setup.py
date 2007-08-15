@@ -103,13 +103,13 @@ class my_install_scripts(install_scripts):
 
         if sys.platform == "win32":
             try:
-                scripts_dir = self.install_dir
+                scripts_dir = os.path.join(sys.prefix, 'Scripts')
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "bzr"))
                 python_exe = self._quoted_path(sys.executable)
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
-                batch_path = script_path + ".bat"
+                batch_path = os.path.join(self.install_dir, "bzr.bat")
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
@@ -147,14 +147,79 @@ class bzr_build(build):
 ## Setup
 ########################
 
+command_classes = {'install_scripts': my_install_scripts,
+                   'build': bzr_build}
+from distutils.extension import Extension
+ext_modules = []
+try:
+    from Pyrex.Distutils import build_ext
+except ImportError:
+    have_pyrex = False
+    # try to build the extension from the prior generated source.
+    print
+    print ("The python package 'Pyrex' is not available."
+           " If the .c files are available,")
+    print ("they will be built,"
+           " but modifying the .pyx files will not rebuild them.")
+    print
+    from distutils.command.build_ext import build_ext
+else:
+    have_pyrex = True
+# Override the build_ext if we have Pyrex available
+command_classes['build_ext'] = build_ext
+unavailable_files = []
+
+
+def add_pyrex_extension(module_name, **kwargs):
+    """Add a pyrex module to build.
+
+    This will use Pyrex to auto-generate the .c file if it is available.
+    Otherwise it will fall back on the .c file. If the .c file is not
+    available, it will warn, and not add anything.
+
+    You can pass any extra options to Extension through kwargs. One example is
+    'libraries = []'.
+
+    :param module_name: The python path to the module. This will be used to
+        determine the .pyx and .c files to use.
+    """
+    path = module_name.replace('.', '/')
+    pyrex_name = path + '.pyx'
+    c_name = path + '.c'
+    if have_pyrex:
+        ext_modules.append(Extension(module_name, [pyrex_name]))
+    else:
+        if not os.path.isfile(c_name):
+            unavailable_files.append(c_name)
+        else:
+            ext_modules.append(Extension(module_name, [c_name]))
+
+
+add_pyrex_extension('bzrlib._dirstate_helpers_c')
+add_pyrex_extension('bzrlib._knit_load_data_c')
+
+
+if unavailable_files:
+    print 'C extension(s) not found:'
+    print '   %s' % ('\n  '.join(unavailable_files),)
+    print 'The python versions will be used instead.'
+    print
+
+
 if 'bdist_wininst' in sys.argv:
     import glob
     # doc files
-    docs = glob.glob('doc/*.htm') + ['doc/default.css']
+    docs = glob.glob('doc/*.html') + ['doc/default.css']
+    dev_docs = glob.glob('doc/developers/*.html')
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
+            'ext_modules': ext_modules,
             # help pages
-            'data_files': [('Doc/Bazaar', docs)],
+            'data_files': [('Doc/Bazaar', docs),
+                           ('Doc/Bazaar/developers', dev_docs),
+                          ],
+            # for building pyrex extensions
+            'cmdclass': {'build_ext': build_ext},
            }
 
     ARGS.update(META_INFO)
@@ -201,10 +266,13 @@ elif 'py2exe' in sys.argv:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
+    # email package from std python library use lazy import,
+    # so we need to explicitly add all package
+    additional_packages.append('email')
 
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,
-                               "excludes": ["Tkinter", "medusa"],
+                               "excludes": ["Tkinter", "medusa", "tools"],
                                "dist_dir": "win32_bzr.exe",
                               },
                    }
@@ -215,14 +283,19 @@ elif 'py2exe' in sys.argv:
           zipfile='lib/library.zip')
 
 else:
+    # ad-hoc for easy_install
+    DATA_FILES = []
+    if not 'bdist_egg' in sys.argv:
+        # generate and install bzr.1 only with plain install, not easy_install one
+        DATA_FILES = [('man/man1', ['bzr.1'])]
+
     # std setup
     ARGS = {'scripts': ['bzr'],
-            'data_files': [('man/man1', ['bzr.1'])],
-            'cmdclass': {'build': bzr_build,
-                         'install_scripts': my_install_scripts,
-                        },
+            'data_files': DATA_FILES,
+            'cmdclass': command_classes,
+            'ext_modules': ext_modules,
            }
-    
+
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)

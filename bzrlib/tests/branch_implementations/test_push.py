@@ -17,12 +17,16 @@
 """Tests for branch.push behaviour."""
 
 import os
-
+ 
+from bzrlib import bzrdir, errors
 from bzrlib.branch import Branch
-from bzrlib import errors
+from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
+from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.transport.local import LocalURLServer
 
 
 class TestPush(TestCaseWithBranch):
@@ -129,7 +133,16 @@ class TestPush(TestCaseWithBranch):
         except (errors.UninitializableFormat):
             # Cannot create these branches
             return
-        tree = a_branch.bzrdir.create_workingtree()
+        try:
+            tree = a_branch.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            if self.vfs_transport_factory is LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
+                tree = local_controldir.create_workingtree()
+            else:
+                tree = a_branch.create_checkout('repo/tree', lightweight=True)
         self.build_tree(['repo/tree/a'])
         tree.add(['a'])
         tree.commit('a')
@@ -190,8 +203,13 @@ class TestPushHook(TestCaseWithBranch):
         try:
             local.bind(target)
         except errors.UpgradeRequired:
-            # cant bind this format, the test is irrelevant.
-            return
+            # We can't bind this format to itself- typically it is the local
+            # branch that doesn't support binding.  As of May 2007
+            # remotebranches can't be bound.  Let's instead make a new local
+            # branch of the default type, which does allow binding.
+            # See https://bugs.launchpad.net/bzr/+bug/112020
+            local = BzrDir.create_branch_convenience('local2')
+            local.bind(target)
         source = self.make_branch('source')
         Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
         source.push(local)

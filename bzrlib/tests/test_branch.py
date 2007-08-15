@@ -27,7 +27,9 @@ from StringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     errors,
+    trace,
     urlutils,
     )
 from bzrlib.branch import (
@@ -175,13 +177,6 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
 
-    def test_checkout_format(self):
-        branch = self.make_repository('repository', shared=True)
-        branch = self.make_branch('repository/branch',
-            format='metaweave')
-        tree = branch.create_checkout('checkout')
-        self.assertIs(tree.branch.__class__, _mod_branch.BzrBranch5)
-
 
 class TestBranch6(TestCaseWithTransport):
 
@@ -288,6 +283,22 @@ class TestBranch6(TestCaseWithTransport):
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
 
+    def test_set_push(self):
+        branch = self.make_branch('source', format='dirstate-tags')
+        branch.get_config().set_user_option('push_location', 'old',
+            store=config.STORE_LOCATION)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        _warning = trace.warning
+        trace.warning = warning
+        try:
+            branch.set_push_location('new')
+        finally:
+            trace.warning = _warning
+        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
+                         'locations.conf')
+
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
@@ -305,6 +316,17 @@ class TestBranchReference(TestCaseWithTransport):
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)
 
+    def test_get_reference(self):
+        """For a BranchReference, get_reference should reutrn the location."""
+        branch = self.make_branch('target')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        reference_url = branch.bzrdir.root_transport.abspath('') + '/'
+        # if the api for create_checkout changes to return different checkout types
+        # then this file read will fail.
+        self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
+        self.assertEqual(reference_url,
+            _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+
 
 class TestHooks(TestCase):
 
@@ -320,18 +342,7 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks, BranchHooks)
-
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = BranchHooks()
-        self.assertRaises(UnknownHook, hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = BranchHooks()
-        hooks.install_hook('set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
 
 
 class TestPullResult(TestCase):

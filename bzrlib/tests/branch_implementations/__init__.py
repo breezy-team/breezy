@@ -24,25 +24,126 @@ Specific tests for individual formats are in the tests/test_branch file
 rather than in tests/branch_implementations/*.py.
 """
 
+from bzrlib import (
+    errors,
+    tests,
+    )
 from bzrlib.branch import (BranchFormat,
-                           BranchTestProviderAdapter,
                            _legacy_formats,
                            )
-from bzrlib.tests import (
-                          adapt_modules,
-                          default_transport,
-                          TestLoader,
-                          TestSuite,
-                          )
+from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
+from bzrlib.smart.server import (
+    SmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing,
+    )
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.transport.memory import MemoryServer
+
+
+class BranchTestProviderAdapter(tests.TestScenarioApplier):
+    """A tool to generate a suite testing multiple branch formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and branch_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self.scenarios = self.formats_to_scenarios(formats)
+    
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (branch_format, bzrdir_format).
+        """
+        result = []
+        for branch_format, bzrdir_format in formats:
+            # some branches don't have separate format objects.
+            # so we have a conditional here to handle them.
+            scenario_name = getattr(branch_format, '__name__',
+                branch_format.__class__.__name__)
+            scenario = (scenario_name, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "bzrdir_format":bzrdir_format,
+                "branch_format":branch_format,
+                    })
+            result.append(scenario)
+        return result
+
+
+class TestCaseWithBranch(TestCaseWithBzrDir):
+    """This helper will be adapted for each branch_implementation test."""
+
+    def setUp(self):
+        super(TestCaseWithBranch, self).setUp()
+        self.branch = None
+
+    def get_branch(self):
+        if self.branch is None:
+            self.branch = self.make_branch('')
+        return self.branch
+
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
+        # fixme RBC 20060210 this isnt necessarily a fixable thing,
+        # Skipped is the wrong exception to raise.
+        try:
+            return self.branch_format.initialize(repo.bzrdir)
+        except errors.UninitializableFormat:
+            raise tests.TestSkipped('Uninitializable branch format')
+
+    def make_repository(self, relpath, shared=False, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
+        return made_control.create_repository(shared=shared)
+
+    def create_tree_with_merge(self):
+        """Create a branch with a simple ancestry.
+
+        The graph should look like:
+            digraph H {
+                "rev-1" -> "rev-2" -> "rev-3";
+                "rev-1" -> "rev-1.1.1" -> "rev-3";
+            }
+
+        Or in ASCII:
+            1
+            |\
+            2 1.1.1
+            |/
+            3
+        """
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        try:
+            tree.add('')
+            tree.commit('first', rev_id='rev-1')
+            tree.commit('second', rev_id='rev-1.1.1')
+            # Uncommit that last commit and switch to the other line
+            tree.branch.set_last_revision_info(1, 'rev-1')
+            tree.set_parent_ids(['rev-1'])
+            tree.commit('alt-second', rev_id='rev-2')
+            tree.set_parent_ids(['rev-2', 'rev-1.1.1'])
+            tree.commit('third', rev_id='rev-3')
+        finally:
+            tree.unlock()
+
+        return tree
 
 
 def test_suite():
-    result = TestSuite()
+    result = tests.TestSuite()
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
+        'bzrlib.tests.branch_implementations.test_create_checkout',
         'bzrlib.tests.branch_implementations.test_commit',
+        'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
         'bzrlib.tests.branch_implementations.test_last_revision_info',
@@ -50,18 +151,37 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
-        'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_push',
+        'bzrlib.tests.branch_implementations.test_revision_history',
+        'bzrlib.tests.branch_implementations.test_revision_id_to_revno',
+        'bzrlib.tests.branch_implementations.test_sprout',
+        'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_uncommit',
         'bzrlib.tests.branch_implementations.test_update',
         ]
+    # Generate a list of branch formats and their associated bzrdir formats to
+    # use.
+    combinations = [(format, format._matchingbzrdir) for format in 
+         BranchFormat._formats.values() + _legacy_formats]
     adapter = BranchTestProviderAdapter(
-        default_transport,
+        # None here will cause the default vfs transport server to be used.
+        None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
-    adapt_modules(test_branch_implementations, adapter, loader, result)
+        combinations)
+    loader = tests.TestLoader()
+    tests.adapt_modules(test_branch_implementations, adapter, loader, result)
+
+    adapt_to_smart_server = BranchTestProviderAdapter(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        MemoryServer
+        )
+    tests.adapt_modules(test_branch_implementations,
+                        adapt_to_smart_server,
+                        loader,
+                        result)
+
     return result

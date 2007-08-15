@@ -26,13 +26,22 @@ import urlparse
 import urllib
 import sys
 
-from bzrlib import errors, ui
+from bzrlib import (
+    errors,
+    ui,
+    urlutils,
+    )
+from bzrlib.smart import medium
+from bzrlib.symbol_versioning import (
+        deprecated_method,
+        zero_seventeen,
+        )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
-    smart,
+    ConnectedTransport,
+    _CoalescedOffset,
     Transport,
     )
-
 
 # TODO: This is not used anymore by HttpTransport_urllib
 # (extracting the auth info and prompting the user for a password
@@ -98,7 +107,6 @@ def _extract_headers(header_text, url):
                 raise errors.InvalidHttpResponse(url,
                     'Opening header line did not start with HTTP: %s'
                     % (first_line,))
-                assert False, 'Opening header line was not HTTP'
             else:
                 break # We are done parsing
         first_header = False
@@ -113,7 +121,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport, smart.SmartClientMedium):
+class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -122,98 +130,41 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
     implementation.
     """
 
-    # _proto: "http" or "https"
-    # _qualified_proto: may have "+pycurl", etc
+    # _unqualified_scheme: "http" or "https"
+    # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, _from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
-        self._proto = proto_match.group(1)
+        self._unqualified_scheme = proto_match.group(1)
         impl_name = proto_match.group(2)
         if impl_name:
             impl_name = impl_name[1:]
         self._impl_name = impl_name
-        if base[-1] != '/':
-            base = base + '/'
-        super(HttpTransportBase, self).__init__(base)
-        (apparent_proto, self._host,
-            self._path, self._parameters,
-            self._query, self._fragment) = urlparse.urlparse(self.base)
-        self._qualified_proto = apparent_proto
+        super(HttpTransportBase, self).__init__(base,
+                                                _from_transport=_from_transport)
         # range hint is handled dynamically throughout the life
-        # of the object. We start by trying mulri-range requests
-        # and if the server returns bougs results, we retry with
-        # single range requests and, finally, we forget about
-        # range if the server really can't understand. Once
-        # aquired, this piece of info is propogated to clones.
-        if from_transport is not None:
-            self._range_hint = from_transport._range_hint
+        # of the transport object. We start by trying multi-range
+        # requests and if the server returns bogus results, we
+        # retry with single range requests and, finally, we
+        # forget about range if the server really can't
+        # understand. Once acquired, this piece of info is
+        # propagated to clones.
+        if _from_transport is not None:
+            self._range_hint = _from_transport._range_hint
         else:
             self._range_hint = 'multi'
 
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-
-        This can be supplied with a string or a list.
-
-        The URL returned always has the protocol scheme originally used to 
-        construct the transport, even if that includes an explicit
-        implementation qualifier.
-        """
-        assert isinstance(relpath, basestring)
-        if isinstance(relpath, unicode):
-            raise errors.InvalidURL(relpath, 'paths must not be unicode.')
-        if isinstance(relpath, basestring):
-            relpath_parts = relpath.split('/')
-        else:
-            # TODO: Don't call this with an array - no magic interfaces
-            relpath_parts = relpath[:]
-        if relpath.startswith('/'):
-            basepath = []
-        else:
-            # Except for the root, no trailing slashes are allowed
-            if len(relpath_parts) > 1 and relpath_parts[-1] == '':
-                raise ValueError(
-                    "path %r within branch %r seems to be a directory"
-                    % (relpath, self._path))
-            basepath = self._path.split('/')
-            if len(basepath) > 0 and basepath[-1] == '':
-                basepath = basepath[:-1]
-
-        for p in relpath_parts:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.' or p == '':
-                continue # No-op
-            else:
-                basepath.append(p)
-        # Possibly, we could use urlparse.urljoin() here, but
-        # I'm concerned about when it chooses to strip the last
-        # portion of the path, and when it doesn't.
-        path = '/'.join(basepath)
-        if path == '':
-            path = '/'
-        result = urlparse.urlunparse((self._qualified_proto,
-                                    self._host, path, '', '', ''))
-        return result
-
-    def _real_abspath(self, relpath):
-        """Produce absolute path, adjusting protocol if needed"""
-        abspath = self.abspath(relpath)
-        qp = self._qualified_proto
-        rp = self._proto
-        if self._qualified_proto != self._proto:
-            abspath = rp + abspath[len(qp):]
-        if not isinstance(abspath, str):
-            # escaping must be done at a higher level
-            abspath = abspath.encode('ascii')
-        return abspath
+    def _remote_path(self, relpath):
+        """Produce absolute path, adjusting protocol."""
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 path)
 
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
@@ -226,17 +177,15 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param byte_range: None to get the whole file;
-            or [(start,end)] to fetch parts of a file.
+        :param ranges: None to get the whole file;
+            or  a list of _CoalescedOffset to fetch parts of a file.
+        :param tail_amount: The amount to get from the end of the file.
 
         :returns: (http_code, result_file)
-
-        Note that the current http implementations can only fetch one range at
-        a time through this call.
         """
         raise NotImplementedError(self._get)
 
@@ -251,34 +200,57 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         """
         return self
 
-    def _retry_get(self, relpath, ranges, exc_info):
-        """A GET request have failed, let's retry with a simpler request."""
-
-        try_again = False
-        # The server does not gives us enough data or
-        # bogus-looking result, let's try again with
-        # a simpler request if possible.
+    def _degrade_range_hint(self, relpath, ranges, exc_info):
         if self._range_hint == 'multi':
             self._range_hint = 'single'
-            mutter('Retry %s with single range request' % relpath)
-            try_again = True
+            mutter('Retry "%s" with single range request' % relpath)
         elif self._range_hint == 'single':
             self._range_hint = None
-            mutter('Retry %s without ranges' % relpath)
-            try_again = True
-        if try_again:
-            # Note that since the offsets and the ranges may not
-            # be in the same order, we don't try to calculate a
-            # restricted single range encompassing unprocessed
-            # offsets.
-            code, f = self._get(relpath, ranges)
-            return try_again, code, f
+            mutter('Retry "%s" without ranges' % relpath)
         else:
-            # We tried all the tricks, but nothing worked. We
-            # re-raise original exception; the 'mutter' calls
-            # above will indicate that further tries were
-            # unsuccessful
+            # We tried all the tricks, but nothing worked. We re-raise original
+            # exception; the 'mutter' calls above will indicate that further
+            # tries were unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
+
+    def _get_ranges_hinted(self, relpath, ranges):
+        """Issue a ranged GET request taking server capabilities into account.
+
+        Depending of the errors returned by the server, we try several GET
+        requests, trying to minimize the data transferred.
+
+        :param relpath: Path relative to transport base URL
+        :param ranges: None to get the whole file;
+            or  a list of _CoalescedOffset to fetch parts of a file.
+        :returns: A file handle containing at least the requested ranges.
+        """
+        exc_info = None
+        try_again = True
+        while try_again:
+            try_again = False
+            try:
+                code, f = self._get(relpath, ranges)
+            except errors.InvalidRange, e:
+                if exc_info is None:
+                    exc_info = sys.exc_info()
+                self._degrade_range_hint(relpath, ranges, exc_info)
+                try_again = True
+        return f
+
+    # _coalesce_offsets is a helper for readv, it try to combine ranges without
+    # degrading readv performances. _bytes_to_read_before_seek is the value
+    # used for the limit parameter and has been tuned for other transports. For
+    # HTTP, the name is inappropriate but the parameter is still useful and
+    # helps reduce the number of chunks in the response. The overhead for a
+    # chunk (headers, length, footer around the data itself is variable but
+    # around 50 bytes. We use 128 to reduce the range specifiers that appear in
+    # the header, some servers (notably Apache) enforce a maximum length for a
+    # header and issue a '400: Bad request' error when too much ranges are
+    # specified.
+    _bytes_to_read_before_seek = 128
+    # No limit on the offset number that get combined into one, we are trying
+    # to avoid downloading the whole file.
+    _max_readv_combined = 0
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -286,40 +258,44 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        ranges = self.offsets_to_ranges(offsets)
-        mutter('http readv of %s collapsed %s offsets => %s',
-                relpath, len(offsets), ranges)
+        sorted_offsets = sorted(list(offsets))
+        fudge = self._bytes_to_read_before_seek
+        coalesced = self._coalesce_offsets(sorted_offsets,
+                                           limit=self._max_readv_combine,
+                                           fudge_factor=fudge)
+        coalesced = list(coalesced)
+        mutter('http readv of %s  offsets => %s collapsed %s',
+                relpath, len(offsets), len(coalesced))
 
-        try_again = True
-        while try_again:
-            try_again = False
-            try:
-                code, f = self._get(relpath, ranges)
-            except (errors.InvalidRange, errors.ShortReadvError), e:
-                try_again, code, f = self._retry_get(relpath, ranges,
-                                                     sys.exc_info())
-
+        f = self._get_ranges_hinted(relpath, coalesced)
         for start, size in offsets:
             try_again = True
             while try_again:
                 try_again = False
-                f.seek(start, (start < 0) and 2 or 0)
+                f.seek(start, ((start < 0) and 2) or 0)
                 start = f.tell()
                 try:
                     data = f.read(size)
                     if len(data) != size:
                         raise errors.ShortReadvError(relpath, start, size,
                                                      actual=len(data))
-                except (errors.InvalidRange, errors.ShortReadvError), e:
-                    # Note that we replace 'f' here and that it
-                    # may need cleaning one day before being
-                    # thrown that way.
-                    try_again, code, f = self._retry_get(relpath, ranges,
-                                                         sys.exc_info())
+                except errors.ShortReadvError, e:
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+
+                    # Since the offsets and the ranges may not be in the same
+                    # order, we don't try to calculate a restricted single
+                    # range encompassing unprocessed offsets.
+
+                    # Note: we replace 'f' here, it may need cleaning one day
+                    # before being thrown that way.
+                    f = self._get_ranges_hinted(relpath, coalesced)
+                    try_again = True
+
             # After one or more tries, we get the data.
             yield start, data
 
     @staticmethod
+    @deprecated_method(zero_seventeen)
     def offsets_to_ranges(offsets):
         """Turn a list of offsets and sizes into a list of byte ranges.
 
@@ -409,6 +385,11 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         """Delete the item at relpath"""
         raise errors.TransportNotPossible('http does not support delete()')
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # HTTP URL's are externally usable.
+        return self.base
+
     def is_readonly(self):
         """See Transport.is_readonly."""
         return True
@@ -454,37 +435,40 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         else:
             return self.__class__(self.abspath(offset), self)
 
-    def attempted_range_header(self, ranges, tail_amount):
+    def _attempted_range_header(self, offsets, tail_amount):
         """Prepare a HTTP Range header at a level the server should accept"""
 
         if self._range_hint == 'multi':
             # Nothing to do here
-            return self.range_header(ranges, tail_amount)
+            return self._range_header(offsets, tail_amount)
         elif self._range_hint == 'single':
             # Combine all the requested ranges into a single
             # encompassing one
-            if len(ranges) > 0:
-                start, ignored = ranges[0]
-                ignored, end = ranges[-1]
+            if len(offsets) > 0:
                 if tail_amount not in (0, None):
-                    # Nothing we can do here to combine ranges
-                    # with tail_amount, just returns None. The
-                    # whole file should be downloaded.
+                    # Nothing we can do here to combine ranges with tail_amount
+                    # in a single range, just returns None. The whole file
+                    # should be downloaded.
                     return None
                 else:
-                    return self.range_header([(start, end)], 0)
+                    start = offsets[0].start
+                    last = offsets[-1]
+                    end = last.start + last.length - 1
+                    whole = self._coalesce_offsets([(start, end - start + 1)],
+                                                   limit=0, fudge_factor=0)
+                    return self._range_header(list(whole), 0)
             else:
                 # Only tail_amount, requested, leave range_header
                 # do its work
-                return self.range_header(ranges, tail_amount)
+                return self._range_header(offsets, tail_amount)
         else:
             return None
 
     @staticmethod
-    def range_header(ranges, tail_amount):
+    def _range_header(ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
-        :param ranges: A list of byte ranges, (start, end).
+        :param ranges: A list of _CoalescedOffset
         :param tail_amount: The amount to get from the end of the file.
 
         :return: HTTP range header string.
@@ -493,8 +477,9 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         provided.
         """
         strings = []
-        for start, end in ranges:
-            strings.append('%d-%d' % (start, end))
+        for offset in ranges:
+            strings.append('%d-%d' % (offset.start,
+                                      offset.start + offset.length - 1))
 
         if tail_amount:
             strings.append('-%d' % tail_amount)
@@ -507,11 +492,11 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         return body_filelike
 
 
-class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
-    def __init__(self, medium):
-        smart.SmartClientMediumRequest.__init__(self, medium)
+    def __init__(self, client_medium):
+        medium.SmartClientMediumRequest.__init__(self, client_medium)
         self._buffer = ''
 
     def _accept_bytes(self, bytes):

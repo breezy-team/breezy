@@ -26,16 +26,19 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class Benchmark(ExternalBase):
+    """A Test class which provides helpers for writing benchmark tests."""
 
     def make_kernel_like_tree(self, url=None, root='.',
                               link_working=False):
         """Setup a temporary tree roughly like a kernel tree.
-        
+
         :param url: Creat the kernel like tree as a lightweight checkout
-        of a new branch created at url.
+            of a new branch created at url.
+        :param root: Path where the tree will be created.
         :param link_working: instead of creating a new copy of all files
             just hardlink the working tree. Tests must request this, because
             they must break links if they want to change the files
+        :return: A newly created tree.
         """
         from bzrlib.benchmarks.tree_creator.kernel_like import (
             KernelLikeTreeCreator,
@@ -131,7 +134,7 @@ class Benchmark(ExternalBase):
                             hardlink=False):
         """Create a tree with many files and many commits. Every commit changes
         exactly one file.
-        
+
         :param num_files: number of files to be created
         :param num_commits: number of commits in the newly created tree
         """
@@ -153,8 +156,8 @@ class Benchmark(ExternalBase):
         :param tree: The tree in which the changes happen.
         :param files: The list of files where changes should occur.
         :param num_commits: The number of commits
-        :param changes_per_commit: The number of files that are touched in 
-        each commit.
+        :param changes_per_commit: The number of files that are touched in
+            each commit.
         """
         for j in range(num_commits):
             for i in range(changes_per_commit):
@@ -177,8 +180,10 @@ def test_suite():
                    'bzrlib.benchmarks.bench_cache_utf8',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_dirstate',
                    'bzrlib.benchmarks.bench_info',
                    'bzrlib.benchmarks.bench_inventory',
+                   'bzrlib.benchmarks.bench_knit',
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',

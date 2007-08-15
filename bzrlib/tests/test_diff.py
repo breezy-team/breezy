@@ -24,9 +24,38 @@ from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
-from bzrlib.tests import (TestCase, TestCaseWithTransport,
+from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilename = _UnicodeFilename()
+
+
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        UnicodeFilename._probe()
+        
 
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
@@ -214,7 +243,22 @@ class TestDiffFiles(TestCaseInTempDir):
         self.assertEqual(out.splitlines(True) + ['\n'], lines)
 
 
-class TestDiffDates(TestCaseWithTransport):
+class TestShowDiffTreesHelper(TestCaseWithTransport):
+    """Has a helper for running show_diff_trees"""
+
+    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
+        output = StringIO()
+        if working_tree is not None:
+            extra_trees = (working_tree,)
+        else:
+            extra_trees = ()
+        show_diff_trees(tree1, tree2, output, specific_files=specific_files,
+                        extra_trees=extra_trees, old_label='old/',
+                        new_label='new/')
+        return output.getvalue()
+
+
+class TestDiffDates(TestShowDiffTreesHelper):
 
     def setUp(self):
         super(TestDiffDates, self).setUp()
@@ -253,17 +297,6 @@ class TestDiffDates(TestCaseWithTransport):
             ])
         # set the date stamps for files in the working tree to known values
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
-
-    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
-        output = StringIO()
-        if working_tree is not None:
-            extra_trees = (working_tree,)
-        else:
-            extra_trees = ()
-        show_diff_trees(tree1, tree2, output, specific_files=specific_files,
-                        extra_trees=extra_trees, old_label='old/', 
-                        new_label='new/')
-        return output.getvalue()
 
     def test_diff_rev_tree_working_tree(self):
         output = self.get_diff(self.wt.basis_tree(), self.wt)
@@ -352,6 +385,118 @@ class TestDiffDates(TestCaseWithTransport):
         out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
                             working_tree=self.wt)
         self.assertNotContainsRe(out, 'file1\t')
+
+
+
+class TestShowDiffTrees(TestShowDiffTreesHelper):
+    """Direct tests for show_diff_trees"""
+
+    def test_modified_file(self):
+        """Test when a file is modified."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'contents\n')])
+        tree.add(['file'], ['file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        self.build_tree_contents([('tree/file', 'new contents\n')])
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff, "=== modified file 'file'\n")
+        self.assertContainsRe(diff, '--- old/file\t')
+        self.assertContainsRe(diff, '\\+\\+\\+ new/file\t')
+        self.assertContainsRe(diff, '-contents\n'
+                                    '\\+new contents\n')
+
+    def test_modified_file_in_renamed_dir(self):
+        """Test when a file is modified in a renamed directory."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/'])
+        self.build_tree_contents([('tree/dir/file', 'contents\n')])
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('dir', 'other')
+        self.build_tree_contents([('tree/other/file', 'new contents\n')])
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff, "=== renamed directory 'dir' => 'other'\n")
+        self.assertContainsRe(diff, "=== modified file 'other/file'\n")
+        # XXX: This is technically incorrect, because it used to be at another
+        # location. What to do?
+        self.assertContainsRe(diff, '--- old/dir/file\t')
+        self.assertContainsRe(diff, '\\+\\+\\+ new/other/file\t')
+        self.assertContainsRe(diff, '-contents\n'
+                                    '\\+new contents\n')
+
+    def test_renamed_directory(self):
+        """Test when only a directory is only renamed."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/'])
+        self.build_tree_contents([('tree/dir/file', 'contents\n')])
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('dir', 'newdir')
+        diff = self.get_diff(tree.basis_tree(), tree)
+        # Renaming a directory should be a single "you renamed this dir" even
+        # when there are files inside.
+        self.assertEqual("=== renamed directory 'dir' => 'newdir'\n", diff)
+
+    def test_renamed_file(self):
+        """Test when a file is only renamed."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'contents\n')])
+        tree.add(['file'], ['file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('file', 'newname')
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff, "=== renamed file 'file' => 'newname'\n")
+        # We shouldn't have a --- or +++ line, because there is no content
+        # change
+        self.assertNotContainsRe(diff, '---')
+
+    def test_renamed_and_modified_file(self):
+        """Test when a file is only renamed."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'contents\n')])
+        tree.add(['file'], ['file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('file', 'newname')
+        self.build_tree_contents([('tree/newname', 'new contents\n')])
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff, "=== renamed file 'file' => 'newname'\n")
+        self.assertContainsRe(diff, '--- old/file\t')
+        self.assertContainsRe(diff, '\\+\\+\\+ new/newname\t')
+        self.assertContainsRe(diff, '-contents\n'
+                                    '\\+new contents\n')
+
+    def test_binary_unicode_filenames(self):
+        """Test that contents of files are *not* encoded in UTF-8 when there
+        is a binary file in the diff.
+        """
+        # See https://bugs.launchpad.net/bugs/110092.
+        self.requireFeature(UnicodeFilename)
+
+        # This bug isn't triggered with cStringIO.
+        from StringIO import StringIO
+        tree = self.make_branch_and_tree('tree')
+        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
+        self.build_tree_contents(
+            [('tree/' + alpha, chr(0)),
+             ('tree/' + omega,
+              ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
+        tree.add([alpha], ['file-id'])
+        tree.add([omega], ['file-id-2'])
+        diff_content = StringIO()
+        show_diff_trees(tree.basis_tree(), tree, diff_content)
+        diff = diff_content.getvalue()
+        self.assertContainsRe(diff, r"=== added file '%s'" % alpha_utf8)
+        self.assertContainsRe(
+            diff, "Binary files a/%s.*and b/%s.* differ\n" % (alpha_utf8, alpha_utf8))
+        self.assertContainsRe(diff, r"=== added file '%s'" % omega_utf8)
+        self.assertContainsRe(diff, r"--- a/%s" % (omega_utf8,))
+        self.assertContainsRe(diff, r"\+\+\+ b/%s" % (omega_utf8,))
 
 
 class TestPatienceDiffLib(TestCase):

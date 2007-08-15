@@ -24,12 +24,16 @@ import codecs
 
 _utf8_encode = codecs.getencoder("utf-8")
 _utf8_decode = codecs.getdecoder("utf-8")
-# wrap _utf8_decode to support None->None for optional strings.
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
+    """wrap _utf8_decode to support None->None for optional strings.
+
+    Also, only return the Unicode portion, since we don't care about the second
+    return value.
+    """
     if bytestring is None:
-        return (None, 0)
+        return None
     else:
-        return _utf8_decode(bytestring)
+        return _utf8_decode(bytestring)[0]
 
 # Map revisions from and to utf8 encoding
 # Whenever we do an encode/decode operation, we save the result, so that

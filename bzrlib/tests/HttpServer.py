@@ -29,6 +29,7 @@ import urllib
 import urlparse
 
 from bzrlib.transport import Server
+from bzrlib.transport.local import LocalURLServer
 
 
 class WebserverNotAvailable(Exception):
@@ -41,14 +42,20 @@ class BadWebserverPath(ValueError):
 
 
 class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
+    """Handles one request.
+
+    A TestingHTTPRequestHandler is instantiated for every request
+    received by the associated server.
+    """
 
     def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
+        tcs = self.server.test_case_server
+        tcs.log('webserver - %s - - [%s] %s "%s" "%s"',
+                self.address_string(),
+                self.log_date_time_string(),
+                format % args,
+                self.headers.get('referer', '-'),
+                self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -153,7 +160,6 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
             self.wfile.write("--%s\r\n" % boundary)
-            pass
 
     def do_GET(self):
         """Serve a GET request.
@@ -218,13 +224,39 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.get_multiple_ranges(file, file_size, ranges)
         file.close()
 
+    def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+
+        If the server requires it, proxy the path before the usual translation
+        """
+        if self.server.test_case_server.proxy_requests:
+            # We need to act as a proxy and accept absolute urls,
+            # which SimpleHTTPRequestHandler (parent) is not
+            # ready for. So we just drop the protocol://host:port
+            # part in front of the request-url (because we know
+            # we would not forward the request to *another*
+            # proxy).
+
+            # So we do what SimpleHTTPRequestHandler.translate_path
+            # do beginning with python 2.4.3: abandon query
+            # parameters, scheme, host port, etc (which ensure we
+            # provide the right behaviour on all python versions).
+            path = urlparse.urlparse(path)[2]
+            # And now, we can apply *our* trick to proxy files
+            path += '-proxied'
+
+        return self._translate_path(path)
+
+    def _translate_path(self, path):
+        return SimpleHTTPRequestHandler.translate_path(self, path)
+
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
         # decoding them into unicode first.
         # However, under Linux, you can access bytestream paths
         # without any problems. If this function was always active
         # it would probably break tests when LANG=C was set
-        def translate_path(self, path):
+        def _translate_path(self, path):
             """Translate a /-separated PATH to the local filename syntax.
 
             For bzr, all url paths are considered to be utf8 paths.
@@ -248,10 +280,16 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
+
+    def __init__(self, server_address, RequestHandlerClass,
+                 test_case_server):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
+                                           RequestHandlerClass)
+        # test_case_server can be used to communicate between the
+        # tests and the server (or the request handler and the
+        # server), allowing dynamic behaviors to be defined from
+        # the tests cases.
+        self.test_case_server = test_case_server
 
 
 class HttpServer(Server):
@@ -260,6 +298,10 @@ class HttpServer(Server):
     Subclasses can provide a specific request handler.
     """
 
+    # Whether or not we proxy the requests (see
+    # TestingHTTPRequestHandler.translate_path).
+    proxy_requests = False
+
     # used to form the url that connects to this server
     _url_protocol = 'http'
 
@@ -267,18 +309,23 @@ class HttpServer(Server):
     def __init__(self, request_handler=TestingHTTPRequestHandler):
         Server.__init__(self)
         self.request_handler = request_handler
+        self.host = 'localhost'
+        self.port = 0
+        self._httpd = None
 
     def _get_httpd(self):
-        return TestingHTTPServer(('localhost', 0),
-                                  self.request_handler,
-                                  self)
+        if self._httpd is None:
+            self._httpd = TestingHTTPServer((self.host, self.port),
+                                            self.request_handler,
+                                            self)
+            host, self.port = self._httpd.socket.getsockname()
+        return self._httpd
 
     def _http_start(self):
-        httpd = None
         httpd = self._get_httpd()
-        host, self.port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol,
-                                                      self.port)
+        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                               self.host,
+                                               self.port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 
@@ -304,8 +351,19 @@ class HttpServer(Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def setUp(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.setUp.
+        
+        :param backing_transport_server: The transport that requests over this
+            protocol should be forwarded to. Note that this is currently not
+            supported for HTTP.
+        """
+        # XXX: TODO: make the server back onto vfs_server rather than local
+        # disk.
+        assert backing_transport_server is None or \
+            isinstance(backing_transport_server, LocalURLServer), \
+            "HTTPServer currently assumes local transport, got %s" % \
+            backing_transport_server
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_starting = threading.Lock()

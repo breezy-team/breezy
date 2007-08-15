@@ -28,7 +28,7 @@ class TestCat(TestCaseWithTransport):
     def test_cat(self):
 
         def bzr(*args, **kwargs):
-            return self.run_bzr_subprocess(*args, **kwargs)[0]
+            return self.run_bzr_subprocess(list(args), **kwargs)[0]
 
         os.mkdir('branch')
         os.chdir('branch')
@@ -79,25 +79,27 @@ class TestCat(TestCaseWithTransport):
             tree.remove(['d-rev'])
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
-
-            # 'b-tree' is not present in the old tree.
-            self.run_bzr_error([], 'cat', 'b-tree', '--name-from-revision')
-
-            # get to the old file automatically
-            out, err = self.run_bzr('cat', 'd-rev')
-            self.assertEqual('bar\n', out)
-            self.assertEqual('', err)
-
-            out, err = self.run_bzr('cat', 'a-rev-tree',
-                                    '--name-from-revision')
-            self.assertEqual('foo\n', out)
-            self.assertEqual('', err)
-
-            out, err = self.run_bzr('cat', 'a-rev-tree')
-            self.assertEqual('baz\n', out)
-            self.assertEqual('', err)
         finally:
+            # calling bzr as another process require free lock on win32
             tree.unlock()
+
+        # 'b-tree' is not present in the old tree.
+        self.run_bzr_error(["^bzr: ERROR: u?'b-tree' "
+                            "is not present in revision .+$"],
+                           'cat b-tree --name-from-revision')
+
+        # get to the old file automatically
+        out, err = self.run_bzr('cat d-rev')
+        self.assertEqual('bar\n', out)
+        self.assertEqual('', err)
+
+        out, err = self.run_bzr('cat a-rev-tree --name-from-revision')
+        self.assertEqual('foo\n', out)
+        self.assertEqual('', err)
+
+        out, err = self.run_bzr('cat a-rev-tree')
+        self.assertEqual('baz\n', out)
+        self.assertEqual('', err)
 
     def test_remote_cat(self):
         wt = self.make_branch_and_tree('.')
@@ -106,7 +108,7 @@ class TestCat(TestCaseWithTransport):
         wt.commit('Making sure there is a basis_tree available')
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr('cat', url)
+        out, err = self.run_bzr(['cat', url])
         self.assertEqual('contents of README\n', out)
 
     def test_cat_no_working_tree(self):
@@ -117,6 +119,6 @@ class TestCat(TestCaseWithTransport):
         wt.branch.bzrdir.destroy_workingtree()
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr('cat', url)
+        out, err = self.run_bzr(['cat', url])
         self.assertEqual('contents of README\n', out)
         

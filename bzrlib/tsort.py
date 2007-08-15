@@ -18,7 +18,7 @@
 """Topological sorting routines."""
 
 
-import bzrlib.errors as errors
+from bzrlib import errors
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -61,6 +61,7 @@ class TopoSorter(object):
         """
         # a dict of the graph.
         self._graph = dict(graph)
+        self._visitable = set(self._graph)
         ### if debugging:
         # self._original_graph = dict(graph)
         
@@ -119,6 +120,8 @@ class TopoSorter(object):
                         if next_node_name in self._completed_node_names:
                             # this parent was completed by a child on the
                             # call stack. skip it.
+                            continue
+                        if next_node_name not in self._visitable:
                             continue
                         # otherwise transfer it from the source graph into the
                         # top of the current depth first search stack.
@@ -185,6 +188,22 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
 
 
 class MergeSorter(object):
+
+    __slots__ = ['_node_name_stack',
+                 '_node_merge_depth_stack',
+                 '_pending_parents_stack',
+                 '_assigned_sequence_stack',
+                 '_left_subtree_pushed_stack',
+                 '_generate_revno',
+                 '_graph',
+                 '_mainline_revisions',
+                 '_stop_revision',
+                 '_original_graph',
+                 '_revnos',
+                 '_root_sequence',
+                 '_completed_node_names',
+                 '_scheduled_nodes',
+                ]
 
     def __init__(self, graph, branch_tip, mainline_revisions=None,
         generate_revno=False):
@@ -404,20 +423,113 @@ class MergeSorter(object):
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
         """
-        while self._node_name_stack:
+        # These are safe to offload to local variables, because they are used
+        # as a stack and modified in place, never assigned to.
+        node_name_stack = self._node_name_stack
+        node_merge_depth_stack = self._node_merge_depth_stack
+        pending_parents_stack = self._pending_parents_stack
+        left_subtree_pushed_stack = self._left_subtree_pushed_stack
+        completed_node_names = self._completed_node_names
+        scheduled_nodes = self._scheduled_nodes
+
+        graph_pop = self._graph.pop
+
+        def push_node(node_name, merge_depth, parents,
+                      node_name_stack_append=node_name_stack.append,
+                      node_merge_depth_stack_append=node_merge_depth_stack.append,
+                      left_subtree_pushed_stack_append=left_subtree_pushed_stack.append,
+                      pending_parents_stack_append=pending_parents_stack.append,
+                      assigned_sequence_stack_append=self._assigned_sequence_stack.append,
+                      original_graph=self._original_graph,
+                      revnos=self._revnos,
+                      ):
+            """Add node_name to the pending node stack.
+
+            Names in this stack will get emitted into the output as they are popped
+            off the stack.
+
+            This inlines a lot of self._variable.append functions as local
+            variables.
+            """
+            node_name_stack_append(node_name)
+            node_merge_depth_stack_append(merge_depth)
+            left_subtree_pushed_stack_append(False)
+            pending_parents_stack_append(list(parents))
+            # as we push it, assign it a sequence number against its parent:
+            parents = original_graph[node_name]
+            if parents:
+                # node has parents, assign from the left most parent.
+                parent_revno = revnos[parents[0]]
+                sequence = parent_revno[1]
+                parent_revno[1] += 1
+            else:
+                # no parents, use the root sequence
+                sequence = self._root_sequence
+                self._root_sequence +=1
+            assigned_sequence_stack_append(sequence)
+
+        def pop_node(node_name_stack_pop=node_name_stack.pop,
+                     node_merge_depth_stack_pop=node_merge_depth_stack.pop,
+                     assigned_sequence_stack_pop=self._assigned_sequence_stack.pop,
+                     left_subtree_pushed_stack_pop=left_subtree_pushed_stack.pop,
+                     pending_parents_stack_pop=pending_parents_stack.pop,
+                     original_graph=self._original_graph,
+                     revnos=self._revnos,
+                     completed_node_names_add=self._completed_node_names.add,
+                     scheduled_nodes_append=scheduled_nodes.append,
+                    ):
+            """Pop the top node off the stack
+
+            The node is appended to the sorted output.
+            """
+            # we are returning from the flattened call frame:
+            # pop off the local variables
+            node_name = node_name_stack_pop()
+            merge_depth = node_merge_depth_stack_pop()
+            sequence = assigned_sequence_stack_pop()
+            # remove this node from the pending lists:
+            left_subtree_pushed_stack_pop()
+            pending_parents_stack_pop()
+
+            parents = original_graph[node_name]
+            if parents:
+                # node has parents, assign from the left most parent.
+                parent_revno = revnos[parents[0]]
+                if sequence:
+                    # not the first child, make a new branch
+                    revno = parent_revno[0] + (sequence, 1)
+                else:
+                    # increment the sequence number within the branch
+                    revno = parent_revno[0][:-1] + (parent_revno[0][-1] + 1,)
+            else:
+                # no parents, use the root sequence
+                if sequence:
+                    # make a parallel import revision number
+                    revno = (0, sequence, 1)
+                else:
+                    revno = (1,)
+
+            # store the revno for this node for future reference
+            revnos[node_name][0] = revno
+            completed_node_names_add(node_name)
+            scheduled_nodes_append((node_name, merge_depth, revno))
+            return node_name
+
+
+        while node_name_stack:
             # loop until this call completes.
-            parents_to_visit = self._pending_parents_stack[-1]
+            parents_to_visit = pending_parents_stack[-1]
             # if all parents are done, the revision is done
             if not parents_to_visit:
                 # append the revision to the topo sorted scheduled list:
                 # all the nodes parents have been scheduled added, now
                 # we can add it to the output.
-                self._pop_node()
+                pop_node()
             else:
-                while self._pending_parents_stack[-1]:
-                    if not self._left_subtree_pushed_stack[-1]:
+                while pending_parents_stack[-1]:
+                    if not left_subtree_pushed_stack[-1]:
                         # recurse depth first into the primary parent
-                        next_node_name = self._pending_parents_stack[-1].pop(0)
+                        next_node_name = pending_parents_stack[-1].pop(0)
                     else:
                         # place any merges in right-to-left order for scheduling
                         # which gives us left-to-right order after we reverse
@@ -426,58 +538,63 @@ class MergeSorter(object):
                         # subtree rather than the left most, which will 
                         # display nicely (you get smaller trees at the top
                         # of the combined merge).
-                        next_node_name = self._pending_parents_stack[-1].pop()
-                    if next_node_name in self._completed_node_names:
+                        next_node_name = pending_parents_stack[-1].pop()
+                    if next_node_name in completed_node_names:
                         # this parent was completed by a child on the
                         # call stack. skip it.
                         continue
                     # otherwise transfer it from the source graph into the
                     # top of the current depth first search stack.
                     try:
-                        parents = self._graph.pop(next_node_name)
+                        parents = graph_pop(next_node_name)
                     except KeyError:
                         # if the next node is not in the source graph it has
                         # already been popped from it and placed into the
                         # current search stack (but not completed or we would
                         # have hit the continue 4 lines up.
                         # this indicates a cycle.
-                        raise errors.GraphCycleError(self._node_name_stack)
+                        raise errors.GraphCycleError(node_name_stack)
                     next_merge_depth = 0
-                    if self._left_subtree_pushed_stack[-1]:
+                    if left_subtree_pushed_stack[-1]:
                         # a new child branch from name_stack[-1]
                         next_merge_depth = 1
                     else:
                         next_merge_depth = 0
-                        self._left_subtree_pushed_stack[-1] = True
+                        left_subtree_pushed_stack[-1] = True
                     next_merge_depth = (
-                        self._node_merge_depth_stack[-1] + next_merge_depth)
-                    self._push_node(
+                        node_merge_depth_stack[-1] + next_merge_depth)
+                    push_node(
                         next_node_name,
                         next_merge_depth,
                         parents)
                     # and do not continue processing parents until this 'call' 
                     # has recursed.
                     break
+
         # We have scheduled the graph. Now deliver the ordered output:
         sequence_number = 0
-        while self._scheduled_nodes:
-            node_name, merge_depth, revno = self._scheduled_nodes.pop()
-            if node_name == self._stop_revision:
+        stop_revision = self._stop_revision
+        generate_revno = self._generate_revno
+        original_graph = self._original_graph
+
+        while scheduled_nodes:
+            node_name, merge_depth, revno = scheduled_nodes.pop()
+            if node_name == stop_revision:
                 return
-            if not len(self._scheduled_nodes):
+            if not len(scheduled_nodes):
                 # last revision is the end of a merge
                 end_of_merge = True
-            elif self._scheduled_nodes[-1][1] < merge_depth:
+            elif scheduled_nodes[-1][1] < merge_depth:
                 # the next node is to our left
                 end_of_merge = True
-            elif (self._scheduled_nodes[-1][1] == merge_depth and
-                  (self._scheduled_nodes[-1][0] not in
-                   self._original_graph[node_name])):
+            elif (scheduled_nodes[-1][1] == merge_depth and
+                  (scheduled_nodes[-1][0] not in
+                   original_graph[node_name])):
                 # the next node was part of a multiple-merge.
                 end_of_merge = True
             else:
                 end_of_merge = False
-            if self._generate_revno:
+            if generate_revno:
                 yield (sequence_number, node_name, merge_depth, revno, end_of_merge)
             else:
                 yield (sequence_number, node_name, merge_depth, end_of_merge)

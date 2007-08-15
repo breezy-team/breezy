@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,11 +20,17 @@ import os
 import sys
 
 import bzrlib
-from bzrlib import config, errors, osutils
+from bzrlib import (
+    bzrdir,
+    config,
+    errors,
+    osutils,
+    trace,
+    )
 from bzrlib.branch import Branch
 
 
-def show_version():
+def show_version(show_config=True, show_copyright=True):
     print "Bazaar (bzr) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
     src_tree = _get_bzr_source_tree()
@@ -35,24 +41,27 @@ def show_version():
         print "    revision:", revno
         print "    revid:", src_revision_id
         print "    branch nick:", src_tree.branch.nick
-    print "Using python interpreter:", sys.executable
-    import site
-    print "Using python standard library:", os.path.dirname(site.__file__)
-    print "Using bzrlib:",
+    print "  Python interpreter:", sys.executable, '.'.join(map(str, sys.version_info))
+    print "  Python standard library:", os.path.dirname(os.__file__)
+    print "  bzrlib:",
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
         # more than one element (eg ['/foo/bar', '/foo/bzr'])
         print repr(bzrlib.__path__)
     else:
         print bzrlib.__path__[0]
-    print "Using bazaar configuration:", config.config_dir()
+    if show_config:
+        print "  Bazaar configuration:", config.config_dir()
+        print "  Bazaar log file:", trace._bzr_log_filename
+    if show_copyright:
+        print
+        print bzrlib.__copyright__
+        print "http://bazaar-vcs.org/"
+        print
+        print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
+        print "you may use, modify and redistribute it under the terms of the GNU"
+        print "General Public License version 2 or later."
     print
-    print bzrlib.__copyright__
-    print "http://bazaar-vcs.org/"
-    print
-    print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
-    print "you may use, modify and redistribute it under the terms of the GNU"
-    print "General Public License version 2 or later."
 
 
 def _get_bzr_source_tree():
@@ -61,8 +70,8 @@ def _get_bzr_source_tree():
     If bzr is not being run from its working tree, returns None.
     """
     try:
-        from bzrlib.workingtree import WorkingTree
-        return WorkingTree.open_containing(__file__)[0]
+        control = bzrdir.BzrDir.open_containing(__file__)[0]
+        return control.open_workingtree(recommend_upgrade=False)
     except (errors.NotBranchError, errors.UnknownFormatError,
             errors.NoWorkingTree):
         return None

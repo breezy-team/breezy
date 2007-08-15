@@ -1,6 +1,6 @@
-=====================================
-README for Bazaar DEVELOPMENT VERSION
-=====================================
+=================
+README for Bazaar
+=================
 
 Bazaar is a decentralized revision control system, designed to be easy
 for developers and end users alike.
@@ -30,7 +30,7 @@ Bazaar highlights
 
     Only five commands are needed to do all basic operations, and all
     commands have documentation accessible via 'bzr help command'.
-    Bazaar's interface is also easy to lern for CVS and Subversion users.
+    Bazaar's interface is also easy to learn for CVS and Subversion users.
 
   * Robust and reliable.
 
@@ -64,3 +64,17 @@ Bazaar highlights
 
    Help with Bazaar is obtained easily, via the mailing list, or the IRC
    channel. Check http://bazaar-vcs.org/BzrSupport for details.
+
+Registration and Feedback
+=========================
+
+If you would like to help us improve Bazaar by telling us about yourself and
+what we could do better, please register and complete the online survey here:
+http://www.surveymonkey.com/s.aspx?sm=L94RvLswhKdktrxiHWiX3g_3d_3d.
+
+Registration is completely optional. If you would like to provide feedback
+in other ways, see http://bazaar-vcs.org/BzrSupport for alternative ways of
+getting in contact with us.
+
+Enjoy,
+The Bazaar Team

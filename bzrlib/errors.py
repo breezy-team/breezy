@@ -48,8 +48,8 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar internal_error: if true (or absent) this was probably caused by a
-    bzr bug and should be displayed with a traceback; if False this was
+    :cvar internal_error: if True this was probably caused by a bzr bug and
+    should be displayed with a traceback; if False (or absent) this was
     probably a user or environment error and they don't need the gory details.
     (That can be overridden by -Derror on the command line.)
 
@@ -102,11 +102,11 @@ class BzrError(StandardError):
                     return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
+            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
-                   str(e))
+                   e)
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -154,9 +154,9 @@ class BzrNewError(BzrError):
                 return s.encode('utf8')
             return s
         except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %s' \
+            return 'Unprintable exception %s(%r): %r' \
                 % (self.__class__.__name__,
-                   self.__dict__, str(e))
+                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -173,6 +173,38 @@ class BzrCheckError(BzrError):
     def __init__(self, message):
         BzrError.__init__(self)
         self.message = message
+
+
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
+
+
+class IncompatibleAPI(BzrError):
+
+    _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
+        'It supports versions "%(minimum)s" to "%(current)s".'
+
+    def __init__(self, api, wanted, minimum, current):
+        self.api = api
+        self.wanted = wanted
+        self.minimum = minimum
+        self.current = current
+
+
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
 
 
 class InvalidEntryName(BzrError):
@@ -211,6 +243,16 @@ class ReservedId(BzrError):
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
+
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
 
 class NoSuchId(BzrError):
 
@@ -301,6 +343,62 @@ class BzrOptionError(BzrCommandError):
     _fmt = "Error in command line options"
 
 
+class BadIndexFormatSignature(BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        BzrError.__init__(self)
+        self.value = value
+
+
 class BadOptionValue(BzrError):
 
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
@@ -316,6 +414,10 @@ class StrictCommitFailed(BzrError):
 
 # XXX: Should be unified with TransportError; they seem to represent the
 # same thing
+# RBC 20060929: I think that unifiying with TransportError would be a mistake
+# - this is finer than a TransportError - and more useful as such. It 
+# differentiates between 'transport has failed' and 'operation on a transport
+# has failed.'
 class PathError(BzrError):
     
     _fmt = "Generic path error: %(path)r%(extra)s)"
@@ -424,6 +526,11 @@ class UnsupportedProtocol(PathError):
         PathError.__init__(self, url, extra=extra)
 
 
+class ReadError(PathError):
+    
+    _fmt = """Error reading from %(path)r."""
+
+
 class ShortReadvError(PathError):
 
     _fmt = ("readv() read %(actual)s bytes rather than %(length)s bytes"
@@ -438,7 +545,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
@@ -531,8 +638,8 @@ class FileInWrongBranch(BzrError):
 
 
 class UnsupportedFormatError(BzrError):
-    
-    _fmt = "Unsupported branch format: %(format)s"
+
+    _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
 
 
 class UnknownFormatError(BzrError):
@@ -548,6 +655,15 @@ class IncompatibleFormat(BzrError):
         BzrError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class IncompatibleRepositories(BzrError):
+
+    _fmt = "Repository %(target)s is not compatible with repository"\
+        " %(source)s"
+
+    def __init__(self, source, target):
+        BzrError.__init__(self, target=target, source=source)
 
 
 class IncompatibleRevision(BzrError):
@@ -700,6 +816,16 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
+class ReadOnlyLockError(LockError):
+
+    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
+
+    def __init__(self, fname, msg):
+        LockError.__init__(self, '')
+        self.fname = fname
+        self.msg = msg
+
+
 class OutSideTransaction(BzrError):
 
     _fmt = ("A transaction related operation was attempted after"
@@ -740,7 +866,7 @@ class LockContention(LockError):
     # bits?
 
     internal_error = False
-    
+
     def __init__(self, lock):
         self.lock = lock
 
@@ -779,9 +905,40 @@ class LockNotHeld(LockError):
         self.lock = lock
 
 
+class TokenLockingNotSupported(LockError):
+
+    _fmt = "The object %(obj)s does not support token specifying a token when locking."
+
+    internal_error = True
+
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class TokenMismatch(LockBroken):
+
+    _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
+
+    internal_error = True
+
+    def __init__(self, given_token, lock_token):
+        self.given_token = given_token
+        self.lock_token = lock_token
+
+
 class PointlessCommit(BzrError):
 
     _fmt = "No changes to commit"
+
+
+class CannotCommitSelectedFileMerge(BzrError):
+
+    _fmt = 'Selected-file commit of merges is not supported yet:'\
+        ' files %(files_str)s'
+
+    def __init__(self, files):
+        files_str = ', '.join(files)
+        BzrError.__init__(self, files=files, files_str=files_str)
 
 
 class UpgradeReadonly(BzrError):
@@ -1115,6 +1272,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         self.file_id = file_id
 
 
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
+
+
 class KnitError(BzrError):
     
     _fmt = "Knit error"
@@ -1186,7 +1348,7 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current request that is open.")
+            " currently open request.")
 
     internal_error = True
 
@@ -1274,6 +1436,59 @@ class InvalidHttpContentType(InvalidHttpResponse):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
 
+
+class RedirectRequested(TransportError):
+
+    _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
+
+    def __init__(self, source, target, is_permament=False, qual_proto=None):
+        self.source = source
+        self.target = target
+        if is_permament:
+            self.permanently = ' permanently'
+        else:
+            self.permanently = ''
+        self.is_permament = is_permament
+        self._qualified_proto = qual_proto
+        TransportError.__init__(self)
+
+    def _requalify_url(self, url):
+        """Restore the qualified proto in front of the url"""
+        # When this exception is raised, source and target are in
+        # user readable format. But some transports may use a
+        # different proto (http+urllib:// will present http:// to
+        # the user. If a qualified proto is specified, the code
+        # trapping the exception can get the qualified urls to
+        # properly handle the redirection themself (creating a
+        # new transport object from the target url for example).
+        # But checking that the scheme of the original and
+        # redirected urls are the same can be tricky. (see the
+        # FIXME in BzrDir.open_from_transport for the unique use
+        # case so far).
+        if self._qualified_proto is None:
+            return url
+
+        # The TODO related to NotBranchError mention that doing
+        # that kind of manipulation on the urls may not be the
+        # exception object job. On the other hand, this object is
+        # the interface between the code and the user so
+        # presenting the urls in different ways is indeed its
+        # job...
+        import urlparse
+        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
+        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
+                                   query, fragment))
+
+    def get_source_url(self):
+        return self._requalify_url(self.source)
+
+    def get_target_url(self):
+        return self._requalify_url(self.target)
+
+
+class TooManyRedirections(TransportError):
+
+    _fmt = "Too many redirections"
 
 class ConflictsInTree(BzrError):
 
@@ -1410,7 +1625,6 @@ class MissingText(BzrError):
         self.text_revision = text_revision
         self.file_id = file_id
 
-
 class DuplicateFileId(BzrError):
 
     _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
@@ -1424,6 +1638,14 @@ class DuplicateFileId(BzrError):
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"
+
+
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
 
 
 class MalformedTransform(BzrError):
@@ -1446,6 +1668,8 @@ class NoFinalPath(BzrError):
 class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
+
+    internal_error = True
 
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
@@ -1510,6 +1734,18 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
+class BzrRemoveChangedFilesError(BzrError):
+    """Used when user is trying to remove changed files."""
+
+    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+        "Use --keep to not delete them, or --force to delete them regardless.")
+
+    def __init__(self, tree_delta):
+        BzrError.__init__(self)
+        self.changes_as_text = tree_delta.get_changes_as_text()
+        #self.paths_as_string = '\n'.join(changed_files)
+        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -1892,6 +2128,22 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
+
+
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
@@ -1951,7 +2203,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use bzr upgrade --dirstate-tags.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -1963,3 +2215,110 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
+class UnexpectedSmartServerResponse(BzrError):
+
+    _fmt = "Could not understand response from smart server: %(response_tuple)r"
+
+    def __init__(self, response_tuple):
+        self.response_tuple = response_tuple
+
+
+class ContainerError(BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+    
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+    internal_error = False
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+
+
+class NoDestinationAddress(BzrError):
+
+    _fmt = "Message does not have a destination address."
+
+    internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
+
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."

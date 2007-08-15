@@ -22,7 +22,11 @@ See MemoryTree for more details.
 
 from copy import deepcopy
 
-from bzrlib import errors, mutabletree
+from bzrlib import (
+    errors,
+    mutabletree,
+    revision as _mod_revision,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import sha_file
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -63,7 +67,10 @@ class MemoryTree(mutabletree.MutableTree):
     @staticmethod
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
-        return MemoryTree(branch, branch.last_revision())
+        revision_id = _mod_revision.ensure_null(branch.last_revision())
+        if _mod_revision.is_null(revision_id):
+            revision_id = None
+        return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.
@@ -76,12 +83,24 @@ class MemoryTree(mutabletree.MutableTree):
         """See Tree.get_file."""
         return self._file_transport.get(self.id2path(file_id))
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         """See Tree.get_file_sha1()."""
         if path is None:
             path = self.id2path(file_id)
         stream = self._file_transport.get(path)
         return sha_file(stream)
+
+    def _comparison_data(self, entry, path):
+        """See Tree._comparison_data."""
+        if entry is None:
+            return None, False, None
+        return entry.kind, entry.executable, None
+
+    def _file_size(self, entry, stat_value):
+        """See Tree._file_size."""
+        if entry is None:
+            return 0
+        return entry.text_size
 
     @needs_read_lock
     def get_parent_ids(self):
@@ -222,18 +241,32 @@ class MemoryTree(mutabletree.MutableTree):
             else:
                 raise errors.NoSuchId(self, file_id)
 
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """See MutableTree.set_parent_trees()."""
+        for revision_id in revision_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
+        if len(revision_ids) == 0:
+            self._parent_ids = []
+            self._basis_tree = self.branch.repository.revision_tree(None)
+        else:
+            self._parent_ids = revision_ids
+            self._basis_tree = self.branch.repository.revision_tree(
+                                    revision_ids[0])
+            self._branch_revision_id = revision_ids[0]
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revisiontree(None)
+            self._basis_tree = self.branch.repository.revision_tree(None)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
-            if parents_list[0][1] is None:
-                self._basis_tree = self.branch.repository.revisiontree(None)
+            if parents_list[0][1] is None or parents_list[0][1] == 'null:':
+                import pdb; pdb.set_trace()
+                self._basis_tree = self.branch.repository.revision_tree(None)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

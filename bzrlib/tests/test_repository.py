@@ -69,6 +69,7 @@ class TestDefaultFormat(TestCase):
             self.assertEqual(result, 'A bzr repository dir')
         finally:
             bzrdir.format_registry.remove('default')
+            bzrdir.format_registry.remove('sample')
             bzrdir.format_registry.register('default', old_default, '')
         self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
                               old_format.__class__)
@@ -336,18 +337,29 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
-class InterString(repository.InterRepository):
-    """An inter-repository optimised code path for strings.
 
-    This is for use during testing where we use strings as repositories
+class DummyRepository(object):
+    """A dummy repository for testing."""
+
+    _serializer = None
+
+    def supports_rich_root(self):
+        return False
+
+
+class InterDummy(repository.InterRepository):
+    """An inter-repository optimised code path for DummyRepository.
+
+    This is for use during testing where we use DummyRepository as repositories
     so that none of the default regsitered inter-repository classes will
     match.
     """
 
     @staticmethod
     def is_compatible(repo_source, repo_target):
-        """InterString is compatible with strings-as-repos."""
-        return isinstance(repo_source, str) and isinstance(repo_target, str)
+        """InterDummy is compatible with DummyRepository."""
+        return (isinstance(repo_source, DummyRepository) and 
+            isinstance(repo_target, DummyRepository))
 
 
 class TestInterRepository(TestCaseWithTransport):
@@ -359,14 +371,18 @@ class TestInterRepository(TestCaseWithTransport):
         # This also tests that the default registered optimised interrepository
         # classes do not barf inappropriately when a surprising repository type
         # is handed to them.
-        dummy_a = "Repository 1."
-        dummy_b = "Repository 2."
+        dummy_a = DummyRepository()
+        dummy_b = DummyRepository()
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
-        """Asserts that InterRepository.get(repo_a, repo_b) -> the default."""
+        """Asserts that InterRepository.get(repo_a, repo_b) -> the default.
+        
+        The effective default is now InterSameDataRepository because there is
+        no actual sane default in the presence of incompatible data models.
+        """
         inter_repo = repository.InterRepository.get(repo_a, repo_b)
-        self.assertEqual(repository.InterRepository,
+        self.assertEqual(repository.InterSameDataRepository,
                          inter_repo.__class__)
         self.assertEqual(repo_a, inter_repo.source)
         self.assertEqual(repo_b, inter_repo.target)
@@ -377,22 +393,26 @@ class TestInterRepository(TestCaseWithTransport):
         # and that it is correctly selected when given a repository
         # pair that it returns true on for the is_compatible static method
         # check
-        dummy_a = "Repository 1."
-        dummy_b = "Repository 2."
-        repository.InterRepository.register_optimiser(InterString)
+        dummy_a = DummyRepository()
+        dummy_b = DummyRepository()
+        repo = self.make_repository('.')
+        # hack dummies to look like repo somewhat.
+        dummy_a._serializer = repo._serializer
+        dummy_b._serializer = repo._serializer
+        repository.InterRepository.register_optimiser(InterDummy)
         try:
-            # we should get the default for something InterString returns False
+            # we should get the default for something InterDummy returns False
             # to
-            self.assertFalse(InterString.is_compatible(dummy_a, None))
-            self.assertGetsDefaultInterRepository(dummy_a, None)
-            # and we should get an InterString for a pair it 'likes'
-            self.assertTrue(InterString.is_compatible(dummy_a, dummy_b))
+            self.assertFalse(InterDummy.is_compatible(dummy_a, repo))
+            self.assertGetsDefaultInterRepository(dummy_a, repo)
+            # and we should get an InterDummy for a pair it 'likes'
+            self.assertTrue(InterDummy.is_compatible(dummy_a, dummy_b))
             inter_repo = repository.InterRepository.get(dummy_a, dummy_b)
-            self.assertEqual(InterString, inter_repo.__class__)
+            self.assertEqual(InterDummy, inter_repo.__class__)
             self.assertEqual(dummy_a, inter_repo.source)
             self.assertEqual(dummy_b, inter_repo.target)
         finally:
-            repository.InterRepository.unregister_optimiser(InterString)
+            repository.InterRepository.unregister_optimiser(InterDummy)
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 

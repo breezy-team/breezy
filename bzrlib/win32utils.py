@@ -169,7 +169,7 @@ def get_home_location():
     # at least return windows root directory
     windir = os.environ.get('windir')
     if windir:
-        return os.path.splitdrive(windir) + '/'
+        return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
     return 'C:/'
 
@@ -238,3 +238,52 @@ def get_user_name_unicode():
 
 def get_host_name_unicode():
     return _ensure_unicode(get_host_name())
+
+
+def _ensure_with_dir(path):
+    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+        return u'./' + path, True
+    else:
+        return path, False
+    
+def _undo_ensure_with_dir(path, corrected):
+    if corrected:
+        return path[2:]
+    else:
+        return path
+
+
+
+def glob_expand(file_list):
+    """Replacement for glob expansion by the shell.
+
+    Win32's cmd.exe does not do glob expansion (eg ``*.py``), so we do our own
+    here.
+
+    :param file_list: A list of filenames which may include shell globs.
+    :return: An expanded list of filenames.
+
+    Introduced in bzrlib 0.18.
+    """
+    if not file_list:
+        return []
+    import glob
+    expanded_file_list = []
+    for possible_glob in file_list:
+        
+        # work around bugs in glob.glob()
+        # - Python bug #1001604 ("glob doesn't return unicode with ...")
+        # - failing expansion for */* with non-iso-8859-* chars
+        possible_glob, corrected = _ensure_with_dir(possible_glob)
+        glob_files = glob.glob(possible_glob)
+
+        if glob_files == []:
+            # special case to let the normal code path handle
+            # files that do not exists
+            expanded_file_list.append(
+                _undo_ensure_with_dir(possible_glob, corrected))
+        else:
+            glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
+            expanded_file_list += glob_files
+            
+    return [elem.replace(u'\\', u'/') for elem in expanded_file_list] 

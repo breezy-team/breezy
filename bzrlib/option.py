@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -152,13 +152,6 @@ class Option(object):
     def short_name(self):
         if self._short_name:
             return self._short_name
-        else:
-            # remove this when SHORT_OPTIONS is removed
-            # XXX: This is accessing a DeprecatedDict, so we call the super 
-            # method to avoid warnings
-            for (k, v) in dict.iteritems(Option.SHORT_OPTIONS):
-                if v == self:
-                    return k
 
     def set_short_name(self, short_name):
         self._short_name = short_name
@@ -203,6 +196,36 @@ class Option(object):
         if argname is not None:
             argname = argname.upper()
         yield self.name, self.short_name(), argname, self.help
+
+
+class ListOption(Option):
+    """Option used to provide a list of values.
+
+    On the command line, arguments are specified by a repeated use of the
+    option. '-' is a special argument that resets the list. For example,
+      --foo=a --foo=b
+    sets the value of the 'foo' option to ['a', 'b'], and
+      --foo=a --foo=b --foo=- --foo=c
+    sets the value of the 'foo' option to ['c'].
+    """
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser."""
+        option_strings = ['--%s' % self.name]
+        if short_name is not None:
+            option_strings.append('-%s' % short_name)
+        parser.add_option(action='callback',
+                          callback=self._optparse_callback,
+                          type='string', metavar=self.argname.upper(),
+                          help=self.help, default=[],
+                          *option_strings)
+
+    def _optparse_callback(self, option, opt, value, parser):
+        values = getattr(parser.values, self.name)
+        if value == '-':
+            del values[:]
+        else:
+            values.append(self.type(value))
 
 
 class RegistryOption(Option):
@@ -262,9 +285,9 @@ class RegistryOption(Option):
         as values for the option, and they value is treated as the help.
         """
         reg = registry.Registry()
-        for name, help in kwargs.iteritems():
+        for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
-            reg.register(name, name, help=help)
+            reg.register(name, name, help=switch_help)
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 
@@ -346,39 +369,37 @@ _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
 
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
-               'overwrite unconditionally')
+               'overwrite unconditionally.')
 _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
-_global_option('help',
-               help='show help message',
-               short_name='h')
 _global_option('file', type=unicode, short_name='F')
 _global_option('force')
 _global_option('format', type=unicode)
 _global_option('forward')
 _global_option('message', type=unicode,
-               short_name='m')
+               short_name='m',
+               help='Message string.')
 _global_option('no-recurse')
 _global_option('profile',
-               help='show performance profiling information')
+               help='Show performance profiling information.')
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
-               help='See \'help revisionspec\' for details')
-_global_option('show-ids', 
-               help='show internal object ids')
+               help='See \'help revisionspec\' for details.')
+_global_option('show-ids',
+               help='Show internal object ids.')
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
 _global_option('unbound')
 _global_option('verbose',
-               help='display more information',
+               help='Display more information.',
                short_name='v')
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_registry_option('log-format', "Use this log format",
+_global_registry_option('log-format', "Use specified log format.",
                         log.log_formatter_registry, value_switches=True,
                         title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
@@ -387,33 +408,19 @@ _global_option('short', help='Use moderately short log format. Same as --log-for
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_registry_option('merge-type', 'Select a particular merge algorithm',
+_global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
-_global_option('reprocess', help='Reprocess to reduce spurious conflicts')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
 _global_option('kind', type=str)
 _global_option('dry-run',
-               help="show what would be done, but don't actually do anything")
+               help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
 
-
-# prior to 0.14 these were always globally registered; the old dict is
-# available for plugins that use it but it should not be used.
-Option.SHORT_OPTIONS = symbol_versioning.DeprecatedDict(
-    symbol_versioning.zero_fourteen,
-    'SHORT_OPTIONS',
-    {
-        'F': Option.OPTIONS['file'],
-        'h': Option.OPTIONS['help'],
-        'm': Option.OPTIONS['message'],
-        'r': Option.OPTIONS['revision'],
-        'v': Option.OPTIONS['verbose'],
-        'l': Option.OPTIONS['long'],
-        'q': Option.OPTIONS['quiet'],
-    },
-    'Set the short option name when constructing the Option.',
-    )
+_help_option = Option('help',
+                      help='Show help message.',
+                      short_name='h')

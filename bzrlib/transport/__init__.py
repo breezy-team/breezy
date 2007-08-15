@@ -34,7 +34,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from collections import deque
-from copy import deepcopy
 from stat import S_ISDIR
 import unittest
 import urllib
@@ -57,59 +56,19 @@ from bzrlib.symbol_versioning import (
         DEPRECATED_PARAMETER,
         zero_eight,
         zero_eleven,
+        zero_ninety,
         )
-from bzrlib.trace import mutter, warning
-
-# {prefix: [transport_classes]}
-# Transports are inserted onto the list LIFO and tried in order; as a result
-# transports provided by plugins are tried first, which is usually what we
-# want.
-_protocol_handlers = {
-}
-
-def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
-    """Register a transport that can be used to open URLs
-
-    Normally you should use register_lazy_transport, which defers loading the
-    implementation until it's actually used, and so avoids pulling in possibly
-    large implementation libraries.
-    """
-    # Note that this code runs very early in library setup -- trace may not be
-    # working, etc.
-    global _protocol_handlers
-    if deprecated_passed(override):
-        warnings.warn("register_transport(override) is deprecated")
-    _protocol_handlers.setdefault(prefix, []).insert(0, klass)
-
-
-def register_lazy_transport(scheme, module, classname):
-    """Register lazy-loaded transport class.
-
-    When opening a URL with the given scheme, load the module and then
-    instantiate the particular class.  
-
-    If the module raises DependencyNotPresent when it's imported, it is
-    skipped and another implementation of the protocol is tried.  This is
-    intended to be used when the implementation depends on an external
-    implementation that may not be present.  If any other error is raised, it
-    propagates up and the attempt to open the url fails.
-
-    :param scheme: The url scheme part, eg "ftp://"
-    """
-    # TODO: If no implementation of a protocol is available because of missing
-    # dependencies, we should perhaps show the message about what dependency
-    # was missing.
-    def _loader(base):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
-        return klass(base)
-    _loader.module = module
-    register_transport(scheme, _loader)
+from bzrlib.trace import (
+    note,
+    mutter,
+    warning,
+    )
+from bzrlib import registry
 
 
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
-    return _protocol_handlers
+    return transport_list_registry
 
 
 def _set_protocol_handlers(new_handlers):
@@ -117,29 +76,78 @@ def _set_protocol_handlers(new_handlers):
 
     WARNING this will remove all build in protocols. Use with care.
     """
-    global _protocol_handlers
-    _protocol_handlers = new_handlers
+    global transport_list_registry
+    transport_list_registry = new_handlers
 
 
 def _clear_protocol_handlers():
-    global _protocol_handlers
-    _protocol_handlers = {}
+    global transport_list_registry
+    transport_list_registry = TransportListRegistry()
 
 
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in _protocol_handlers.items():
+    for prefix, factory_list in transport_list_registry.iteritems():
         for factory in factory_list:
-            if factory.__module__ == "bzrlib.transport":
-                # this is a lazy load transport, because no real ones
-                # are directlry in bzrlib.transport
-                modules.add(factory.module)
+            if hasattr(factory, "_module_name"):
+                modules.add(factory._module_name)
             else:
-                modules.add(factory.__module__)
+                modules.add(factory._obj.__module__)
+    # Add chroot directly, because there is not handler registered for it.
+    modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
     return result
+
+
+class TransportListRegistry(registry.Registry):
+    """A registry which simplifies tracking available Transports.
+
+    A registration of a new protocol requires two step:
+    1) register the prefix with the function register_transport( )
+    2) register the protocol provider with the function
+    register_transport_provider( ) ( and the "lazy" variant )
+
+    This is needed because:
+    a) a single provider can support multple protcol ( like the ftp
+    provider which supports both the ftp:// and the aftp:// protocols )
+    b) a single protocol can have multiple providers ( like the http://
+    protocol which is supported by both the urllib and pycurl provider )
+    """
+
+    def register_transport_provider(self, key, obj):
+        self.get(key).insert(0, registry._ObjectGetter(obj))
+
+    def register_lazy_transport_provider(self, key, module_name, member_name):
+        self.get(key).insert(0, 
+                registry._LazyObjectGetter(module_name, member_name))
+
+    def register_transport(self, key, help=None, info=None):
+        self.register(key, [], help, info)
+
+    def set_default_transport(self, key=None):
+        """Return either 'key' or the default key if key is None"""
+        self._default_key = key
+
+
+transport_list_registry = TransportListRegistry( )
+
+
+def register_transport_proto(prefix, help=None, info=None):
+    transport_list_registry.register_transport(prefix, help, info)
+
+
+def register_lazy_transport(prefix, module, classname):
+    if not prefix in transport_list_registry:
+        register_transport_proto(prefix)
+    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
+
+
+def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+    if not prefix in transport_list_registry:
+        register_transport_proto(prefix)
+    transport_list_registry.register_transport_provider(prefix, klass)
 
 
 def register_urlparse_netloc_protocol(protocol):
@@ -148,6 +156,30 @@ def register_urlparse_netloc_protocol(protocol):
         urlparse.uses_netloc.append(protocol)
 
 
+def _unregister_urlparse_netloc_protocol(protocol):
+    """Remove protocol from urlparse netloc parsing.
+
+    Except for tests, you should never use that function. Using it with 'http',
+    for example, will break all http transports.
+    """
+    if protocol in urlparse.uses_netloc:
+        urlparse.uses_netloc.remove(protocol)
+
+
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    l = transport_list_registry.get(scheme)
+    for i in l:
+        o = i.get_obj( )
+        if o == factory:
+            transport_list_registry.get(scheme).remove(i)
+            break
+    if len(l) == 0:
+        transport_list_registry.remove(scheme)
+
+
+
+@deprecated_function(zero_ninety)
 def split_url(url):
     # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
     if isinstance(url, unicode):
@@ -192,6 +224,32 @@ class _CoalescedOffset(object):
     def __cmp__(self, other):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
+
+
+class LateReadError(object):
+    """A helper for transports which pretends to be a readable file.
+
+    When read() is called, errors.ReadError is raised.
+    """
+
+    def __init__(self, path):
+        self._path = path
+
+    def close(self):
+        """a no-op - do nothing."""
+
+    def _fail(self):
+        """Raise ReadError."""
+        raise errors.ReadError(self._path)
+
+    def __iter__(self):
+        self._fail()
+
+    def read(self, count=-1):
+        self._fail()
+
+    def readlines(self):
+        self._fail()
 
 
 class Transport(object):
@@ -254,6 +312,44 @@ class Transport(object):
         to be pooled, rather than a new one needed for each subdir.
         """
         raise NotImplementedError(self.clone)
+
+    def ensure_base(self):
+        """Ensure that the directory this transport references exists.
+
+        This will create a directory if it doesn't exist.
+        :return: True if the directory was created, False otherwise.
+        """
+        # The default implementation just uses "Easier to ask for forgiveness
+        # than permission". We attempt to create the directory, and just
+        # suppress a FileExists exception.
+        try:
+            self.mkdir('.')
+        except errors.FileExists:
+            return False
+        else:
+            return True
+
+    def external_url(self):
+        """Return a URL for self that can be given to an external process.
+
+        There is no guarantee that the URL can be accessed from a different
+        machine - e.g. file:/// urls are only usable on the local machine,
+        sftp:/// urls when the server is only bound to localhost are only
+        usable from localhost etc.
+
+        NOTE: This method may remove security wrappers (e.g. on chroot
+        transports) and thus should *only* be used when the result will not
+        be used to obtain a new transport within bzrlib. Ideally chroot
+        transports would know enough to cause the external url to be the exact
+        one used that caused the chrooting in the first place, but that is not
+        currently the case.
+
+        :return: A URL that can be given to another process.
+        :raises InProcessTransport: If the transport is one that cannot be
+            accessed out of the current process (e.g. a MemoryTransport)
+            then InProcessTransport is raised.
+        """
+        raise NotImplementedError(self.external_url)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -340,13 +436,8 @@ class Transport(object):
         :param relpath: relative url string for relative part of remote path.
         :return: urlencoded string for final path.
         """
-        # FIXME: share the common code across more transports; variants of
-        # this likely occur in http and sftp too.
-        #
-        # TODO: Also need to consider handling of ~, which might vary between
-        # transports?
         if not isinstance(relpath, str):
-            raise errors.InvalidURL("not a valid url: %r" % relpath)
+            raise errors.InvalidURL(relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
@@ -390,9 +481,8 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
-        raise errors.TransportNotPossible('This is not a LocalTransport,'
-            ' so there is no local representation for a path')
+        raise errors.NotLocalUrl(self.abspath(relpath))
+
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -437,6 +527,17 @@ class Transport(object):
     def get(self, relpath):
         """Get the file at the given relative path.
 
+        This may fail in a number of ways:
+         - HTTP servers may return content for a directory. (unexpected
+           content failure)
+         - FTP servers may indicate NoSuchFile for a directory.
+         - SFTP servers may give a file handle for a directory that will
+           fail on read().
+
+        For correct use of the interface, be sure to catch errors.PathError
+        when calling it and catch errors.ReadError when reading from the
+        returned object.
+
         :param relpath: The relative path to the file
         :rtype: File-like object.
         """
@@ -461,6 +562,16 @@ class Transport(object):
 
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
+
+        A smart medium doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
+        :raises NoSmartMedium: if no smart server medium is available.
+        """
+        raise errors.NoSmartMedium(self)
+
+    def get_shared_medium(self):
+        """Return a smart client shared medium for this transport if possible.
 
         A smart medium doesn't imply the presence of a smart server: it implies
         that the smart protocol can be tunnelled via this transport.
@@ -539,7 +650,7 @@ class Transport(object):
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
-        :return: yield _CoalescedOffset objects, which have members for wher
+        :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
         """
@@ -605,8 +716,9 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -627,8 +739,9 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -993,20 +1106,312 @@ class Transport(object):
         # several questions about the transport.
         return False
 
+    def _reuse_for(self, other_base):
+        # This is really needed for ConnectedTransport only, but it's easier to
+        # have Transport refuses to be reused than testing that the reuse
+        # should be asked to ConnectedTransport only.
+        return None
 
-# jam 20060426 For compatibility we copy the functions here
-# TODO: The should be marked as deprecated
-urlescape = urlutils.escape
-urlunescape = urlutils.unescape
-_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+
+class _SharedConnection(object):
+    """A connection shared between several transports."""
+
+    def __init__(self, connection=None, credentials=None):
+        """Constructor.
+
+        :param connection: An opaque object specific to each transport.
+
+        :param credentials: An opaque object containing the credentials used to
+            create the connection.
+        """
+        self.connection = connection
+        self.credentials = credentials
 
 
-def get_transport(base):
+class ConnectedTransport(Transport):
+    """A transport connected to a remote server.
+
+    This class provide the basis to implement transports that need to connect
+    to a remote server.
+
+    Host and credentials are available as private attributes, cloning preserves
+    them and share the underlying, protocol specific, connection.
+    """
+
+    def __init__(self, base, _from_transport=None):
+        """Constructor.
+
+        The caller should ensure that _from_transport points at the same host
+        as the new base.
+
+        :param base: transport root URL
+
+        :param _from_transport: optional transport to build from. The built
+            transport will share the connection with this transport.
+        """
+        if not base.endswith('/'):
+            base += '/'
+        (self._scheme,
+         self._user, self._password,
+         self._host, self._port,
+         self._path) = self._split_url(base)
+        if _from_transport is not None:
+            # Copy the password as it does not appear in base and will be lost
+            # otherwise. It can appear in the _split_url above if the user
+            # provided it on the command line. Otherwise, daughter classes will
+            # prompt the user for one when appropriate.
+            self._password = _from_transport._password
+
+        base = self._unsplit_url(self._scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 self._path)
+
+        super(ConnectedTransport, self).__init__(base)
+        if _from_transport is None:
+            self._shared_connection = _SharedConnection()
+        else:
+            self._shared_connection = _from_transport._shared_connection
+
+    def clone(self, offset=None):
+        """Return a new transport with root at self.base + offset
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
+        """
+        if offset is None:
+            return self.__class__(self.base, _from_transport=self)
+        else:
+            return self.__class__(self.abspath(offset), _from_transport=self)
+
+    @staticmethod
+    def _split_url(url):
+        """
+        Extract the server address, the credentials and the path from the url.
+
+        user, password, host and path should be quoted if they contain reserved
+        chars.
+
+        :param url: an quoted url
+
+        :return: (scheme, user, password, host, port, path) tuple, all fields
+            are unquoted.
+        """
+        if isinstance(url, unicode):
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        user = password = host = port = None
+        if '@' in netloc:
+            user, host = netloc.split('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
+                password = urllib.unquote(password)
+            user = urllib.unquote(user)
+        else:
+            host = netloc
+
+        if ':' in host:
+            host, port = host.rsplit(':', 1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        host = urllib.unquote(host)
+        path = urllib.unquote(path)
+
+        return (scheme, user, password, host, port, path)
+
+    @staticmethod
+    def _unsplit_url(scheme, user, password, host, port, path):
+        """
+        Build the full URL for the given already URL encoded path.
+
+        user, password, host and path will be quoted if they contain reserved
+        chars.
+
+        :param scheme: protocol
+
+        :param user: login
+
+        :param password: associated password
+
+        :param host: the server address
+
+        :param port: the associated port
+
+        :param path: the absolute path on the server
+
+        :return: The corresponding URL.
+        """
+        netloc = urllib.quote(host)
+        if user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (urllib.quote(user), netloc)
+        if port is not None:
+            netloc = '%s:%d' % (netloc, port)
+        path = urllib.quote(path)
+        return urlparse.urlunparse((scheme, netloc, path, None, None, None))
+
+    def relpath(self, abspath):
+        """Return the local path portion from a given absolute path"""
+        scheme, user, password, host, port, path = self._split_url(abspath)
+        error = []
+        if (scheme != self._scheme):
+            error.append('scheme mismatch')
+        if (user != self._user):
+            error.append('user name mismatch')
+        if (host != self._host):
+            error.append('host mismatch')
+        if (port != self._port):
+            error.append('port mismatch')
+        if not (path == self._path[:-1] or path.startswith(self._path)):
+            error.append('path mismatch')
+        if error:
+            extra = ', '.join(error)
+            raise errors.PathNotChild(abspath, self.base, extra=extra)
+        pl = len(self._path)
+        return path[pl:].strip('/')
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        :param relpath: the relative path urlencoded
+
+        :returns: the Unicode version of the absolute path for relpath.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._scheme, self._user, self._password,
+                                 self._host, self._port,
+                                 path)
+
+    def _remote_path(self, relpath):
+        """Return the absolute path part of the url to the given relative path.
+
+        This is the path that the remote server expect to receive in the
+        requests, daughter classes should redefine this method if needed and
+        use the result to build their requests.
+
+        :param relpath: the path relative to the transport base urlencoded.
+
+        :return: the absolute Unicode path on the server,
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        remote_path = self._combine_paths(self._path, relative)
+        return remote_path
+
+    def _get_shared_connection(self):
+        """Get the object shared amongst cloned transports.
+
+        This should be used only by classes that needs to extend the sharing
+        with other objects than tramsports.
+
+        Use _get_connection to get the connection itself.
+        """
+        return self._shared_connection
+
+    def _set_connection(self, connection, credentials=None):
+        """Record a newly created connection with its associated credentials.
+
+        Note: To ensure that connection is still shared after a temporary
+        failure and a new one needs to be created, daughter classes should
+        always call this method to set the connection and do so each time a new
+        connection is created.
+
+        :param connection: An opaque object representing the connection used by
+            the daughter class.
+
+        :param credentials: An opaque object representing the credentials
+            needed to create the connection.
+        """
+        self._shared_connection.connection = connection
+        self._shared_connection.credentials = credentials
+
+    def _get_connection(self):
+        """Returns the transport specific connection object."""
+        return self._shared_connection.connection
+
+    def _get_credentials(self):
+        """Returns the credentials used to establish the connection."""
+        return self._shared_connection.credentials
+
+    def _update_credentials(self, credentials):
+        """Update the credentials of the current connection.
+
+        Some protocols can renegociate the credentials within a connection,
+        this method allows daughter classes to share updated credentials.
+        
+        :param credentials: the updated credentials.
+        """
+        # We don't want to call _set_connection here as we are only updating
+        # the credentials not creating a new connection.
+        self._shared_connection.credentials = credentials
+
+    def _reuse_for(self, other_base):
+        """Returns a transport sharing the same connection if possible.
+
+        Note: we share the connection if the expected credentials are the
+        same: (host, port, user). Some protocols may disagree and redefine the
+        criteria in daughter classes.
+
+        Note: we don't compare the passwords here because other_base may have
+        been obtained from an existing transport.base which do not mention the
+        password.
+
+        :param other_base: the URL we want to share the connection with.
+
+        :return: A new transport or None if the connection cannot be shared.
+        """
+        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        transport = None
+        # Don't compare passwords, they may be absent from other_base or from
+        # self and they don't carry more information than user anyway.
+        if (scheme == self._scheme
+            and user == self._user
+            and host == self._host
+            and port == self._port):
+            if not path.endswith('/'):
+                # This normally occurs at __init__ time, but it's easier to do
+                # it now to avoid creating two transports for the same base.
+                path += '/'
+            if self._path  == path:
+                # shortcut, it's really the same transport
+                return self
+            # We don't call clone here because the intent is different: we
+            # build a new transport on a different base (which may be totally
+            # unrelated) but we share the connection.
+            transport = self.__class__(other_base, _from_transport=self)
+        return transport
+
+
+@deprecated_function(zero_ninety)
+def urlescape(relpath):
+    urlutils.escape(relpath)
+
+
+@deprecated_function(zero_ninety)
+def urlunescape(url):
+    urlutils.unescape(url)
+
+# We try to recognize an url lazily (ignoring user, password, etc)
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
+
+def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
-    base is either a URL or a directory name.  
+    :param base: either a URL or a directory name.
+
+    :param transports: optional reusable transports list. If not None, created
+        transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+        possible_transports.
     """
-    global _protocol_handlers
     if base is None:
         base = '.'
     last_err = None
@@ -1016,6 +1421,7 @@ def get_transport(base):
         if m:
             # This looks like a URL, but we weren't able to 
             # instantiate it as such raise an appropriate error
+            # FIXME: we have a 'error_str' unused and we use last_err below
             raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
@@ -1029,32 +1435,90 @@ def get_transport(base):
         # Only local paths can be Unicode
         base = convert_path_to_url(base,
             'URLs must be properly escaped (protocol: %s)')
-    
-    for proto, factory_list in _protocol_handlers.iteritems():
+
+    transport = None
+    if possible_transports:
+        for t in possible_transports:
+            t_same_connection = t._reuse_for(base)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
+
+    for proto, factory_list in transport_list_registry.iteritems():
         if proto is not None and base.startswith(proto):
-            t, last_err = _try_transport_factories(base, factory_list)
-            if t:
-                return t
+            transport, last_err = _try_transport_factories(base, factory_list)
+            if transport:
+                if possible_transports:
+                    assert transport not in possible_transports
+                    possible_transports.append(transport)
+                return transport
 
     # We tried all the different protocols, now try one last time
     # as a local protocol
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])[0]
+    factory_list = transport_list_registry.get(None)
+    transport, last_err = _try_transport_factories(base, factory_list)
+
+    return transport
 
 
 def _try_transport_factories(base, factory_list):
     last_err = None
     for factory in factory_list:
         try:
-            return factory(base), None
+            return factory.get_obj()(base), None
         except errors.DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
             last_err = e
             continue
     return None, last_err
+
+
+def do_catching_redirections(action, transport, redirected):
+    """Execute an action with given transport catching redirections.
+
+    This is a facility provided for callers needing to follow redirections
+    silently. The silence is relative: it is the caller responsability to
+    inform the user about each redirection or only inform the user of a user
+    via the exception parameter.
+
+    :param action: A callable, what the caller want to do while catching
+                  redirections.
+    :param transport: The initial transport used.
+    :param redirected: A callable receiving the redirected transport and the 
+                  RedirectRequested exception.
+
+    :return: Whatever 'action' returns
+    """
+    MAX_REDIRECTIONS = 8
+
+    # If a loop occurs, there is little we can do. So we don't try to detect
+    # them, just getting out if too much redirections occurs. The solution
+    # is outside: where the loop is defined.
+    for redirections in range(MAX_REDIRECTIONS):
+        try:
+            return action(transport)
+        except errors.RedirectRequested, e:
+            redirection_notice = '%s is%s redirected to %s' % (
+                e.source, e.permanently, e.target)
+            transport = redirected(transport, e, redirection_notice)
+    else:
+        # Loop exited without resolving redirect ? Either the
+        # user has kept a very very very old reference or a loop
+        # occurred in the redirections.  Nothing we can cure here:
+        # tell the user. Note that as the user has been informed
+        # about each redirection (it is the caller responsibility
+        # to do that in redirected via the provided
+        # redirection_notice). The caller may provide more
+        # information if needed (like what file or directory we
+        # were trying to act upon when the redirection loop
+        # occurred).
+        raise errors.TooManyRedirections
 
 
 class Server(object):
@@ -1089,52 +1553,12 @@ class Server(object):
         raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect."""
+        """Return a url for this protocol, that will fail to connect.
+        
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
         raise NotImplementedError
-
-
-class TransportTestProviderAdapter(object):
-    """A tool to generate a suite testing all transports for a single test.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_class and transport_server classes into each copy. Each copy
-    is also given a new id() to make it easy to identify.
-    """
-
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for klass, server_factory in self._test_permutations():
-            new_test = deepcopy(test)
-            new_test.transport_class = klass
-            new_test.transport_server = server_factory
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), server_factory.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    def get_transport_test_permutations(self, module):
-        """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) is None:
-            warning("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            return []
-        return module.get_test_permutations()
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        for module in _get_transport_modules():
-            try:
-                result.extend(self.get_transport_test_permutations(reduce(getattr, 
-                    (module).split('.')[1:],
-                     __import__(module))))
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us 
-                # from running this test
-                pass
-        return result
 
 
 class TransportLogger(object):
@@ -1159,42 +1583,94 @@ class TransportLogger(object):
     def readv(self, name, offsets):
         self._calls.append((name, offsets))
         return self._adapted.readv(name, offsets)
-        
+
 
 # None is the default transport, for things with no url scheme
-register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
+register_transport_proto('file://',
+            help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
+transport_list_registry.set_default_transport("file://")
+
+register_transport_proto('sftp://',
+            help="Access using SFTP (most SSH servers provide SFTP).")
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+# Decorated http transport
+register_transport_proto('http+urllib://',
+#                help="Read-only access of branches exported on the web."
+            )
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
+register_transport_proto('https+urllib://',
+#                help="Read-only access of branches exported on the web using SSL."
+            )
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
+register_transport_proto('http+pycurl://',
+#                help="Read-only access of branches exported on the web."
+            )
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+register_transport_proto('https+pycurl://',
+#                help="Read-only access of branches exported on the web using SSL."
+            )
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+# Default http transports (last declared wins (if it can be imported))
+register_transport_proto('http://',
+            help="Read-only access of branches exported on the web.")
+register_transport_proto('https://',
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+
+register_transport_proto('ftp://',
+            help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_transport_proto('aftp://',
+            help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+
+register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
-register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
-                        'ChrootTransportDecorator')
+register_transport_proto('chroot+')
+
+register_transport_proto('readonly+',
+#              help="This modifier converts any transport to be readonly."
+            )
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+
+register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+
+register_transport_proto('unlistable+')
+register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
+
+register_transport_proto('brokenrename+')
+register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
+        'BrokenRenameTransportDecorator')
+
+register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_transport_proto('bzr://',
+            help="Fast access using the Bazaar smart server.")
+
 register_lazy_transport('bzr://',
-                        'bzrlib.transport.smart',
-                        'SmartTCPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteTCPTransport')
+register_transport_proto('bzr+http://',
+#                help="Fast access using the Bazaar smart server over HTTP."
+             )
 register_lazy_transport('bzr+http://',
-                        'bzrlib.transport.smart',
-                        'SmartHTTPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
+register_transport_proto('bzr+ssh://',
+            help="Fast access using the Bazaar smart server over SSH.")
 register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.smart',
-                        'SmartSSHTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteSSHTransport')
