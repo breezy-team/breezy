@@ -8,9 +8,6 @@ IN DEVELOPMENT
     * ``pull -v`` no longer includes deltas, making it much faster.
       (Aaron Bentley)
 
-bzr 0.90rc1 2007-08-14
-
-  BUGFIXES:
 
 bzr 0.90rc1 2007-08-14
 
