@@ -182,6 +182,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         # this should ensure that the new versions of files are being checked
         # for during pull operations
         inv = source.get_inventory('a')
+        source.lock_write()
+        source.start_write_group()
         inv['id'].revision = 'b'
         inv.revision_id = 'b'
         sha1 = source.add_inventory('b', inv, ['a'])
@@ -193,6 +195,8 @@ class TestInterRepository(TestCaseWithInterRepository):
                        revision_id='b')
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
+        source.commit_write_group()
+        source.unlock()
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
 

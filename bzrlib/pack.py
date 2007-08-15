@@ -86,7 +86,9 @@ class ContainerWriter(object):
         """Add a Bytes record with the given names.
         
         :param bytes: The bytes to insert.
-        :param names: The names to give the inserted bytes.
+        :param names: The names to give the inserted bytes. Each name is
+            a tuple of bytestrings. The bytestrings may not contain
+            whitespace.
         :return: An offset, length tuple. The offset is the offset
             of the record within the container, and the length is the
             length of data that will need to be read to reconstitute the
@@ -100,11 +102,12 @@ class ContainerWriter(object):
         # Length
         self.write_func(str(len(bytes)) + "\n")
         # Names
-        for name in names:
+        for name_tuple in names:
             # Make sure we're writing valid names.  Note that we will leave a
             # half-written record if a name is bad!
-            _check_name(name)
-            self.write_func(name + "\n")
+            for name in name_tuple:
+                _check_name(name)
+            self.write_func('\x00'.join(name_tuple) + "\n")
         # End of headers
         self.write_func("\n")
         # Finally, the contents.
@@ -262,15 +265,16 @@ class ContainerReader(BaseReader):
         all_names = set()
         for record_names, read_bytes in self.iter_records():
             read_bytes(None)
-            for name in record_names:
-                _check_name_encoding(name)
+            for name_tuple in record_names:
+                for name in name_tuple:
+                    _check_name_encoding(name)
                 # Check that the name is unique.  Note that Python will refuse
                 # to decode non-shortest forms of UTF-8 encoding, so there is no
                 # risk that the same unicode string has been encoded two
                 # different ways.
-                if name in all_names:
-                    raise errors.DuplicateRecordNameError(name)
-                all_names.add(name)
+                if name_tuple in all_names:
+                    raise errors.DuplicateRecordNameError(name_tuple)
+                all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
         if excess_bytes != '':
             raise errors.ContainerHasExcessDataError(excess_bytes)
@@ -300,11 +304,13 @@ class BytesRecordReader(BaseReader):
         # Read the list of names.
         names = []
         while True:
-            name = self._read_line()
-            if name == '':
+            name_line = self._read_line()
+            if name_line == '':
                 break
-            _check_name(name)
-            names.append(name)
+            name_tuple = tuple(name_line.split('\x00'))
+            for name in name_tuple:
+                _check_name(name)
+            names.append(name_tuple)
 
         self._remaining_length = length
         return names, self._content_reader
@@ -328,7 +334,8 @@ class BytesRecordReader(BaseReader):
         :raises ContainerError: if this record is invalid.
         """
         names, read_bytes = self.read()
-        for name in names:
-            _check_name_encoding(name)
+        for name_tuple in names:
+            for name in name_tuple:
+                _check_name_encoding(name)
         read_bytes(None)
 
