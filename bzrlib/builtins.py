@@ -963,9 +963,8 @@ class cmd_checkout(Command):
             os.mkdir(to_location)
         except OSError, e:
             if e.errno == errno.EEXIST:
-                raise errors.BzrCommandError('Target directory "%s" already'
-                                             ' exists.' % to_location)
-            if e.errno == errno.ENOENT:
+                pass
+            elif e.errno == errno.ENOENT:
                 raise errors.BzrCommandError('Parent of "%s" does not exist.'
                                              % to_location)
             else:
