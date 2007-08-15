@@ -99,7 +99,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotate_file(branch, rev_id, file_id):
     """Yield the origins for each line of a file.
 
-    This includes detailed information, such as the committer name, and
+    This includes detailed information, such as the author name, and
     date string for the commit, rather than just the revision id.
     """
     revision_id_to_revno = branch.get_revision_id_to_revno_map()
@@ -129,7 +129,7 @@ def _annotate_file(branch, rev_id, file_id):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.committer
+            author = rev.get_author()
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
