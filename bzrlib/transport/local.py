@@ -127,7 +127,7 @@ class LocalTransport(Transport):
             abspath = u'.'
 
         return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(self.base),
             urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):
@@ -392,6 +392,11 @@ class LocalTransport(Transport):
             os.remove(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # File URL's are externally usable.
+        return self.base
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.

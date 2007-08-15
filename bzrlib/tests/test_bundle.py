@@ -27,7 +27,6 @@ from bzrlib import (
     revision as _mod_revision,
     treebuilder,
     )
-from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
@@ -637,8 +636,7 @@ class BundleTester(object):
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
-        _merge_helper([other.basedir, -1], [None, None],
-                      this_dir=self.tree1.basedir)
+        self.tree1.merge_from_branch(other.branch)
         self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
@@ -740,8 +738,7 @@ class BundleTester(object):
         tt.create_file('file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
-        _merge_helper([other.basedir, -1], [None, None],
-                      this_dir=self.tree1.basedir)
+        self.tree1.merge_from_branch(other.branch)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
@@ -1208,7 +1205,7 @@ class V09BundleKnit1Tester(V08BundleTester):
 
 class V4BundleTester(BundleTester, TestCaseWithTransport):
 
-    format = '4alpha'
+    format = '4'
 
     def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
         """Create a bundle from base_rev_id -> rev_id in built-in branch.
@@ -1253,9 +1250,9 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B372', 'B387')
+        new_text = new_text.replace('B222', 'B237')
         bundle_txt = StringIO()
-        bundle_txt.write(serializer._get_bundle_header('4alpha'))
+        bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
         bundle_txt.write(new_text.encode('bz2'))
         bundle_txt.seek(0)
@@ -1338,7 +1335,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         tree_b = self.make_branch_and_tree('tree_b')
         repo_b = tree_b.branch.repository
         s = StringIO()
-        serializer = BundleSerializerV4('4alpha')
+        serializer = BundleSerializerV4('4')
         serializer.write(tree_a.branch.repository, ['A', 'B'], {}, s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
@@ -1448,7 +1445,7 @@ class MungedBundleTesterV09(TestCaseWithTransport, MungedBundleTester):
 
 class MungedBundleTesterV4(TestCaseWithTransport, MungedBundleTester):
 
-    format = '4alpha'
+    format = '4'
 
 
 class TestBundleWriterReader(TestCase):
@@ -1462,7 +1459,27 @@ class TestBundleWriterReader(TestCase):
             'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        record_iter = v4.BundleReader(fileobj).iter_records()
+        reader = v4.BundleReader(fileobj, stream_input=True)
+        record_iter = reader.iter_records()
+        record = record_iter.next()
+        self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
+            'info', None, None), record)
+        record = record_iter.next()
+        self.assertEqual(("Record body", {'storage_kind': 'fulltext',
+                          'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
+                          record)
+
+    def test_roundtrip_record_memory_hungry(self):
+        fileobj = StringIO()
+        writer = v4.BundleWriter(fileobj)
+        writer.begin()
+        writer.add_info_record(foo='bar')
+        writer._add_record("Record body", {'parents': ['1', '3'],
+            'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
+        writer.end()
+        fileobj.seek(0)
+        reader = v4.BundleReader(fileobj, stream_input=False)
+        record_iter = reader.iter_records()
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)

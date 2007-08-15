@@ -38,7 +38,7 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 _serializers = {}
 
-v4_string = '4alpha'
+v4_string = '4'
 
 def _get_bundle_header(version):
     return '%s%s\n' % (BUNDLE_HEADER, version)

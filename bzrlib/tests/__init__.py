@@ -80,6 +80,7 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_eighteen,
+    zero_ninetyone,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -128,6 +129,7 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.commands
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
@@ -141,6 +143,7 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.commands,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
@@ -320,6 +323,13 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def report_success(self, test):
         pass
+
+    def wasStrictlySuccessful(self):
+        if self.unsupported or self.known_failure_count:
+            return False
+
+        return self.wasSuccessful()
+
 
 
 class TextTestResult(ExtendedTestResult):
@@ -815,6 +825,14 @@ class TestCase(unittest.TestCase):
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
+
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
 
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
@@ -1335,6 +1353,10 @@ class TestCase(unittest.TestCase):
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
 
+        if kwargs:
+            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
+                            % kwargs.keys())
+
         if len(args) == 1:
             if isinstance(args[0], (list, basestring)):
                 args = args[0]
@@ -1376,12 +1398,12 @@ class TestCase(unittest.TestCase):
 
             # Make sure that commit is failing because there is nothing to do
             self.run_bzr_error(['no changes to commit'],
-                               'commit', '-m', 'my commit comment')
+                               ['commit', '-m', 'my commit comment'])
             # Make sure --strict is handling an unknown file, rather than
             # giving us the 'nothing to do' error
             self.build_tree(['unknown'])
             self.run_bzr_error(['Commit refused because there are unknown files'],
-                               'commit', '--strict', '-m', 'my commit comment')
+                               ['commit', --strict', '-m', 'my commit comment'])
         """
         kwargs.setdefault('retcode', 3)
         kwargs['error_regexes'] = error_regexes
@@ -1412,6 +1434,15 @@ class TestCase(unittest.TestCase):
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
+        if len(args) == 1:
+            if isinstance(args[0], list):
+                args = args[0]
+            elif isinstance(args[0], basestring):
+                args = list(shlex.split(args[0]))
+        else:
+            symbol_versioning.warn(zero_ninetyone %
+                                   "passing varargs to run_bzr_subprocess",
+                                   DeprecationWarning, stacklevel=3)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
@@ -1630,7 +1661,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """Return a writeable transport.
 
         This transport is for the test scratch space relative to
-        "self._test_root""
+        "self._test_root"
         
         :param relpath: a path relative to the base url.
         """
@@ -2158,6 +2189,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
+              strict=False,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2196,6 +2228,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
     result = runner.run(suite)
+
+    if strict:
+        return result.wasStrictlySuccessful()
+
     return result.wasSuccessful()
 
 
@@ -2207,7 +2243,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              matching_tests_first=None,
              list_only=False,
              random_seed=None,
-             exclude_pattern=None):
+             exclude_pattern=None,
+             strict=False,
+             ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2233,7 +2271,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      matching_tests_first=matching_tests_first,
                      list_only=list_only,
                      random_seed=random_seed,
-                     exclude_pattern=exclude_pattern)
+                     exclude_pattern=exclude_pattern,
+                     strict=strict)
     finally:
         default_transport = old_transport
 
@@ -2246,6 +2285,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2262,13 +2302,13 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
@@ -2309,6 +2349,7 @@ def test_suite():
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
+                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -2359,6 +2400,7 @@ def test_suite():
                    'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
+                   'bzrlib.tests.test_win32utils',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',

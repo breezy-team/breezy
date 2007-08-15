@@ -152,6 +152,8 @@ def open_tracefile(tracefilename=None):
         else:
             home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
+    else:
+        _bzr_log_filename = tracefilename
 
     _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
     _rollover_trace_maybe(_bzr_log_filename)

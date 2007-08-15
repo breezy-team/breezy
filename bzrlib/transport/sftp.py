@@ -34,7 +34,6 @@ import sys
 import time
 import urllib
 import urlparse
-import weakref
 
 from bzrlib import (
     errors,
@@ -48,14 +47,17 @@ from bzrlib.errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_ninety,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     local,
     register_urlparse_netloc_protocol,
     Server,
-    split_url,
     ssh,
-    Transport,
+    ConnectedTransport,
     )
 
 try:
@@ -73,25 +75,18 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
-# This is a weakref dictionary, so that we can reuse connections
-# that are still active. Long term, it might be nice to have some
-# sort of expiration policy, such as disconnect if inactive for
-# X seconds. But that requires a lot more fanciness.
-_connected_hosts = weakref.WeakValueDictionary()
-
-
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
+@deprecated_function(zero_ninety)
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
     Primarily useful for test cases wanting to force garbage collection.
+    We don't have a global connection cache anymore.
     """
-    _connected_hosts.clear()
-
 
 class SFTPLock(object):
     """This fakes a lock in a remote location.
@@ -135,69 +130,7 @@ class SFTPLock(object):
             pass
 
 
-class SFTPUrlHandling(Transport):
-    """Mix-in that does common handling of SSH/SFTP URLs."""
-
-    def __init__(self, base):
-        self._parse_url(base)
-        base = self._unparse_url(self._path)
-        if base[-1] != '/':
-            base += '/'
-        super(SFTPUrlHandling, self).__init__(base)
-
-    def _parse_url(self, url):
-        (self._scheme,
-         self._username, self._password,
-         self._host, self._port, self._path) = self._split_url(url)
-
-    def _unparse_url(self, path):
-        """Return a URL for a path relative to this transport.
-        """
-        path = urllib.quote(path)
-        # handle homedir paths
-        if not path.startswith('/'):
-            path = "/~/" + path
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
-
-    def _split_url(self, url):
-        (scheme, username, password, host, port, path) = split_url(url)
-        ## assert scheme == 'sftp'
-
-        # the initial slash should be removed from the path, and treated
-        # as a homedir relative path (the path begins with a double slash
-        # if it is absolute).
-        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        # RBC 20060118 we are not using this as its too user hostile. instead
-        # we are following lftp and using /~/foo to mean '~/foo'.
-        # handle homedir paths
-        if path.startswith('/~/'):
-            path = path[3:]
-        elif path == '/~':
-            path = ''
-        return (scheme, username, password, host, port, path)
-
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
-    def _remote_path(self, relpath):
-        """Return the path to be passed along the sftp protocol for relpath.
-        
-        :param relpath: is a urlencoded string.
-        """
-        return self._combine_paths(self._path, relpath)
-
-
-class SFTPTransport(SFTPUrlHandling):
+class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
     _do_prefetch = _default_do_prefetch
@@ -218,164 +151,73 @@ class SFTPTransport(SFTPUrlHandling):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, clone_from=None):
-        super(SFTPTransport, self).__init__(base)
-        if clone_from is None:
-            self._sftp_connect()
+    def __init__(self, base, _from_transport=None):
+        assert base.startswith('sftp://')
+        super(SFTPTransport, self).__init__(base,
+                                            _from_transport=_from_transport)
+
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        :param relpath: is a urlencoded string.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        remote_path = self._combine_paths(self._path, relative)
+        # the initial slash should be removed from the path, and treated as a
+        # homedir relative path (the path begins with a double slash if it is
+        # absolute).  see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'
+        # vila--20070602 and leave absolute paths begin with a single slash.
+        if remote_path.startswith('/~/'):
+            remote_path = remote_path[3:]
+        elif remote_path == '/~':
+            remote_path = ''
+        return remote_path
+
+    def _create_connection(self, credentials=None):
+        """Create a new connection with the provided credentials.
+
+        :param credentials: The credentials needed to establish the connection.
+
+        :return: The created connection and its associated credentials.
+
+        The credentials are only the password as it may have been entered
+        interactively by the user and may be different from the one provided
+        in base url at transport creation time.
+        """
+        if credentials is None:
+            password = self._password
         else:
-            # use the same ssh connection, etc
-            self._sftp = clone_from._sftp
-        # super saves 'self.base'
-    
+            password = credentials
+
+        vendor = ssh._get_ssh_vendor()
+        connection = vendor.connect_sftp(self._user, password,
+                                         self._host, self._port)
+        return connection, password
+
+    def _get_sftp(self):
+        """Ensures that a connection is established"""
+        connection = self._get_connection()
+        if connection is None:
+            # First connection ever
+            connection, credentials = self._create_connection()
+            self._set_connection(connection, credentials)
+        return connection
+
+
     def should_cache(self):
         """
         Return True if the data pulled across should be cached locally.
         """
         return True
 
-    def clone(self, offset=None):
-        """
-        Return a new SFTPTransport with root at self.base + offset.
-        We share the same SFTP session between such transports, because it's
-        fairly expensive to set them up.
-        """
-        if offset is None:
-            return SFTPTransport(self.base, self)
-        else:
-            return SFTPTransport(self.abspath(offset), self)
-
-    def _remote_path(self, relpath):
-        """Return the path to be passed along the sftp protocol for relpath.
-        
-        relpath is a urlencoded string.
-
-        :return: a path prefixed with / for regular abspath-based urls, or a
-            path that does not begin with / for urls which begin with /~/.
-        """
-        # how does this work? 
-        # it processes relpath with respect to 
-        # our state:
-        # firstly we create a path to evaluate: 
-        # if relpath is an abspath or homedir path, its the entire thing
-        # otherwise we join our base with relpath
-        # then we eliminate all empty segments (double //'s) outside the first
-        # two elements of the list. This avoids problems with trailing 
-        # slashes, or other abnormalities.
-        # finally we evaluate the entire path in a single pass
-        # '.'s are stripped,
-        # '..' result in popping the left most already 
-        # processed path (which can never be empty because of the check for
-        # abspath and homedir meaning that its not, or that we've used our
-        # path. If the pop would pop the root, we ignore it.
-
-        # Specific case examinations:
-        # remove the special casefor ~: if the current root is ~/ popping of it
-        # = / thus our seed for a ~ based path is ['', '~']
-        # and if we end up with [''] then we had basically ('', '..') (which is
-        # '/..' so we append '' if the length is one, and assert that the first
-        # element is still ''. Lastly, if we end with ['', '~'] as a prefix for
-        # the output, we've got a homedir path, so we strip that prefix before
-        # '/' joining the resulting list.
-        #
-        # case one: '/' -> ['', ''] cannot shrink
-        # case two: '/' + '../foo' -> ['', 'foo'] (take '', '', '..', 'foo')
-        #           and pop the second '' for the '..', append 'foo'
-        # case three: '/~/' -> ['', '~', ''] 
-        # case four: '/~/' + '../foo' -> ['', '~', '', '..', 'foo'],
-        #           and we want to get '/foo' - the empty path in the middle
-        #           needs to be stripped, then normal path manipulation will 
-        #           work.
-        # case five: '/..' ['', '..'], we want ['', '']
-        #            stripping '' outside the first two is ok
-        #            ignore .. if its too high up
-        #
-        # lastly this code is possibly reusable by FTP, but not reusable by
-        # local paths: ~ is resolvable correctly, nor by HTTP or the smart
-        # server: ~ is resolved remotely.
-        # 
-        # however, a version of this that acts on self.base is possible to be
-        # written which manipulates the URL in canonical form, and would be
-        # reusable for all transports, if a flag for allowing ~/ at all was
-        # provided.
-        assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath)
-
-        # case 1)
-        if relpath.startswith('/'):
-            # abspath - normal split is fine.
-            current_path = relpath.split('/')
-        elif relpath.startswith('~/'):
-            # root is homedir based: normal split and prefix '' to remote the
-            # special case
-            current_path = [''].extend(relpath.split('/'))
-        else:
-            # root is from the current directory:
-            if self._path.startswith('/'):
-                # abspath, take the regular split
-                current_path = []
-            else:
-                # homedir based, add the '', '~' not present in self._path
-                current_path = ['', '~']
-            # add our current dir
-            current_path.extend(self._path.split('/'))
-            # add the users relpath
-            current_path.extend(relpath.split('/'))
-        # strip '' segments that are not in the first one - the leading /.
-        to_process = current_path[:1]
-        for segment in current_path[1:]:
-            if segment != '':
-                to_process.append(segment)
-
-        # process '.' and '..' segments into output_path.
-        output_path = []
-        for segment in to_process:
-            if segment == '..':
-                # directory pop. Remove a directory 
-                # as long as we are not at the root
-                if len(output_path) > 1:
-                    output_path.pop()
-                # else: pass
-                # cannot pop beyond the root, so do nothing
-            elif segment == '.':
-                continue # strip the '.' from the output.
-            else:
-                # this will append '' to output_path for the root elements,
-                # which is appropriate: its why we strip '' in the first pass.
-                output_path.append(segment)
-
-        # check output special cases:
-        if output_path == ['']:
-            # [''] -> ['', '']
-            output_path = ['', '']
-        elif output_path[:2] == ['', '~']:
-            # ['', '~', ...] -> ...
-            output_path = output_path[2:]
-        path = '/'.join(output_path)
-        return path
-
-    def relpath(self, abspath):
-        scheme, username, password, host, port, path = self._split_url(abspath)
-        error = []
-        if (username != self._username):
-            error.append('username mismatch')
-        if (host != self._host):
-            error.append('host mismatch')
-        if (port != self._port):
-            error.append('port mismatch')
-        if (not path.startswith(self._path)):
-            error.append('path mismatch')
-        if error:
-            extra = ': ' + ', '.join(error)
-            raise PathNotChild(abspath, self.base, extra=extra)
-        pl = len(self._path)
-        return path[pl:].strip('/')
-
     def has(self, relpath):
         """
         Does the target location exist?
         """
         try:
-            self._sftp.stat(self._remote_path(relpath))
+            self._get_sftp().stat(self._remote_path(relpath))
             return True
         except IOError:
             return False
@@ -388,7 +230,7 @@ class SFTPTransport(SFTPUrlHandling):
         """
         try:
             path = self._remote_path(relpath)
-            f = self._sftp.file(path, mode='rb')
+            f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
@@ -406,7 +248,7 @@ class SFTPTransport(SFTPUrlHandling):
 
         try:
             path = self._remote_path(relpath)
-            fp = self._sftp.file(path, mode='rb')
+            fp = self._get_sftp().file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
@@ -555,7 +397,7 @@ class SFTPTransport(SFTPUrlHandling):
             # Because we set_pipelined() earlier, theoretically we might 
             # avoid the round trip for fout.close()
             if mode is not None:
-                self._sftp.chmod(tmp_abspath, mode)
+                self._get_sftp().chmod(tmp_abspath, mode)
             fout.close()
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
@@ -570,7 +412,7 @@ class SFTPTransport(SFTPUrlHandling):
             try:
                 if not closed:
                     fout.close()
-                self._sftp.remove(tmp_abspath)
+                self._get_sftp().remove(tmp_abspath)
             except:
                 # raise the saved except
                 raise e
@@ -591,7 +433,7 @@ class SFTPTransport(SFTPUrlHandling):
             fout = None
             try:
                 try:
-                    fout = self._sftp.file(abspath, mode='wb')
+                    fout = self._get_sftp().file(abspath, mode='wb')
                     fout.set_pipelined(True)
                     writer(fout)
                 except (paramiko.SSHException, IOError), e:
@@ -602,7 +444,7 @@ class SFTPTransport(SFTPUrlHandling):
                 # Because we set_pipelined() earlier, theoretically we might 
                 # avoid the round trip for fout.close()
                 if mode is not None:
-                    self._sftp.chmod(abspath, mode)
+                    self._get_sftp().chmod(abspath, mode)
             finally:
                 if fout is not None:
                     fout.close()
@@ -672,9 +514,9 @@ class SFTPTransport(SFTPUrlHandling):
         else:
             local_mode = mode
         try:
-            self._sftp.mkdir(abspath, local_mode)
+            self._get_sftp().mkdir(abspath, local_mode)
             if mode is not None:
-                self._sftp.chmod(abspath, mode=mode)
+                self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
@@ -720,9 +562,9 @@ class SFTPTransport(SFTPUrlHandling):
         """
         try:
             path = self._remote_path(relpath)
-            fout = self._sftp.file(path, 'ab')
+            fout = self._get_sftp().file(path, 'ab')
             if mode is not None:
-                self._sftp.chmod(path, mode)
+                self._get_sftp().chmod(path, mode)
             result = fout.tell()
             self._pump(f, fout)
             return result
@@ -732,7 +574,7 @@ class SFTPTransport(SFTPUrlHandling):
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         try:
-            self._sftp.rename(self._remote_path(rel_from),
+            self._get_sftp().rename(self._remote_path(rel_from),
                               self._remote_path(rel_to))
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, rel_from,
@@ -744,11 +586,13 @@ class SFTPTransport(SFTPUrlHandling):
         Using the implementation provided by osutils.
         """
         try:
+            sftp = self._get_sftp()
             fancy_rename(abs_from, abs_to,
-                    rename_func=self._sftp.rename,
-                    unlink_func=self._sftp.remove)
+                         rename_func=sftp.rename,
+                         unlink_func=sftp.remove)
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, abs_from, ': unable to rename to %r' % (abs_to))
+            self._translate_io_exception(e, abs_from,
+                                         ': unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -760,10 +604,15 @@ class SFTPTransport(SFTPUrlHandling):
         """Delete the item at relpath"""
         path = self._remote_path(relpath)
         try:
-            self._sftp.remove(path)
+            self._get_sftp().remove(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
             
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # the external path for SFTP is the base
+        return self.base
+
     def listable(self):
         """Return True if this store supports listing."""
         return True
@@ -778,7 +627,7 @@ class SFTPTransport(SFTPUrlHandling):
         # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            entries = self._sftp.listdir(path)
+            entries = self._get_sftp().listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
@@ -787,7 +636,7 @@ class SFTPTransport(SFTPUrlHandling):
         """See Transport.rmdir."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.rmdir(path)
+            return self._get_sftp().rmdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
@@ -795,7 +644,7 @@ class SFTPTransport(SFTPUrlHandling):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.stat(path)
+            return self._get_sftp().stat(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
 
@@ -825,16 +674,6 @@ class SFTPTransport(SFTPUrlHandling):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-    def _sftp_connect(self):
-        """Connect to the remote sftp server.
-        After this, self._sftp should have a valid connection (or
-        we raise an TransportError 'could not connect').
-
-        TODO: Raise a more reasonable ConnectionFailed exception
-        """
-        self._sftp = _sftp_connect(self._host, self._port, self._username,
-                self._password)
-
     def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
 
@@ -853,7 +692,7 @@ class SFTPTransport(SFTPUrlHandling):
         #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
         #       However, there is no way to set the permission mode at open 
         #       time using the sftp_client.file() functionality.
-        path = self._sftp._adjust_cwd(abspath)
+        path = self._get_sftp()._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
@@ -861,11 +700,11 @@ class SFTPTransport(SFTPUrlHandling):
         omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
-            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
+            t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
-            return SFTPFile(self._sftp, handle, 'wb', -1)
+            return SFTPFile(self._get_sftp(), handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
@@ -1195,31 +1034,6 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def setUp(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
         super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
-
-
-def _sftp_connect(host, port, username, password):
-    """Connect to the remote sftp server.
-
-    :raises: a TransportError 'could not connect'.
-
-    :returns: an paramiko.sftp_client.SFTPClient
-
-    TODO: Raise a more reasonable ConnectionFailed exception
-    """
-    idx = (host, port, username)
-    try:
-        return _connected_hosts[idx]
-    except KeyError:
-        pass
-    
-    sftp = _sftp_connect_uncached(host, port, username, password)
-    _connected_hosts[idx] = sftp
-    return sftp
-
-def _sftp_connect_uncached(host, port, username, password):
-    vendor = ssh._get_ssh_vendor()
-    sftp = vendor.connect_sftp(username, password, host, port)
-    return sftp
 
 
 def get_test_permutations():

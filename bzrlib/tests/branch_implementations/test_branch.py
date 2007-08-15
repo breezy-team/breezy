@@ -69,10 +69,10 @@ class TestBranch(TestCaseWithBranch):
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
         ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':[],
-                          'rev-2':['rev-1'],
-                          'rev-1.1.1':['rev-1'],
-                          'rev-3':['rev-2', 'rev-1.1.1'],
+        self.assertEqual({'rev-1':(),
+                          'rev-2':('rev-1', ),
+                          'rev-1.1.1':('rev-1', ),
+                          'rev-3':('rev-2', 'rev-1.1.1', ),
                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
@@ -367,8 +367,12 @@ class TestBranch(TestCaseWithBranch):
         result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
-        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            repository.CommitBuilder)
+        branch = self.make_branch(".")
+        branch.lock_write()
+        builder = branch.get_commit_builder([])
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        branch.repository.commit_write_group()
+        branch.unlock()
 
     def test_generate_revision_history(self):
         """Create a fake revision history easily."""

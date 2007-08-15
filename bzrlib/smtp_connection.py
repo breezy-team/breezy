@@ -17,10 +17,17 @@
 """A convenience class around smtplib."""
 
 from email import Utils
+import errno
 import smtplib
+import socket
 
 from bzrlib import ui
-from bzrlib.errors import NoDestinationAddress, SMTPError
+from bzrlib.errors import (
+    NoDestinationAddress,
+    SMTPError,
+    DefaultSMTPConnectionRefused,
+    SMTPConnectionRefused,
+    )
 
 
 class SMTPConnection(object):
@@ -33,9 +40,13 @@ class SMTPConnection(object):
 
     _default_smtp_server = 'localhost'
 
-    def __init__(self, config):
+    def __init__(self, config, _smtp_factory=None):
+        self._smtp_factory = _smtp_factory
+        if self._smtp_factory is None:
+            self._smtp_factory = smtplib.SMTP
         self._config = config
-        self._smtp_server = config.get_user_option('smtp_server')
+        self._config_smtp_server = config.get_user_option('smtp_server')
+        self._smtp_server = self._config_smtp_server
         if self._smtp_server is None:
             self._smtp_server = self._default_smtp_server
 
@@ -54,8 +65,19 @@ class SMTPConnection(object):
 
     def _create_connection(self):
         """Create an SMTP connection."""
-        self._connection = smtplib.SMTP()
-        self._connection.connect(self._smtp_server)
+        self._connection = self._smtp_factory()
+        try:
+            self._connection.connect(self._smtp_server)
+        except socket.error, e:
+            if e.args[0] == errno.ECONNREFUSED:
+                if self._config_smtp_server is None:
+                    raise DefaultSMTPConnectionRefused(socket.error,
+                                                       self._smtp_server)
+                else:
+                    raise SMTPConnectionRefused(socket.error,
+                                                self._smtp_server)
+            else:
+                raise
 
         # If this fails, it just returns an error, but it shouldn't raise an
         # exception unless something goes really wrong (in which case we want
@@ -79,15 +101,18 @@ class SMTPConnection(object):
     def get_message_addresses(message):
         """Get the origin and destination addresses of a message.
 
-        :param message: An email.Message or email.MIMEMultipart object.
+        :param message: A message object supporting get() to access its
+            headers, like email.Message or bzrlib.email_message.EmailMessage.
         :return: A pair (from_email, to_emails), where from_email is the email
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = Utils.parseaddr(message['From'])[1]
+        from_email = Utils.parseaddr(message.get('From', None))[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
-            to_full_addresses += message.get_all(header, [])
+            value = message.get(header, None)
+            if value:
+                to_full_addresses.append(value)
         to_emails = [ pair[1] for pair in
                 Utils.getaddresses(to_full_addresses) ]
 

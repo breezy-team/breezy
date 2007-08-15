@@ -24,7 +24,6 @@ from bzrlib import (
     errors,
     repository,
     )
-from bzrlib.builtins import merge
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.revisionspec import (
     RevisionSpec,

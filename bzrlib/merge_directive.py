@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from email import Message
 from StringIO import StringIO
 import re
 
@@ -33,6 +32,7 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
+from bzrlib.email_message import EmailMessage
 
 
 class _BaseMergeDirective(object):
@@ -170,19 +170,16 @@ class _BaseMergeDirective(object):
         :return: an email message
         """
         mail_from = branch.get_config().username()
-        message = Message.Message()
-        message['To'] = mail_to
-        message['From'] = mail_from
         if self.message is not None:
-            message['Subject'] = self.message
+            subject = self.message
         else:
             revision = branch.repository.get_revision(self.revision_id)
-            message['Subject'] = revision.message
+            subject = revision.message
         if sign:
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message.set_payload(body)
+        message = EmailMessage(mail_from, mail_to, subject, body)
         return message
 
     def install_revisions(self, target_repo):
@@ -193,7 +190,7 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
+                info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
@@ -328,7 +325,7 @@ class MergeDirective(_BaseMergeDirective):
 
 class MergeDirective2(_BaseMergeDirective):
 
-    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.18)'
+    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -507,6 +504,8 @@ class MergeDirective2(_BaseMergeDirective):
             if self._verify_patch(repository):
                 return 'verified'
             else:
+                #FIXME patch verification is broken for CRLF files
+                return 'inapplicable'
                 return 'failed'
         else:
             return 'inapplicable'
@@ -514,10 +513,14 @@ class MergeDirective2(_BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 
-    def register(self, directive):
-        registry.Registry.register(self, directive._format_string, directive)
+    def register(self, directive, format_string=None):
+        if format_string is None:
+            format_string = directive._format_string
+        registry.Registry.register(self, format_string, directive)
 
 
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+_format_registry.register(MergeDirective2,
+                          'Bazaar merge directive format 2 (Bazaar 0.19)')

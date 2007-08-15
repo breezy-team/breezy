@@ -103,13 +103,13 @@ class my_install_scripts(install_scripts):
 
         if sys.platform == "win32":
             try:
-                scripts_dir = self.install_dir
+                scripts_dir = os.path.join(sys.prefix, 'Scripts')
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "bzr"))
                 python_exe = self._quoted_path(sys.executable)
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
-                batch_path = script_path + ".bat"
+                batch_path = os.path.join(self.install_dir, "bzr.bat")
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
@@ -195,6 +195,7 @@ def add_pyrex_extension(module_name, **kwargs):
             ext_modules.append(Extension(module_name, [c_name]))
 
 
+add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 
 
@@ -208,8 +209,8 @@ if unavailable_files:
 if 'bdist_wininst' in sys.argv:
     import glob
     # doc files
-    docs = glob.glob('doc/*.htm') + ['doc/default.css']
-    dev_docs = glob.glob('doc/developers/*.htm')
+    docs = glob.glob('doc/*.html') + ['doc/default.css']
+    dev_docs = glob.glob('doc/developers/*.html')
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
@@ -282,13 +283,19 @@ elif 'py2exe' in sys.argv:
           zipfile='lib/library.zip')
 
 else:
+    # ad-hoc for easy_install
+    DATA_FILES = []
+    if not 'bdist_egg' in sys.argv:
+        # generate and install bzr.1 only with plain install, not easy_install one
+        DATA_FILES = [('man/man1', ['bzr.1'])]
+
     # std setup
     ARGS = {'scripts': ['bzr'],
-            'data_files': [('man/man1', ['bzr.1'])],
+            'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
            }
-    
+
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
