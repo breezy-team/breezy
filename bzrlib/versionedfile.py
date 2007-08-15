@@ -113,7 +113,8 @@ class VersionedFile(object):
             new_full[-1] = new_full[-1][:-1]
         self.add_lines(version_id, parents, new_full)
 
-    def add_lines(self, version_id, parents, lines, parent_texts=None):
+    def add_lines(self, version_id, parents, lines, parent_texts=None,
+                  left_matching_blocks=None):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -126,6 +127,9 @@ class VersionedFile(object):
              version_id to allow delta optimisations. 
              VERY IMPORTANT: the texts must be those returned
              by add_lines or data corruption can be caused.
+        :param left_matching_blocks: a hint about which areas are common
+            between the text and its left-hand-parent.  The format is
+            the SequenceMatcher.get_matching_blocks format.
         :return: An opaque representation of the inserted version which can be
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
@@ -133,9 +137,11 @@ class VersionedFile(object):
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
-        return self._add_lines(version_id, parents, lines, parent_texts)
+        return self._add_lines(version_id, parents, lines, parent_texts,
+                               left_matching_blocks)
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
@@ -286,17 +292,31 @@ class VersionedFile(object):
         mpdiff.  mpdiff should be a MultiParent instance.
         """
         vf_parents = {}
-        for version, parents, expected_sha1, mpdiff in records:
-            mpvf = multiparent.MultiMemoryVersionedFile()
-            needed_parents = [p for p in parents if not mpvf.has_version(p)]
-            parent_lines = self._get_lf_split_line_list(needed_parents)
-            for parent_id, lines in zip(needed_parents, parent_lines):
-                mpvf.add_version(lines, parent_id, [])
-            mpvf.add_diff(mpdiff, version, parents)
-            lines = mpvf.get_line_list([version])[0]
-            version_text = self.add_lines(version, parents, lines, vf_parents)
+        mpvf = multiparent.MultiMemoryVersionedFile()
+        versions = []
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            versions.append(version)
+            mpvf.add_diff(mpdiff, version, parent_ids)
+        needed_parents = set()
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            needed_parents.update(p for p in parent_ids
+                                  if not mpvf.has_version(p))
+        for parent_id, lines in zip(needed_parents,
+                                 self._get_lf_split_line_list(needed_parents)):
+            mpvf.add_version(lines, parent_id, [])
+        for (version, parent_ids, expected_sha1, mpdiff), lines in\
+            zip(records, mpvf.get_line_list(versions)):
+            if len(parent_ids) == 1:
+                left_matching_blocks = list(mpdiff.get_matching_blocks(0,
+                    mpvf.get_diff(parent_ids[0]).num_lines()))
+            else:
+                left_matching_blocks = None
+            version_text = self.add_lines(version, parent_ids, lines,
+                vf_parents, left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
-            if expected_sha1 != self.get_sha1(version):
+        for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
+             zip(records, self.get_sha1s(versions)):
+            if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
     def get_sha1(self, version_id):

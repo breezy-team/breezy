@@ -568,7 +568,9 @@ class cmd_pull(Command):
     """
 
     _see_also = ['push', 'update', 'status-flags']
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+    takes_options = ['remember', 'overwrite', 'revision',
+        Option('verbose', short_name='v',
+            help='Show logs of pulled revisions.'),
         Option('directory',
             help='Branch to pull into, '
                  'rather than the one containing the working directory.',
@@ -640,10 +642,9 @@ class cmd_pull(Command):
 
         result.report(self.outf)
         if verbose:
-            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            show_changed_revisions(branch_to, old_rh, new_rh,
-                                   to_file=self.outf)
+            log.show_changed_revisions(branch_to, old_rh, new_rh,
+                                       to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -2529,7 +2530,12 @@ class cmd_selftest(Command):
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if not list_only:
-            show_version(show_config=False, show_copyright=False)
+            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
+            print '   %s (%s python%s)' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    '.'.join(map(str, sys.version_info)),
+                    )
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
