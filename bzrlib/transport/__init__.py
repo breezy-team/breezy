@@ -351,11 +351,6 @@ class Transport(object):
         """
         raise NotImplementedError(self.external_url)
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return False
-
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like 
         object or string to another one.

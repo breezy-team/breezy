@@ -2,8 +2,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-  * ``pull`` and ``merge`` are much faster at installing bundle format 4.
-    (Aaron Bentley)
+    * ``pull`` and ``merge`` are much faster at installing bundle format 4.
+      (Aaron Bentley)
+
+  API CHANGES:
+
+    * ``Transport.should_cache`` has been removed.  It was not called in the
+      previous release.  (Martin Pool)
 
 bzr 0.90rc1 2007-08-14
 

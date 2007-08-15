@@ -205,13 +205,6 @@ class SFTPTransport(ConnectedTransport):
             self._set_connection(connection, credentials)
         return connection
 
-
-    def should_cache(self):
-        """
-        Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def has(self, relpath):
         """
         Does the target location exist?

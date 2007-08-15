@@ -110,11 +110,6 @@ class PyCurlTransport(HttpTransportBase):
             self._set_connection(connection, None)
         return connection
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def has(self, relpath):
         """See Transport.has()"""
         # We set NO BODY=0 in _get_full, so it should be safe
