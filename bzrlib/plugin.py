@@ -80,7 +80,7 @@ def disable_plugins():
     _loaded = True
 
 def strip_trailing_sep(path):
-    return path.rstrip(os.sep)
+    return path.rstrip("\\/")
 
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""

@@ -277,7 +277,7 @@ class TestSetPluginsPath(TestCase):
         old_env = os.environ.get('BZR_PLUGIN_PATH')
         try:
             bzrlib.plugins.__path__ = []
-            os.environ['BZR_PLUGIN_PATH'] = "first\%s%ssecond\%s"% (os.sep, os.pathsep, os.sep)
+            os.environ['BZR_PLUGIN_PATH'] = "first\\//\\%ssecond/\\/\\/"% (os.pathsep,)
             bzrlib.plugin.set_plugins_path()
             expected_path = ['first', 'second', os.path.dirname(bzrlib.plugins.__file__)]
             self.assertEqual(expected_path, bzrlib.plugins.__path__)
