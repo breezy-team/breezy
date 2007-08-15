@@ -115,7 +115,7 @@ class Revision(object):
     def get_summary(self):
         """Get the first line of the log message for this revision.
         """
-        return self.message.split('\n', 1)[0]
+        return self.message.lstrip().split('\n', 1)[0]
 
 
 def is_ancestor(revision_id, candidate_id, branch):
