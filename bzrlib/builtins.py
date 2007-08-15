@@ -568,7 +568,9 @@ class cmd_pull(Command):
     """
 
     _see_also = ['push', 'update', 'status-flags']
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+    takes_options = ['remember', 'overwrite', 'revision',
+        Option('verbose', short_name='v',
+            help='Show logs of pulled revisions.'),
         Option('directory',
             help='Branch to pull into, '
                  'rather than the one containing the working directory.',
