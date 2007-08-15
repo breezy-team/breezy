@@ -166,6 +166,8 @@ class ExtendedTestResult(unittest._TextTestResult):
     addFailure or addError classes.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
+
+    Note that just one of these objects is fed the results from many tests.
     """
 
     stop_early = False
@@ -204,22 +206,20 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
-        # time in fractional seconds where the test was in a timed
-        # benchmark section
-        self._benchmarkTime = None
     
-    def extractBenchmarkTime(self, testCase):
+    def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
-        self._benchmarkTime = getattr(testCase, "_benchtime", None)
+        return getattr(testCase, "_benchtime", None)
     
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(time.time() - self._start_time)
 
-    def _testTimeString(self):
-        if self._benchmarkTime is not None:
+    def _testTimeString(self, testCase):
+        benchmark_time = self._extractBenchmarkTime(testCase)
+        if benchmark_time is not None:
             return "%s/%s" % (
-                self._formatTime(self._benchmarkTime),
+                self._formatTime(benchmark_time),
                 self._elapsedTestTimeString())
         else:
             return "           %s" % self._elapsedTestTimeString()
@@ -293,9 +293,10 @@ class ExtendedTestResult(unittest._TextTestResult):
         """
         self._testConcluded(test)
         if self._bench_history is not None:
-            if self._benchmarkTime is not None:
+            benchmark_time = self._extractBenchmarkTime(test)
+            if benchmark_time is not None:
                 self._bench_history.write("%s %s\n" % (
-                    self._formatTime(self._benchmarkTime),
+                    self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
         unittest.TestResult.addSuccess(self, test)
@@ -306,7 +307,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called regardless of whether it succeded, failed, etc.
         """
         self._cleanupLogFile(test)
-        self.extractBenchmarkTime(test)
 
     def _addKnownFailure(self, test, err):
         self.known_failure_count += 1
@@ -496,21 +496,21 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.stream.writeln('ERROR %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
         self.stream.writeln(' FAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_known_failure(self, test, err):
         self.stream.writeln('XFAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_success(self, test):
-        self.stream.writeln('   OK %s' % self._testTimeString())
+        self.stream.writeln('   OK %s' % self._testTimeString(test))
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
@@ -521,14 +521,13 @@ class VerboseTestResult(ExtendedTestResult):
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
         self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
-                %(self._testTimeString(), feature))
-                  
+                %(self._testTimeString(test), feature))
 
 
 class TextTestRunner(object):
