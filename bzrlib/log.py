@@ -49,8 +49,6 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-# TODO: option to show delta summaries for merged-in revisions
-
 from itertools import izip
 import re
 
@@ -805,7 +803,8 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     lf.show(revno, rev, delta)
 
 
-def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
+def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
+                           log_format='long'):
     """Show the change in revision history comparing the old revision history to the new one.
 
     :param branch: The branch where the revisions exist
@@ -817,7 +816,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         import sys
         import codecs
         import bzrlib
-        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
+                                                         errors='replace')
     lf = log_formatter(log_format,
                        show_ids=False,
                        to_file=to_file,
@@ -854,7 +854,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         show_log(branch,
                  lf,
                  None,
-                 verbose=True,
+                 verbose=False,
                  direction='forward',
                  start_revision=base_idx+1,
                  end_revision=len(new_rh),
