@@ -208,13 +208,11 @@ if unavailable_files:
 
 if 'bdist_wininst' in sys.argv:
     def find_docs():
-        import fnmatch
         docs = []
         for root, dirs, files in os.walk('doc'):
             r = []
             for f in files:
-                if (fnmatch.fnmatch(f, '*.html') or
-                    fnmatch.fnmatch(f, '*.css')):
+                if os.path.splitext(f)[1] in ('.html', '.css'):
                     r.append(os.path.join(root, f))
             if r:
                 relative = root[4:]
