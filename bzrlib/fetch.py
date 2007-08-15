@@ -144,14 +144,14 @@ class RepoFetcher(object):
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()
+            if revs is None:
+                return
             self._fetch_everything_for_revisions(revs, pp)
         finally:
             self.pb.clear()
 
     def _fetch_everything_for_revisions(self, revs, pp):
         """Fetch all data for the given set of revisions."""
-        if revs is None:
-            return
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
         # that phase is progressing than we do.  Progress updates for the other

@@ -225,6 +225,21 @@ class TestRepository(TestCaseWithRepository):
             source_repo.get_signature_text('rev1'),
             target_repo.get_signature_text('rev1'))
 
+    def make_repository_with_one_revision(self):
+        wt = self.make_branch_and_tree('source', '')
+        wt.commit('rev1', allow_pointless=True, rev_id='rev1')
+        return wt.branch.repository
+
+    def test_fetch_revision_already_exists(self):
+        # Make a repository with one revision.
+        source_repo = self.make_repository_with_one_revision()
+        # Fetch that revision into a second repository.
+        target_repo = self.make_repository('target')
+        target_repo.fetch(source_repo, revision_id='rev1')
+        # Now fetch again; there will be nothing to do.  This should work
+        # without causing any errors.
+        target_repo.fetch(source_repo, revision_id='rev1')
+
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
