@@ -349,38 +349,38 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def test_iter_all_entries_simple(self):
         index = self.make_index(nodes=[(('name', ), 'data', ())])
-        self.assertEqual([(('name', ), 'data')],
+        self.assertEqual([(index, ('name', ), 'data')],
             list(index.iter_all_entries()))
 
     def test_iter_all_entries_simple_2_elements(self):
         index = self.make_index(key_elements=2,
             nodes=[(('name', 'surname'), 'data', ())])
-        self.assertEqual([(('name', 'surname'), 'data')],
+        self.assertEqual([(index, ('name', 'surname'), 'data')],
             list(index.iter_all_entries()))
 
     def test_iter_all_entries_references_resolved(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_all_entries()))
 
     def test_iteration_absent_skipped(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),))]),
             set(index.iter_all_entries()))
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),))]),
             set(index.iter_entries([('name', )])))
         self.assertEqual([], list(index.iter_entries([('ref', )])))
 
     def test_iteration_absent_skipped_2_element_keys(self):
         index = self.make_index(1, key_elements=2, nodes=[
             (('name', 'fin'), 'data', ([('ref', 'erence')], ))])
-        self.assertEqual(set([(('name', 'fin'), 'data', ((('ref', 'erence'),),))]),
+        self.assertEqual(set([(index, ('name', 'fin'), 'data', ((('ref', 'erence'),),))]),
             set(index.iter_all_entries()))
-        self.assertEqual(set([(('name', 'fin'), 'data', ((('ref', 'erence'),),))]),
+        self.assertEqual(set([(index, ('name', 'fin'), 'data', ((('ref', 'erence'),),))]),
             set(index.iter_entries([('name', 'fin')])))
         self.assertEqual([], list(index.iter_entries([('ref', 'erence')])))
 
@@ -388,8 +388,8 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
 
     def test_iter_nothing_empty(self):
@@ -419,16 +419,16 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index( nodes=[
             (('name', ), 'data', ()),
             (('ref', ), 'refdata', ())])
-        self.assertEqual(set([(('name', ), 'data'),
-            (('ref', ), 'refdata')]),
+        self.assertEqual(set([(index, ('name', ), 'data'),
+            (index, ('ref', ), 'refdata')]),
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_1_key_element_refs(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_2_key_element_no_refs(self):
@@ -436,11 +436,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             (('name', 'fin1'), 'data', ()),
             (('name', 'fin2'), 'beta', ()),
             (('ref', 'erence'), 'refdata', ())])
-        self.assertEqual(set([(('name', 'fin1'), 'data'),
-            (('ref', 'erence'), 'refdata')]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
+            (index, ('ref', 'erence'), 'refdata')]),
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(('name', 'fin1'), 'data'),
-            (('name', 'fin2'), 'beta')]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
+            (index, ('name', 'fin2'), 'beta')]),
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_key_prefix_2_key_element_refs(self):
@@ -448,11 +448,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             (('name', 'fin1'), 'data', ([('ref', 'erence')], )),
             (('name', 'fin2'), 'beta', ([], )),
             (('ref', 'erence'), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('ref', 'erence'), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('ref', 'erence'), 'refdata', ((), ))]),
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('name', 'fin2'), 'beta', ((), ))]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_validate_bad_index_errors(self):
@@ -515,7 +515,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index = CombinedGraphIndex([])
         index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         index.insert_index(0, index1)
-        self.assertEqual([(('key', ), '')], list(index.iter_all_entries()))
+        self.assertEqual([(index1, ('key', ), '')], list(index.iter_all_entries()))
 
     def test_iter_all_entries_empty(self):
         index = CombinedGraphIndex([])
@@ -529,29 +529,29 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
     def test_iter_all_entries_simple(self):
         index1 = self.make_index('name', nodes=[(('name', ), 'data', ())])
         index = CombinedGraphIndex([index1])
-        self.assertEqual([(('name', ), 'data')],
+        self.assertEqual([(index1, ('name', ), 'data')],
             list(index.iter_all_entries()))
 
     def test_iter_all_entries_two_indices(self):
         index1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         index2 = self.make_index('name2', nodes=[(('2', ), '', ())])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual([(('name', ), 'data'),
-            (('2', ), '')],
+        self.assertEqual([(index1, ('name', ), 'data'),
+            (index2, ('2', ), '')],
             list(index.iter_all_entries()))
 
     def test_iter_entries_two_indices_dup_key(self):
         index1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         index2 = self.make_index('name2', nodes=[(('name', ), 'data', ())])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual([(('name', ), 'data')],
+        self.assertEqual([(index1, ('name', ), 'data')],
             list(index.iter_entries([('name', )])))
 
     def test_iter_all_entries_two_indices_dup_key(self):
         index1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         index2 = self.make_index('name2', nodes=[(('name', ), 'data', ())])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual([(('name', ), 'data')],
+        self.assertEqual([(index1, ('name', ), 'data')],
             list(index.iter_all_entries()))
 
     def test_iter_key_prefix_2_key_element_refs(self):
@@ -561,11 +561,11 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
             (('name', 'fin2'), 'beta', ([], )),
             (('ref', 'erence'), 'refdata', ([], ))])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('ref', 'erence'), 'refdata', ((), ))]),
+        self.assertEqual(set([(index1, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index2, ('ref', 'erence'), 'refdata', ((), ))]),
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('name', 'fin2'), 'beta', ((), ))]),
+        self.assertEqual(set([(index1, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index2, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_nothing_empty(self):
@@ -583,8 +583,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index2 = self.make_index('2', 1, nodes=[
             (('ref', ), 'refdata', ((), ))])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual(set([(('name', ), 'data', ((('ref', ), ), )),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index1, ('name', ), 'data', ((('ref', ), ), )),
+            (index2, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
  
     def test_iter_all_keys_dup_entry(self):
@@ -594,8 +594,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index2 = self.make_index('2', 1, nodes=[
             (('ref', ), 'refdata', ([], ))])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index1, ('name', ), 'data', ((('ref',),),)),
+            (index1, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
  
     def test_iter_missing_entry_empty(self):
@@ -617,11 +617,11 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1 = self.make_index('1', nodes=[(('key', ), '', ())])
         index2 = self.make_index('2', nodes=[])
         index = CombinedGraphIndex([index1, index2])
-        self.assertEqual([(('key', ), '')],
+        self.assertEqual([(index1, ('key', ), '')],
             list(index.iter_entries([('key', )])))
         # and in the other direction
         index = CombinedGraphIndex([index2, index1])
-        self.assertEqual([(('key', ), '')],
+        self.assertEqual([(index1, ('key', ), '')],
             list(index.iter_entries([('key', )])))
 
     def test_validate_bad_child_index_errors(self):
@@ -648,9 +648,9 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index.add_nodes([(('name', ), 'data')])
         index.add_nodes([(('name2', ), ''), (('name3', ), '')])
         self.assertEqual(set([
-            (('name', ), 'data'),
-            (('name2', ), ''),
-            (('name3', ), ''),
+            (index, ('name', ), 'data'),
+            (index, ('name2', ), ''),
+            (index, ('name3', ), ''),
             ]), set(index.iter_all_entries()))
 
     def test_add_nodes(self):
@@ -658,9 +658,9 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index.add_nodes([(('name', ), 'data', ([],))])
         index.add_nodes([(('name2', ), '', ([],)), (('name3', ), '', ([('r', )],))])
         self.assertEqual(set([
-            (('name', ), 'data', ((),)),
-            (('name2', ), '', ((),)),
-            (('name3', ), '', ((('r', ), ), )),
+            (index, ('name', ), 'data', ((),)),
+            (index, ('name2', ), '', ((),)),
+            (index, ('name3', ), '', ((('r', ), ), )),
             ]), set(index.iter_all_entries()))
 
     def test_iter_all_entries_empty(self):
@@ -669,23 +669,23 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
 
     def test_iter_all_entries_simple(self):
         index = self.make_index(nodes=[(('name', ), 'data')])
-        self.assertEqual([(('name', ), 'data')],
+        self.assertEqual([(index, ('name', ), 'data')],
             list(index.iter_all_entries()))
 
     def test_iter_all_entries_references(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref', ),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref', ),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_all_entries()))
 
     def test_iteration_absent_skipped(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),))]),
             set(index.iter_all_entries()))
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),))]),
             set(index.iter_entries([('name', )])))
         self.assertEqual([], list(index.iter_entries([('ref', )])))
 
@@ -693,24 +693,24 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_1_key_element_no_refs(self):
         index = self.make_index( nodes=[
             (('name', ), 'data'),
             (('ref', ), 'refdata')])
-        self.assertEqual(set([(('name', ), 'data'),
-            (('ref', ), 'refdata')]),
+        self.assertEqual(set([(index, ('name', ), 'data'),
+            (index, ('ref', ), 'refdata')]),
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_1_key_element_refs(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', ), 'data', ((('ref',),),)),
-            (('ref', ), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_2_key_element_no_refs(self):
@@ -718,11 +718,11 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
             (('name', 'fin1'), 'data'),
             (('name', 'fin2'), 'beta'),
             (('ref', 'erence'), 'refdata')])
-        self.assertEqual(set([(('name', 'fin1'), 'data'),
-            (('ref', 'erence'), 'refdata')]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
+            (index, ('ref', 'erence'), 'refdata')]),
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(('name', 'fin1'), 'data'),
-            (('name', 'fin2'), 'beta')]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
+            (index, ('name', 'fin2'), 'beta')]),
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_key_prefix_2_key_element_refs(self):
@@ -730,11 +730,11 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
             (('name', 'fin1'), 'data', ([('ref', 'erence')], )),
             (('name', 'fin2'), 'beta', ([], )),
             (('ref', 'erence'), 'refdata', ([], ))])
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('ref', 'erence'), 'refdata', ((), ))]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('ref', 'erence'), 'refdata', ((), ))]),
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (('name', 'fin2'), 'beta', ((), ))]),
+        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_nothing_empty(self):
@@ -754,3 +754,90 @@ class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
         index.validate()
 
 
+class TestGraphIndexPrefixAdapter(TestCaseWithMemoryTransport):
+
+    def make_index(self, ref_lists=1, key_elements=2, nodes=[], add_callback=False):
+        result = InMemoryGraphIndex(ref_lists, key_elements=key_elements)
+        result.add_nodes(nodes)
+        if add_callback:
+            add_nodes_callback=result.add_nodes
+        else:
+            add_nodes_callback=None
+        adapter = GraphIndexPrefixAdapter(result, ('prefix', ), key_elements - 1,
+            add_nodes_callback=add_nodes_callback)
+        return result, adapter
+
+    def test_add_node(self):
+        index, adapter = self.make_index(add_callback=True)
+        adapter.add_node(('key',), 'value', ((('ref',),),))
+        self.assertEqual(set([(index, ('prefix', 'key'), 'value', ((('prefix', 'ref'),),))]),
+            set(index.iter_all_entries()))
+
+    def test_add_nodes(self):
+        index, adapter = self.make_index(add_callback=True)
+        adapter.add_nodes((
+            (('key',), 'value', ((('ref',),),)),
+            (('key2',), 'value2', ((),)),
+            ))
+        self.assertEqual(set([
+            (index, ('prefix', 'key2'), 'value2', ((),)),
+            (index, ('prefix', 'key'), 'value', ((('prefix', 'ref'),),))
+            ]),
+            set(index.iter_all_entries()))
+
+    def test_construct(self):
+        index = InMemoryGraphIndex()
+        adapter = GraphIndexPrefixAdapter(index, ('prefix', ), 1)
+
+    def test_construct_with_callback(self):
+        index = InMemoryGraphIndex()
+        adapter = GraphIndexPrefixAdapter(index, ('prefix', ), 1, index.add_nodes)
+
+    def test_iter_all_entries_cross_prefix_map_errors(self):
+        index, adapter = self.make_index(nodes=[
+            (('prefix', 'key1'), 'data1', ((('prefixaltered', 'key2'),),))])
+        self.assertRaises(errors.BadIndexData, list, adapter.iter_all_entries())
+
+    def test_iter_all_entries(self):
+        index, adapter = self.make_index(nodes=[
+            (('notprefix', 'key1'), 'data', ((), )),
+            (('prefix', 'key1'), 'data1', ((), )),
+            (('prefix', 'key2'), 'data2', ((('prefix', 'key1'),),))])
+        self.assertEqual(set([(index, ('key1', ), 'data1', ((),)),
+            (index, ('key2', ), 'data2', ((('key1',),),))]),
+            set(adapter.iter_all_entries()))
+
+    def test_iter_entries(self):
+        index, adapter = self.make_index(nodes=[
+            (('notprefix', 'key1'), 'data', ((), )),
+            (('prefix', 'key1'), 'data1', ((), )),
+            (('prefix', 'key2'), 'data2', ((('prefix', 'key1'),),))])
+        # ask for many - get all
+        self.assertEqual(set([(index, ('key1', ), 'data1', ((),)),
+            (index, ('key2', ), 'data2', ((('key1', ),),))]),
+            set(adapter.iter_entries([('key1', ), ('key2', )])))
+        # ask for one, get one
+        self.assertEqual(set([(index, ('key1', ), 'data1', ((),))]),
+            set(adapter.iter_entries([('key1', )])))
+        # ask for missing, get none
+        self.assertEqual(set(),
+            set(adapter.iter_entries([('key3', )])))
+
+    def test_iter_entries_prefix(self):
+        index, adapter = self.make_index(key_elements=3, nodes=[
+            (('notprefix', 'foo', 'key1'), 'data', ((), )),
+            (('prefix', 'prefix2', 'key1'), 'data1', ((), )),
+            (('prefix', 'prefix2', 'key2'), 'data2', ((('prefix', 'prefix2', 'key1'),),))])
+        # ask for a prefix, get the results for just that prefix, adjusted.
+        self.assertEqual(set([(index, ('prefix2', 'key1', ), 'data1', ((),)),
+            (index, ('prefix2', 'key2', ), 'data2', ((('prefix2', 'key1', ),),))]),
+            set(adapter.iter_entries_prefix([('prefix2', None)])))
+
+    def test_validate(self):
+        index, adapter = self.make_index()
+        calls = []
+        def validate():
+            calls.append('called')
+        index.validate = validate
+        adapter.validate()
+        self.assertEqual(['called'], calls)
