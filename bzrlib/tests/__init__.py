@@ -900,12 +900,9 @@ class TestCase(unittest.TestCase):
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
-        missing = []
-        for entry in sublist:
-            if entry not in superlist:
-                missing.append(entry)
+        missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError("value(s) %r not present in container %r" % 
+            raise AssertionError("value(s) %r not present in container %r" %
                                  (missing, superlist))
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
