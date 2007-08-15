@@ -334,9 +334,7 @@ class TestMerge(ExternalBase):
         self.write_directive('directive', source.branch, 'target', 'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
-        self.expectFailure('Patch verification is disabled',
-                           self.assertContainsRe, err,
-                           'Preview patch does not match changes')
+        self.assertContainsRe(err, 'Preview patch does not match changes')
 
     def test_merge_arbitrary(self):
         target = self.make_branch_and_tree('target')
