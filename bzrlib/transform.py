@@ -34,8 +34,11 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.symbol_versioning import deprecated_function, zero_fifteen, \
-        zero_nineteen
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_fifteen,
+        zero_ninety,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
 import bzrlib.ui
@@ -1425,7 +1428,7 @@ def find_interesting(working_tree, target_tree, filenames):
         working_tree.unlock()
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def change_entry(tt, file_id, working_tree, target_tree, 
                  trans_id_file_id, backups, trans_id, by_parent):
     """Replace a file_id's contents with those from a target tree."""
