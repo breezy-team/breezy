@@ -321,3 +321,10 @@ class TestRevisionMethods(TestCase):
         self.assertEqual('a', r.get_summary())
         r.message = '\na\nb'
         self.assertEqual('a', r.get_summary())
+
+    def test_get_author(self):
+        r = revision.Revision('1')
+        r.committer = 'A'
+        self.assertEqual('A', r.get_author())
+        r.properties['author'] = 'B'
+        self.assertEqual('B', r.get_author())

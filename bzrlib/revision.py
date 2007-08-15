@@ -117,6 +117,11 @@ class Revision(object):
         """
         return self.message.lstrip().split('\n', 1)[0]
 
+    def get_author(self):
+        """Get the author of this revision.
+        """
+        return self.properties.get('author', self.committer)
+
 
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
