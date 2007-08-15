@@ -27,7 +27,7 @@ class TestAdd(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
         out = self.run_bzr('add')[0]
@@ -50,7 +50,7 @@ class TestAdd(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.') 
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
@@ -62,7 +62,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add inertiatic/esp')
@@ -85,7 +85,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should do this happily.
         """
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add --no-recurse inertiatic')

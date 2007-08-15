@@ -43,7 +43,7 @@ June 2007 Design
 ================
 `Bundle Format 4 spec`_
 
-.. _Bundle Format 4 spec: bundle-format4.htm
+.. _Bundle Format 4 spec: bundle-format4.html
 
 
 Future Plans

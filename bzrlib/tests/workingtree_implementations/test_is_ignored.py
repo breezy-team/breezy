@@ -206,3 +206,15 @@ class TestIsIgnored(TestCaseWithWorkingTree):
             self.assertEqual('./foobar.py', tree.is_ignored('foobar.py'))
         finally:
             ignores._runtime_ignores = orig_runtime
+
+    def test_ignore_caching(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['ignoreme'])
+
+        self.assertEqual(None, tree.is_ignored('ignoreme'))
+
+        # Bug #129694 specifically references WorkingTree.unknowns()
+        tree.unknowns()
+
+        self.build_tree_contents([('.bzrignore', 'ignoreme')])
+        self.assertEqual('ignoreme', tree.is_ignored('ignoreme'))

@@ -27,7 +27,6 @@ from bzrlib import (
     revision as _mod_revision,
     treebuilder,
     )
-from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
@@ -637,8 +636,7 @@ class BundleTester(object):
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
-        _merge_helper([other.basedir, -1], [None, None],
-                      this_dir=self.tree1.basedir)
+        self.tree1.merge_from_branch(other.branch)
         self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
@@ -740,8 +738,7 @@ class BundleTester(object):
         tt.create_file('file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
-        _merge_helper([other.basedir, -1], [None, None],
-                      this_dir=self.tree1.basedir)
+        self.tree1.merge_from_branch(other.branch)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')

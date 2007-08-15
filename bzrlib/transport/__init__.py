@@ -56,7 +56,7 @@ from bzrlib.symbol_versioning import (
         DEPRECATED_PARAMETER,
         zero_eight,
         zero_eleven,
-        zero_nineteen,
+        zero_ninety,
         )
 from bzrlib.trace import (
     note,
@@ -179,7 +179,7 @@ def unregister_transport(scheme, factory):
 
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def split_url(url):
     # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
     if isinstance(url, unicode):
@@ -1389,10 +1389,12 @@ class ConnectedTransport(Transport):
         return transport
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def urlescape(relpath):
     urlutils.escape(relpath)
-@deprecated_function(zero_nineteen)
+
+
+@deprecated_function(zero_ninety)
 def urlunescape(url):
     urlutils.unescape(url)
 

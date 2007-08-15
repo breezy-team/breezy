@@ -19,11 +19,12 @@ from StringIO import StringIO
 
 from bzrlib import (
     conflicts,
+    errors,
     merge as _mod_merge,
     option,
+    progress,
     )
 from bzrlib.branch import Branch
-from bzrlib.builtins import _merge_helper
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
@@ -41,28 +42,29 @@ class TestMerge(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         rev_a = wt.commit("lala!")
         self.assertEqual([rev_a], wt.get_parent_ids())
-        _merge_helper([u'.', -1], [None, None])
+        self.assertRaises(errors.PointlessMerge, wt.merge_from_branch,
+                          wt.branch)
         self.assertEqual([rev_a], wt.get_parent_ids())
+        return wt
 
     def test_undo(self):
         wt = self.make_branch_and_tree('.')
         wt.commit("lala!")
         wt.commit("haha!")
         wt.commit("blabla!")
-        _merge_helper([u'.', 2], [u'.', 1])
+        wt.merge_from_branch(wt.branch, wt.branch.get_rev_id(2),
+                             wt.branch.get_rev_id(1))
 
     def test_nocommits(self):
-        self.test_pending()
+        wt = self.test_pending()
         wt2 = self.make_branch_and_tree('branch2')
-        self.assertRaises(NoCommits, _merge_helper, ['branch2', -1],
-                          [None, None])
-        return wt2
+        self.assertRaises(NoCommits, wt.merge_from_branch, wt2.branch)
+        return wt, wt2
 
     def test_unrelated(self):
-        wt2 = self.test_nocommits()
+        wt, wt2 = self.test_nocommits()
         wt2.commit("blah")
-        self.assertRaises(UnrelatedBranches, _merge_helper, ['branch2', -1],
-                          [None, None])
+        self.assertRaises(UnrelatedBranches, wt.merge_from_branch, wt2.branch)
         return wt2
 
     def test_merge_one_file(self):
@@ -92,9 +94,7 @@ class TestMerge(TestCaseWithTransport):
         br1.fetch(wt2.branch)
         # merge all of branch 2 into branch 1 even though they 
         # are not related.
-        self.assertRaises(BzrCommandError, _merge_helper, ['branch2', -1],
-                          ['branch2', 0], reprocess=True, show_base=True)
-        _merge_helper(['branch2', -1], ['branch2', 0], reprocess=True)
+        wt1.merge_from_branch(wt2.branch, wt2.last_revision(), 'null:')
         self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
             wt1.get_parent_ids())
         return (wt1, wt2.branch)
@@ -280,5 +280,8 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit('commit 2')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_b.rename_one('file_1', 'renamed')
-        _merge_helper(['b', None], ['b', -1], this_dir='a')
+        merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b,
+                                                    progress.DummyProgress())
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
