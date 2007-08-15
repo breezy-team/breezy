@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
+      is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
+
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
       (Aaron Bentley)
 
@@ -59,9 +62,6 @@ bzr 0.90rc1 2007-08-14
       (Aaron Bentley)
 
   IMPROVEMENTS:
-
-    * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
-      is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
 
     * Don't show "dots" progress indicators when run non-interactively, such
       as from cron.  (Martin Pool)
