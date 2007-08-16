@@ -1575,6 +1575,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         skip_root = False
     basis_tree = None
     try:
+        deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
             if skip_root and file_id[0] is not None and parent[0] is None:
@@ -1620,8 +1621,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     tt.create_symlink(target_tree.get_symlink_target(file_id),
                                       trans_id)
                 elif kind[1] == 'file':
-                    tt.create_file(target_tree.get_file_lines(file_id),
-                                   trans_id, mode_id)
+                    deferred_files.append((file_id, trans_id))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
@@ -1648,6 +1648,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     name[1], tt.trans_id_file_id(parent[1]), trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
+        target_tree.extract_files_bytes(tt.create_file, deferred_files)
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
