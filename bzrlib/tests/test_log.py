@@ -18,7 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import log
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.log import (show_log,
                         get_view_revisions,
                         LogRevision,
@@ -28,6 +28,7 @@ from bzrlib.log import (show_log,
                         LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
+from bzrlib.revision import Revision
 
 
 class LogCatcher(LogFormatter):
@@ -794,3 +795,20 @@ class TestShowChangedRevisions(TestCaseWithTransport):
         log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
         self.assertContainsRe(s.getvalue(), 'bar')
         self.assertNotContainsRe(s.getvalue(), 'foo')
+
+
+class TestLogFormatter(TestCase):
+
+    def test_short_committer(self):
+        rev = Revision('a-id')
+        rev.committer = 'John Doe <jdoe@example.com>'
+        lf = LogFormatter(None)
+        self.assertEqual('John Doe', lf.short_committer(rev))
+
+    def test_short_author(self):
+        rev = Revision('a-id')
+        rev.committer = 'John Doe <jdoe@example.com>'
+        lf = LogFormatter(None)
+        self.assertEqual('John Doe', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_author(rev))
