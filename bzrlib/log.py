@@ -613,36 +613,39 @@ class LongLogFormatter(LogFormatter):
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
         from bzrlib.osutils import format_date
-        indent = '    '*revision.merge_depth
+        indent = '    ' * revision.merge_depth
         to_file = self.to_file
-        print >>to_file,  indent+'-' * 60
+        print >>to_file, indent + '-' * 60
         if revision.revno is not None:
-            print >>to_file,  indent+'revno:', revision.revno
+            print >>to_file, indent + 'revno:', revision.revno
         if revision.tags:
-            print >>to_file, indent+'tags: %s' % (', '.join(revision.tags))
+            print >>to_file, indent + 'tags: %s' % (', '.join(revision.tags))
         if self.show_ids:
-            print >>to_file, indent+'revision-id:', revision.rev.revision_id
+            print >>to_file, indent + 'revision-id:', revision.rev.revision_id
             for parent_id in revision.rev.parent_ids:
-                print >>to_file, indent+'parent:', parent_id
-        print >>to_file, indent+'committer:', revision.rev.committer
+                print >>to_file, indent + 'parent:', parent_id
+        print >>to_file, indent + 'committer:', revision.rev.committer
 
-        try:
-            print >>to_file, indent+'branch nick: %s' % \
-                revision.rev.properties['branch-nick']
-        except KeyError:
-            pass
+        author = revision.rev.properties.get('author', None)
+        if author is not None:
+            print >>to_file, indent + 'author:', author
+
+        branch_nick = revision.rev.properties.get('branch-nick', None)
+        if branch_nick is not None:
+            print >>to_file, indent + 'branch nick:', branch_nick
+
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        print >>to_file,  indent+'timestamp: %s' % date_str
+        print >>to_file, indent + 'timestamp: %s' % date_str
 
-        print >>to_file,  indent+'message:'
+        print >>to_file, indent + 'message:'
         if not revision.rev.message:
-            print >>to_file,  indent+'  (no message)'
+            print >>to_file, indent + '  (no message)'
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                print >>to_file,  indent+'  ' + l
+                print >>to_file, indent + '  ' + l
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids, indent=indent)
 

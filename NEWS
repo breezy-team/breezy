@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  FEATURES:
+
+    * New option ``--author`` in ``bzr commit`` to specify the author of the
+      change, if it's different from the committer.  (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
@@ -12,10 +17,6 @@ IN DEVELOPMENT
 
     * ``Transport.should_cache`` has been removed.  It was not called in the
       previous release.  (Martin Pool)
-
-bzr 0.90rc1 2007-08-14
-
-  BUGFIXES:
 
 bzr 0.90rc1 2007-08-14
 
