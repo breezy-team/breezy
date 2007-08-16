@@ -3,7 +3,9 @@ IN DEVELOPMENT
   FEATURES:
 
     * New option ``--author`` in ``bzr commit`` to specify the author of the
-      change, if it's different from the committer.  (Lukáš Lalinský)
+      change, if it's different from the committer. ``bzr log`` and
+      ``bzr annotate`` display the author instead of the committer.
+      (Lukáš Lalinský)
 
   BUG FIXES:
 
