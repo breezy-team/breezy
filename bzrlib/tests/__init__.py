@@ -1621,6 +1621,18 @@ class TestCase(unittest.TestCase):
         self.addCleanup(resetTimeout)
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
+    def make_utf8_encoded_stringio(self, encoding_type=None):
+        """Return a StringIOWrapper instance, that will encode Unicode
+        input to UTF-8.
+        """
+        if encoding_type is None:
+            encoding_type = 'strict'
+        sio = StringIO()
+        output_encoding = 'utf-8'
+        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio.encoding = output_encoding
+        return sio
+
 
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.

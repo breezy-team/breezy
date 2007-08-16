@@ -16,7 +16,6 @@
 
 
 from bzrlib.builtins import cmd_missing
-from bzrlib.tests import StringIOWrapper
 from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
 
 
@@ -33,7 +32,7 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
 
         cmd = cmd_missing()
         # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = StringIOWrapper()
+        cmd.outf = self.make_utf8_encoded_stringio()
         cmd.run(self.get_url('branch2'))
         self.assertEquals(1, len(self.connections))
 

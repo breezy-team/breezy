@@ -23,6 +23,12 @@ IN DEVELOPMENT
     * ``Transport.should_cache`` has been removed.  It was not called in the
       previous release.  (Martin Pool)
 
+  TESTING:
+
+    * Use UTF-8 encoded StringIO for log tests to avoid failures on
+      non-ASCII committer names.  (Lukáš Lalinský)
+
+
 bzr 0.90rc1 2007-08-14
 
   BUGFIXES:

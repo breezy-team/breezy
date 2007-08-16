@@ -103,9 +103,11 @@ class TestShowLog(TestCaseWithTransport):
 
         self.build_tree(['hello'])
         wt.add('hello')
-        wt.commit('add one file')
+        wt.commit('add one file',
+                  committer=u'\u013d\xf3r\xe9m \xcdp\u0161\xfam '
+                            u'<test@example.com>')
 
-        lf = StringIO()
+        lf = self.make_utf8_encoded_stringio()
         # log using regular thing
         show_log(b, LongLogFormatter(lf))
         lf.seek(0)
@@ -220,7 +222,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEquals(sio.getvalue(), """\
@@ -301,7 +303,7 @@ added:
         self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = self.normalize_log(sio.getvalue())
@@ -357,7 +359,7 @@ message:
         self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = self.normalize_log(sio.getvalue())
@@ -399,7 +401,7 @@ added:
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEqualDiff(sio.getvalue(), """\
@@ -498,7 +500,7 @@ class TestLineLogFormatter(TestCaseWithTransport):
             wt.commit('rev-2', rev_id='rev-2b',
                       timestamp=1132586800, timezone=36000,
                       committer='Joe Foo <joe@foo.com>')
-            logfile = StringIO()
+            logfile = self.make_utf8_encoded_stringio()
             formatter = ShortLogFormatter(to_file=logfile)
             show_log(wt.branch, formatter)
             logfile.flush()
@@ -516,7 +518,7 @@ class TestLineLogFormatter(TestCaseWithTransport):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LineLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEqualDiff(sio.getvalue(), """\
@@ -785,7 +787,7 @@ class TestShowChangedRevisions(TestCaseWithTransport):
         self.build_tree(['tree_a/foo'])
         tree.add('foo')
         tree.commit('bar', rev_id='bar-id')
-        s = StringIO()
+        s = self.make_utf8_encoded_stringio()
         log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
         self.assertContainsRe(s.getvalue(), 'bar')
         self.assertNotContainsRe(s.getvalue(), 'foo')
