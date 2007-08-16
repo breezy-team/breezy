@@ -1870,9 +1870,16 @@ class InterPackRepo(InterSameDataRepository):
             # TODO:
             # everything to do - use pack logic
             # to fetch from all packs to one without
-            # inventory parsing etc.
+            # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
             revision_ids = self.source.all_revision_ids()
+            # implementing the TODO will involve:
+            # - detecting when all of a pack is selected
+            # - avoiding as much as possible pre-selection, so the
+            # more-core routines such as create_pack_from_packs can filter in
+            # a just-in-time fashion. (though having a HEADS list on a
+            # repository might make this a lot easier, because we could
+            # sensibly detect 'new revisions' without doing a full index scan.
         elif _mod_revision.is_null(revision_id):
             # nothing to do:
             return

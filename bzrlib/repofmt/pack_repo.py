@@ -230,8 +230,12 @@ class RepositoryPackCollection(object):
         inv_index = InMemoryGraphIndex(reference_lists=2)
         text_index = InMemoryGraphIndex(reference_lists=2, key_elements=2)
         signature_index = InMemoryGraphIndex(reference_lists=0)
-        # select revision keys
-        revision_nodes = self._index_contents(revision_index_map)
+        # select revisions
+        if revision_ids:
+            revision_keys = [(revision_id,) for revision_id in revision_ids]
+        else:
+            revision_keys = None
+        revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
         self._copy_nodes_graph(revision_nodes, revision_index_map, writer, revision_index)
         if 'fetch' in debug.debug_flags:
@@ -240,7 +244,8 @@ class RepositoryPackCollection(object):
                 len(list(revision_index.iter_all_entries())),
                 time.time() - start_time)
         # select inventory keys
-        inv_nodes = self._index_contents(inventory_index_map)
+        inv_keys = revision_keys # currently the same keyspace
+        inv_nodes = self._index_contents(inventory_index_map, inv_keys)
         # copy inventory keys and adjust values
         self._copy_nodes_graph(inv_nodes, inventory_index_map, writer, inv_index)
         if 'fetch' in debug.debug_flags:
@@ -641,11 +646,19 @@ class RepositoryPackCollection(object):
                 (transport, name)
         return indices
 
-    def _index_contents(self, pack_map):
-        """Get an iterable of the index contents from a pack_map."""
+    def _index_contents(self, pack_map, key_filter=None):
+        """Get an iterable of the index contents from a pack_map.
+
+        :param pack_map: A map from indices to pack details.
+        :param key_filter: An optional filter to limit the
+            keys returned.
+        """
         indices = [index for index in pack_map.iterkeys()]
         all_index = CombinedGraphIndex(indices)
-        return all_index.iter_all_entries()
+        if key_filter is None:
+            return all_index.iter_all_entries()
+        else:
+            return all_index.iter_entries(key_filter)
 
     def save(self):
         builder = GraphIndexBuilder()
