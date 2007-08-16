@@ -394,7 +394,7 @@ class TestLockDir(TestCaseWithTransport):
         unlocker.start()
         try:
             # Wait and play against the other thread
-            lf2.wait_lock(timeout=1.0, poll=0.01)
+            lf2.wait_lock(timeout=20.0, poll=0.01)
         finally:
             unlocker.join()
         lf2.unlock()
