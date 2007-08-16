@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     tests,
+    transform,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -119,3 +120,29 @@ class TestFileIds(TestCaseWithTree):
             self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         finally:
             tree.unlock()
+
+
+class TestExtractFilesBytes(TestCaseWithTree):
+
+    def test_extract_files_bytes(self):
+        work_tree = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/foo', 'foo'),
+                                  ('wt/bar', 'bar'),
+                                  ('wt/baz', 'baz')])
+        work_tree.add(['foo', 'bar', 'baz'], ['foo-id', 'bar-id', 'baz-id'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        target = self.make_branch_and_tree('target')
+        tt = transform.TreeTransform(target)
+        self.addCleanup(tt.finalize)
+        desired_files = []
+        for path, entry in tree.iter_entries_by_dir():
+            if entry.kind != 'file':
+                continue
+            trans_id = tt.create_path(entry.name, tt.root)
+            tt.version_file(entry.file_id, trans_id)
+            desired_files.append((entry.file_id, trans_id))
+        tree.extract_files_bytes(tt.create_file, desired_files)
+        tt.apply()
+        self.assertEqual('foo', target.get_file_text('foo-id'))
