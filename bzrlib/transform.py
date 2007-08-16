@@ -1317,7 +1317,8 @@ def _build_tree(tree, wt):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            tree.extract_files_bytes(tt.create_file, deferred_contents)
+            for trans_id, bytes in tree.extract_files_bytes(deferred_contents):
+                tt.create_file(bytes, trans_id)
         finally:
             pb.finished()
         pp.next_phase()
@@ -1621,7 +1622,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     tt.create_symlink(target_tree.get_symlink_target(file_id),
                                       trans_id)
                 elif kind[1] == 'file':
-                    deferred_files.append((file_id, trans_id))
+                    deferred_files.append((file_id, (trans_id, mode_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
@@ -1648,7 +1649,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     name[1], tt.trans_id_file_id(parent[1]), trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
-        target_tree.extract_files_bytes(tt.create_file, deferred_files)
+        for (trans_id, mode_id), bytes in target_tree.extract_files_bytes(
+            deferred_files):
+            tt.create_file(bytes, trans_id, mode_id)
     finally:
         if basis_tree is not None:
             basis_tree.unlock()

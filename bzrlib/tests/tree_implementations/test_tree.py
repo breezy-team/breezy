@@ -133,16 +133,10 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        target = self.make_branch_and_tree('target')
-        tt = transform.TreeTransform(target)
-        self.addCleanup(tt.finalize)
-        desired_files = []
-        for path, entry in tree.iter_entries_by_dir():
-            if entry.kind != 'file':
-                continue
-            trans_id = tt.create_path(entry.name, tt.root)
-            tt.version_file(entry.file_id, trans_id)
-            desired_files.append((entry.file_id, trans_id))
-        tree.extract_files_bytes(tt.create_file, desired_files)
-        tt.apply()
-        self.assertEqual('foo', target.get_file_text('foo-id'))
+        extracted = dict((i, ''.join(b)) for i, b in
+                         tree.extract_files_bytes([('foo-id', 'id1'),
+                                                   ('bar-id', 'id2'),
+                                                   ('baz-id', 'id3')]))
+        self.assertEqual('foo', extracted['id1'])
+        self.assertEqual('bar', extracted['id2'])
+        self.assertEqual('baz', extracted['id3'])

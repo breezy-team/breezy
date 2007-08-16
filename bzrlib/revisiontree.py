@@ -85,13 +85,13 @@ class RevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
 
-    def extract_files_bytes(self, callable, desired_files):
+    def extract_files_bytes(self, desired_files):
         """See Tree.extract_files_bytes.
 
         This version is implemented on top of Repository.extract_files_bytes"""
-        repo_desired_files = [(f, self._inventory[f].revision, c)
-                              for f, c in desired_files]
-        self._repository.extract_files_bytes(callable, repo_desired_files)
+        repo_desired_files = [(f, self.inventory[f].revision, i)
+                              for f, i in desired_files]
+        return self._repository.extract_files_bytes(repo_desired_files)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):

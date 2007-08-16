@@ -225,21 +225,17 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 
-    def extract_files_bytes(self, callable, desired_files):
-        """Provide file contents to the callable, as an iterator of bytes.
+    def extract_files_bytes(self, desired_files):
+        """Iterate through file contents.
 
-        The order in which files will be extracted is unspecified.
-        The default implementation just does get_file().
-        :param callable: A callable that accepts (bytes_iterator,
-            callable_data)
-        :param desired_files: a list of (file_id, callable_data) pairs
+        The order in which files will be yielded is unspecified.
+        yields pairs of identifier, bytes_iterator
+        The default implementation just does get_file_text().
+        :param desired_files: a list of (file_id, identifier) pairs
         """
-        for file_id, callable_data in desired_files:
-            cur_file = self.get_file(file_id)
-            try:
-                callable(cur_file, callable_data)
-            finally:
-                cur_file.close()
+        for file_id, identifier in desired_files:
+            cur_file = (self.get_file_text(file_id),)
+            yield identifier, cur_file
 
     def get_symlink_target(self, file_id):
         """Get the target for a given file_id.

@@ -434,22 +434,15 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('rev1', rev_id='rev1')
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
-        target = self.make_branch_and_tree('target')
-        tt = transform.TreeTransform(target)
-        self.addCleanup(tt.finalize)
-        desired_files = []
-        desired_files.append(('file1-id', 'rev1',
-                              tt.create_path('file1-old', tt.root)))
-        desired_files.append(('file1-id', 'rev2',
-                              tt.create_path('file1-new', tt.root)))
-        desired_files.append(('file2-id', 'rev1',
-                              tt.create_path('file2', tt.root)))
-        tree.branch.repository.extract_files_bytes(tt.create_file,
-            desired_files)
-        tt.apply()
-        self.assertFileEqual('foo', 'target/file1-old')
-        self.assertFileEqual('bar', 'target/file2')
-        self.assertFileEqual('baz', 'target/file1-new')
+        extracted = dict((i, ''.join(b)) for i, b in
+                         tree.branch.repository.extract_files_bytes(
+                         [('file1-id', 'rev1', 'file1-old'),
+                          ('file1-id', 'rev2', 'file1-new'),
+                          ('file2-id', 'rev1', 'file2'),
+                         ]))
+        self.assertEqual('foo', extracted['file1-old'])
+        self.assertEqual('bar', extracted['file2'])
+        self.assertEqual('baz', extracted['file1-new'])
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

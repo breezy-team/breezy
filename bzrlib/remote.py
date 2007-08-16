@@ -607,19 +607,16 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
-    def extract_files_bytes(self, callable, desired_files):
+    def extract_files_bytes(self, desired_files):
         """Provide file contents to the callable, as an iterator of bytes.
 
         The order in which files will be extracted is unspecified.
         The default implementation just does get_file().
-        :param callable: A callable that accepts (bytes_iterator,
-            callable_data)
         :param desired_files: a list of (file_id, revision_id, callable_data)
             triples.
         """
         self._ensure_real()
-        return self._real_repository.extract_files_bytes(callable,
-                                                         desired_files)
+        return self._real_repository.extract_files_bytes(desired_files)
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
