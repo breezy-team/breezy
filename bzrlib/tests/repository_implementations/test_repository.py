@@ -210,6 +210,21 @@ class TestRepository(TestCaseWithRepository):
         rev2_tree = knit3_repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
 
+    def makeARepoWithSignatures(self):
+        wt = self.make_branch_and_tree('a-repo-with-sigs')
+        wt.commit('rev1', allow_pointless=True, rev_id='rev1')
+        repo = wt.branch.repository
+        repo.sign_revision('rev1', bzrlib.gpg.LoopbackGPGStrategy(None))
+        return repo
+
+    def test_fetch_copies_signatures(self):
+        source_repo = self.makeARepoWithSignatures()
+        target_repo = self.make_repository('target')
+        target_repo.fetch(source_repo, revision_id=None)
+        self.assertEqual(
+            source_repo.get_signature_text('rev1'),
+            target_repo.get_signature_text('rev1'))
+
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -263,7 +278,11 @@ class TestRepository(TestCaseWithRepository):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         old_signature = repo.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
@@ -604,6 +623,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
+        repo.lock_write()
+        repo.start_write_group()
         inv = Inventory(revision_id = 'ghost')
         inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
@@ -630,6 +651,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
         self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')

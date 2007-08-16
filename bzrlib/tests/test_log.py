@@ -793,3 +793,16 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         tree = self.create_tree_with_single_merge()
         # f3 should be marked as modified by revisions A, B, C, and D
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+
+class TestShowChangedRevisions(TestCaseWithTransport):
+
+    def test_show_changed_revisions_verbose(self):
+        tree = self.make_branch_and_tree('tree_a')
+        self.build_tree(['tree_a/foo'])
+        tree.add('foo')
+        tree.commit('bar', rev_id='bar-id')
+        s = StringIO()
+        log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
+        self.assertContainsRe(s.getvalue(), 'bar')
+        self.assertNotContainsRe(s.getvalue(), 'foo')

@@ -34,6 +34,7 @@ import sys
 import time
 import urllib
 import urlparse
+import warnings
 
 from bzrlib import (
     errors,
@@ -49,7 +50,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_nineteen,
+        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
@@ -59,6 +60,19 @@ from bzrlib.transport import (
     ssh,
     ConnectedTransport,
     )
+
+# Disable one particular warning that comes from paramiko in Python2.5; if
+# this is emitted at the wrong time it tends to cause spurious test failures
+# or at least noise in the test case::
+#
+# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
+# test_permissions.TestSftpPermissions.test_new_files
+# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
+#  self.packet.write(struct.pack('>I', n))
+warnings.filterwarnings('ignore',
+        'integer argument expected, got float',
+        category=DeprecationWarning,
+        module='paramiko.message')
 
 try:
     import paramiko
@@ -80,7 +94,7 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
@@ -204,13 +218,6 @@ class SFTPTransport(ConnectedTransport):
             connection, credentials = self._create_connection()
             self._set_connection(connection, credentials)
         return connection
-
-
-    def should_cache(self):
-        """
-        Return True if the data pulled across should be cached locally.
-        """
-        return True
 
     def has(self, relpath):
         """

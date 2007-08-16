@@ -73,17 +73,23 @@ class TestHelp(ExternalBase):
     def test_help_repositories(self):
         """Smoke test for 'bzr help repositories'"""
         out, err = self.run_bzr('help repositories')
-        self.assertEqual(bzrlib.help_topics._repositories, out)
+        from bzrlib.help_topics import help_as_plain_text, _repositories
+        expected = help_as_plain_text(_repositories)
+        self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'bzr help working-trees'"""
         out, err = self.run_bzr('help working-trees')
-        self.assertEqual(bzrlib.help_topics._working_trees, out)
+        from bzrlib.help_topics import help_as_plain_text, _working_trees
+        expected = help_as_plain_text(_working_trees)
+        self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
         """Smoke test for 'bzr help status-flags'"""
         out, err = self.run_bzr('help status-flags')
-        self.assertEqual(bzrlib.help_topics._status_flags, out)
+        from bzrlib.help_topics import help_as_plain_text, _status_flags
+        expected = help_as_plain_text(_status_flags)
+        self.assertEqual(expected, out)
 
     def test_help_commands(self):
         dash_help  = self.run_bzr('--help commands')[0]

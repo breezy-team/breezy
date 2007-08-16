@@ -70,8 +70,15 @@ import sys
 import warnings
 
 import bzrlib
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    pack,
+    )
+""")
 from bzrlib import (
     cache_utf8,
+    diff,
     errors,
     osutils,
     patiencediff,
@@ -339,7 +346,6 @@ class KnitPlainFactory(_KnitFactory):
 def make_empty_knit(transport, relpath):
     """Construct a empty knit at the specified location."""
     k = KnitVersionedFile(transport, relpath, 'w', KnitPlainFactory)
-    k._data._open_file()
 
 
 class KnitVersionedFile(VersionedFile):
@@ -360,7 +366,7 @@ class KnitVersionedFile(VersionedFile):
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
                  create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None, index=None):
+                 dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -394,10 +400,14 @@ class KnitVersionedFile(VersionedFile):
                 dir_mode=dir_mode)
         else:
             self._index = index
-        self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            access_mode, create=create and not len(self), file_mode=file_mode,
-            create_parent_dir=create_parent_dir, delay_create=delay_create,
-            dir_mode=dir_mode)
+        if access_method is None:
+            _access = _KnitAccess(transport, relpath + DATA_SUFFIX, file_mode, dir_mode,
+                ((create and not len(self)) and delay_create), create_parent_dir)
+        else:
+            _access = access_method
+        if create and not len(self) and not delay_create:
+            _access.create()
+        self._data = _KnitData(_access)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, 
@@ -420,7 +430,7 @@ class KnitVersionedFile(VersionedFile):
         for count in xrange(self._max_delta_chain):
             parent = delta_parents[0]
             method = self._index.get_method(parent)
-            pos, size = self._index.get_position(parent)
+            index, pos, size = self._index.get_position(parent)
             if method == 'fulltext':
                 fulltext_size = size
                 break
@@ -484,8 +494,8 @@ class KnitVersionedFile(VersionedFile):
         options.append('line-delta')
         store_lines = self.factory.lower_line_delta(delta)
 
-        where, size = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, where, size, parents)
+        access_memo = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, access_memo, parents)
 
     def _add_raw_records(self, records, data):
         """Add all the records 'records' with data pre-joined in 'data'.
@@ -496,12 +506,13 @@ class KnitVersionedFile(VersionedFile):
                      the preceding records sizes.
         """
         # write all the data
-        pos = self._data.add_raw_record(data)
+        raw_record_sizes = [record[3] for record in records]
+        positions = self._data.add_raw_records(raw_record_sizes, data)
         offset = 0
         index_entries = []
-        for (version_id, options, parents, size) in records:
-            index_entries.append((version_id, options, pos+offset,
-                                  size, parents))
+        for (version_id, options, parents, size), access_memo in zip(
+            records, positions):
+            index_entries.append((version_id, options, access_memo, parents))
             if self._data._do_cache:
                 self._data._cache[version_id] = data[offset:offset+size]
             offset += size
@@ -545,9 +556,8 @@ class KnitVersionedFile(VersionedFile):
         current_values = self._index._cache[version_id]
         assert set(current_values[4]).difference(set(new_parents)) == set()
         self._index.add_version(version_id,
-                                current_values[1], 
-                                current_values[2],
-                                current_values[3],
+                                current_values[1],
+                                (None, current_values[2], current_values[3]),
                                 new_parents)
 
     def _extract_blocks(self, version_id, source, target):
@@ -568,8 +578,8 @@ class KnitVersionedFile(VersionedFile):
             parent = parents[0]
         else:
             parent = None
-        data_pos, data_size = self._index.get_position(version_id)
-        data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
+        index_memo = self._index.get_position(version_id)
+        data, sha1 = self._data.read_records(((version_id, index_memo),))[version_id]
         noeol = 'no-eol' in self._index.get_options(version_id)
         if 'fulltext' == self._index.get_method(version_id):
             new_content = self.factory.parse_fulltext(data, version_id)
@@ -632,29 +642,32 @@ class KnitVersionedFile(VersionedFile):
     __contains__ = has_version
 
     def _merge_annotations(self, content, parents, parent_texts={},
-                           delta=None, annotated=None):
+                           delta=None, annotated=None,
+                           left_matching_blocks=None):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
-        if annotated:
+        if left_matching_blocks is not None:
+            delta_seq = diff._PrematchedMatcher(left_matching_blocks)
+        else:
             delta_seq = None
+        if annotated:
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = patiencediff.PatienceSequenceMatcher(
-                                   None, merge_content.text(), content.text())
-                if delta_seq is None:
-                    # setup a delta seq to reuse.
-                    delta_seq = seq
+                if (parent_id == parents[0] and delta_seq is not None):
+                    seq = delta_seq
+                else:
+                    seq = patiencediff.PatienceSequenceMatcher(
+                        None, merge_content.text(), content.text())
                 for i, j, n in seq.get_matching_blocks():
                     if n == 0:
                         continue
-                    # this appears to copy (origin, text) pairs across to the new
-                    # content for any line that matches the last-checked parent.
-                    # FIXME: save the sequence control data for delta compression
-                    # against the most relevant parent rather than rediffing.
+                    # this appears to copy (origin, text) pairs across to the
+                    # new content for any line that matches the last-checked
+                    # parent.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
         if delta:
-            if not annotated:
+            if delta_seq is None:
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
@@ -693,8 +706,8 @@ class KnitVersionedFile(VersionedFile):
                     next = None
                 else:
                     next = self.get_parents(cursor)[0]
-                data_pos, data_size = self._index.get_position(cursor)
-                component_data[cursor] = (method, data_pos, data_size, next)
+                index_memo = self._index.get_position(cursor)
+                component_data[cursor] = (method, index_memo, next)
                 cursor = next
         return component_data
        
@@ -720,11 +733,13 @@ class KnitVersionedFile(VersionedFile):
         self._check_add(version_id, lines)
         return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks=None):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
-        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
+        return self._add(version_id, lines[:], parents, self.delta,
+                         parent_texts, left_matching_blocks)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -738,7 +753,8 @@ class KnitVersionedFile(VersionedFile):
         self._check_lines_not_unicode(lines)
         self._check_lines_are_lines(lines)
 
-    def _add(self, version_id, lines, parents, delta, parent_texts):
+    def _add(self, version_id, lines, parents, delta, parent_texts,
+             left_matching_blocks=None):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -788,8 +804,9 @@ class KnitVersionedFile(VersionedFile):
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
-            delta_hunks = self._merge_annotations(lines, present_parents, parent_texts,
-                                                  delta, self.factory.annotated)
+            delta_hunks = self._merge_annotations(lines, present_parents,
+                parent_texts, delta, self.factory.annotated,
+                left_matching_blocks)
 
         if delta:
             options.append('line-delta')
@@ -798,8 +815,8 @@ class KnitVersionedFile(VersionedFile):
             options.append('fulltext')
             store_lines = self.factory.lower_fulltext(lines)
 
-        where, size = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, where, size, parents)
+        access_memo = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, access_memo, parents)
         return lines
 
     def check(self, progress_bar=None):
@@ -827,12 +844,12 @@ class KnitVersionedFile(VersionedFile):
         If the method is fulltext, next will be None.
         """
         position_map = self._get_components_positions(version_ids)
-        # c = component_id, m = method, p = position, s = size, n = next
-        records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
+        # c = component_id, m = method, i_m = index_memo, n = next
+        records = [(c, i_m) for c, (m, i_m, n) in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in \
                 self._data.read_records_iter(records):
-            method, position, size, next = position_map[component_id]
+            method, index_memo, next = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
         return record_map
@@ -930,8 +947,8 @@ class KnitVersionedFile(VersionedFile):
         # get a in-component-order queue:
         for version_id in self.versions():
             if version_id in requested_versions:
-                data_pos, length = self._index.get_position(version_id)
-                version_id_records.append((version_id, data_pos, length))
+                index_memo = self._index.get_position(version_id)
+                version_id_records.append((version_id, index_memo))
 
         total = len(version_id_records)
         for version_idx, (version_id, data, sha_value) in \
@@ -1012,27 +1029,6 @@ class KnitVersionedFile(VersionedFile):
         versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry_with_ghosts(versions)
 
-    #@deprecated_method(zero_eight)
-    def walk(self, version_ids):
-        """See VersionedFile.walk."""
-        # We take the short path here, and extract all relevant texts
-        # and put them in a weave and let that do all the work.  Far
-        # from optimal, but is much simpler.
-        # FIXME RB 20060228 this really is inefficient!
-        from bzrlib.weave import Weave
-
-        w = Weave(self.filename)
-        ancestry = set(self.get_ancestry(version_ids, topo_sorted=False))
-        sorted_graph = topo_sort(self._index.get_graph())
-        version_list = [vid for vid in sorted_graph if vid in ancestry]
-        
-        for version_id in version_list:
-            lines = self.get_lines(version_id)
-            w.add_lines(version_id, self.get_parents(version_id), lines)
-
-        for lineno, insert_id, dset, line in w.walk(version_ids):
-            yield lineno, insert_id, dset, line
-
     def plan_merge(self, ver_a, ver_b):
         """See VersionedFile.plan_merge."""
         ver_a = osutils.safe_revision_id(ver_a)
@@ -1072,9 +1068,6 @@ class _KnitComponentFile(object):
         if line != self.HEADER:
             raise KnitHeaderError(badline=line,
                               filename=self._transport.abspath(self._filename))
-
-    def commit(self):
-        """Commit is a nop."""
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._filename)
@@ -1268,9 +1261,9 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append('.' + version)
         return ' '.join(result_list)
 
-    def add_version(self, version_id, options, pos, size, parents):
+    def add_version(self, version_id, options, index_memo, parents):
         """Add a version record to the index."""
-        self.add_versions(((version_id, options, pos, size, parents),))
+        self.add_versions(((version_id, options, index_memo, parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1283,7 +1276,7 @@ class _KnitIndex(_KnitComponentFile):
         orig_cache = self._cache.copy()
 
         try:
-            for version_id, options, pos, size, parents in versions:
+            for version_id, options, (index, pos, size), parents in versions:
                 line = "\n%s %s %s %s %s :" % (version_id,
                                                ','.join(options),
                                                pos,
@@ -1316,9 +1309,16 @@ class _KnitIndex(_KnitComponentFile):
         return version_id in self._cache
 
     def get_position(self, version_id):
-        """Return data position and size of specified version."""
+        """Return details needed to access the version.
+        
+        .kndx indices do not support split-out data, so return None for the 
+        index field.
+
+        :return: a tuple (None, data position, size) to hand to the access
+            logic to get the record.
+        """
         entry = self._cache[version_id]
-        return entry[2], entry[3]
+        return None, entry[2], entry[3]
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
@@ -1386,12 +1386,12 @@ class KnitGraphIndex(object):
         if self._parents:
             for node in self._graph_index.iter_entries(keys):
                 yield node
-                found_keys.add(node[0])
+                found_keys.add(node[1])
         else:
             # adapt parentless index to the rest of the code.
             for node in self._graph_index.iter_entries(keys):
-                yield node[0], node[1], ()
-                found_keys.add(node[0])
+                yield node[0], node[1], node[2], ()
+                found_keys.add(node[1])
         if check_present:
             missing_keys = keys.difference(found_keys)
             if missing_keys:
@@ -1399,7 +1399,7 @@ class KnitGraphIndex(object):
 
     def _present_keys(self, version_ids):
         return set([
-            node[0] for node in self._get_entries(version_ids)])
+            node[1] for node in self._get_entries(version_ids)])
 
     def _parentless_ancestry(self, versions):
         """Honour the get_ancestry API for parentless knit indices."""
@@ -1427,7 +1427,7 @@ class KnitGraphIndex(object):
             new_nodes = self._get_entries(this_iteration)
             found = set()
             pending = set()
-            for (key, value, node_refs) in new_nodes:
+            for (index, key, value, node_refs) in new_nodes:
                 # dont ask for ghosties - otherwise
                 # we we can end up looping with pending
                 # being entirely ghosted.
@@ -1464,7 +1464,7 @@ class KnitGraphIndex(object):
             this_iteration = pending
             new_nodes = self._get_entries(this_iteration)
             pending = set()
-            for (key, value, node_refs) in new_nodes:
+            for (index, key, value, node_refs) in new_nodes:
                 graph[key] = node_refs[0]
                 # queue parents 
                 for parent in graph[key]:
@@ -1488,7 +1488,7 @@ class KnitGraphIndex(object):
         if not self._parents:
             return [(key, ()) for key in self.get_versions()]
         result = []
-        for key, value, refs in self._graph_index.iter_all_entries():
+        for index, key, value, refs in self._graph_index.iter_all_entries():
             result.append((key[0], tuple([ref[0] for ref in refs[0]])))
         return result
 
@@ -1506,20 +1506,20 @@ class KnitGraphIndex(object):
             all_parents = set()
             present_parents = set()
             for node in all_nodes:
-                all_parents.update(node[2][0])
+                all_parents.update(node[3][0])
                 # any node we are querying must be present
-                present_parents.add(node[0])
+                present_parents.add(node[1])
             unknown_parents = all_parents.difference(present_parents)
             present_parents.update(self._present_keys(unknown_parents))
             for node in all_nodes:
                 parents = []
-                for parent in node[2][0]:
+                for parent in node[3][0]:
                     if parent in present_parents:
                         parents.append(parent[0])
-                yield node[0][0], tuple(parents)
+                yield node[1][0], tuple(parents)
         else:
             for node in self._get_entries(self._version_ids_to_keys(version_ids)):
-                yield node[0][0], ()
+                yield node[1][0], ()
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
@@ -1528,7 +1528,7 @@ class KnitGraphIndex(object):
 
     def get_versions(self):
         """Get all the versions in the file. not topologically sorted."""
-        return [node[0][0] for node in self._graph_index.iter_all_entries()]
+        return [node[1][0] for node in self._graph_index.iter_all_entries()]
     
     def has_version(self, version_id):
         """True if the version is in the index."""
@@ -1538,15 +1538,20 @@ class KnitGraphIndex(object):
         return tuple(key[0] for key in keys)
 
     def get_position(self, version_id):
-        """Return data position and size of specified version."""
-        bits = self._get_node(version_id)[1][1:].split(' ')
-        return int(bits[0]), int(bits[1])
+        """Return details needed to access the version.
+        
+        :return: a tuple (index, data position, size) to hand to the access
+            logic to get the record.
+        """
+        node = self._get_node(version_id)
+        bits = node[2][1:].split(' ')
+        return node[0], int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
         if not self._deltas:
             return 'fulltext'
-        return self._parent_compression(self._get_node(version_id)[2][1])
+        return self._parent_compression(self._get_node(version_id)[3][1])
 
     def _parent_compression(self, reference_list):
         # use the second reference list to decide if this is delta'd or not.
@@ -1567,8 +1572,8 @@ class KnitGraphIndex(object):
         if not self._deltas:
             options = ['fulltext']
         else:
-            options = [self._parent_compression(node[2][1])]
-        if node[1][0] == 'N':
+            options = [self._parent_compression(node[3][1])]
+        if node[2][0] == 'N':
             options.append('no-eol')
         return options
 
@@ -1586,7 +1591,7 @@ class KnitGraphIndex(object):
             check_present=True))
         if not self._parents:
             return ()
-        return self._keys_to_version_ids(nodes[0][2][0])
+        return self._keys_to_version_ids(nodes[0][3][0])
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1596,9 +1601,9 @@ class KnitGraphIndex(object):
         if missing:
             raise RevisionNotPresent(missing.pop(), self)
 
-    def add_version(self, version_id, options, pos, size, parents):
+    def add_version(self, version_id, options, access_memo, parents):
         """Add a version record to the index."""
-        return self.add_versions(((version_id, options, pos, size, parents),))
+        return self.add_versions(((version_id, options, access_memo, parents),))
 
     def add_versions(self, versions):
         """Add multiple versions to the index.
@@ -1618,8 +1623,8 @@ class KnitGraphIndex(object):
         # check for dups
 
         keys = {}
-        for (version_id, options, pos, size, parents) in versions:
-            # index keys are tuples:
+        for (version_id, options, access_memo, parents) in versions:
+            index, pos, size = access_memo
             key = (version_id, )
             parents = tuple((parent, ) for parent in parents)
             if 'no-eol' in options:
@@ -1645,7 +1650,7 @@ class KnitGraphIndex(object):
                 node_refs = ()
             keys[key] = (value, node_refs)
         present_nodes = self._get_entries(keys)
-        for (key, value, node_refs) in present_nodes:
+        for (index, key, value, node_refs) in present_nodes:
             if (value, node_refs) != keys[key]:
                 raise KnitCorrupt(self, "inconsistent details in add_versions"
                     ": %s %s" % ((value, node_refs), keys[key]))
@@ -1661,18 +1666,189 @@ class KnitGraphIndex(object):
         
     def _version_ids_to_keys(self, version_ids):
         return set((version_id, ) for version_id in version_ids)
-        
 
-class _KnitData(_KnitComponentFile):
-    """Contents of the knit data file"""
 
-    def __init__(self, transport, filename, mode, create=False, file_mode=None,
-                 create_parent_dir=False, delay_create=False,
-                 dir_mode=None):
-        _KnitComponentFile.__init__(self, transport, filename, mode,
-                                    file_mode=file_mode,
-                                    create_parent_dir=create_parent_dir,
-                                    dir_mode=dir_mode)
+class _KnitAccess(object):
+    """Access to knit records in a .knit file."""
+
+    def __init__(self, transport, filename, _file_mode, _dir_mode,
+        _need_to_create, _create_parent_dir):
+        """Create a _KnitAccess for accessing and inserting data.
+
+        :param transport: The transport the .knit is located on.
+        :param filename: The filename of the .knit.
+        """
+        self._transport = transport
+        self._filename = filename
+        self._file_mode = _file_mode
+        self._dir_mode = _dir_mode
+        self._need_to_create = _need_to_create
+        self._create_parent_dir = _create_parent_dir
+
+    def add_raw_records(self, sizes, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to whereever the access method is storing data.
+
+        :param sizes: An iterable containing the size of each raw data segment.
+        :param raw_data: A bytestring containing the data.
+        :return: A list of memos to retrieve the record later. Each memo is a
+            tuple - (index, pos, length), where the index field is always None
+            for the .knit access method.
+        """
+        assert type(raw_data) == str, \
+            'data must be plain bytes was %s' % type(raw_data)
+        if not self._need_to_create:
+            base = self._transport.append_bytes(self._filename, raw_data)
+        else:
+            self._transport.put_bytes_non_atomic(self._filename, raw_data,
+                                   create_parent_dir=self._create_parent_dir,
+                                   mode=self._file_mode,
+                                   dir_mode=self._dir_mode)
+            self._need_to_create = False
+            base = 0
+        result = []
+        for size in sizes:
+            result.append((None, base, size))
+            base += size
+        return result
+
+    def create(self):
+        """IFF this data access has its own storage area, initialise it.
+
+        :return: None.
+        """
+        self._transport.put_bytes_non_atomic(self._filename, '',
+                                             mode=self._file_mode)
+
+    def open_file(self):
+        """IFF this data access can be represented as a single file, open it.
+
+        For knits that are not mapped to a single file on disk this will
+        always return None.
+
+        :return: None or a file handle.
+        """
+        try:
+            return self._transport.get(self._filename)
+        except NoSuchFile:
+            pass
+        return None
+
+    def get_raw_records(self, memos_for_retrieval):
+        """Get the raw bytes for a records.
+
+        :param memos_for_retrieval: An iterable containing the (index, pos, 
+            length) memo for retrieving the bytes. The .knit method ignores
+            the index as there is always only a single file.
+        :return: An iterator over the bytes of the records.
+        """
+        read_vector = [(pos, size) for (index, pos, size) in memos_for_retrieval]
+        for pos, data in self._transport.readv(self._filename, read_vector):
+            yield data
+
+
+class _PackAccess(object):
+    """Access to knit records via a collection of packs."""
+
+    def __init__(self, index_to_packs, writer=None):
+        """Create a _PackAccess object.
+
+        :param index_to_packs: A dict mapping index objects to the transport
+            and file names for obtaining data.
+        :param writer: A tuple (pack.ContainerWriter, write_index) which
+            contains the pack to write, and the index that reads from it will
+            be associated with.
+        """
+        if writer:
+            self.container_writer = writer[0]
+            self.write_index = writer[1]
+        else:
+            self.container_writer = None
+            self.write_index = None
+        self.indices = index_to_packs
+
+    def add_raw_records(self, sizes, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param sizes: An iterable containing the size of each raw data segment.
+        :param raw_data: A bytestring containing the data.
+        :return: A list of memos to retrieve the record later. Each memo is a
+            tuple - (index, pos, length), where the index field is the 
+            write_index object supplied to the PackAccess object.
+        """
+        assert type(raw_data) == str, \
+            'data must be plain bytes was %s' % type(raw_data)
+        result = []
+        offset = 0
+        for size in sizes:
+            p_offset, p_length = self.container_writer.add_bytes_record(
+                raw_data[offset:offset+size], [])
+            offset += size
+            result.append((self.write_index, p_offset, p_length))
+        return result
+
+    def create(self):
+        """Pack based knits do not get individually created."""
+
+    def get_raw_records(self, memos_for_retrieval):
+        """Get the raw bytes for a records.
+
+        :param memos_for_retrieval: An iterable containing the (index, pos, 
+            length) memo for retrieving the bytes. The Pack access method
+            looks up the pack to use for a given record in its index_to_pack
+            map.
+        :return: An iterator over the bytes of the records.
+        """
+        # first pass, group into same-index requests
+        request_lists = []
+        current_index = None
+        for (index, offset, length) in memos_for_retrieval:
+            if current_index == index:
+                current_list.append((offset, length))
+            else:
+                if current_index is not None:
+                    request_lists.append((current_index, current_list))
+                current_index = index
+                current_list = [(offset, length)]
+        # handle the last entry
+        if current_index is not None:
+            request_lists.append((current_index, current_list))
+        for index, offsets in request_lists:
+            transport, path = self.indices[index]
+            reader = pack.make_readv_reader(transport, path, offsets)
+            for names, read_func in reader.iter_records():
+                yield read_func(None)
+
+    def open_file(self):
+        """Pack based knits have no single file."""
+        return None
+
+    def set_writer(self, writer, index, (transport, packname)):
+        """Set a writer to use for adding data."""
+        self.indices[index] = (transport, packname)
+        self.container_writer = writer
+        self.write_index = index
+
+
+class _KnitData(object):
+    """Manage extraction of data from a KnitAccess, caching and decompressing.
+    
+    The KnitData class provides the logic for parsing and using knit records,
+    making use of an access method for the low level read and write operations.
+    """
+
+    def __init__(self, access):
+        """Create a KnitData object.
+
+        :param access: The access method to use. Access methods such as
+            _KnitAccess manage the insertion of raw records and the subsequent
+            retrieval of the same.
+        """
+        self._access = access
         self._checked = False
         # TODO: jam 20060713 conceptually, this could spill to disk
         #       if the cached size gets larger than a certain amount
@@ -1680,12 +1856,6 @@ class _KnitData(_KnitComponentFile):
         #       a simple dictionary
         self._cache = {}
         self._do_cache = False
-        if create:
-            if delay_create:
-                self._need_to_create = create
-            else:
-                self._transport.put_bytes_non_atomic(self._filename, '',
-                                                     mode=self._file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
@@ -1697,11 +1867,7 @@ class _KnitData(_KnitComponentFile):
         self._cache = {}
 
     def _open_file(self):
-        try:
-            return self._transport.get(self._filename)
-        except NoSuchFile:
-            pass
-        return None
+        return self._access.open_file()
 
     def _record_to_data(self, version_id, digest, lines):
         """Convert version_id, digest, lines into a raw data block.
@@ -1724,39 +1890,27 @@ class _KnitData(_KnitComponentFile):
         sio.seek(0)
         return length, sio
 
-    def add_raw_record(self, raw_data):
+    def add_raw_records(self, sizes, raw_data):
         """Append a prepared record to the data file.
         
-        :return: the offset in the data file raw_data was written.
+        :param sizes: An iterable containing the size of each raw data segment.
+        :param raw_data: A bytestring containing the data.
+        :return: a list of index data for the way the data was stored.
+            See the access method add_raw_records documentation for more
+            details.
         """
-        assert isinstance(raw_data, str), 'data must be plain bytes'
-        if not self._need_to_create:
-            return self._transport.append_bytes(self._filename, raw_data)
-        else:
-            self._transport.put_bytes_non_atomic(self._filename, raw_data,
-                                   create_parent_dir=self._create_parent_dir,
-                                   mode=self._file_mode,
-                                   dir_mode=self._dir_mode)
-            self._need_to_create = False
-            return 0
+        return self._access.add_raw_records(sizes, raw_data)
         
     def add_record(self, version_id, digest, lines):
-        """Write new text record to disk.  Returns the position in the
-        file where it was written."""
+        """Write new text record to disk. 
+        
+        Returns index data for retrieving it later, as per add_raw_records.
+        """
         size, sio = self._record_to_data(version_id, digest, lines)
-        # write to disk
-        if not self._need_to_create:
-            start_pos = self._transport.append_file(self._filename, sio)
-        else:
-            self._transport.put_file_non_atomic(self._filename, sio,
-                               create_parent_dir=self._create_parent_dir,
-                               mode=self._file_mode,
-                               dir_mode=self._dir_mode)
-            self._need_to_create = False
-            start_pos = 0
+        result = self.add_raw_records([size], sio.getvalue())
         if self._do_cache:
             self._cache[version_id] = sio.getvalue()
-        return start_pos, size
+        return result[0]
 
     def _parse_record_header(self, version_id, raw_data):
         """Parse a record header for consistency.
@@ -1768,7 +1922,7 @@ class _KnitData(_KnitComponentFile):
         try:
             rec = self._check_header(version_id, df.readline())
         except Exception, e:
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
         return df, rec
@@ -1776,10 +1930,10 @@ class _KnitData(_KnitComponentFile):
     def _check_header(self, version_id, line):
         rec = line.split()
         if len(rec) != 4:
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               'unexpected number of elements in record header')
         if rec[1] != version_id:
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               'unexpected version, wanted %r, got %r'
                               % (version_id, rec[1]))
         return rec
@@ -1794,7 +1948,7 @@ class _KnitData(_KnitComponentFile):
         try:
             record_contents = df.readlines()
         except Exception, e:
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
         header = record_contents.pop(0)
@@ -1802,13 +1956,13 @@ class _KnitData(_KnitComponentFile):
 
         last_line = record_contents.pop()
         if len(record_contents) != int(rec[2]):
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               'incorrect number of lines %s != %s'
                               ' for version {%s}'
                               % (len(record_contents), int(rec[2]),
                                  version_id))
         if last_line != 'end %s\n' % rec[1]:
-            raise KnitCorrupt(self._filename,
+            raise KnitCorrupt(self._access,
                               'unexpected version end line %r, wanted %r' 
                               % (last_line, version_id))
         df.close()
@@ -1826,21 +1980,21 @@ class _KnitData(_KnitComponentFile):
             # grab the disk data needed.
             if self._cache:
                 # Don't check _cache if it is empty
-                needed_offsets = [(pos, size) for version_id, pos, size
+                needed_offsets = [index_memo for version_id, index_memo
                                               in records
                                               if version_id not in self._cache]
             else:
-                needed_offsets = [(pos, size) for version_id, pos, size
+                needed_offsets = [index_memo for version_id, index_memo
                                                in records]
 
-            raw_records = self._transport.readv(self._filename, needed_offsets)
+            raw_records = self._access.get_raw_records(needed_offsets)
 
-        for version_id, pos, size in records:
+        for version_id, index_memo in records:
             if version_id in self._cache:
                 # This data has already been validated
                 data = self._cache[version_id]
             else:
-                pos, data = raw_records.next()
+                data = raw_records.next()
                 if self._do_cache:
                     self._cache[version_id] = data
 
@@ -1885,11 +2039,11 @@ class _KnitData(_KnitComponentFile):
 
         # The transport optimizes the fetching as well 
         # (ie, reads continuous ranges.)
-        readv_response = self._transport.readv(self._filename,
-            [(pos, size) for version_id, pos, size in needed_records])
+        raw_data = self._access.get_raw_records(
+            [index_memo for version_id, index_memo in needed_records])
 
-        for (version_id, pos, size), (pos, data) in \
-                izip(iter(needed_records), readv_response):
+        for (version_id, index_memo), data in \
+                izip(iter(needed_records), raw_data):
             content, digest = self._parse_record(version_id, data)
             if self._do_cache:
                 self._cache[version_id] = data
@@ -1984,8 +2138,8 @@ class InterKnit(InterVersionedFile):
                     assert (self.target.has_version(parent) or
                             parent in copy_set or
                             not self.source.has_version(parent))
-                data_pos, data_size = self.source._index.get_position(version_id)
-                copy_queue_records.append((version_id, data_pos, data_size))
+                index_memo = self.source._index.get_position(version_id)
+                copy_queue_records.append((version_id, index_memo))
                 copy_queue.append((version_id, options, parents))
                 copy_set.add(version_id)
 

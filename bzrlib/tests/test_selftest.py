@@ -35,7 +35,10 @@ from bzrlib import (
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
-from bzrlib.symbol_versioning import zero_ten, zero_eleven
+from bzrlib.symbol_versioning import (
+        zero_ten,
+        zero_eleven,
+        )
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
@@ -989,6 +992,29 @@ class TestTestResult(TestCase):
         self.assertEqual(feature, result._call[1])
         # and not count as an error
         self.assertEqual(0, result.error_count)
+
+    def test_strict_with_unsupported_feature(self):
+        result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
+                                                verbosity=1)
+        test = self.get_passing_test()
+        feature = "Unsupported Feature"
+        result.addNotSupported(test, feature)
+        self.assertFalse(result.wasStrictlySuccessful())
+
+    def test_strict_with_known_failure(self):
+        result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
+                                                verbosity=1)
+        test = self.get_passing_test()
+        err = (KnownFailure, KnownFailure('foo'), None)
+        result.addKnownFailure(test, err)
+        self.assertFalse(result.wasStrictlySuccessful())
+
+    def test_strict_with_success(self):
+        result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
+                                                verbosity=1)
+        test = self.get_passing_test()
+        result.addSuccess(test)
+        self.assertTrue(result.wasStrictlySuccessful())
 
 
 class TestRunner(TestCase):

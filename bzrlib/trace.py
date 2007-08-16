@@ -61,9 +61,6 @@ import logging
 """)
 
 import bzrlib
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_nine,
-        )
 
 lazy_import(globals(), """
 from bzrlib import debug
@@ -152,6 +149,8 @@ def open_tracefile(tracefilename=None):
         else:
             home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
+    else:
+        _bzr_log_filename = tracefilename
 
     _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
     _rollover_trace_maybe(_bzr_log_filename)
@@ -174,20 +173,6 @@ def open_tracefile(tracefilename=None):
         logging.getLogger('').addHandler(_file_handler)
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
-
-
-@deprecated_function(zero_nine)
-def log_exception(msg=None):
-    """Log the last exception to stderr and the trace file.
-
-    The exception string representation is used as the error
-    summary, unless msg is given.
-
-    Please see log_exception_quietly() for the replacement API.
-    """
-    if msg:
-        error(msg)
-    log_exception_quietly()
 
 
 def log_exception_quietly():
