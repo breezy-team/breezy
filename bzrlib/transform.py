@@ -1272,7 +1272,8 @@ def _build_tree(tree, wt):
             deferred_contents = []
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
-                pb.update("Building tree", num, len(tree.inventory))
+                pb.update("Building tree", num - len(deferred_contents),
+                          len(tree.inventory))
                 if entry.parent_id is None:
                     continue
                 reparent = False
@@ -1301,14 +1302,15 @@ def _build_tree(tree, wt):
                         'entry %s parent id %r is not in file_trans_id %r'
                         % (entry, entry.parent_id, file_trans_id))
                 parent_id = file_trans_id[entry.parent_id]
-                if file_kind == 'file':
+                if entry.kind == 'file':
                     # We *almost* replicate new_by_entry, so that we can defer
                     # getting the file text, and get them all at once.
                     trans_id = tt.create_path(entry.name, parent_id)
-                    self.version_file(entry.file_id, trans_id)
+                    file_trans_id[file_id] = trans_id
+                    tt.version_file(entry.file_id, trans_id)
                     executable = tree.is_executable(entry.file_id, tree_path)
                     if executable is not None:
-                        tt.set_executability(executable)
+                        tt.set_executability(executable, trans_id)
                     deferred_contents.append((entry.file_id, trans_id))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
@@ -1317,8 +1319,12 @@ def _build_tree(tree, wt):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            for trans_id, bytes in tree.iter_files_bytes(deferred_contents):
+            for num, (trans_id, bytes) in enumerate(
+                tree.iter_files_bytes(deferred_contents)):
                 tt.create_file(bytes, trans_id)
+                pb.update('Adding file contents',
+                          (num + len(tree.inventory) - len(deferred_contents)),
+                          len(tree.inventory))
         finally:
             pb.finished()
         pp.next_phase()
@@ -1649,7 +1655,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     name[1], tt.trans_id_file_id(parent[1]), trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
-        for (trans_id, mode_id), bytes in target_tree.extract_files_bytes(
+        for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
             deferred_files):
             tt.create_file(bytes, trans_id, mode_id)
     finally:
