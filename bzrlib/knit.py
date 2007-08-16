@@ -925,33 +925,22 @@ class KnitVersionedFile(VersionedFile):
             version_ids = self.versions()
         else:
             version_ids = [osutils.safe_revision_id(v) for v in version_ids]
-        if pb is None:
-            pb = progress.DummyProgress()
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
         requested_versions = set(version_ids)
+        methods = {}
         # create set of records to read:
         for version_id in requested_versions:
             index_memo = self._index.get_position(version_id)
+            method  = self._index.get_method(version_id)
             version_id_records.append((version_id, index_memo))
-
+            methods[version_id] = method
         total = len(version_id_records)
-        for version_idx, (version_id, data, sha_value) in \
-            enumerate(self._data.read_records_iter(version_id_records)):
-            pb.update('Walking content.', version_idx, total)
-            method = self._index.get_method(version_id)
-
-            assert method in ('fulltext', 'line-delta')
-            if method == 'fulltext':
-                line_iterator = self.factory.get_fulltext_content(data)
-            else:
-                line_iterator = self.factory.get_linedelta_content(data)
-            for line in line_iterator:
-                yield line
-
-        pb.update('Walking content.', total, total)
+        return self._data.iter_lines_added_or_present_in_records(
+            self._data.read_records_iter(version_id_records),
+            methods, self.factory, pb, total)
         
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
@@ -1894,6 +1883,36 @@ class _KnitData(object):
 
     def _open_file(self):
         return self._access.open_file()
+
+    def iter_lines_added_or_present_in_records(self, record_iterator, methods, 
+        record_parser, pb=None, record_count=0):
+        """Read, parse and yield the contents of records as lines.
+
+        :param record_iterator: An iterable of version_id, data, sha_value for
+            the records to process.
+        :param methods: A dict of version_id -> method.
+        :param record_parser: A knit record parser which can parse each
+            record.
+        :param pb: A progress bar, or None.
+        :param record_count: A total for the progress bar if one is supplied.
+        :return: An iterator over all the lines in no particular order.
+        """
+        if pb is None:
+            pb = progress.DummyProgress()
+        for version_idx, (version_id, data, sha_value) in \
+            enumerate(record_iterator):
+            pb.update('Walking content.', version_idx, record_count)
+            method = methods[version_id]
+
+            assert method in ('fulltext', 'line-delta')
+            if method == 'fulltext':
+                line_iterator = record_parser.get_fulltext_content(data)
+            else:
+                line_iterator = record_parser.get_linedelta_content(data)
+            for line in line_iterator:
+                yield line
+
+        pb.update('Walking content.', record_count, record_count)
 
     def _record_to_data(self, version_id, digest, lines):
         """Convert version_id, digest, lines into a raw data block.
