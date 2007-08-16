@@ -49,7 +49,7 @@ class TestLocale(TestCaseWithTransport):
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 1
-author: ???? Meinel <juju@info.com>
+committer: ???? Meinel <juju@info.com>
 branch nick: tree
 timestamp: Thu 2006-08-24 20:28:17 +0000
 message:
@@ -73,7 +73,7 @@ bzr: warning: unsupported locale setting
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 1
-author: ???? Meinel <juju@info.com>
+committer: ???? Meinel <juju@info.com>
 branch nick: tree
 timestamp: Thu 2006-08-24 20:28:17 +0000
 message:

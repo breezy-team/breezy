@@ -243,8 +243,8 @@ class TestLongLogFormatter(TestCaseWithTransport):
 
     def normalize_log(self,log):
         """Replaces the variable lines of logs with fixed lines"""
-        author = 'author: Lorem Ipsum <test@example.com>'
-        committer = 'committer: Lorem Ipsum 2 <test2@example.com>'
+        author = 'author: Dolor Sit <test@example.com>'
+        committer = 'committer: Lorem Ipsum <test@example.com>'
         lines = log.splitlines(True)
         for idx,line in enumerate(lines):
             stripped_line = line.lstrip()
@@ -281,7 +281,7 @@ class TestLongLogFormatter(TestCaseWithTransport):
         self.assertEqualDiff(log_contents, '''\
 ------------------------------------------------------------
 revno: 1
-author: Lorem Ipsum <test@example.com>
+committer: Lorem Ipsum <test@example.com>
 branch nick: test_verbose_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
@@ -312,35 +312,35 @@ added:
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
-author: Lorem Ipsum <test@example.com>
+committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
   merge branch 1
     ------------------------------------------------------------
     revno: 1.1.2
-    author: Lorem Ipsum <test@example.com>
+    committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
     message:
       merge branch 2
         ------------------------------------------------------------
         revno: 1.1.1.1.1
-        author: Lorem Ipsum <test@example.com>
+        committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
         message:
           branch 2
     ------------------------------------------------------------
     revno: 1.1.1
-    author: Lorem Ipsum <test@example.com>
+    committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
     message:
       branch 1
 ------------------------------------------------------------
 revno: 1
-author: Lorem Ipsum <test@example.com>
+committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
@@ -368,7 +368,7 @@ message:
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
-author: Lorem Ipsum <test@example.com>
+committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
@@ -379,7 +379,7 @@ modified:
   f2
     ------------------------------------------------------------
     revno: 1.1.1
-    author: Lorem Ipsum <test@example.com>
+    committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
     message:
@@ -390,7 +390,7 @@ modified:
       f2
 ------------------------------------------------------------
 revno: 1
-author: Lorem Ipsum <test@example.com>
+committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
@@ -409,7 +409,7 @@ added:
         self.assertEqualDiff(sio.getvalue(), """\
 ------------------------------------------------------------
 revno: 3
-author: Joe Foo <joe@foo.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: test
 timestamp: Mon 2005-11-21 09:32:56 -0600
 message:
@@ -426,16 +426,16 @@ message:
   message
 ------------------------------------------------------------
 revno: 1
-author: Joe Foo <joe@foo.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: test
 timestamp: Mon 2005-11-21 09:24:15 -0600
 message:
   simple log message
 """)
 
-    def test_committer_in_log(self):
-        """Log includes the committer's name if it's
-        different from the author.
+    def test_author_in_log(self):
+        """Log includes the author name if it's set in
+        the revision properties
         """
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -447,22 +447,10 @@ message:
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
                   author='John Doe <jdoe@example.com>')
-        wt.commit(message='foo',
-                  timestamp=1132712707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  author='Lorem Ipsum <test@example.com>')
         sio = StringIO()
         formatter = LongLogFormatter(to_file=sio)
         show_log(b, formatter)
         self.assertEqualDiff(sio.getvalue(), '''\
-------------------------------------------------------------
-revno: 2
-author: Lorem Ipsum <test@example.com>
-branch nick: test_author_log
-timestamp: Wed 2005-11-23 12:25:07 +1000
-message:
-  foo
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>

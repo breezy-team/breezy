@@ -116,8 +116,11 @@ class Revision(object):
         """
         return self.message.lstrip().split('\n', 1)[0]
 
-    def get_author(self):
-        """Get the author of this revision.
+    def get_apparent_author(self):
+        """Return the apparent author of this revision.
+
+        If the revision properties contain the author name,
+        return it. Otherwise return the committer name.
         """
         return self.properties.get('author', self.committer)
 

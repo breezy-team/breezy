@@ -593,7 +593,7 @@ class LogFormatter(object):
         return re.sub('<.*@.*>', '', rev.committer).strip(' ')
 
     def short_author(self, rev):
-        return re.sub('<.*@.*>', '', rev.get_author()).strip(' ')
+        return re.sub('<.*@.*>', '', rev.get_apparent_author()).strip(' ')
 
 
 class LongLogFormatter(LogFormatter):
@@ -628,10 +628,10 @@ class LongLogFormatter(LogFormatter):
             for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent + 'parent:', parent_id
 
-        author = revision.rev.get_author()
-        print >>to_file, indent + 'author:', author
-        if revision.rev.committer != author:
-            print >>to_file, indent + 'committer:', revision.rev.committer
+        author = revision.rev.properties.get('author', None)
+        if author is not None:
+            print >>to_file, indent + 'author:', author
+        print >>to_file, indent + 'committer:', revision.rev.committer
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:

@@ -129,7 +129,7 @@ def _annotate_file(branch, rev_id, file_id):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.get_author()
+            author = rev.get_apparent_author()
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
