@@ -225,7 +225,7 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 
-    def extract_files_bytes(self, desired_files):
+    def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
 
         The order in which files will be yielded is unspecified.

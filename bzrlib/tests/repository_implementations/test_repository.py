@@ -426,7 +426,7 @@ class TestRepository(TestCaseWithRepository):
         format = repo.get_serializer_format()
         self.assertEqual(repo._serializer.format_num, format)
 
-    def test_extract_files_bytes(self):
+    def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file1', 'foo'),
                                   ('tree/file2', 'bar')])
@@ -435,7 +435,7 @@ class TestRepository(TestCaseWithRepository):
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
         extracted = dict((i, ''.join(b)) for i, b in
-                         tree.branch.repository.extract_files_bytes(
+                         tree.branch.repository.iter_files_bytes(
                          [('file1-id', 'rev1', 'file1-old'),
                           ('file1-id', 'rev2', 'file1-new'),
                           ('file2-id', 'rev1', 'file2'),

@@ -124,7 +124,7 @@ class TestFileIds(TestCaseWithTree):
 
 class TestExtractFilesBytes(TestCaseWithTree):
 
-    def test_extract_files_bytes(self):
+    def test_iter_files_bytes(self):
         work_tree = self.make_branch_and_tree('wt')
         self.build_tree_contents([('wt/foo', 'foo'),
                                   ('wt/bar', 'bar'),
@@ -134,9 +134,9 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
-                         tree.extract_files_bytes([('foo-id', 'id1'),
-                                                   ('bar-id', 'id2'),
-                                                   ('baz-id', 'id3')]))
+                         tree.iter_files_bytes([('foo-id', 'id1'),
+                                                ('bar-id', 'id2'),
+                                                ('baz-id', 'id3')]))
         self.assertEqual('foo', extracted['id1'])
         self.assertEqual('bar', extracted['id2'])
         self.assertEqual('baz', extracted['id3'])

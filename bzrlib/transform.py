@@ -1317,7 +1317,7 @@ def _build_tree(tree, wt):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            for trans_id, bytes in tree.extract_files_bytes(deferred_contents):
+            for trans_id, bytes in tree.iter_files_bytes(deferred_contents):
                 tt.create_file(bytes, trans_id)
         finally:
             pb.finished()

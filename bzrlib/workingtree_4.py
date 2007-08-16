@@ -1521,14 +1521,14 @@ class DirStateRevisionTree(Tree):
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
 
-    def extract_files_bytes(self, desired_files):
-        """See Tree.extract_files_bytes.
+    def iter_files_bytes(self, desired_files):
+        """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.extract_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes"""
         parent_index = self._get_parent_index()
         repo_desired_files = [(f, self._get_entry(f)[1][parent_index][4], i)
                               for f, i in desired_files]
-        return self._repository.extract_files_bytes(repo_desired_files)
+        return self._repository.iter_files_bytes(repo_desired_files)
 
     def get_symlink_target(self, file_id):
         entry = self._get_entry(file_id=file_id)
