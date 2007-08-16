@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_nine,
     )
 from bzrlib.trace import mutter
 
@@ -767,14 +766,6 @@ def joinpath(p):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
-
-@deprecated_function(zero_nine)
-def appendpath(p1, p2):
-    if p1 == '':
-        return p2
-    else:
-        return pathjoin(p1, p2)
-    
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""

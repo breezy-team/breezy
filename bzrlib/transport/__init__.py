@@ -688,20 +688,6 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
-    @deprecated_method(zero_eleven)
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like object into the location.
-
-        :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
-                     None means just use the default
-        """
-        if isinstance(f, str):
-            return self.put_bytes(relpath, f, mode=mode)
-        else:
-            return self.put_file(relpath, f, mode=mode)
-
     def put_bytes(self, relpath, bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
@@ -789,22 +775,6 @@ class Transport(object):
                 self.mkdir(parent_dir, mode=dir_mode)
                 return self.put_file(relpath, f, mode=mode)
 
-    @deprecated_method(zero_eleven)
-    def put_multi(self, files, mode=None, pb=None):
-        """Put a set of files into the location.
-
-        :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :param mode: The mode for the newly created files
-        :return: The number of files copied.
-        """
-        def _put(path, f):
-            if isinstance(f, str):
-                self.put_bytes(path, f, mode=mode)
-            else:
-                self.put_file(path, f, mode=mode)
-        return len(self._iterate_over(files, _put, pb, 'put', expand=True))
-
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise NotImplementedError(self.mkdir)
@@ -814,16 +784,6 @@ class Transport(object):
         def mkdir(path):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
-
-    @deprecated_method(zero_eleven)
-    def append(self, relpath, f, mode=None):
-        """Append the text in the file-like object to the supplied location.
-
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
-        """
-        return self.append_file(relpath, f, mode=mode)
 
     def append_file(self, relpath, f, mode=None):
         """Append bytes from a file-like object to a file at relpath.
