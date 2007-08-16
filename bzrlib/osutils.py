@@ -1080,7 +1080,7 @@ def walkdirs(top, prefix=""):
     
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
-    [(directory-relpath, basename, kind, lstat, path-from-top), ...]),
+    [(relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
      - directory-path-from-root is the path including top for this directory. 
