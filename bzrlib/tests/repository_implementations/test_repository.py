@@ -25,7 +25,6 @@ from bzrlib import (
     errors,
     remote,
     repository,
-    transform,
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory

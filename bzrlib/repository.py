@@ -733,6 +733,17 @@ class Repository(object):
         return result
 
     def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        The order in which files will be yielded is unspecified.
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value that uniquely identifies the file version.  (Example: a
+        TreeTransform trans_id.)
+
+        The default implementation just does VersionedFile.get_lines().
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            pairs
+        """
         transaction = self.get_transaction()
         for file_id, revision_id, callable_data in desired_files:
             weave = self.weave_store.get_weave(file_id, transaction)

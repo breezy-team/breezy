@@ -17,7 +17,6 @@
 from bzrlib import (
     errors,
     tests,
-    transform,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree

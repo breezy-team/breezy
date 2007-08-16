@@ -229,7 +229,10 @@ class Tree(object):
         """Iterate through file contents.
 
         The order in which files will be yielded is unspecified.
-        yields pairs of identifier, bytes_iterator
+        yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value that uniquely identifies the file version.  (Example: a
+        TreeTransform trans_id.)
+
         The default implementation just does get_file_text().
         :param desired_files: a list of (file_id, identifier) pairs
         """
