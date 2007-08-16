@@ -932,11 +932,10 @@ class KnitVersionedFile(VersionedFile):
         # we need version_id, position, length
         version_id_records = []
         requested_versions = set(version_ids)
-        # get a in-component-order queue:
-        for version_id in self.versions():
-            if version_id in requested_versions:
-                index_memo = self._index.get_position(version_id)
-                version_id_records.append((version_id, index_memo))
+        # create set of records to read:
+        for version_id in requested_versions:
+            index_memo = self._index.get_position(version_id)
+            version_id_records.append((version_id, index_memo))
 
         total = len(version_id_records)
         for version_idx, (version_id, data, sha_value) in \
