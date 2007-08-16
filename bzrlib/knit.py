@@ -2062,20 +2062,25 @@ class _KnitData(object):
                     yield (record[0], content, digest)
                 else:
                     needed_records.add(record)
-            needed_records = sorted(needed_records, key=operator.itemgetter(1))
         else:
-            needed_records = sorted(set(records), key=operator.itemgetter(1))
+            needed_records = records
 
         if not needed_records:
             return
 
+        # let the access object optimise lookups, so setup a mapping back to
+        # version_ids.
+        needed_memos = {}
+        for version_id, index_memo in needed_records:
+            needed_memos[index_memo] = version_id
+
         # The transport optimizes the fetching as well 
         # (ie, reads continuous ranges.)
-        raw_data = self._access.get_raw_records(
-            [index_memo for version_id, index_memo in needed_records])
+        raw_results = self._access.get_raw_records_unsorted(
+            needed_memos.iterkeys())
 
-        for (version_id, index_memo), data in \
-                izip(iter(needed_records), raw_data):
+        for index_memo, data in raw_results:
+            version_id = needed_memos[index_memo]
             content, digest = self._parse_record(version_id, data)
             if self._do_cache:
                 self._cache[version_id] = data
