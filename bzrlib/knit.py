@@ -932,10 +932,6 @@ class KnitVersionedFile(VersionedFile):
         # we need version_id, position, length
         version_id_records = []
         requested_versions = set(version_ids)
-        # filter for available versions
-        for version_id in requested_versions:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
         # get a in-component-order queue:
         for version_id in self.versions():
             if version_id in requested_versions:
