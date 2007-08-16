@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  BUG FIXES:
+
+    * Suppress warning "integer argument expected, got float" from Paramiko,
+      which sometimes caused false test failures.  (Martin Pool)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
