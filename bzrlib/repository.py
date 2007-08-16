@@ -732,6 +732,12 @@ class Repository(object):
             pb.finished()
         return result
 
+    def extract_files_bytes(self, callable, desired_files):
+        transaction = self.get_transaction()
+        for file_id, revision_id, callable_data in desired_files:
+            weave = self.weave_store.get_weave(file_id, transaction)
+            callable(weave.get_lines(revision_id), callable_data)
+
     @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',

@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     remote,
     repository,
+    transform,
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
@@ -424,6 +425,31 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
         self.assertEqual(repo._serializer.format_num, format)
+
+    def test_extract_files_bytes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file1', 'foo'),
+                                  ('tree/file2', 'bar')])
+        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        tree.commit('rev1', rev_id='rev1')
+        self.build_tree_contents([('tree/file1', 'baz')])
+        tree.commit('rev2', rev_id='rev2')
+        target = self.make_branch_and_tree('target')
+        tt = transform.TreeTransform(target)
+        self.addCleanup(tt.finalize)
+        desired_files = []
+        desired_files.append(('file1-id', 'rev1',
+                              tt.create_path('file1-old', tt.root)))
+        desired_files.append(('file1-id', 'rev2',
+                              tt.create_path('file1-new', tt.root)))
+        desired_files.append(('file2-id', 'rev1',
+                              tt.create_path('file2', tt.root)))
+        tree.branch.repository.extract_files_bytes(tt.create_file,
+            desired_files)
+        tt.apply()
+        self.assertFileEqual('foo', 'target/file1-old')
+        self.assertFileEqual('bar', 'target/file2')
+        self.assertFileEqual('baz', 'target/file1-new')
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

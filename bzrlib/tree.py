@@ -228,6 +228,7 @@ class Tree(object):
     def extract_files_bytes(self, callable, desired_files):
         """Provide file contents to the callable, as an iterator of bytes.
 
+        The order in which files will be extracted is unspecified.
         The default implementation just does get_file().
         :param callable: A callable that accepts (bytes_iterator,
             callable_data)
