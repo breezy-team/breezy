@@ -220,9 +220,14 @@ class RepositoryPackCollection(object):
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 time.time() - start_time)
         pack_hash = md5.new()
+        buffer = []
         def write_data(bytes, update=pack_hash.update):
-            write_stream(bytes)
-            update(bytes)
+            buffer.append(bytes)
+            if len(buffer) == 640:
+                bytes = ''.join(buffer)
+                write_stream(bytes)
+                update(bytes)
+                del buffer[:]
         writer = pack.ContainerWriter(write_data)
         writer.begin()
         # open new indices
@@ -273,6 +278,10 @@ class RepositoryPackCollection(object):
                 time.time() - start_time)
         # finish the pack
         writer.end()
+        if len(buffer):
+            bytes = ''.join(buffer)
+            write_stream(bytes)
+            pack_hash.update(bytes)
         new_name = pack_hash.hexdigest()
         # if nothing has been written, discard the new pack.
         if 0 == sum((len(list(revision_index.iter_all_entries())),
