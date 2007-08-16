@@ -272,7 +272,7 @@ class TestLockDir(TestCaseWithTransport):
         """LockDir.lock_write() will wait for the lock.""" 
         # the test suite sets the default to 0 to make deadlocks fail fast.
         # change it for this test, as we want to try a manual deadlock.
-        raise TestSkipped('Timing-sensitive test')
+        raise tests.TestSkipped('Timing-sensitive test')
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 300
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
