@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ class TestExceptionReporting(TestCase):
 
     def test_report_exception(self):
         """When an error occurs, display bug report details to stderr"""
-        out, err = self.run_bzr("assert-fail", retcode=3)
+        out, err = self.run_bzr("assert-fail", retcode=4)
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'please send this report to')

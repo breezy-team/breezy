@@ -13,6 +13,11 @@ IN DEVELOPMENT
     * ``pull -v`` no longer includes deltas, making it much faster.
       (Aaron Bentley)
 
+  CHANGES:
+  
+    * ``bzr`` now returns exit code 4 if an internal error occurred, and 
+      3 if a normal error occurred.  (Martin Pool)
+
   API CHANGES:
 
     * ``Transport.should_cache`` has been removed.  It was not called in the

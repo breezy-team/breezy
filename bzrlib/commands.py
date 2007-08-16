@@ -782,12 +782,12 @@ def run_bzr_catch_errors(argv):
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        trace.report_exception(sys.exc_info(), sys.stderr)
+        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
             import pdb
             pdb.post_mortem(sys.exc_traceback)
-        return 3
+        return exitcode
 
 
 class HelpCommandIndex(object):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,7 +63,10 @@ import logging
 import bzrlib
 
 lazy_import(globals(), """
-from bzrlib import debug
+from bzrlib import (
+    debug,
+    errors,
+    )
 """)
 
 _file_handler = None
@@ -262,22 +265,33 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
 
 
 def report_exception(exc_info, err_file):
+    """Display an error message for an exception.
+
+    This will show either a full traceback or a short message as appropriate.
+
+    :return: The appropriate exit code for this error.
+    """
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         print >>err_file, "bzr: broken pipe"
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
+        return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     else:
         report_bug(exc_info, err_file)
+        return errors.EXIT_INTERNAL_ERROR
 
 
 # TODO: Should these be specially encoding the output?
