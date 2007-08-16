@@ -1681,7 +1681,25 @@ class KnitGraphIndex(object):
         return set((version_id, ) for version_id in version_ids)
 
 
-class _KnitAccess(object):
+class _Access(object):
+    """Base class with common logic for accessing knit record data."""
+
+    def get_raw_records_unsorted(self, memos_for_retrieval):
+        """Get the raw bytes for many records with 'best' IO.
+
+        :param memos_for_retrieval: An iterable containing the memo's to 
+            use when retrieving the bytes. The Pack access method looks up the
+            pack to use for a given record in its index_to_pack map.
+        :return: An iterator over (memos, bytes) for all the requested
+            records.
+        """
+        # sort the memos
+        sorted_memos = sorted(memos_for_retrieval)
+        # delegate to the concrete class to get the now sorted records.
+        return izip(sorted_memos, self.get_raw_records(sorted_memos))
+
+
+class _KnitAccess(_Access):
     """Access to knit records in a .knit file."""
 
     def __init__(self, transport, filename, _file_mode, _dir_mode,
@@ -1761,7 +1779,7 @@ class _KnitAccess(object):
             yield data
 
 
-class _PackAccess(object):
+class _PackAccess(_Access):
     """Access to knit records via a collection of packs."""
 
     def __init__(self, index_to_packs, writer=None):
@@ -2022,6 +2040,7 @@ class _KnitData(object):
         The result will be returned in whatever is the fastest to read.
         Not by the order requested. Also, multiple requests for the same
         record will only yield 1 response.
+
         :param records: A list of (version_id, pos, len) entries
         :return: Yields (version_id, contents, digest) in the order
                  read, not the order requested

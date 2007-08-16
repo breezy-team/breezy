@@ -187,6 +187,16 @@ class KnitRecordAccessTestsMixin(object):
         access.create()
         self.assertAccessExists(access)
 
+    def test_get_raw_records_unsorted(self):
+        """get_raw_records_unsorted returns in best-read order."""
+        access = self.get_access()
+        memos = access.add_raw_records([10, 2, 5], '12345678901234567')
+        expected_result = zip(memos, ['1234567890', '12', '34567'])
+        self.assertEqual(expected_result,
+            list(access.get_raw_records_unsorted(memos)))
+        self.assertEqual(expected_result,
+            list(access.get_raw_records_unsorted(reversed(memos))))
+
     def test_open_file(self):
         """open_file never errors."""
         access = self.get_access()
