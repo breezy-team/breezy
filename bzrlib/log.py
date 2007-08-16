@@ -62,7 +62,6 @@ from bzrlib.revisionspec import(
     )
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eleven,
     zero_seventeen,
     )
 from bzrlib.trace import mutter
@@ -603,11 +602,6 @@ class LongLogFormatter(LogFormatter):
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta, tags=None):
         lr = LogRevision(rev, revno, 0, delta, tags)
-        return self.log_revision(lr)
-
-    @deprecated_method(zero_eleven)
-    def show_merge(self, rev, merge_depth):
-        lr = LogRevision(rev, merge_depth=merge_depth)
         return self.log_revision(lr)
 
     @deprecated_method(zero_seventeen)

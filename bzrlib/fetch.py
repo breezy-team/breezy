@@ -39,7 +39,6 @@ from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
-        zero_eight,
         )
 from bzrlib.trace import mutter
 import bzrlib.ui
@@ -62,15 +61,6 @@ from bzrlib.lazy_import import lazy_import
 # - and keep a note of all file ids and version seen
 # - then go through all files; for each one get the weave,
 #   and add in all file versions
-
-
-@deprecated_function(zero_eight)
-def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
-    """Legacy API, please see branch.fetch(from_branch, last_revision, pb)."""
-    f = Fetcher(to_branch, from_branch, revision, pb)
-    return f.count_copied, f.failed_revisions
-
-fetch = greedy_fetch
 
 
 class RepoFetcher(object):
@@ -389,12 +379,3 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs):
         self.helper.regenerate_inventory(revs)
-        
-
-class Fetcher(object):
-    """Backwards compatibility glue for branch.fetch()."""
-
-    @deprecated_method(zero_eight)
-    def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
-        """Please see branch.fetch()."""
-        to_branch.fetch(from_branch, last_revision, pb)
