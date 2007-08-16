@@ -11,6 +11,12 @@ IN DEVELOPMENT
     * New option ``--author`` in ``bzr commit`` to specify the author of the
       change, if it's different from the committer.  (Lukáš Lalinský)
 
+  API CHANGES:
+
+    * The static convenience method ``BzrDir.create_repository``
+      is deprecated.  Callers should instead create a ``BzrDir`` instance
+      and call ``create_repository`` on that.  (Martin Pool)
+
 bzr 0.90rc1 2007-08-14
 
   BUGFIXES:
