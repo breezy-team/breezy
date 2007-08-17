@@ -99,14 +99,14 @@ def hunk_from_header(line):
         raise MalformedHunkHeader("Does not start and end with @@.", line)
     try:
         (orig, mod) = line[3:-4].split(" ")
-    except Exception, e:
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if not orig.startswith('-') or not mod.startswith('+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
         (orig_pos, orig_range) = parse_range(orig[1:])
         (mod_pos, mod_range) = parse_range(mod[1:])
-    except Exception, e:
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
