@@ -1081,6 +1081,8 @@ class BundleTester(object):
         self.build_tree_contents([('tree/file2', 'contents3')])
         self.tree1.commit('rev3', rev_id='rev3')
         bundle = self.get_valid_bundle('reva', 'rev3')
+        if getattr(bundle, 'get_bundle_reader', None) is None:
+            raise TestSkipped('Bundle format cannot provide reader')
         # be sure that file1 comes before file2
         for b, m, k, r, f in bundle.get_bundle_reader().iter_records():
             if f == 'file3-id':
