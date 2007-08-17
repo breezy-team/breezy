@@ -959,17 +959,6 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        try:
-            os.mkdir(to_location)
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-                raise errors.BzrCommandError('Target directory "%s" already'
-                                             ' exists.' % to_location)
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Parent of "%s" does not exist.'
-                                             % to_location)
-            else:
-                raise
         source.create_checkout(to_location, revision_id, lightweight)
 
 
