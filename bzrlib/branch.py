@@ -377,14 +377,6 @@ class Branch(object):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
-    @deprecated_method(zero_ninetyone)
-    def append_revision(self, *revision_ids):
-        """Add a revision to the tip of this branch.
-
-        This method is deprecated, use set_last_revision_info instead.
-        """
-        raise NotImplementedError(self.append_revision)
-
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
@@ -1372,18 +1364,6 @@ class BzrBranch(Branch):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
-    @deprecated_method(zero_ninetyone)
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        """See Branch.append_revision."""
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        for revision_id in revision_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
-            mutter("add {%s} to revision-history" % revision_id)
-        rev_history = self.revision_history()
-        rev_history.extend(revision_ids)
-        self.set_revision_history(rev_history)
-
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
 
@@ -1415,11 +1395,8 @@ class BzrBranch(Branch):
         be permitted.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        # this check is disabled because the caller is required to make sure 
-        # they match, and it's useful for testing that we can set branches to
-        # revisions they cannot reconstruct.
-        ## history = self._lefthand_history(revision_id)
-        ##assert len(history) == revno, '%d != %d' % (len(history), revno)
+        history = self._lefthand_history(revision_id)
+        assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
@@ -2018,26 +1995,6 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(last_revision)
         self._write_last_revision_info(len(history), last_revision)
-
-    @deprecated_method(zero_ninetyone)
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        if len(revision_ids) == 0:
-            return
-        prev_revno, prev_revision = self.last_revision_info()
-        for revision in self.repository.get_revisions(revision_ids):
-            if prev_revision == _mod_revision.NULL_REVISION:
-                if revision.parent_ids != []:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            else:
-                if revision.parent_ids[0] != prev_revision:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            prev_revision = revision.revision_id
-        self.set_last_revision_info(prev_revno + len(revision_ids),
-                                    revision_ids[-1])
 
     @needs_write_lock
     def _set_parent_location(self, url):

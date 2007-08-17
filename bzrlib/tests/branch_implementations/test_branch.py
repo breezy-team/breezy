@@ -54,30 +54,6 @@ from bzrlib.symbol_versioning import (
 
 class TestBranch(TestCaseWithBranch):
 
-    def test_append_revision(self):
-        # note that append_revision is now deprecated; new code should call
-        # set_last_revision_info instead.
-        wt = self.make_branch_and_tree('tree')
-        wt.commit('f', rev_id='rev1')
-        wt.commit('f', rev_id='rev2')
-        wt.commit('f', rev_id='rev3')
-
-        br = self.get_branch()
-        br.fetch(wt.branch)
-        self.applyDeprecated(zero_ninetyone,
-            br.append_revision, "rev1")
-        self.assertEquals(br.revision_history(), ["rev1",])
-
-        # can append more than one revision
-        self.applyDeprecated(zero_ninetyone,
-            br.append_revision, "rev2", "rev3")
-        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-
-        # reserved ids are reserved
-        self.assertRaises(errors.ReservedId,
-            self.applyDeprecated, zero_ninetyone,
-                br.append_revision, 'current:')
-
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
         ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
