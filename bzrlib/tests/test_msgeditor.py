@@ -27,6 +27,7 @@ from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.msgeditor import (
     make_commit_message_template_encoded,
+    edit_commit_message_encoded
 )
 
 class MsgEditorTest(TestCaseWithTransport):
@@ -160,8 +161,8 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(u'\u1234'))
 
-        self.assertEqual('test message from fed\n',
-                         bzrlib.msgeditor.edit_commit_message_encoded(u'\u1234'.encode("utf8")))
+        tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
+        self.assertEqual('test message from fed\n', tmpl)
 
     def test_start_message(self):
         self.make_uncommitted_tree()
