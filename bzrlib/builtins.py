@@ -2266,11 +2266,9 @@ class cmd_commit(Command):
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif ((my_message and file ) or 
-                  (my_message and show_diff ) or 
-                  (file and show_diff )):
+            elif my_message and file:
                 raise errors.BzrCommandError(
-                    "please specify either --message or --file or --show-diff")
+                    "please specify either --message or --file")
             if file:
                 my_message = codecs.open(file, 'rt', 
                                          bzrlib.user_encoding).read()
