@@ -433,7 +433,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         oldpath_ = old_path.encode(path_encoding, "replace")
-        newpath_ = new_path.encode(path_encoding, "replace"),
+        newpath_ = new_path.encode(path_encoding, "replace")
         print >>to_file, "=== renamed %s '%s' => %r%s" % (kind, oldpath_,
                                                           newpath_, prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
@@ -448,7 +448,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        path_ = path.encode(path_encoding, "replace"),
+        path_ = path.encode(path_encoding, "replace")
         print >>to_file, "=== modified %s '%s'%s" % (kind, path_, prop_str)
         # The file may be in a different location in the old tree (because
         # the containing dir was renamed, but the file itself was not)
