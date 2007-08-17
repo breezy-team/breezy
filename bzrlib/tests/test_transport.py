@@ -298,7 +298,6 @@ class TestMemoryTransport(TestCase):
     def test_parameters(self):
         transport = MemoryTransport()
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(False, transport.is_readonly())
 
     def test_iter_files_recursive(self):
@@ -414,7 +413,6 @@ class ReadonlyDecoratorTransportTest(TestCase):
         # connect to . in readonly mode
         transport = readonly.ReadonlyTransportDecorator('readonly+.')
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(True, transport.is_readonly())
 
     def test_http_parameters(self):
@@ -428,7 +426,6 @@ class ReadonlyDecoratorTransportTest(TestCase):
             self.failUnless(isinstance(transport,
                                        readonly.ReadonlyTransportDecorator))
             self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.should_cache())
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
@@ -443,15 +440,14 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         return fakenfs.FakeNFSTransportDecorator('fakenfs+' + url)
 
     def test_local_parameters(self):
-        # the listable, should_cache and is_readonly parameters
+        # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
         transport = self.get_nfs_transport('.')
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(False, transport.is_readonly())
 
     def test_http_parameters(self):
-        # the listable, should_cache and is_readonly parameters
+        # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
         from bzrlib.tests.HttpServer import HttpServer
         # connect to . via http which is not listable
@@ -462,7 +458,6 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
             self.assertIsInstance(
                 transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
             self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.should_cache())
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
