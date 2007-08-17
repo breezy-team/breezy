@@ -103,8 +103,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     if not start_message is None:
         start_message = start_message.encode(bzrlib.user_encoding)
     return edit_commit_message_encoded(infotext.encode(bzrlib.user_encoding),
-                               ignoreline,
-                               start_message)
+                                       ignoreline, start_message)
 
 
 def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
@@ -237,8 +236,7 @@ def make_commit_message_template(working_tree, specific_files):
 
 
 def make_commit_message_template_encoded(working_tree, specific_files,
-                                 diff=None,
-                                 output_encoding=None):
+                                         diff=None, output_encoding=None):
     """Prepare a template file for a commit into a branch.
 
     Returns an encoded string.
@@ -260,8 +258,8 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     if diff:
         stream = StringIO()
         show_diff_trees(working_tree.basis_tree(),
-                working_tree, stream, specific_files,
-                path_encoding=output_encoding)
+                        working_tree, stream, specific_files,
+                        path_encoding=output_encoding)
         template = template + '\n' + stream.getvalue()
 
     return template

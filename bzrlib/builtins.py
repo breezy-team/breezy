@@ -2226,15 +2226,10 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
-        from bzrlib.errors import (
-                PointlessCommit,
-                ConflictsInTree,
-                StrictCommitFailed
-        )
-        from bzrlib.msgeditor import (
-                edit_commit_message_encoded,
-                make_commit_message_template_encoded
-        )
+        from bzrlib.errors import (PointlessCommit, ConflictsInTree,
+                StrictCommitFailed)
+        from bzrlib.msgeditor import (edit_commit_message_encoded,
+                make_commit_message_template_encoded)
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
