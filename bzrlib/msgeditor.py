@@ -223,8 +223,6 @@ def make_commit_message_template(working_tree, specific_files):
 
     Returns a unicode string containing the template.
     """
-    # TODO: Should probably be given the WorkingTree not the branch
-    #
     # TODO: make provision for this to be overridden or modified by a hook
     #
     # TODO: Rather than running the status command, should prepare a draft of
@@ -245,8 +243,6 @@ def make_commit_message_template_encoded(working_tree, specific_files,
 
     Returns an encoded string.
     """
-    # TODO: Should probably be given the WorkingTree not the branch
-    #
     # TODO: make provision for this to be overridden or modified by a hook
     #
     # TODO: Rather than running the status command, should prepare a draft of
@@ -258,7 +254,8 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     if output_encoding is None:
         output_encoding = 'utf-8'
 
-    template = make_commit_message_template(working_tree, specific_files).encode(output_encoding, "replace")
+    template = make_commit_message_template(working_tree, specific_files)
+    template = template.encode(output_encoding, "replace")
 
     if diff:
         stream = StringIO()

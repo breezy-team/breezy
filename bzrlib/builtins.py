@@ -2229,10 +2229,15 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             show_diff=False):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
-        from bzrlib.errors import (PointlessCommit, ConflictsInTree,
-                StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message_encoded, \
+        from bzrlib.errors import (
+                PointlessCommit,
+                ConflictsInTree,
+                StrictCommitFailed
+        )
+        from bzrlib.msgeditor import (
+                edit_commit_message_encoded,
                 make_commit_message_template_encoded
+        )
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -2260,16 +2265,18 @@ class cmd_commit(Command):
             """Callback to get commit message"""
             my_message = message
             if my_message is None and not file:
-                template = make_commit_message_template_encoded(tree, selected_list,
-                                                        diff=show_diff,
-                                                        output_encoding=bzrlib.user_encoding)
-                my_message = edit_commit_message_encoded(template)
+                t = make_commit_message_template_encoded(tree,
+                                                         selected_list,
+                                                         diff=show_diff,
+                                                         output_encoding=
+                                                           bzrlib.user_encoding)
+                my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif (my_message and file ) or \
-                 (my_message and show_diff ) or \
-                 (file and show_diff ):
+            elif ((my_message and file ) or 
+                  (my_message and show_diff ) or 
+                  (file and show_diff )):
                 raise errors.BzrCommandError(
                     "please specify either --message or --file or --show-diff")
             if file:

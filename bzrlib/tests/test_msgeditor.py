@@ -25,7 +25,9 @@ from bzrlib.config import ensure_config_dir_exists, config_filename
 import bzrlib.msgeditor 
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
-
+from bzrlib.msgeditor import (
+    make_commit_message_template_encoded,
+)
 
 class MsgEditorTest(TestCaseWithTransport):
 
@@ -45,7 +47,8 @@ class MsgEditorTest(TestCaseWithTransport):
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
-        template = bzrlib.msgeditor.make_commit_message_template(working_tree, None)
+        template = bzrlib.msgeditor.make_commit_message_template(working_tree,
+                                                                 None)
         self.assertEqualDiff(template,
 u"""\
 added:
@@ -55,9 +58,9 @@ added:
     def test_commit_template_encoded(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
-        template = bzrlib.msgeditor.make_commit_message_template_encoded(working_tree,
-                                                     None,
-                                                     output_encoding='utf8')
+        template = make_commit_message_template_encoded(working_tree,
+                                                        None,
+                                                        output_encoding='utf8')
         self.assertEqualDiff(template,
 u"""\
 added:
@@ -68,9 +71,10 @@ added:
     def test_commit_template_and_diff(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
-        template = bzrlib.msgeditor.make_commit_message_template_encoded(working_tree,
-                                                     None, diff=True,
-                                                     output_encoding='utf8')
+        template = make_commit_message_template_encoded(working_tree,
+                                                        None,
+                                                        diff=True,
+                                                        output_encoding='utf8')
 
         self.assertTrue("""\
 @@ -0,0 +1,1 @@
