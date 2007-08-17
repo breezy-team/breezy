@@ -695,3 +695,22 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(['bar', 'baz'], err.files)
         self.assertEqual('Selected-file commit of merges is not supported'
                          ' yet: files bar, baz', str(err))
+
+    def test_commit_no_author(self):
+        """The default kwarg author in MutableTree.commit should not add
+        the 'author' revision property.
+        """
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertFalse('author' in rev.properties)
+
+    def test_commit_author(self):
+        """Passing a non-empty author kwarg to MutableTree.commit should add
+        the 'author' revision property.
+        """
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1', author='John Doe <jdoe@example.com>')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('John Doe <jdoe@example.com>',
+                         rev.properties['author'])

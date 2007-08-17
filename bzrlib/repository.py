@@ -53,7 +53,6 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_nine,
         )
 from bzrlib.trace import mutter, note, warning
 
@@ -731,6 +730,57 @@ class Repository(object):
         finally:
             pb.finished()
         return result
+
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get an iterable listing the keys of all the data introduced by a set
+        of revision IDs.
+
+        The keys will be ordered so that the corresponding items can be safely
+        fetched and inserted in that order.
+
+        :returns: An iterable producing tuples of (knit-kind, file-id,
+            versions).  knit-kind is one of 'file', 'inventory', 'signatures',
+            'revisions'.  file-id is None unless knit-kind is 'file'.
+        """
+        # XXX: it's a bit weird to control the inventory weave caching in this
+        # generator.  Ideally the caching would be done in fetch.py I think.  Or
+        # maybe this generator should explicitly have the contract that it
+        # should not be iterated until the previously yielded item has been
+        # processed?
+        inv_w = self.get_inventory_weave()
+        inv_w.enable_cache()
+
+        # file ids that changed
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        count = 0
+        num_file_ids = len(file_ids)
+        for file_id, altered_versions in file_ids.iteritems():
+            if _files_pb is not None:
+                _files_pb.update("fetch texts", count, num_file_ids)
+            count += 1
+            yield ("file", file_id, altered_versions)
+        # We're done with the files_pb.  Note that it finished by the caller,
+        # just as it was created by the caller.
+        del _files_pb
+
+        # inventory
+        yield ("inventory", None, revision_ids)
+        inv_w.clear_cache()
+
+        # signatures
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
+
+        # revisions
+        yield ("revisions", None, revision_ids)
 
     @needs_read_lock
     def get_inventory_weave(self):

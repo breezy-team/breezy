@@ -20,7 +20,7 @@ from bzrlib import (
     )
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
-from bzrlib.symbol_versioning import deprecated_function, zero_nine
+from bzrlib.symbol_versioning import deprecated_function
 
 
 class TreeDelta(object):
@@ -201,18 +201,6 @@ class TreeDelta(object):
         output = StringIO.StringIO()
         self.show(output, show_ids, show_unchanged, short_status)
         return output.getvalue()
-
-@deprecated_function(zero_nine)
-def compare_trees(old_tree, new_tree, want_unchanged=False,
-                  specific_files=None, extra_trees=None,
-                  require_versioned=False):
-    """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
-    return new_tree.changes_from(old_tree,
-        want_unchanged=want_unchanged,
-        specific_files=specific_files,
-        extra_trees=extra_trees,
-        require_versioned=require_versioned,
-        include_root=False)
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
