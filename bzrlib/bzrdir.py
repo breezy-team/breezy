@@ -2363,6 +2363,7 @@ class BzrDirFormatRegistry(registry.Registry):
             repositories.
 
             """)
+        default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
         for key in self.keys():
@@ -2380,8 +2381,9 @@ class BzrDirFormatRegistry(registry.Registry):
             return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped(default_realkey, '(default) %s' % default_help,
-                          self.get_info('default'))
+        if default_realkey is not None:
+            output += wrapped(default_realkey, '(default) %s' % default_help,
+                              self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)
