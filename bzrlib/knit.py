@@ -1029,27 +1029,6 @@ class KnitVersionedFile(VersionedFile):
         versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry_with_ghosts(versions)
 
-    #@deprecated_method(zero_eight)
-    def walk(self, version_ids):
-        """See VersionedFile.walk."""
-        # We take the short path here, and extract all relevant texts
-        # and put them in a weave and let that do all the work.  Far
-        # from optimal, but is much simpler.
-        # FIXME RB 20060228 this really is inefficient!
-        from bzrlib.weave import Weave
-
-        w = Weave(self.filename)
-        ancestry = set(self.get_ancestry(version_ids, topo_sorted=False))
-        sorted_graph = topo_sort(self._index.get_graph())
-        version_list = [vid for vid in sorted_graph if vid in ancestry]
-        
-        for version_id in version_list:
-            lines = self.get_lines(version_id)
-            w.add_lines(version_id, self.get_parents(version_id), lines)
-
-        for lineno, insert_id, dset, line in w.walk(version_ids):
-            yield lineno, insert_id, dset, line
-
     def plan_merge(self, ver_a, ver_b):
         """See VersionedFile.plan_merge."""
         ver_a = osutils.safe_revision_id(ver_a)
@@ -1942,16 +1921,16 @@ class _KnitData(object):
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             rec = self._check_header(version_id, df.readline())
-        except IOError, e:
+        except Exception, e:
             raise KnitCorrupt(self._access,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
-            return df, rec
+        return df, rec
 
-        def _check_header(self, version_id, line):
-            rec = line.split()
-            if len(rec) != 4:
-                raise KnitCorrupt(self._access,
+    def _check_header(self, version_id, line):
+        rec = line.split()
+        if len(rec) != 4:
+            raise KnitCorrupt(self._access,
                               'unexpected number of elements in record header')
         if rec[1] != version_id:
             raise KnitCorrupt(self._access,
@@ -1968,7 +1947,7 @@ class _KnitData(object):
 
         try:
             record_contents = df.readlines()
-        except IOError, e:
+        except Exception, e:
             raise KnitCorrupt(self._access,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
