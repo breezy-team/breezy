@@ -1,5 +1,12 @@
 IN DEVELOPMENT
 
+  CHANGES:
+
+   * The default branch and repository format has changed to 
+     ``dirstate-tags``, so tag commands are active by default.
+     This format is compatible with Bazaar 0.15 and later.
+     (Martin Pool)
+
   FEATURES:
 
     * New option ``--author`` in ``bzr commit`` to specify the author of the
@@ -18,7 +25,12 @@ IN DEVELOPMENT
     * ``pull -v`` no longer includes deltas, making it much faster.
       (Aaron Bentley)
 
-  API CHANGES:
+  API BREAKS:
+
+   * ``Branch.append_revision`` is removed altogether; please use 
+     ``Branch.set_last_revision_info`` instead.  (Martin Pool)
+
+  aPI CHANGES:
 
     * ``Transport.should_cache`` has been removed.  It was not called in the
       previous release.  (Martin Pool)
