@@ -22,7 +22,6 @@ import gzip
 
 from bzrlib import osutils
 from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
-from bzrlib.store import copy_all
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCaseWithTransport
 import bzrlib.transport

@@ -19,12 +19,12 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestAliases(TestCaseInTempDir):
+class TestAliases(ExternalBase):
 
     def test_aliases(self):
 
@@ -39,7 +39,7 @@ class TestAliases(TestCaseInTempDir):
             # Something is wrong in environment, 
             # we risk overwriting users config 
             self.assert_(config_filename() + "exists, abort")
-        
+
         ensure_config_dir_exists()
         CONFIG=("[ALIASES]\n"
                 "c=cat\n"
@@ -48,20 +48,18 @@ class TestAliases(TestCaseInTempDir):
 
         open(config_filename(),'wb').write(CONFIG)
 
-
         str1 = 'foo\n'
         str2 = 'bar\n'
 
-        bzr('init')
-        open('a', 'wb').write(str1)
-        bzr('add a')
-
-        bzr('commit -m 1')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', str1)])
+        tree.add('a')
+        tree.commit(message='1')
 
         self.assertEquals(bzr('c a'), str1)
 
-        open('a', 'wb').write(str2)
-        bzr('commit -m 2')
+        self.build_tree_contents([('a', str2)])
+        tree.commit(message='2')
 
         self.assertEquals(bzr('c a'), str2)
         self.assertEquals(bzr('c1 a'), str1)

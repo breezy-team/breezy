@@ -568,7 +568,9 @@ class cmd_pull(Command):
     """
 
     _see_also = ['push', 'update', 'status-flags']
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+    takes_options = ['remember', 'overwrite', 'revision',
+        Option('verbose', short_name='v',
+            help='Show logs of pulled revisions.'),
         Option('directory',
             help='Branch to pull into, '
                  'rather than the one containing the working directory.',
@@ -640,10 +642,9 @@ class cmd_pull(Command):
 
         result.report(self.outf)
         if verbose:
-            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            show_changed_revisions(branch_to, old_rh, new_rh,
-                                   to_file=self.outf)
+            log.show_changed_revisions(branch_to, old_rh, new_rh,
+                                       to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -958,17 +959,6 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        try:
-            os.mkdir(to_location)
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-                raise errors.BzrCommandError('Target directory "%s" already'
-                                             ' exists.' % to_location)
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Parent of "%s" does not exist.'
-                                             % to_location)
-            else:
-                raise
         source.create_checkout(to_location, revision_id, lightweight)
 
 
@@ -2145,6 +2135,10 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    If author of the change is not the same person as the committer, you can
+    specify the author's name using the --author option. The name should be
+    in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
+
     A selected-file commit may fail in some cases where the committed
     tree would be invalid. Consider::
 
@@ -2191,6 +2185,9 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
+             Option('author', type=str,
+                    help="Set the author's name, if it's different "
+                         "from the committer."),
              Option('local',
                     help="Perform a local commit in a bound "
                          "branch.  Local commits are not pushed to "
@@ -2227,7 +2224,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            show_diff=False):
+            author=None, show_diff=False):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (
                 PointlessCommit,
@@ -2295,7 +2292,8 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties)
+                        reporter=reporter, revprops=properties,
+                        author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -2544,7 +2542,12 @@ class cmd_selftest(Command):
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if not list_only:
-            show_version(show_config=False, show_copyright=False)
+            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
+            print '   %s (%s python%s)' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    '.'.join(map(str, sys.version_info)),
+                    )
         print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
