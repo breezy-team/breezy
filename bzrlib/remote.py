@@ -1079,12 +1079,6 @@ class RemoteBranch(branch.Branch):
         return result
 
     @needs_write_lock
-    @deprecated_method(zero_ninetyone)
-    def append_revision(self, *revision_ids):
-        self._ensure_real()
-        return self._real_branch.append_revision(*revision_ids)
-
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
         # FIXME: This asks the real branch to run the hooks, which means

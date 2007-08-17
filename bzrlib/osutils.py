@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_nine,
     )
 from bzrlib.trace import mutter
 
@@ -768,14 +767,6 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-@deprecated_function(zero_nine)
-def appendpath(p1, p2):
-    if p1 == '':
-        return p2
-    else:
-        return pathjoin(p1, p2)
-    
-
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     lines = s.split('\n')
@@ -1089,7 +1080,7 @@ def walkdirs(top, prefix=""):
     
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
-    [(directory-relpath, basename, kind, lstat, path-from-top), ...]),
+    [(relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
      - directory-path-from-root is the path including top for this directory. 

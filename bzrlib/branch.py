@@ -49,7 +49,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            HistoryMissing, InvalidRevisionId,
                            InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NoSuchRevision, NotVersionedError,
                            NotBranchError, UninitializableFormat,
                            UnlistableStore, UnlistableBranch,
                            )
@@ -117,12 +117,6 @@ class Branch(object):
             master.break_lock()
 
     @staticmethod
-    @deprecated_method(zero_eight)
-    def open_downlevel(base):
-        """Open a branch which may be of an old format."""
-        return Branch.open(base, _unsupported=True)
-
-    @staticmethod
     def open(base, _unsupported=False):
         """Open the branch rooted at base.
 
@@ -153,25 +147,6 @@ class Branch(object):
         control, relpath = bzrdir.BzrDir.open_containing(url,
                                                          possible_transports)
         return control.open_branch(), relpath
-
-    @staticmethod
-    @deprecated_function(zero_eight)
-    def initialize(base):
-        """Create a new working tree and branch, rooted at 'base' (url)
-
-        NOTE: This will soon be deprecated in favour of creation
-        through a BzrDir.
-        """
-        return bzrdir.BzrDir.create_standalone_workingtree(base).branch
-
-    @deprecated_function(zero_eight)
-    def setup_caching(self, cache_root):
-        """Subclasses that care about caching should override this, and set
-        up cached stores located under cache_root.
-        
-        NOTE: This is unused.
-        """
-        pass
 
     def get_config(self):
         return BranchConfig(self)
@@ -376,15 +351,6 @@ class Branch(object):
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
-
-    @deprecated_method(zero_ninetyone)
-    def append_revision(self, *revision_ids):
-        """Append the specified revisions to the branch's revision history.
-
-        Rather than calling this, please use set_last_revision_info(), which
-        takes just the new tip revision.
-        """
-        raise NotImplementedError(self.append_revision)
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
@@ -1375,18 +1341,6 @@ class BzrBranch(Branch):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
-    @deprecated_method(zero_ninetyone)
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        """See Branch.append_revision."""
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        for revision_id in revision_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
-            mutter("add {%s} to revision-history" % revision_id)
-        rev_history = self.revision_history()
-        rev_history.extend(revision_ids)
-        self.set_revision_history(rev_history)
-
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
 
@@ -1407,6 +1361,16 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision of this branch.
+
+        The caller is responsible for checking that the revno is correct
+        for this revision id.
+
+        It may be possible to set the branch last revision to an id not
+        present in the repository.  However, branches can also be 
+        configured to check constraints on history, in which case this may not
+        be permitted.
+        """
         revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
@@ -1484,16 +1448,6 @@ class BzrBranch(Branch):
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
-
-    @deprecated_method(zero_eight)
-    def working_tree(self):
-        """Create a Working tree object for this branch."""
-
-        from bzrlib.transport.local import LocalTransport
-        if (self.base.find('://') != -1 or 
-            not isinstance(self._transport, LocalTransport)):
-            raise NoWorkingTree(self.base)
-        return self.bzrdir.open_workingtree()
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -1681,12 +1635,6 @@ class BzrBranch(Branch):
         else:
             assert isinstance(url, str)
             self.control_files.put_bytes('parent', url + '\n')
-
-    @deprecated_function(zero_nine)
-    def tree_config(self):
-        """DEPRECATED; call get_config instead.  
-        TreeConfig has become part of BranchConfig."""
-        return TreeConfig(self)
 
 
 class BzrBranch5(BzrBranch):
@@ -2008,26 +1956,6 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(last_revision)
         self._write_last_revision_info(len(history), last_revision)
-
-    @deprecated_method(zero_ninetyone)
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        if len(revision_ids) == 0:
-            return
-        prev_revno, prev_revision = self.last_revision_info()
-        for revision in self.repository.get_revisions(revision_ids):
-            if prev_revision == _mod_revision.NULL_REVISION:
-                if revision.parent_ids != []:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            else:
-                if revision.parent_ids[0] != prev_revision:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            prev_revision = revision.revision_id
-        self.set_last_revision_info(prev_revno + len(revision_ids),
-                                    revision_ids[-1])
 
     @needs_write_lock
     def _set_parent_location(self, url):

@@ -103,19 +103,11 @@ def fetch_steps(self, br_a, br_b, writable_a):
     # that was requested.
     self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
 
-    # We try to pull a revision 'a-b-c' from a branch whose repository doesn't
-    # contain a-b-c; this should give InstallFailed.  This doesn't work
-    # properly for all formats but it does (should) for the current default
-    # format.
-    br_a2.set_last_revision_info(42, 'a-b-c')
-    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2)
-
-    # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
-    #       revisions which are not present?  In that case, this test
-    #       must be rewritten.
-    #
-    #       RBC 20060403 the way to do this is to uncommit the revision from
-    #       the repository after the commit
+    # TODO: Test trying to fetch from a branch that points to a revision not
+    # actually present in its repository.  Not every branch format allows you
+    # to directly point to such revisions, so it's a bit complicated to
+    # construct.  One way would be to uncommit and gc the revision, but not
+    # every branch supports that.  -- mbp 20070814
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
