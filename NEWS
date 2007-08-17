@@ -17,6 +17,9 @@ IN DEVELOPMENT
     * Suppress warning "integer argument expected, got float" from Paramiko,
       which sometimes caused false test failures.  (Martin Pool)
 
+    * Fix bug in bunle 4 that could cause attempts to write data to wrong
+      versionedfile.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
