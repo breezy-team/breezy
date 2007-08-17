@@ -19,6 +19,7 @@
 from bzrlib import (
     bzrdir,
     errors,
+    gpg,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
@@ -81,7 +82,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         wt = self.make_branch_and_tree('a-repo-with-sigs')
         wt.commit('rev1', allow_pointless=True, rev_id='rev1')
         repo = wt.branch.repository
-        repo.sign_revision('rev1', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
         return repo
 
     def test_fetch_copies_signatures(self):
@@ -91,4 +92,3 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.assertEqual(
             source_repo.get_signature_text('rev1'),
             target_repo.get_signature_text('rev1'))
-
