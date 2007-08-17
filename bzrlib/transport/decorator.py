@@ -137,10 +137,6 @@ class TransportDecorator(Transport):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
 
-    def should_cache(self):
-        """See Transport.should_cache()."""
-        return self._decorated.should_cache()
-
     def stat(self, relpath):
         """See Transport.stat()."""
         return self._decorated.stat(relpath)

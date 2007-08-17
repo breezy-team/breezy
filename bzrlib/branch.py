@@ -49,7 +49,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            HistoryMissing, InvalidRevisionId,
                            InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NoSuchRevision, NotVersionedError,
                            NotBranchError, UninitializableFormat,
                            UnlistableStore, UnlistableBranch,
                            )
@@ -117,12 +117,6 @@ class Branch(object):
             master.break_lock()
 
     @staticmethod
-    @deprecated_method(zero_eight)
-    def open_downlevel(base):
-        """Open a branch which may be of an old format."""
-        return Branch.open(base, _unsupported=True)
-
-    @staticmethod
     def open(base, _unsupported=False):
         """Open the branch rooted at base.
 
@@ -153,25 +147,6 @@ class Branch(object):
         control, relpath = bzrdir.BzrDir.open_containing(url,
                                                          possible_transports)
         return control.open_branch(), relpath
-
-    @staticmethod
-    @deprecated_function(zero_eight)
-    def initialize(base):
-        """Create a new working tree and branch, rooted at 'base' (url)
-
-        NOTE: This will soon be deprecated in favour of creation
-        through a BzrDir.
-        """
-        return bzrdir.BzrDir.create_standalone_workingtree(base).branch
-
-    @deprecated_function(zero_eight)
-    def setup_caching(self, cache_root):
-        """Subclasses that care about caching should override this, and set
-        up cached stores located under cache_root.
-        
-        NOTE: This is unused.
-        """
-        pass
 
     def get_config(self):
         return BranchConfig(self)
@@ -1472,16 +1447,6 @@ class BzrBranch(Branch):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
 
-    @deprecated_method(zero_eight)
-    def working_tree(self):
-        """Create a Working tree object for this branch."""
-
-        from bzrlib.transport.local import LocalTransport
-        if (self.base.find('://') != -1 or 
-            not isinstance(self._transport, LocalTransport)):
-            raise NoWorkingTree(self.base)
-        return self.bzrdir.open_workingtree()
-
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              _hook_master=None, run_hooks=True):
@@ -1668,12 +1633,6 @@ class BzrBranch(Branch):
         else:
             assert isinstance(url, str)
             self.control_files.put_bytes('parent', url + '\n')
-
-    @deprecated_function(zero_nine)
-    def tree_config(self):
-        """DEPRECATED; call get_config instead.  
-        TreeConfig has become part of BranchConfig."""
-        return TreeConfig(self)
 
 
 class BzrBranch5(BzrBranch):

@@ -35,7 +35,10 @@ from bzrlib import (
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
-from bzrlib.symbol_versioning import zero_ten, zero_eleven
+from bzrlib.symbol_versioning import (
+        zero_ten,
+        zero_eleven,
+        )
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
