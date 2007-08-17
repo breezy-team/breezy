@@ -17,8 +17,10 @@ IN DEVELOPMENT
     * Suppress warning "integer argument expected, got float" from Paramiko,
       which sometimes caused false test failures.  (Martin Pool)
 
-    * Fix bug in bunle 4 that could cause attempts to write data to wrong
+    * Fix bug in bundle 4 that could cause attempts to write data to wrong
       versionedfile.  (Aaron Bentley)
+
+    * Diffs generated using "diff -p" no longer break the patch parser.
 
   IMPROVEMENTS:
 
