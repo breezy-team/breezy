@@ -1404,9 +1404,22 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision of this branch.
+
+        The caller is responsible for checking that the revno is correct
+        for this revision id.
+
+        It may be possible to set the branch last revision to an id not
+        present in the repository.  However, branches can also be 
+        configured to check constraints on history, in which case this may not
+        be permitted.
+        """
         revision_id = osutils.safe_revision_id(revision_id)
-        history = self._lefthand_history(revision_id)
-        assert len(history) == revno, '%d != %d' % (len(history), revno)
+        # this check is disabled because the caller is required to make sure 
+        # they match, and it's useful for testing that we can set branches to
+        # revisions they cannot reconstruct.
+        ## history = self._lefthand_history(revision_id)
+        ##assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
