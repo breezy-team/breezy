@@ -34,7 +34,7 @@ class SmartServerBranchRequest(SmartServerRequest):
 
         If the branch is a branch reference, NotBranchError is raised.
         """
-        transport = self._backing_transport.clone(path)
+        transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)

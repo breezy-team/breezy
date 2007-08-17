@@ -113,6 +113,9 @@ class ChrootTransport(Transport):
     def has(self, relpath):
         return self._call('has', relpath)
 
+    def is_readonly(self):
+        return self.server.backing_transport.is_readonly()
+
     def iter_files_recursive(self):
         backing_transport = self.server.backing_transport.clone(
             self._safe_relpath('.'))

@@ -24,20 +24,33 @@ from bzrlib import (
     errors,
     registry,
     revision,
+    urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
+from bzrlib.trace import mutter
+from bzrlib.transport import get_transport
+from bzrlib.transport.chroot import ChrootServer
 
 
 class SmartServerRequest(object):
     """Base class for request handlers."""
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param backing_transport: the base transport to be used when performing
             this request.
+        :param root_client_path: the client path that maps to the root of
+            backing_transport.  This is used to interpret relpaths received from
+            the client.
         """
         self._backing_transport = backing_transport
+#        self._real_backing_transport = backing_transport
+        if not root_client_path.startswith('/'):
+            root_client_path = '/' + root_client_path
+        if not root_client_path.endswith('/'):
+            root_client_path += '/'
+        self._root_client_path = root_client_path
 
     def _check_enabled(self):
         """Raises DisabledMethod if this method is disabled."""
@@ -63,6 +76,14 @@ class SmartServerRequest(object):
         """
         self._check_enabled()
         return self.do(*args)
+#        chrooted_backing = ChrootServer(self._real_backing_transport)
+#        chrooted_backing.setUp()
+#        self._backing_transport = get_transport(chrooted_backing.get_url())
+#        try:
+#            return self.do(*args)
+#        finally:
+#            self._backing_transport = None
+#            chrooted_backing.tearDown()
 
     def do_body(self, body_bytes):
         """Called if the client sends a body with the request.
@@ -74,6 +95,25 @@ class SmartServerRequest(object):
         # this NotImplementedError and translate it into a 'bad request' error
         # to send to the client.
         raise NotImplementedError(self.do_body)
+    
+    def translate_client_path(self, client_path):
+        if not client_path.startswith('/'):
+            client_path = '/' + client_path
+        if client_path.startswith(self._root_client_path):
+            path = client_path[len(self._root_client_path):]
+            relpath = urlutils.joinpath('/', path)
+            assert relpath.startswith('/')
+            return '.' + relpath
+        else:
+            raise errors.PathNotChild(client_path, self._root_client_path)
+
+    def transport_from_client_path(self, client_path):
+        # inputs:
+        #  * 'path': path the client sent
+        #  * 'self._backing_transport': transport rooted at what we're serving
+        #  * xxx: path to _backing_transport root as a client path
+        relpath = self.translate_client_path(client_path)
+        return self._backing_transport.clone(relpath)
 
 
 class SmartServerResponse(object):
@@ -93,7 +133,8 @@ class SmartServerResponse(object):
         return other.args == self.args and other.body == self.body
 
     def __repr__(self):
-        return "<SmartServerResponse args=%r body=%r>" % (self.is_successful(), 
+        status = {True: 'OK', False: 'ERR'}[self.is_successful()]
+        return "<SmartServerResponse status=%s args=%r body=%r>" % (status,
             self.args, self.body)
 
 
@@ -130,7 +171,7 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    def __init__(self, backing_transport, commands):
+    def __init__(self, backing_transport, commands, root_client_path):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -138,6 +179,7 @@ class SmartServerRequestHandler(object):
             subclasses. e.g. bzrlib.transport.smart.vfs.vfs_commands.
         """
         self._backing_transport = backing_transport
+        self._root_client_path = root_client_path
         self._commands = commands
         self._body_bytes = ''
         self.response = None
@@ -163,11 +205,13 @@ class SmartServerRequestHandler(object):
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
+        #mutter('%s[%s]: %r %r)' % (self._backing_transport.server.backing_transport.base,
+        #    self._backing_transport.base_path, cmd, args))
         try:
             command = self._commands.get(cmd)
         except LookupError:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self._command = command(self._backing_transport)
+        self._command = command(self._backing_transport, self._root_client_path)
         self._run_handler_code(self._command.execute, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
@@ -182,6 +226,7 @@ class SmartServerRequestHandler(object):
         result = self._call_converting_errors(callable, args, kwargs)
 
         if result is not None:
+            #mutter('  -> %r' % (result,))
             self.response = result
             self.finished_reading = True
 

@@ -43,7 +43,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         :param path: The path for the repository.
         :return: A smart server from self.do_repository_request().
         """
-        transport = self._backing_transport.clone(path)
+        transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
         repository = bzrdir.open_repository()
         return self.do_repository_request(repository, *args)

@@ -72,8 +72,9 @@ class SmartProtocolBase(object):
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
     
-    def __init__(self, backing_transport, write_func):
+    def __init__(self, backing_transport, write_func, root_client_path='/'):
         self._backing_transport = backing_transport
+        self._root_client_path = root_client_path
         self.excess_buffer = ''
         self._finished = False
         self.in_buffer = ''
@@ -99,7 +100,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 first_line += '\n'
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
-                    self._backing_transport, commands=request.request_handlers)
+                    self._backing_transport, commands=request.request_handlers,
+                    root_client_path=self._root_client_path)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
@@ -305,6 +307,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
             mutter('hpss call:   %s', repr(args)[1:-1])
+            mutter('             (to: %r)' % (self._request._medium))
             self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()

@@ -30,7 +30,7 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
 
     def do(self, path):
         from bzrlib.bzrdir import BzrDirFormat
-        t = self._backing_transport.clone(path)
+        t = self.transport_from_client_path(path)
         default_format = BzrDirFormat.get_default_format()
         real_bzrdir = default_format.open(t, _found=True)
         try:
@@ -54,7 +54,7 @@ class SmartServerRequestFindRepository(SmartServerRequest):
 
         :return: norepository or ok, relpath.
         """
-        bzrdir = BzrDir.open_from_transport(self._backing_transport.clone(path))
+        bzrdir = BzrDir.open_from_transport(self.transport_from_client_path(path))
         try:
             repository = bzrdir.find_repository()
             # the relpath of the bzrdir in the found repository gives us the 
@@ -85,7 +85,7 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         The default format of the server is used.
         :return: SmartServerResponse(('ok', ))
         """
-        target_transport = self._backing_transport.clone(path)
+        target_transport = self.transport_from_client_path(path)
         BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
         return SuccessfulSmartServerResponse(('ok', ))
 
@@ -98,7 +98,7 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
         """
-        bzrdir = BzrDir.open_from_transport(self._backing_transport.clone(path))
+        bzrdir = BzrDir.open_from_transport(self.transport_from_client_path(path))
         try:
             reference_url = bzrdir.get_branch_reference()
             if reference_url is None:

@@ -356,6 +356,13 @@ class TestErrors(TestCaseWithTransport):
             "Container has multiple records with the same name: \"n\xc3\xa5me\"",
             str(e))
 
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
 
 class PassThroughError(errors.BzrError):
     

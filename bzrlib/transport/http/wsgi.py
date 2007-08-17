@@ -85,11 +85,14 @@ class RelpathSetter(object):
 class SmartWSGIApp(object):
     """A WSGI application for the bzr smart server."""
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param backing_transport: a transport.  Requests will be processed
             relative to this transport.
+        :param root_client_path: the client path that maps to the root of
+            backing_transport.  This is used to interpret relpaths received from
+            the client.
         """
         # Use a ChrootTransportDecorator so that this web application won't
         # accidentally let people access locations they shouldn't.
@@ -98,6 +101,7 @@ class SmartWSGIApp(object):
         self.chroot_server = chroot.ChrootServer(backing_transport)
         self.chroot_server.setUp()
         self.backing_transport = get_transport(self.chroot_server.get_url())
+        self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
         # as all it does is remove the scheme registration from transport's 
         # protocol dictionary, we don't *just in case* there are parts of 
@@ -139,6 +143,7 @@ class SmartWSGIApp(object):
             request_bytes = request_bytes[len(protocol.REQUEST_VERSION_TWO):]
         else:
             protocol_class = protocol.SmartServerRequestProtocolOne
-        server_protocol = protocol_class(transport, write_func)
+        server_protocol = protocol_class(
+            transport, write_func, self.root_client_path)
         server_protocol.accept_bytes(request_bytes)
         return server_protocol
