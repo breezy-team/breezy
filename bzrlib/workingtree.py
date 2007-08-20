@@ -1571,7 +1571,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if ignoreset is not None:
             return ignoreset
 
-        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs = set()
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(bzrlib.IGNORE_FILENAME):

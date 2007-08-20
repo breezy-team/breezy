@@ -190,7 +190,7 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
+                info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
