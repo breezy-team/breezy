@@ -196,6 +196,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.not_applicable_count = 0
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
@@ -288,7 +289,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
-        self.report_skip(test, skip_excinfo)
+        if isinstance(skip_excinfo[1], TestNotApplicable):
+            self.not_applicable_count += 1
+            self.report_not_applicable(test, skip_excinfo)
+        else:
+            self.skip_count += 1
+            self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
         try:
@@ -329,7 +335,6 @@ class ExtendedTestResult(unittest._TextTestResult):
             return False
 
         return self.wasSuccessful()
-
 
 
 class TextTestResult(ExtendedTestResult):
@@ -402,20 +407,10 @@ class TextTestResult(ExtendedTestResult):
             self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
-        if False:
-            # at the moment these are mostly not things we can fix
-            # and so they just produce stipple; use the verbose reporter
-            # to see them.
-            if False:
-                # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n', 
-                    self._shortened_test_description(test),
-                    skip_excinfo[1])
-            else:
-                # since the class name was left behind in the still-visible
-                # progress bar...
-                self.pb.note('SKIP: %s', skip_excinfo[1])
+        pass
+
+    def report_not_applicable(self, test, skip_excinfo):
+        pass
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -481,8 +476,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(skip_excinfo)))
+
+    def report_not_applicable(self, test, skip_excinfo):
+        self.stream.writeln('  N/A %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(skip_excinfo)))
 
@@ -589,6 +588,15 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class TestNotApplicable(TestSkipped):
+    """A test is not applicable to the situation where it was run.
+
+    This is only normally raised by parameterized tests, if they find that 
+    the instance they're constructed upon does not support one aspect 
+    of its interface.
+    """
 
 
 class KnownFailure(AssertionError):

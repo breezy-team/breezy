@@ -48,6 +48,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
+                          TestNotApplicable,
                           TestSkipped,
                           TestSuite,
                           TestUtil,
@@ -1133,6 +1134,27 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
+
+    def test_not_applicable(self):
+        # run a test that is skipped because it's not applicable
+        def not_applicable_test():
+            from bzrlib.tests import TestNotApplicable
+            raise TestNotApplicable('this test never runs')
+        out = StringIO()
+        runner = TextTestRunner(stream=out, verbosity=2)
+        test = unittest.FunctionTestCase(not_applicable_test)
+        result = self.run_test_runner(runner, test)
+        self._log_file.write(out.getvalue())
+        self.assertTrue(result.wasSuccessful())
+        self.assertTrue(result.wasStrictlySuccessful())
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)not_applicable_test   * N/A')
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)^    this test never runs')
+
+    def test_not_applicable_demo(self):
+        # just so you can see it in the test output
+        raise TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""

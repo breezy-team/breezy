@@ -39,10 +39,13 @@ IN DEVELOPMENT
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
 
-  aPI CHANGES:
+   * ``Transport.should_cache`` has been removed.  It was not called in the
+     previous release.  (Martin Pool)
 
-    * ``Transport.should_cache`` has been removed.  It was not called in the
-      previous release.  (Martin Pool)
+  TESTING:
+
+   * Tests may now raise TestNotApplicable to indicate they shouldn't be 
+     run in a particular scenario.  (Martin Pool)
 
 bzr 0.90rc1 2007-08-14
 

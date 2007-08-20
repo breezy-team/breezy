@@ -349,23 +349,83 @@ Raising TestSkipped is a good idea when you want to make it clear that the
 test was not run, rather than just returning which makes it look as if it
 was run and passed.
 
-A subtly different case is a test that should run, but can't run in the
-current environment.  This covers tests that can only run in particular
-operating systems or locales, or that depend on external libraries.  Here
-we want to inform the user that they didn't get full test coverage, but
-they possibly could if they installed more libraries.  These are expressed
-as a dependency on a feature so we can summarise them, and so that the
-test for the feature is done only once.  (For historical reasons, as of
-May 2007 many cases that should depend on features currently raise
-TestSkipped.)  The typical use is::
+Several different cases are distinguished:
+
+TestSkipped
+        Generic skip; the only type that was present up to bzr 0.18.
+
+TestNotApplicable
+        The test doesn't apply to the parameters with which it was run.
+        This is typically used when the test is being applied to all
+        implementations of an interface, but some aspects of the interface
+        are optional and not present in particular concrete
+        implementations.  (Some tests that should raise this currently
+        either silently return or raise TestSkipped.)  Another option is
+        to use more precise parameterization to avoid generating the test
+        at all.
+
+TestPlatformLimit
+        **(Not implemented yet)**
+        The test can't be run because of an inherent limitation of the
+        environment, such as not having symlinks or not supporting
+        unicode.
+
+UnavailableFeature
+        The test can't be run because a dependency (typically a Python
+        library) is not available in the test environment.  These
+        are in general things that the person running the test could fix 
+        by installing the library.  It's OK if some of these occur when 
+        an end user runs the tests or if we're specifically testing in a
+        limited environment, but a full test should never see them.
+
+KnownFailure
+        The test exists but is known to fail, for example because the 
+        code to fix it hasn't been run yet.  Raising this allows 
+        you to distinguish these failures from the ones that are not 
+        expected to fail.  This could be conditionally raised if something
+        is broken on some platforms but not on others.
+
+We plan to support three modes for running the test suite to control the
+interpretation of these results.  Strict mode is for use in situations
+like merges to the mainline and releases where we want to make sure that
+everything that can be tested has been tested.  Lax mode is for use by
+developers who want to temporarily tolerate some known failures.  The
+default behaviour is obtained by ``bzr selftest`` with no options, and
+also (if possible) by running under another unittest harness.
+
+======================= ======= ======= ========
+result                  strict  default lax
+======================= ======= ======= ========
+TestSkipped             pass    pass    pass
+TestNotApplicable       pass    pass    pass
+TestPlatformLimit       pass    pass    pass
+TestDependencyMissing   fail    pass    pass
+KnownFailure            fail    fail    pass
+======================= ======= ======= ========
+     
+
+Test feature dependencies
+-------------------------
+
+Rather than manually checking the environment in each test, a test class
+can declare its dependence on some test features.  The feature objects are
+checked only once for each run of the whole test suite.
+
+For historical reasons, as of May 2007 many cases that should depend on
+features currently raise TestSkipped.)
+
+::
 
     class TestStrace(TestCaseWithTransport):
 
         _test_needs_features = [StraceFeature]
 
-which means all tests in this class need the feature.  The feature itself
+This means all tests in this class need the feature.  The feature itself
 should provide a ``_probe`` method which is called once to determine if
 it's available.
+
+These should generally be equivalent to either TestDependencyMissing or
+sometimes TestPlatformLimit.
 
 
 Known failures
@@ -408,6 +468,42 @@ particular bug or if the error is reported in an unusual way(?)  Blackbox
 tests should mostly be testing how the command-line interface works, so
 should only test errors if there is something particular to the cli in how
 they're displayed or handled.
+
+
+Interface implementation testing and test scenarios
+---------------------------------------------------
+
+There are several cases in Bazaar of multiple implementations of a common 
+conceptual interface.  ("Conceptual" because 
+it's not necessary for all the implementations to share a base class,
+though they often do.)  Examples include transports and the working tree,
+branch and repository classes. 
+
+In these cases we want to make sure that every implementation correctly
+fulfils the interface requirements.  For example, every Transport should
+support the ``has()`` and ``get()`` and ``clone()`` methods.  We have a
+sub-suite of tests in ``test_transport_implementations``.  (Most
+per-implementation tests are in submodules of ``bzrlib.tests``, but not
+the transport tests at the moment.)  
+
+These tests are repeated for each registered Transport, by generating a
+new TestCase instance for the cross product of test methods and transport
+implementations.  As each test runs, it has ``transport_class`` and
+``transport_server`` set to the class it should test.  Most tests don't
+access these directly, but rather use ``self.get_transport`` which returns
+a transport of the appropriate type.
+
+The goal is to run per-implementation only tests that relate to that
+particular interface.  Sometimes we discover a bug elsewhere that happens
+with only one particular transport.  Once it's isolated, we can consider 
+whether a test should be added for that particular implementation,
+or for all implementations of the interface.
+
+The multiplication of tests for different implementations is normally 
+accomplished by overriding the ``test_suite`` function used to load 
+tests from a module.  This function typically loads all the tests,
+then applies a TestProviderAdapter to them, which generates a longer 
+suite containing all the test variations.
 
 
 Essential Domain Classes
