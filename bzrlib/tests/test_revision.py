@@ -39,7 +39,7 @@ warnings.filterwarnings('ignore',
         r'bzrlib\.tests\.test_revision')
 
 # XXX: Make this a method of a merge base case
-def make_branches(self):
+def make_branches(self, format=None):
     """Create two branches
 
     branch 1 has 6 commits, branch 2 has 3 commits
@@ -58,7 +58,7 @@ def make_branches(self):
     so A is missing b6 at the start
     and B is missing a3, a4, a5
     """
-    tree1 = self.make_branch_and_tree("branch1")
+    tree1 = self.make_branch_and_tree("branch1", format=format)
     br1 = tree1.branch
     
     tree1.commit("Commit one", rev_id="a@u-0-0")

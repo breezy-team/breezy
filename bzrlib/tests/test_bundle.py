@@ -1063,6 +1063,33 @@ class BundleTester(object):
                               " slashes")
         bundle = self.get_valid_bundle('null:', 'rev/id')
 
+    def test_skip_file(self):
+        """Make sure we don't accidentally write to the wrong versionedfile"""
+        self.tree1 = self.make_branch_and_tree('tree')
+        self.b1 = self.tree1.branch
+        # rev1 is not present in bundle, done by fetch
+        self.build_tree_contents([('tree/file2', 'contents1')])
+        self.tree1.add('file2', 'file2-id')
+        self.tree1.commit('rev1', rev_id='reva')
+        self.build_tree_contents([('tree/file3', 'contents2')])
+        # rev2 is present in bundle, and done by fetch
+        # having file1 in the bunle causes file1's versionedfile to be opened.
+        self.tree1.add('file3', 'file3-id')
+        self.tree1.commit('rev2')
+        # Updating file2 should not cause an attempt to add to file1's vf
+        target = self.tree1.bzrdir.sprout('target').open_workingtree()
+        self.build_tree_contents([('tree/file2', 'contents3')])
+        self.tree1.commit('rev3', rev_id='rev3')
+        bundle = self.get_valid_bundle('reva', 'rev3')
+        if getattr(bundle, 'get_bundle_reader', None) is None:
+            raise TestSkipped('Bundle format cannot provide reader')
+        # be sure that file1 comes before file2
+        for b, m, k, r, f in bundle.get_bundle_reader().iter_records():
+            if f == 'file3-id':
+                break
+            self.assertNotEqual(f, 'file2-id')
+        bundle.install_revisions(target.branch.repository)
+
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
 

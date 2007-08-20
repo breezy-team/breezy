@@ -524,12 +524,12 @@ def load_host_keys():
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
     try:
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
-    except Exception, e:
+    except IOError, e:
         mutter('failed to load system host keys: ' + str(e))
     bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
     try:
         BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
-    except Exception, e:
+    except IOError, e:
         mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
 
