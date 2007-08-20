@@ -58,8 +58,6 @@ class RevisionInfo(object):
                 self.rev_id = None
             else:
                 self.rev_id = branch.get_rev_id(self.revno)
-        elif rev_id is None:
-            self.rev_id = None
         else:
             self.rev_id = rev_id
 
