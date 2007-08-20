@@ -44,14 +44,13 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    win32utils,
     )
 """)
 
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_method,
-    zero_eight,
-    zero_eleven,
     )
 # Compatibility
 from bzrlib.option import Option
@@ -240,6 +239,19 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def _maybe_expand_globs(self, file_list):
+        """Glob expand file_list if the platform does not do that itself.
+        
+        :return: A possibly empty list of unicode paths.
+
+        Introduced in bzrlib 0.18.
+        """
+        if not file_list:
+            file_list = []
+        if sys.platform == 'win32':
+            file_list = win32utils.glob_expand(file_list)
+        return list(file_list)
+
     def _usage(self):
         """Return single-line grammar for this command.
 
@@ -260,48 +272,136 @@ class Command(object):
         s = s[:-1]
         return s
 
-    def get_help_text(self, additional_see_also=None):
+    def get_help_text(self, additional_see_also=None, plain=True,
+                      see_also_as_links=False):
         """Return a text string with help for this command.
         
         :param additional_see_also: Additional help topics to be
             cross-referenced.
+        :param plain: if False, raw help (reStructuredText) is
+            returned instead of plain text.
+        :param see_also_as_links: if True, convert items in 'See also'
+            list to internal links (used by bzr_man rstx generator)
         """
         doc = self.help()
         if doc is None:
             raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
 
+        # Extract the summary (purpose) and sections out from the text
+        purpose,sections = self._get_help_parts(doc)
+
+        # If a custom usage section was provided, use it
+        if sections.has_key('Usage'):
+            usage = sections.pop('Usage')
+        else:
+            usage = self._usage()
+
+        # The header is the purpose and usage
         result = ""
-        result += 'usage: %s\n' % self._usage()
-
-        if self.aliases:
-            result += 'aliases: '
-            result += ', '.join(self.aliases) + '\n'
-
+        result += ':Purpose: %s\n' % purpose
+        if usage.find('\n') >= 0:
+            result += ':Usage:\n%s\n' % usage
+        else:
+            result += ':Usage:   %s\n' % usage
         result += '\n'
 
+        # Add the options
+        options = option.get_optparser(self.options()).format_option_help()
+        if options.startswith('Options:'):
+            result += ':' + options
+        elif options.startswith('options:'):
+            # Python 2.4 version of optparse
+            result += ':Options:' + options[len('options:'):]
+        else:
+            result += options
+        result += '\n'
+
+        # Add the description, indenting it 2 spaces
+        # to match the indentation of the options
+        if sections.has_key(None):
+            text = sections.pop(None)
+            text = '\n  '.join(text.splitlines())
+            result += ':%s:\n  %s\n\n' % ('Description',text)
+
+        # Add the custom sections (e.g. Examples). Note that there's no need
+        # to indent these as they must be indented already in the source.
+        if sections:
+            labels = sorted(sections.keys())
+            for label in labels:
+                result += ':%s:\n%s\n\n' % (label,sections[label])
+
+        # Add the aliases, source (plug-in) and see also links, if any
+        if self.aliases:
+            result += ':Aliases:  '
+            result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += '(From plugin "%s")' % plugin_name
-            result += '\n\n'
-
-        result += doc
-        if result[-1] != '\n':
-            result += '\n'
-        result += '\n'
-        result += option.get_optparser(self.options()).format_option_help()
+            result += ':From:     plugin "%s"\n' % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
-            result += '\nSee also: '
-            result += ', '.join(see_also)
-            result += '\n'
+            if not plain and see_also_as_links:
+                see_also_links = []
+                for item in see_also:
+                    if item == 'topics':
+                        # topics doesn't have an independent section
+                        # so don't create a real link
+                        see_also_links.append(item)
+                    else:
+                        # Use a reST link for this entry
+                        see_also_links.append("`%s`_" % (item,))
+                see_also = see_also_links
+            result += ':See also: '
+            result += ', '.join(see_also) + '\n'
+
+        # If this will be rendered as plan text, convert it
+        if plain:
+            import bzrlib.help_topics
+            result = bzrlib.help_topics.help_as_plain_text(result)
         return result
+
+    @staticmethod
+    def _get_help_parts(text):
+        """Split help text into a summary and named sections.
+
+        :return: (summary,sections) where summary is the top line and
+            sections is a dictionary of the rest indexed by section name.
+            A section starts with a heading line of the form ":xxx:".
+            Indented text on following lines is the section value.
+            All text found outside a named section is assigned to the
+            default section which is given the key of None.
+        """
+        def save_section(sections, label, section):
+            if len(section) > 0:
+                if sections.has_key(label):
+                    sections[label] += '\n' + section
+                else:
+                    sections[label] = section
+            
+        lines = text.rstrip().splitlines()
+        summary = lines.pop(0)
+        sections = {}
+        label,section = None,''
+        for line in lines:
+            if line.startswith(':') and line.endswith(':') and len(line) > 2:
+                save_section(sections, label, section)
+                label,section = line[1:-1],''
+            elif label != None and len(line) > 1 and not line[0].isspace():
+                save_section(sections, label, section)
+                label,section = None,line
+            else:
+                if len(section) > 0:
+                    section += '\n' + line
+                else:
+                    section = line
+        save_section(sections, label, section)
+        return summary, sections
 
     def get_help_topic(self):
         """Return the commands help topic - its name."""
         return self.name()
 
     def get_see_also(self, additional_terms=None):
-        """Return a list of help topics that are related to this ommand.
+        """Return a list of help topics that are related to this command.
         
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
@@ -318,7 +418,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = dict()
-        r['help'] = option.Option.OPTIONS['help']
+        r['help'] = option._help_option
         for o in self.takes_options:
             if isinstance(o, basestring):
                 o = option.Option.OPTIONS[o]
@@ -408,40 +508,6 @@ class Command(object):
         else:
             return None
 
-
-# Technically, this function hasn't been use in a *really* long time
-# but we are only deprecating it now.
-@deprecated_function(zero_eleven)
-def parse_spec(spec):
-    """
-    >>> parse_spec(None)
-    [None, None]
-    >>> parse_spec("./")
-    ['./', None]
-    >>> parse_spec("../@")
-    ['..', -1]
-    >>> parse_spec("../f/@35")
-    ['../f', 35]
-    >>> parse_spec('./@revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67')
-    ['.', 'revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67']
-    """
-    if spec is None:
-        return [None, None]
-    if '/@' in spec:
-        parsed = spec.split('/@')
-        assert len(parsed) == 2
-        if parsed[1] == "":
-            parsed[1] = -1
-        else:
-            try:
-                parsed[1] = int(parsed[1])
-            except ValueError:
-                pass # We can allow stuff like ./@revid:blahblahblah
-            else:
-                assert parsed[1] >=0
-    else:
-        parsed = [spec, None]
-    return parsed
 
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
@@ -534,15 +600,13 @@ def apply_profiled(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    import cPickle
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
-        stats.freeze()
-        cPickle.dump(stats, open(filename, 'w'), 2)
-        print 'Profile data written to %r.' % filename
+        stats.save(filename)
+        trace.note('Profile data written to "%s".', filename)
     return ret
 
 
@@ -714,11 +778,7 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now

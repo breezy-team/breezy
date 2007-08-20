@@ -38,6 +38,10 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 _serializers = {}
 
+v4_string = '4'
+
+def _get_bundle_header(version):
+    return '%s%s\n' % (BUNDLE_HEADER, version)
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
@@ -79,6 +83,13 @@ def read_bundle(f):
     return serializer.read(f)
 
 
+def get_serializer(version):
+    try:
+        return _serializers[version](version)
+    except KeyError:
+        raise errors.BundleNotSupported(version, 'unknown bundle format')
+
+
 def write(source, revision_ids, f, version=None, forced_bases={}):
     """Serialize a list of bundles to a filelike object.
 
@@ -88,28 +99,15 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param version: [optional] target serialization version
     """
 
-    if version not in _serializers:
-        raise errors.BundleNotSupported(version, 'unknown bundle format')
-
-    serializer = _serializers[version](version)
     source.lock_read()
     try:
-        return serializer.write(source, revision_ids, forced_bases, f)
+        return get_serializer(version).write(source, revision_ids,
+                                             forced_bases, f)
     finally:
         source.unlock()
 
 
 def write_bundle(repository, revision_id, base_revision_id, out, format=None):
-    """"""
-    repository.lock_read()
-    try:
-        return _write_bundle(repository, revision_id, base_revision_id, out,
-                             format)
-    finally:
-        repository.unlock()
-
-
-def _write_bundle(repository, revision_id, base_revision_id, out, format):
     """Write a bundle of revisions.
 
     :param repository: Repository containing revisions to serialize.
@@ -118,15 +116,12 @@ def _write_bundle(repository, revision_id, base_revision_id, out, format):
          applying the bundle.
     :param out: Output file.
     """
-    if base_revision_id is NULL_REVISION:
-        base_revision_id = None
-    base_ancestry = set(repository.get_ancestry(base_revision_id))
-    revision_ids = [r for r in repository.get_ancestry(revision_id) if r
-                    not in base_ancestry]
-    revision_ids = list(reversed(revision_ids))
-    write(repository, revision_ids, out, format,
-          forced_bases = {revision_id:base_revision_id})
-    return revision_ids
+    repository.lock_read()
+    try:
+        return get_serializer(format).write_bundle(repository, revision_id,
+                                                   base_revision_id, out)
+    finally:
+        repository.unlock()
 
 
 class BundleSerializer(object):
@@ -145,15 +140,42 @@ class BundleSerializer(object):
         """
         raise NotImplementedError
 
+    def write_bundle(self, repository, target, base, fileobj):
+        """Write the bundle to the supplied file.
+
+        :param repository: The repository to retrieve revision data from
+        :param target: The revision to provide data for
+        :param base: The most recent of ancestor of the revision that does not
+            need to be included in the bundle
+        :param fileobj: The file to output to
+        """
+        raise NotImplementedError
+
     def write(self, source, revision_ids, forced_bases, f):
         """Write the bundle to the supplied file.
 
+        DEPRECATED: see write_bundle
         :param source: A source for revision information
         :param revision_ids: The list of revision ids to serialize
         :param forced_bases: A dict of revision -> base that overrides default
         :param f: The file to output to
         """
         raise NotImplementedError
+
+    def _write_bundle(self, repository, revision_id, base_revision_id, out):
+        """Helper function for translating write_bundle to write"""
+        forced_bases = {revision_id:base_revision_id}
+        if base_revision_id is NULL_REVISION:
+            base_revision_id = None
+        revision_ids = set(repository.get_ancestry(revision_id,
+                           topo_sorted=False))
+        revision_ids.difference_update(repository.get_ancestry(
+            base_revision_id, topo_sorted=False))
+        revision_ids = list(repository.get_graph().iter_topo_order(
+            revision_ids))
+        revision_ids.reverse()
+        self.write(repository, revision_ids, forced_bases, out)
+        return revision_ids
 
 
 def register(version, klass, overwrite=False):
@@ -196,5 +218,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
 
 register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 register_lazy('0.9', 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
-register_lazy(None, 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
+register_lazy(v4_string, 'bzrlib.bundle.serializer.v4',
+              'BundleSerializerV4')
+register_lazy(None, 'bzrlib.bundle.serializer.v4', 'BundleSerializerV4')
 

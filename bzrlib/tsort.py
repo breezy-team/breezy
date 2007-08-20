@@ -61,6 +61,7 @@ class TopoSorter(object):
         """
         # a dict of the graph.
         self._graph = dict(graph)
+        self._visitable = set(self._graph)
         ### if debugging:
         # self._original_graph = dict(graph)
         
@@ -119,6 +120,8 @@ class TopoSorter(object):
                         if next_node_name in self._completed_node_names:
                             # this parent was completed by a child on the
                             # call stack. skip it.
+                            continue
+                        if next_node_name not in self._visitable:
                             continue
                         # otherwise transfer it from the source graph into the
                         # top of the current depth first search stack.

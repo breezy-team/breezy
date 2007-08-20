@@ -80,16 +80,11 @@ class TestApiUsage(TestSourceHelper):
         """Test that the number of uses of working_tree in branch is stable."""
         occurences = self.find_occurences('WorkingTree',
                                           self.source_file_name(bzrlib.branch))
-        # do not even think of increasing this number. If you think you need to
+        # Do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
-        # This number should be 4 (import NoWorkingTree and WorkingTree, 
-        # raise NoWorkingTree from working_tree(), and construct a working tree
-        # there) but a merge that regressed this was done before this test was
-        # written. Note that this is an exact equality so that when the number
-        # drops, it is not given a buffer but rather this test updated
-        # immediately.
-        self.assertEqual(2, occurences)
+        # As of 20070809, there are no longer any mentions at all.
+        self.assertEqual(0, occurences)
 
 
 class TestSource(TestSourceHelper):
@@ -203,7 +198,7 @@ class TestSource(TestSourceHelper):
                          " bzrlib/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2006 Canonical Ltd' to these files:",
+                         " 2007 Canonical Ltd' to these files:",
                          "",
                         ]
             for fname, comment in incorrect:

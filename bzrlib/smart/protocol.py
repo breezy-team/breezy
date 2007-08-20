@@ -18,11 +18,13 @@
 client and server.
 """
 
-
 from cStringIO import StringIO
+import time
 
+from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import request
+from bzrlib.trace import log_exception_quietly, mutter
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -108,6 +110,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
+                log_exception_quietly()
                 self._send_response(request.FailedSmartServerResponse(
                     ('error', str(exception))))
                 return
@@ -297,8 +300,12 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         self._request = request
         self._body_buffer = None
+        self._request_start_time = None
 
     def call(self, *args):
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call:   %s', repr(args)[1:-1])
+            self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()
 
@@ -307,6 +314,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
         After calling this, call read_response_tuple to find the result out.
         """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            mutter('              %d bytes', len(body))
+            self._request_start_time = time.time()
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
@@ -318,11 +329,16 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \n is emitted.
         """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/readv: %s', repr(args)[1:-1])
+            self._request_start_time = time.time()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            mutter('              %d bytes in readv request', len(readv_bytes))
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -339,6 +355,14 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         This should only be called once.
         """
         result = self._recv_tuple()
+        if 'hpss' in debug.debug_flags:
+            if self._request_start_time is not None:
+                mutter('   result:   %6.3fs  %s',
+                       time.time() - self._request_start_time,
+                       repr(result)[1:-1])
+                self._request_start_time = None
+            else:
+                mutter('   result:   %s', repr(result)[1:-1])
         if not expect_body:
             self._request.finished_reading()
         return result
@@ -360,6 +384,9 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request.finished_reading()
         self._body_buffer = StringIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
+        if 'hpss' in debug.debug_flags:
+            mutter('              %d body bytes read',
+                   len(self._body_buffer.getvalue()))
         return self._body_buffer.read(count)
 
     def _recv_tuple(self):

@@ -16,11 +16,14 @@
 
 __all__ = ['show_bzrdir_info']
 
+import os
 import time
-
+import sys
 
 from bzrlib import (
+    bzrdir,
     diff,
+    errors,
     osutils,
     urlutils,
     )
@@ -28,7 +31,7 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight)
+        zero_eighteen)
 
 
 def plural(n, base='', pl=None):
@@ -40,82 +43,114 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_rel_url(repo_url, inner_url):
-    """Return path with common prefix of repository path removed.
+class LocationList(object):
 
-    If path is not part of the repository, the original path is returned.
-    If path is equal to the repository, the current directory marker '.' is
-    returned.
-    Otherwise, a relative path is returned, with trailing '/' stripped.
-    """
-    inner_url = urlutils.normalize_url(inner_url)
-    repo_url = urlutils.normalize_url(repo_url)
-    if inner_url == repo_url:
-        return '.'
-    result = urlutils.relative_url(repo_url, inner_url)
-    if result != inner_url:
-        result = result.rstrip('/')
-    return result
+    def __init__(self, base_path):
+        self.locs = []
+        self.base_path = base_path
+
+    def add_url(self, label, url):
+        """Add a URL to the list, converting it to a path if possible"""
+        if url is None:
+            return
+        try:
+            path = urlutils.local_path_from_url(url)
+        except errors.InvalidURL:
+            self.locs.append((label, url))
+        else:
+            self.add_path(label, path)
+
+    def add_path(self, label, path):
+        """Add a path, converting it to a relative path if possible"""
+        try:
+            path = osutils.relpath(self.base_path, path)
+        except errors.PathNotChild:
+            pass
+        else:
+            if path == '':
+                path = '.'
+        if path != '/':
+            path = path.rstrip('/')
+        self.locs.append((label, path))
+
+    def get_lines(self):
+        max_len = max(len(l) for l, u in self.locs)
+        return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs ]
 
 
-def _show_location_info(repository, branch=None, working=None):
-    """Show known locations for working, branch and repository."""
+def gather_location_info(repository, branch=None, working=None):
+    locs = {}
     repository_path = repository.bzrdir.root_transport.base
-    print 'Location:'
-    if working and branch:
-        working_path = working.bzrdir.root_transport.base
+    if branch is not None:
         branch_path = branch.bzrdir.root_transport.base
-        if working_path != branch_path:
-            # lightweight checkout
-            print ' light checkout root: %s' % working_path
-            if repository.is_shared():
-                # lightweight checkout of branch in shared repository
-                print '   shared repository: %s' % repository_path
-                print '   repository branch: %s' % (
-                    _repo_rel_url(repository_path, branch_path))
-            else:
-                # lightweight checkout of standalone branch
-                print '  checkout of branch: %s' % branch_path
-        elif repository.is_shared():
-            # branch with tree inside shared repository
-            print '    shared repository: %s' % repository_path
-            print '  repository checkout: %s' % (
-                _repo_rel_url(repository_path, branch_path))
-        elif branch.get_bound_location():
-            # normal checkout
-            print '       checkout root: %s' % working_path
-            print '  checkout of branch: %s' % branch.get_bound_location()
-        else:
-            # standalone
-            print '  branch root: %s' % working_path
-    elif branch:
-        branch_path = branch.bzrdir.root_transport.base
-        if repository.is_shared():
-            # branch is part of shared repository
-            print '  shared repository: %s' % repository_path
-            print '  repository branch: %s' % (
-                _repo_rel_url(repository_path, branch_path))
-        else:
-            # standalone branch
-            print '  branch root: %s' % branch_path
+        master_path = branch.get_bound_location()
+        if master_path is None:
+            master_path = branch_path
     else:
-        # shared repository
-        assert repository.is_shared()
-        print '  shared repository: %s' % repository_path
-
-
-def _show_related_info(branch):
-    """Show parent and push location of branch."""
-    if branch.get_parent() or branch.get_push_location():
-        print
-        print 'Related branches:'
-        if branch.get_parent():
-            if branch.get_push_location():
-                print '      parent branch: %s' % branch.get_parent()
+        branch_path = None
+        master_path = None
+    if working:
+        working_path = working.bzrdir.root_transport.base
+        if working_path != branch_path:
+            locs['light checkout root'] = working_path
+        if master_path != branch_path:
+            if repository.is_shared():
+                locs['repository checkout root'] = branch_path
             else:
-                print '  parent branch: %s' % branch.get_parent()
-        if branch.get_push_location():
-            print '  publish to branch: %s' % branch.get_push_location()
+                locs['checkout root'] = branch_path
+        if working_path != master_path:
+            locs['checkout of branch'] = master_path
+        elif repository.is_shared():
+            locs['repository branch'] = branch_path
+        elif branch_path is not None:
+            # standalone
+            locs['branch root'] = branch_path
+    else:
+        working_path = None
+        if repository.is_shared():
+            # lightweight checkout of branch in shared repository
+            if branch_path is not None:
+                locs['repository branch'] = branch_path
+        elif branch_path is not None:
+            # standalone
+            locs['branch root'] = branch_path
+            if master_path != branch_path:
+                locs['bound to branch'] = master_path
+        else:
+            locs['repository'] = repository_path
+    if repository.is_shared():
+        # lightweight checkout of branch in shared repository
+        locs['shared repository'] = repository_path
+    order = ['light checkout root', 'repository checkout root',
+             'checkout root', 'checkout of branch', 'shared repository',
+             'repository', 'repository branch', 'branch root',
+             'bound to branch']
+    return [(n, locs[n]) for n in order if n in locs]
+
+
+def _show_location_info(locs):
+    """Show known locations for working, branch and repository."""
+    print 'Location:'
+    path_list = LocationList(os.getcwd())
+    for name, loc in locs:
+        path_list.add_url(name, loc)
+    sys.stdout.writelines(path_list.get_lines())
+
+def _gather_related_branches(branch):
+    locs = LocationList(os.getcwd())
+    locs.add_url('public branch', branch.get_public_branch())
+    locs.add_url('push branch', branch.get_push_location())
+    locs.add_url('parent branch', branch.get_parent())
+    locs.add_url('submit branch', branch.get_submit_branch())
+    return locs
+
+def _show_related_info(branch, outfile):
+    """Show parent and push location of branch."""
+    locs = _gather_related_branches(branch)
+    if len(locs.locs) > 0:
+        print >> outfile
+        print >> outfile, 'Related branches:'
+        outfile.writelines(locs.get_lines())
 
 
 def _show_format_info(control=None, repository=None, branch=None, working=None):
@@ -263,91 +298,178 @@ def _show_repository_stats(stats):
     if 'size' in stats:
         print '  %8d KiB' % (stats['size']/1024)
 
-
-@deprecated_function(zero_eight)
-def show_info(b):
-    """Please see show_bzrdir_info."""
-    return show_bzrdir_info(b.bzrdir)
-
-
 def show_bzrdir_info(a_bzrdir, verbose=False):
     """Output to stdout the 'info' for a_bzrdir."""
     try:
-        working = a_bzrdir.open_workingtree(
+        tree = a_bzrdir.open_workingtree(
             recommend_upgrade=False)
-        working.lock_read()
-        try:
-            show_tree_info(working, verbose)
-        finally:
-            working.unlock()
-        return
     except (NoWorkingTree, NotLocalUrl):
-        pass
-
-    try:
-        branch = a_bzrdir.open_branch()
-        branch.lock_read()
+        tree = None
         try:
-            show_branch_info(branch, verbose)
-        finally:
-            branch.unlock()
-        return
-    except NotBranchError:
-        pass
+            branch = a_bzrdir.open_branch()
+        except NotBranchError:
+            branch = None
+            try:
+                repository = a_bzrdir.open_repository()
+            except NoRepositoryPresent:
+                # Return silently; cmd_info already returned NotBranchError
+                # if no bzrdir could be opened.
+                return
+            else:
+                lockable = repository
+        else:
+            repository = branch.repository
+            lockable = branch
+    else:
+        branch = tree.branch
+        repository = branch.repository
+        lockable = tree
 
+    lockable.lock_read()
     try:
-        repository = a_bzrdir.open_repository()
-        repository.lock_read()
-        try:
-            show_repository_info(repository, verbose)
-        finally:
-            repository.unlock()
+        show_component_info(a_bzrdir, repository, branch, tree, verbose)
+    finally:
+        lockable.unlock()
+
+
+def show_component_info(control, repository, branch=None, working=None,
+    verbose=1):
+    """Write info about all bzrdir components to stdout"""
+    if verbose is False:
+        verbose = 1
+    if verbose is True:
+        verbose = 2
+    layout = describe_layout(repository, branch, working)
+    format = describe_format(control, repository, branch, working)
+    print "%s (format: %s)" % (layout, format)
+    _show_location_info(gather_location_info(repository, branch, working))
+    if branch is not None:
+        _show_related_info(branch, sys.stdout)
+    if verbose == 0:
         return
-    except NoRepositoryPresent:
-        pass
+    _show_format_info(control, repository, branch, working)
+    _show_locking_info(repository, branch, working)
+    if branch is not None:
+        _show_missing_revisions_branch(branch)
+    if working is not None:
+        _show_missing_revisions_working(working)
+        _show_working_stats(working)
+    elif branch is not None:
+        _show_missing_revisions_branch(branch)
+    if branch is not None:
+        stats = _show_branch_stats(branch, verbose==2)
+    else:
+        stats = repository.gather_stats()
+    if branch is None and working is None:
+        _show_repository_info(repository)
+    _show_repository_stats(stats)
 
-    # Return silently, cmd_info already returned NotBranchError if no bzrdir
-    # could be opened.
+
+def describe_layout(repository=None, branch=None, tree=None):
+    """Convert a control directory layout into a user-understandable term
+
+    Common outputs include "Standalone tree", "Repository branch" and
+    "Checkout".  Uncommon outputs include "Unshared repository with trees"
+    and "Empty control directory"
+    """
+    if repository is None:
+        return 'Empty control directory'
+    if branch is None and tree is None:
+        if repository.is_shared():
+            phrase = 'Shared repository'
+        else:
+            phrase = 'Unshared repository'
+        if repository.make_working_trees():
+            phrase += ' with trees'
+        return phrase
+    else:
+        if repository.is_shared():
+            independence = "Repository "
+        else:
+            independence = "Standalone "
+        if tree is not None:
+            phrase = "tree"
+        else:
+            phrase = "branch"
+        if branch is None and tree is not None:
+            phrase = "branchless tree"
+        else:
+            if (tree is not None and tree.bzrdir.root_transport.base !=
+                branch.bzrdir.root_transport.base):
+                independence = ''
+                phrase = "Lightweight checkout"
+            elif branch.get_bound_location() is not None:
+                if independence == 'Standalone ':
+                    independence = ''
+                if tree is None:
+                    phrase = "Bound branch"
+                else:
+                    phrase = "Checkout"
+        if independence != "":
+            phrase = phrase.lower()
+        return "%s%s" % (independence, phrase)
 
 
+def describe_format(control, repository, branch, tree):
+    """Determine the format of an existing control directory
+
+    Several candidates may be found.  If so, the names are returned as a
+    single string, separated by ' or '.
+
+    If no matching candidate is found, "unnamed" is returned.
+    """
+    candidates  = []
+    if (branch is not None and tree is not None and
+        branch.bzrdir.root_transport.base !=
+        tree.bzrdir.root_transport.base):
+        branch = None
+        repository = None
+    for key in bzrdir.format_registry.keys():
+        format = bzrdir.format_registry.make_bzrdir(key)
+        if isinstance(format, bzrdir.BzrDirMetaFormat1):
+            if (tree and format.workingtree_format !=
+                tree._format):
+                continue
+            if (branch and format.get_branch_format() !=
+                branch._format):
+                continue
+            if (repository and format.repository_format !=
+                repository._format):
+                continue
+        if format.__class__ is not control._format.__class__:
+            continue
+        candidates.append(key)
+    if len(candidates) == 0:
+        return 'unnamed'
+    new_candidates = [c for c in candidates if c != 'default']
+    if len(new_candidates) > 0:
+        candidates = new_candidates
+    new_candidates = [c for c in candidates if not
+        bzrdir.format_registry.get_info(c).hidden]
+    if len(new_candidates) > 0:
+        candidates = new_candidates
+    return ' or '.join(candidates)
+
+
+@deprecated_function(zero_eighteen)
 def show_tree_info(working, verbose):
     """Output to stdout the 'info' for working."""
     branch = working.branch
     repository = branch.repository
     control = working.bzrdir
-
-    _show_location_info(repository, branch, working)
-    _show_related_info(branch)
-    _show_format_info(control, repository, branch, working)
-    _show_locking_info(repository, branch, working)
-    _show_missing_revisions_branch(branch)
-    _show_missing_revisions_working(working)
-    _show_working_stats(working)
-    stats = _show_branch_stats(branch, verbose)
-    _show_repository_stats(stats)
+    show_component_info(control, repository, branch, working, verbose)
 
 
+@deprecated_function(zero_eighteen)
 def show_branch_info(branch, verbose):
     """Output to stdout the 'info' for branch."""
     repository = branch.repository
     control = branch.bzrdir
-
-    _show_location_info(repository, branch)
-    _show_related_info(branch)
-    _show_format_info(control, repository, branch)
-    _show_locking_info(repository, branch)
-    _show_missing_revisions_branch(branch)
-    stats = _show_branch_stats(branch, verbose)
-    _show_repository_stats(stats)
+    show_component_info(control, repository, branch, verbose=verbose)
 
 
+@deprecated_function(zero_eighteen)
 def show_repository_info(repository, verbose):
     """Output to stdout the 'info' for repository."""
     control = repository.bzrdir
-
-    _show_location_info(repository)
-    _show_format_info(control, repository)
-    _show_locking_info(repository)
-    _show_repository_info(repository)
-    stats = repository.gather_stats()
-    _show_repository_stats(stats)
+    show_component_info(control, repository, verbose=verbose)

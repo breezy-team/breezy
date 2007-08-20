@@ -22,33 +22,29 @@ import os
 from bzrlib import branch, bzrdir
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
 class TestBranch(ExternalBase):
 
-    def example_branch(test):
-        test.runbzr('init')
-        file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+    def example_branch(self, path='.'):
+        tree = self.make_branch_and_tree(path)
+        self.build_tree_contents([(path + '/hello', 'foo')])
+        tree.add('hello')
+        tree.commit(message='setup')
+        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        tree.add('goodbye')
+        tree.commit(message='setup')
 
     def test_branch(self):
         """Branch from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
+        self.example_branch('a')
+        self.run_bzr('branch a b')
         b = branch.Branch.open('b')
         self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
-        self.runbzr('branch a c -r 1')
-        os.chdir('b')
-        self.runbzr('commit -m foo --unchanged')
-        os.chdir('..')
+        self.run_bzr('branch a c -r 1')
+        b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.
@@ -81,11 +77,34 @@ class TestBranch(ExternalBase):
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
-        self.run_bzr('branch', 'repo/b', 'branch-b')
+        self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
         self.assertFalse(pushed_repo.has_revision('a-1'))
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
+
+class TestRemoteBranch(TestCaseWithSFTPServer):
+
+    def setUp(self):
+        super(TestRemoteBranch, self).setUp()
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/file', 'file content\n')])
+        tree.add('file')
+        tree.commit('file created')
+
+    def test_branch_local_remote(self):
+        self.run_bzr(['branch', 'branch', self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
+
+    def test_branch_remote_remote(self):
+        # Light cheat: we access the branch remotely
+        self.run_bzr(['branch', self.get_url('branch'),
+                      self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
 

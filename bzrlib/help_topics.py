@@ -18,36 +18,64 @@
 
 Help topics are meant to be help for items that aren't commands, but will
 help bzr become fully learnable without referring to a tutorial.
+
+Limited formatting of help text is permitted to make the text useful
+both within the reference manual (reStructuredText) and on the screen.
+The help text should be reStructuredText with formatting kept to a
+minimum and, in particular, no headings. The onscreen renderer applies
+the following simple rules before rendering the text:
+
+    1. A '::' appearing on the end of a line is replaced with ':'.
+    2. Lines starting with a ':' have it stripped.
+
+These rules mean that literal blocks and field lists respectively can
+be used in the help text, producing sensible input to a manual while
+rendering on the screen naturally.
 """
 
 from bzrlib import registry
 
 
+# Section identifiers (map topics to the right place in the manual)
+SECT_COMMAND = "command"
+SECT_CONCEPT = "concept"
+SECT_HIDDEN =  "hidden"
+SECT_LIST    = "list"
+SECT_PLUGIN  = "plugin"
+
+
 class HelpTopicRegistry(registry.Registry):
     """A Registry customized for handling help topics."""
 
-    def register(self, topic, detail, summary):
+    def register(self, topic, detail, summary, section=SECT_LIST):
         """Register a new help topic.
 
         :param topic: Name of documentation entry
         :param detail: Function or string object providing detailed
             documentation for topic.  Function interface is detail(topic).
             This should return a text string of the detailed information.
+            See the module documentation for details on help text formatting.
         :param summary: String providing single-line documentation for topic.
+        :param section: Section in reference manual - see SECT_* identifiers.
         """
-        # The detail is stored as the 'object' and the 
-        super(HelpTopicRegistry, self).register(topic, detail, info=summary)
+        # The detail is stored as the 'object' and the metadata as the info
+        info=(summary,section)
+        super(HelpTopicRegistry, self).register(topic, detail, info=info)
 
-    def register_lazy(self, topic, module_name, member_name, summary):
+    def register_lazy(self, topic, module_name, member_name, summary,
+                      section=SECT_LIST):
         """Register a new help topic, and import the details on demand.
 
         :param topic: Name of documentation entry
         :param module_name: The module to find the detailed help.
         :param member_name: The member of the module to use for detailed help.
         :param summary: String providing single-line documentation for topic.
+        :param section: Section in reference manual - see SECT_* identifiers.
         """
+        # The detail is stored as the 'object' and the metadata as the info
+        info=(summary,section)
         super(HelpTopicRegistry, self).register_lazy(topic, module_name,
-                                                     member_name, info=summary)
+                                                     member_name, info=info)
 
     def get_detail(self, topic):
         """Get the detailed help on a given topic."""
@@ -59,7 +87,27 @@ class HelpTopicRegistry(registry.Registry):
 
     def get_summary(self, topic):
         """Get the single line summary for the topic."""
-        return self.get_info(topic)
+        info = self.get_info(topic)
+        if info is None:
+            return None
+        else:
+            return info[0]
+
+    def get_section(self, topic):
+        """Get the section for the topic."""
+        info = self.get_info(topic)
+        if info is None:
+            return None
+        else:
+            return info[1]
+
+    def get_topics_for_section(self, section):
+        """Get the set of topics in a section."""
+        result = set()
+        for topic in self.keys():
+            if section == self.get_section(topic):
+                result.add(topic)
+        return result
 
 
 topic_registry = HelpTopicRegistry()
@@ -81,23 +129,37 @@ def _help_on_topics(dummy):
 
 
 def _help_on_revisionspec(name):
-    """Write the summary help for all documented topics to outfile."""
+    """Generate the help for revision specs."""
+    import re
     import bzrlib.revisionspec
 
     out = []
-    out.append("\nRevision prefix specifier:"
-               "\n--------------------------\n")
+    out.append("Revision Identifiers\n")
+    out.append("A revision, or a range bound, can be one of the following.\n")
+    details = []
+    details.append("\nFurther details are given below.\n")
 
+    # The help text is indented 4 spaces - this re cleans that up below
+    indent_re = re.compile(r'^    ', re.MULTILINE)
     for i in bzrlib.revisionspec.SPEC_TYPES:
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
-            doc = "N/A\n"
-        while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
-            doc = doc[:-1]
+            summary = "N/A"
+            doc = summary + "\n"
+        else:
+            # Extract out the top line summary from the body and
+            # clean-up the unwanted whitespace
+            summary,doc = doc.split("\n", 1)
+            #doc = indent_re.sub('', doc)
+            while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
+                doc = doc[:-1]
+        
+        # Note: The leading : here are HACKs to get reStructuredText
+        # 'field' formatting - we know that the prefix ends in a ':'.
+        out.append(":%s\n\t%s" % (i.prefix, summary))
+        details.append(":%s\n%s" % (i.prefix, doc))
 
-        out.append("  %s %s\n\n" % (i.prefix, doc))
-
-    return ''.join(out)
+    return '\n'.join(out + details)
 
 
 def _help_on_transport(name):
@@ -122,7 +184,6 @@ def _help_on_transport(name):
         else:
             return 0
 
-    out = []
     protl = []
     decl = []
     protos = transport_list_registry.keys( )
@@ -132,22 +193,23 @@ def _help_on_transport(name):
         if not shorthelp:
             continue
         if proto.endswith("://"):
-            protl.extend(add_string(proto, shorthelp, 79))
+            protl.append(add_string(proto, shorthelp, 79))
         else:
-            decl.extend(add_string(proto, shorthelp, 79))
+            decl.append(add_string(proto, shorthelp, 79))
 
 
-    out = "\nSupported URL prefix\n--------------------\n" + \
-            ''.join(protl)
+    out = "URL Identifiers\n\n" + \
+            "Supported URL prefixes::\n\n  " + \
+            '  '.join(protl)
 
     if len(decl):
-        out += "\nSupported modifiers\n-------------------\n" + \
-            ''.join(decl)
+        out += "\nSupported modifiers::\n\n  " + \
+            '  '.join(decl)
 
     return out
 
 
-_basic_help= \
+_basic_help = \
 """Bazaar -- a free distributed version-control tool
 http://bazaar-vcs.org/
 
@@ -174,7 +236,7 @@ Basic commands:
 """
 
 
-_global_options =\
+_global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
@@ -193,7 +255,13 @@ command.  (e.g. "bzr --quiet help").
 --profile      Profile execution using the hotshot profiler
 --lsprof       Profile execution using the lsprof profiler
 --lsprof-file  Profile execution using the lsprof profiler, and write the
-               results to a specified file.
+               results to a specified file.  If the filename ends with ".txt",
+               text format will be used.  If the filename either starts with
+               "callgrind.out" or end with ".callgrind", the output will be
+               formatted for use with KCacheGrind. Otherwise, the output
+               will be a pickle.
+
+See doc/developers/profiling.txt for more information on profiling.
 
 Note: --version must be supplied before any command.
 """
@@ -262,7 +330,7 @@ command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
 commit is local, you can use the "unbind" command.
 
-Related commands:
+Related commands::
 
   checkout    Create a checkout. Pass --lightweight to get a lightweight
               checkout
@@ -279,11 +347,19 @@ Related commands:
 _repositories = \
 """Repositories
 
-Repositories in Bazaar are where committed information is stored. It is
-possible to create a shared repository which allows multiple branches to
-share their information in the same location. When a new branch is
-created it will first look to see if there is a containing repository it
-can share.
+Repositories in Bazaar are where committed information is stored. There is
+a repository associated with every branch.
+
+Repositories are a form of database. Bzr will usually maintain this for
+good performance automatically, but in some situations (e.g. when doing
+very many commits in a short time period) you may want to ask bzr to 
+optimise the database indices. This can be done by the 'bzr pack' command.
+
+By default just running 'bzr init' will create a repository within the new
+branch but it is possible to create a shared repository which allows multiple
+branches to share their information in the same location. When a new branch is
+created it will first look to see if there is a containing shared repository it
+can use.
 
 When two branches of the same project share a repository, there is
 generally a large space saving. For some operations (e.g. branching
@@ -304,7 +380,7 @@ need to use up disk space for a working tree. To create a repository in which
 the branches will not have working trees pass the '--no-trees' option to
 'init-repository'.
 
-Related commands:
+Related commands::
 
   init-repository   Create a shared repository. Use --no-trees to create one
                     in which new branches won't get a working tree.
@@ -344,7 +420,7 @@ that will update the working tree using rsync as well as doing a push. There
 is also a 'push-and-update' plugin that automates running 'bzr update' via SSH
 after each push.
 
-Useful commands:
+Useful commands::
 
   checkout     Create a working tree when a branch does not have one.
   remove-tree  Removes the working tree from a branch when it is safe to do so.
@@ -352,29 +428,105 @@ Useful commands:
                this will update the tree to match the branch.
 """
 
+_status_flags = \
+"""Status Flags
+
+Status flags are used to summarise changes to the working tree in a concise
+manner.  They are in the form::
+
+   xxx   <filename>
+
+where the columns' meanings are as follows.
+
+Column 1 - versioning/renames::
+
+  + File versioned
+  - File unversioned
+  R File renamed
+  ? File unknown
+  C File has conflicts
+  P Entry for a pending merge (not a file)
+
+Column 2 - contents::
+
+  N File created
+  D File deleted
+  K File kind changed
+  M File modified
+
+Column 3 - execute::
+
+  * The execute bit was changed
+"""
+
+
+_env_variables = \
+"""Environment Variables
+
+================ =================================================================
+BZRPATH          Path where bzr is to look for shell plugin external commands.
+BZR_EMAIL        E-Mail address of the user. Overrides EMAIL.
+EMAIL            E-Mail address of the user.
+BZR_EDITOR       Editor for editing commit messages. Overrides EDITOR.
+EDITOR           Editor for editing commit messages.
+BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
+BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
+BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
+================ =================================================================
+"""
+
+
+_files = \
+r"""Files
+
+:On Linux:   ~/.bazaar/bazaar.conf
+:On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf
+
+Contains the user's default configuration. The section ``[DEFAULT]`` is
+used to define general configuration that will be applied everywhere.
+The section ``[ALIASES]`` can be used to create command aliases for
+commonly used options.
+
+A typical config file might look something like::
+
+  [DEFAULT]
+  email=John Doe <jdoe@isp.com>
+
+  [ALIASES]
+  commit = commit --strict
+  log10 = log --short -r -10..-1
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
-topic_registry.register('basic', _basic_help, "Basic commands")
-topic_registry.register('topics', _help_on_topics, "Topics list")
+topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
+topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
 def get_format_topic(topic):
     from bzrlib import bzrdir
-    return bzrdir.format_registry.help_topic(topic)
+    return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
 topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
 topic_registry.register('checkouts', _checkouts,
-                        'Information on what a checkout is')
+                        'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
+topic_registry.register('status-flags', _status_flags,
+                        "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return bugtracker.tracker_registry.help_topic(topic)
+    return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
 topic_registry.register('repositories', _repositories,
-                        'Basic information on shared repositories.')
+                        'Basic information on shared repositories.',
+                        SECT_CONCEPT)
 topic_registry.register('working-trees', _working_trees,
-                        'Information on working trees')
+                        'Information on working trees', SECT_CONCEPT)
+topic_registry.register('env-variables', _env_variables,
+                        'Environment variable names and values')
+topic_registry.register('files', _files,
+                        'Information on configuration and log files')
 
 
 class HelpTopicIndex(object):
@@ -412,11 +564,13 @@ class RegisteredTopic(object):
         """
         self.topic = topic
 
-    def get_help_text(self, additional_see_also=None):
+    def get_help_text(self, additional_see_also=None, plain=True):
         """Return a string with the help for this topic.
 
         :param additional_see_also: Additional help topics to be
             cross-referenced.
+        :param plain: if False, raw help (reStructuredText) is
+            returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
         # there is code duplicated here and in bzrlib/plugin.py's 
@@ -427,12 +581,26 @@ class RegisteredTopic(object):
         else:
             see_also = None
         if see_also:
-            result += '\nSee also: '
+            result += '\n:See also: '
             result += ', '.join(see_also)
             result += '\n'
+        if plain:
+            result = help_as_plain_text(result)
         return result
 
     def get_help_topic(self):
         """Return the help topic this can be found under."""
         return self.topic
 
+
+def help_as_plain_text(text):
+    """Minimal converter of reStructuredText to plain text."""
+    lines = text.splitlines()
+    result = []
+    for line in lines:
+        if line.startswith(':'):
+            line = line[1:]
+        elif line.endswith('::'):
+            line = line[:-1]
+        result.append(line)
+    return "\n".join(result) + "\n"

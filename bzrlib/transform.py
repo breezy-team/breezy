@@ -34,7 +34,11 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.symbol_versioning import deprecated_function, zero_fifteen
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_fifteen,
+        zero_ninety,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
 import bzrlib.ui
@@ -717,6 +721,8 @@ class TreeTransform(object):
     def _duplicate_entries(self, by_parent):
         """No directory may have two entries with the same name."""
         conflicts = []
+        if (self._new_name, self._new_parent) == ({}, {}):
+            return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
             name_ids.sort()
@@ -783,17 +789,21 @@ class TreeTransform(object):
             return True
         return False
             
-    def apply(self):
+    def apply(self, no_conflicts=False):
         """Apply all changes to the inventory and filesystem.
         
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
 
         If apply succeeds, finalize is not necessary.
+
+        :param no_conflicts: if True, the caller guarantees there are no
+            conflicts, so no check is made.
         """
-        conflicts = self.find_conflicts()
-        if len(conflicts) != 0:
-            raise MalformedTransform(conflicts=conflicts)
+        if not no_conflicts:
+            conflicts = self.find_conflicts()
+            if len(conflicts) != 0:
+                raise MalformedTransform(conflicts=conflicts)
         inv = self._tree.inventory
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -1418,9 +1428,13 @@ def find_interesting(working_tree, target_tree, filenames):
         working_tree.unlock()
 
 
+@deprecated_function(zero_ninety)
 def change_entry(tt, file_id, working_tree, target_tree, 
                  trans_id_file_id, backups, trans_id, by_parent):
     """Replace a file_id's contents with those from a target tree."""
+    if file_id is None and target_tree is None:
+        # skip the logic altogether in the deprecation test
+        return
     e_trans_id = trans_id_file_id(file_id)
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
@@ -1645,8 +1659,13 @@ def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
         pb.clear()
 
 
-def conflict_pass(tt, conflicts):
-    """Resolve some classes of conflicts."""
+def conflict_pass(tt, conflicts, path_tree=None):
+    """Resolve some classes of conflicts.
+
+    :param tt: The transform to resolve conflicts in
+    :param conflicts: The conflicts to resolve
+    :param path_tree: A Tree to get supplemental paths from
+    """
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         if c_type == 'duplicate id':
@@ -1683,6 +1702,13 @@ def conflict_pass(tt, conflicts):
             except KeyError:
                 tt.create_directory(trans_id)
                 new_conflicts.add((c_type, 'Created directory', trans_id))
+                try:
+                    tt.final_name(trans_id)
+                except NoFinalPath:
+                    file_id = tt.final_file_id(trans_id)
+                    entry = path_tree.inventory[file_id]
+                    parent_trans_id = tt.trans_id_file_id(entry.parent_id)
+                    tt.adjust_path(entry.name, parent_trans_id, trans_id)
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

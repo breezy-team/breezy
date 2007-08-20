@@ -33,7 +33,7 @@ from bzrlib.weave import WeaveFile, Weave
 from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.symbol_versioning import (deprecated_method,
-        zero_eight)
+        )
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -157,16 +157,6 @@ class VersionedFileStore(TransportStore):
             transaction.register_clean(w, precious=self._precious)
         return w
 
-    @deprecated_method(zero_eight)
-    def get_lines(self, file_id, rev_id, transaction):
-        """Return text from a particular version of a weave.
-
-        Returned as a list of lines.
-        """
-        file_id = osutils.safe_file_id(file_id)
-        w = self.get_weave(file_id, transaction)
-        return w.get_lines(rev_id)
-    
     def _make_new_versionedfile(self, file_id, transaction,
         known_missing=False, _filename=None):
         """Make a new versioned file.
@@ -214,49 +204,11 @@ class VersionedFileStore(TransportStore):
             transaction.register_dirty(weave)
             return weave
 
-    @deprecated_method(zero_eight)
-    def put_weave(self, file_id, weave, transaction):
-        """This is a deprecated API: It writes an entire collection of ids out.
-        
-        This became inappropriate when we made a versioned file api which
-        tracks the state of the collection of versions for a single id.
-        
-        Its maintained for backwards compatability but will only work on
-        weave stores - pre 0.8 repositories.
-        """
-        file_id = osutils.safe_file_id(file_id)
-        self._put_weave(file_id, weave, transaction)
-
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
         myweave.join(weave)
 
-    @deprecated_method(zero_eight)
-    def add_text(self, file_id, rev_id, new_lines, parents, transaction):
-        """This method was a shorthand for 
-
-        vfile = self.get_weave_or_empty(file_id, transaction)
-        vfile.add_lines(rev_id, parents, new_lines)
-        """
-        file_id = osutils.safe_file_id(file_id)
-        vfile = self.get_weave_or_empty(file_id, transaction)
-        vfile.add_lines(rev_id, parents, new_lines)
-        
-    @deprecated_method(zero_eight)
-    def add_identical_text(self, file_id, old_rev_id, new_rev_id, parents,
-                           transaction):
-        """This method was a shorthand for
-
-        vfile = self.get_weave_or_empty(file_id, transaction)
-        vfile.clone_text(new_rev_id, old_rev_id, parents)
-        """
-        file_id = osutils.safe_file_id(file_id)
-        old_rev_id = osutils.safe_revision_id(old_rev_id)
-        new_rev_id = osutils.safe_revision_id(new_rev_id)
-        vfile = self.get_weave_or_empty(file_id, transaction)
-        vfile.clone_text(new_rev_id, old_rev_id, parents)
- 
     def copy(self, source, result_id, transaction):
         """Copy the source versioned file to result_id in this store."""
         self._clear_cache_id(result_id, transaction)

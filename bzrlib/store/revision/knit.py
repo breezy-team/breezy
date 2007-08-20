@@ -21,7 +21,11 @@ parallel knit.
 """
 
 
-from bzrlib import errors, osutils
+from bzrlib import (
+    errors,
+    osutils,
+    revision as _mod_revision,
+    )
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
@@ -57,6 +61,10 @@ class KnitRevisionStore(RevisionStore):
         """
         super(KnitRevisionStore, self).__init__()
         self.versioned_file_store = versioned_file_store
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__,
+                           self.versioned_file_store)
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
@@ -125,7 +133,7 @@ class KnitRevisionStore(RevisionStore):
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
         revision_id = osutils.safe_revision_id(revision_id)
-        return (revision_id is None
+        return (_mod_revision.is_null(revision_id)
                 or self.get_revision_file(transaction).has_version(revision_id))
 
     def _has_signature(self, revision_id, transaction):

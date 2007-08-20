@@ -32,6 +32,10 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           )
 from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eighteen,
+    )
 import bzrlib.ui as ui
 
 
@@ -46,7 +50,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_break_lock',
                      'bzrlib.tests.blackbox.test_breakin',
                      'bzrlib.tests.blackbox.test_bound_branches',
-                     'bzrlib.tests.blackbox.test_bundle',
+                     'bzrlib.tests.blackbox.test_bundle_info',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_cat_revision',
                      'bzrlib.tests.blackbox.test_checkout',
@@ -69,12 +73,14 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_ls',
+                     'bzrlib.tests.blackbox.test_lsprof',
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_merge_directive',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
                      'bzrlib.tests.blackbox.test_outside_wt',
+                     'bzrlib.tests.blackbox.test_pack',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',
@@ -87,6 +93,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_selftest',
+                     'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
@@ -118,13 +125,11 @@ def test_suite():
 
 class ExternalBase(TestCaseWithTransport):
 
-    def runbzr(self, args, retcode=0, backtick=False):
+    @deprecated_method(zero_eighteen)
+    def runbzr(self, args, retcode=0):
         if isinstance(args, basestring):
             args = args.split()
-        if backtick:
-            return self.run_bzr_captured(args, retcode=retcode)[0]
-        else:
-            return self.run_bzr_captured(args, retcode=retcode)
+        return self.run_bzr(args, retcode=retcode)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
@@ -132,4 +137,4 @@ class ExternalBase(TestCaseWithTransport):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr_captured(args)[0], output)
+        self.assertEquals(self.run_bzr(*args)[0], output)

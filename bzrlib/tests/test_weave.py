@@ -1,5 +1,3 @@
-#! /usr/bin/python2.4
-
 # Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -30,7 +28,7 @@ from bzrlib import (
     )
 from bzrlib.osutils import sha_string
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.weave import Weave, WeaveFormatError, WeaveError, reweave
+from bzrlib.weave import Weave, WeaveFormatError, WeaveError
 from bzrlib.weavefile import write_weave, read_weave
 
 

@@ -35,6 +35,7 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.trace import mutter
+from bzrlib.transport import LateReadError
 """)
 
 from bzrlib.transport import Transport, Server
@@ -63,9 +64,6 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-
-    def should_cache(self):
-        return False
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
@@ -126,7 +124,7 @@ class LocalTransport(Transport):
             abspath = u'.'
 
         return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(self.base),
             urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):
@@ -141,6 +139,8 @@ class LocalTransport(Transport):
             path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError),e:
+            if e.errno == errno.EISDIR:
+                return LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):
@@ -389,6 +389,11 @@ class LocalTransport(Transport):
             os.remove(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # File URL's are externally usable.
+        return self.base
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.

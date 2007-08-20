@@ -21,8 +21,9 @@ from bzrlib.benchmarks import Benchmark
 
 
 class CheckoutBenchmark(Benchmark):
+    """Benchmarks for ``'bzr checkout'`` performance."""
 
     def test_build_kernel_like_tree(self):
         """Checkout of a clean kernel sized tree should be (<10secs)."""
         self.make_kernel_like_committed_tree(link_bzr=True)
-        self.time(self.run_bzr, 'checkout', '--lightweight', '.', 'acheckout')
+        self.time(self.run_bzr, ['checkout', '--lightweight', '.', 'acheckout'])

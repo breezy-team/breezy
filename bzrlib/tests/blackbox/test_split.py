@@ -27,8 +27,8 @@ class TestSplit(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('a')
         wt.add(['b', 'b/c'])
         wt.commit('rev1')
-        self.run_bzr('split', 'a/b')
-        self.run_bzr_error(('.* is not versioned',), 'split', 'q')
+        self.run_bzr('split a/b')
+        self.run_bzr_error(('.* is not versioned',), 'split q')
 
     def test_split_repo_failure(self):
         repo = self.make_repository('branch', shared=True, format='knit')
@@ -37,5 +37,4 @@ class TestSplit(tests.TestCaseWithTransport):
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
         wt.commit('added files')
-        self.run_bzr_error(('must upgrade your branch at .*a',), 'split', 
-                            'a/b')
+        self.run_bzr_error(('must upgrade your branch at .*a',), 'split a/b')

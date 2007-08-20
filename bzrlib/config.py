@@ -77,6 +77,7 @@ from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    trace,
     urlutils,
     win32utils,
     )
@@ -639,13 +640,29 @@ class BranchConfig(Config):
                 return value
         return None
 
-    def set_user_option(self, name, value, store=STORE_BRANCH):
+    def set_user_option(self, name, value, store=STORE_BRANCH,
+        warn_masked=False):
         if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
         elif store == STORE_GLOBAL:
             self._get_global_config().set_user_option(name, value)
         else:
             self._get_location_config().set_user_option(name, value, store)
+        if not warn_masked:
+            return
+        if store in (STORE_GLOBAL, STORE_BRANCH):
+            mask_value = self._get_location_config().get_user_option(name)
+            if mask_value is not None:
+                trace.warning('Value "%s" is masked by "%s" from'
+                              ' locations.conf', value, mask_value)
+            else:
+                if store == STORE_GLOBAL:
+                    branch_config = self._get_branch_data_config()
+                    mask_value = branch_config.get_user_option(name)
+                    if mask_value is not None:
+                        trace.warning('Value "%s" is masked by "%s" from'
+                                      ' branch.conf', value, mask_value)
+
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
@@ -852,7 +869,7 @@ class TreeConfig(IniBasedConfig):
             obj = self._get_config()
             try:
                 if section is not None:
-                    obj[section]
+                    obj = obj[section]
                 result = obj[name]
             except KeyError:
                 result = default

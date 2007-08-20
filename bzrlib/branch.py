@@ -19,8 +19,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
-from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
@@ -51,7 +49,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            HistoryMissing, InvalidRevisionId,
                            InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NoSuchRevision, NotVersionedError,
                            NotBranchError, UninitializableFormat,
                            UnlistableStore, UnlistableBranch,
                            )
@@ -61,6 +59,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
                                       zero_eight, zero_nine, zero_sixteen,
+                                      zero_ninetyone,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -118,12 +117,6 @@ class Branch(object):
             master.break_lock()
 
     @staticmethod
-    @deprecated_method(zero_eight)
-    def open_downlevel(base):
-        """Open a branch which may be of an old format."""
-        return Branch.open(base, _unsupported=True)
-        
-    @staticmethod
     def open(base, _unsupported=False):
         """Open the branch rooted at base.
 
@@ -134,7 +127,13 @@ class Branch(object):
         return control.open_branch(_unsupported)
 
     @staticmethod
-    def open_containing(url):
+    def open_from_transport(transport, _unsupported=False):
+        """Open the branch rooted at transport"""
+        control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
+        return control.open_branch(_unsupported)
+
+    @staticmethod
+    def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
         
         This probes for a branch at url, and searches upwards from there.
@@ -145,27 +144,9 @@ class Branch(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        control, relpath = bzrdir.BzrDir.open_containing(url)
+        control, relpath = bzrdir.BzrDir.open_containing(url,
+                                                         possible_transports)
         return control.open_branch(), relpath
-
-    @staticmethod
-    @deprecated_function(zero_eight)
-    def initialize(base):
-        """Create a new working tree and branch, rooted at 'base' (url)
-
-        NOTE: This will soon be deprecated in favour of creation
-        through a BzrDir.
-        """
-        return bzrdir.BzrDir.create_standalone_workingtree(base).branch
-
-    @deprecated_function(zero_eight)
-    def setup_caching(self, cache_root):
-        """Subclasses that care about caching should override this, and set
-        up cached stores located under cache_root.
-        
-        NOTE: This is unused.
-        """
-        pass
 
     def get_config(self):
         return BranchConfig(self)
@@ -174,7 +155,7 @@ class Branch(object):
         return self.get_config().get_nickname()
 
     def _set_nick(self, nick):
-        self.get_config().set_user_option('nickname', nick)
+        self.get_config().set_user_option('nickname', nick, warn_masked=True)
 
     nick = property(_get_nick, _set_nick)
 
@@ -371,9 +352,6 @@ class Branch(object):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
-    def append_revision(self, *revision_ids):
-        raise NotImplementedError(self.append_revision)
-
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
@@ -507,7 +485,7 @@ class Branch(object):
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
-        if revision_id is None:
+        if _mod_revision.is_null(revision_id):
             return 0
         revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
@@ -586,7 +564,7 @@ class Branch(object):
             url = ''
         elif make_relative:
             url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url)
+        config.set_user_option(name, url, warn_masked=True)
 
     def _get_config_location(self, name, config=None):
         if config is None:
@@ -612,7 +590,8 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        self.get_config().set_user_option('submit_branch', location)
+        self.get_config().set_user_option('submit_branch', location,
+            warn_masked=True)
 
     def get_public_branch(self):
         """Return the public location of the branch.
@@ -702,8 +681,10 @@ class Branch(object):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
         new_history = self.revision_history()
-        if revision_id is not None:
+        if revision_id is not None and new_history != []:
             revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -846,6 +827,12 @@ class BranchFormat(object):
 
     _formats = {}
     """The known formats."""
+
+    def __eq__(self, other):
+        return self.__class__ is other.__class__
+
+    def __ne__(self, other):
+        return not (self == other)
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -1125,13 +1112,14 @@ class BzrBranchFormat5(BranchFormat):
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
-    """Branch format with last-revision
+    """Branch format with last-revision and tags.
 
     Unlike previous formats, this has no explicit revision history. Instead,
     this just stores the last-revision, and the left-hand history leading
     up to there is the history.
 
     This format was introduced in bzr 0.15
+    and became the default in 0.91.
     """
 
     def get_format_string(self):
@@ -1250,11 +1238,12 @@ class BranchReferenceFormat(BranchFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__default_format = BzrBranchFormat5()
-BranchFormat.register_format(__default_format)
+__format5 = BzrBranchFormat5()
+__format6 = BzrBranchFormat6()
+BranchFormat.register_format(__format5)
 BranchFormat.register_format(BranchReferenceFormat())
-BranchFormat.register_format(BzrBranchFormat6())
-BranchFormat.set_default_format(__default_format)
+BranchFormat.register_format(__format6)
+BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
 
@@ -1352,17 +1341,6 @@ class BzrBranch(Branch):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        """See Branch.append_revision."""
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        for revision_id in revision_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
-            mutter("add {%s} to revision-history" % revision_id)
-        rev_history = self.revision_history()
-        rev_history.extend(revision_ids)
-        self.set_revision_history(rev_history)
-
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
 
@@ -1383,6 +1361,16 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision of this branch.
+
+        The caller is responsible for checking that the revno is correct
+        for this revision id.
+
+        It may be possible to set the branch last revision to an id not
+        present in the repository.  However, branches can also be 
+        configured to check constraints on history, in which case this may not
+        be permitted.
+        """
         revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
@@ -1399,7 +1387,8 @@ class BzrBranch(Branch):
                           other_branch=None):
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
-        if last_rev is not None and last_rev not in stop_graph:
+        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
+            and last_rev not in stop_graph):
             # our previous tip is not merged into stop_revision
             raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
@@ -1444,13 +1433,12 @@ class BzrBranch(Branch):
                 stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = self.last_revision()
+            last_rev = _mod_revision.ensure_null(self.last_revision())
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev)
-            if stop_revision in my_ancestry:
-                # last_revision is a descendant of stop_revision
+            if self.repository.get_graph().is_ancestor(stop_revision,
+                                                       last_rev):
                 return
             self.generate_revision_history(stop_revision, last_rev=last_rev,
                 other_branch=other)
@@ -1460,16 +1448,6 @@ class BzrBranch(Branch):
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
-
-    @deprecated_method(zero_eight)
-    def working_tree(self):
-        """Create a Working tree object for this branch."""
-
-        from bzrlib.transport.local import LocalTransport
-        if (self.base.find('://') != -1 or 
-            not isinstance(self._transport, LocalTransport)):
-            raise NoWorkingTree(self.base)
-        return self.bzrdir.open_workingtree()
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -1658,12 +1636,6 @@ class BzrBranch(Branch):
             assert isinstance(url, str)
             self.control_files.put_bytes('parent', url + '\n')
 
-    @deprecated_function(zero_nine)
-    def tree_config(self):
-        """DEPRECATED; call get_config instead.  
-        TreeConfig has become part of BranchConfig."""
-        return TreeConfig(self)
-
 
 class BzrBranch5(BzrBranch):
     """A format 5 branch. This supports new features over plan branches.
@@ -1773,12 +1745,12 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = self.last_revision()
-        if last_rev is not None:
+        last_rev = _mod_revision.ensure_null(self.last_revision())
+        if last_rev != _mod_revision.NULL_REVISION:
             other.lock_read()
             try:
                 other_last_rev = other.last_revision()
-                if other_last_rev is not None:
+                if not _mod_revision.is_null(other_last_rev):
                     # neither branch is new, we have to do some work to
                     # ascertain diversion.
                     remote_graph = other.repository.get_revision_graph(
@@ -1805,9 +1777,10 @@ class BzrBranch5(BzrBranch):
         """
         master = self.get_master_branch()
         if master is not None:
-            old_tip = self.last_revision()
+            old_tip = _mod_revision.ensure_null(self.last_revision())
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision()):
+            if self.repository.get_graph().is_ancestor(old_tip,
+                _mod_revision.ensure_null(self.last_revision())):
                 return None
             return old_tip
         return None
@@ -1954,8 +1927,8 @@ class BzrBranch6(BzrBranch5):
         self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
-        last_revision = self.last_revision()
-        if last_revision is None:
+        last_revision = _mod_revision.ensure_null(self.last_revision())
+        if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):
             raise errors.AppendRevisionsOnlyViolation(self.base)
@@ -1985,25 +1958,6 @@ class BzrBranch6(BzrBranch5):
         self._write_last_revision_info(len(history), last_revision)
 
     @needs_write_lock
-    def append_revision(self, *revision_ids):
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
-        if len(revision_ids) == 0:
-            return
-        prev_revno, prev_revision = self.last_revision_info()
-        for revision in self.repository.get_revisions(revision_ids):
-            if prev_revision == _mod_revision.NULL_REVISION:
-                if revision.parent_ids != []:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            else:
-                if revision.parent_ids[0] != prev_revision:
-                    raise errors.NotLeftParentDescendant(self, prev_revision,
-                                                         revision.revision_id)
-            prev_revision = revision.revision_id
-        self.set_last_revision_info(prev_revno + len(revision_ids),
-                                    revision_ids[-1])
-
-    @needs_write_lock
     def _set_parent_location(self, url):
         """Set the parent branch"""
         self._set_config_location('parent_location', url, make_relative=True)
@@ -2025,12 +1979,12 @@ class BzrBranch6(BzrBranch5):
             if config.get_user_option('bound') != 'True':
                 return False
             else:
-                config.set_user_option('bound', 'False')
+                config.set_user_option('bound', 'False', warn_masked=True)
                 return True
         else:
             self._set_config_location('bound_location', location,
                                       config=config)
-            config.set_user_option('bound', 'True')
+            config.set_user_option('bound', 'True', warn_masked=True)
         return True
 
     def _get_bound_location(self, bound):
@@ -2056,7 +2010,8 @@ class BzrBranch6(BzrBranch5):
             value = 'True'
         else:
             value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value)
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2074,48 +2029,25 @@ class BzrBranch6(BzrBranch5):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
-            revno, revision_id = self.last_revision_info()
+            revno, revision_id = source_revno, source_revision_id
+        elif source_revision_id == revision_id:
+            # we know the revno without needing to walk all of history
+            revno = source_revno
         else:
-            revno = self.revision_id_to_revno(revision_id)
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
         destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):
         return BasicTags(self)
-
-
-class BranchTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple branch formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and branch_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = TestSuite()
-        for branch_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.branch_format = branch_format
-            def make_new_test_id():
-                # the format can be either a class or an instance
-                name = getattr(branch_format, '__name__',
-                        branch_format.__class__.__name__)
-                new_id = "%s(%s)" % (new_test.id(), name)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
 
 
 ######################################################################

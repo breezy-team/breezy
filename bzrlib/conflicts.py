@@ -56,7 +56,10 @@ class cmd_conflicts(commands.Command):
 
     See also bzr resolve.
     """
-    takes_options = [Option('text', help='list text conflicts by pathname')]
+    takes_options = [
+            Option('text',
+                   help='List paths of files with text conflicts.'),
+        ]
 
     def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
@@ -86,7 +89,9 @@ class cmd_resolve(commands.Command):
     """
     aliases = ['resolved']
     takes_args = ['file*']
-    takes_options = [Option('all', help='Resolve all conflicts in this tree')]
+    takes_options = [
+            Option('all', help='Resolve all conflicts in this tree.'),
+            ]
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
         if all:
@@ -228,7 +233,8 @@ class ConflictList(object):
                     if e.errno != errno.ENOENT:
                         raise
 
-    def select_conflicts(self, tree, paths, ignore_misses=False):
+    def select_conflicts(self, tree, paths, ignore_misses=False,
+                         recurse=False):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
@@ -253,6 +259,11 @@ class ConflictList(object):
                 if cpath in path_set:
                     selected = True
                     selected_paths.add(cpath)
+                if recurse:
+                    if osutils.is_inside_any(path_set, cpath):
+                        selected = True
+                        selected_paths.add(cpath)
+
             for key in ('file_id', 'conflict_file_id'):
                 cfile_id = getattr(conflict, key, None)
                 if cfile_id is None:

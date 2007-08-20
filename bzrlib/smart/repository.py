@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+import os
 import sys
 import tempfile
 import tarfile
@@ -71,7 +72,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('nosuchrevision', revision_id), '')
 
         for revision, parents in revision_graph.items():
-            lines.append(' '.join([revision,] + parents))
+            lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
@@ -213,7 +214,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     def _tarfile_response(self, tmp_dirname, compression):
         temp = tempfile.NamedTemporaryFile()
         try:
-            self._tarball_of_dir(tmp_dirname, compression, temp.name)
+            self._tarball_of_dir(tmp_dirname, compression, temp.file)
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SuccessfulSmartServerResponse(('ok',), temp.read())
@@ -222,8 +223,10 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         finally:
             temp.close()
 
-    def _tarball_of_dir(self, dirname, compression, tarfile_name):
-        tarball = tarfile.open(tarfile_name, mode='w:' + compression)
+    def _tarball_of_dir(self, dirname, compression, ofile):
+        filename = os.path.basename(ofile.name)
+        tarball = tarfile.open(fileobj=ofile, name=filename,
+            mode='w|' + compression)
         try:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files

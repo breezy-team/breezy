@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision as _mod_revision,
     transactions,
     transport,
     ui,
@@ -51,6 +52,7 @@ from bzrlib.tests import (
 from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.repofmt import weaverepo
@@ -128,11 +130,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
         TestSkipped.  Returns the newly sprouted bzrdir.
         """
-        try:
-            target = from_bzrdir.sprout(to_url, revision_id=revision_id,
-                                        force_new_repo=force_new_repo)
-        except errors.NotLocalUrl:
+        to_transport = get_transport(to_url)
+        if not isinstance(to_transport, LocalTransport):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
+        target = from_bzrdir.sprout(to_url, revision_id=revision_id,
+                                    force_new_repo=force_new_repo,
+                                    possible_transports=[to_transport])
         return target
 
     def test_create_null_workingtree(self):
@@ -586,7 +589,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
         try:
-            self.assertIs(dir.open_branch().last_revision(), None)
+            self.assertTrue(
+                _mod_revision.is_null(_mod_revision.ensure_null(
+                dir.open_branch().last_revision())))
         except errors.NotBranchError:
             pass
         target = self.sproutOrSkip(dir, self.get_url('target'))

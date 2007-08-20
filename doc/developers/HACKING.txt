@@ -4,8 +4,9 @@ Bazaar Developer Guide
 
 .. contents::
 
-(The current version of this document is available in the file ``HACKING``
-in the source tree, or at http://doc.bazaar-vcs.org/bzr.dev/hacking.html)
+(The current version of this document is available in the file 
+``doc/developers/HACKING.txt`` in the source tree, or at
+http://doc.bazaar-vcs.org/bzr.dev/developers/HACKING.html)
 
 
 Getting Started
@@ -148,19 +149,18 @@ recorded in the Bug Tracker instead.)
 Anyone can "vote" on the mailing list. Core developers can also vote using
 Bundle Buggy. Here are the voting codes and their explanations.
 
-  -1	really don't want it in current form
-  -0	somewhat uncomfortable 
-  +0	comfortable but resubmission after changes requested
-  +1 conditional	good to go after some minor changes
-  +1	good to go
+:approve:  Reviewer wants this submission merged.
+:tweak:    Reviewer wants this submission merged with small changes. (No
+  re-review required.)
+:abstain:  Reviewer does not intend to vote on this patch.
+:resubmit: Please make changes and resubmit for review.
+:reject:   Reviewer doesn't want this kind of change merged.
+:comment:  Not really a vote. Reviewer just wants to comment, for now.
 
-+1 conditional is used as a way to avoid another submit/review cycle for
-patches that need small changes.
-
-If a change gets two +1 votes from core reviewers, and no
-vetos, then it's OK to come in.  Any of the core developers can bring it
-into the bzr.dev trunk and backport it to maintenance branches if required.
-The Release Manager will merge the change into the branch for a pending
+If a change gets two approvals from core reviewers, and no rejections,
+then it's OK to come in.  Any of the core developers can bring it into the
+bzr.dev trunk and backport it to maintenance branches if required.  The
+Release Manager will merge the change into the branch for a pending
 release, if any. As a guideline, core developers usually merge their own
 changes and volunteer to merge other contributions if they were the second
 reviewer to agree to a change.
@@ -260,6 +260,12 @@ To skip a particular test (or set of tests), use the --exclude option
 (shorthand -x) like so::
 
   ./bzr selftest -v -x blackbox  
+
+To ensure that all tests are being run and succeeding, you can use the
+--strict option which will fail if there are any missing features or known
+failures, like so::
+
+  ./bzr selftest --strict
 
 To list tests without running them, use the --list-only option like so::
 
@@ -371,6 +377,37 @@ care, we don't want a proliferation of quietly broken tests.  It might be
 appropriate to use them if you've committed a test for a bug but not the
 fix for it, or if something works on Unix but not on Windows.
 
+
+Testing exceptions and errors
+-----------------------------
+
+It's important to test handling of errors and exceptions.  Because this
+code is often not hit in ad-hoc testing it can often have hidden bugs --
+it's particularly common to get NameError because the exception code
+references a variable that has since been renamed.
+
+.. TODO: Something about how to provoke errors in the right way?
+
+In general we want to test errors at two levels:
+
+1. A test in ``test_errors.py`` checking that when the exception object is
+   constructed with known parameters it produces an expected string form.
+   This guards against mistakes in writing the format string, or in the
+   ``str`` representations of its parameters.  There should be one for
+   each exception class.
+
+2. Tests that when an api is called in a particular situation, it raises
+   an error of the expected class.  You should typically use
+   ``assertRaises``, which in the Bazaar test suite returns the exception
+   object to allow you to examine its parameters.  
+
+In some cases blackbox tests will also want to check error reporting.  But
+it can be difficult to provoke every error through the commandline
+interface, so those tests are only done as needed -- eg in response to a
+particular bug or if the error is reported in an unusual way(?)  Blackbox
+tests should mostly be testing how the command-line interface works, so
+should only test errors if there is something particular to the cli in how
+they're displayed or handled.
 
 
 Essential Domain Classes
@@ -498,9 +535,12 @@ Module Imports
 Naming
 ------
 
-Functions, methods or members that are in some sense "private" are given
-a leading underscore prefix.  This is just a hint that code outside the
-implementation should probably not use that interface.
+Functions, methods or members that are "private" to bzrlib are given
+a leading underscore prefix.  Names without a leading underscore are
+public not just across modules but to programmers using bzrlib as an
+API. As a consequence, a leading underscore is appropriate for names
+exposed across modules but that are not to be exposed to bzrlib API
+programmers.
 
 We prefer class names to be concatenated capital words (``TestCase``)
 and variables, methods and functions to be lowercase words joined by
@@ -633,6 +673,16 @@ happened. But it requires accessing a member more than once from the new
 variable, so some bugs are not detected right away.
 
 
+The Null revision
+-----------------
+
+The null revision is the ancestor of all revisions.  Its revno is 0, its
+revision-id is ``null:``, and its tree is the empty tree.  When referring
+to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
+code sometimes uses ``None`` for the null revision, but this practice is
+being phased out.
+
+
 Getting Input
 =============
 
@@ -691,6 +741,24 @@ structured data, we should make it so.
 
 The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
+
+
+
+Displaying help
+===============
+
+Bazaar has online help for various topics through ``bzr help COMMAND`` or
+equivalently ``bzr command -h``.  We also have help on command options,
+and on other help topics.  (See ``help_topics.py``.)
+
+As for python docstrings, the first paragraph should be a single-sentence
+synopsis of the command.
+
+The help for options should be one or more proper sentences, starting with
+a capital letter and finishing with a full stop (period).
+
+All help messages and documentation should have two spaces between
+sentences.
 
 
 Writing tests

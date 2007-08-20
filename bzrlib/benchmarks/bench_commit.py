@@ -24,6 +24,7 @@ from bzrlib.transport import get_transport
 
 
 class CommitBenchmark(Benchmark):
+    """Benchmarks for ``bzr commit``"""
 
     def test_commit_kernel_like_tree(self):
         """Commit of a fresh import of a clean kernel sized tree."""
@@ -32,17 +33,17 @@ class CommitBenchmark(Benchmark):
         # self.transport_server = MemoryServer
         # self.make_kernel_like_tree(self.get_url())
         tree = self.make_kernel_like_added_tree()
-        self.time(self.run_bzr, 'commit', '-m', 'first post')
+        self.time(self.run_bzr, ['commit', '-m', 'first post'])
 
     def test_partial_commit_kernel_like_tree(self):
         """Commit of 1/8th of a fresh import of a clean kernel sized tree."""
         tree = self.make_kernel_like_added_tree()
-        self.time(self.run_bzr, 'commit', '-m', 'first post', '1')
+        self.time(self.run_bzr, ['commit', '-m', 'first post', '1'])
 
     def test_no_op_commit_in_kernel_like_tree(self):
         """Run commit --unchanged in a kernel sized tree"""
         tree = self.make_kernel_like_committed_tree()
-        self.time(self.run_bzr, 'commit', '-m', 'no changes', '--unchanged')
+        self.time(self.run_bzr, ['commit', '-m', 'no changes', '--unchanged'])
 
     def test_commit_one_in_kernel_like_tree(self):
         """Time committing a single change, when not directly specified"""
@@ -51,7 +52,7 @@ class CommitBenchmark(Benchmark):
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
         open('4/4/4/4', 'wb').write('new contents\n')
-        self.time(self.run_bzr, 'commit', '-m', 'second')
+        self.time(self.run_bzr, ['commit', '-m', 'second'])
 
     def test_partial_commit_one_in_kernel_like_tree(self):
         """Time committing a single change when it is directly specified"""
@@ -60,7 +61,7 @@ class CommitBenchmark(Benchmark):
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
         open('4/4/4/4', 'wb').write('new contents\n')
-        self.time(self.run_bzr, 'commit', '-m', 'second', '4/4/4/4')
+        self.time(self.run_bzr, ['commit', '-m', 'second', '4/4/4/4'])
 
     def make_simple_tree(self):
         """A small, simple tree. No caching needed"""
@@ -72,7 +73,7 @@ class CommitBenchmark(Benchmark):
     def test_cmd_commit(self):
         """Test execution of simple commit"""
         tree = self.make_simple_tree()
-        self.time(self.run_bzr, 'commit', '-m', 'init simple tree')
+        self.time(self.run_bzr, ['commit', '-m', 'init simple tree'])
 
     def test_cmd_commit_subprocess(self):
         """Text startup and execution of a simple commit.""" 

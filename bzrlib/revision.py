@@ -18,12 +18,19 @@
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
-import bzrlib.errors as errors
-from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
+from bzrlib import (
+    errors,
+    symbol_versioning
+    )
+from bzrlib.deprecated_graph import (
+    all_descendants,
+    Graph,
+    node_distances,
+    select_farthest,
+    )
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight,
         )
 
 NULL_REVISION="null:"
@@ -119,7 +126,10 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return (candidate_id in branch.repository.get_ancestry(revision_id))
+    if is_null(candidate_id):
+        return True
+    return (candidate_id in branch.repository.get_ancestry(revision_id,
+            topo_sorted=False))
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -253,10 +263,10 @@ def common_ancestor(revision_a, revision_b, revision_source,
                 [revision_a, revision_b])
             # Shortcut the case where one of the tips is already included in
             # the other graphs ancestry.
-            ancestry_a = graph.get_ancestry(revision_a)
+            ancestry_a = graph.get_ancestry(revision_a, topo_sorted=False)
             if revision_b in ancestry_a:
                 return revision_b
-            ancestry_b = graph.get_ancestry(revision_b)
+            ancestry_b = graph.get_ancestry(revision_b, topo_sorted=False)
             if revision_a in ancestry_b:
                 return revision_a
             # convert to a NULL_REVISION based graph.
@@ -419,51 +429,6 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
-@deprecated_function(zero_eight)
-def get_intervening_revisions(ancestor_id, rev_id, rev_source,
-                              revision_history=None):
-    """Find the longest line of descent from maybe_ancestor to revision.
-    Revision history is followed where possible.
-
-    If ancestor_id == rev_id, list will be empty.
-    Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
-    If ancestor_id is not an ancestor, NotAncestor will be thrown
-    """
-    root, ancestors, descendants = revision_graph(rev_id, rev_source)
-    if len(descendants) == 0:
-        raise errors.NoSuchRevision(rev_source, rev_id)
-    if ancestor_id not in descendants:
-        rev_source.get_revision(ancestor_id)
-        raise errors.NotAncestor(rev_id, ancestor_id)
-    root_descendants = all_descendants(descendants, ancestor_id)
-    root_descendants.add(ancestor_id)
-    if rev_id not in root_descendants:
-        raise errors.NotAncestor(rev_id, ancestor_id)
-    distances = node_distances(descendants, ancestors, ancestor_id,
-                               root_descendants=root_descendants)
-
-    def best_ancestor(rev_id):
-        best = None
-        for anc_id in ancestors[rev_id]:
-            try:
-                distance = distances[anc_id]
-            except KeyError:
-                continue
-            if revision_history is not None and anc_id in revision_history:
-                return anc_id
-            elif best is None or distance > best[1]:
-                best = (anc_id, distance)
-        return best[0]
-
-    next = rev_id
-    path = []
-    while next != ancestor_id:
-        path.append(next)
-        next = best_ancestor(next)
-    path.reverse()
-    return path
-
-
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
@@ -476,3 +441,19 @@ def check_not_reserved_id(revision_id):
     """Raise ReservedId if the supplied revision_id is reserved"""
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
+
+
+def ensure_null(revision_id):
+    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    if revision_id is None:
+        return NULL_REVISION
+    else:
+        return revision_id
+
+
+def is_null(revision_id):
+    if revision_id is None:
+        symbol_versioning.warn('NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.90.',
+            DeprecationWarning, stacklevel=2)
+    return revision_id in (None, NULL_REVISION)

@@ -27,7 +27,9 @@ from StringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     errors,
+    trace,
     urlutils,
     )
 from bzrlib.branch import (
@@ -37,6 +39,7 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     BzrBranch5,
     BzrBranchFormat5,
+    BzrBranchFormat6,
     PullResult,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
@@ -52,10 +55,21 @@ from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
+    def test_default_format(self):
+        # update this if you change the default branch format
+        self.assertIsInstance(BranchFormat.get_default_format(),
+                BzrBranchFormat6)
+
+    def test_default_format_is_same_as_bzrdir_default(self):
+        # XXX: it might be nice if there was only one place the default was
+        # set, but at the moment that's not true -- mbp 20070814 -- 
+        # https://bugs.launchpad.net/bzr/+bug/132376
+        self.assertEqual(BranchFormat.get_default_format(),
+                BzrDirFormat.get_default_format().get_branch_format())
+
     def test_get_set_default_format(self):
+        # set the format and then set it back again
         old_format = BranchFormat.get_default_format()
-        # default is 5
-        self.assertTrue(isinstance(old_format, BzrBranchFormat5))
         BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -222,32 +236,6 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
-    def test_append_revision(self):
-        tree = self.make_branch_and_tree('branch1',
-            format='dirstate-tags')
-        tree.lock_write()
-        try:
-            tree.commit('foo', rev_id='foo')
-            tree.commit('bar', rev_id='bar')
-            tree.commit('baz', rev_id='baz')
-            tree.set_last_revision('bar')
-            tree.branch.set_last_revision_info(2, 'bar')
-            tree.commit('qux', rev_id='qux')
-            tree.add_parent_tree_id('baz')
-            tree.commit('qux', rev_id='quxx')
-            tree.branch.set_last_revision_info(0, 'null:')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'bar')
-            tree.branch.append_revision('foo')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'baz')
-            tree.branch.append_revision('bar')
-            tree.branch.append_revision('baz')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'quxx')
-        finally:
-            tree.unlock()
-
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source', format='dirstate-with-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
@@ -274,12 +262,27 @@ class TestBranch6(TestCaseWithTransport):
         else:
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
 
-
     def test_checkout_with_references(self):
         self.do_checkout_test()
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
+
+    def test_set_push(self):
+        branch = self.make_branch('source', format='dirstate-tags')
+        branch.get_config().set_user_option('push_location', 'old',
+            store=config.STORE_LOCATION)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        _warning = trace.warning
+        trace.warning = warning
+        try:
+            branch.set_push_location('new')
+        finally:
+            trace.warning = _warning
+        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
+                         'locations.conf')
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
@@ -325,17 +328,6 @@ class TestHooks(TestCase):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
-
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = BranchHooks()
-        self.assertRaises(UnknownHook, hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = BranchHooks()
-        hooks.install_hook('set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
 
 
 class TestPullResult(TestCase):

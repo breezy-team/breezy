@@ -18,7 +18,10 @@ from cStringIO import StringIO
 import urllib
 import urlparse
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
@@ -44,60 +47,63 @@ class HttpTransport_urllib(HttpTransportBase):
 
     _opener_class = Opener
 
-    def __init__(self, base, from_transport=None):
-        """Set the base path where files will be stored."""
-        if from_transport is not None:
-            super(HttpTransport_urllib, self).__init__(base, from_transport)
-            self._connection = from_transport._connection
-            self._auth = from_transport._auth
-            self._proxy_auth = from_transport._proxy_auth
-
-            self._opener = from_transport._opener
+    def __init__(self, base, _from_transport=None):
+        super(HttpTransport_urllib, self).__init__(
+            base, _from_transport=_from_transport)
+        if _from_transport is not None:
+            self._opener = _from_transport._opener
         else:
-            # urllib2 will be confused if it find authentication
-            # info in the urls. So we handle them separatly.
-            # Note: we don't need to when cloning because it was
-            # already done.
-            clean_base, user, password = extract_credentials(base)
-            super(HttpTransport_urllib, self).__init__(clean_base,
-                                                       from_transport)
-            self._connection = None
             self._opener = self._opener_class()
 
-            authuri = extract_authentication_uri(self._real_abspath(self._path))
-            self._auth = {'user': user, 'password': password,
-                          'authuri': authuri}
-            if user and password is not None: # '' is a valid password
-                # Make the (user, password) available to urllib2
-                # We default to a realm of None to catch them all.
-                self._opener.password_manager.add_password(None, authuri,
-                                                           user, password)
-            self._proxy_auth = {}
+    def _remote_path(self, relpath):
+        """Produce absolute path, adjusting protocol."""
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        # urllib2 will be confused if it find authentication
+        # info (user, password) in the urls. So we handle them separatly.
+        return self._unsplit_url(self._unqualified_scheme,
+                                 None, None, self._host, self._port, path)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
 
         :returns: urllib2 Response object
         """
-        if self._connection is not None:
+        connection = self._get_connection()
+        if connection is not None:
             # Give back shared info
-            request.connection = self._connection
+            request.connection = connection
+            (auth, proxy_auth) = self._get_credentials()
+        else:
+            # First request, intialize credentials
+            user = self._user
+            password = self._password
+            authuri = self._remote_path('.')
+            auth = {'user': user, 'password': password, 'authuri': authuri}
+
+            if user and password is not None: # '' is a valid password
+                # Make the (user, password) available to urllib2
+                # We default to a realm of None to catch them all.
+                self._opener.password_manager.add_password(None, authuri,
+                                                           user, password)
+            proxy_auth = {}
         # Ensure authentication info is provided
-        request.auth = self._auth
-        request.proxy_auth = self._proxy_auth
+        request.auth = auth
+        request.proxy_auth = proxy_auth
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
             print 'perform: %s base: %s, url: %s' % (request.method, self.base,
                                                      request.get_full_url())
         response = self._opener.open(request)
-        if self._connection is None:
-            # Acquire connection when the first request is able
-            # to connect to the server
-            self._connection = request.connection
-        # Always get auth parameters, they may change
-        self._auth = request.auth
-        self._proxy_auth = request.proxy_auth
+        if self._get_connection() is not request.connection:
+            # First connection or reconnection
+            self._set_connection(request.connection,
+                                 (request.auth, request.proxy_auth))
+        else:
+            # http may change the credentials while keeping the
+            # connection opened
+            self._update_credentials((request.auth, request.proxy_auth))
 
         code = response.code
         if request.follow_redirections is False \
@@ -105,7 +111,7 @@ class HttpTransport_urllib(HttpTransportBase):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
                                            is_permament=(code == 301),
-                                           qual_proto=self._qualified_proto)
+                                           qual_proto=self._scheme)
 
         if request.redirected_to is not None:
             mutter('redirected from: %s to: %s' % (request.get_full_url(),
@@ -113,54 +119,54 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
 
-        abspath = self._real_abspath(relpath)
+        abspath = self._remote_path(relpath)
         headers = {}
-        if ranges or tail_amount:
-            range_header = self.attempted_range_header(ranges, tail_amount)
+        accepted_errors = [200, 404]
+        if offsets or tail_amount:
+            range_header = self._attempted_range_header(offsets, tail_amount)
             if range_header is not None:
+                accepted_errors.append(206)
+                accepted_errors.append(400)
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
 
-        request = Request('GET', abspath, None, headers)
+        request = Request('GET', abspath, None, headers,
+                          accepted_errors=accepted_errors)
         response = self._perform(request)
 
         code = response.code
         if code == 404: # not found
-            self._connection.fake_close()
+            self._get_connection().fake_close()
             raise errors.NoSuchFile(abspath)
 
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline
-        self._connection.fake_close()
+        self._get_connection().fake_close()
         return code, data
 
     def _post(self, body_bytes):
-        abspath = self._real_abspath('.bzr/smart')
+        abspath = self._remote_path('.bzr/smart')
         response = self._perform(Request('POST', abspath, body_bytes))
         code = response.code
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline
-        self._connection.fake_close()
+        self._get_connection().fake_close()
         return code, data
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
 
     def _head(self, relpath):
         """Request the HEAD of a file.
 
         Performs the request and leaves callers handle the results.
         """
-        abspath = self._real_abspath(relpath)
-        request = Request('HEAD', abspath)
+        abspath = self._remote_path(relpath)
+        request = Request('HEAD', abspath,
+                          accepted_errors=[200, 404])
         response = self._perform(request)
 
-        self._connection.fake_close()
+        self._get_connection().fake_close()
         return response
 
     def has(self, relpath):
@@ -172,7 +178,6 @@ class HttpTransport_urllib(HttpTransportBase):
         if code == 200: # "ok",
             return True
         else:
-            assert(code == 404, 'Only 200 or 404 are correct')
             return False
 
 

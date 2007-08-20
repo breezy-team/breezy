@@ -64,7 +64,7 @@ class TestBreakLock(ExternalBase):
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
-        out, err = self.run_bzr('break-lock', '--help')
+        out, err = self.run_bzr('break-lock --help')
         # shouldn't fail and should not produce error output
         self.assertEqual('', err)
 
@@ -80,7 +80,7 @@ class TestBreakLock(ExternalBase):
         self.master_branch.lock_write()
         # run the break-lock
         # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
-        self.run_bzr('break-lock', 'checkout', stdin="y\ny\ny\ny\n")
+        self.run_bzr('break-lock checkout', stdin="y\ny\ny\ny\n")
         # a new tree instance should be lockable
         branch = bzrlib.branch.Branch.open('checkout')
         branch.lock_write()
@@ -98,6 +98,6 @@ class TestBreakLockOldBranch(ExternalBase):
     def test_break_lock_format_5_bzrdir(self):
         # break lock on a format 5 bzrdir should just return
         self.make_branch_and_tree('foo', format=bzrlib.bzrdir.BzrDirFormat5())
-        out, err = self.run_bzr('break-lock', 'foo')
+        out, err = self.run_bzr('break-lock foo')
         self.assertEqual('', out)
         self.assertEqual('', err)

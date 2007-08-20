@@ -199,9 +199,8 @@ desired.
 
 """
 
-
-import binascii
 import bisect
+import binascii
 import errno
 import os
 from stat import S_IEXEC
@@ -218,10 +217,6 @@ from bzrlib import (
     osutils,
     trace,
     )
-
-
-class _Bisector(object):
-    """This just keeps track of information as we are bisecting."""
 
 
 def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
@@ -462,12 +457,14 @@ class DirState(object):
         if self._id_index:
             self._id_index.setdefault(entry_key[2], set()).add(entry_key)
 
-    def _bisect(self, dir_name_list):
+    def _bisect(self, paths):
         """Bisect through the disk structure for specific rows.
 
-        :param dir_name_list: A list of (dir, name) pairs.
-        :return: A dict mapping (dir, name) => entry for found entries. Missing
+        :param paths: A list of paths to find
+        :return: A dict mapping path => entries for found entries. Missing
                  entries will not be in the map.
+                 The list is not sorted, and entries will be populated
+                 based on when they were read.
         """
         self._requires_lock()
         # We need the file pointer to be right after the initial header block
@@ -493,7 +490,7 @@ class DirState(object):
         found = {}
 
         # Avoid infinite seeking
-        max_count = 30*len(dir_name_list)
+        max_count = 30*len(paths)
         count = 0
         # pending is a list of places to look.
         # each entry is a tuple of low, high, dir_names
@@ -501,7 +498,7 @@ class DirState(object):
         #   high -> the last byte offset (inclusive)
         #   dir_names -> The list of (dir, name) pairs that should be found in
         #                the [low, high] range
-        pending = [(low, high, dir_name_list)]
+        pending = [(low, high, paths)]
 
         page_size = self._bisect_page_size
 
@@ -560,8 +557,11 @@ class DirState(object):
                 # Find what entries we are looking for, which occur before and
                 # after this first record.
                 after = start
-                first_dir_name = (first_fields[1], first_fields[2])
-                first_loc = bisect.bisect_left(cur_files, first_dir_name)
+                if first_fields[1]:
+                    first_path = first_fields[1] + '/' + first_fields[2]
+                else:
+                    first_path = first_fields[2]
+                first_loc = _bisect_path_left(cur_files, first_path)
 
                 # These exist before the current location
                 pre = cur_files[:first_loc]
@@ -584,8 +584,11 @@ class DirState(object):
                 else:
                     after = mid + len(block)
 
-                last_dir_name = (last_fields[1], last_fields[2])
-                last_loc = bisect.bisect_right(post, last_dir_name)
+                if last_fields[1]:
+                    last_path = last_fields[1] + '/' + last_fields[2]
+                else:
+                    last_path = last_fields[2]
+                last_loc = _bisect_path_right(post, last_path)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -596,33 +599,36 @@ class DirState(object):
                     # Either we will find them here, or we can mark them as
                     # missing.
 
-                    if middle_files[0] == first_dir_name:
+                    if middle_files[0] == first_path:
                         # We might need to go before this location
-                        pre.append(first_dir_name)
-                    if middle_files[-1] == last_dir_name:
-                        post.insert(0, last_dir_name)
+                        pre.append(first_path)
+                    if middle_files[-1] == last_path:
+                        post.insert(0, last_path)
 
                     # Find out what paths we have
-                    paths = {first_dir_name:[first_fields]}
-                    # last_dir_name might == first_dir_name so we need to be
+                    paths = {first_path:[first_fields]}
+                    # last_path might == first_path so we need to be
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
-                        paths.setdefault(last_dir_name, []).append(last_fields)
+                        paths.setdefault(last_path, []).append(last_fields)
                     for num in xrange(first_entry_num+1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
                         fields = entries[num].split('\0')
-                        dir_name = (fields[1], fields[2])
-                        paths.setdefault(dir_name, []).append(fields)
+                        if fields[1]:
+                            path = fields[1] + '/' + fields[2]
+                        else:
+                            path = fields[2]
+                        paths.setdefault(path, []).append(fields)
 
-                    for dir_name in middle_files:
-                        for fields in paths.get(dir_name, []):
+                    for path in middle_files:
+                        for fields in paths.get(path, []):
                             # offset by 1 because of the opening '\0'
                             # consider changing fields_to_entry to avoid the
                             # extra list slice
                             entry = fields_to_entry(fields[1:])
-                            found.setdefault(dir_name, []).append(entry)
+                            found.setdefault(path, []).append(entry)
 
             # Now we have split up everything into pre, middle, and post, and
             # we have handled everything that fell in 'middle'.
@@ -818,7 +824,7 @@ class DirState(object):
 
         return found
 
-    def _bisect_recursive(self, dir_name_list):
+    def _bisect_recursive(self, paths):
         """Bisect for entries for all paths and their children.
 
         This will use bisect to find all records for the supplied paths. It
@@ -837,7 +843,7 @@ class DirState(object):
         # Directories that have been read
         processed_dirs = set()
         # Get the ball rolling with the first bisect for all entries.
-        newly_found = self._bisect(dir_name_list)
+        newly_found = self._bisect(paths)
 
         while newly_found:
             # Directories that need to be read
@@ -867,11 +873,8 @@ class DirState(object):
                             if dir_name[0] in pending_dirs:
                                 # This entry will be found in the dir search
                                 continue
-                            # TODO: We need to check if this entry has
-                            #       already been found. Otherwise we might be
-                            #       hitting infinite recursion.
                             if dir_name not in found_dir_names:
-                                paths_to_search.add(dir_name)
+                                paths_to_search.add(tree_info[1])
             # Now we have a list of paths to look for directly, and
             # directory blocks that need to be read.
             # newly_found is mixing the keys between (dir, name) and path
@@ -1550,99 +1553,7 @@ class DirState(object):
         """
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
-            # move the _state_file pointer to after the header (in case bisect
-            # has been called in the mean time)
-            self._state_file.seek(self._end_of_header)
-            text = self._state_file.read()
-            # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
-
-            fields = text.split('\0')
-            # Remove the last blank entry
-            trailing = fields.pop()
-            assert trailing == ''
-            # consider turning fields into a tuple.
-
-            # skip the first field which is the trailing null from the header.
-            cur = 1
-            # Each line now has an extra '\n' field which is not used
-            # so we just skip over it
-            # entry size:
-            #  3 fields for the key
-            #  + number of fields per tree_data (5) * tree count
-            #  + newline
-            num_present_parents = self._num_present_parents()
-            tree_count = 1 + num_present_parents
-            entry_size = self._fields_per_entry()
-            expected_field_count = entry_size * self._num_entries
-            field_count = len(fields)
-            # this checks our adjustment, and also catches file too short.
-            assert field_count - cur == expected_field_count, \
-                'field count incorrect %s != %s, entry_size=%s, '\
-                'num_entries=%s fields=%r' % (
-                    field_count - cur, expected_field_count, entry_size,
-                    self._num_entries, fields)
-
-            if num_present_parents == 1:
-                # Bind external functions to local names
-                _int = int
-                # We access all fields in order, so we can just iterate over
-                # them. Grab an straight iterator over the fields. (We use an
-                # iterator because we don't want to do a lot of additions, nor
-                # do we want to do a lot of slicing)
-                next = iter(fields).next
-                # Move the iterator to the current position
-                for x in xrange(cur):
-                    next()
-                # The two blocks here are deliberate: the root block and the
-                # contents-of-root block.
-                self._dirblocks = [('', []), ('', [])]
-                current_block = self._dirblocks[0][1]
-                current_dirname = ''
-                append_entry = current_block.append
-                for count in xrange(self._num_entries):
-                    dirname = next()
-                    name = next()
-                    file_id = next()
-                    if dirname != current_dirname:
-                        # new block - different dirname
-                        current_block = []
-                        current_dirname = dirname
-                        self._dirblocks.append((current_dirname, current_block))
-                        append_entry = current_block.append
-                    # we know current_dirname == dirname, so re-use it to avoid
-                    # creating new strings
-                    entry = ((current_dirname, name, file_id),
-                             [(# Current Tree
-                                 next(),                # minikind
-                                 next(),                # fingerprint
-                                 _int(next()),          # size
-                                 next() == 'y',         # executable
-                                 next(),                # packed_stat or revision_id
-                             ),
-                             ( # Parent 1
-                                 next(),                # minikind
-                                 next(),                # fingerprint
-                                 _int(next()),          # size
-                                 next() == 'y',         # executable
-                                 next(),                # packed_stat or revision_id
-                             ),
-                             ])
-                    trailing = next()
-                    assert trailing == '\n'
-                    # append the entry to the current block
-                    append_entry(entry)
-                self._split_root_dirblock_into_contents()
-            else:
-                fields_to_entry = self._get_fields_to_entry()
-                entries = [fields_to_entry(fields[pos:pos+entry_size])
-                           for pos in xrange(cur, field_count, entry_size)]
-                self._entries_to_current_state(entries)
-            # To convert from format 2  => format 3
-            # self._dirblocks = sorted(self._dirblocks,
-            #                          key=lambda blk:blk[0].split('/'))
-            # To convert from format 3 => format 2
-            # self._dirblocks = sorted(self._dirblocks)
-            self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+            _read_dirblocks(self)
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
@@ -2007,7 +1918,8 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif new_entry_key < current_old[0]:
+            elif (new_entry_key[0].split('/') < current_old[0][0].split('/')
+                  and new_entry_key[1:] < current_old[0][1:]):
                 # new comes before:
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
@@ -2371,32 +2283,20 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
-    """Return the index where to insert dirname into the dirblocks.
-
-    The return value idx is such that all directories blocks in dirblock[:idx]
-    have names < dirname, and all blocks in dirblock[idx:] have names >=
-    dirname.
-
-    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
-    slice of a to be searched.
-    """
-    if hi is None:
-        hi = len(dirblocks)
-    try:
-        dirname_split = cache[dirname]
-    except KeyError:
-        dirname_split = dirname.split('/')
-        cache[dirname] = dirname_split
-    while lo < hi:
-        mid = (lo+hi)//2
-        # Grab the dirname for the current dirblock
-        cur = dirblocks[mid][0]
-        try:
-            cur_split = cache[cur]
-        except KeyError:
-            cur_split = cur.split('/')
-            cache[cur] = cur_split
-        if cur_split < dirname_split: lo = mid+1
-        else: hi = mid
-    return lo
+# Try to load the compiled form if possible
+try:
+    from bzrlib._dirstate_helpers_c import (
+        _read_dirblocks_c as _read_dirblocks,
+        bisect_dirblock_c as bisect_dirblock,
+        _bisect_path_left_c as _bisect_path_left,
+        _bisect_path_right_c as _bisect_path_right,
+        cmp_by_dirs_c as cmp_by_dirs,
+        )
+except ImportError:
+    from bzrlib._dirstate_helpers_py import (
+        _read_dirblocks_py as _read_dirblocks,
+        bisect_dirblock_py as bisect_dirblock,
+        _bisect_path_left_py as _bisect_path_left,
+        _bisect_path_right_py as _bisect_path_right,
+        cmp_by_dirs_py as cmp_by_dirs,
+        )

@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,83 +58,81 @@ from bzrlib.workingtree import WorkingTree
 class TestCommands(ExternalBase):
 
     def test_invalid_commands(self):
-        self.runbzr("pants", retcode=3)
-        self.runbzr("--pants off", retcode=3)
-        self.runbzr("diff --message foo", retcode=3)
+        self.run_bzr("pants", retcode=3)
+        self.run_bzr("--pants off", retcode=3)
+        self.run_bzr("diff --message foo", retcode=3)
 
     def test_revert(self):
-        self.runbzr('init')
+        self.run_bzr('init')
 
         file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup hello')
 
         file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
+        self.run_bzr('add goodbye')
+        self.run_bzr('commit -m setup goodbye')
 
         file('hello', 'wt').write('bar')
         file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
+        self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
+        self.run_bzr('revert')
         self.check_file_contents('goodbye', 'baz')
 
         os.mkdir('revertdir')
-        self.runbzr('add revertdir')
-        self.runbzr('commit -m f')
+        self.run_bzr('add revertdir')
+        self.run_bzr('commit -m f')
         os.rmdir('revertdir')
-        self.runbzr('revert')
+        self.run_bzr('revert')
 
         if has_symlinks():
             os.symlink('/unlikely/to/exist', 'symlink')
-            self.runbzr('add symlink')
-            self.runbzr('commit -m f')
+            self.run_bzr('add symlink')
+            self.run_bzr('commit -m f')
             os.unlink('symlink')
-            self.runbzr('revert')
+            self.run_bzr('revert')
             self.failUnlessExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
-            self.runbzr('revert')
+            self.run_bzr('revert')
             self.assertEqual('/unlikely/to/exist',
                              os.readlink('symlink'))
         else:
             self.log("skipping revert symlink tests")
         
         file('hello', 'wt').write('xyz')
-        self.runbzr('commit -m xyz hello')
-        self.runbzr('revert -r 1 hello')
+        self.run_bzr('commit -m xyz hello')
+        self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')
-        self.runbzr('revert hello')
+        self.run_bzr('revert hello')
         self.check_file_contents('hello', 'xyz')
         os.chdir('revertdir')
-        self.runbzr('revert')
+        self.run_bzr('revert')
         os.chdir('..')
 
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        output = self.runbzr('version', backtick=1)
+        output = self.run_bzr('version')[0]
         self.log('bzr version output:')
         self.log(output)
         self.assert_(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
-        tmp_output = self.runbzr('--version', backtick=1)
-        self.log('bzr --version output:')
-        self.log(tmp_output)
+        tmp_output = self.run_bzr('--version')[0]
         self.assertEquals(output, tmp_output)
 
     def example_branch(test):
-        test.runbzr('init')
+        test.run_bzr('init')
         file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
+        test.run_bzr('add hello')
+        test.run_bzr('commit -m setup hello')
         file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+        test.run_bzr('add goodbye')
+        test.run_bzr('commit -m setup goodbye')
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
@@ -143,28 +140,27 @@ class TestCommands(ExternalBase):
         os.mkdir('a')
         os.chdir('a')
 
-        bzr = self.runbzr
         self.example_branch()
 
         os.chdir('..')
-        bzr('branch a b')
+        self.run_bzr('branch a b')
         os.chdir('b')
         open('b', 'wb').write('else\n')
-        bzr('add b')
-        bzr(['commit', '-m', 'added b'])
+        self.run_bzr('add b')
+        self.run_bzr(['commit', '-m', 'added b'])
 
         os.chdir('../a')
-        out = bzr('pull --verbose ../b', backtick=True)
+        out = self.run_bzr('pull --verbose ../b')[0]
         self.failIfEqual(out.find('Added Revisions:'), -1)
         self.failIfEqual(out.find('message:\n  added b'), -1)
         self.failIfEqual(out.find('added b'), -1)
 
         # Check that --overwrite --verbose prints out the removed entries
-        bzr('commit -m foo --unchanged')
+        self.run_bzr('commit -m foo --unchanged')
         os.chdir('../b')
-        bzr('commit -m baz --unchanged')
-        bzr('pull ../a', retcode=3)
-        out = bzr('pull --overwrite --verbose ../a', backtick=1)
+        self.run_bzr('commit -m baz --unchanged')
+        self.run_bzr('pull ../a', retcode=3)
+        out = self.run_bzr('pull --overwrite --verbose ../a')[0]
 
         remove_loc = out.find('Removed Revisions:')
         self.failIfEqual(remove_loc, -1)
@@ -183,34 +179,33 @@ class TestCommands(ExternalBase):
         """Using and remembering different locations"""
         os.mkdir('a')
         os.chdir('a')
-        self.runbzr('init')
-        self.runbzr('commit -m unchanged --unchanged')
-        self.runbzr('pull', retcode=3)
-        self.runbzr('merge', retcode=3)
-        self.runbzr('branch . ../b')
+        self.run_bzr('init')
+        self.run_bzr('commit -m unchanged --unchanged')
+        self.run_bzr('pull', retcode=3)
+        self.run_bzr('merge', retcode=3)
+        self.run_bzr('branch . ../b')
         os.chdir('../b')
-        self.runbzr('pull')
-        self.runbzr('branch . ../c')
-        self.runbzr('pull ../c')
-        self.runbzr('merge')
+        self.run_bzr('pull')
+        self.run_bzr('branch . ../c')
+        self.run_bzr('pull ../c')
+        self.run_bzr('merge')
         os.chdir('../a')
-        self.runbzr('pull ../b')
-        self.runbzr('pull')
-        self.runbzr('pull ../c')
-        self.runbzr('branch ../c ../d')
+        self.run_bzr('pull ../b')
+        self.run_bzr('pull')
+        self.run_bzr('pull ../c')
+        self.run_bzr('branch ../c ../d')
         osutils.rmtree('../c')
-        self.runbzr('pull')
+        self.run_bzr('pull')
         os.chdir('../b')
-        self.runbzr('pull')
+        self.run_bzr('pull')
         os.chdir('../d')
-        self.runbzr('pull', retcode=3)
-        self.runbzr('pull ../a --remember')
-        self.runbzr('pull')
+        self.run_bzr('pull', retcode=3)
+        self.run_bzr('pull ../a --remember')
+        self.run_bzr('pull')
         
     def test_unknown_command(self):
         """Handling of unknown command."""
-        out, err = self.run_bzr_captured(['fluffy-badger'],
-                                         retcode=3)
+        out, err = self.run_bzr('fluffy-badger', retcode=3)
         self.assertEquals(out, '')
         err.index('unknown command')
 
@@ -220,67 +215,67 @@ class TestCommands(ExternalBase):
         os.chdir('base')
         file('hello', 'wb').write("hi world")
         file('answer', 'wb').write("42")
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr('commit -m base')
-        self.runbzr('branch . ../other')
-        self.runbzr('branch . ../this')
+        self.run_bzr('init')
+        self.run_bzr('add')
+        self.run_bzr('commit -m base')
+        self.run_bzr('branch . ../other')
+        self.run_bzr('branch . ../this')
         os.chdir('../other')
         file('hello', 'wb').write("Hello.")
         file('answer', 'wb').write("Is anyone there?")
-        self.runbzr('commit -m other')
+        self.run_bzr('commit -m other')
         os.chdir('../this')
         file('hello', 'wb').write("Hello, world")
-        self.runbzr('mv answer question')
+        self.run_bzr('mv answer question')
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
-        self.runbzr('commit -m this')
+        self.run_bzr('commit -m this')
 
     def test_status(self):
         os.mkdir('branch1')
         os.chdir('branch1')
-        self.runbzr('init')
-        self.runbzr('commit --unchanged --message f')
-        self.runbzr('branch . ../branch2')
-        self.runbzr('branch . ../branch3')
-        self.runbzr('commit --unchanged --message peter')
+        self.run_bzr('init')
+        self.run_bzr('commit --unchanged --message f')
+        self.run_bzr('branch . ../branch2')
+        self.run_bzr('branch . ../branch3')
+        self.run_bzr('commit --unchanged --message peter')
         os.chdir('../branch2')
-        self.runbzr('merge ../branch1')
-        self.runbzr('commit --unchanged --message pumpkin')
+        self.run_bzr('merge ../branch1')
+        self.run_bzr('commit --unchanged --message pumpkin')
         os.chdir('../branch3')
-        self.runbzr('merge ../branch2')
-        message = self.capture('status')
+        self.run_bzr('merge ../branch2')
+        message = self.run_bzr('status')[0]
 
 
     def test_conflicts(self):
         """Handling of merge conflicts"""
         self.create_conflicts()
-        self.runbzr('merge ../other --show-base', retcode=1)
+        self.run_bzr('merge ../other --show-base', retcode=1)
         conflict_text = file('hello').read()
         self.assert_('<<<<<<<' in conflict_text)
         self.assert_('>>>>>>>' in conflict_text)
         self.assert_('=======' in conflict_text)
         self.assert_('|||||||' in conflict_text)
         self.assert_('hi world' in conflict_text)
-        self.runbzr('revert')
-        self.runbzr('resolve --all')
-        self.runbzr('merge ../other', retcode=1)
+        self.run_bzr('revert')
+        self.run_bzr('resolve --all')
+        self.run_bzr('merge ../other', retcode=1)
         conflict_text = file('hello').read()
         self.assert_('|||||||' not in conflict_text)
         self.assert_('hi world' not in conflict_text)
-        result = self.runbzr('conflicts', backtick=1)
+        result = self.run_bzr('conflicts')[0]
         self.assertEquals(result, "Text conflict in hello\nText conflict in"
                                   " question\n")
-        result = self.runbzr('status', backtick=1)
+        result = self.run_bzr('status')[0]
         self.assert_("conflicts:\n  Text conflict in hello\n"
                      "  Text conflict in question\n" in result, result)
-        self.runbzr('resolve hello')
-        result = self.runbzr('conflicts', backtick=1)
+        self.run_bzr('resolve hello')
+        result = self.run_bzr('conflicts')[0]
         self.assertEquals(result, "Text conflict in question\n")
-        self.runbzr('commit -m conflicts', retcode=3)
-        self.runbzr('resolve --all')
-        result = self.runbzr('conflicts', backtick=1)
-        self.runbzr('commit -m conflicts')
+        self.run_bzr('commit -m conflicts', retcode=3)
+        self.run_bzr('resolve --all')
+        result = self.run_bzr('conflicts')[0]
+        self.run_bzr('commit -m conflicts')
         self.assertEquals(result, "")
 
     def test_push(self):
@@ -290,43 +285,43 @@ class TestCommands(ExternalBase):
         self.example_branch()
 
         # with no push target, fail
-        self.runbzr('push', retcode=3)
+        self.run_bzr('push', retcode=3)
         # with an explicit target work
-        self.runbzr('push ../output-branch')
+        self.run_bzr('push ../output-branch')
         # with an implicit target work
-        self.runbzr('push')
+        self.run_bzr('push')
         # nothing missing
-        self.runbzr('missing ../output-branch')
+        self.run_bzr('missing ../output-branch')
         # advance this branch
-        self.runbzr('commit --unchanged -m unchanged')
+        self.run_bzr('commit --unchanged -m unchanged')
 
         os.chdir('../output-branch')
         # There is no longer a difference as long as we have
         # access to the working tree
-        self.runbzr('diff')
+        self.run_bzr('diff')
 
         # But we should be missing a revision
-        self.runbzr('missing ../my-branch', retcode=1)
+        self.run_bzr('missing ../my-branch', retcode=1)
 
         # diverge the branches
-        self.runbzr('commit --unchanged -m unchanged')
+        self.run_bzr('commit --unchanged -m unchanged')
         os.chdir('../my-branch')
         # cannot push now
-        self.runbzr('push', retcode=3)
+        self.run_bzr('push', retcode=3)
         # and there are difference
-        self.runbzr('missing ../output-branch', retcode=1)
-        self.runbzr('missing --verbose ../output-branch', retcode=1)
+        self.run_bzr('missing ../output-branch', retcode=1)
+        self.run_bzr('missing --verbose ../output-branch', retcode=1)
         # but we can force a push
-        self.runbzr('push --overwrite')
+        self.run_bzr('push --overwrite')
         # nothing missing
-        self.runbzr('missing ../output-branch')
+        self.run_bzr('missing ../output-branch')
         
         # pushing to a new dir with no parent should fail
-        self.runbzr('push ../missing/new-branch', retcode=3)
+        self.run_bzr('push ../missing/new-branch', retcode=3)
         # unless we provide --create-prefix
-        self.runbzr('push --create-prefix ../missing/new-branch')
+        self.run_bzr('push --create-prefix ../missing/new-branch')
         # nothing missing
-        self.runbzr('missing ../missing/new-branch')
+        self.run_bzr('missing ../missing/new-branch')
 
     def test_external_command(self):
         """Test that external commands can be run by setting the path
@@ -339,7 +334,6 @@ class TestCommands(ExternalBase):
         if sys.platform == 'win32':
             cmd_name += '.bat'
         oldpath = os.environ.get('BZRPATH', None)
-        bzr = self.capture
         try:
             if 'BZRPATH' in os.environ:
                 del os.environ['BZRPATH']
@@ -355,17 +349,17 @@ class TestCommands(ExternalBase):
 
             # It should not find the command in the local 
             # directory by default, since it is not in my path
-            bzr(cmd_name, retcode=3)
+            self.run_bzr(cmd_name, retcode=3)
 
             # Now put it into my path
             os.environ['BZRPATH'] = '.'
 
-            bzr(cmd_name)
+            self.run_bzr(cmd_name)
 
             # Make sure empty path elements are ignored
             os.environ['BZRPATH'] = os.pathsep
 
-            bzr(cmd_name, retcode=3)
+            self.run_bzr(cmd_name, retcode=3)
 
         finally:
             if oldpath:
@@ -385,16 +379,14 @@ class OldTests(ExternalBase):
         from os import chdir, mkdir
         from os.path import exists
 
-        runbzr = self.runbzr
-        capture = self.capture
         progress = self.log
 
         progress("basic branch creation")
         mkdir('branch1')
         chdir('branch1')
-        runbzr('init')
+        self.run_bzr('init')
 
-        self.assertEquals(capture('root').rstrip(),
+        self.assertEquals(self.run_bzr('root')[0].rstrip(),
                           pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
@@ -403,66 +395,66 @@ class OldTests(ExternalBase):
         f.write('hello world!\n')
         f.close()
 
-        self.assertEquals(capture('unknowns'), 'test.txt\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'test.txt\n')
 
-        out = capture("status")
+        out = self.run_bzr("status")[0]
         self.assertEquals(out, 'unknown:\n  test.txt\n')
 
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
 
-        out = capture("status test.txt")
+        out = self.run_bzr("status test.txt")[0]
         self.assertEquals(out, "unknown:\n  test.txt\n")
 
-        out = capture("status")
+        out = self.run_bzr("status")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n" "  test2.txt\n"))
 
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = capture("st")
+        out = self.run_bzr("st")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
-        out = capture("stat")
+        out = self.run_bzr("stat")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
         progress("command help")
-        runbzr("help st")
-        runbzr("help")
-        runbzr("help commands")
-        runbzr("help slartibartfast", 3)
+        self.run_bzr("help st")
+        self.run_bzr("help")
+        self.run_bzr("help commands")
+        self.run_bzr("help slartibartfast", retcode=3)
 
-        out = capture("help ci")
-        out.index('aliases: ci, checkin\n')
+        out = self.run_bzr("help ci")[0]
+        out.index('Aliases:  ci, checkin\n')
 
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
         f.close()
 
-        runbzr("add hello.txt")
+        self.run_bzr("add hello.txt")
         
         f = file('msg.tmp', 'wt')
         f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
 
-        runbzr('commit -F msg.tmp')
+        self.run_bzr('commit -F msg.tmp')
 
-        self.assertEquals(capture('revno'), '1\n')
-        runbzr('export -r 1 export-1.tmp')
-        runbzr('export export.tmp')
+        self.assertEquals(self.run_bzr('revno')[0], '1\n')
+        self.run_bzr('export -r 1 export-1.tmp')
+        self.run_bzr('export export.tmp')
 
-        runbzr('log')
-        runbzr('log -v')
-        runbzr('log -v --forward')
-        runbzr('log -m', retcode=3)
-        log_out = capture('log -m commit')
+        self.run_bzr('log')
+        self.run_bzr('log -v')
+        self.run_bzr('log -v --forward')
+        self.run_bzr('log -m', retcode=3)
+        log_out = self.run_bzr('log -m commit')[0]
         self.assert_("this is my new commit\n  and" in log_out)
         self.assert_("rename nested" not in log_out)
         self.assert_('revision-id' not in log_out)
-        self.assert_('revision-id' in capture('log --show-ids -m commit'))
+        self.assert_('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
 
-        log_out = capture('log --line')
+        log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
         max_width = terminal_width() - 1
         for line in log_out.splitlines():
@@ -473,108 +465,110 @@ class OldTests(ExternalBase):
         progress("file with spaces in name")
         mkdir('sub directory')
         file('sub directory/file with spaces ', 'wt').write('see how this works\n')
-        runbzr('add .')
-        runbzr('diff', retcode=1)
-        runbzr('commit -m add-spaces')
-        runbzr('check')
+        self.run_bzr('add .')
+        self.run_bzr('diff', retcode=1)
+        self.run_bzr('commit -m add-spaces')
+        self.run_bzr('check')
 
-        runbzr('log')
-        runbzr('log --forward')
+        self.run_bzr('log')
+        self.run_bzr('log --forward')
 
-        runbzr('info')
+        self.run_bzr('info')
 
         if has_symlinks():
             progress("symlinks")
             mkdir('symlinks')
             chdir('symlinks')
-            runbzr('init')
+            self.run_bzr('init')
             os.symlink("NOWHERE1", "link1")
-            runbzr('add link1')
-            self.assertEquals(self.capture('unknowns'), '')
-            runbzr(['commit', '-m', '1: added symlink link1'])
-    
+            self.run_bzr('add link1')
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
+            self.run_bzr(['commit', '-m', '1: added symlink link1'])
+
             mkdir('d1')
-            runbzr('add d1')
-            self.assertEquals(self.capture('unknowns'), '')
+            self.run_bzr('add d1')
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
             os.symlink("NOWHERE2", "d1/link2")
-            self.assertEquals(self.capture('unknowns'), 'd1/link2\n')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd1/link2\n')
             # is d1/link2 found when adding d1
-            runbzr('add d1')
-            self.assertEquals(self.capture('unknowns'), '')
+            self.run_bzr('add d1')
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
             os.symlink("NOWHERE3", "d1/link3")
-            self.assertEquals(self.capture('unknowns'), 'd1/link3\n')
-            runbzr(['commit', '-m', '2: added dir, symlink'])
-    
-            runbzr('rename d1 d2')
-            runbzr('move d2/link2 .')
-            runbzr('move link1 d2')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd1/link3\n')
+            self.run_bzr(['commit', '-m', '2: added dir, symlink'])
+
+            self.run_bzr('rename d1 d2')
+            self.run_bzr('move d2/link2 .')
+            self.run_bzr('move link1 d2')
             self.assertEquals(os.readlink("./link2"), "NOWHERE2")
             self.assertEquals(os.readlink("d2/link1"), "NOWHERE1")
-            runbzr('add d2/link3')
-            runbzr('diff', retcode=1)
-            runbzr(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
-    
+            self.run_bzr('add d2/link3')
+            self.run_bzr('diff', retcode=1)
+            self.run_bzr(['commit', '-m',
+                          '3: rename of dir, move symlinks, add link3'])
+
             os.unlink("link2")
             os.symlink("TARGET 2", "link2")
             os.unlink("d2/link1")
             os.symlink("TARGET 1", "d2/link1")
-            runbzr('diff', retcode=1)
-            self.assertEquals(self.capture("relpath d2/link1"), "d2/link1\n")
-            runbzr(['commit', '-m', '4: retarget of two links'])
-    
-            runbzr('remove --keep d2/link1')
-            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '5: remove d2/link1'])
+            self.run_bzr('diff', retcode=1)
+            self.assertEquals(self.run_bzr("relpath d2/link1")[0], "d2/link1\n")
+            self.run_bzr(['commit', '-m', '4: retarget of two links'])
+
+            self.run_bzr('remove --keep d2/link1')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m', '5: remove d2/link1'])
             # try with the rm alias
-            runbzr('add d2/link1')
-            runbzr(['commit', '-m', '6: add d2/link1'])
-            runbzr('rm --keep d2/link1')
-            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '7: remove d2/link1'])
-    
+            self.run_bzr('add d2/link1')
+            self.run_bzr(['commit', '-m', '6: add d2/link1'])
+            self.run_bzr('rm --keep d2/link1')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m', '7: remove d2/link1'])
+
             os.mkdir("d1")
-            runbzr('add d1')
-            runbzr('rename d2/link3 d1/link3new')
-            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
-            
-            runbzr(['check'])
-            
-            runbzr(['export', '-r', '1', 'exp1.tmp'])
+            self.run_bzr('add d1')
+            self.run_bzr('rename d2/link3 d1/link3new')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m',
+                          '8: remove d2/link1, move/rename link3'])
+
+            self.run_bzr('check')
+
+            self.run_bzr('export -r 1 exp1.tmp')
             chdir("exp1.tmp")
             self.assertEquals(listdir_sorted("."), [ "link1" ])
             self.assertEquals(os.readlink("link1"), "NOWHERE1")
             chdir("..")
-            
-            runbzr(['export', '-r', '2', 'exp2.tmp'])
+
+            self.run_bzr('export -r 2 exp2.tmp')
             chdir("exp2.tmp")
             self.assertEquals(listdir_sorted("."), [ "d1", "link1" ])
             chdir("..")
-            
-            runbzr(['export', '-r', '3', 'exp3.tmp'])
+
+            self.run_bzr('export -r 3 exp3.tmp')
             chdir("exp3.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
             self.assertEquals(os.readlink("d2/link1"), "NOWHERE1")
             self.assertEquals(os.readlink("link2")   , "NOWHERE2")
             chdir("..")
-            
-            runbzr(['export', '-r', '4', 'exp4.tmp'])
+
+            self.run_bzr('export -r 4 exp4.tmp')
             chdir("exp4.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(os.readlink("d2/link1"), "TARGET 1")
             self.assertEquals(os.readlink("link2")   , "TARGET 2")
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
             chdir("..")
-            
-            runbzr(['export', '-r', '5', 'exp5.tmp'])
+
+            self.run_bzr('export -r 5 exp5.tmp')
             chdir("exp5.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assert_(os.path.islink("link2"))
             self.assert_(listdir_sorted("d2")== [ "link3" ])
             chdir("..")
-            
-            runbzr(['export', '-r', '8', 'exp6.tmp'])
+
+            self.run_bzr('export -r 8 exp6.tmp')
             chdir("exp6.tmp")
             self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             self.assertEquals(listdir_sorted("d1"), [ "link3new" ])
@@ -594,7 +588,7 @@ class RemoteTests(object):
         branch = wt.branch
         wt.commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_readonly_url('from')
-        self.run_bzr('branch', url, 'to')
+        self.run_bzr(['branch', url, 'to'])
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
         # the branch should be set in to to from
@@ -602,20 +596,20 @@ class RemoteTests(object):
 
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
-        self.capture('init branch')
-        self.capture('add branch/file')
-        self.capture('commit -m foo branch')
+        self.run_bzr('init branch')[0]
+        self.run_bzr('add branch/file')[0]
+        self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/file')
-        output = self.capture('log %s' % url)
+        output = self.run_bzr('log %s' % url)[0]
         self.assertEqual(8, len(output.split('\n')))
         
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
-        self.capture('init branch')
-        self.capture('add branch/file')
-        self.capture('commit -m foo branch')
+        self.run_bzr('init branch')[0]
+        self.run_bzr('add branch/file')[0]
+        self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
-        self.run_bzr('check', url)
+        self.run_bzr(['check', url])
     
     def test_push(self):
         # create a source branch
@@ -623,11 +617,11 @@ class RemoteTests(object):
         os.chdir('my-branch')
         self.run_bzr('init')
         file('hello', 'wt').write('foo')
-        self.run_bzr('add', 'hello')
-        self.run_bzr('commit', '-m', 'setup')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup')
 
         # with an explicit target work
-        self.run_bzr('push', self.get_url('output-branch'))
+        self.run_bzr(['push', self.get_url('output-branch')])
 
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):

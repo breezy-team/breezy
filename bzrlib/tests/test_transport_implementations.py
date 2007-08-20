@@ -25,6 +25,7 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
+import unittest
 
 from bzrlib import (
     errors,
@@ -44,11 +45,55 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.symbol_versioning import zero_eleven
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, remote
-import bzrlib.transport
+from bzrlib.transport import (
+    ConnectedTransport,
+    get_transport,
+    _get_transport_modules,
+    )
+from bzrlib.transport.memory import MemoryTransport
+
+
+class TransportTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing all transports for a single test.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_class and transport_server classes into each copy. Each copy
+    is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self):
+        self.scenarios = self._test_permutations()
+
+    def get_transport_test_permutations(self, module):
+        """Get the permutations module wants to have tested."""
+        if getattr(module, 'get_test_permutations', None) is None:
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
+                    % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
+            return []
+        return module.get_test_permutations()
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        result = []
+        for module in _get_transport_modules():
+            try:
+                permutations = self.get_transport_test_permutations(
+                    reduce(getattr, (module).split('.')[1:], __import__(module)))
+                for (klass, server_factory) in permutations:
+                    scenario = (server_factory.__name__,
+                        {"transport_class":klass,
+                         "transport_server":server_factory})
+                    result.append(scenario)
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from running this test
+                pass
+        return result
+
 
 
 class TransportTests(TestTransportImplementation):
@@ -92,6 +137,14 @@ class TransportTests(TestTransportImplementation):
         t_a = t.clone('a')
         t_b = t_a.clone('b')
         self.assertRaises(NoSuchFile, t_b.ensure_base)
+
+    def test_external_url(self):
+        """.external_url either works or raises InProcessTransport."""
+        t = self.get_transport()
+        try:
+            t.external_url()
+        except errors.InProcessTransport:
+            pass
 
     def test_has(self):
         t = self.get_transport()
@@ -139,6 +192,26 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
 
+    def test_get_directory_read_gives_ReadError(self):
+        """consistent errors for read() on a file returned by get()."""
+        t = self.get_transport()
+        if t.is_readonly():
+            self.build_tree(['a directory/'])
+        else:
+            t.mkdir('a%20directory')
+        # getting the file must either work or fail with a PathError
+        try:
+            a_file = t.get('a%20directory')
+        except (errors.PathError, errors.RedirectRequested):
+            # early failure return immediately.
+            return
+        # having got a file, read() must either work (i.e. http reading a dir listing) or
+        # fail with ReadError
+        try:
+            a_file.read()
+        except errors.ReadError:
+            pass
+
     def test_get_bytes(self):
         t = self.get_transport()
 
@@ -155,24 +228,6 @@ class TransportTests(TestTransportImplementation):
             self.assertEqual(content, t.get_bytes(fname))
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
-
-    def test_put(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-
-        self.applyDeprecated(zero_eleven, t.put, 'a', 'string\ncontents\n')
-        self.check_transport_contents('string\ncontents\n', t, 'a')
-
-        self.applyDeprecated(zero_eleven,
-                             t.put, 'b', StringIO('file-like\ncontents\n'))
-        self.check_transport_contents('file-like\ncontents\n', t, 'b')
-
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            zero_eleven,
-            t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -362,12 +417,6 @@ class TransportTests(TestTransportImplementation):
         # Yes, you can put a file such that it becomes readonly
         t.put_file('mode400', StringIO('test text\n'), mode=0400)
         self.assertTransportMode(t, 'mode400', 0400)
-
-        # XXX: put_multi is deprecated, so do we really care anymore?
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_file('nomode', StringIO('test text\n'), mode=None)
@@ -437,58 +486,6 @@ class TransportTests(TestTransportImplementation):
         unicode_file = pyStringIO(u'\u1234')
         self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
 
-    def test_put_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
-                          ('d', StringIO('contents\nfor d\n'))]
-            ))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
-                [True, False, False, True])
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('contents\nfor d\n', t, 'd')
-
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
-                              ('d', StringIO('another contents\nfor d\n'))])
-            ))
-        self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('another contents\nfor d\n', t, 'd')
-
-    def test_put_permissions(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        if not t._can_roundtrip_unix_modebits():
-            # Can't roundtrip, so no need to run this test
-            return
-        self.applyDeprecated(zero_eleven, t.put, 'mode644',
-                             StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        self.applyDeprecated(zero_eleven, t.put, 'mode666',
-                             StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        self.applyDeprecated(zero_eleven, t.put, 'mode600',
-                             StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        # Yes, you can put a file such that it becomes readonly
-        self.applyDeprecated(zero_eleven, t.put, 'mode400',
-                             StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
-        self.applyDeprecated(zero_eleven, t.put, 'nomode',
-                             StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
     def test_mkdir(self):
         t = self.get_transport()
 
@@ -564,7 +561,6 @@ class TransportTests(TestTransportImplementation):
         # same protocol two servers
         # and    different protocols (done for now except for MemoryTransport.
         # - RBC 20060122
-        from bzrlib.transport.memory import MemoryTransport
 
         def simple_copy_files(transport_from, transport_to):
             files = ['a', 'b', 'c', 'd']
@@ -610,26 +606,6 @@ class TransportTests(TestTransportImplementation):
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)
 
-    def test_append(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        t.put_bytes('a', 'diff\ncontents for\na\n')
-        t.put_bytes('b', 'contents\nfor b\n')
-
-        self.assertEqual(20, self.applyDeprecated(zero_eleven,
-            t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
-            t, 'a')
-
-        # And we can create new files, too
-        self.assertEqual(0, self.applyDeprecated(zero_eleven,
-            t.append, 'c', StringIO('some text\nfor a missing file\n')))
-        self.check_transport_contents('some text\nfor a missing file\n',
-                                      t, 'c')
     def test_append_file(self):
         t = self.get_transport()
 
@@ -960,18 +936,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        # This should be:  but SSH still connects on construction. No COOKIE!
-        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
-        try:
-            t = bzrlib.transport.get_transport(url)
-            t.get('.bzr/branch')
-        except (ConnectionError, NoSuchFile), e:
-            pass
-        except (Exception), e:
-            self.fail('Wrong exception thrown (%s.%s): %s' 
-                        % (e.__class__.__module__, e.__class__.__name__, e))
-        else:
-            self.fail('Did not get the expected ConnectionError or NoSuchFile.')
+        t = get_transport(url)
+        self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing
@@ -1066,6 +1032,96 @@ class TransportTests(TestTransportImplementation):
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
+
+    def test_clone_preserve_info(self):
+        t1 = self.get_transport()
+        if not isinstance(t1, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t2 = t1.clone('subdir')
+        self.assertEquals(t1._scheme, t2._scheme)
+        self.assertEquals(t1._user, t2._user)
+        self.assertEquals(t1._password, t2._password)
+        self.assertEquals(t1._host, t2._host)
+        self.assertEquals(t1._port, t2._port)
+
+    def test__reuse_for(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        def new_url(scheme=None, user=None, password=None,
+                    host=None, port=None, path=None):
+            """Build a new url from t.base chaging only parts of it.
+
+            Only the parameters different from None will be changed.
+            """
+            if scheme   is None: scheme   = t._scheme
+            if user     is None: user     = t._user
+            if password is None: password = t._password
+            if user     is None: user     = t._user
+            if host     is None: host     = t._host
+            if port     is None: port     = t._port
+            if path     is None: path     = t._path
+            return t._unsplit_url(scheme, user, password, host, port, path)
+
+        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._user == 'me':
+            user = 'you'
+        else:
+            user = 'me'
+        self.assertIsNot(t, t._reuse_for(new_url(user=user)))
+        # passwords are not taken into account because:
+        # - it makes no sense to have two different valid passwords for the
+        #   same user
+        # - _password in ConnectedTransport is intended to collect what the
+        #   user specified from the command-line and there are cases where the
+        #   new url can contain no password (if the url was built from an
+        #   existing transport.base for example)
+        # - password are considered part of the credentials provided at
+        #   connection creation time and as such may not be present in the url
+        #   (they may be typed by the user when prompted for example)
+        self.assertIs(t, t._reuse_for(new_url(password='from space')))
+        # We will not connect, we can use a invalid host
+        self.assertIsNot(t, t._reuse_for(new_url(host=t._host + 'bar')))
+        if t._port == 1234:
+            port = 4321
+        else:
+            port = 1234
+        self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+
+    def test_connection_sharing(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        c = t.clone('subdir')
+        # Some transports will create the connection  only when needed
+        t.has('surely_not') # Force connection
+        self.assertIs(t._get_connection(), c._get_connection())
+
+        # Temporary failure, we need to create a new dummy connection
+        new_connection = object()
+        t._set_connection(new_connection)
+        # Check that both transports use the same connection
+        self.assertIs(new_connection, t._get_connection())
+        self.assertIs(new_connection, c._get_connection())
+
+    def test_reuse_connection_for_various_paths(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t.has('surely_not') # Force connection
+        self.assertIsNot(None, t._get_connection())
+
+        subdir = t._reuse_for(t.base + 'whatever/but/deep/down/the/path')
+        self.assertIsNot(t, subdir)
+        self.assertIs(t._get_connection(), subdir._get_connection())
+
+        home = subdir._reuse_for(t.base + 'home')
+        self.assertIs(t._get_connection(), home._get_connection())
+        self.assertIs(subdir._get_connection(), home._get_connection())
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
@@ -1165,7 +1221,7 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
-        
+
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
@@ -1291,23 +1347,23 @@ class TransportTests(TestTransportImplementation):
             self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
-        # check that our server (whatever it is) is accessable reliably
+        # check that our server (whatever it is) is accessible reliably
         # via get_transport and multiple connections share content.
         transport = self.get_transport()
         if transport.is_readonly():
             return
         transport.put_bytes('foo', 'bar')
-        transport2 = self.get_transport()
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport3 = self.get_transport()
+        self.check_transport_contents('bar', transport3, 'foo')
         # its base should be usable.
-        transport2 = bzrlib.transport.get_transport(transport.base)
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport4 = get_transport(transport.base)
+        self.check_transport_contents('bar', transport4, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport2 = bzrlib.transport.get_transport(transport.base + "newdir")
-        transport2 = transport2.clone('..')
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport5 = get_transport(transport.base + "newdir")
+        transport6 = transport5.clone('..')
+        self.check_transport_contents('bar', transport6, 'foo')
 
     def test_lock_write(self):
         """Test transport-level write locks.

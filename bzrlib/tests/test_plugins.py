@@ -148,7 +148,7 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.capture('help commands').splitlines():
+        for line in self.run_bzr('help commands')[0].splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -167,12 +167,12 @@ class TestPluginHelp(TestCaseInTempDir):
                 # some commands have no help
                 pass
             else:
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
             if cmd_name in help_commands.keys():
                 # some commands are hidden
                 help = help_commands[cmd_name]
-                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'plugin "[^"]*"')
 
     def test_plugin_help_shows_plugin(self):
         # Create a test plugin
@@ -185,8 +185,8 @@ class TestPluginHelp(TestCaseInTempDir):
             # Check its help
             bzrlib.plugin.load_from_path(['plugin_test'])
             bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
-            help = self.capture('help myplug')
-            self.assertContainsRe(help, 'From plugin "myplug"')
+            help = self.run_bzr('help myplug')[0]
+            self.assertContainsRe(help, 'plugin "myplug"')
             help = self.split_help_commands()['myplug']
             self.assertContainsRe(help, '\[myplug\]')
         finally:
@@ -208,7 +208,10 @@ class TestPluginFromZip(TestCaseInTempDir):
     def check_plugin_load(self, zip_name, plugin_name):
         self.assertFalse(plugin_name in dir(bzrlib.plugins),
                          'Plugin already loaded')
+        old_path = bzrlib.plugins.__path__
         try:
+            # this is normally done by load_plugins -> set_plugins_path
+            bzrlib.plugins.__path__ = [zip_name]
             bzrlib.plugin.load_from_zip(zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')
@@ -216,6 +219,8 @@ class TestPluginFromZip(TestCaseInTempDir):
             # unregister plugin
             if getattr(bzrlib.plugins, plugin_name, None):
                 delattr(bzrlib.plugins, plugin_name)
+                del sys.modules['bzrlib.plugins.' + plugin_name]
+            bzrlib.plugins.__path__ = old_path
 
     def test_load_module(self):
         self.make_zipped_plugin('./test.zip', 'ziplug.py')
