@@ -808,10 +808,16 @@ class TreeTransform(object):
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            child_pb.update('Apply phase', 0, 2)
-            self._apply_removals(inv, inventory_delta)
-            child_pb.update('Apply phase', 1, 2)
-            modified_paths = self._apply_insertions(inv, inventory_delta)
+            mover = _FileMover()
+            try:
+                child_pb.update('Apply phase', 0, 2)
+                self._apply_removals(inv, inventory_delta, mover)
+                child_pb.update('Apply phase', 1, 2)
+                modified_paths = self._apply_insertions(inv, inventory_delta,
+                                                        mover)
+            except:
+                mover.rollback()
+                raise
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
@@ -852,7 +858,7 @@ class TreeTransform(object):
         self._limbo_files[trans_id] = limbo_name
         return limbo_name
 
-    def _apply_removals(self, inv, inventory_delta):
+    def _apply_removals(self, inv, inventory_delta, mover):
         """Perform tree operations that remove directory/inventory names.
         
         That is, delete files that are to be deleted, and put any files that
@@ -872,7 +878,7 @@ class TreeTransform(object):
                 elif trans_id in self._new_name or trans_id in \
                     self._new_parent:
                     try:
-                        os.rename(full_path, self._limbo_name(trans_id))
+                        mover.rename(full_path, self._limbo_name(trans_id))
                     except OSError, e:
                         if e.errno != errno.ENOENT:
                             raise
@@ -888,7 +894,7 @@ class TreeTransform(object):
         finally:
             child_pb.finished()
 
-    def _apply_insertions(self, inv, inventory_delta):
+    def _apply_insertions(self, inv, inventory_delta, mover):
         """Perform tree operations that insert directory/inventory names.
         
         That is, create any files that need to be created, and restore from
@@ -911,7 +917,7 @@ class TreeTransform(object):
                     full_path = self._tree.abspath(path)
                     if trans_id in self._needs_rename:
                         try:
-                            os.rename(self._limbo_name(trans_id), full_path)
+                            mover.rename(self._limbo_name(trans_id), full_path)
                         except OSError, e:
                             # We may be renaming a dangling inventory id
                             if e.errno != errno.ENOENT:
