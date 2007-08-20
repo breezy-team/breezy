@@ -735,14 +735,21 @@ class Repository(object):
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
 
-        The order in which files will be yielded is unspecified.
-        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
-        value that uniquely identifies the file version.  (Example: a
-        TreeTransform trans_id.)
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
 
-        The default implementation just does VersionedFile.get_lines().
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of lines produced by
+        VersionedFile.get_lines().
+
         :param desired_files: a list of (file_id, revision_id, identifier)
-            pairs
+            triples
         """
         transaction = self.get_transaction()
         for file_id, revision_id, callable_data in desired_files:
