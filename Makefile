@@ -26,9 +26,9 @@ extensions:
 	python setup.py build_ext -i
 
 check: docs extensions
-	python -Werror -O ./bzr selftest -v $(tests)
+	python -Werror -O ./bzr selftest -1v $(tests)
 	@echo "Running all tests with no locale."
-	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
+	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests)
 
 check-msgeditor:
 	./bzr --no-plugins selftest -v msgeditor
