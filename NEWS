@@ -39,8 +39,11 @@ IN DEVELOPMENT
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
 
-    * ``Transport.should_cache`` has been removed.  It was not called in the
-      previous release.  (Martin Pool)
+   * ``Transport.should_cache`` has been removed.  It was not called in the
+     previous release.  (Martin Pool)
+
+   * NULL_REVISION is returned to indicate the null revision, not None.
+     (Aaron Bentley)
 
   INTERNALS:
 
