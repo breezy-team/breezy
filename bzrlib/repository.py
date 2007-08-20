@@ -753,7 +753,10 @@ class Repository(object):
         """
         transaction = self.get_transaction()
         for file_id, revision_id, callable_data in desired_files:
-            weave = self.weave_store.get_weave(file_id, transaction)
+            try:
+                weave = self.weave_store.get_weave(file_id, transaction)
+            except errors.NoSuchFile:
+                raise errors.NoSuchIdInRepository(self, file_id)
             yield callable_data, weave.get_lines(revision_id)
 
     @needs_read_lock

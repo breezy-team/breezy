@@ -139,3 +139,6 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertEqual('foo', extracted['id1'])
         self.assertEqual('bar', extracted['id2'])
         self.assertEqual('baz', extracted['id3'])
+        self.assertRaises(errors.NoSuchId, lambda: list(
+                          tree.iter_files_bytes(
+                          [('qux-id', 'file1-notpresent')])))
