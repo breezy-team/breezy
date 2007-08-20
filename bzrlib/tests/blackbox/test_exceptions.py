@@ -19,7 +19,11 @@
 import os
 import sys
 
-from bzrlib import bzrdir, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    )
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.errors import NotBranchError
@@ -28,7 +32,8 @@ class TestExceptionReporting(TestCase):
 
     def test_report_exception(self):
         """When an error occurs, display bug report details to stderr"""
-        out, err = self.run_bzr("assert-fail", retcode=4)
+        out, err = self.run_bzr("assert-fail",
+                retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'please send this report to')

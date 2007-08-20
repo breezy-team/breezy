@@ -888,6 +888,7 @@ Recommended values are:
     2. Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
     3. An error or exception has occurred.
+    4. An internal error occurred (one that shows a traceback.)
 
 Errors are handled through Python exceptions. Exceptions should be defined
 inside bzrlib.errors, so that we can see the whole tree at a glance.
