@@ -1741,3 +1741,17 @@ def iter_cook_conflicts(raw_conflicts, tt):
                                    file_id=modified_id, 
                                    conflict_path=conflicting_path,
                                    conflict_file_id=conflicting_id)
+
+
+class _FileMover(object):
+
+    def __init__(self):
+        self.past_renames = []
+
+    def rename(self, from_, to):
+        os.rename(from_, to)
+        self.past_renames.append((from_, to))
+
+    def rollback(self):
+        for from_, to in reversed(self.past_renames):
+            os.rename(to, from_)

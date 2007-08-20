@@ -38,7 +38,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
-                              change_entry)
+                              change_entry, _FileMover)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -1338,3 +1338,25 @@ class TestGetBackupName(TestCase):
         self.assertEqual(name, 'name.~1~')
         name = get_backup_name(MockEntry(), {'a':['1', '2', '3']}, 'a', tt)
         self.assertEqual(name, 'name.~4~')
+
+
+class TestFileMover(tests.TestCaseWithTransport):
+
+    def test_file_mover(self):
+        self.build_tree(['a/', 'a/b', 'c/', 'c/d'])
+        mover = _FileMover()
+        mover.rename('a', 'q')
+        self.failUnlessExists('q')
+        self.failIfExists('a')
+
+    def test_file_mover_rollback(self):
+        self.build_tree(['a/', 'a/b', 'c/', 'c/d/', 'c/e/'])
+        mover = _FileMover()
+        mover.rename('c/d', 'c/f')
+        mover.rename('c/e', 'c/d')
+        try:
+            mover.rename('a', 'c')
+        except OSError, e:
+            mover.rollback()
+        self.failUnlessExists('a')
+        self.failUnlessExists('c/d')
