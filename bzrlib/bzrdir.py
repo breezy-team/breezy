@@ -2432,4 +2432,4 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.set_default('dirstate')
+format_registry.set_default('dirstate-tags')
