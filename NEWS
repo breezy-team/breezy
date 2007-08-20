@@ -39,10 +39,14 @@ IN DEVELOPMENT
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
 
-  aPI CHANGES:
-
     * ``Transport.should_cache`` has been removed.  It was not called in the
       previous release.  (Martin Pool)
+
+  INTERNALS:
+
+   * New trace function ``mutter_callsite`` will print out a subset of the
+     stack to the log, which can be useful for gathering debug details.
+     (Robert Collins)
 
 bzr 0.90rc1 2007-08-14
 

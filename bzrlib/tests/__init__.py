@@ -1202,9 +1202,14 @@ class TestCase(unittest.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Return as a string the log for this test. If the file is still
-        on disk and keep_log_file=False, delete the log file and store the
-        content in self._log_contents."""
+        """Get the log from bzrlib.trace calls from this test.
+
+        :param keep_log_file: When True, if the log is still a file on disk
+            leave it as a file on disk. When False, if the log is still a file
+            on disk, the log file is deleted and the log preserved as
+            self._log_contents.
+        :return: A string containing the log.
+        """
         # flush the log file, to get all content
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
