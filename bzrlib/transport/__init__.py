@@ -1392,7 +1392,7 @@ def get_transport(base, possible_transports=None):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    if possible_transports:
+    if possible_transports is not None:
         for t in possible_transports:
             t_same_connection = t._reuse_for(base)
             if t_same_connection is not None:
@@ -1405,7 +1405,7 @@ def get_transport(base, possible_transports=None):
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
-                if possible_transports:
+                if possible_transports is not None:
                     assert transport not in possible_transports
                     possible_transports.append(transport)
                 return transport

@@ -21,6 +21,10 @@ IN DEVELOPMENT
       versionedfile.  (Aaron Bentley)
 
     * Diffs generated using "diff -p" no longer break the patch parser.
+      (Aaron Bentley)
+
+    * get_transport treats an empty possible_transports list the same as a non-
+      empty one.  (Aaron Bentley)
 
   IMPROVEMENTS:
 
