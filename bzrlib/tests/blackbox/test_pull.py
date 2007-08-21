@@ -66,11 +66,11 @@ class TestPull(ExternalBase):
         os.chdir('..')
         a = Branch.open('a')
         b = Branch.open('b')
-        self.assertEquals(a.revision_history(), b.revision_history()[:-1])
+        self.assertEqual(a.revision_history(), b.revision_history()[:-1])
 
         os.chdir('a')
         self.run_bzr('pull ../b')
-        self.assertEquals(a.revision_history(), b.revision_history())
+        self.assertEqual(a.revision_history(), b.revision_history())
         a_tree.commit(message='blah2', allow_pointless=True)
         b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite
@@ -88,7 +88,7 @@ class TestPull(ExternalBase):
         a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
         self.run_bzr('pull ../../a')
-        self.assertEquals(a.revision_history()[-1], b.revision_history()[-1])
+        self.assertEqual(a.revision_history()[-1], b.revision_history()[-1])
         sub_tree = WorkingTree.open_containing('.')[0]
         sub_tree.commit(message="blah5", allow_pointless=True)
         sub_tree.commit(message="blah6", allow_pointless=True)
@@ -129,12 +129,12 @@ class TestPull(ExternalBase):
         self.run_bzr('pull -r 2')
         a = Branch.open('../a')
         b = Branch.open('.')
-        self.assertEquals(a.revno(),4)
-        self.assertEquals(b.revno(),2)
+        self.assertEqual(a.revno(),4)
+        self.assertEqual(b.revno(),2)
         self.run_bzr('pull -r 3')
-        self.assertEquals(b.revno(),3)
+        self.assertEqual(b.revno(),3)
         self.run_bzr('pull -r 4')
-        self.assertEquals(a.revision_history(), b.revision_history())
+        self.assertEqual(a.revision_history(), b.revision_history())
 
 
     def test_overwrite_uptodate(self):
@@ -229,25 +229,25 @@ class TestPull(ExternalBase):
         # test pull for failure without parent set
         os.chdir('branch_b')
         out = self.run_bzr('pull', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
         self.build_tree(['d'])
         tree_b.add('d')
         tree_b.commit('commit d')
         out = self.run_bzr('pull ../branch_a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the merge command to reconcile them.\n'))
-        self.assertEquals(branch_b.get_parent(), parent)
+        self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/d')
         self.run_bzr('pull')
-        self.assertEquals(branch_b.get_parent(), parent)
+        self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember')
-        self.assertEquals(branch_b.get_parent(),
+        self.assertEqual(branch_b.get_parent(),
                           branch_c.bzrdir.root_transport.base)
 
     def test_pull_bundle(self):
