@@ -803,6 +803,7 @@ class TreeTransform(object):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
+        :param _mover: Supply an alternate FileMover, for testing
         """
         if not no_conflicts:
             conflicts = self.find_conflicts()
@@ -1782,23 +1783,33 @@ def iter_cook_conflicts(raw_conflicts, tt):
 
 
 class _FileMover(object):
+    """Moves and deletes files for TreeTransform, tracking operations"""
 
     def __init__(self):
         self.past_renames = []
         self.pending_deletions = []
 
     def rename(self, from_, to):
+        """Rename a file from one path to another.  Functions like os.rename"""
         os.rename(from_, to)
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):
+        """Rename a file out of the way and mark it for deletion.
+
+        Unlike os.unlink, this works equally well for files and directories.
+        :param from_: The current file path
+        :param to: A temporary path for the file
+        """
         self.rename(from_, to)
         self.pending_deletions.append(to)
 
     def rollback(self):
+        """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             os.rename(to, from_)
 
     def apply_deletions(self):
+        """Apply all marked deletions"""
         for path in self.pending_deletions:
             delete_any(path)
