@@ -42,14 +42,12 @@ calling in here.
 
 In verbose mode we show a summary of what changed in each particular
 revision.  Note that this is the delta for changes in that revision
-relative to its mainline parent, not the delta relative to the last
+relative to its left-most parent, not the delta relative to the last
 logged revision.  So for example if you ask for a verbose log of
 changes touching hello.c you will get a list of those revisions also
 listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
-
-# TODO: option to show delta summaries for merged-in revisions
 
 from itertools import izip
 import re
@@ -64,7 +62,6 @@ from bzrlib.revisionspec import(
     )
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eleven,
     zero_seventeen,
     )
 from bzrlib.trace import mutter
@@ -243,6 +240,13 @@ def _show_log(branch,
                                                          mainline_revs,
                                                          view_revisions)
 
+    # rebase merge_depth - unless there are no revisions or 
+    # either the first or last revision have merge_depth = 0.
+    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
+        min_depth = min([d for r,n,d in view_revisions])
+        if min_depth != 0:
+            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+        
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags:
@@ -560,7 +564,7 @@ class LogFormatter(object):
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.
     - supports_merge_revisions must be True if this log formatter supports 
-        merge revisions.  If not, only revisions mainline revisions (those 
+        merge revisions.  If not, only mainline revisions (those 
         with merge_depth == 0) will be passed to the formatter.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
@@ -600,11 +604,6 @@ class LongLogFormatter(LogFormatter):
         lr = LogRevision(rev, revno, 0, delta, tags)
         return self.log_revision(lr)
 
-    @deprecated_method(zero_eleven)
-    def show_merge(self, rev, merge_depth):
-        lr = LogRevision(rev, merge_depth=merge_depth)
-        return self.log_revision(lr)
-
     @deprecated_method(zero_seventeen)
     def show_merge_revno(self, rev, merge_depth, revno, tags=None):
         """Show a merged revision rev, with merge_depth and a revno."""
@@ -614,36 +613,39 @@ class LongLogFormatter(LogFormatter):
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
         from bzrlib.osutils import format_date
-        indent = '    '*revision.merge_depth
+        indent = '    ' * revision.merge_depth
         to_file = self.to_file
-        print >>to_file,  indent+'-' * 60
+        print >>to_file, indent + '-' * 60
         if revision.revno is not None:
-            print >>to_file,  indent+'revno:', revision.revno
+            print >>to_file, indent + 'revno:', revision.revno
         if revision.tags:
-            print >>to_file, indent+'tags: %s' % (', '.join(revision.tags))
+            print >>to_file, indent + 'tags: %s' % (', '.join(revision.tags))
         if self.show_ids:
-            print >>to_file, indent+'revision-id:', revision.rev.revision_id
+            print >>to_file, indent + 'revision-id:', revision.rev.revision_id
             for parent_id in revision.rev.parent_ids:
-                print >>to_file, indent+'parent:', parent_id
-        print >>to_file, indent+'committer:', revision.rev.committer
+                print >>to_file, indent + 'parent:', parent_id
+        print >>to_file, indent + 'committer:', revision.rev.committer
 
-        try:
-            print >>to_file, indent+'branch nick: %s' % \
-                revision.rev.properties['branch-nick']
-        except KeyError:
-            pass
+        author = revision.rev.properties.get('author', None)
+        if author is not None:
+            print >>to_file, indent + 'author:', author
+
+        branch_nick = revision.rev.properties.get('branch-nick', None)
+        if branch_nick is not None:
+            print >>to_file, indent + 'branch nick:', branch_nick
+
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        print >>to_file,  indent+'timestamp: %s' % date_str
+        print >>to_file, indent + 'timestamp: %s' % date_str
 
-        print >>to_file,  indent+'message:'
+        print >>to_file, indent + 'message:'
         if not revision.rev.message:
-            print >>to_file,  indent+'  (no message)'
+            print >>to_file, indent + '  (no message)'
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                print >>to_file,  indent+'  ' + l
+                print >>to_file, indent + '  ' + l
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids, indent=indent)
 
@@ -795,7 +797,8 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     lf.show(revno, rev, delta)
 
 
-def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
+def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
+                           log_format='long'):
     """Show the change in revision history comparing the old revision history to the new one.
 
     :param branch: The branch where the revisions exist
@@ -807,7 +810,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         import sys
         import codecs
         import bzrlib
-        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
+                                                         errors='replace')
     lf = log_formatter(log_format,
                        show_ids=False,
                        to_file=to_file,
@@ -844,7 +848,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         show_log(branch,
                  lf,
                  None,
-                 verbose=True,
+                 verbose=False,
                  direction='forward',
                  start_revision=base_idx+1,
                  end_revision=len(new_rh),

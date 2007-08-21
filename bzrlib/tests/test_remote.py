@@ -557,7 +557,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('///sinhala/', ''))],
             client._calls)
-        self.assertEqual({r1: [], r2: [r1]}, result)
+        self.assertEqual({r1: (), r2: (r1, )}, result)
 
     def test_specific_revision(self):
         # with a specific revision we want the graph for that
@@ -577,7 +577,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('///sinhala/', r2))],
             client._calls)
-        self.assertEqual({r11: [], r12: [], r2: [r11, r12], }, result)
+        self.assertEqual({r11: (), r12: (), r2: (r11, r12), }, result)
 
     def test_no_such_revision(self):
         revid = '123'

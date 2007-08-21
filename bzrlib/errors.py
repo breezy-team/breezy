@@ -198,6 +198,15 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -253,6 +262,15 @@ class NoSuchId(BzrError):
         BzrError.__init__(self)
         self.file_id = file_id
         self.tree = tree
+
+
+class NoSuchIdInRepository(NoSuchId):
+
+    _fmt = ("The file id %(file_id)r is not present in the repository"
+            " %(repository)r")
+
+    def __init__(self, repository, file_id):
+        BzrError.__init__(self, repository=repository, file_id=file_id)
 
 
 class InventoryModified(BzrError):
@@ -536,7 +554,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
@@ -959,14 +977,16 @@ class StrictCommitFailed(Exception):
 
 class NoSuchRevision(BzrError):
 
-    _fmt = "Branch %(branch)s has no revision %(revision)s"
+    _fmt = "%(branch)s has no revision %(revision)s"
 
     internal_error = True
 
     def __init__(self, branch, revision):
+        # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+# zero_ninetyone: this exception is no longer raised and should be removed
 class NotLeftParentDescendant(BzrError):
 
     _fmt = ("Revision %(old_revision)s is not the left parent of"
@@ -1267,6 +1287,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         VersionedFileError.__init__(self)
         self.revision_id = revision_id
         self.file_id = file_id
+
+
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
 
 
 class KnitError(BzrError):
@@ -2120,6 +2145,22 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
+
+
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
@@ -2284,3 +2325,40 @@ class SMTPError(BzrError):
 
     def __init__(self, error):
         self.error = error
+
+
+class NoMessageSupplied(BzrError):
+
+    _fmt = "No message supplied."
+
+
+class UnknownMailClient(BzrError):
+
+    _fmt = "Unknown mail client: %(mail_client)s"
+
+    def __init__(self, mail_client):
+        BzrError.__init__(self, mail_client=mail_client)
+
+
+class MailClientNotFound(BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        BzrError.__init__(self, mail_command_list=mail_command_list,
+                          mail_command_list_string=mail_command_list_string)
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."

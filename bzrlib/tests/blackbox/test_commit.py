@@ -479,3 +479,37 @@ class TestCommit(ExternalBase):
              r"Commit refused\."],
             'commit -m add-b --fixes=orange',
             working_dir='tree')
+
+    def test_no_author(self):
+        """If the author is not specified, the author property is not set."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr( 'commit -m hello tree/hello.txt')
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertFalse('author' in properties)
+
+    def test_author_sets_property(self):
+        """commit --author='John Doe <jdoe@example.com>' sets the author
+           revprop.
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>' "
+                     "tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe <jdoe@example.com>', properties['author'])
+
+    def test_author_no_email(self):
+        """Author's name without an email address is allowed, too."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe', properties['author'])

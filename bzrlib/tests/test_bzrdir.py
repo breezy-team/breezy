@@ -1,4 +1,4 @@
-    # Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,6 +36,9 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -138,11 +141,11 @@ class TestFormatRegistry(TestCase):
                         'Directory formats')
         topic = topics.get_detail('formats')
         new, deprecated = topic.split('Deprecated formats')
-        self.assertContainsRe(new, 'Bazaar directory formats')
+        self.assertContainsRe(new, 'These formats can be used')
         self.assertContainsRe(new, 
-            '  knit/default:\n    \(native\) Format using knits\n')
+                ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(deprecated, 
-            '  lazy:\n    \(native\) Format registered lazily\n')
+                ':lazy:\n    \(native\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
@@ -198,9 +201,9 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Sample .bzr dir format."
 
-    def initialize(self, url):
+    def initialize(self, url, possible_transports=None):
         """Create a bzr dir."""
-        t = get_transport(url)
+        t = get_transport(url, possible_transports)
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
@@ -261,34 +264,46 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
-    def test_create_repository(self):
+    def test_create_repository_deprecated(self):
+        # new interface is to make the bzrdir, then a repository within that.
         format = SampleBzrDirFormat()
-        repo = bzrdir.BzrDir.create_repository(self.get_url(), format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url(), format=format)
         self.assertEqual('A repository', repo)
 
     def test_create_repository_shared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.', shared=True)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.', shared=True)
         self.assertTrue(repo.is_shared())
 
     def test_create_repository_nonshared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.')
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.')
         self.assertFalse(repo.is_shared())
 
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
         # we trust the format is right from the 'create_repository test'
+        # new interface is to make the bzrdir, then a repository within that.
         format = bzrdir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('child'),
-                                               format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url('child'),
+                format=format)
         self.assertTrue(isinstance(repo, repository.Repository))
         self.assertTrue(repo.bzrdir.root_transport.base.endswith('child/'))
 
     def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
-        branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(), 
+        branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(),
                                                       format=format)
         self.assertTrue(isinstance(branch, SampleBranch))
 
@@ -340,6 +355,15 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('.', format=format)
+        branch.bzrdir.open_workingtree()
+        branch.bzrdir.open_repository()
+
+    def test_create_branch_convenience_possible_transports(self):
+        """Check that the optional 'possible_transports' is recognized"""
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        t = self.get_transport()
+        branch = bzrdir.BzrDir.create_branch_convenience(
+            '.', format=format, possible_transports=[t])
         branch.bzrdir.open_workingtree()
         branch.bzrdir.open_repository()
 

@@ -34,7 +34,11 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.symbol_versioning import deprecated_function, zero_fifteen
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_fifteen,
+        zero_ninety,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
 import bzrlib.ui
@@ -1265,9 +1269,11 @@ def _build_tree(tree, wt):
             tt.trans_id_tree_file_id(wt.get_root_id())
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            deferred_contents = []
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
-                pb.update("Building tree", num, len(tree.inventory))
+                pb.update("Building tree", num - len(deferred_contents),
+                          len(tree.inventory))
                 if entry.parent_id is None:
                     continue
                 reparent = False
@@ -1296,12 +1302,29 @@ def _build_tree(tree, wt):
                         'entry %s parent id %r is not in file_trans_id %r'
                         % (entry, entry.parent_id, file_trans_id))
                 parent_id = file_trans_id[entry.parent_id]
-                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
-                                                      tree)
+                if entry.kind == 'file':
+                    # We *almost* replicate new_by_entry, so that we can defer
+                    # getting the file text, and get them all at once.
+                    trans_id = tt.create_path(entry.name, parent_id)
+                    file_trans_id[file_id] = trans_id
+                    tt.version_file(entry.file_id, trans_id)
+                    executable = tree.is_executable(entry.file_id, tree_path)
+                    if executable is not None:
+                        tt.set_executability(executable, trans_id)
+                    deferred_contents.append((entry.file_id, trans_id))
+                else:
+                    file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
+                                                          tree)
                 if reparent:
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
+            for num, (trans_id, bytes) in enumerate(
+                tree.iter_files_bytes(deferred_contents)):
+                tt.create_file(bytes, trans_id)
+                pb.update('Adding file contents',
+                          (num + len(tree.inventory) - len(deferred_contents)),
+                          len(tree.inventory))
         finally:
             pb.finished()
         pp.next_phase()
@@ -1424,9 +1447,13 @@ def find_interesting(working_tree, target_tree, filenames):
         working_tree.unlock()
 
 
+@deprecated_function(zero_ninety)
 def change_entry(tt, file_id, working_tree, target_tree, 
                  trans_id_file_id, backups, trans_id, by_parent):
     """Replace a file_id's contents with those from a target tree."""
+    if file_id is None and target_tree is None:
+        # skip the logic altogether in the deprecation test
+        return
     e_trans_id = trans_id_file_id(file_id)
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
@@ -1555,6 +1582,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         skip_root = False
     basis_tree = None
     try:
+        deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
             if skip_root and file_id[0] is not None and parent[0] is None:
@@ -1600,8 +1628,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     tt.create_symlink(target_tree.get_symlink_target(file_id),
                                       trans_id)
                 elif kind[1] == 'file':
-                    tt.create_file(target_tree.get_file_lines(file_id),
-                                   trans_id, mode_id)
+                    deferred_files.append((file_id, (trans_id, mode_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
@@ -1628,6 +1655,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     name[1], tt.trans_id_file_id(parent[1]), trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
+        for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
+            deferred_files):
+            tt.create_file(bytes, trans_id, mode_id)
     finally:
         if basis_tree is not None:
             basis_tree.unlock()

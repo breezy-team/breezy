@@ -17,7 +17,6 @@
 import os
 import sys
 
-from bzrlib.builtins import merge
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -64,7 +63,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # F changes: 'file-d'
         # G changes: 'b-file-id-2006-01-01-defg'
         # J changes: 'b-file-id-2006-01-01-defg'
-        # K changes: 'c-funky<file-id> quiji%bo'
+        # K changes: 'c-funky<file-id>quiji%bo'
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
@@ -72,7 +71,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id> quiji%bo'])
+                                 'c-funky<file-id>quiji%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath:
@@ -143,7 +142,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
-             'c-funky<file-id> quiji%bo':set(['rev-K'])
+             'c-funky<file-id>quiji%bo':set(['rev-K'])
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
 
@@ -156,7 +155,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.assertEqual(
             {
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']), 
-             'c-funky<file-id> quiji%bo': set(['rev-K']),
+             'c-funky<file-id>quiji%bo': set(['rev-K']),
              'file-d': set(['rev-F']), 
              },
             self.branch.repository.fileids_altered_by_revision_ids(
@@ -165,7 +164,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd': set(['rev-B']),
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
-             'c-funky<file-id> quiji%bo': set(['rev-K']),
+             'c-funky<file-id>quiji%bo': set(['rev-K']),
              'file-d': set(['rev-F']),
              },
             self.branch.repository.fileids_altered_by_revision_ids(
@@ -184,7 +183,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
-             'c-funky<file-id> quiji%bo': set(['rev-A']),
+             'c-funky<file-id>quiji%bo': set(['rev-A']),
              }, 
             self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
@@ -260,10 +259,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id> quiji\'"%bo'])
+                                 'c-funky<file-id>quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
-        except IllegalPath: 
+        except IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to 
             #       correct this test - its not a bug.

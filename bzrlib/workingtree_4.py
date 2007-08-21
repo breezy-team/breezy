@@ -408,7 +408,8 @@ class WorkingTree4(WorkingTree3):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
-        assert entry[0] is not None, 'what error should this raise'
+        if entry[0] is None:
+            raise errors.NoSuchId(self, file_id)
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
@@ -567,7 +568,7 @@ class WorkingTree4(WorkingTree3):
         if parent_ids:
             return parent_ids[0]
         else:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
@@ -1113,6 +1114,9 @@ class WorkingTree4(WorkingTree3):
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
+        # do non-implementation specific cleanup
+        self._cleanup()
+
         if self._control_files._lock_count == 1:
             # eventually we should do signature checking during read locks for
             # dirstate updates.
@@ -1346,12 +1350,15 @@ class DirStateRevisionTree(Tree):
         return "<%s of %s in %s>" % \
             (self.__class__.__name__, self._revision_id, self._dirstate)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        w = self._repository.weave_store.get_weave(file_id,
-                           self._repository.get_transaction())
+        w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
+    def _get_ancestors(self, default_revision):
+        return set(self._repository.get_ancestry(self._revision_id,
+                                                 topo_sorted=False))
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
@@ -1490,7 +1497,11 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
     def get_weave(self, file_id):
+        return self._get_weave(file_id)
+
+    def _get_weave(self, file_id):
         return self._repository.weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
@@ -1499,8 +1510,7 @@ class DirStateRevisionTree(Tree):
 
     def get_file_lines(self, file_id):
         ie = self.inventory[file_id]
-        return self._repository.weave_store.get_weave(file_id,
-                self._repository.get_transaction()).get_lines(ie.revision)
+        return self._get_weave(file_id).get_lines(ie.revision)
 
     def get_file_size(self, file_id):
         return self.inventory[file_id].text_size
@@ -1510,6 +1520,20 @@ class DirStateRevisionTree(Tree):
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
+
+    def iter_files_bytes(self, desired_files):
+        """See Tree.iter_files_bytes.
+
+        This version is implemented on top of Repository.iter_files_bytes"""
+        parent_index = self._get_parent_index()
+        repo_desired_files = []
+        for file_id, identifier in desired_files:
+            entry = self._get_entry(file_id)
+            if entry == (None, None):
+                raise errors.NoSuchId(self, file_id)
+            repo_desired_files.append((file_id, entry[1][parent_index][4],
+                                       identifier))
+        return self._repository.iter_files_bytes(repo_desired_files)
 
     def get_symlink_target(self, file_id):
         entry = self._get_entry(file_id=file_id)
@@ -1682,6 +1706,7 @@ class InterDirStateTree(InterTree):
         """
         utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
+        cmp_by_dirs = dirstate.cmp_by_dirs
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
@@ -2168,7 +2193,7 @@ class InterDirStateTree(InterTree):
                    current_block is not None):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
-                    if current_dir_info[0][0].split('/') < current_block[0].split('/'):
+                    if cmp_by_dirs(current_dir_info[0][0], current_block[0]) < 0:
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it

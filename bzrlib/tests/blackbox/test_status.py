@@ -28,9 +28,12 @@ from os import mkdir, chdir, rmdir, unlink
 import sys
 from tempfile import TemporaryFile
 
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    bzrdir,
+    conflicts,
+    errors,
+    )
 import bzrlib.branch
-from bzrlib.builtins import merge
 from bzrlib.osutils import pathjoin
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_tree_status
@@ -141,7 +144,7 @@ class BranchStatus(TestCaseWithTransport):
         b_2 = b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
-        merge(["./branch", -1], [None, None], this_dir = './copy')
+        wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2)
         self.assertStartsWith(message, "pending merges:\n")
         self.assertEndsWith(message, "Empty commit 2\n")
@@ -149,7 +152,7 @@ class BranchStatus(TestCaseWithTransport):
         # must be long to make sure we see elipsis at the end
         wt.commit("Empty commit 3 " +
                    "blah blah blah blah " * 100)
-        merge(["./branch", -1], [None, None], this_dir = './copy')
+        wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2)
         self.assertStartsWith(message, "pending merges:\n")
         self.assert_("Empty commit 3" in message)
@@ -227,6 +230,30 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['?   dir2/\n'])
 
+    def test_specific_files_conflicts(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir2/'])
+        tree.add('dir2')
+        tree.commit('added dir2')
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('foo')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('', tof.getvalue())
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('dir2')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2\n',
+                             tof.getvalue())
+
+        tree.set_conflicts(conflicts.ConflictList(
+            [conflicts.ContentsConflict('dir2/file1')]))
+        tof = StringIO()
+        show_tree_status(tree, specific_files=['dir2'], to_file=tof)
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
+                             tof.getvalue())
+
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
@@ -269,17 +296,17 @@ class CheckoutStatus(BranchStatus):
 class TestStatus(TestCaseWithTransport):
 
     def test_status_plain(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit(message="added")
         result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
@@ -291,17 +318,17 @@ class TestStatus(TestCaseWithTransport):
         self.assertEquals(result2, result)
 
     def test_status_short(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[?]   hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit(message="added")
         result = self.run_bzr("status --short -r 0..1")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
@@ -313,17 +340,17 @@ class TestStatus(TestCaseWithTransport):
         self.assertEquals(result2, result)
 
     def test_status_versioned(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --versioned")[0]
         self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status --versioned")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit("added")
         result = self.run_bzr("status --versioned -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 

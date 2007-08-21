@@ -21,6 +21,7 @@ from cStringIO import StringIO
 from bzrlib import (
     osutils,
     revision,
+    symbol_versioning,
     )
 from bzrlib.tree import Tree
 
@@ -61,7 +62,11 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
     def get_weave(self, file_id):
+        return self._get_weave(file_id)
+
+    def _get_weave(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())
@@ -69,7 +74,7 @@ class RevisionTree(Tree):
     def get_file_lines(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
-        weave = self.get_weave(file_id)
+        weave = self._get_weave(file_id)
         return weave.get_lines(ie.revision)
 
     def get_file_text(self, file_id):
@@ -80,10 +85,19 @@ class RevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
 
-    def annotate_iter(self, file_id):
+    def iter_files_bytes(self, desired_files):
+        """See Tree.extract_files_bytes.
+
+        This version is implemented on top of Repository.extract_files_bytes"""
+        repo_desired_files = [(f, self.inventory[f].revision, i)
+                              for f, i in desired_files]
+        return self._repository.iter_files_bytes(repo_desired_files)
+
+    def annotate_iter(self, file_id,
+                      default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         file_id = osutils.safe_file_id(file_id)
-        w = self.get_weave(file_id)
+        w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
@@ -147,6 +161,10 @@ class RevisionTree(Tree):
     def _file_size(self, entry, stat_value):
         assert entry.text_size is not None
         return entry.text_size
+
+    def _get_ancestors(self, default_revision):
+        return set(self._repository.get_ancestry(self._revision_id,
+                                                 topo_sorted=False))
 
     def lock_read(self):
         self._repository.lock_read()

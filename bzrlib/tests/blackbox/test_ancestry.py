@@ -16,7 +16,6 @@
 
 import os
 
-from bzrlib.builtins import merge
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 from bzrlib.branch import Branch
@@ -26,17 +25,21 @@ class TestAncestry(TestCaseWithTransport):
 
     def _build_branches(self):
         a_wt = self.make_branch_and_tree('A')
-        open('A/foo', 'wb').write('1111\n')
+        self.build_tree_contents([('A/foo', '1111\n')])
         a_wt.add('foo')
         a_wt.commit('added foo',rev_id='A1')
-        self.run_bzr('branch A B')
-        b_wt = WorkingTree.open('B')
-        open('B/foo','wb').write('1111\n22\n')
+
+        b_wt = a_wt.bzrdir.sprout('B').open_workingtree()
+        self.build_tree_contents([('B/foo', '1111\n22\n')])
         b_wt.commit('modified B/foo',rev_id='B1')
-        open('A/foo', 'wb').write('000\n1111\n')
+
+        self.build_tree_contents([('A/foo', '000\n1111\n')])
         a_wt.commit('modified A/foo',rev_id='A2')
-        merge(['B',-1],['B',1],this_dir='A')
+
+        a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(),
+            b_wt.branch.get_rev_id(1))
         a_wt.commit('merged B into A',rev_id='A3')
+        return a_wt, b_wt
 
     def _check_ancestry(self, location='', result=None):
         out = self.run_bzr(['ancestry', location])[0]
@@ -58,43 +61,48 @@ class TestAncestry(TestCaseWithTransport):
     def test_ancestry_with_repo_branch(self):
         """Tests 'ancestry' command with a location that is a
         repository branch."""
-        self._build_branches()
-        self.run_bzr('init-repo repo')
-        self.run_bzr('branch A repo/A')
+        a_tree = self._build_branches()[0]
+
+        self.make_repository('repo', shared=True)
+
+        a_tree.bzrdir.sprout('repo/A')
         self._check_ancestry('repo/A')
 
     def test_ancestry_with_checkout(self):
         """Tests 'ancestry' command with a location that is a
         checkout of a repository branch."""
-        self._build_branches()
-        self.run_bzr('init-repo repo')
-        self.run_bzr('branch A repo/A')
-        self.run_bzr('checkout repo/A A-checkout')
+        a_tree = self._build_branches()[0]
+        self.make_repository('repo', shared=True)
+        repo_branch = a_tree.bzrdir.sprout('repo/A').open_branch()
+        repo_branch.create_checkout('A-checkout')
         self._check_ancestry('A-checkout')
 
     def test_ancestry_with_lightweight_checkout(self):
         """Tests 'ancestry' command with a location that is a
         lightweight checkout of a repository branch."""
-        self._build_branches()
-        self.run_bzr('init-repo repo')
-        self.run_bzr('branch A repo/A')
-        self.run_bzr('checkout --lightweight repo/A A-checkout')
+        a_tree = self._build_branches()[0]
+        self.make_repository('repo', shared=True)
+        repo_branch = a_tree.bzrdir.sprout('repo/A').open_branch()
+        repo_branch.create_checkout('A-checkout', lightweight=True)
         self._check_ancestry('A-checkout')
 
     def test_ancestry_with_truncated_checkout(self):
         """Tests 'ancestry' command with a location that is a
         checkout of a repository branch with a shortened revision history."""
-        self._build_branches()
-        self.run_bzr('init-repo repo')
-        self.run_bzr('branch A repo/A')
-        self.run_bzr('checkout -r 2 repo/A A-checkout')
+        a_tree = self._build_branches()[0]
+        self.make_repository('repo', shared=True)
+        repo_branch = a_tree.bzrdir.sprout('repo/A').open_branch()
+        repo_branch.create_checkout('A-checkout',
+                                    revision_id=repo_branch.get_rev_id(2))
         self._check_ancestry('A-checkout', "A1\nA2\n")
 
     def test_ancestry_with_truncated_lightweight_checkout(self):
         """Tests 'ancestry' command with a location that is a lightweight
         checkout of a repository branch with a shortened revision history."""
-        self._build_branches()
-        self.run_bzr('init-repo repo')
-        self.run_bzr('branch A repo/A')
-        self.run_bzr('checkout -r 2 --lightweight repo/A A-checkout')
+        a_tree = self._build_branches()[0]
+        self.make_repository('repo', shared=True)
+        repo_branch = a_tree.bzrdir.sprout('repo/A').open_branch()
+        repo_branch.create_checkout('A-checkout',
+                                    revision_id=repo_branch.get_rev_id(2),
+                                    lightweight=True)
         self._check_ancestry('A-checkout', "A1\nA2\n")

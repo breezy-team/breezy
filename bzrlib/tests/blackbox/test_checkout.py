@@ -22,8 +22,12 @@ import re
 import shutil
 import sys
 
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    errors,
+    workingtree,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -98,3 +102,38 @@ class TestCheckout(ExternalBase):
         branch.bzrdir.open_workingtree()
         # with no diff
         out, err = self.run_bzr('diff')
+
+    def _test_checkout_existing_dir(self, lightweight):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'content1'),
+                                  ('source/file2', 'content2'),])
+        source.add(['file1', 'file2'])
+        source.commit('added files')
+        self.build_tree_contents([('target/', ''),
+                                  ('target/file1', 'content1'),
+                                  ('target/file2', 'content3'),])
+        cmd = ['checkout', 'source', 'target']
+        if lightweight:
+            cmd.append('--lightweight')
+        self.run_bzr('checkout source target')
+        # files with unique content should be moved
+        self.failUnlessExists('target/file2.moved')
+        # files with content matching tree should not be moved
+        self.failIfExists('target/file1.moved')
+
+    def test_checkout_existing_dir_heavy(self):
+        self._test_checkout_existing_dir(False)
+
+    def test_checkout_existing_dir_lightweight(self):
+        self._test_checkout_existing_dir(True)
+
+    def test_checkout_in_branch_with_r(self):
+        branch = _mod_branch.Branch.open('branch')
+        branch.bzrdir.destroy_workingtree()
+        os.chdir('branch')
+        self.run_bzr('checkout -r 1')
+        tree = workingtree.WorkingTree.open('.')
+        self.assertEqual('1', tree.last_revision())
+        branch.bzrdir.destroy_workingtree()
+        self.run_bzr('checkout -r 0')
+        self.assertEqual('null:', tree.last_revision())

@@ -21,6 +21,7 @@
 
 import os
 
+from bzrlib import merge_directive
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import ConflictList, ContentsConflict
@@ -70,6 +71,10 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type merge3')
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
+        self.run_bzr('revert --no-backup')
+        self.run_bzr_error(['Show-base is not supported for this merge type'],
+                           'merge ../b -r last:1..last:1 --merge-type weave'
+                           ' --show-base')
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
         self.run_bzr('revert --no-backup')
@@ -204,7 +209,7 @@ class TestMerge(ExternalBase):
         f.close()
         tree_b.commit('message')
         os.chdir('branch_b')
-        file('../bundle', 'wb').write(self.run_bzr('bundle ../branch_a')[0])
+        self.run_bzr('bundle ../branch_a -o ../bundle')
         os.chdir('../branch_a')
         self.run_bzr('merge ../bundle', retcode=1)
         testament_a = Testament.from_revision(tree_a.branch.repository,
@@ -266,7 +271,7 @@ class TestMerge(ExternalBase):
         self.pullable_branch()
         os.chdir('a')
         (out, err) = self.run_bzr('merge --pull ../b')
-        self.assertContainsRe(err, 'Now on revision 2\\.')
+        self.assertContainsRe(out, 'Now on revision 2\\.')
         tree_a = WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 
@@ -289,3 +294,73 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge ../tree_a', retcode=1)
         self.assertEqual(tree_b.conflicts(),
                          [ContentsConflict('file', file_id='file-id')])
+
+    def test_directive_cherrypick(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        source.add('a')
+        source.commit('Added a', rev_id='rev1')
+        self.build_tree(['source/b'])
+        source.add('b')
+        source.commit('Added b', rev_id='rev2')
+        target = self.make_branch_and_tree('target')
+        target.commit('empty commit')
+        self.write_directive('directive', source.branch, 'target', 'rev2',
+                             'rev1')
+        self.run_bzr('merge -d target directive')
+        self.failIfExists('target/a')
+        self.failUnlessExists('target/b')
+
+    def write_directive(self, filename, source, target, revision_id,
+                        base_revision_id=None, mangle_patch=False):
+        md = merge_directive.MergeDirective2.from_objects(
+            source.repository, revision_id, 0, 0, target,
+            base_revision_id=base_revision_id)
+        if mangle_patch:
+            md.patch = 'asdf\n'
+        self.build_tree_contents([(filename, ''.join(md.to_lines()))])
+
+    def test_directive_verify_warning(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        source.add('a')
+        source.commit('Added a', rev_id='rev1')
+        target = self.make_branch_and_tree('target')
+        target.commit('empty commit')
+        self.write_directive('directive', source.branch, 'target', 'rev1')
+        err = self.run_bzr('merge -d target directive')[1]
+        self.assertNotContainsRe(err, 'Preview patch does not match changes')
+        target.revert([])
+        self.write_directive('directive', source.branch, 'target', 'rev1',
+                             mangle_patch=True)
+        err = self.run_bzr('merge -d target directive')[1]
+        self.expectFailure('Patch verification is disabled',
+                           self.assertContainsRe, err,
+                           'Preview patch does not match changes')
+
+    def test_merge_arbitrary(self):
+        target = self.make_branch_and_tree('target')
+        target.commit('empty')
+        # We need a revision that has no integer revno
+        branch_a = target.bzrdir.sprout('branch_a').open_workingtree()
+        self.build_tree(['branch_a/file1'])
+        branch_a.add('file1')
+        branch_a.commit('added file1', rev_id='rev2a')
+        branch_b = target.bzrdir.sprout('branch_b').open_workingtree()
+        self.build_tree(['branch_b/file2'])
+        branch_b.add('file2')
+        branch_b.commit('added file2', rev_id='rev2b')
+        branch_b.merge_from_branch(branch_a.branch)
+        self.failUnlessExists('branch_b/file1')
+        branch_b.commit('merged branch_a', rev_id='rev3b')
+
+        # It works if the revid has an interger revno
+        self.run_bzr('merge -d target -r revid:rev2a branch_a')
+        self.failUnlessExists('target/file1')
+        self.failIfExists('target/file2')
+        target.revert([])
+
+        # It should work if the revid has no integer revno
+        self.run_bzr('merge -d target -r revid:rev2a branch_b')
+        self.failUnlessExists('target/file1')
+        self.failIfExists('target/file2')

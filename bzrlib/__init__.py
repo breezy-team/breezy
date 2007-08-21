@@ -35,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006, 2007 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 19, 0, 'dev', 0)
+version_info = (0, 91, 0, 'dev', 0)
 
 # API compatibility version: bzrlib is currently API compatible with 0.18.
 api_minimum_version = (0, 18, 0)
@@ -45,17 +45,6 @@ if version_info[3] == 'final':
 else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
-
-from bzrlib.symbol_versioning import (deprecated_function,
-                                      zero_seven,
-                                      zero_nine,
-                                      deprecated_list,
-                                     )
-
-# Kept for compatibility with 0.8, it is considered deprecated to modify it
-DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
-                    'Consider using bzrlib.ignores.add_unique_user_ignores'
-                    ' or bzrlib.ignores.add_runtime_ignores')
 
 # allow bzrlib plugins to be imported.
 import bzrlib.plugin

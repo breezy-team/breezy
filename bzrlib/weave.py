@@ -88,10 +88,6 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 import bzrlib.patiencediff
-from bzrlib.symbol_versioning import (deprecated_method,
-        deprecated_function,
-        zero_eight,
-        )
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -228,22 +224,8 @@ class Weave(VersionedFile):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    @deprecated_method(zero_eight)
-    def idx_to_name(self, index):
-        """Old public interface, the public interface is all names now."""
-        return index
-
     def _idx_to_name(self, version):
         return self._names[version]
-
-    @deprecated_method(zero_eight)
-    def lookup(self, name):
-        """Backwards compatibility thunk:
-
-        Return name, as name is valid in the api now, and spew deprecation
-        warnings everywhere.
-        """
-        return name
 
     def _lookup(self, name):
         """Convert symbolic version name to index."""
@@ -252,16 +234,6 @@ class Weave(VersionedFile):
             return self._name_map[name]
         except KeyError:
             raise RevisionNotPresent(name, self._weave_name)
-
-    @deprecated_method(zero_eight)
-    def iter_names(self):
-        """Deprecated convenience function, please see VersionedFile.names()."""
-        return iter(self.names())
-
-    @deprecated_method(zero_eight)
-    def names(self):
-        """See Weave.versions for the current api."""
-        return self.versions()
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -444,19 +416,10 @@ class Weave(VersionedFile):
             raise RevisionAlreadyPresent(name, self._weave_name)
         return idx
 
-    @deprecated_method(zero_eight)
-    def add_identical(self, old_rev_id, new_rev_id, parents):
-        """Please use Weave.clone_text now."""
-        return self.clone_text(new_rev_id, old_rev_id, parents)
-
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+                   left_matching_blocks=None):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
-
-    @deprecated_method(zero_eight)
-    def add(self, name, parents, text, sha1=None):
-        """See VersionedFile.add_lines for the non deprecated api."""
-        return self._add(name, text, map(self._maybe_lookup, parents), sha1)
 
     def _add(self, version_id, lines, parents, sha1=None):
         """Add a single text on top of the weave.
@@ -597,16 +560,6 @@ class Weave(VersionedFile):
         ## except IndexError:
         ##     raise ValueError("version %d not present in weave" % v)
 
-    @deprecated_method(zero_eight)
-    def inclusions(self, version_ids):
-        """Deprecated - see VersionedFile.get_ancestry for the replacement."""
-        if not version_ids:
-            return []
-        if isinstance(version_ids[0], int):
-            return [self._idx_to_name(v) for v in self._inclusions(version_ids)]
-        else:
-            return self.get_ancestry(version_ids)
-
     def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(version_ids, basestring):
@@ -649,11 +602,6 @@ class Weave(VersionedFile):
         for origin, lineno, text in self._extract(incls):
             yield self._idx_to_name(origin), text
 
-    @deprecated_method(zero_eight)
-    def _walk(self):
-        """_walk has become visit, a supported api."""
-        return self._walk_internal()
-
     def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
@@ -669,11 +617,6 @@ class Weave(VersionedFile):
                 yield line + '\n'
             else:
                 yield line
-
-    #@deprecated_method(zero_eight)
-    def walk(self, version_ids=None):
-        """See VersionedFile.walk."""
-        return self._walk_internal(version_ids)
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""
@@ -723,8 +666,7 @@ class Weave(VersionedFile):
         inc_b = set(self.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in\
-            self.walk([ver_a, ver_b]):
+        for lineno, insert, deleteset, line in self._walk_internal([ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
@@ -846,19 +788,6 @@ class Weave(VersionedFile):
                                    % dset)
         return result
 
-    @deprecated_method(zero_eight)
-    def get_iter(self, name_or_index):
-        """Deprecated, please do not use. Lookups are not not needed.
-        
-        Please use get_lines now.
-        """
-        return iter(self.get_lines(self._maybe_lookup(name_or_index)))
-
-    @deprecated_method(zero_eight)
-    def maybe_lookup(self, name_or_index):
-        """Deprecated, please do not use. Lookups are not not needed."""
-        return self._maybe_lookup(name_or_index)
-
     def _maybe_lookup(self, name_or_index):
         """Convert possible symbolic name to index, or pass through indexes.
         
@@ -868,11 +797,6 @@ class Weave(VersionedFile):
             return name_or_index
         else:
             return self._lookup(name_or_index)
-
-    @deprecated_method(zero_eight)
-    def get(self, version_id):
-        """Please use either Weave.get_text or Weave.get_lines as desired."""
-        return self.get_lines(version_id)
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
@@ -891,13 +815,9 @@ class Weave(VersionedFile):
         """See VersionedFile.get_sha1()."""
         return self._sha1s[self._lookup(version_id)]
 
-    @deprecated_method(zero_eight)
-    def numversions(self):
-        """How many versions are in this weave?
-
-        Deprecated in favour of num_versions.
-        """
-        return self.num_versions()
+    def get_sha1s(self, version_ids):
+        """See VersionedFile.get_sha1s()."""
+        return [self._sha1s[self._lookup(v)] for v in version_ids]
 
     def num_versions(self):
         """How many versions are in this weave?"""
@@ -1062,11 +982,6 @@ class Weave(VersionedFile):
         else:
             return False
 
-    @deprecated_method(zero_eight)
-    def reweave(self, other, pb=None, msg=None):
-        """reweave has been superseded by plain use of join."""
-        return self.join(other, pb, msg)
-
     def _reweave(self, other, pb, msg):
         """Reweave self with other - internal helper for join().
 
@@ -1105,7 +1020,8 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def _add_lines(self, version_id, parents, lines, parent_texts):
+    def _add_lines(self, version_id, parents, lines, parent_texts,
+        left_matching_blocks=None):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
@@ -1150,11 +1066,6 @@ class WeaveFile(Weave):
         super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
         self._save()
 
-
-@deprecated_function(zero_eight)
-def reweave(wa, wb, pb=None, msg=None):
-    """reweaving is deprecation, please just use weave.join()."""
-    _reweave(wa, wb, pb, msg)
 
 def _reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.

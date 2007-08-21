@@ -155,7 +155,7 @@ class TestLog(ExternalBase):
         log = self.run_bzr("log -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -r3.1.1")[0]
-        self.assertContainsRe(log, r'    tags: tag1')
+        self.assertContainsRe(log, r'tags: tag1')
 
     def test_log_limit(self):
         self._prepare()
@@ -243,32 +243,32 @@ class TestLogMerges(ExternalBase):
         out,err = self.run_bzr('log -r1.1.2')
         # the log will look something like:
 #        self.assertEqual("""\
+#------------------------------------------------------------
+#revno: 1.1.2  
+#committer: Robert Collins <foo@example.com>
+#branch nick: child
+#timestamp: Tue 2006-03-28 22:31:40 +1100
+#message:
+#  merge branch 2
 #    ------------------------------------------------------------
-#    revno: 1.1.2  
+#    revno: 1.1.1.1
 #    committer: Robert Collins <foo@example.com>
-#    branch nick: child
+#    branch nick: smallerchild
 #    timestamp: Tue 2006-03-28 22:31:40 +1100
 #    message:
-#      merge branch 2
-#        ------------------------------------------------------------
-#        revno: 1.1.1.1
-#        committer: Robert Collins <foo@example.com>
-#        branch nick: smallerchild
-#        timestamp: Tue 2006-03-28 22:31:40 +1100
-#        message:
-#          branch 2
+#      branch 2
 #""", out)
         # but we dont have a nice pattern matcher hooked up yet, so:
         # we check for the indenting of the commit message and the 
         # revision numbers 
         self.assertTrue('revno: 2' not in out)
         self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('    revno: 1.1.2' in out)
-        self.assertTrue('      merge branch 2' in out)
-        self.assertTrue('        revno: 1.1.1.1' in out)
-        self.assertTrue('          branch 2' in out)
-        self.assertTrue('    revno: 1.1.1\n' not in out)
-        self.assertTrue('      branch 1' not in out)
+        self.assertTrue('revno: 1.1.2' in out)
+        self.assertTrue('  merge branch 2' in out)
+        self.assertTrue('    revno: 1.1.1.1' in out)
+        self.assertTrue('      branch 2' in out)
+        self.assertTrue('revno: 1.1.1\n' not in out)
+        self.assertTrue('  branch 1' not in out)
         self.assertTrue('revno: 1\n' not in out)
         self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
@@ -278,39 +278,39 @@ class TestLogMerges(ExternalBase):
         out,err = self.run_bzr('log -r1.1.1..1.1.2')
         # the log will look something like:
 #        self.assertEqual("""\
+#------------------------------------------------------------
+#revno: 1.1.2  
+#committer: Robert Collins <foo@example.com>
+#branch nick: child
+#timestamp: Tue 2006-03-28 22:31:40 +1100
+#message:
+#  merge branch 2
 #    ------------------------------------------------------------
-#    revno: 1.1.2  
+#    revno: 1.1.1.1
 #    committer: Robert Collins <foo@example.com>
-#    branch nick: child
+#    branch nick: smallerchild
 #    timestamp: Tue 2006-03-28 22:31:40 +1100
 #    message:
-#      merge branch 2
-#        ------------------------------------------------------------
-#        revno: 1.1.1.1
-#        committer: Robert Collins <foo@example.com>
-#        branch nick: smallerchild
-#        timestamp: Tue 2006-03-28 22:31:40 +1100
-#        message:
-#          branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: child
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 1
+#      branch 2
+#------------------------------------------------------------
+#revno: 1.1.1
+#committer: Robert Collins <foo@example.com>
+#branch nick: child
+#timestamp: Tue 2006-03-28 22:31:40 +1100
+#message:
+#  branch 1
 #""", out)
         # but we dont have a nice pattern matcher hooked up yet, so:
         # we check for the indenting of the commit message and the 
         # revision numbers 
         self.assertTrue('revno: 2' not in out)
         self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('    revno: 1.1.2' in out)
-        self.assertTrue('      merge branch 2' in out)
-        self.assertTrue('        revno: 1.1.1.1' in out)
-        self.assertTrue('          branch 2' in out)
-        self.assertTrue('    revno: 1.1.1' in out)
-        self.assertTrue('      branch 1' in out)
+        self.assertTrue('revno: 1.1.2' in out)
+        self.assertTrue('  merge branch 2' in out)
+        self.assertTrue('    revno: 1.1.1.1' in out)
+        self.assertTrue('      branch 2' in out)
+        self.assertTrue('revno: 1.1.1' in out)
+        self.assertTrue('  branch 1' in out)
         self.assertTrue('revno: 1\n' not in out)
         self.assertTrue('  first post' not in out)
         self.assertEqual('', err)

@@ -20,7 +20,7 @@ from bzrlib import (
     )
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
-from bzrlib.symbol_versioning import deprecated_function, zero_nine
+from bzrlib.symbol_versioning import deprecated_function
 
 
 class TreeDelta(object):
@@ -202,22 +202,10 @@ class TreeDelta(object):
         self.show(output, show_ids, show_unchanged, short_status)
         return output.getvalue()
 
-@deprecated_function(zero_nine)
-def compare_trees(old_tree, new_tree, want_unchanged=False,
-                  specific_files=None, extra_trees=None,
-                  require_versioned=False):
-    """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
-    return new_tree.changes_from(old_tree,
-        want_unchanged=want_unchanged,
-        specific_files=specific_files,
-        extra_trees=extra_trees,
-        require_versioned=require_versioned,
-        include_root=False)
-
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
                    include_root, extra_trees=None,
-                   want_unversioned=False):
+                   require_versioned=False, want_unversioned=False):
     """Worker function that implements Tree.changes_from."""
     delta = TreeDelta()
     # mutter('start compare_trees')
@@ -225,6 +213,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree._iter_changes(old_tree, want_unchanged,
             specific_files, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned):
         if versioned == (False, False):
             delta.unversioned.append((path[1], None, kind[1]))
