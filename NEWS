@@ -47,6 +47,9 @@ IN DEVELOPMENT
    * Tests may now raise TestNotApplicable to indicate they shouldn't be 
      run in a particular scenario.  (Martin Pool)
 
+   * New function multiply_tests_from_modules to give a simpler interface
+     to test parameterization.  (Martin Pool, Robert Collins)
+
 bzr 0.90rc1 2007-08-14
 
   BUGFIXES:

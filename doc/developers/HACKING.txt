@@ -506,6 +506,22 @@ then applies a TestProviderAdapter to them, which generates a longer
 suite containing all the test variations.
 
 
+Test scenarios
+--------------
+
+Some utilities are provided for generating variations of tests.  This can
+be used for per-implementation tests, or other cases where the same test
+code needs to run several times on different scenarios.
+
+The general approach is to define a class that provides test methods,
+which depend on attributes of the test object being pre-set with the
+values to which the test should be applied.  The test suite should then
+also provide a list of scenarios in which to run the tests.
+
+Typically ``multiply_tests_from_modules`` should be called from the test
+module's ``test_suite`` function.
+
+
 Essential Domain Classes
 ########################
 

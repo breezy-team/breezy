@@ -107,16 +107,18 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.timestamp,
-                      bzrlib.errors,
-                      bzrlib.export,
-                      bzrlib.inventory,
-                      bzrlib.iterablefile,
-                      bzrlib.lockdir,
-                      bzrlib.merge3,
-                      bzrlib.option,
-                      bzrlib.store,
-                      ]
+        bzrlib.timestamp,
+        bzrlib.errors,
+        bzrlib.export,
+        bzrlib.inventory,
+        bzrlib.iterablefile,
+        bzrlib.lockdir,
+        bzrlib.merge3,
+        bzrlib.option,
+        bzrlib.store,
+        # quoted to avoid module-loading circularity
+        'bzrlib.tests',
+        ]
 
 
 def packages_to_test():
@@ -2454,6 +2456,47 @@ def test_suite():
                     sys.getdefaultencoding())
                 reload(sys)
                 sys.setdefaultencoding(default_encoding)
+    return suite
+
+
+def multiply_tests_from_modules(module_name_list, scenario_list):
+    """Adapt all tests in some given modules to given scenarios.
+
+    This is the recommended public interface for test parameterization.
+    Typically the test_suite() method for a per-implementation test
+    suite will call multiply_tests_from_modules and return the 
+    result.
+
+    :param module_name_list: List of fully-qualified names of test
+        modules.
+    :param scenario_list: Iterable of pairs of (scenario_name, 
+        scenario_param_dict).
+
+    This returns a new TestSuite containing the cross product of
+    all the tests in all the modules, each repeated for each scenario.
+    Each test is adapted by adding the scenario name at the end 
+    of its name, and updating the test object's __dict__ with the
+    scenario_param_dict.
+
+    >>> r = multiply_tests_from_modules(
+    ...     ['bzrlib.tests.test_sampler'],
+    ...     [('one', dict(param=1)), 
+    ...      ('two', dict(param=2))])
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    loader = TestLoader()
+    suite = TestSuite()
+    adapter = TestScenarioApplier()
+    adapter.scenarios = scenario_list
+    adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
 
