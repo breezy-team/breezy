@@ -971,14 +971,16 @@ class StrictCommitFailed(Exception):
 
 class NoSuchRevision(BzrError):
 
-    _fmt = "Branch %(branch)s has no revision %(revision)s"
+    _fmt = "%(branch)s has no revision %(revision)s"
 
     internal_error = True
 
     def __init__(self, branch, revision):
+        # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+# zero_ninetyone: this exception is no longer raised and should be removed
 class NotLeftParentDescendant(BzrError):
 
     _fmt = ("Revision %(old_revision)s is not the left parent of"

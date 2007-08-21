@@ -1,16 +1,12 @@
-=======================
-Bazaar Developers Guide
-=======================
+=================================
+Bazaar Developer Document Catalog
+=================================
 
-###################
-Documentation index
-###################
+See the `Main Document Catalog <../index.html>`_ for additional documents
+including the Bazaar Developer Guide and bzrlib API reference.
 
 Process
 =======
-
-* `General HACKING HOWTO <HACKING.html>`_ |--| Guide to policies and tools 
-  for working on Bazaar itself.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.

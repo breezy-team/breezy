@@ -863,10 +863,7 @@ class TestCase(unittest.TestCase):
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
-        missing = []
-        for entry in sublist:
-            if entry not in superlist:
-                missing.append(entry)
+        missing = set(sublist) - set(superlist)
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
@@ -1006,6 +1003,13 @@ class TestCase(unittest.TestCase):
 
         Note that this only captures warnings raised by symbol_versioning.warn,
         not other callers that go direct to the warning module.
+
+        To test that a deprecated method raises an error, do something like
+        this::
+
+        self.assertRaises(errors.ReservedId,
+            self.applyDeprecated, zero_ninetyone,
+                br.append_revision, 'current:')
 
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the
@@ -1198,9 +1202,14 @@ class TestCase(unittest.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Return as a string the log for this test. If the file is still
-        on disk and keep_log_file=False, delete the log file and store the
-        content in self._log_contents."""
+        """Get the log from bzrlib.trace calls from this test.
+
+        :param keep_log_file: When True, if the log is still a file on disk
+            leave it as a file on disk. When False, if the log is still a file
+            on disk, the log file is deleted and the log preserved as
+            self._log_contents.
+        :return: A string containing the log.
+        """
         # flush the log file, to get all content
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()

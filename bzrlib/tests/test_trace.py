@@ -27,7 +27,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.trace import mutter, report_exception
+from bzrlib.trace import mutter, mutter_callsite, report_exception
 
 
 def _format_exception():
@@ -113,6 +113,30 @@ class TestTrace(TestCase):
         else:
             self.fail("expected error not raised")
 
+    def test_mutter_callsite_1(self):
+        """mutter_callsite can capture 1 level of stack frame."""
+        mutter_callsite(1, "foo %s", "a string")
+        log = self._get_log(keep_log_file=True)
+        # begin with the message
+        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        # should show two frame: this frame and the one above
+        self.assertContainsRe(log,
+            'test_trace\.py", line \d+, in test_mutter_callsite_1\n')
+        # this frame should be the final one
+        self.assertEndsWith(log, ' "a string")\n')
+
+    def test_mutter_callsite_2(self):
+        """mutter_callsite can capture 2 levels of stack frame."""
+        mutter_callsite(2, "foo %s", "a string")
+        log = self._get_log(keep_log_file=True)
+        # begin with the message
+        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        # should show two frame: this frame and the one above
+        self.assertContainsRe(log,
+            'test_trace.py", line \d+, in test_mutter_callsite_2\n')
+        # this frame should be the final one
+        self.assertEndsWith(log, ' "a string")\n')
+
     def test_mutter_never_fails(self):
         # Even if the decode/encode stage fails, mutter should not
         # raise an exception
@@ -123,3 +147,4 @@ class TestTrace(TestCase):
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         self.assertContainsRe(log, u"ascii argument: \xb5")
+
