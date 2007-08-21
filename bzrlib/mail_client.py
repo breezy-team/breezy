@@ -82,11 +82,16 @@ class Editor(MailClient):
     """DIY mail client that uses commit message editor"""
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
-        return "%s\n\nTo: %s\nSubject: %s\n\n%s" % (prompt, to, subject,
-                attachment.decode('utf-8', 'replace'))
+        """See MailClient._get_merge_prompt"""
+        return (u"%s\n\n"
+                u"To: %s\n"
+                u"Subject: %s\n\n"
+                u"%s" % (prompt, to, subject,
+                         attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
+        """See MailClient.compose"""
         body = msgeditor.edit_commit_message(prompt)
         if body == '':
             raise errors.NoMessageSupplied()
@@ -188,7 +193,8 @@ class Thunderbird(ExternalMailClient):
     send attachments.
     """
 
-    _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove']
+    _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove',
+        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
