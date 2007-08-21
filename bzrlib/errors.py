@@ -264,6 +264,15 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
+class NoSuchIdInRepository(NoSuchId):
+
+    _fmt = ("The file id %(file_id)r is not present in the repository"
+            " %(repository)r")
+
+    def __init__(self, repository, file_id):
+        BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
 class InventoryModified(BzrError):
 
     _fmt = ("The current inventory for the tree %(tree)r has been modified,"
@@ -962,14 +971,16 @@ class StrictCommitFailed(Exception):
 
 class NoSuchRevision(BzrError):
 
-    _fmt = "Branch %(branch)s has no revision %(revision)s"
+    _fmt = "%(branch)s has no revision %(revision)s"
 
     internal_error = True
 
     def __init__(self, branch, revision):
+        # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+# zero_ninetyone: this exception is no longer raised and should be removed
 class NotLeftParentDescendant(BzrError):
 
     _fmt = ("Revision %(old_revision)s is not the left parent of"
@@ -2308,3 +2319,40 @@ class SMTPError(BzrError):
 
     def __init__(self, error):
         self.error = error
+
+
+class NoMessageSupplied(BzrError):
+
+    _fmt = "No message supplied."
+
+
+class UnknownMailClient(BzrError):
+
+    _fmt = "Unknown mail client: %(mail_client)s"
+
+    def __init__(self, mail_client):
+        BzrError.__init__(self, mail_client=mail_client)
+
+
+class MailClientNotFound(BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        BzrError.__init__(self, mail_command_list=mail_command_list,
+                          mail_command_list_string=mail_command_list_string)
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."

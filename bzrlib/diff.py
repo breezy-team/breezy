@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import difflib
 import os
 import re
 import sys
@@ -34,12 +35,8 @@ from bzrlib import (
     )
 """)
 
-# compatability - plugins import compare_trees from diff!!!
-# deprecated as of 0.10
-from bzrlib.delta import compare_trees
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_eight,
         )
 from bzrlib.trace import mutter, warning
 
@@ -47,6 +44,16 @@ from bzrlib.trace import mutter, warning
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
+
+
+class _PrematchedMatcher(difflib.SequenceMatcher):
+    """Allow SequenceMatcher operations to use predetermined blocks"""
+
+    def __init__(self, matching_blocks):
+        difflib.SequenceMatcher(self, None, None)
+        self.matching_blocks = matching_blocks
+        self.opcodes = None
+
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
@@ -259,44 +266,6 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             if e.errno not in (errno.ENOENT,):
                 warning('Failed to delete temporary file: %s %s',
                         new_abspath, e)
-
-
-@deprecated_function(zero_eight)
-def show_diff(b, from_spec, specific_files, external_diff_options=None,
-              revision2=None, output=None, b2=None):
-    """Shortcut for showing the diff to the working tree.
-
-    Please use show_diff_trees instead.
-
-    b
-        Branch.
-
-    revision
-        None for 'basis tree', or otherwise the old revision to compare against.
-    
-    The more general form is show_diff_trees(), where the caller
-    supplies any two trees.
-    """
-    if output is None:
-        output = sys.stdout
-
-    if from_spec is None:
-        old_tree = b.bzrdir.open_workingtree()
-        if b2 is None:
-            old_tree = old_tree = old_tree.basis_tree()
-    else:
-        old_tree = b.repository.revision_tree(from_spec.in_history(b).rev_id)
-
-    if revision2 is None:
-        if b2 is None:
-            new_tree = b.bzrdir.open_workingtree()
-        else:
-            new_tree = b2.bzrdir.open_workingtree()
-    else:
-        new_tree = b.repository.revision_tree(revision2.in_history(b).rev_id)
-
-    return show_diff_trees(old_tree, new_tree, output, specific_files,
-                           external_diff_options)
 
 
 def diff_cmd_helper(tree, specific_files, external_diff_options, 

@@ -106,7 +106,7 @@ class MultiParent(object):
                 if block is None:
                     continue
                 i, j, n = block
-                while j + n < cur_line:
+                while j + n <= cur_line:
                     block = cur_block[p] = next_block(p)
                     if block is None:
                         break
@@ -135,6 +135,13 @@ class MultiParent(object):
         if len(new_text.lines) > 0:
             diff.hunks.append(new_text)
         return diff
+
+    def get_matching_blocks(self, parent, parent_len):
+        for hunk in self.hunks:
+            if not isinstance(hunk, ParentText) or hunk.parent != parent:
+                continue
+            yield (hunk.parent_pos, hunk.child_pos, hunk.num_lines)
+        yield parent_len, self.num_lines(), 0
 
     def to_lines(self, parents=()):
         """Contruct a fulltext from this diff and its parents"""
@@ -483,8 +490,7 @@ class BaseVersionedFile(object):
             pass
         diff = self.get_diff(version_id)
         lines = []
-        reconstructor = _Reconstructor(self, self._lines,
-                                       self._parents)
+        reconstructor = _Reconstructor(self, self._lines, self._parents)
         reconstructor.reconstruct_version(lines, version_id)
         self._lines[version_id] = lines
         return lines
@@ -594,6 +600,9 @@ class _Reconstructor(object):
         while len(pending_reqs) > 0:
             req_version_id, req_start, req_end = pending_reqs.pop()
             # lazily allocate cursors for versions
+            if req_version_id in self.lines:
+                lines.extend(self.lines[req_version_id][req_start:req_end])
+                continue
             try:
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:

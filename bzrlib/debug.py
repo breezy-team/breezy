@@ -21,7 +21,8 @@ debug_flags = set()
 These are set with eg ``-Dlock`` on the bzr command line.
 
 Options include:
-    
+ 
+ * evil - capture call sites that do expensive or badly-scaling operations.
  * error - show stack traces for all top level exceptions
  * hooks 
  * hpss - trace smart protocol requests and responses
