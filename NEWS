@@ -30,6 +30,9 @@ IN DEVELOPMENT
     * ``pull -v`` no longer includes deltas, making it much faster.
       (Aaron Bentley)
 
+    * ``send`` now sends the directive as an attachment by default.
+      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
@@ -176,9 +179,6 @@ bzr 0.90rc1 2007-08-14
 
     * Windows standalone installer show link to registration survey
       when installation finished. (Alexander Belchenko)
-
-    * ``send`` now sends the directive as an attachment by default.
-      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
 
   LIBRARY API BREAKS:
 
