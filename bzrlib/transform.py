@@ -1756,11 +1756,20 @@ class _FileMover(object):
 
     def __init__(self):
         self.past_renames = []
+        self.pending_deletions = []
 
     def rename(self, from_, to):
         os.rename(from_, to)
         self.past_renames.append((from_, to))
 
+    def pre_delete(self, from_, to):
+        self.rename(from_, to)
+        self.pending_deletions.append(to)
+
     def rollback(self):
         for from_, to in reversed(self.past_renames):
             os.rename(to, from_)
+
+    def apply_deletions(self):
+        for path in self.pending_deletions:
+            delete_any(path)
