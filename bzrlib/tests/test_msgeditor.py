@@ -102,10 +102,10 @@ if len(sys.argv) == 2:
     s = f.read()
     f.close()
     f = file(fn, 'wb')
-    f.write('""" + message + """')
+    f.write('%s')
     f.write(s)
     f.close()
-""")
+""" % (message, ))
         f.close()
         if sys.platform == "win32":
             # [win32] make batch file and set BZR_EDITOR
