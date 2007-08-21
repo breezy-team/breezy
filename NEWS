@@ -229,7 +229,6 @@ bzr 0.90rc1 2007-08-14
     * Windows standalone installer show link to registration survey
       when installation finished. (Alexander Belchenko)
 
->>>>>>> MERGE-SOURCE
   LIBRARY API BREAKS:
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
