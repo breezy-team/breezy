@@ -84,8 +84,7 @@ class TestPull(ExternalBase):
         overwritten = Branch.open('.')
         self.assertEqual(overwritten.revision_history(),
                          a.revision_history())
-        os.chdir('../a')
-        self.run_bzr('merge ../b')
+        a_tree.merge_from_branch(b_tree.branch)
         a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
         self.run_bzr('pull ../../a')
