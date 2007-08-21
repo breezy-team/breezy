@@ -21,6 +21,7 @@ import os
 import sys
 
 from bzrlib.branch import Branch
+from bzrlib.osutils import pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
@@ -32,8 +33,8 @@ class TestPull(ExternalBase):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (path + '/hello',   'foo'),
-            (path + '/goodbye', 'baz')])
+            (pathjoin(path, 'hello'),   'foo'),
+            (pathjoin(path, 'goodbye'), 'baz')])
         tree.add('hello')
         tree.commit(message='setup')
         tree.add('goodbye')
