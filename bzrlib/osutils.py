@@ -1378,3 +1378,8 @@ def dereference_path(path):
     # The pathjoin for '.' is a workaround for Python bug #1213894.
     # (initial path components aren't dereferenced)
     return pathjoin(realpath(pathjoin('.', parent)), base)
+
+
+def supports_mapi():
+    """Return True if we can use MAPI to launch a mail client."""
+    return sys.platform == "win32"
