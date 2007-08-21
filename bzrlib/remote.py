@@ -611,6 +611,12 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
+    def iter_files_bytes(self, desired_files):
+        """See Repository.iter_file_bytes.
+        """
+        self._ensure_real()
+        return self._real_repository.iter_files_bytes(desired_files)
+
     @needs_read_lock
     def get_signature_text(self, revision_id):
         self._ensure_real()
