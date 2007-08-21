@@ -14,11 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 import sys
 
 from bzrlib import osutils
 from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
-from bzrlib.win32utils import glob_expand
+from bzrlib.win32utils import glob_expand, get_app_path
 
 
 # Features
@@ -33,6 +34,21 @@ class _NeedsGlobExpansionFeature(Feature):
         return 'Internally performed glob expansion'
 
 NeedsGlobExpansionFeature = _NeedsGlobExpansionFeature()
+
+
+class _Win32RegistryFeature(Feature):
+
+    def _probe(self):
+        try:
+            import _winreg
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return '_winreg'
+
+Win32RegistryFeature = _Win32RegistryFeature()
 
 
 # Tests
@@ -128,3 +144,19 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             result.sort()
             self.assertEqual(expected, result, 'pattern %s' % pattern)
 
+
+class TestAppPaths(TestCase):
+
+    _test_needs_features = [Win32RegistryFeature]
+
+    def test_iexplore(self):
+        # typical windows users should have IE installed
+        for a in ('iexplore', 'iexplore.exe'):
+            p = get_app_path(a)
+            d, b = os.path.split(p)
+            self.assertEquals('iexplore.exe', b)
+            self.assertNotEquals('', d)
+
+    def test_not_existing(self):
+        p = get_app_path('not-existing')
+        self.assertEquals('not-existing', p)

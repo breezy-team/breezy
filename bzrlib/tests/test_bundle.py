@@ -1063,6 +1063,33 @@ class BundleTester(object):
                               " slashes")
         bundle = self.get_valid_bundle('null:', 'rev/id')
 
+    def test_skip_file(self):
+        """Make sure we don't accidentally write to the wrong versionedfile"""
+        self.tree1 = self.make_branch_and_tree('tree')
+        self.b1 = self.tree1.branch
+        # rev1 is not present in bundle, done by fetch
+        self.build_tree_contents([('tree/file2', 'contents1')])
+        self.tree1.add('file2', 'file2-id')
+        self.tree1.commit('rev1', rev_id='reva')
+        self.build_tree_contents([('tree/file3', 'contents2')])
+        # rev2 is present in bundle, and done by fetch
+        # having file1 in the bunle causes file1's versionedfile to be opened.
+        self.tree1.add('file3', 'file3-id')
+        self.tree1.commit('rev2')
+        # Updating file2 should not cause an attempt to add to file1's vf
+        target = self.tree1.bzrdir.sprout('target').open_workingtree()
+        self.build_tree_contents([('tree/file2', 'contents3')])
+        self.tree1.commit('rev3', rev_id='rev3')
+        bundle = self.get_valid_bundle('reva', 'rev3')
+        if getattr(bundle, 'get_bundle_reader', None) is None:
+            raise TestSkipped('Bundle format cannot provide reader')
+        # be sure that file1 comes before file2
+        for b, m, k, r, f in bundle.get_bundle_reader().iter_records():
+            if f == 'file3-id':
+                break
+            self.assertNotEqual(f, 'file2-id')
+        bundle.install_revisions(target.branch.repository)
+
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
 
@@ -1250,7 +1277,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B372', 'B387')
+        new_text = new_text.replace('B222', 'B237')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
@@ -1459,7 +1486,27 @@ class TestBundleWriterReader(TestCase):
             'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        record_iter = v4.BundleReader(fileobj).iter_records()
+        reader = v4.BundleReader(fileobj, stream_input=True)
+        record_iter = reader.iter_records()
+        record = record_iter.next()
+        self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
+            'info', None, None), record)
+        record = record_iter.next()
+        self.assertEqual(("Record body", {'storage_kind': 'fulltext',
+                          'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
+                          record)
+
+    def test_roundtrip_record_memory_hungry(self):
+        fileobj = StringIO()
+        writer = v4.BundleWriter(fileobj)
+        writer.begin()
+        writer.add_info_record(foo='bar')
+        writer._add_record("Record body", {'parents': ['1', '3'],
+            'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
+        writer.end()
+        fileobj.seek(0)
+        reader = v4.BundleReader(fileobj, stream_input=False)
+        record_iter = reader.iter_records()
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)

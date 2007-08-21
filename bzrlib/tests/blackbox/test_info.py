@@ -483,7 +483,7 @@ Repository:
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate or knit)
+"""Standalone branch (format: dirstate-tags)
 Location:
   branch root: branch
 

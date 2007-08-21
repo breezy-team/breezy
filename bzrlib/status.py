@@ -25,54 +25,11 @@ import bzrlib.errors as errors
 from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight,
         )
 from bzrlib.trace import warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
-
-
-@deprecated_function(zero_eight)
-def show_status(branch, show_unchanged=None,
-                specific_files=None,
-                show_ids=False,
-                to_file=None,
-                show_pending=True,
-                revision=None):
-    """Display summary of changes.
-
-    Please use show_tree_status instead.
-
-    By default this compares the working tree to a previous revision. 
-    If the revision argument is given, summarizes changes between the 
-    working tree and another, or between two revisions.
-
-    The result is written out as Unicode and to_file should be able 
-    to encode that.
-
-    show_unchanged
-        If set, includes unchanged files.
-
-    specific_files
-        If set, only show the status of files in this list.
-
-    show_ids
-        If set, includes each file's id.
-
-    to_file
-        If set, write to this file (default stdout.)
-
-    show_pending
-        If set, write pending merges.
-
-    revision
-        If None the compare latest revision with working tree
-        If one revision show compared it with working tree.
-        If two revisions show status between first and second.
-    """
-    show_tree_status(branch.bzrdir.open_workingtree(), show_unchanged, 
-                     specific_files, show_ids, to_file, show_pending, revision)
 
 
 def show_tree_status(wt, show_unchanged=None,

@@ -31,7 +31,7 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight, zero_eighteen)
+        zero_eighteen)
 
 
 def plural(n, base='', pl=None):
@@ -449,11 +449,6 @@ def describe_format(control, repository, branch, tree):
     if len(new_candidates) > 0:
         candidates = new_candidates
     return ' or '.join(candidates)
-
-@deprecated_function(zero_eight)
-def show_info(b):
-    """Please see show_bzrdir_info."""
-    return show_bzrdir_info(b.bzrdir)
 
 
 @deprecated_function(zero_eighteen)
