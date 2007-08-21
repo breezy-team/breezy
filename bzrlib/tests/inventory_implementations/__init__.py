@@ -62,6 +62,5 @@ def test_suite():
     modules_to_test = [
             'bzrlib.tests.inventory_implementations',
             ]
-    import pdb;pdb.set_trace()
     return multiply_tests_from_modules(modules_to_test,
             _inventory_test_scenarios())
