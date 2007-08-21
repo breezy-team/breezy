@@ -18,18 +18,12 @@
 """Tests for the commit CLI of bzr."""
 
 import os
-import re
-import sys
 
 from bzrlib import (
     ignores,
     )
-from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import resolve
-from bzrlib.errors import BzrCommandError
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.workingtree import WorkingTree
 
 
 class TestCommit(ExternalBase):
