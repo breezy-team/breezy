@@ -110,7 +110,7 @@ class TestPull(ExternalBase):
         # pull into a branch specified by a url
         c_url = urlutils.local_path_to_url('c')
         self.assertStartsWith(c_url, 'file://')
-        self.run_bzr('pull -d %s a' % c_url)
+        self.run_bzr(['pull', '-d', c_url, 'a'])
 
     def test_pull_revision(self):
         """Pull some changes from one branch to another."""
