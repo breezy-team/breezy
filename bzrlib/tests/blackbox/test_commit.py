@@ -26,6 +26,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import resolve
 from bzrlib.errors import BzrCommandError
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -36,7 +37,7 @@ class TestCommit(ExternalBase):
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
         # If forced, it should succeed, but this is not tested here.
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
@@ -45,7 +46,7 @@ class TestCommit(ExternalBase):
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         self.run_bzr('commit --unchanged -m message')
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
@@ -55,30 +56,28 @@ class TestCommit(ExternalBase):
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
-        self.run_bzr('init a')
+        a_tree = self.make_branch_and_tree('a')
         self.build_tree(['a/a_file'])
-        self.run_bzr('add a/a_file')
+        a_tree.add('a_file')
         self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
-        self.run_bzr('branch a b')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a_file', 'changes in b')])
         self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
         self.build_tree_contents([('a/a_file', 'new contents')])
         self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
-        os.chdir('b')
-        self.run_bzr('merge ../a', retcode=1) # will conflict
-        os.chdir('..')
+        b_tree.merge_from_branch(a_tree.branch)
         self.run_bzr('resolved b/a_file')
         self.run_bzr(['commit', '-m', 'merge into b', 'b'])
 
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -141,11 +140,11 @@ class TestCommit(ExternalBase):
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'unchanged.txt'])
-        self.run_bzr('add unchanged.txt')
+        tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -219,25 +218,21 @@ class TestCommit(ExternalBase):
             err)
 
     def test_empty_commit_message(self):
-        self.run_bzr("init")
-        file('foo.c', 'wt').write('int main() {}')
-        self.run_bzr('add foo.c')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo.c', 'int main() {}')])
+        tree.add('foo.c')
         self.run_bzr('commit -m ""', retcode=3)
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
-        os.mkdir('empty_branch')
-        os.chdir('empty_branch')
-        self.run_bzr('init')
-        os.mkdir('branch')
-        os.chdir('branch')
-        self.run_bzr('init')
-        file('foo.c', 'wt').write('int main() {}')
-        file('bar.c', 'wt').write('int main() {}')
-        os.chdir('..')
-        self.run_bzr('add branch/foo.c')
-        self.run_bzr('add branch')
+        outer_tree = self.make_branch_and_tree('.')
+        inner_tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([
+            ('branch/foo.c', 'int main() {}'),
+            ('branch/bar.c', 'int main() {}')])
+        inner_tree.add('foo.c')
+        inner_tree.add('bar.c')
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
         self.run_bzr('commit -m newstuff branch/foo.c')
@@ -247,11 +242,11 @@ class TestCommit(ExternalBase):
     def test_out_of_date_tree_commit(self):
         # check we get an error code and a clear message committing with an out
         # of date checkout
-        self.make_branch_and_tree('branch')
+        tree = self.make_branch_and_tree('branch')
         # make a checkout
-        self.run_bzr('checkout --lightweight branch checkout')
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
         # commit to the original branch to make the checkout out of date
-        self.run_bzr('commit --unchanged -m message branch')
+        tree.commit('message branch', allow_pointless=True)
         # now commit to the checkout should emit
         # ERROR: Out of date with the branch, 'bzr update' is suggested
         output = self.run_bzr('commit --unchanged -m checkout_message '
@@ -275,14 +270,14 @@ class TestCommit(ExternalBase):
         # past. This is a user story reported to fail in bug #43959 where 
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
-        self.run_bzr('init trunk')
+        trunk = self.make_branch_and_tree('trunk')
 
-        self.run_bzr('checkout trunk u1')
+        u1 = trunk.branch.create_checkout('u1')
         self.build_tree_contents([('u1/hosts', 'initial contents')])
-        self.run_bzr('add u1/hosts')
+        u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
-        self.run_bzr('checkout trunk u2')
+        u2 = trunk.branch.create_checkout('u2')
         self.build_tree_contents([('u2/hosts', 'altered in u2')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
