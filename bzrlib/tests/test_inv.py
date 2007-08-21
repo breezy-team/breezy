@@ -17,39 +17,12 @@
 from bzrlib import errors, inventory, osutils
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
-from bzrlib.osutils import (pathjoin, is_inside_any, 
-    is_inside_or_parent_of_any)
+from bzrlib.osutils import (pathjoin
+    )
 from bzrlib.tests import TestCase
 
 
 class TestInventory(TestCase):
-
-    def test_is_within(self):
-
-        SRC_FOO_C = pathjoin('src', 'foo.c')
-        for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
-                         (['src'], SRC_FOO_C),
-                         (['src'], 'src'),
-                         ]:
-            self.assert_(is_inside_any(dirs, fn))
-            
-        for dirs, fn in [(['src'], 'srccontrol'),
-                         (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_any(dirs, fn))
-
-    def test_is_within_or_parent(self):
-        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
-                         (['src'], 'src/foo.c'),
-                         (['src/bar.c'], 'src'),
-                         (['src/bar.c', 'bla/foo.c'], 'src'),
-                         (['src'], 'src'),
-                         ]:
-            self.assert_(is_inside_or_parent_of_any(dirs, fn))
-            
-        for dirs, fn in [(['src'], 'srccontrol'),
-                         (['srccontrol/foo.c'], 'src'),
-                         (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
 
     def test_ids(self):
         """Test detection of files within selected directories."""
