@@ -1360,3 +1360,30 @@ class TestFileMover(tests.TestCaseWithTransport):
             mover.rollback()
         self.failUnlessExists('a')
         self.failUnlessExists('c/d')
+
+
+class Bogus(Exception):
+    pass
+
+
+class TestTransformRollback(tests.TestCaseWithTransport):
+
+    class ExceptionFileMover(_FileMover):
+
+        def rename(self, source, target):
+            if source.endswith('a'):
+                raise Bogus
+            else:
+                _FileMover.rename(self, source, target)
+
+    def test_rollback_rename(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tt = TreeTransform(tree)
+        self.addCleanup(tt.finalize)
+        a_id = tt.trans_id_tree_path('a')
+        tt.adjust_path('c', tt.root, a_id)
+        tt.adjust_path('d', a_id, tt.trans_id_tree_path('a/b'))
+        self.assertRaises(Bogus, tt.apply, _mover=self.ExceptionFileMover())
+        self.failUnlessExists('a')
+        self.failUnlessExists('a/b')

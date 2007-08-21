@@ -789,7 +789,7 @@ class TreeTransform(object):
             return True
         return False
             
-    def apply(self, no_conflicts=False):
+    def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
         
         If filesystem or inventory conflicts are present, MalformedTransform
@@ -808,7 +808,10 @@ class TreeTransform(object):
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            mover = _FileMover()
+            if _mover is None:
+                mover = _FileMover()
+            else:
+                mover = _mover
             try:
                 child_pb.update('Apply phase', 0, 2)
                 self._apply_removals(inv, inventory_delta, mover)
