@@ -36,20 +36,22 @@ class TestCat(TestCaseWithTransport):
         tree.commit(message='1')
         self.build_tree_contents([('a', 'baz\n')])
 
-        self.assertEquals(self.run_bzr('cat', 'a')[0], 'foo\n')
+        # We use run_bzr_subprocess rather than run_bzr here so that we can
+        # test mangling of line-endings on Windows.
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a')[0], 'foo\n')
 
         tree.commit(message='2')
-        self.assertEquals(self.run_bzr('cat', 'a')[0], 'baz\n')
-        self.assertEquals(self.run_bzr('cat', 'a', '-r', '1')[0], 'foo\n')
-        self.assertEquals(self.run_bzr('cat', 'a', '-r', '-1')[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a')[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '1')[0], 'foo\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '-1')[0], 'baz\n')
 
         rev_id = tree.branch.last_revision()
 
-        self.assertEquals(self.run_bzr('cat', 'a', '-r', 'revid:%s' % rev_id)[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', 'revid:%s' % rev_id)[0], 'baz\n')
 
         os.chdir('..')
 
-        self.assertEquals(self.run_bzr('cat', 'branch/a', '-r', 'revno:1:branch')[0],
+        self.assertEquals(self.run_bzr_subprocess('cat', 'branch/a', '-r', 'revno:1:branch')[0],
                           'foo\n')
         self.run_bzr('cat', 'a', retcode=3)
         self.run_bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
@@ -83,15 +85,15 @@ class TestCat(TestCaseWithTransport):
                            'cat b-tree --name-from-revision')
 
         # get to the old file automatically
-        out, err = self.run_bzr('cat d-rev')
+        out, err = self.run_bzr_subprocess('cat d-rev')
         self.assertEqual('bar\n', out)
         self.assertEqual('', err)
 
-        out, err = self.run_bzr('cat a-rev-tree --name-from-revision')
+        out, err = self.run_bzr_subprocess('cat a-rev-tree --name-from-revision')
         self.assertEqual('foo\n', out)
         self.assertEqual('', err)
 
-        out, err = self.run_bzr('cat a-rev-tree')
+        out, err = self.run_bzr_subprocess('cat a-rev-tree')
         self.assertEqual('baz\n', out)
         self.assertEqual('', err)
 
@@ -102,7 +104,7 @@ class TestCat(TestCaseWithTransport):
         wt.commit('Making sure there is a basis_tree available')
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr(['cat', url])
+        out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
 
     def test_cat_no_working_tree(self):
@@ -113,6 +115,6 @@ class TestCat(TestCaseWithTransport):
         wt.branch.bzrdir.destroy_workingtree()
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr(['cat', url])
+        out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
         
