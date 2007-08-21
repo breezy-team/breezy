@@ -108,6 +108,9 @@ class TreeTransform(object):
             except OSError, e:
                 if e.errno == errno.EEXIST:
                     raise ExistingLimbo(self._limbodir)
+            self._deletiondir = urlutils.local_path_from_url(
+                control_files.controlfilename('pending-deletion'))
+            os.mkdir(self._deletiondir)
         except: 
             self._tree.unlock()
             raise
@@ -170,6 +173,7 @@ class TreeTransform(object):
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
+            os.rmdir(self._deletiondir)
         finally:
             self._tree.unlock()
             self._tree = None
@@ -821,6 +825,8 @@ class TreeTransform(object):
             except:
                 mover.rollback()
                 raise
+            else:
+                mover.apply_deletions()
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
@@ -877,7 +883,8 @@ class TreeTransform(object):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    delete_any(full_path)
+                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
+                                     trans_id))
                 elif trans_id in self._new_name or trans_id in \
                     self._new_parent:
                     try:
