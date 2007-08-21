@@ -52,7 +52,7 @@ class DiffBase(ExternalBase):
 class TestDiff(DiffBase):
 
     def test_diff(self):
-        tree = super(TestDiff, self).make_example_branch()
+        tree = self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!')])
         tree.commit(message='fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
@@ -212,7 +212,7 @@ class TestDiff(DiffBase):
 
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing"""
-        tree = super(TestDiff, self).make_example_branch()
+        tree = self.make_example_branch()
         self.run_bzr('diff -r 0..1 hello', retcode=1)
         tree.rename_one('hello', 'hello1')
         self.run_bzr('diff hello1', retcode=1)
@@ -223,21 +223,24 @@ class TestCheckoutDiff(TestDiff):
 
     def make_example_branch(self):
         tree = super(TestCheckoutDiff, self).make_example_branch()
-        tree.branch.create_checkout('checkout')
+        tree = tree.branch.create_checkout('checkout')
         os.chdir('checkout')
+        return tree
 
     def example_branch2(self):
         tree = super(TestCheckoutDiff, self).example_branch2()
         os.mkdir('checkouts')
-        tree.branch.create_checkout('checkouts/branch1')
+        tree = tree.branch.create_checkout('checkouts/branch1')
         os.chdir('checkouts')
+        return tree
 
     def example_branches(self):
         branch1_tree, branch2_tree = super(TestCheckoutDiff, self).example_branches()
         os.mkdir('checkouts')
-        branch1_tree.branch.create_checkout('checkouts/branch1')
-        branch2_tree.branch.create_checkout('checkouts/branch2')
+        branch1_tree = branch1_tree.branch.create_checkout('checkouts/branch1')
+        branch2_tree = branch2_tree.branch.create_checkout('checkouts/branch2')
         os.chdir('checkouts')
+        return branch1_tree, branch2_tree
 
 
 class TestDiffLabels(DiffBase):
