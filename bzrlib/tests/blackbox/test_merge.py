@@ -25,7 +25,7 @@ from bzrlib import merge_directive
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import ConflictList, ContentsConflict
-from bzrlib.osutils import abspath, file_kind
+from bzrlib.osutils import abspath, file_kind, pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
@@ -36,8 +36,8 @@ class TestMerge(ExternalBase):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (path + '/hello',   'foo'),
-            (path + '/goodbye', 'baz')])
+            (pathjoin(path, 'hello'),   'foo'),
+            (pathjoin(path, 'goodbye'), 'baz')])
         tree.add('hello')
         tree.commit(message='setup')
         tree.add('goodbye')
@@ -53,7 +53,7 @@ class TestMerge(ExternalBase):
         from bzrlib.branch import Branch
 
         a_tree = self.example_branch('a')
-        ancestor = Branch.open('a').revno()
+        ancestor = a_tree.branch.revno()
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/goodbye', 'quux')])
         b_tree.commit(message="more u's are always good")
@@ -128,12 +128,12 @@ class TestMerge(ExternalBase):
         b_tree.commit(message='Modified a.txt')
         os.chdir('b')
         self.run_bzr('merge ../a/', retcode=1)
-        self.assertTrue(os.path.exists('sub/a.txt.THIS'))
-        self.assertTrue(os.path.exists('sub/a.txt.BASE'))
+        self.failUnlessExists('sub/a.txt.THIS')
+        self.failUnlessExists('sub/a.txt.BASE')
         os.chdir('../a')
         self.run_bzr('merge ../b/', retcode=1)
-        self.assertTrue(os.path.exists('sub/a.txt.OTHER'))
-        self.assertTrue(os.path.exists('sub/a.txt.BASE'))
+        self.failUnlessExists('sub/a.txt.OTHER')
+        self.failUnlessExists('sub/a.txt.BASE')
 
     def test_merge_remember(self):
         """Merge changes from one branch to another and test parent location."""
