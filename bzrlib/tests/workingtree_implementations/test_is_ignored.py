@@ -168,28 +168,6 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*.swp', tree.is_ignored('.foo.py.swp'))
         self.assertEqual(None, tree.is_ignored('.foo.py.swo'))
 
-    def test_DEFAULT_IGNORE(self):
-        tree = self.make_branch_and_tree('.')
-        # It used to be possible for plugins to modify DEFAULT_IGNORE
-        # directly, and get their working files to be ignored.
-        # It is still possible to do so, but this is deprecated.
-
-        # No configured ignores
-        self.build_tree_contents([('.bzrignore', '')])
-        ignores._set_user_ignores([])
-
-        self.assertEqual(None, tree.is_ignored('foo.pyc'))
-
-        # Must reset the list so that it reads a new one
-        tree._flush_ignore_list_cache()
-
-        # use list.append() to get around the deprecation warnings
-        list.append(bzrlib.DEFAULT_IGNORE, '*.py[co]')
-        try:
-            self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
-        finally:
-            list.remove(bzrlib.DEFAULT_IGNORE, '*.py[co]')
-
     def test_runtime_ignores(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('.bzrignore', '')])
