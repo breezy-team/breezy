@@ -69,6 +69,7 @@ class TestCommit(ExternalBase):
         self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
         b_tree.merge_from_branch(a_tree.branch)
+        self.assertEqual(len(b_tree.conflicts()), 1)
         self.run_bzr('resolved b/a_file')
         self.run_bzr(['commit', '-m', 'merge into b', 'b'])
 
