@@ -2459,7 +2459,7 @@ def test_suite():
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_list):
+def multiply_tests_from_modules(module_name_list, scenario_iter):
     """Adapt all tests in some given modules to given scenarios.
 
     This is the recommended public interface for test parameterization.
@@ -2469,7 +2469,7 @@ def multiply_tests_from_modules(module_name_list, scenario_list):
 
     :param module_name_list: List of fully-qualified names of test
         modules.
-    :param scenario_list: Iterable of pairs of (scenario_name, 
+    :param scenario_iter: Iterable of pairs of (scenario_name, 
         scenario_param_dict).
 
     This returns a new TestSuite containing the cross product of
@@ -2495,7 +2495,7 @@ def multiply_tests_from_modules(module_name_list, scenario_list):
     loader = TestLoader()
     suite = TestSuite()
     adapter = TestScenarioApplier()
-    adapter.scenarios = scenario_list
+    adapter.scenarios = list(scenario_iter)
     adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
