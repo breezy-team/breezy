@@ -1,50 +1,46 @@
-======
-Bazaar
-======
--------------------
-Documentation index
--------------------
+============================
+Bazaar Main Document Catalog
+============================
 
-These documents originally came from the Bazaar wiki hosted at
-http://bazaar-vcs.org. The documents on the wiki take precedence 
-in the event of a discrepancy between what is documented here 
-and what is documented on the wiki.
+The latest version of these documents are available from Bazaar's
+documentation site, http://doc.bazaar-vcs.org.
 
+Core Documentation
+==================
 
-* `Tutorial <tutorial.html>`_ |--| Explains how to use bzr.
-  Loaded with examples.
+* `Mini Tutorial <en/mini-tutorial/index.html>`_ 
 
-* `Configuration <configuration.html>`_ |--| Information on how to configure
-  Bazaar.
+* `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
 
-* `Setting up email <setting_up_email.html>`_ |--| The various ways that exist
-  to tell Bazaar your email address for commits.
+* `User Guide <en/user-guide/index.html>`_ 
 
-* `Conflict handling <conflicts.html>`_ |--| The various kind of conflicts
-  you may encounter, and how to handle them.
+* `User Reference <en/user-reference/bzr_man.html>`_ 
 
-* `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
+* `Release Notes <en/release-notes/NEWS.html>`_
 
-* `Specifying revision <specifying_revisions.html>`_ |--| Description 
-  of the subarguments for ``-r`` as used by commands such as
-  **bzr log** and **bzr merge**.
-
-* `Using aliases <using_aliases.html>`_ |--| How to set up 
-  and use command aliases.
-
-* `Running a Bazaar server <server.html>`_ |--| How to run a server 
-  to allow remote access to Bazaar branches.
-
-* `Running a Bazaar HTTP server <http_smart_server.html>`_ |--| How to run 
-  a smart HTTP server to allow remote access to Bazaar branches.
-
-* `Guidelines for modifying bzr <developers/index.html>`_ |--| Guide 
-  to policies and tools for working on Bazaar itself.
+* `Developer Guide <en/developer-guide/HACKING.html>`_
 
 
-This document automatically created based on output of **bzr help**:
+Other Documentation
+===================
 
-* `Bazaar User Reference <bzr_man.html>`_
+Moving to Bazaar (Web links):
 
+* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
+  - for users moving from another VCS tool
 
-.. |--| unicode:: U+2014
+* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+  - for teams migrating history from another VCS tool
+
+Other Documents (Web links):
+
+* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
+
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
+
+Technical specifications, roadmaps and various
+technical notes are available in English below:
+
+* `Developer Document Catalog <developers/index.html>`_

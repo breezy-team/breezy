@@ -36,7 +36,7 @@ from bzrlib.errors import (
                            )
 from bzrlib.knit import KnitVersionedFile, \
      KnitAnnotateFactory, KnitPlainFactory
-from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -125,6 +125,25 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(
             (errors.BzrBadParameterUnicode, NotImplementedError),
             vf.add_lines_with_ghosts, 'a', [], ['a\n', u'b\n', 'c\n'])
+
+    def test_add_follows_left_matching_blocks(self):
+        """If we change left_matching_blocks, delta changes
+
+        Note: There are multiple correct deltas in this case, because
+        we start with 1 "a" and we get 3.
+        """
+        vf = self.get_file()
+        if isinstance(vf, WeaveFile):
+            raise TestSkipped("WeaveFile ignores left_matching_blocks")
+        vf.add_lines('1', [], ['a\n'])
+        vf.add_lines('2', ['1'], ['a\n', 'a\n', 'a\n'],
+                     left_matching_blocks=[(0, 0, 1), (1, 3, 0)])
+        self.assertEqual([(1, 1, 2, [('2', 'a\n'), ('2', 'a\n')])],
+                         vf.get_delta('2')[3])
+        vf.add_lines('3', ['1'], ['a\n', 'a\n', 'a\n'],
+                     left_matching_blocks=[(0, 2, 1), (1, 3, 0)])
+        self.assertEqual([(0, 0, 2, [('3', 'a\n'), ('3', 'a\n')])],
+                         vf.get_delta('3')[3])
 
     def test_inline_newline_throws(self):
         # \r characters are not permitted in lines being added
@@ -523,25 +542,6 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(RevisionNotPresent,
             f.annotate, 'foo')
-
-    def test_walk(self):
-        # tests that walk returns all the inclusions for the requested
-        # revisions as well as the revisions changes themselves.
-        f = self.get_file('1')
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
-        f.add_lines('rX', ['r1'], ['d\n', 'b\n'])
-        f.add_lines('rY', ['r1'], ['c\n', 'e\n'])
-
-        lines = {}
-        for lineno, insert, dset, text in f.walk(['rX', 'rY']):
-            lines[text] = (insert, dset)
-
-        self.assertTrue(lines['a\n'], ('r0', set(['r1'])))
-        self.assertTrue(lines['b\n'], ('r0', set(['rY'])))
-        self.assertTrue(lines['c\n'], ('r1', set(['rX'])))
-        self.assertTrue(lines['d\n'], ('rX', set([])))
-        self.assertTrue(lines['e\n'], ('rY', set([])))
 
     def test_detection(self):
         # Test weaves detect corruption.
