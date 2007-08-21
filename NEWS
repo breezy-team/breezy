@@ -77,6 +77,12 @@ bzr 0.90 2007-08-??
       (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
 
 
+  API CHANGES:
+
+    * The static convenience method ``BzrDir.create_repository``
+      is deprecated.  Callers should instead create a ``BzrDir`` instance
+      and call ``create_repository`` on that.  (Martin Pool)
+
 bzr 0.90rc1 2007-08-14
 ======================
 
