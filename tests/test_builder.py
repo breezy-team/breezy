@@ -298,7 +298,7 @@ class TestDefaultBuilder(BuilderTestCase):
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebBuild(properties, wt)
+    return DebBuild(properties, wt, _is_working_tree=True)
 
   def test_prepare_creates_build_dir(self):
     """Test that the build dir is created correctly."""
@@ -413,7 +413,8 @@ class TestDefaultBuilder(BuilderTestCase):
     wt.add(['a', 'b'])
     wt.commit('commit one')
     self.build_branch_tree(['c', 'd'])
-    wt.add(['c'])
+    os.symlink(join(self.branch_dir, 'e'), join(self.branch_dir, 'f'))
+    wt.add(['c', 'f'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
     self.make_orig_tarball()
@@ -423,6 +424,8 @@ class TestDefaultBuilder(BuilderTestCase):
     self.failIfExists(join(self.source_dir, 'b'))
     self.failUnlessExists(join(self.source_dir, 'c'))
     self.failIfExists(join(self.source_dir, 'd'))
+    self.failIfExists(join(self.source_dir, 'e'))
+    self.assertTrue(os.path.lexists(join(self.source_dir, 'f')))
 
   def test_export_removes_builddeb_dir(self):
     """Test that the builddeb dir is removed from the export."""
@@ -520,7 +523,7 @@ class TestNativeBuilder(BuilderTestCase):
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebNativeBuild(properties, wt)
+    return DebNativeBuild(properties, wt, _is_working_tree=True)
 
   def test_export_creates_source_dir(self):
     """Test that the source dir is created by export."""
@@ -567,7 +570,7 @@ class TestSplitBuilder(BuilderTestCase):
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebSplitBuild(properties, wt)
+    return DebSplitBuild(properties, wt, _is_working_tree=True)
 
   def test_export_creates_source_dir(self):
     """Test that the source dir is created by export."""
@@ -637,7 +640,7 @@ class TestMergeBuilder(BuilderTestCase):
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebMergeBuild(properties, wt)
+    return DebMergeBuild(properties, wt, _is_working_tree=True)
 
   upstream_files = ['a', 'b', 'dir/', 'dir/c']
   debian_files = ['control', 'changelog', 'patches/', 'patches/patch']
@@ -810,7 +813,8 @@ class TestMergeExportUpstreamBuilder(BuilderTestCase):
     properties = self.make_properties(changelog, larstiq)
     return DebMergeExportUpstreamBuild(properties, wt, self.upstream_branch,
                                        export_revision, export_prepull,
-                                       stop_on_no_change)
+                                       stop_on_no_change,
+                                       _is_working_tree=True)
 
   def make_upstream_branch(self, parent=None):
     """Make the upstream branch that will be exported."""

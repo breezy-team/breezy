@@ -60,7 +60,7 @@ def remove_debian_dir(dir):
 class DebBuild(object):
   """The object that does the building work."""
 
-  def __init__(self, properties, tree):
+  def __init__(self, properties, tree, _is_working_tree=False):
     """Create a builder.
 
     properties:
@@ -71,6 +71,12 @@ class DebBuild(object):
     """
     self._properties = properties
     self._tree = tree
+    self._is_working_tree = _is_working_tree
+
+  def _prepare_working_tree(self):
+    if self._is_working_tree:
+      for (dp, ie) in self._tree.inventory.iter_entries():
+        ie._read_tree_state(dp, self._tree)
 
   def prepare(self, keep_source_dir=False):
     """Do any preparatory steps that should be run before the build.
@@ -191,6 +197,7 @@ class DebBuild(object):
     tree = self._tree
     tree.lock_read()
     try:
+      self._prepare_working_tree()
       export(tree,source_dir,None,None)
     finally:
       tree.unlock()
@@ -297,6 +304,7 @@ class DebMergeBuild(DebBuild):
     tree = self._tree
     tree.lock_read()
     try:
+      self._prepare_working_tree()
       export(tree,export_dir,None,None)
     finally:
       tree.unlock()
@@ -317,6 +325,7 @@ class DebNativeBuild(DebBuild):
     tree = self._tree
     tree.lock_read()
     try:
+      self._prepare_working_tree()
       export(tree,source_dir,None,None)
     finally:
       tree.unlock()
@@ -335,6 +344,7 @@ class DebSplitBuild(DebBuild):
     tree = self._tree
     tree.lock_read()
     try:
+      self._prepare_working_tree()
       export(tree,source_dir,None,None)
       info("Creating .orig.tar.gz: %s", tarball)
       remove_bzrbuilddeb_dir(source_dir)
@@ -347,6 +357,7 @@ class DebSplitBuild(DebBuild):
         tar.close()
       shutil.rmtree(source_dir)
       info("Exporting to %s", source_dir)
+      self._prepare_working_tree()
       export(tree,source_dir,None,None)
     finally:
       tree.unlock()
@@ -357,12 +368,13 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
      .orig.tar.gz before building."""
 
   def __init__(self, properties, tree, export_upstream, export_revision,
-               export_prepull, stop_on_no_change):
+               export_prepull, stop_on_no_change, _is_working_tree=False):
     DebMergeBuild.__init__(self, properties, tree)
     self._export_upstream = export_upstream
     self._export_revision = export_revision
     self._export_prepull = export_prepull
     self._stop_on_no_change = stop_on_no_change
+    self._is_working_tree = _is_working_tree
 
   def _export_upstream_branch(self):
     build_dir = self._properties.build_dir()

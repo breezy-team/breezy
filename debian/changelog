@@ -1,3 +1,10 @@
+bzr-builddeb (0.90) unstable; urgency=low
+
+  * Support exporting the working tree when it contains symlinks. Thanks
+    to John Arbash Meinel for help on fixing it. (LP: #132391)
+
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 22 Aug 2007 22:13:24 +0100
+
 bzr-builddeb (0.19) unstable; urgency=low
 
   * Allow empty author information in the changelog for those that like to
