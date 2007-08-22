@@ -21,6 +21,7 @@
 
 import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestHelp(ExternalBase):
@@ -126,3 +127,19 @@ class TestHelp(ExternalBase):
             if '--long' in line:
                 self.assertContainsRe(line,
                     r'Show help on all commands\.')
+
+    def test_help_with_aliases(self):
+        original = self.run_bzr('help cat')[0]
+
+        ensure_config_dir_exists()
+        CONFIG=("[ALIASES]\n"
+        "c=cat\n"
+        "cat=cat\n")
+
+        open(config_filename(),'wb').write(CONFIG)
+
+        expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
+        self.assertEqual(expected, self.run_bzr('help cat')[0])
+
+        self.assertEqual("'bzr c' is an alias for 'bzr cat'.\n",
+                                                    self.run_bzr('help c')[0])
