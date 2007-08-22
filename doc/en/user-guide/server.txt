@@ -87,4 +87,5 @@ interfaces. This allows connections from anywhere in the world that can reach
 your machine on port `4155`.
 
 server::
+
     bzr serve --directory=/srv/bzr/repo

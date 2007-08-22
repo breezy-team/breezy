@@ -106,11 +106,12 @@ Like with mod_fastcgi, we also define how our script is to be handled::
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
 inside `/code` to a Bazaar smart server via mod_python.
 
-NOTE: If you don't have bzrlib in your PATH, you will be need to change the following line:
+NOTE: If you don't have bzrlib in your PATH, you will be need to change the
+following line::
 
             PythonPath "sys.path+['/srv/example.com/scripts']"
 
-To:
+To::
 
             PythonPath "['/path/to/bzr']+sys.path+['/srv/example.com/scripts']"
 
@@ -170,8 +171,8 @@ Here's what it looks like::
         return wsgi_server.run(request)
         
 The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
-is part of pocoo_. 
-You sould make sure you place modpywsgi.py in the same directory as 
+is part of pocoo_.
+You sould make sure you place modpywsgi.py in the same directory as
 bzr-smart.py (ie. /srv/example.com/scripts/).
 
 .. _pocoo: http://trac.pocoo.org/wiki/
