@@ -27,10 +27,10 @@ Then whenever you want to update the code you can run
   $ bzr pull
 
 to get the latest version. Installing by this method means that you may be
-missing some of the dependencies. These are `python-debian`_ and
-`python-deb822`_. Installing the packages for these dependencies will
-probably get you a working install, but API changes may mean that you need
-to install a development version of these libraries.
+missing some of the dependencies. The main one is `python-debian`_.
+Installing the package for this dependency will probably get you a working
+install, but API changes may mean that you need to install a development
+version of this library.
 
 To check your install you should be able to run
 

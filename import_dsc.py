@@ -29,7 +29,7 @@ import os
 from subprocess import Popen, PIPE
 import tarfile
 
-import deb822
+from debian_bundle import deb822
 from debian_bundle.changelog import Version
 
 from bzrlib import (bzrdir,

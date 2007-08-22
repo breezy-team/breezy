@@ -21,7 +21,7 @@
 import commands
 import os
 
-import deb822
+from debian_bundle import deb822
 
 from bzrlib.trace import mutter
 
