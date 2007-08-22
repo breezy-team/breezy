@@ -248,8 +248,11 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
         # and sign 'rev2'
-        tree_a.branch.repository.sign_revision('rev2',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        tree_a.branch.repository.sign_revision('rev2', bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
 
     def test_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones

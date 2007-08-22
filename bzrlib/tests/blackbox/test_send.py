@@ -19,7 +19,10 @@
 import os
 from StringIO import StringIO
 
-from bzrlib import merge_directive
+from bzrlib import (
+    branch as _mod_branch,
+    merge_directive,
+    )
 from bzrlib.bundle import serializer
 from bzrlib.bzrdir import BzrDir
 from bzrlib import tests
@@ -116,7 +119,7 @@ class TestSend(tests.TestCaseWithTransport):
         # which would break patch-based bundles
         self.make_trees()        
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('send', '-o-')[0]
+        stdout = self.run_bzr_subprocess('send -o-')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -186,9 +189,16 @@ class TestSend(tests.TestCaseWithTransport):
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
 
-    def test_output_option_required(self):
+    def test_mailto_option(self):
         self.make_trees()
-        self.run_bzr_error(('File must be specified with --output',),
+        branch = _mod_branch.Branch.open('branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
+        self.run_bzr_error(('No mail-to address specified',), 'send -f branch')
+        self.run_bzr('send -f branch -o-')
+        self.run_bzr_error(('Unknown mail client: bogus',),
+                           'send -f branch --mail-to jrandom@example.org')
+        branch.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
     def test_format(self):
@@ -207,3 +217,11 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
+
+    def test_message_option(self):
+        self.make_trees()
+        self.run_bzr('send', retcode=3)
+        md = self.send_directive(['--from', 'branch'])
+        self.assertIs(None, md.message)
+        md = self.send_directive(['--from', 'branch', '-m', 'my message'])
+        self.assertEqual('my message', md.message)

@@ -1125,6 +1125,8 @@ class GraphKnitRepository1(KnitRepository):
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
         self._upload_transport = control_files._transport.clone('upload')
         self._pack_transport = control_files._transport.clone('packs')
+        # for tests
+        self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
@@ -1240,6 +1242,8 @@ class GraphKnitRepository3(KnitRepository3):
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
         self._upload_transport = control_files._transport.clone('upload')
         self._pack_transport = control_files._transport.clone('packs')
+        # for tests
+        self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.

@@ -62,6 +62,10 @@ class KnitRevisionStore(RevisionStore):
         super(KnitRevisionStore, self).__init__()
         self.versioned_file_store = versioned_file_store
 
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__,
+                           self.versioned_file_store)
+
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
         # FIXME: make this ghost aware at the knit level
