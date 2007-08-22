@@ -33,6 +33,10 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_ninetyone,
+    )
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -249,6 +253,28 @@ class RemoteRepository(object):
         self._lock_count = 0
         self._leave_lock = False
 
+    def abort_write_group(self):
+        """Complete a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.abort_write_group()
+
+    def commit_write_group(self):
+        """Complete a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.commit_write_group()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
@@ -299,6 +325,10 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
+    def has_same_location(self, other):
+        return (self.__class__ == other.__class__ and
+                self.bzrdir.transport.base == other.bzrdir.transport.base)
+        
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
         return self._real_repository.get_graph(other_repository)
@@ -336,6 +366,17 @@ class RemoteRepository(object):
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
         return False
+
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        write groups are only applicable locally for the smart server..
+        """
+        if self._real_repository:
+            return self._real_repository.is_in_write_group()
+
+    def is_locked(self):
+        return self._lock_count >= 1
 
     def is_shared(self):
         """See Repository.is_shared()."""
@@ -408,6 +449,17 @@ class RemoteRepository(object):
         elif self._lock_mode == 'r':
             self._real_repository.lock_read()
 
+    def start_write_group(self):
+        """Start a write group on the decorated repository.
+        
+        Smart methods peform operations in a single step so this api
+        is not really applicable except as a compatibility thunk
+        for older plugins that don't use e.g. the CommitBuilder
+        facility.
+        """
+        self._ensure_real()
+        return self._real_repository.start_write_group()
+
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.unlock', path, token)
@@ -419,6 +471,11 @@ class RemoteRepository(object):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
+        if self._lock_count == 1 and self._lock_mode == 'w':
+            # don't unlock if inside a write group.
+            if self.is_in_write_group():
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self._lock_count -= 1
         if not self._lock_count:
             mode = self._lock_mode
@@ -553,6 +610,12 @@ class RemoteRepository(object):
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
+
+    def iter_files_bytes(self, desired_files):
+        """See Repository.iter_file_bytes.
+        """
+        self._ensure_real()
+        return self._real_repository.iter_files_bytes(desired_files)
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
@@ -743,6 +806,11 @@ class RemoteBranchFormat(branch.BranchFormat):
     def initialize(self, a_bzrdir):
         assert isinstance(a_bzrdir, RemoteBzrDir)
         return a_bzrdir.create_branch()
+
+    def supports_tags(self):
+        # Remote branches might support tags, but we won't know until we
+        # access the real remote branch.
+        return True
 
 
 class RemoteBranch(branch.Branch):
@@ -1015,11 +1083,6 @@ class RemoteBranch(branch.Branch):
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
-
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        self._ensure_real()
-        return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,

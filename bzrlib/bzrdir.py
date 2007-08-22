@@ -25,11 +25,12 @@ directories.
 
 from cStringIO import StringIO
 import os
-import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from stat import S_ISDIR
+import textwrap
+from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -69,6 +70,11 @@ from bzrlib.trace import (
     note,
     )
 from bzrlib.transport.local import LocalTransport
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    zero_ninetyone,
+    )
 
 
 class BzrDir(object):
@@ -309,6 +315,7 @@ class BzrDir(object):
         return result
 
     @staticmethod
+    @deprecated_function(zero_ninetyone)
     def create_repository(base, shared=False, format=None):
         """Create a new BzrDir and Repository at the url 'base'.
 
@@ -323,6 +330,9 @@ class BzrDir(object):
         This must be overridden as an instance method in child classes, where
         it should take no parameters and construct whatever repository format
         that child class desires.
+
+        This method is deprecated, please call create_repository on a bzrdir
+        instance instead.
         """
         bzrdir = BzrDir.create(base, format)
         return bzrdir.create_repository(shared)
@@ -1950,7 +1960,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.text_store.get(ie.text_id)
+            text = self.branch.repository.weave_store.get(ie.text_id)
             file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
@@ -2349,13 +2359,11 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def help_topic(self, topic):
         output = textwrap.dedent("""\
-            Bazaar directory formats
-            ------------------------
-
             These formats can be used for creating branches, working trees, and
             repositories.
 
             """)
+        default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
         for key in self.keys():
@@ -2370,11 +2378,12 @@ class BzrDirFormatRegistry(registry.Registry):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return '  %s:\n%s\n\n' % (key, 
+            return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped('%s/default' % default_realkey, default_help,
-                          self.get_info('default'))
+        if default_realkey is not None:
+            output += wrapped(default_realkey, '(default) %s' % default_help,
+                              self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)
@@ -2385,7 +2394,7 @@ class BzrDirFormatRegistry(registry.Registry):
             else:
                 output += wrapped(key, help, info)
         if len(deprecated_pairs) > 0:
-            output += "Deprecated formats\n------------------\n\n"
+            output += "Deprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
                 output += wrapped(key, help, info)
@@ -2435,4 +2444,4 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.set_default('dirstate')
+format_registry.set_default('dirstate-tags')

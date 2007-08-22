@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,24 +47,12 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 
 
 class TestBranch(TestCaseWithBranch):
-
-    def test_append_revisions(self):
-        """Test appending more than one revision"""
-        wt = self.make_branch_and_tree('tree')
-        wt.commit('f', rev_id='rev1')
-        wt.commit('f', rev_id='rev2')
-        wt.commit('f', rev_id='rev3')
-
-        br = self.get_branch()
-        br.fetch(wt.branch)
-        br.append_revision("rev1")
-        self.assertEquals(br.revision_history(), ["rev1",])
-        br.append_revision("rev2", "rev3")
-        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-        self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
 
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
@@ -367,8 +355,12 @@ class TestBranch(TestCaseWithBranch):
         result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
-        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            repository.CommitBuilder)
+        branch = self.make_branch(".")
+        branch.lock_write()
+        builder = branch.get_commit_builder([])
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        branch.repository.commit_write_group()
+        branch.unlock()
 
     def test_generate_revision_history(self):
         """Create a fake revision history easily."""
@@ -389,7 +381,7 @@ class TestBranch(TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
-        self.assertEqual(None, checkout_b.last_revision())
+        self.assertEqual('null:', checkout_b.last_revision())
         checkout_b.commit('rev1', rev_id='rev1')
         self.assertEqual('rev1', branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)

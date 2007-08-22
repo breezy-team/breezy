@@ -24,9 +24,38 @@ from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
-from bzrlib.tests import (TestCase, TestCaseWithTransport,
+from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilename = _UnicodeFilename()
+
+
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        UnicodeFilename._probe()
+        
 
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
@@ -441,6 +470,63 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
 
+    def test_binary_unicode_filenames(self):
+        """Test that contents of files are *not* encoded in UTF-8 when there
+        is a binary file in the diff.
+        """
+        # See https://bugs.launchpad.net/bugs/110092.
+        self.requireFeature(UnicodeFilename)
+
+        # This bug isn't triggered with cStringIO.
+        from StringIO import StringIO
+        tree = self.make_branch_and_tree('tree')
+        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
+        self.build_tree_contents(
+            [('tree/' + alpha, chr(0)),
+             ('tree/' + omega,
+              ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
+        tree.add([alpha], ['file-id'])
+        tree.add([omega], ['file-id-2'])
+        diff_content = StringIO()
+        show_diff_trees(tree.basis_tree(), tree, diff_content)
+        diff = diff_content.getvalue()
+        self.assertContainsRe(diff, r"=== added file '%s'" % alpha_utf8)
+        self.assertContainsRe(
+            diff, "Binary files a/%s.*and b/%s.* differ\n" % (alpha_utf8, alpha_utf8))
+        self.assertContainsRe(diff, r"=== added file '%s'" % omega_utf8)
+        self.assertContainsRe(diff, r"--- a/%s" % (omega_utf8,))
+        self.assertContainsRe(diff, r"\+\+\+ b/%s" % (omega_utf8,))
+
+    def test_unicode_filename(self):
+        """Test when the filename are unicode."""
+        self.requireFeature(UnicodeFilename)
+
+        alpha, omega = u'\u03b1', u'\u03c9'
+        autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
+
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/ren_'+alpha, 'contents\n')])
+        tree.add(['ren_'+alpha], ['file-id-2'])
+        self.build_tree_contents([('tree/del_'+alpha, 'contents\n')])
+        tree.add(['del_'+alpha], ['file-id-3'])
+        self.build_tree_contents([('tree/mod_'+alpha, 'contents\n')])
+        tree.add(['mod_'+alpha], ['file-id-4'])
+
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('ren_'+alpha, 'ren_'+omega)
+        tree.remove('del_'+alpha)
+        self.build_tree_contents([('tree/add_'+alpha, 'contents\n')])
+        tree.add(['add_'+alpha], ['file-id'])
+        self.build_tree_contents([('tree/mod_'+alpha, 'contents_mod\n')])
+
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff,
+                "=== renamed file 'ren_%s' => 'ren_%s'\n"%(autf8, outf8))
+        self.assertContainsRe(diff, "=== added file 'add_%s'"%autf8)
+        self.assertContainsRe(diff, "=== modified file 'mod_%s'"%autf8)
+        self.assertContainsRe(diff, "=== removed file 'del_%s'"%autf8)
 
 class TestPatienceDiffLib(TestCase):
 

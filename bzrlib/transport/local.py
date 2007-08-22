@@ -65,9 +65,6 @@ class LocalTransport(Transport):
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 
-    def should_cache(self):
-        return False
-
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
         Because the local filesystem does not require a connection, 
@@ -127,7 +124,7 @@ class LocalTransport(Transport):
             abspath = u'.'
 
         return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(self.base),
             urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):

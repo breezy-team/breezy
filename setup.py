@@ -103,13 +103,13 @@ class my_install_scripts(install_scripts):
 
         if sys.platform == "win32":
             try:
-                scripts_dir = self.install_dir
+                scripts_dir = os.path.join(sys.prefix, 'Scripts')
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "bzr"))
                 python_exe = self._quoted_path(sys.executable)
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
-                batch_path = script_path + ".bat"
+                batch_path = os.path.join(self.install_dir, "bzr.bat")
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
@@ -207,17 +207,27 @@ if unavailable_files:
 
 
 if 'bdist_wininst' in sys.argv:
-    import glob
-    # doc files
-    docs = glob.glob('doc/*.htm') + ['doc/default.css']
-    dev_docs = glob.glob('doc/developers/*.htm')
+    def find_docs():
+        docs = []
+        for root, dirs, files in os.walk('doc'):
+            r = []
+            for f in files:
+                if os.path.splitext(f)[1] in ('.html', '.css'):
+                    r.append(os.path.join(root, f))
+            if r:
+                relative = root[4:]
+                if relative:
+                    target = os.path.join('Doc\\Bazaar', relative)
+                else:
+                    target = 'Doc\\Bazaar'
+                docs.append((target, r))
+        return docs
+
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
-            'data_files': [('Doc/Bazaar', docs),
-                           ('Doc/Bazaar/developers', dev_docs),
-                          ],
+            'data_files': find_docs(),
             # for building pyrex extensions
             'cmdclass': {'build_ext': build_ext},
            }
@@ -283,13 +293,19 @@ elif 'py2exe' in sys.argv:
           zipfile='lib/library.zip')
 
 else:
+    # ad-hoc for easy_install
+    DATA_FILES = []
+    if not 'bdist_egg' in sys.argv:
+        # generate and install bzr.1 only with plain install, not easy_install one
+        DATA_FILES = [('man/man1', ['bzr.1'])]
+
     # std setup
     ARGS = {'scripts': ['bzr'],
-            'data_files': [('man/man1', ['bzr.1'])],
+            'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
            }
-    
+
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)

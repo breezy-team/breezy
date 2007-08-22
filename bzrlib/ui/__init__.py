@@ -41,8 +41,6 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-
 
 class UIFactory(object):
     """UI abstraction.
@@ -54,11 +52,6 @@ class UIFactory(object):
     def __init__(self):
         super(UIFactory, self).__init__()
         self._progress_bar_stack = None
-
-    @deprecated_method(zero_eight)
-    def progress_bar(self):
-        """See UIFactory.nested_progress_bar()."""
-        raise NotImplementedError(self.progress_bar)
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -160,11 +153,6 @@ class SilentUIFactory(CLIUIFactory):
 
     This is the default UI, if another one is never registered.
     """
-
-    @deprecated_method(zero_eight)
-    def progress_bar(self):
-        """See UIFactory.nested_progress_bar()."""
-        return progress.DummyProgress()
 
     def get_password(self, prompt='', **kwargs):
         return None

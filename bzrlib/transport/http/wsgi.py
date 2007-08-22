@@ -76,7 +76,7 @@ class RelpathSetter(object):
         path = environ[self.path_var]
         suffix = '/.bzr/smart'
         if not (path.startswith(self.prefix) and path.endswith(suffix)):
-            start_response('404 Not Found', {})
+            start_response('404 Not Found', [])
             return []
         environ['bzrlib.relpath'] = path[len(self.prefix):-len(suffix)]
         return self.app(environ, start_response)

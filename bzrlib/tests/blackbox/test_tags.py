@@ -40,7 +40,7 @@ class TestTagging(TestCaseWithTransport):
 
     def test_tag_command_help(self):
         out, err = self.run_bzr('help tag')
-        self.assertContainsRe(out, 'Create a tag')
+        self.assertContainsRe(out, 'Create, remove or modify a tag')
 
     def test_cannot_tag_range(self):
         out, err = self.run_bzr('tag -r1..10 name', retcode=3)

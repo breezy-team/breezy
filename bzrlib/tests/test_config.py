@@ -27,6 +27,7 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    mail_client,
     urlutils,
     trace,
     )
@@ -1004,6 +1005,42 @@ class TestBranchConfigItems(TestCaseInTempDir):
                                       location_config=precedence_location,
                                       location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
+
+    def test_get_mail_client(self):
+        config = self.get_branch_config()
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        config.set_user_option('mail_client', 'default')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        config.set_user_option('mail_client', 'editor')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Editor)
+
+        config.set_user_option('mail_client', 'thunderbird')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Thunderbird)
+
+        config.set_user_option('mail_client', 'evolution')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Evolution)
+
+        config.set_user_option('mail_client', 'kmail')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.KMail)
+
+        config.set_user_option('mail_client', 'xdg-email')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.XDGEmail)
+
+        config.set_user_option('mail_client', 'mapi')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.MAPIClient)
+
+        config.set_user_option('mail_client', 'firebird')
+        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
 
 
 class TestMailAddressExtraction(TestCase):

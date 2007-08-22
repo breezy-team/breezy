@@ -399,6 +399,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(None)
 
+    def _cleanup(self):
+        self._flush_ignore_list_cache()
+
     @staticmethod
     @deprecated_method(zero_eight)
     def create(branch, directory):
@@ -800,7 +803,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.put(filename, my_file)
 
     @needs_write_lock # because merge pulls data into the branch.
-    def merge_from_branch(self, branch, to_revision=None):
+    def merge_from_branch(self, branch, to_revision=None, from_revision=None,
+        merge_type=None):
         """Merge from a branch into this working tree.
 
         :param branch: The branch to merge from.
@@ -831,11 +835,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 merger.other_rev_id)
             merger.other_branch = branch
             merger.pp.next_phase()
-            merger.find_base()
+            if from_revision is None:
+                merger.find_base()
+            else:
+                merger.set_base_revision(from_revision, branch)
             if merger.base_rev_id == merger.other_rev_id:
                 raise errors.PointlessMerge
             merger.backup_files = False
-            merger.merge_type = Merge3Merger
+            if merge_type is None:
+                merger.merge_type = Merge3Merger
+            else:
+                merger.merge_type = merge_type
             merger.set_interesting_files(None)
             merger.show_base = False
             merger.reprocess = False
@@ -1561,7 +1571,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if ignoreset is not None:
             return ignoreset
 
-        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs = set()
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(bzrlib.IGNORE_FILENAME):
@@ -1630,7 +1640,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_read_lock
     def _last_revision(self):
         """helper for get_parent_ids."""
-        return self.branch.last_revision()
+        return _mod_revision.ensure_null(self.branch.last_revision())
 
     def is_locked(self):
         return self._control_files.is_locked()
@@ -2399,6 +2409,9 @@ class WorkingTree2(WorkingTree):
             raise
 
     def unlock(self):
+        # do non-implementation specific cleanup
+        self._cleanup()
+
         # we share control files:
         if self._control_files._lock_count == 3:
             # _inventory_is_modified is always False during a read lock.
@@ -2430,7 +2443,7 @@ class WorkingTree3(WorkingTree):
             return osutils.safe_revision_id(
                         self._control_files.get('last-revision').read())
         except errors.NoSuchFile:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
@@ -2470,6 +2483,8 @@ class WorkingTree3(WorkingTree):
         return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
 
     def unlock(self):
+        # do non-implementation specific cleanup
+        self._cleanup()
         if self._control_files._lock_count == 1:
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:

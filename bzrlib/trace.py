@@ -56,14 +56,13 @@ import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from cStringIO import StringIO
 import errno
 import logging
+import traceback
 """)
 
 import bzrlib
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_nine,
-        )
 
 lazy_import(globals(), """
 from bzrlib import debug
@@ -125,6 +124,21 @@ def mutter(fmt, *args):
     #_trace_file.flush()
 
 
+def mutter_callsite(stacklevel, fmt, *args):
+    """Perform a mutter of fmt and args, logging the call trace.
+
+    :param stacklevel: The number of frames to show. None will show all
+        frames.
+    :param fmt: The format string to pass to mutter.
+    :param args: A list of substitution variables.
+    """
+    outf = StringIO()
+    traceback.print_stack(limit=stacklevel + 1, file=outf)
+    formatted_lines = outf.getvalue().splitlines()
+    formatted_stack = '\n'.join(formatted_lines[:-2])
+    mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))
+
+
 def _rollover_trace_maybe(trace_fname):
     import stat
     try:
@@ -152,6 +166,8 @@ def open_tracefile(tracefilename=None):
         else:
             home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
+    else:
+        _bzr_log_filename = tracefilename
 
     _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
     _rollover_trace_maybe(_bzr_log_filename)
@@ -174,20 +190,6 @@ def open_tracefile(tracefilename=None):
         logging.getLogger('').addHandler(_file_handler)
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
-
-
-@deprecated_function(zero_nine)
-def log_exception(msg=None):
-    """Log the last exception to stderr and the trace file.
-
-    The exception string representation is used as the error
-    summary, unless msg is given.
-
-    Please see log_exception_quietly() for the replacement API.
-    """
-    if msg:
-        error(msg)
-    log_exception_quietly()
 
 
 def log_exception_quietly():

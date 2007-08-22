@@ -160,56 +160,6 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
 
-    def test_fetch(self):
-        # smoke test fetch to ensure that the convenience function works.
-        # it is defined as a convenience function with the underlying 
-        # functionality provided by an InterRepository
-        tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
-        # fetch with a default limit (grab everything)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
-        if (tree_a.branch.repository.supports_rich_root() and not
-            repo.supports_rich_root()):
-            raise TestSkipped('Cannot fetch from model2 to model1')
-        repo.fetch(tree_a.branch.repository,
-                   revision_id=None,
-                   pb=bzrlib.progress.DummyProgress())
-
-    def test_fetch_knit3(self):
-        # create a repository of the sort we are testing.
-        tree_a = self.make_branch_and_tree('a', '')
-        self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
-        # create a knit-3 based format to fetch into
-        f = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        try:
-            format = tree_a.branch.repository._format
-            format.check_conversion_target(f.repository_format)
-            # if we cannot convert data to knit3, skip the test.
-        except errors.BadConversionTarget, e:
-            raise TestSkipped(str(e))
-        self.get_transport().mkdir('b')
-        b_bzrdir = f.initialize(self.get_url('b'))
-        knit3_repo = b_bzrdir.create_repository()
-        # fetch with a default limit (grab everything)
-        knit3_repo.fetch(tree_a.branch.repository, revision_id=None)
-        rev1_tree = knit3_repo.revision_tree('rev1')
-        lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
-        self.assertEqual([], lines)
-        b_branch = b_bzrdir.create_branch()
-        b_branch.pull(tree_a.branch)
-        try:
-            tree_b = b_bzrdir.create_workingtree()
-        except errors.NotLocalUrl:
-            raise TestSkipped("cannot make working tree with transport %r"
-                              % b_bzrdir.transport)
-        tree_b.commit('no change', rev_id='rev2')
-        rev2_tree = knit3_repo.revision_tree('rev2')
-        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
-
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -263,7 +213,11 @@ class TestRepository(TestCaseWithRepository):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         old_signature = repo.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
@@ -420,6 +374,31 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
         self.assertEqual(repo._serializer.format_num, format)
+
+    def test_iter_files_bytes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file1', 'foo'),
+                                  ('tree/file2', 'bar')])
+        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        tree.commit('rev1', rev_id='rev1')
+        self.build_tree_contents([('tree/file1', 'baz')])
+        tree.commit('rev2', rev_id='rev2')
+        repository = tree.branch.repository
+        extracted = dict((i, ''.join(b)) for i, b in
+                         repository.iter_files_bytes(
+                         [('file1-id', 'rev1', 'file1-old'),
+                          ('file1-id', 'rev2', 'file1-new'),
+                          ('file2-id', 'rev1', 'file2'),
+                         ]))
+        self.assertEqual('foo', extracted['file1-old'])
+        self.assertEqual('bar', extracted['file2'])
+        self.assertEqual('baz', extracted['file1-new'])
+        self.assertRaises(errors.RevisionNotPresent, list,
+                          repository.iter_files_bytes(
+                          [('file1-id', 'rev3', 'file1-notpresent')]))
+        self.assertRaises(errors.NoSuchId, list,
+                          repository.iter_files_bytes(
+                          [('file3-id', 'rev3', 'file1-notpresent')]))
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
@@ -604,6 +583,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
+        repo.lock_write()
+        repo.start_write_group()
         inv = Inventory(revision_id = 'ghost')
         inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
@@ -630,6 +611,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
         self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
