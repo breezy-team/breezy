@@ -754,7 +754,7 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         src_repo.copy_content_into(dest_repo)
 
 
-class TestRepositoryFetchRevisions(TestRemoteRepository):
+class TestRepositoryStreamKnitData(TestRemoteRepository):
 
     def make_pack_file(self, records):
         pack_file = StringIO()

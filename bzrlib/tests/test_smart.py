@@ -767,11 +767,11 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
             "extraneous file present in tar file")
 
 
-class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
 
     def test_fetch_revisions(self):
         backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
+        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
@@ -796,7 +796,7 @@ class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
         
     def test_no_such_revision_error(self):
         backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
+        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
         repo = self.make_repository('.')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
         response = request.execute(backing.local_abspath(''), rev_id1_utf8)

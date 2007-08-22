@@ -752,7 +752,7 @@ class RemoteRepository(object):
     def get_data_stream(self, revision_ids):
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
-            'Repository.fetch_revisions', path, *revision_ids)
+            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
         if response == ('ok',):
             buffer = StringIO(protocol.read_body_bytes())
             reader = ContainerReader(buffer)

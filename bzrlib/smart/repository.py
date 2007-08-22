@@ -243,7 +243,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest):
+class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, *revision_ids):
         stream = repository.get_data_stream(revision_ids)
