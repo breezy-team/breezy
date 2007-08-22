@@ -2,8 +2,9 @@ bzr-builddeb (0.90) unstable; urgency=low
 
   * Support exporting the working tree when it contains symlinks. Thanks
     to John Arbash Meinel for help on fixing it. (LP: #132391)
+  * Fix the repacking of .tar.bz2 file to .tar.gz. Thanks Frederic Brin.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 22 Aug 2007 22:13:24 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 22 Aug 2007 22:20:36 +0100
 
 bzr-builddeb (0.19) unstable; urgency=low
 
