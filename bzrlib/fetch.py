@@ -220,7 +220,6 @@ class RepoFetcher(object):
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
         to_weave = self.to_repository.get_inventory_weave()
-
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             # just merge, this is optimisable and its means we don't

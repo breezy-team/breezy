@@ -277,28 +277,6 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.commit_write_group()
 
-    def abort_write_group(self):
-        """Complete a write group on the decorated repository.
-        
-        Smart methods peform operations in a single step so this api
-        is not really applicable except as a compatibility thunk
-        for older plugins that don't use e.g. the CommitBuilder
-        facility.
-        """
-        self._ensure_real()
-        return self._real_repository.abort_write_group()
-
-    def commit_write_group(self):
-        """Complete a write group on the decorated repository.
-        
-        Smart methods peform operations in a single step so this api
-        is not really applicable except as a compatibility thunk
-        for older plugins that don't use e.g. the CommitBuilder
-        facility.
-        """
-        self._ensure_real()
-        return self._real_repository.commit_write_group()
-
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
