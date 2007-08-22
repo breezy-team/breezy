@@ -422,10 +422,11 @@ class cmd_import_dsc(Command):
     if snapshot is None:
       if len(files_list) < 1:
         raise BzrCommandError("You must give the location of at least one "
-                              "source package to install")
+                              "source package to install, or use the "
+                              "--file or --snapshot options.")
       if to is None:
         raise BzrCommandError("You must specify the name of the "
-                              "destination branch using the --to option")
+                              "destination branch using the --to option.")
       importer = DscImporter(files)
     else:
       if to is None:
