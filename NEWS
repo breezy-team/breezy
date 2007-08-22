@@ -1,6 +1,68 @@
-bzr 0.90rc1 2007-08-14
+====================
+Bazaar Release Notes
+====================
+
+.. contents::
+
+IN DEVELOPMENT
+==============
+
+  CHANGES:
+
+   * The default branch and repository format has changed to 
+     ``dirstate-tags``, so tag commands are active by default.
+     This format is compatible with Bazaar 0.15 and later.
+     (Martin Pool)
+
+  FEATURES:
+
+    * New option ``--author`` in ``bzr commit`` to specify the author of the
+      change, if it's different from the committer.  (Lukáš Lalinský)
+
+  BUG FIXES:
+
+    * Suppress warning "integer argument expected, got float" from Paramiko,
+      which sometimes caused false test failures.  (Martin Pool)
+
+    * Fix bug in bundle 4 that could cause attempts to write data to wrong
+      versionedfile.  (Aaron Bentley)
+
+    * Diffs generated using "diff -p" no longer break the patch parser.
+      (Aaron Bentley)
+
+    * get_transport treats an empty possible_transports list the same as a non-
+      empty one.  (Aaron Bentley)
+
+  IMPROVEMENTS:
+
+    * ``pull`` and ``merge`` are much faster at installing bundle format 4.
+      (Aaron Bentley)
+
+    * ``pull -v`` no longer includes deltas, making it much faster.
+      (Aaron Bentley)
+
+    * ``send`` now sends the directive as an attachment by default.
+      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
+
+  API BREAKS:
+
+   * ``Branch.append_revision`` is removed altogether; please use 
+     ``Branch.set_last_revision_info`` instead.  (Martin Pool)
+
+   * ``Transport.should_cache`` has been removed.  It was not called in the
+     previous release.  (Martin Pool)
+
+   * NULL_REVISION is returned to indicate the null revision, not None.
+     (Aaron Bentley)
 
   INTERNALS:
+
+   * New trace function ``mutter_callsite`` will print out a subset of the
+     stack to the log, which can be useful for gathering debug details.
+     (Robert Collins)
+
+    * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
+      added via a public attribute records_written. (Robert Collins)
 
     * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
       This provides a hint to users of transports as to the reasonable
@@ -13,7 +75,30 @@ bzr 0.90rc1 2007-08-14
       incremental addition of data to a file without requiring that all the
       data be buffered in memory. (Robert Collins)
 
+
+bzr 0.90 2007-08-??
+===================
+
+  IMPROVEMENTS:
+
+    * Documentation is now organized into multiple directories with a level
+      added for different languages or locales. Added the Mini Tutorial
+      and Quick Start Summary (en) documents from the Wiki, improving the
+      content and readability of the former. Formatted NEWS as Release Notes
+      complete with a Table of Conents, one heading per release. Moved the
+      Developer Guide into the main document catalog and provided a link
+      from the developer document catalog back to the main one.
+      (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
+
+
+  API CHANGES:
+
+    * The static convenience method ``BzrDir.create_repository``
+      is deprecated.  Callers should instead create a ``BzrDir`` instance
+      and call ``create_repository`` on that.  (Martin Pool)
+
 bzr 0.90rc1 2007-08-14
+======================
 
   BUGFIXES:
 
@@ -103,8 +188,6 @@ bzr 0.90rc1 2007-08-14
       (Ian Clatworthy)
 
     * New bundle and merge directive formats are faster to generate, and
-      more robust against email mangling.  New `send` command replaces
-      `bundle-revisions` and `merge-directive`.  (Aaron Bentley)
 
     * Annotate merge now works when there are local changes. (Aaron Bentley)
 
@@ -130,7 +213,7 @@ bzr 0.90rc1 2007-08-14
 
     * Log errors from the smart server in the trace file, to make debugging 
       test failures (and live failures!) easier.  (Andrew Bennetts)
-      
+
     * The HTML version of the man page has been superceded by a more
       comprehensive manual called the Bazaar User Reference. This manual
       is completed generated from the online help topics. As part of this
@@ -139,12 +222,13 @@ bzr 0.90rc1 2007-08-14
       to display by the online help or inclusion in the man page.
       (Ian Clatworthy)
 
-    * HTML documentation now use files extension *.html (Alexander Belchenko)
+    * HTML documentation now use files extension ``*.html``
+      (Alexander Belchenko)
 
     * The cache of ignore definitions is now cleared in WorkingTree.unlock()
       so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
 
-    * ``bzr selftest --strict'' fails if there are any missing features or
+    * ``bzr selftest --strict`` fails if there are any missing features or
       expected test failures. (Daniel Watkins, #111914)
 
     * Link to registration survey added to README. (Ian Clatworthy)
@@ -276,8 +360,13 @@ bzr 0.90rc1 2007-08-14
     * The SSH_AUTH_SOCK environment variable is now reset to avoid 
       interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
 
+    * run_bzr_subprocess handles parameters the same way as run_bzr:
+      either a string or a list of strings should be passed as the first
+      parameter.  Varargs-style parameters are deprecated. (Aaron Bentley)
+
 
 bzr 0.18  2007-07-17
+====================
 
   BUGFIXES:
 
@@ -285,6 +374,7 @@ bzr 0.18  2007-07-17
 
 
 bzr 0.18rc1  2007-07-10
+=======================
 
   BUGFIXES:
 
@@ -531,6 +621,7 @@ bzr 0.18rc1  2007-07-10
 
 
 bzr 0.17  2007-06-18
+====================
 
   BUGFIXES:
 
@@ -542,6 +633,7 @@ bzr 0.17  2007-06-18
 
 
 bzr 0.17rc1  2007-06-12
+=======================
 
   NOTES WHEN UPGRADING:
 
@@ -639,6 +731,7 @@ bzr 0.17rc1  2007-06-12
       mainline). (John Arbash Meinel, #115343)
 
 bzr 0.16  2007-05-07
+====================
   
   BUGFIXES:
 
@@ -667,6 +760,7 @@ bzr 0.16  2007-05-07
       both. (John Arbash Meinel)
 
 bzr 0.16rc2  2007-04-30
+=======================
 
   BUGFIXES:
 
@@ -689,6 +783,7 @@ bzr 0.16rc2  2007-04-30
       directories. (John Arbash Meinel, #110399)
 
 bzr 0.16rc1  2007-04-26
+=======================
 
   NOTES WHEN UPGRADING:
 
@@ -991,6 +1086,7 @@ bzr 0.16rc1  2007-04-26
       (Vincent Ladeuil)
 
 bzr 0.15 2007-04-01
+===================
 
   BUGFIXES:
 
@@ -1002,6 +1098,7 @@ bzr 0.15 2007-04-01
       (Martin Pool)
 
 bzr 0.15rc3  2007-03-26
+=======================
 
   CHANGES:
  
@@ -1073,6 +1170,7 @@ bzr 0.15rc3  2007-03-26
       (vila, #88780)
 
 bzr 0.15rc2  2007-03-14
+=======================
 
   NOTES WHEN UPGRADING:
         
@@ -1122,6 +1220,7 @@ bzr 0.15rc2  2007-03-14
 
 
 bzr 0.15rc1  2007-03-07
+=======================
 
   SURPRISES:
 
@@ -1347,6 +1446,7 @@ bzr 0.15rc1  2007-03-07
 
 
 bzr 0.14  2007-01-23
+====================
 
   IMPROVEMENTS:
 
@@ -1364,6 +1464,7 @@ bzr 0.14  2007-01-23
 
 
 bzr 0.14rc1  2007-01-16
+=======================
 
   IMPROVEMENTS:
 
@@ -1495,10 +1596,12 @@ bzr 0.14rc1  2007-01-16
 
 
 bzr 0.13  2006-12-05
+====================
     
   No changes from 0.13rc1
     
 bzr 0.13rc1  2006-11-27
+=======================
 
   IMPROVEMENTS:
 
@@ -1620,6 +1723,7 @@ bzr 0.13rc1  2006-11-27
       (previously it was ignoring it and returning the whole file,).
 
 bzr 0.12  2006-10-30
+====================
 
   INTERNALS:
 
@@ -1628,6 +1732,7 @@ bzr 0.12  2006-10-30
       (John Arbash Meinel)
   
 bzr 0.12rc1  2006-10-23
+=======================
 
   IMPROVEMENTS:
 
@@ -1744,10 +1849,12 @@ bzr 0.12rc1  2006-10-23
       created objects. (Robert Collins, John Arbash Meinel)
 
 bzr 0.11  2006-10-02
+====================
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
 
 bzr 0.11rc2  2006-09-27
+=======================
 
   BUG FIXES:
 
@@ -1757,6 +1864,7 @@ bzr 0.11rc2  2006-09-27
       Arbash Meinel).
 
 bzr 0.11rc1  2006-09-25
+=======================
 
   IMPROVEMENTS:
 
@@ -1945,6 +2053,7 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
+====================
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -2019,6 +2128,7 @@ bzr 0.10  2006-08-29
       easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
+=====================
 
   SURPRISES:
 
@@ -2282,12 +2392,14 @@ bzr 0.9.0  2006-08-11
     * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
+=====================
   
   BUG FIXES:
    
     * setup.py failed to install launchpad plugin.  (Martin Pool)
 
 bzr 0.8.1  2006-05-16
+=====================
 
   BUG FIXES:
 
@@ -2335,6 +2447,7 @@ bzr 0.8.1  2006-05-16
       uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
+===================
 
   NOTES WHEN UPGRADING:
 
@@ -2591,6 +2704,7 @@ bzr 0.8  2006-05-08
       parameter which will provide String("foo") to the command as its stdin.
 
 bzr 0.7 2006-01-09
+==================
 
   CHANGES:
 
@@ -2881,6 +2995,7 @@ bzr 0.7 2006-01-09
       for functions that need unicode strings. (Robert Collins)
 
 bzr 0.6 2005-10-28
+==================
 
   IMPROVEMENTS:
   
@@ -3092,6 +3207,7 @@ bzr 0.6 2005-10-28
 
 
 bzr 0.1.1 2005-10-12
+====================
 
   BUG FIXES:
 
@@ -3107,6 +3223,7 @@ bzr 0.1.1 2005-10-12
 
 
 bzr 0.1 2005-10-11
+==================
 
   NOTES:
 
@@ -3231,6 +3348,7 @@ bzr 0.1 2005-10-11
 
       
 bzr 0.0.9 2005-09-23
+====================
 
   BUG FIXES:
 
@@ -3269,6 +3387,7 @@ bzr 0.0.9 2005-09-23
 
 
 bzr 0.0.8 2005-09-20
+====================
 
   IMPROVEMENTS:
 
@@ -3315,6 +3434,7 @@ bzr 0.0.8 2005-09-20
 
 
 bzr-0.0.7 2005-09-02
+====================
 
   NEW FEATURES:
 
@@ -3364,6 +3484,7 @@ bzr-0.0.7 2005-09-02
 
 
 bzr-0.0.6 2005-08-18
+====================
 
   NEW FEATURES:
 
@@ -3445,6 +3566,7 @@ bzr-0.0.6 2005-08-18
 
 
 bzr-0.0.5  2005-06-15
+=====================
   
   CHANGES:
 
@@ -3580,6 +3702,7 @@ bzr-0.0.5  2005-06-15
 
 
 bzr-0.0.4  2005-04-22
+=====================
 
   ENHANCEMENTS:
 
@@ -3643,6 +3766,7 @@ bzr-0.0.4  2005-04-22
 
 
 bzr-0.0.3  2005-04-06
+=====================
 
   ENHANCEMENTS:
 
@@ -3683,6 +3807,7 @@ bzr-0.0.3  2005-04-06
 
 
 bzr-0.0.2.1
+===========
 
   PORTABILITY:
 
@@ -3690,6 +3815,7 @@ bzr-0.0.2.1
 
 
 bzr-0.0.2  "black cube"  2005-03-31
+===================================
 
   ENHANCEMENTS:
 
@@ -3717,6 +3843,7 @@ bzr-0.0.2  "black cube"  2005-03-31
 
 
 bzr-0.0.1  2005-03-26
+=====================
 
   ENHANCEMENTS:
 
@@ -3743,6 +3870,7 @@ bzr-0.0.1  2005-03-26
 
 
 bzr-0.0.0.69  2005-03-22
+========================
 
   ENHANCEMENTS:
 

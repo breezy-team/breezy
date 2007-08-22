@@ -45,7 +45,6 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
@@ -253,24 +252,6 @@ class TransportTests(TestTransportImplementation):
         finally:
             handle.close()
 
-    def test_put(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-
-        self.applyDeprecated(zero_eleven, t.put, 'a', 'string\ncontents\n')
-        self.check_transport_contents('string\ncontents\n', t, 'a')
-
-        self.applyDeprecated(zero_eleven,
-                             t.put, 'b', StringIO('file-like\ncontents\n'))
-        self.check_transport_contents('file-like\ncontents\n', t, 'b')
-
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            zero_eleven,
-            t.put, 'path/doesnt/exist/c', StringIO('contents'))
-
     def test_put_bytes(self):
         t = self.get_transport()
 
@@ -459,12 +440,6 @@ class TransportTests(TestTransportImplementation):
         # Yes, you can put a file such that it becomes readonly
         t.put_file('mode400', StringIO('test text\n'), mode=0400)
         self.assertTransportMode(t, 'mode400', 0400)
-
-        # XXX: put_multi is deprecated, so do we really care anymore?
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_file('nomode', StringIO('test text\n'), mode=None)
@@ -534,58 +509,6 @@ class TransportTests(TestTransportImplementation):
         unicode_file = pyStringIO(u'\u1234')
         self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
 
-    def test_put_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
-                          ('d', StringIO('contents\nfor d\n'))]
-            ))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
-                [True, False, False, True])
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('contents\nfor d\n', t, 'd')
-
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
-                              ('d', StringIO('another contents\nfor d\n'))])
-            ))
-        self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('another contents\nfor d\n', t, 'd')
-
-    def test_put_permissions(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        if not t._can_roundtrip_unix_modebits():
-            # Can't roundtrip, so no need to run this test
-            return
-        self.applyDeprecated(zero_eleven, t.put, 'mode644',
-                             StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        self.applyDeprecated(zero_eleven, t.put, 'mode666',
-                             StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        self.applyDeprecated(zero_eleven, t.put, 'mode600',
-                             StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        # Yes, you can put a file such that it becomes readonly
-        self.applyDeprecated(zero_eleven, t.put, 'mode400',
-                             StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
-        self.applyDeprecated(zero_eleven, t.put, 'nomode',
-                             StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
     def test_mkdir(self):
         t = self.get_transport()
 
@@ -733,26 +656,6 @@ class TransportTests(TestTransportImplementation):
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)
 
-    def test_append(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        t.put_bytes('a', 'diff\ncontents for\na\n')
-        t.put_bytes('b', 'contents\nfor b\n')
-
-        self.assertEqual(20, self.applyDeprecated(zero_eleven,
-            t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
-            t, 'a')
-
-        # And we can create new files, too
-        self.assertEqual(0, self.applyDeprecated(zero_eleven,
-            t.append, 'c', StringIO('some text\nfor a missing file\n')))
-        self.check_transport_contents('some text\nfor a missing file\n',
-                                      t, 'c')
     def test_append_file(self):
         t = self.get_transport()
 

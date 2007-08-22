@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,14 +37,6 @@ class TestStores(object):
     def check_content(self, store, fileid, value):
         f = store.get(fileid)
         self.assertEqual(f.read(), value)
-
-    def test_add_str_deprecated(self):
-        os.mkdir('a')
-        store = self.get_store('a')
-        self.callDeprecated(['Passing a string to Store.add'
-                             ' was deprecated in version 0.11.'],
-                            store.add, 'foo', '1')
-        self.assertEqual('foo', store.get('1').read())
 
     def fill_store(self, store):
         store.add(StringIO('hello'), 'a')

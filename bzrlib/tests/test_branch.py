@@ -39,6 +39,7 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     BzrBranch5,
     BzrBranchFormat5,
+    BzrBranchFormat6,
     PullResult,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
@@ -54,10 +55,21 @@ from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
+    def test_default_format(self):
+        # update this if you change the default branch format
+        self.assertIsInstance(BranchFormat.get_default_format(),
+                BzrBranchFormat6)
+
+    def test_default_format_is_same_as_bzrdir_default(self):
+        # XXX: it might be nice if there was only one place the default was
+        # set, but at the moment that's not true -- mbp 20070814 -- 
+        # https://bugs.launchpad.net/bzr/+bug/132376
+        self.assertEqual(BranchFormat.get_default_format(),
+                BzrDirFormat.get_default_format().get_branch_format())
+
     def test_get_set_default_format(self):
+        # set the format and then set it back again
         old_format = BranchFormat.get_default_format()
-        # default is 5
-        self.assertTrue(isinstance(old_format, BzrBranchFormat5))
         BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -224,32 +236,6 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
-    def test_append_revision(self):
-        tree = self.make_branch_and_tree('branch1',
-            format='dirstate-tags')
-        tree.lock_write()
-        try:
-            tree.commit('foo', rev_id='foo')
-            tree.commit('bar', rev_id='bar')
-            tree.commit('baz', rev_id='baz')
-            tree.set_last_revision('bar')
-            tree.branch.set_last_revision_info(2, 'bar')
-            tree.commit('qux', rev_id='qux')
-            tree.add_parent_tree_id('baz')
-            tree.commit('qux', rev_id='quxx')
-            tree.branch.set_last_revision_info(0, 'null:')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'bar')
-            tree.branch.append_revision('foo')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'baz')
-            tree.branch.append_revision('bar')
-            tree.branch.append_revision('baz')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'quxx')
-        finally:
-            tree.unlock()
-
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source', format='dirstate-with-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
@@ -275,7 +261,6 @@ class TestBranch6(TestCaseWithTransport):
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
         else:
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
-
 
     def test_checkout_with_references(self):
         self.do_checkout_test()

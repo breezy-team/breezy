@@ -185,11 +185,6 @@ class FtpTransport(ConnectedTransport):
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def _remote_path(self, relpath):
         # XXX: It seems that ftplib does not handle Unicode paths
         # at the same time, medusa won't handle utf8 paths So if

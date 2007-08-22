@@ -209,7 +209,7 @@ class TestDiff(DiffBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr('diff -r 1.. branch1',
                               retcode=1)
-        self.assertTrue('\n-original line\n+new line\n' in output[0])
+        self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
 
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing"""
@@ -282,8 +282,7 @@ class TestExternalDiff(DiffBase):
         orig_progress = os.environ.get('BZR_PROGRESS_BAR')
         try:
             os.environ['BZR_PROGRESS_BAR'] = 'none'
-            out, err = self.run_bzr_subprocess('diff', '-r', '1',
-                                               '--diff-options', '-ub',
+            out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
                                                universal_newlines=True,
                                                retcode=None)
         finally:
