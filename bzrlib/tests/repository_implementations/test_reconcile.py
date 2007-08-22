@@ -169,10 +169,9 @@ class TestsNeedingReweave(TestReconcile):
         if ([None, 'missing', 'references_missing']
             != repo.get_ancestry('references_missing')):
             # the repo handles ghosts without corruption, so reconcile has
-            # nothing to do here 
-            # specifically, this test has the inventory 'missing' present
-            # and the revision 'missing' missing, so clearly 'missing' 
-            # cannot be reported in the present ancestry -> missing
+            # nothing to do here. Specifically, this test has the inventory
+            # 'missing' present and the revision 'missing' missing, so clearly
+            # 'missing' cannot be reported in the present ancestry -> missing
             # is something that can be filled as a ghost.
             expected_inconsistent_parents = 0
         else:
