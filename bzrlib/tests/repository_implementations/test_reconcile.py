@@ -143,10 +143,9 @@ class TestsNeedingReweave(TestReconcile):
         # in an empty repo, theres nothing to do.
         self.checkEmptyReconcile()
 
-    def test_reconcile_actions(self):
-        """reconcile_actions() returns a set naming what a repo reconciles."""
+    def test_repo_has_reconcile_does_inventory_gc_attribute(self):
         repo = self.make_repository('repo')
-        self.assertNotEqual(None, set(repo.reconcile_actions()))
+        self.assertNotEqual(None, repo._reconcile_does_inventory_gc)
 
     def test_reconcile_empty_thorough(self):
         # reconcile should accept thorough=True
@@ -157,9 +156,8 @@ class TestsNeedingReweave(TestReconcile):
         bzrdir_url = self.get_url('inventory_without_revision')
         bzrdir = bzrlib.bzrdir.BzrDir.open(bzrdir_url)
         repo = bzrdir.open_repository()
-        if 'inventory_gc' not in repo.reconcile_actions():
-            # irrelevant test.
-            return
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         reconcile(bzrdir)
         # now the backup should have it but not the current inventory
         repo = bzrdir.open_repository()
@@ -170,9 +168,8 @@ class TestsNeedingReweave(TestReconcile):
         d_url = self.get_url('inventory_without_revision')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
         repo = d.open_repository()
-        if 'inventory_gc' not in repo.reconcile_actions():
-            # irrelevant test.
-            return
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         self.checkUnreconciled(d, repo.reconcile())
         reconciler = repo.reconcile(thorough=True)
         # no bad parents
@@ -188,10 +185,9 @@ class TestsNeedingReweave(TestReconcile):
         if ([None, 'missing', 'references_missing']
             != repo.get_ancestry('references_missing')):
             # the repo handles ghosts without corruption, so reconcile has
-            # nothing to do here 
-            # specifically, this test has the inventory 'missing' present
-            # and the revision 'missing' missing, so clearly 'missing' 
-            # cannot be reported in the present ancestry -> missing
+            # nothing to do here. Specifically, this test has the inventory
+            # 'missing' present and the revision 'missing' missing, so clearly
+            # 'missing' cannot be reported in the present ancestry -> missing
             # is something that can be filled as a ghost.
             expected_inconsistent_parents = 0
         else:
@@ -222,9 +218,8 @@ class TestsNeedingReweave(TestReconcile):
         # other tests use the lower level repo.reconcile()
         d_url = self.get_url('inventory_without_revision_and_ghost')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
-        if 'inventory_gc' not in d.open_repository().reconcile_actions():
-            # irrelevant test.
-            return
+        if not d.open_repository()._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         def reconcile():
             reconciler = Reconciler(d)
             reconciler.reconcile()
@@ -236,9 +231,8 @@ class TestsNeedingReweave(TestReconcile):
         d_url = self.get_url('inventory_without_revision_and_ghost')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
         repo = d.open_repository()
-        if 'inventory_gc' not in repo.reconcile_actions():
-            # irrelevant test.
-            return
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
         self.check_thorough_reweave_missing_revision(d, repo.reconcile,
