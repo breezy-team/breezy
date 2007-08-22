@@ -257,6 +257,49 @@ class LateReadError(object):
         self._fail()
 
 
+class FileStream(object):
+    """Base class for FileStreams."""
+
+    def __init__(self, transport, relpath):
+        """Create a FileStream for relpath on transport."""
+        self.transport = transport
+        self.relpath = relpath
+
+    def _close(self):
+        """A hook point for subclasses that need to take action on close."""
+
+    def close(self):
+        self._close()
+        del _file_streams[self.transport.abspath(self.relpath)]
+
+
+class FileFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses a file like object to perform writes.
+    """
+
+    def __init__(self, transport, relpath, file_handle):
+        FileStream.__init__(self, transport, relpath)
+        self.file_handle = file_handle
+
+    def _close(self):
+        self.file_handle.close()
+
+    def write(self, bytes):
+        self.file_handle.write(bytes)
+
+
+class AppendBasedFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses append on a transport to perform writes.
+    """
+
+    def write(self, bytes):
+        self.transport.append_bytes(self.relpath, bytes)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -811,21 +854,23 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def open_file_stream(self, relpath, mode=None):
-        """Open a file stream at relpath.
+    def open_write_stream(self, relpath, mode=None):
+        """Open a writable file stream at relpath.
 
-        A file stream is a callback which adds data to the file. Buffering
-        may occur internally until the stream is closed with close_file_stream.
-        Calls to readv or the get_* methods will be synchronised with any
-        internal buffering that may be present.
+        A file stream is a file like object with a write() method that accepts
+        bytes to write.. Buffering may occur internally until the stream is
+        closed with stream.close().  Calls to readv or the get_* methods will
+        be synchronised with any internal buffering that may be present.
 
-        :seealso: close_file_stream.
         :param relpath: The relative path to the file.
         :param mode: The mode for the newly created file, 
                      None means just use the default
-        :return: A write callback to add data to the file.
+        :return: A FileStream. FileStream objects have two methods, write() and
+            close(). There is no guarantee that data is committed to the file
+            if close() has not been called (even if get() is called on the same
+            path).
         """
-        raise NotImplementedError(self.open_file_stream)
+        raise NotImplementedError(self.open_write_stream)
 
     def append_file(self, relpath, f, mode=None):
         """Append bytes from a file-like object to a file at relpath.

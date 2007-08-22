@@ -343,7 +343,6 @@ Sketched notes on packs
       this approach reads 10 entire packs every 10 commits,
       100 every 100, 1000 every 1000
 
-
 Caching and writeing of data
 ============================
 

@@ -61,6 +61,9 @@ IN DEVELOPMENT
      stack to the log, which can be useful for gathering debug details.
      (Robert Collins)
 
+    * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
+      added via a public attribute records_written. (Robert Collins)
+
     * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
       This provides a hint to users of transports as to the reasonable
       minimum data to read. In principle this can take latency and
@@ -68,14 +71,9 @@ IN DEVELOPMENT
       just has hard coded values based on the url. (e.g. http:// has a large
       page size, file:// has a small one.) (Robert Collins)
 
-    * New methods on ``bzrlib.transport.Transport`` ``open_file_stream`` and
-      ``close_file_stream`` allow incremental addition of data to a file
-      without requiring that all the data be buffered in memory.
-      (Robert Collins)
-
-    * Add a new method ``bzrlib.repository.Repository.reconcile_actions``
-      allowing conditional test cases on the sorts of things reconcile
-      will actually perform. (Robert Collins)
+    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
+      incremental addition of data to a file without requiring that all the
+      data be buffered in memory. (Robert Collins)
 
 
 bzr 0.90 2007-08-??

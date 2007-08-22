@@ -1318,7 +1318,10 @@ class _KnitIndex(_KnitComponentFile):
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        options = self._cache[version_id][1]
+        try:
+            options = self._cache[version_id][1]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self._filename)
         if 'fulltext' in options:
             return 'fulltext'
         else:
@@ -1557,7 +1560,10 @@ class KnitGraphIndex(object):
             return 'fulltext'
 
     def _get_node(self, version_id):
-        return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        try:
+            return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        except IndexError:
+            raise RevisionNotPresent(version_id, self)
 
     def get_options(self, version_id):
         """Return a string represention options.

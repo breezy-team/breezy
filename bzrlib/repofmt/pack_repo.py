@@ -214,18 +214,18 @@ class RepositoryPackCollection(object):
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 plain_pack_list)
             start_time = time.time()
-        write_stream = self.repo._upload_transport.open_file_stream(random_name)
+        write_stream = self.repo._upload_transport.open_write_stream(random_name)
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 time.time() - start_time)
         pack_hash = md5.new()
         buffer = []
-        def write_data(bytes, update=pack_hash.update):
+        def write_data(bytes, update=pack_hash.update, write=write_stream.write):
             buffer.append(bytes)
             if len(buffer) == 640:
                 bytes = ''.join(buffer)
-                write_stream(bytes)
+                write(bytes)
                 update(bytes)
                 del buffer[:]
         writer = pack.ContainerWriter(write_data)
@@ -280,7 +280,7 @@ class RepositoryPackCollection(object):
         writer.end()
         if len(buffer):
             bytes = ''.join(buffer)
-            write_stream(bytes)
+            write_stream.write(bytes)
             pack_hash.update(bytes)
         new_name = pack_hash.hexdigest()
         # if nothing has been written, discard the new pack.
@@ -294,7 +294,7 @@ class RepositoryPackCollection(object):
         # add to names
         self.allocate(new_name)
         # rename into place
-        self.repo._upload_transport.close_file_stream(random_name)
+        write_stream.close()
         self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
         result = Pack()
         result.name = new_name
@@ -1152,11 +1152,12 @@ class GraphKnitRepository1(KnitRepository):
     def _start_write_group(self):
         random_name = self.control_files._lock.nonce
         self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_file_stream(random_name + '.pack')
+        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
+        self._write_stream = write_stream
         self._open_pack_hash = md5.new()
-        def write_data(bytes):
-            write_stream(bytes)
-            self._open_pack_hash.update(bytes)
+        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
         self._open_pack_writer = pack.ContainerWriter(write_data)
         self._open_pack_writer.begin()
         self._packs.setup()
@@ -1181,7 +1182,7 @@ class GraphKnitRepository1(KnitRepository):
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
-            self._upload_transport.close_file_stream(self._open_pack_tuple[1])
+            self._write_stream.close()
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
             self._open_pack_tuple = None
@@ -1197,6 +1198,7 @@ class GraphKnitRepository1(KnitRepository):
         # delta.
         self._packs.reset()
         self._open_pack_hash = None
+        self._write_stream = None
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
@@ -1269,11 +1271,12 @@ class GraphKnitRepository3(KnitRepository3):
     def _start_write_group(self):
         random_name = self.control_files._lock.nonce
         self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_file_stream(random_name + '.pack')
+        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
+        self._write_stream = write_stream
         self._open_pack_hash = md5.new()
-        def write_data(bytes):
-            write_stream(bytes)
-            self._open_pack_hash.update(bytes)
+        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
         self._open_pack_writer = pack.ContainerWriter(write_data)
         self._open_pack_writer.begin()
         self._packs.setup()
@@ -1298,7 +1301,7 @@ class GraphKnitRepository3(KnitRepository3):
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
             self._revision_store.flush(new_name)
-            self._upload_transport.close_file_stream(self._open_pack_tuple[1])
+            self._write_stream.close()
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
             self._open_pack_tuple = None
@@ -1314,6 +1317,7 @@ class GraphKnitRepository3(KnitRepository3):
         # delta.
         self._packs.reset()
         self._open_pack_hash = None
+        self._write_stream = None
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
