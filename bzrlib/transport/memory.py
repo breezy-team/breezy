@@ -91,10 +91,6 @@ class MemoryTransport(Transport):
         result._locks = self._locks
         return result
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del _file_streams[self.abspath(relpath)]
-
     def abspath(self, relpath):
         """See Transport.abspath()."""
         # while a little slow, this is sufficiently fast to not matter in our

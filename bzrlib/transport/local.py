@@ -82,11 +82,6 @@ class LocalTransport(Transport):
                 abspath = self.base
             return LocalTransport(abspath)
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        handle = transport._file_streams.pop(self.abspath(relpath))
-        handle.close()
-
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
 

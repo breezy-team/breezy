@@ -107,10 +107,6 @@ class FtpTransport(ConnectedTransport):
             self._set_connection(connection, credentials)
         return connection
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del _file_streams[self.abspath(relpath)]
-
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
 

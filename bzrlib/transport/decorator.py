@@ -75,10 +75,6 @@ class TransportDecorator(Transport):
         return self.__class__(
             self._get_url_prefix() + decorated_clone.base, decorated_clone)
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        return self._decorated.close_file_stream(relpath)
-
     def delete(self, relpath):
         """See Transport.delete()."""
         return self._decorated.delete(relpath)

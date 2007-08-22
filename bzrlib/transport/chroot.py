@@ -95,9 +95,6 @@ class ChrootTransport(Transport):
     def clone(self, relpath):
         return ChrootTransport(self.server, self.abspath(relpath))
 
-    def close_file_stream(self, relpath):
-        return self._call('close_file_stream', relpath)
-
     def delete(self, relpath):
         return self._call('delete', relpath)
 

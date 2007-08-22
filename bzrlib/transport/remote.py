@@ -127,10 +127,6 @@ class RemoteTransport(transport.ConnectedTransport):
         # No credentials
         return None, None
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        del transport._file_streams[self.abspath(relpath)]
-
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         resp = self._call2('Transport.is_readonly')

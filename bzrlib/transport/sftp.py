@@ -172,11 +172,6 @@ class SFTPTransport(ConnectedTransport):
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
 
-    def close_file_stream(self, relpath):
-        """See Transport.close_file_stream."""
-        handle = _file_streams.pop(self.abspath(relpath))
-        handle.close()
-
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         

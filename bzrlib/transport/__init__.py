@@ -361,15 +361,6 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
-    def close_file_stream(self, relpath):
-        """Close a file stream at relpath.
-
-        :raises: NoSuchFile if there is no open file stream for relpath.
-        :seealso: open_file_stream.
-        :return: None
-        """
-        raise NotImplementedError(self.close_file_stream)
-
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
