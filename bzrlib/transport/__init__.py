@@ -66,6 +66,11 @@ from bzrlib.trace import (
 from bzrlib import registry
 
 
+# a dictionary of open file streams. Keys are absolute paths, values are
+# transport defined.
+_file_streams = {}
+
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return transport_list_registry
@@ -252,6 +257,49 @@ class LateReadError(object):
         self._fail()
 
 
+class FileStream(object):
+    """Base class for FileStreams."""
+
+    def __init__(self, transport, relpath):
+        """Create a FileStream for relpath on transport."""
+        self.transport = transport
+        self.relpath = relpath
+
+    def _close(self):
+        """A hook point for subclasses that need to take action on close."""
+
+    def close(self):
+        self._close()
+        del _file_streams[self.transport.abspath(self.relpath)]
+
+
+class FileFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses a file like object to perform writes.
+    """
+
+    def __init__(self, transport, relpath, file_handle):
+        FileStream.__init__(self, transport, relpath)
+        self.file_handle = file_handle
+
+    def _close(self):
+        self.file_handle.close()
+
+    def write(self, bytes):
+        self.file_handle.write(bytes)
+
+
+class AppendBasedFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses append on a transport to perform writes.
+    """
+
+    def write(self, bytes):
+        self.transport.append_bytes(self.relpath, bytes)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -350,11 +398,6 @@ class Transport(object):
             then InProcessTransport is raised.
         """
         raise NotImplementedError(self.external_url)
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return False
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like 
@@ -459,6 +502,18 @@ class Transport(object):
         if not path.startswith('/'):
             path = '/' + path
         return path
+
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport.
+
+        This is potentially different for every path in a given namespace.
+        For example, local transports might use an operating system call to 
+        get the block size for a given path, which can vary due to mount
+        points.
+
+        :return: The page size in bytes.
+        """
+        return 4 * 1024
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -693,20 +748,6 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
-    @deprecated_method(zero_eleven)
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like object into the location.
-
-        :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
-                     None means just use the default
-        """
-        if isinstance(f, str):
-            return self.put_bytes(relpath, f, mode=mode)
-        else:
-            return self.put_file(relpath, f, mode=mode)
-
     def put_bytes(self, relpath, bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
@@ -794,22 +835,6 @@ class Transport(object):
                 self.mkdir(parent_dir, mode=dir_mode)
                 return self.put_file(relpath, f, mode=mode)
 
-    @deprecated_method(zero_eleven)
-    def put_multi(self, files, mode=None, pb=None):
-        """Put a set of files into the location.
-
-        :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :param mode: The mode for the newly created files
-        :return: The number of files copied.
-        """
-        def _put(path, f):
-            if isinstance(f, str):
-                self.put_bytes(path, f, mode=mode)
-            else:
-                self.put_file(path, f, mode=mode)
-        return len(self._iterate_over(files, _put, pb, 'put', expand=True))
-
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise NotImplementedError(self.mkdir)
@@ -820,15 +845,23 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    @deprecated_method(zero_eleven)
-    def append(self, relpath, f, mode=None):
-        """Append the text in the file-like object to the supplied location.
+    def open_write_stream(self, relpath, mode=None):
+        """Open a writable file stream at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        A file stream is a file like object with a write() method that accepts
+        bytes to write.. Buffering may occur internally until the stream is
+        closed with stream.close().  Calls to readv or the get_* methods will
+        be synchronised with any internal buffering that may be present.
+
+        :param relpath: The relative path to the file.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
+        :return: A FileStream. FileStream objects have two methods, write() and
+            close(). There is no guarantee that data is committed to the file
+            if close() has not been called (even if get() is called on the same
+            path).
         """
-        return self.append_file(relpath, f, mode=mode)
+        raise NotImplementedError(self.open_write_stream)
 
     def append_file(self, relpath, f, mode=None):
         """Append bytes from a file-like object to a file at relpath.
@@ -1437,7 +1470,7 @@ def get_transport(base, possible_transports=None):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    if possible_transports:
+    if possible_transports is not None:
         for t in possible_transports:
             t_same_connection = t._reuse_for(base)
             if t_same_connection is not None:
@@ -1450,7 +1483,7 @@ def get_transport(base, possible_transports=None):
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
-                if possible_transports:
+                if possible_transports is not None:
                     assert transport not in possible_transports
                     possible_transports.append(transport)
                 return transport

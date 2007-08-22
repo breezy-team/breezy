@@ -46,6 +46,8 @@ from bzrlib import (
     )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    AppendBasedFileStream,
+    _file_streams,
     Server,
     ConnectedTransport,
     )
@@ -183,11 +185,6 @@ class FtpTransport(ConnectedTransport):
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def _remote_path(self, relpath):
         # XXX: It seems that ftplib does not handle Unicode paths
         # at the same time, medusa won't handle utf8 paths So if
@@ -322,6 +319,21 @@ class FtpTransport(ConnectedTransport):
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath,
                 unknown_exc=errors.FileExists)
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For FTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
 
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""

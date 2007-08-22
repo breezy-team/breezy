@@ -213,6 +213,13 @@ class RemoteTransport(transport.ConnectedTransport):
             self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = transport.AppendBasedFileStream(self, relpath)
+        transport._file_streams[self.abspath(relpath)] = result
+        return result
+
     def put_bytes(self, relpath, upload_contents, mode=None):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited

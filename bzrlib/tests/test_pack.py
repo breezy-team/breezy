@@ -40,6 +40,13 @@ class TestContainerWriter(tests.TestCase):
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\n',
                          output.getvalue())
 
+    def test_zero_records_written_after_begin(self):
+        """After begin is written, 0 records have been written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        self.assertEqual(0, writer.records_written)
+
     def test_end(self):
         """The end() method writes an End Marker record."""
         output = StringIO()
@@ -48,6 +55,23 @@ class TestContainerWriter(tests.TestCase):
         writer.end()
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nE',
                          output.getvalue())
+
+    def test_empty_end_does_not_add_a_record_to_records_written(self):
+        """The end() method does not count towards the records written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.end()
+        self.assertEqual(0, writer.records_written)
+
+    def test_non_empty_end_does_not_add_a_record_to_records_written(self):
+        """The end() method does not count towards the records written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('foo', names=[])
+        writer.end()
+        self.assertEqual(1, writer.records_written)
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
@@ -130,6 +154,16 @@ class TestContainerWriter(tests.TestCase):
         self.assertRaises(
             errors.InvalidRecordError,
             writer.add_bytes_record, 'abc', names=[('bad name', )])
+
+    def test_add_bytes_records_add_to_records_written(self):
+        """Adding a Bytes record increments the records_written counter."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('foo', names=[])
+        self.assertEqual(1, writer.records_written)
+        writer.add_bytes_record('foo', names=[])
+        self.assertEqual(2, writer.records_written)
 
 
 class TestContainerReader(tests.TestCase):

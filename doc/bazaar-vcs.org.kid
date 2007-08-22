@@ -181,8 +181,7 @@ id="search_q" value="" onfocus="searchFocus(this)" onblur=
 <div id="username" class="vnav">
 <h4>Website Links</h4>
 <ul>
-<li><a href="index.htm">Documentation index</a></li>
-<li><a href="http://doc.bazaar-vcs.org">Other versions</a></li>
+<li><a href="http://doc.bazaar-vcs.org">Documentation</a></li>
 <li><a href="http://bazaar-vcs.org">Wiki</a></li>
 </ul>
 </div>
