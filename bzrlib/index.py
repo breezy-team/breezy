@@ -734,7 +734,7 @@ class GraphIndexPrefixAdapter(object):
         add_nodes_callback=None):
         """Construct an adapter against adapted with prefix."""
         self.adapted = adapted
-        self.prefix = prefix + (None,)*missing_key_length
+        self.prefix_key = prefix + (None,)*missing_key_length
         self.prefix = prefix
         self.prefix_len = len(prefix)
         self.add_nodes_callback = add_nodes_callback
@@ -801,7 +801,7 @@ class GraphIndexPrefixAdapter(object):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        return self._strip_prefix(self.adapted.iter_entries_prefix([self.prefix]))
+        return self._strip_prefix(self.adapted.iter_entries_prefix([self.prefix_key]))
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
