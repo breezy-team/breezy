@@ -26,6 +26,7 @@ Options include:
  * error - show stack traces for all top level exceptions
  * hooks 
  * hpss - trace smart protocol requests and responses
+ * index - trace major index operations
  * lock - trace when lockdir locks are taken or released
 
 """
