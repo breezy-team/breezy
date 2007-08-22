@@ -246,6 +246,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
