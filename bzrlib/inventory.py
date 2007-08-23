@@ -422,40 +422,23 @@ class InventoryEntry(object):
         
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
+
+        :return: True if anything was recorded
         """
-        # mutter('new parents of %s are %r', path, previous_entries)
+        # cannot be unchanged unless there is only one parent file rev.
         self._read_tree_state(path, work_tree)
-        # TODO: Where should we determine whether to reuse a
-        # previous revision id or create a new revision? 20060606
         if len(previous_entries) == 1:
-            # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
-                # mutter("found unchanged entry")
                 self.revision = parent_ie.revision
-                return "unchanged"
-        return self._snapshot_into_revision(revision, previous_entries, 
-                                            work_tree, commit_builder)
-
-    def _snapshot_into_revision(self, revision, previous_entries, work_tree,
-                                commit_builder):
-        """Record this revision unconditionally into a store.
-
-        The entry's last-changed revision property (`revision`) is updated to 
-        that of the new revision.
-        
-        :param revision: id of the new revision that is being recorded.
-
-        :returns: String description of the commit (e.g. "merged", "modified"), etc.
-        """
-        # mutter('new revision {%s} for {%s}', revision, self.file_id)
+                return False
         self.revision = revision
-        self._snapshot_text(previous_entries, work_tree, commit_builder)
+        return self._snapshot_text(previous_entries, work_tree, commit_builder)
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder): 
         """Record the 'text' of this entry, whatever form that takes.
-        
-        This default implementation simply adds an empty text.
+
+        :return: True if anything was recorded
         """
         raise NotImplementedError(self._snapshot_text)
 
@@ -586,6 +569,7 @@ class InventoryDirectory(InventoryEntry):
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
         commit_builder.modified_directory(self.file_id, file_parents)
+        return True
 
 
 class InventoryFile(InventoryEntry):
@@ -722,6 +706,7 @@ class InventoryFile(InventoryEntry):
             return work_tree.get_file(self.file_id).readlines()
         self.text_sha1, self.text_size = commit_builder.modified_file_text(
             self.file_id, file_parents, get_content_byte_lines, self.text_sha1, self.text_size)
+        return True
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
@@ -827,6 +812,7 @@ class InventoryLink(InventoryEntry):
         """See InventoryEntry._snapshot_text."""
         commit_builder.modified_link(
             self.file_id, file_parents, self.symlink_target)
+        return True
 
 
 class TreeReference(InventoryEntry):
@@ -845,6 +831,7 @@ class TreeReference(InventoryEntry):
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         commit_builder.modified_reference(self.file_id, file_parents)
+        return True
 
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.
