@@ -700,12 +700,27 @@ class InventoryFile(InventoryEntry):
     def _forget_tree_state(self):
         self.text_sha1 = None
 
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
+    def snapshot(self, revision, path, previous_entries,
+                 work_tree, commit_builder):
+        """See InventoryEntry.snapshot."""
+        # We have a custom implementation of this for files because it's
+        # performance critical.
+        if len(previous_entries) == 0:
+            # Initial commit so we know the sha is coming later
+            self.executable = work_tree.is_executable(self.file_id, path=path)
+        else:
+            self._read_tree_state(path, work_tree)
+            if len(previous_entries) == 1:
+                parent_ie = previous_entries.values()[0]
+                if self._unchanged(parent_ie):
+                    self.revision = parent_ie.revision
+                    return False
+        self.revision = revision
         def get_content_byte_lines():
             return work_tree.get_file(self.file_id).readlines()
         self.text_sha1, self.text_size = commit_builder.modified_file_text(
-            self.file_id, file_parents, get_content_byte_lines, self.text_sha1, self.text_size)
+            self.file_id, previous_entries, get_content_byte_lines,
+            self.text_sha1, self.text_size)
         return True
 
     def _unchanged(self, previous_ie):
