@@ -209,7 +209,7 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         """Return a file object for the file file_id in the tree."""
         raise NotImplementedError(self.get_file)
 

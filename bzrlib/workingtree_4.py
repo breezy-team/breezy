@@ -1505,7 +1505,7 @@ class DirStateRevisionTree(Tree):
         return self._repository.weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):

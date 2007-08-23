@@ -717,7 +717,7 @@ class InventoryFile(InventoryEntry):
                     return False
         self.revision = revision
         def get_content_byte_lines():
-            return work_tree.get_file(self.file_id).readlines()
+            return work_tree.get_file(self.file_id, path).readlines()
         self.text_sha1, self.text_size = commit_builder.modified_file_text(
             self.file_id, previous_entries, get_content_byte_lines,
             self.text_sha1, self.text_size)
