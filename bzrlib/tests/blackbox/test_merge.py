@@ -102,8 +102,8 @@ class TestMerge(ExternalBase):
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
         self.build_tree_contents([
-            ('a/', ),
-            ('a/sub/', ),
+            ('a/',),
+            ('a/sub/',),
             ('a/sub/a.txt', 'hello\n'),
             ('a/b.txt', 'hello\n'),
             ('a/sub/c.txt', 'hello\n')])
