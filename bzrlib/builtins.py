@@ -167,7 +167,7 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision',
+    takes_options = ['show-ids', 'revision', 'change',
                      Option('short', help='Give short SVN-style status lines.'),
                      Option('versioned', help='Only show versioned files.')]
     aliases = ['st', 'stat']
@@ -177,8 +177,20 @@ class cmd_status(Command):
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False):
+            versioned=False, change=None):
         from bzrlib.status import show_tree_status
+
+        if revision is not None:
+            if change is not None:
+                raise errors.BzrCommandError('bzr status can take either '
+                                             '--revision or --change, '
+                                             'not both')
+            elif len(revision) > 2:
+                raise errors.BzrCommandError('bzr status --revision takes '
+                                             'exactly one or two revision '
+                                             'specifiers')
+        elif change is not None:
+            revision = change
 
         tree, file_list = tree_files(file_list)
             
@@ -1417,13 +1429,14 @@ class cmd_diff(Command):
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
+        'change',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None):
+            prefix=None, change=None):
         from bzrlib.diff import diff_cmd_helper, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
@@ -1440,9 +1453,17 @@ class cmd_diff(Command):
                 '--prefix expects two values separated by a colon'
                 ' (eg "old/:new/")')
 
-        if revision and len(revision) > 2:
-            raise errors.BzrCommandError('bzr diff --revision takes exactly'
-                                         ' one or two revision specifiers')
+        if revision is not None:
+            if change is not None:
+                raise errors.BzrCommandError('bzr diff can take either '
+                                             '--revision or --change, '
+                                             'not both')
+            elif len(revision) > 2:
+                raise errors.BzrCommandError('bzr diff --revision takes '
+                                             'exactly one or two revision '
+                                             'specifiers')
+        elif change is not None:
+            revision = change
 
         try:
             tree1, file_list = internal_tree_files(file_list)

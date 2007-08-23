@@ -56,8 +56,11 @@ class TestDiff(DiffBase):
         self.run_bzr('commit -m fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
         self.assert_('\n+hello world!' in output)
-        output = self.run_bzr('diff -r last:3..last:1',
-                retcode=1)[0]
+        output = self.run_bzr('diff -C 3', retcode=1)[0]
+        self.assert_('\n+hello world!' in output)
+        output = self.run_bzr('diff -r last:3..last:1', retcode=1)[0]
+        self.assert_('\n+baz' in output)
+        output = self.run_bzr('diff -C last:2', retcode=1)[0]
         self.assert_('\n+baz' in output)
         self.build_tree(['moo'])
         self.run_bzr('add moo')
@@ -128,6 +131,10 @@ class TestDiff(DiffBase):
     def test_diff_illegal_revision_specifiers(self):
         out, err = self.run_bzr('diff -r 1..23..123', retcode=3)
         self.assertContainsRe(err, 'one or two revision specifiers')
+
+    def test_diff_revision_and_change(self):
+        out, err = self.run_bzr('diff -r 1..23 -C 22', retcode=3)
+        self.assertContainsRe(err, '--revision or --change, not both')
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.

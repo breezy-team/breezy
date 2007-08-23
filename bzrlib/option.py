@@ -96,6 +96,11 @@ def _parse_revision_str(revstr):
     return revs
 
 
+def _parse_change_str(revstr):
+    return (revisionspec.RevisionSpec.from_string('before:' + revstr),
+            revisionspec.RevisionSpec.from_string(revstr))
+
+
 def _parse_merge_type(typestring):
     return get_merge_type(typestring)
 
@@ -387,6 +392,10 @@ _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
                help='See \'help revisionspec\' for details.')
+_global_option('change',
+               type=_parse_change_str,
+               short_name='C',
+               help='Show changes introduced by the specified revision.')
 _global_option('show-ids',
                help='Show internal object ids.')
 _global_option('timezone', 

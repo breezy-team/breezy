@@ -46,6 +46,9 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
+    * New option ``-C``/``--change`` for ``diff`` and ``status`` to show
+      changes in one revision.  (Lukáš Lalinský)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
