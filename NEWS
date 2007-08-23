@@ -44,6 +44,10 @@ IN DEVELOPMENT
     * ``send`` now sends the directive as an attachment by default.
       (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
 
+    * Initial commit no longer SHAs files twice and now reuses the path
+      rather than looking it up again, making it faster.
+      (Ian Clatworthy)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
