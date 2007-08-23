@@ -44,6 +44,8 @@ IN DEVELOPMENT
     * ``send`` now sends the directive as an attachment by default.
       (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
 
+    * Documentation updates (Martin Albisetti)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
