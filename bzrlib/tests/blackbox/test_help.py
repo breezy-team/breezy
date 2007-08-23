@@ -142,4 +142,4 @@ class TestHelp(ExternalBase):
         self.assertEqual(expected, self.run_bzr('help cat')[0])
 
         self.assertEqual("'bzr c' is an alias for 'bzr cat'.\n",
-                                                    self.run_bzr('help c')[0])
+                         self.run_bzr('help c')[0])
