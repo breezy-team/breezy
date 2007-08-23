@@ -250,8 +250,14 @@ command.  (e.g. "bzr --quiet help").
                This does not suppress other plugin effects
 --no-plugins   Do not process any plugins
 
+-Devil         capture call sites that do expensive or badly-scaling
+               operations.
 -Derror        Instead of normal error handling, always print a traceback on
                error.
+-Dhooks
+-Dhpss         trace smart protocol requests and responses
+-Dindex        trace major index operations
+-Dlock         trace when lockdir locks are taken or released
 --profile      Profile execution using the hotshot profiler
 --lsprof       Profile execution using the lsprof profiler
 --lsprof-file  Profile execution using the lsprof profiler, and write the
