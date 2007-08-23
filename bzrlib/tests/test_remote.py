@@ -767,9 +767,13 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         return pack_file
 
     def test_bad_pack_from_server(self):
-        """A response with invalid data (e.g. it has a record with a name with
-        multiple elements) triggers an exception."""
-        record = ('bytes', [('three', 'elem', 'tuple')])
+        """A response with invalid data (e.g. it has a record with multiple
+        names) triggers an exception.
+        
+        Not all possible errors will be caught at this stage, but obviously
+        malformed data should be.
+        """
+        record = ('bytes', [('name1',), ('name2',)])
         pack_file = self.make_pack_file([record])
         responses = [(('ok',), pack_file.getvalue()), ]
         transport_path = 'quack'

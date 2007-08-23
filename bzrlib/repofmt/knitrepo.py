@@ -131,9 +131,9 @@ class KnitRepository(MetaDirRepository):
         """See Repository.get_data_stream."""
         # XXX: is this generic enough to move to the Repository base class?
         for knit_kind, file_id, versions in self.item_keys_introduced_by(revision_ids):
-            name = knit_kind
+            name = (knit_kind,)
             if knit_kind == 'file':
-                name = 'file:' + file_id
+                name = ('file', file_id)
                 knit = self.weave_store.get_weave_or_empty(
                     file_id, self.get_transaction())
             elif knit_kind == 'inventory':

@@ -392,7 +392,11 @@ class TestRepository(TestCaseWithRepository):
         #   * the inventory knit
         #   * the revisions knit
         # in that order.
-        expected_record_names = ['file:file1', 'inventory', 'signatures', 'revisions']
+        expected_record_names = [
+            ('file', 'file1'),
+            ('inventory',),
+            ('signatures',),
+            ('revisions',)]
         streamed_names = []
         for name, bytes in stream:
             streamed_names.append(name)
@@ -404,7 +408,7 @@ class TestRepository(TestCaseWithRepository):
             # Note that the file knits can be in any order, so this test is
             # written to allow that.
             inv = repo.get_inventory('rev_id')
-            expected_record_name = 'file:' + inv.root.file_id
+            expected_record_name = ('file', inv.root.file_id)
             self.assertTrue(expected_record_name in streamed_names)
             streamed_names.remove(expected_record_name)
 

@@ -760,12 +760,12 @@ class RemoteRepository(object):
                 try:
                     # These records should have only one name, and that name
                     # should be a one-element tuple.
-                    [(name,)] = record_names
+                    [name_tuple] = record_names
                 except ValueError:
                     raise errors.SmartProtocolError(
                         'Repository data stream had invalid record name %r'
                         % (record_names,))
-                yield name, read_bytes(None)
+                yield name_tuple, read_bytes(None)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
