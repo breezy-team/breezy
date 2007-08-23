@@ -36,7 +36,7 @@ class TestMerge(ExternalBase):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (pathjoin(path, 'hello'),   'foo'),
+            (pathjoin(path, 'hello'), 'foo'),
             (pathjoin(path, 'goodbye'), 'baz')])
         tree.add('hello')
         tree.commit(message='setup')
@@ -102,10 +102,10 @@ class TestMerge(ExternalBase):
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
         self.build_tree_contents([
-            ('a/',                   ),
-            ('a/sub/',               ),
+            ('a/', ),
+            ('a/sub/', ),
             ('a/sub/a.txt', 'hello\n'),
-            ('a/b.txt',     'hello\n'),
+            ('a/b.txt', 'hello\n'),
             ('a/sub/c.txt', 'hello\n')])
         a_tree = self.make_branch_and_tree('a')
         a_tree.add(['sub', 'b.txt', 'sub/c.txt', 'sub/a.txt'])
@@ -113,7 +113,7 @@ class TestMerge(ExternalBase):
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([
             ('a/sub/a.txt', 'hello\nthere\n'),
-            ('a/b.txt',     'hello\nthere\n'),
+            ('a/b.txt', 'hello\nthere\n'),
             ('a/sub/c.txt', 'hello\nthere\n')])
         a_tree.commit(message='Added there')
         os.remove('a/sub/a.txt')
@@ -123,7 +123,7 @@ class TestMerge(ExternalBase):
         a_tree.commit(message='Removed a.txt')
         self.build_tree_contents([
             ('b/sub/a.txt', 'hello\nsomething\n'),
-            ('b/b.txt',     'hello\nsomething\n'),
+            ('b/b.txt', 'hello\nsomething\n'),
             ('b/sub/c.txt', 'hello\nsomething\n')])
         b_tree.commit(message='Modified a.txt')
         os.chdir('b')
