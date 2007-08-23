@@ -40,7 +40,7 @@ class DiffBase(ExternalBase):
     def make_example_branch(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('hello',   'foo\n'),
+            ('hello', 'foo\n'),
             ('goodbye', 'baz\n')])
         tree.add(['hello'])
         tree.commit('setup')
