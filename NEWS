@@ -46,6 +46,9 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
+    * Help on debug flags is now included in ``help global-options``.
+      (Daniel Watkins, #124853)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
