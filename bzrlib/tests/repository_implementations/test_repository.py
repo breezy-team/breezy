@@ -389,7 +389,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
                           [('file1-id', 'rev3', 'file1-notpresent')]))
-        self.assertRaises(errors.NoSuchId, list,
+        self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
 
