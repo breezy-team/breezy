@@ -297,6 +297,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         inv = Inventory(revision_id='ghost')
         inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
+        repo.lock_write()
+        repo.start_write_group()
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -306,10 +308,14 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                                        revision_id='ghost')
         rev.parent_ids = []
         repo.add_revision('ghost', rev)
+        repo.commit_write_group()
+        repo.unlock()
          
         repo = self.make_to_repository('missing_ghost')
         inv = Inventory(revision_id='with_ghost')
         inv.root.revision = 'with_ghost'
+        repo.lock_write()
+        repo.start_write_group()
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -319,6 +325,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                                        revision_id='with_ghost')
         rev.parent_ids = ['ghost']
         repo.add_revision('with_ghost', rev)
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_fetch_all_fixes_up_ghost(self):
         # fetching from a repo with a current ghost unghosts it in referencing

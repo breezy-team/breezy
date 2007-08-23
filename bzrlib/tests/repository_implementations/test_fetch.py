@@ -87,7 +87,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev1', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         return repo
