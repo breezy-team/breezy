@@ -1240,6 +1240,7 @@ def install_revision(repository, rev, revision_tree):
         _install_revision(repository, rev, revision_tree)
     except:
         repository.abort_write_group()
+        raise
     else:
         repository.commit_write_group()
 
