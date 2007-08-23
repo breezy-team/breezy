@@ -31,9 +31,9 @@ class TestConflicts(ExternalBase):
         super(ExternalBase, self).setUp()
         a_tree = self.make_branch_and_tree('a')
         self.build_tree_contents([
-            ('a/myfile',        'contentsa\n'),
+            ('a/myfile', 'contentsa\n'),
             ('a/my_other_file', 'contentsa\n'),
-            ('a/mydir/',                     ),
+            ('a/mydir/',),
             ])
         a_tree.add('myfile')
         a_tree.add('my_other_file')
@@ -41,13 +41,13 @@ class TestConflicts(ExternalBase):
         a_tree.commit(message="new")
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([
-            ('b/myfile',        'contentsb\n'),
+            ('b/myfile', 'contentsb\n'),
             ('b/my_other_file', 'contentsb\n'),
             ])
         b_tree.rename_one('mydir', 'mydir2')
         b_tree.commit(message="change")
         self.build_tree_contents([
-            ('a/myfile',        'contentsa2\n'),
+            ('a/myfile', 'contentsa2\n'),
             ('a/my_other_file', 'contentsa2\n'),
             ])
         a_tree.rename_one('mydir', 'mydir3')

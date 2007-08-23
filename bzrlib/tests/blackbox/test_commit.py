@@ -186,7 +186,7 @@ class TestCommit(ExternalBase):
             other_tree.rename_one('filetoreparent', 'renameddir/reparentedfile')
             other_tree.remove(['dirtoremove', 'filetoremove'])
             self.build_tree_contents([
-                ('other/newdir/', ),
+                ('other/newdir/',),
                 ('other/filetomodify', 'new content'),
                 ('other/newfile', 'new file content')])
             other_tree.add('newfile')
