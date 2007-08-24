@@ -1988,6 +1988,10 @@ class InterPackRepo(InterSameDataRepository):
         if pack is not None:
             self.target._packs.save()
             self.target._packs.add_pack_to_memory(pack)
+            # Trigger an autopack. This may duplicate effort as we've just done
+            # a pack creation, but for now it is simpler to think about as
+            # 'upload data, then repack if needed'.
+            self.target._packs.autopack()
             return pack.get_revision_count()
         else:
             return 0
