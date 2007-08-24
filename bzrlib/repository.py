@@ -1112,18 +1112,25 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
+    def _add_revision_text_version(self, tree, revision_versions):
+        inv_revisions = {}
+        revision_versions[tree.get_revision_id()] = inv_revisions
+        for path, entry in tree.iter_entries_by_dir():
+            inv_revisions[entry.file_id] = entry.revision
+        return inv_revisions
+
     def check_versionedfile(self, revision_ids, file_id, versionedfile,
-                            revision_versions):
+                            revision_versions, parents_provider=None):
         """Search the versionedfile for discrepancies from the graph"""
+        if parents_provider is None:
+            parents_provider = _RevisionParentsProvider(self)
         def get_text_revision(revision_id):
             try:
                 inv_revisions = revision_versions[revision_id]
             except KeyError:
                 tree = self.revision_tree(revision_id)
-                inv_revisions = {}
-                revision_versions[revision_id] = inv_revisions
-                for path, entry in tree.iter_entries_by_dir():
-                    inv_revisions[entry.file_id] = entry.revision
+                inv_revisions = self._add_revision_text_version(tree,
+                    revision_versions)
             return inv_revisions.get(file_id)
 
         result = {}
@@ -1132,12 +1139,13 @@ class Repository(object):
             text_revision = get_text_revision(revision_id)
             if text_revision is None:
                 continue
-            parents = self.get_revision(text_revision).parent_ids
+            parents = parents_provider.get_parents([text_revision])[0]
             revision_parents = set([get_text_revision(p) for p in parents])
             knit_parents = set(versionedfile.get_parents(text_revision))
             unreferenced = knit_parents.difference(revision_parents)
             if len(unreferenced) != 0:
                 result[(file_id, text_revision)] = unreferenced
+                note('unreferenced: %r' % unreferenced)
                 
         return result
 
@@ -2377,3 +2385,37 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
+
+
+class _RevisionParentsProvider(object):
+    """A parents provider that uses a repositoy's revision objects.
+
+    Should only be used when checking for corruption.
+
+    For uncorrupt repositories, should give the same results as the repo's
+    get_parents implementation, except much more slowly.
+    """
+    def __init__(self, repo):
+        self._repo = repo
+        self._memoized = {}
+
+    def get_parents(self, revision_ids):
+        parents_list = []
+        for revision_id in revision_ids:
+            try:
+                parents = self._memoized[revision_id]
+            except KeyError:
+                if revision_id == _mod_revision.NULL_REVISION:
+                    parents = []
+                else:
+                    try:
+                        revision = self._repo.get_revision(revision_id)
+                        parents = revision.parent_ids
+                    except errors.NoSuchRevision:
+                        parents = None
+                    else:
+                        if len(parents) == 0:
+                            parents = [_mod_revision.NULL_REVISION]
+                self._memoized[revision_id] = parents
+            parents_list.append(parents)
+        return parents_list

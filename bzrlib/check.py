@@ -32,6 +32,7 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+from bzrlib import repository
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
 from bzrlib.trace import note
@@ -53,6 +54,7 @@ class Check(object):
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
+        self.revision_versions = {}
 
     def check(self):
         self.repository.lock_read()
@@ -64,27 +66,26 @@ class Check(object):
             self.inventory_weave = self.repository.get_inventory_weave()
             self.plan_revisions()
             revno = 0
-            self.check_weaves()
             while revno < len(self.planned_revisions):
                 rev_id = self.planned_revisions[revno]
                 self.progress.update('checking revision', revno,
                                      len(self.planned_revisions))
                 revno += 1
                 self.check_one_rev(rev_id)
+            self.check_weaves()
         finally:
             self.progress.finished()
             self.repository.unlock()
 
     def plan_revisions(self):
         repository = self.repository
-        self.planned_revisions = set(repository.all_revision_ids())
+        self.planned_revisions = repository.all_revision_ids()
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
-        awol = self.planned_revisions - inventoried
+        awol = set(self.planned_revisions) - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
                 '{%s}' % ','.join([f for f in awol]))
-        self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
         note('checked repository %s format %s',
@@ -159,17 +160,21 @@ class Check(object):
             n_weaves = len(weave_ids) + 1
         self.progress.update('checking weave', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
-        graph = self.repository.get_graph()
+        revision_parents = repository._RevisionParentsProvider(self.repository)
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking weave', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
+            self.repository.check_versionedfile(self.planned_revisions,
+                weave_id, w, self.revision_versions, revision_parents)
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
+        self.repository._add_revision_text_version(tree,
+            self.revision_versions)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:
