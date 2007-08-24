@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * bzr send uses default values for ranges when only half of an elipsis
+      is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
