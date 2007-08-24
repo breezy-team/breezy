@@ -1144,9 +1144,9 @@ class Repository(object):
             knit_parents = set(versionedfile.get_parents(text_revision))
             unreferenced = knit_parents.difference(revision_parents)
             if len(unreferenced) != 0:
-                result[(file_id, text_revision)] = unreferenced
-                note('unreferenced: %r' % unreferenced)
-                
+                rset = result.setdefault(frozenset(unreferenced), set())
+                rset.add(text_revision)
+        note('unreferenced for %s: %r', file_id, result.keys())
         return result
 
     @needs_write_lock

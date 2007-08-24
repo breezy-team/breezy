@@ -72,4 +72,4 @@ class TestCheckRepository(TestCaseWithRepository):
         inventory_versions = {}
         result = repo.check_versionedfile(['rev2'], 'file1-id', vf,
             inventory_versions)
-        self.assertEqual({('file1-id', 'rev2'): set(['rev1b'])}, result)
+        self.assertEqual({frozenset(['rev1b']): set(['rev2'])}, result)
