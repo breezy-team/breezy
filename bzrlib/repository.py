@@ -1140,13 +1140,17 @@ class Repository(object):
             if text_revision is None:
                 continue
             parents = parents_provider.get_parents([text_revision])[0]
-            revision_parents = set([get_text_revision(p) for p in parents])
+            revision_parents = set()
+            for parent_id in parents:
+                try:
+                    revision_parents.add(get_text_revision(parent_id))
+                # Skip ghosts (this means they can't provide texts...)
+                except errors.RevisionNotPresent:
+                    continue
             knit_parents = set(versionedfile.get_parents(text_revision))
             unreferenced = knit_parents.difference(revision_parents)
-            if len(unreferenced) != 0:
-                rset = result.setdefault(frozenset(unreferenced), set())
-                rset.add(text_revision)
-        note('unreferenced for %s: %r', file_id, result.keys())
+            for unreferenced_id in unreferenced:
+                result.setdefault(unreferenced_id, set()).add(text_revision)
         return result
 
     @needs_write_lock

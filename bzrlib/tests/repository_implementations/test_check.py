@@ -26,16 +26,29 @@ class TestCheckRepository(TestCaseWithRepository):
         repo.add_inventory('rev1b', inv, [])
 
         # make rev2
-        inv = inventory.Inventory(revision_id='rev2')
-        inv.root.revision = 'rev2'
+        inv = inventory.Inventory()
         self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
         self.add_file(repo, inv, 'file2', 'rev2', [])
-        repo.add_inventory('rev2', inv, ['rev1a'])
-        revision = _mod_revision.Revision('rev2',
-            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-            timezone=0, message='foo', parent_ids=['rev1a'])
-        repo.add_revision('rev2',revision, inv)
+        self.add_revision(repo, 'rev2', inv, ['rev1a'])
+
+        # make ghost revision rev1c
+        inv = inventory.Inventory()
+        self.add_file(repo, inv, 'file2', 'rev1c', [])
+
+        # make rev3 with reference to ghost rev1c
+        inv = inventory.Inventory()
+        self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
+        self.add_revision(repo, 'rev3', inv, ['rev1c'])
         return repo
+
+    def add_revision(self, repo, revision_id, inv, parent_ids):
+        inv.revision_id = revision_id
+        inv.root.revision = revision_id
+        repo.add_inventory(revision_id, inv, parent_ids)
+        revision = _mod_revision.Revision(revision_id,
+            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
+            timezone=0, message='foo', parent_ids=parent_ids)
+        repo.add_revision(revision_id,revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'
@@ -72,4 +85,8 @@ class TestCheckRepository(TestCaseWithRepository):
         inventory_versions = {}
         result = repo.check_versionedfile(['rev2'], 'file1-id', vf,
             inventory_versions)
-        self.assertEqual({frozenset(['rev1b']): set(['rev2'])}, result)
+        self.assertEqual({'rev1b': set(['rev2'])}, result)
+
+    def test_ghost(self):
+        result = self.check_versionedfile('file2-id', ['rev3'])
+        self.assertEqual({'rev1c': set(['rev3'])}, result)
