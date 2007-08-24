@@ -296,3 +296,13 @@ class TestOptionDefinitions(TestCase):
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
+
+    def test_is_hidden(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('hidden', 'RepositoryFormatKnit1',
+            'two help', hidden=True)
+        registry.register_metadir('visible', 'RepositoryFormatKnit1',
+            'two help', hidden=False)
+        format = option.RegistryOption('format', '', registry, str)
+        self.assertTrue(format.is_hidden('hidden'))
+        self.assertFalse(format.is_hidden('visible'))

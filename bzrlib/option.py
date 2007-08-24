@@ -197,6 +197,9 @@ class Option(object):
             argname = argname.upper()
         yield self.name, self.short_name(), argname, self.help
 
+    def is_hidden(self, name):
+        return False
+
 
 class ListOption(Option):
     """Option used to provide a list of values.
@@ -300,7 +303,7 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]
-                if getattr(self.registry.get_info(key), 'hidden', False):
+                if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
                     help = self.registry.get_help(key)
@@ -324,6 +327,11 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)
+
+    def is_hidden(self, name):
+        if name == self.name:
+            return Option.is_hidden(self, name)
+        return getattr(self.registry.get_info(name), 'hidden', False)
 
 
 class OptionParser(optparse.OptionParser):
