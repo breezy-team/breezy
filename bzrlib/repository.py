@@ -1999,7 +1999,8 @@ class InterPackRepo(InterSameDataRepository):
             inventory_index_map,
             text_index_map,
             signature_index_map,
-            revision_ids
+            '.fetch',
+            revision_ids,
             )
         if pack is not None:
             self.target._packs.save()

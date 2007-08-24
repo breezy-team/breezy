@@ -181,7 +181,7 @@ class RepositoryPackCollection(object):
         return True
 
     def create_pack_from_packs(self, revision_index_map, inventory_index_map,
-        text_index_map, signature_index_map, revision_ids=None):
+        text_index_map, signature_index_map, suffix, revision_ids=None):
         """Create a new pack by reading data from other packs.
 
         This does little more than a bulk copy of data. One key difference
@@ -206,7 +206,7 @@ class RepositoryPackCollection(object):
         if getattr(self.repo, '_open_pack_tuple', None) is not None:
             raise errors.BzrError('call to create_pack_from_packs while '
                 'another pack is being written.')
-        random_name = self.repo.control_files._lock.nonce + '.autopack'
+        random_name = self.repo.control_files._lock.nonce + suffix
         if 'fetch' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (transport.base, name) for
                 transport, name in revision_index_map.itervalues()]
@@ -471,7 +471,7 @@ class RepositoryPackCollection(object):
         # select signature keys
         signature_index_map = self._signature_index_map(pack_details)
         self.create_pack_from_packs(revision_index_map, inv_index_map,
-            text_index_map, signature_index_map)
+            text_index_map, signature_index_map, '.autopack')
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
         # plan a readv on each source pack:
