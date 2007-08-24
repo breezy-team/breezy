@@ -1112,6 +1112,33 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
+    def check_versionedfile(self, revision_ids, file_id, versionedfile,
+                            revision_versions):
+        """Search the versionedfile for discrepancies from the graph"""
+        def get_text_revision(revision_id):
+            try:
+                inv_revisions = revision_versions[revision_id]
+            except KeyError:
+                tree = self.revision_tree(revision_id)
+                inv_revisions = {}
+                revision_versions[revision_id] = inv_revisions
+                for path, entry in tree.iter_entries_by_dir():
+                    inv_revisions[entry.file_id] = entry.revision
+            return inv_revisions[file_id]
+
+        result = {}
+
+        for revision_id in revision_ids:
+            text_revision = get_text_revision(revision_id)
+            parents = self.get_revision(text_revision).parent_ids
+            revision_parents = set([get_text_revision(p) for p in parents])
+            knit_parents = set(versionedfile.get_parents(text_revision))
+            unreferenced = knit_parents.difference(revision_parents)
+            if len(unreferenced) != 0:
+                result[(file_id, text_revision)] = unreferenced
+                
+        return result
+
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.

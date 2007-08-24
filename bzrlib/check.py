@@ -159,6 +159,7 @@ class Check(object):
             n_weaves = len(weave_ids) + 1
         self.progress.update('checking weave', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
+        graph = self.repository.get_graph()
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking weave', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
