@@ -36,6 +36,9 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -261,28 +264,40 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
-    def test_create_repository(self):
+    def test_create_repository_deprecated(self):
+        # new interface is to make the bzrdir, then a repository within that.
         format = SampleBzrDirFormat()
-        repo = bzrdir.BzrDir.create_repository(self.get_url(), format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url(), format=format)
         self.assertEqual('A repository', repo)
 
     def test_create_repository_shared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.', shared=True)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.', shared=True)
         self.assertTrue(repo.is_shared())
 
     def test_create_repository_nonshared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.')
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.')
         self.assertFalse(repo.is_shared())
 
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
         # we trust the format is right from the 'create_repository test'
+        # new interface is to make the bzrdir, then a repository within that.
         format = bzrdir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('child'),
-                                               format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url('child'),
+                format=format)
         self.assertTrue(isinstance(repo, repository.Repository))
         self.assertTrue(repo.bzrdir.root_transport.base.endswith('child/'))
 

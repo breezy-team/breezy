@@ -9,6 +9,9 @@ Usage:
     ostools.py copytodir FILES... DIR
                     copy files to specified directory
 
+    ostools.py copytree FILES... DIR
+                    copy files to specified directory keeping relative paths
+
     ostools.py remove [FILES...] [DIRS...]
                     remove files or directories (recursive)
 """
@@ -50,6 +53,33 @@ def main(argv=None):
 
         for src in files:
             dest = os.path.join(todir, os.path.basename(src))
+            shutil.copy(src, dest)
+            print "Copied:", src, "=>", dest
+
+        return 0
+
+    if cmd == 'copytree':
+        if len(argv) < 2:
+            print "Usage:  ostools.py copytree FILES... DIR"
+            return 1
+
+        todir = argv.pop()
+        if not os.path.exists(todir):
+            os.makedirs(todir)
+        if not os.path.isdir(todir):
+            print "Error: Destination is not a directory"
+            return 2
+
+        files = []
+        for possible_glob in argv:
+            files += glob.glob(possible_glob)
+
+        for src in files:
+            relative_path = src
+            dest = os.path.join(todir, relative_path)
+            dest_dir = os.path.dirname(dest)
+            if not os.path.isdir(dest_dir):
+                os.makedirs(dest_dir)
             shutil.copy(src, dest)
             print "Copied:", src, "=>", dest
 

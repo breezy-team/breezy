@@ -136,4 +136,4 @@ class TestCheckout(ExternalBase):
         self.assertEqual('1', tree.last_revision())
         branch.bzrdir.destroy_workingtree()
         self.run_bzr('checkout -r 0')
-        self.assertIs(None, tree.last_revision())
+        self.assertEqual('null:', tree.last_revision())

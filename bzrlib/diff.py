@@ -424,7 +424,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
          text_modified, meta_modified) in delta.renamed:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, "=== renamed %s '%s' => %r%s" % (
+        print >>to_file, "=== renamed %s '%s' => '%s'%s" % (
                     kind, old_path.encode('utf8'),
                     new_path.encode('utf8'), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,

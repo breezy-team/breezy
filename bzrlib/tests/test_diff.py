@@ -498,6 +498,35 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, r"--- a/%s" % (omega_utf8,))
         self.assertContainsRe(diff, r"\+\+\+ b/%s" % (omega_utf8,))
 
+    def test_unicode_filename(self):
+        """Test when the filename are unicode."""
+        self.requireFeature(UnicodeFilename)
+
+        alpha, omega = u'\u03b1', u'\u03c9'
+        autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
+
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/ren_'+alpha, 'contents\n')])
+        tree.add(['ren_'+alpha], ['file-id-2'])
+        self.build_tree_contents([('tree/del_'+alpha, 'contents\n')])
+        tree.add(['del_'+alpha], ['file-id-3'])
+        self.build_tree_contents([('tree/mod_'+alpha, 'contents\n')])
+        tree.add(['mod_'+alpha], ['file-id-4'])
+
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('ren_'+alpha, 'ren_'+omega)
+        tree.remove('del_'+alpha)
+        self.build_tree_contents([('tree/add_'+alpha, 'contents\n')])
+        tree.add(['add_'+alpha], ['file-id'])
+        self.build_tree_contents([('tree/mod_'+alpha, 'contents_mod\n')])
+
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff,
+                "=== renamed file 'ren_%s' => 'ren_%s'\n"%(autf8, outf8))
+        self.assertContainsRe(diff, "=== added file 'add_%s'"%autf8)
+        self.assertContainsRe(diff, "=== modified file 'mod_%s'"%autf8)
+        self.assertContainsRe(diff, "=== removed file 'del_%s'"%autf8)
 
 class TestPatienceDiffLib(TestCase):
 

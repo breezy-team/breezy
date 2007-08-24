@@ -59,7 +59,12 @@ def _check_name_encoding(name):
 
 
 class ContainerWriter(object):
-    """A class for writing containers."""
+    """A class for writing containers.
+
+    :attribute records_written: The number of user records added to the
+        container. This does not count the prelude or suffix of the container
+        introduced by the begin() and end() methods.
+    """
 
     def __init__(self, write_func):
         """Constructor.
@@ -69,6 +74,7 @@ class ContainerWriter(object):
         """
         self._write_func = write_func
         self.current_offset = 0
+        self.records_written = 0
 
     def begin(self):
         """Begin writing a container."""
@@ -112,6 +118,7 @@ class ContainerWriter(object):
         self.write_func("\n")
         # Finally, the contents.
         self.write_func(bytes)
+        self.records_written += 1
         # return a memo of where we wrote data to allow random access.
         return current_offset, self.current_offset - current_offset
 

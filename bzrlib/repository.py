@@ -246,6 +246,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -730,6 +732,33 @@ class Repository(object):
         finally:
             pb.finished()
         return result
+
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of lines produced by
+        VersionedFile.get_lines().
+
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            triples
+        """
+        transaction = self.get_transaction()
+        for file_id, revision_id, callable_data in desired_files:
+            try:
+                weave = self.weave_store.get_weave(file_id, transaction)
+            except errors.NoSuchFile:
+                raise errors.NoSuchIdInRepository(self, file_id)
+            yield callable_data, weave.get_lines(revision_id)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         """Get an iterable listing the keys of all the data introduced by a set
