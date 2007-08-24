@@ -1124,12 +1124,14 @@ class Repository(object):
                 revision_versions[revision_id] = inv_revisions
                 for path, entry in tree.iter_entries_by_dir():
                     inv_revisions[entry.file_id] = entry.revision
-            return inv_revisions[file_id]
+            return inv_revisions.get(file_id)
 
         result = {}
 
         for revision_id in revision_ids:
             text_revision = get_text_revision(revision_id)
+            if text_revision is None:
+                continue
             parents = self.get_revision(text_revision).parent_ids
             revision_parents = set([get_text_revision(p) for p in parents])
             knit_parents = set(versionedfile.get_parents(text_revision))

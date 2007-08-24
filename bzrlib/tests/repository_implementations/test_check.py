@@ -29,6 +29,7 @@ class TestCheckRepository(TestCaseWithRepository):
         inv = inventory.Inventory(revision_id='rev2')
         inv.root.revision = 'rev2'
         self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
+        self.add_file(repo, inv, 'file2', 'rev2', [])
         repo.add_inventory('rev2', inv, ['rev1a'])
         revision = _mod_revision.Revision('rev2',
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
@@ -45,6 +46,11 @@ class TestCheckRepository(TestCaseWithRepository):
                                                  repo.get_transaction())
         vf.add_lines(revision, parents, ['line\n'])
 
+    def check_versionedfile(self, file_id, revision_ids):
+        repo = self.make_broken_repository()
+        vf = repo.weave_store.get_weave(file_id, repo.get_transaction())
+        return repo.check_versionedfile(revision_ids, file_id, vf, {})
+
     def test_normal_first_revision(self):
         repo = self.make_broken_repository()
         vf = repo.weave_store.get_weave('file1-id', repo.get_transaction())
@@ -53,6 +59,11 @@ class TestCheckRepository(TestCaseWithRepository):
             inventory_versions)
         self.assertSubset(['rev1a'], inventory_versions.keys())
         self.assertEqual('rev1a', inventory_versions['rev1a']['file1-id'])
+        self.assertEqual({}, result)
+
+    def test_not_present_in_revision(self):
+        # It is not an error to check a revision that does not contain the file
+        result = self.check_versionedfile('file2-id', ['rev1a'])
         self.assertEqual({}, result)
 
     def test_second_revision(self):
