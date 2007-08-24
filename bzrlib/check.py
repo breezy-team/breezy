@@ -55,6 +55,7 @@ class Check(object):
         self.checked_texts = {}
         self.checked_weaves = {}
         self.revision_versions = {}
+        self.unreferenced_ancestors = set()
 
     def check(self):
         self.repository.lock_read()
@@ -94,6 +95,8 @@ class Check(object):
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
+        note('%6d unreferenced text ancestors',
+             len(self.unreferenced_ancestors))
         note('%6d weaves', len(self.checked_weaves))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
@@ -114,6 +117,10 @@ class Check(object):
                     note('      %s should be in the ancestry for:', link)
                     for linker in linkers:
                         note('       * %s', linker)
+            if verbose:
+                for file_id, revision_id in self.unreferenced_ancestors:
+                    note('unreferenced ancestor: {%s} in %s', revision_id,
+                        file_id)
 
     def check_one_rev(self, rev_id):
         """Check one revision.
@@ -167,8 +174,11 @@ class Check(object):
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
-            self.repository.check_versionedfile(self.planned_revisions,
-                weave_id, w, self.revision_versions, revision_parents)
+            result = self.repository.check_versionedfile(
+                self.planned_revisions, weave_id, w, self.revision_versions,
+                revision_parents)
+            for revision_id in result.iterkeys():
+                self.unreferenced_ancestors.add((weave_id, revision_id))
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
