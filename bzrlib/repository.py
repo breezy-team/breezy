@@ -1121,7 +1121,26 @@ class Repository(object):
 
     def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
                           revision_versions, parents_provider=None):
-        """Search the versionedfile for discrepancies from the graph"""
+        """Search the versionedfile for ancestors that are not referenced.
+
+        The graph of a given versionedfile should be a subset of the graph
+        described by the repository's revisions.  One possible deviation is
+        if a text's parents are not a subset of its revision's parents'
+        last-modified revisions.  This deviation prevents
+        fileids_altered_by_revision_ids from correctly determining which
+        revisions of each text need to be fetched.
+
+        This method detects this case.
+
+        :param revision_ids: The revisions to scan for deviations
+        :file_id: The file-id of the versionedfile to scan
+        :versionedfile: The versionedfile to scan
+        :revision_versions: A dict that is a cache of last-modified revisions
+            of files for each version
+        :parents_provider: An implementation of ParentsProvider to use for
+            determining the revision graph's ancestry.
+            _RevisionParentsProvider is recommended for this purpose.
+        """
         if parents_provider is None:
             parents_provider = _RevisionParentsProvider(self)
         def get_text_revision(revision_id):
