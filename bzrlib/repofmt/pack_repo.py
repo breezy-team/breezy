@@ -206,13 +206,21 @@ class RepositoryPackCollection(object):
         if getattr(self.repo, '_open_pack_tuple', None) is not None:
             raise errors.BzrError('call to create_pack_from_packs while '
                 'another pack is being written.')
+        if revision_ids is not None and len(revision_ids) == 0:
+            # silly fetch request.
+            return None
         random_name = self.repo.control_files._lock.nonce + suffix
         if 'fetch' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (transport.base, name) for
                 transport, name in revision_index_map.itervalues()]
-            mutter('%s: create_pack: creating pack from source packs: %s%s %s t=0',
+            if revision_ids is not None:
+                rev_count = len(revision_ids)
+            else:
+                rev_count = 'all'
+            mutter('%s: create_pack: creating pack from source packs: '
+                '%s%s %s revisions wanted %s t=0',
                 time.ctime(), self.repo._upload_transport.base, random_name,
-                plain_pack_list)
+                plain_pack_list, rev_count)
             start_time = time.time()
         write_stream = self.repo._upload_transport.open_write_stream(random_name)
         if 'fetch' in debug.debug_flags:
@@ -398,8 +406,8 @@ class RepositoryPackCollection(object):
             # XXX: the following may want to be a class, to pack with a given
             # policy.
             mutter('Packing repository %s, which has %d pack files, '
-                'containing %d revisions into %d packs.', self, total_packs,
-                total_revisions, self._max_pack_count(total_revisions))
+                'containing %d revisions into 1 packs.', self, total_packs,
+                total_revisions)
             # determine which packs need changing
             pack_distribution = [1]
             pack_operations = [[0, []]]

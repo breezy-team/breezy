@@ -324,7 +324,7 @@ class GraphIndex(object):
             the most efficient order for the index.
         """
         if 'evil' in debug.debug_flags:
-            trace.mutter_callsite(2,
+            trace.mutter_callsite(3,
                 "iter_all_entries scales with size of history.")
         if self._nodes is None:
             self._buffer_all()
@@ -615,7 +615,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             efficient order for the index (in this case dictionary hash order).
         """
         if 'evil' in debug.debug_flags:
-            trace.mutter_callsite(2,
+            trace.mutter_callsite(3,
                 "iter_all_entries scales with size of history.")
         if self.reference_lists:
             for key, (absent, references, value) in self._nodes.iteritems():

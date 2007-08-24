@@ -21,8 +21,9 @@ import math
 import md5
 
 from bzrlib import (
-        pack,
-        )
+    debug,
+    pack,
+    )
 from bzrlib.index import (
     GraphIndex,
     GraphIndexBuilder,
@@ -57,7 +58,7 @@ from bzrlib.repository import (
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 
 class _KnitParentsProvider(object):
@@ -163,7 +164,7 @@ class KnitRepository(MetaDirRepository):
         :return: a dictionary of revision_id->revision_parents_list.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            mutter_callsite(3,
                 "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
@@ -185,6 +186,9 @@ class KnitRepository(MetaDirRepository):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         vf = self._get_revision_vf()
         versions = set(vf.versions())

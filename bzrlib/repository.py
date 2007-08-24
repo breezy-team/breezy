@@ -548,7 +548,7 @@ class Repository(object):
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "has_revision is a LBYL symptom.")
+            mutter_callsite(3, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -891,7 +891,7 @@ class Repository(object):
         :return: a dictionary of revision_id->revision_parents_list.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            mutter_callsite(3,
                 "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
@@ -926,7 +926,7 @@ class Repository(object):
         :return: a Graph object with the graph reachable from revision_ids.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            mutter_callsite(3,
                 "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
