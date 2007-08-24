@@ -29,7 +29,8 @@ import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.trace import mutter, mutter_callsite
+from bzrlib import trace
+from bzrlib.trace import mutter
 """)
 from bzrlib import debug, errors
 
@@ -323,7 +324,8 @@ class GraphIndex(object):
             the most efficient order for the index.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "iter_all_entries scales with size of history.")
+            trace.mutter_callsite(2,
+                "iter_all_entries scales with size of history.")
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
@@ -613,7 +615,8 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             efficient order for the index (in this case dictionary hash order).
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "iter_all_entries scales with size of history.")
+            trace.mutter_callsite(2,
+                "iter_all_entries scales with size of history.")
         if self.reference_lists:
             for key, (absent, references, value) in self._nodes.iteritems():
                 if not absent:
