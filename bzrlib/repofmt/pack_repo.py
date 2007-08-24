@@ -102,6 +102,7 @@ class RepositoryPackCollection(object):
             # inv 'knit' has been used : update it.
             self.repo._inv_all_indices.insert_index(0,
                 pack.inventory_index)
+            self.repo._inv_pack_map[pack.inventory_index] = pack.transport, pack.name + '.pack'
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used : update it.
             self.repo._text_all_indices.insert_index(0,
@@ -242,7 +243,8 @@ class RepositoryPackCollection(object):
             revision_keys = None
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
-        self._copy_nodes_graph(revision_nodes, revision_index_map, writer, revision_index)
+        list(self._copy_nodes_graph(revision_nodes, revision_index_map, writer,
+            revision_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
@@ -252,7 +254,12 @@ class RepositoryPackCollection(object):
         inv_keys = revision_keys # currently the same keyspace
         inv_nodes = self._index_contents(inventory_index_map, inv_keys)
         # copy inventory keys and adjust values
-        self._copy_nodes_graph(inv_nodes, inventory_index_map, writer, inv_index)
+        # XXX: Should be a helper function to allow different inv representation
+        # at this point.
+        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
+            writer, inv_index, output_lines=True)
+        for line in inv_lines:
+            pass
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
@@ -261,7 +268,8 @@ class RepositoryPackCollection(object):
         # select text keys
         text_nodes = self._index_contents(text_index_map)
         # copy text keys and adjust values
-        self._copy_nodes_graph(text_nodes, text_index_map, writer, text_index)
+        list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
+            text_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
@@ -488,9 +496,18 @@ class RepositoryPackCollection(object):
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
 
-    def _copy_nodes_graph(self, nodes, index_map, writer, write_index):
+    def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
+        output_lines=False):
+        """Copy knit nodes between packs.
+
+        :param output_lines: Return lines present in the copied data as
+            an iterator.
+        """
         # for record verification
         knit_data = _KnitData(None)
+        # for line extraction when requested (inventories only)
+        if output_lines:
+            factory = knit.KnitPlainFactory()
         # plan a readv on each source pack:
         # group by pack
         nodes = sorted(nodes)
@@ -519,8 +536,19 @@ class RepositoryPackCollection(object):
             for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
-                df, _ = knit_data._parse_record_header(key[-1], raw_data)
-                df.close()
+                if output_lines:
+                    # read the entire thing
+                    content, _ = knit_data._parse_record(key[-1], raw_data)
+                    if len(references[-1]) == 0:
+                        line_iterator = factory.get_fulltext_content(content)
+                    else:
+                        line_iterator = factory.get_linedelta_content(content)
+                    for line in line_iterator:
+                        yield line
+                else:
+                    # check the header only
+                    df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                    df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
 
