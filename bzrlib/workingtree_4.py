@@ -43,6 +43,7 @@ from bzrlib import (
     bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
+    debug,
     delta,
     dirstate,
     errors,
@@ -62,6 +63,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.transport import get_transport
+from bzrlib.trace import mutter_callsite
 import bzrlib.ui
 """)
 
@@ -431,6 +433,9 @@ class WorkingTree4(WorkingTree3):
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
             return self._inventory
         self._must_be_locked()
