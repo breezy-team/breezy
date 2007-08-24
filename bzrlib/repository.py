@@ -663,20 +663,18 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
-        """Find the file ids and versions affected by revisions.
+    def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
+        revision_ids):
+        """Helper routine for fileids_altered_by_revision_ids.
 
-        :param revisions: an iterable containing revision ids.
+        This performs the translation of xml lines to revision ids.
+
+        :param line_iterator: An iterator of lines
+        :param revision_ids: The revision ids to filter for.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
-        assert self._serializer.support_altered_by_hack, \
-            ("fileids_altered_by_revision_ids only supported for branches " 
-             "which store inventory as unnested xml, not on %r" % self)
-        selected_revision_ids = set(osutils.safe_revision_id(r)
-                                    for r in revision_ids)
-        w = self.get_inventory_weave()
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -698,44 +696,62 @@ class Repository(object):
         search = self._file_ids_altered_regex.search
         unescape = _unescape_xml
         setdefault = result.setdefault
+        for line in line_iterator:
+            match = search(line)
+            if match is None:
+                continue
+            # One call to match.group() returning multiple items is quite a
+            # bit faster than 2 calls to match.group() each returning 1
+            file_id, revision_id = match.group('file_id', 'revision_id')
+
+            # Inlining the cache lookups helps a lot when you make 170,000
+            # lines and 350k ids, versus 8.4 unique ids.
+            # Using a cache helps in 2 ways:
+            #   1) Avoids unnecessary decoding calls
+            #   2) Re-uses cached strings, which helps in future set and
+            #      equality checks.
+            # (2) is enough that removing encoding entirely along with
+            # the cache (so we are using plain strings) results in no
+            # performance improvement.
+            try:
+                revision_id = unescape_revid_cache[revision_id]
+            except KeyError:
+                unescaped = unescape(revision_id)
+                unescape_revid_cache[revision_id] = unescaped
+                revision_id = unescaped
+
+            if revision_id in revision_ids:
+                try:
+                    file_id = unescape_fileid_cache[file_id]
+                except KeyError:
+                    unescaped = unescape(file_id)
+                    unescape_fileid_cache[file_id] = unescaped
+                    file_id = unescaped
+                setdefault(file_id, set()).add(revision_id)
+        return result
+
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """Find the file ids and versions affected by revisions.
+
+        :param revisions: an iterable containing revision ids.
+        :return: a dictionary mapping altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        """
+        assert self._serializer.support_altered_by_hack, \
+            ("fileids_altered_by_revision_ids only supported for branches " 
+             "which store inventory as unnested xml, not on %r" % self)
+        selected_revision_ids = set(osutils.safe_revision_id(r)
+                                    for r in revision_ids)
+        w = self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for line in w.iter_lines_added_or_present_in_versions(
-                                        selected_revision_ids, pb=pb):
-                match = search(line)
-                if match is None:
-                    continue
-                # One call to match.group() returning multiple items is quite a
-                # bit faster than 2 calls to match.group() each returning 1
-                file_id, revision_id = match.group('file_id', 'revision_id')
-
-                # Inlining the cache lookups helps a lot when you make 170,000
-                # lines and 350k ids, versus 8.4 unique ids.
-                # Using a cache helps in 2 ways:
-                #   1) Avoids unnecessary decoding calls
-                #   2) Re-uses cached strings, which helps in future set and
-                #      equality checks.
-                # (2) is enough that removing encoding entirely along with
-                # the cache (so we are using plain strings) results in no
-                # performance improvement.
-                try:
-                    revision_id = unescape_revid_cache[revision_id]
-                except KeyError:
-                    unescaped = unescape(revision_id)
-                    unescape_revid_cache[revision_id] = unescaped
-                    revision_id = unescaped
-
-                if revision_id in selected_revision_ids:
-                    try:
-                        file_id = unescape_fileid_cache[file_id]
-                    except KeyError:
-                        unescaped = unescape(file_id)
-                        unescape_fileid_cache[file_id] = unescaped
-                        file_id = unescaped
-                    setdefault(file_id, set()).add(revision_id)
+            return self._find_file_ids_from_xml_inventory_lines(
+                w.iter_lines_added_or_present_in_versions(
+                    selected_revision_ids, pb=pb),
+                selected_revision_ids)
         finally:
             pb.finished()
-        return result
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.

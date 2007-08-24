@@ -257,15 +257,23 @@ class RepositoryPackCollection(object):
         # at this point.
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
             writer, inv_index, output_lines=True)
-        for line in inv_lines:
-            pass
+        if revision_ids:
+            fileid_revisions = self.repo._find_file_ids_from_xml_inventory_lines(
+                inv_lines, revision_ids)
+            text_filter = []
+            for fileid, file_revids in fileid_revisions.iteritems():
+                text_filter.extend(
+                    [(fileid, file_revid) for file_revid in file_revids])
+        else:
+            list(inv_lines)
+            text_filter = None
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 inv_index.key_count(),
                 time.time() - start_time)
         # select text keys
-        text_nodes = self._index_contents(text_index_map)
+        text_nodes = self._index_contents(text_index_map, text_filter)
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
             text_index))
@@ -275,7 +283,9 @@ class RepositoryPackCollection(object):
                 text_index.key_count(),
                 time.time() - start_time)
         # select signature keys
-        signature_nodes = self._index_contents(signature_index_map)
+        signature_filter = revision_keys # same keyspace
+        signature_nodes = self._index_contents(signature_index_map,
+            signature_filter)
         # copy signature keys and adjust values
         self._copy_nodes(signature_nodes, signature_index_map, writer, signature_index)
         if 'fetch' in debug.debug_flags:
