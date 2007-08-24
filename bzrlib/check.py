@@ -174,7 +174,7 @@ class Check(object):
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
-            result = self.repository.check_versionedfile(
+            result = self.repository.find_bad_ancestors(
                 self.planned_revisions, weave_id, w, self.revision_versions,
                 revision_parents)
             for revision_id in result.iterkeys():

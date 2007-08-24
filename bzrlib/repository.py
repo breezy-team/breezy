@@ -1119,8 +1119,8 @@ class Repository(object):
             inv_revisions[entry.file_id] = entry.revision
         return inv_revisions
 
-    def check_versionedfile(self, revision_ids, file_id, versionedfile,
-                            revision_versions, parents_provider=None):
+    def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
+                          revision_versions, parents_provider=None):
         """Search the versionedfile for discrepancies from the graph"""
         if parents_provider is None:
             parents_provider = _RevisionParentsProvider(self)
