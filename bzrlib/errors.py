@@ -264,6 +264,15 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
+class NoSuchIdInRepository(NoSuchId):
+
+    _fmt = ("The file id %(file_id)r is not present in the repository"
+            " %(repository)r")
+
+    def __init__(self, repository, file_id):
+        BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
 class InventoryModified(BzrError):
 
     _fmt = ("The current inventory for the tree %(tree)r has been modified,"
@@ -1627,6 +1636,7 @@ class MissingText(BzrError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+
 class DuplicateFileId(BzrError):
 
     _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
@@ -2311,6 +2321,29 @@ class SMTPError(BzrError):
     def __init__(self, error):
         self.error = error
 
+
+class NoMessageSupplied(BzrError):
+
+    _fmt = "No message supplied."
+
+
+class UnknownMailClient(BzrError):
+
+    _fmt = "Unknown mail client: %(mail_client)s"
+
+    def __init__(self, mail_client):
+        BzrError.__init__(self, mail_client=mail_client)
+
+
+class MailClientNotFound(BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        BzrError.__init__(self, mail_command_list=mail_command_list,
+                          mail_command_list_string=mail_command_list_string)
 
 class SMTPConnectionRefused(SMTPError):
 

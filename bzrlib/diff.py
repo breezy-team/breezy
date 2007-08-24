@@ -434,7 +434,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         prop_str = get_prop_change(meta_modified)
         oldpath_encoded = old_path.encode(path_encoding, "replace")
         newpath_encoded = new_path.encode(path_encoding, "replace")
-        print >>to_file, "=== renamed %s '%s' => %r%s" % (kind,
+        print >>to_file, "=== renamed %s '%s' => '%s'%s" % (kind,
                             oldpath_encoded, newpath_encoded, prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
                                  _patch_header_date(old_tree, file_id,

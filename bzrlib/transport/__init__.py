@@ -66,6 +66,11 @@ from bzrlib.trace import (
 from bzrlib import registry
 
 
+# a dictionary of open file streams. Keys are absolute paths, values are
+# transport defined.
+_file_streams = {}
+
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return transport_list_registry
@@ -250,6 +255,49 @@ class LateReadError(object):
 
     def readlines(self):
         self._fail()
+
+
+class FileStream(object):
+    """Base class for FileStreams."""
+
+    def __init__(self, transport, relpath):
+        """Create a FileStream for relpath on transport."""
+        self.transport = transport
+        self.relpath = relpath
+
+    def _close(self):
+        """A hook point for subclasses that need to take action on close."""
+
+    def close(self):
+        self._close()
+        del _file_streams[self.transport.abspath(self.relpath)]
+
+
+class FileFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses a file like object to perform writes.
+    """
+
+    def __init__(self, transport, relpath, file_handle):
+        FileStream.__init__(self, transport, relpath)
+        self.file_handle = file_handle
+
+    def _close(self):
+        self.file_handle.close()
+
+    def write(self, bytes):
+        self.file_handle.write(bytes)
+
+
+class AppendBasedFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+    
+    This version uses append on a transport to perform writes.
+    """
+
+    def write(self, bytes):
+        self.transport.append_bytes(self.relpath, bytes)
 
 
 class Transport(object):
@@ -454,6 +502,18 @@ class Transport(object):
         if not path.startswith('/'):
             path = '/' + path
         return path
+
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport.
+
+        This is potentially different for every path in a given namespace.
+        For example, local transports might use an operating system call to 
+        get the block size for a given path, which can vary due to mount
+        points.
+
+        :return: The page size in bytes.
+        """
+        return 4 * 1024
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -784,6 +844,24 @@ class Transport(object):
         def mkdir(path):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
+
+    def open_write_stream(self, relpath, mode=None):
+        """Open a writable file stream at relpath.
+
+        A file stream is a file like object with a write() method that accepts
+        bytes to write.. Buffering may occur internally until the stream is
+        closed with stream.close().  Calls to readv or the get_* methods will
+        be synchronised with any internal buffering that may be present.
+
+        :param relpath: The relative path to the file.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
+        :return: A FileStream. FileStream objects have two methods, write() and
+            close(). There is no guarantee that data is committed to the file
+            if close() has not been called (even if get() is called on the same
+            path).
+        """
+        raise NotImplementedError(self.open_write_stream)
 
     def append_file(self, relpath, f, mode=None):
         """Append bytes from a file-like object to a file at relpath.
@@ -1392,7 +1470,7 @@ def get_transport(base, possible_transports=None):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    if possible_transports:
+    if possible_transports is not None:
         for t in possible_transports:
             t_same_connection = t._reuse_for(base)
             if t_same_connection is not None:
@@ -1405,7 +1483,7 @@ def get_transport(base, possible_transports=None):
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
-                if possible_transports:
+                if possible_transports is not None:
                     assert transport not in possible_transports
                     possible_transports.append(transport)
                 return transport

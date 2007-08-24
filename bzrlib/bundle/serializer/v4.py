@@ -479,10 +479,10 @@ class RevisionInstaller(object):
             if repo_kind == 'info':
                 assert self._info is None
                 self._handle_info(metadata)
-            if ((repo_kind, file_id) != ('file', current_file) and
-                len(pending_file_records) > 0):
-                self._install_mp_records(current_versionedfile,
-                    pending_file_records)
+            if (repo_kind, file_id) != ('file', current_file):
+                if len(pending_file_records) > 0:
+                    self._install_mp_records(current_versionedfile,
+                                             pending_file_records)
                 current_file = None
                 current_versionedfile = None
                 pending_file_records = []

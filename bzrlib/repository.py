@@ -24,6 +24,7 @@ import time
 from bzrlib import (
     bzrdir,
     check,
+    debug,
     deprecated_graph,
     errors,
     generate_ids,
@@ -45,7 +46,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -54,7 +54,7 @@ from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
         )
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 
 # Old formats display a warning, but only once
@@ -246,6 +246,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -543,6 +545,8 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -731,6 +735,33 @@ class Repository(object):
             pb.finished()
         return result
 
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of lines produced by
+        VersionedFile.get_lines().
+
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            triples
+        """
+        transaction = self.get_transaction()
+        for file_id, revision_id, callable_data in desired_files:
+            try:
+                weave = self.weave_store.get_weave(file_id, transaction)
+            except errors.NoSuchFile:
+                raise errors.NoSuchIdInRepository(self, file_id)
+            yield callable_data, weave.get_lines(revision_id)
+
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         """Get an iterable listing the keys of all the data introduced by a set
         of revision IDs.
@@ -841,6 +872,9 @@ class Repository(object):
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
@@ -873,6 +907,9 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())

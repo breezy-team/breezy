@@ -690,7 +690,10 @@ class TestReusedTransports(TestCase):
     """Tests for transport reuse"""
 
     def test_reuse_same_transport(self):
-        t1 = get_transport('http://foo/')
+        possible_transports = []
+        t1 = get_transport('http://foo/',
+                           possible_transports=possible_transports)
+        self.assertEqual([t1], possible_transports)
         t2 = get_transport('http://foo/', possible_transports=[t1])
         self.assertIs(t1, t2)
 

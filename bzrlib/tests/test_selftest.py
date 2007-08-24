@@ -706,32 +706,35 @@ class MockProgress(_BaseProgressBar):
 
 class TestTestResult(TestCase):
 
-    def test_elapsed_time_with_benchmarking(self):
+    def check_timing(self, test_case, expected_re):
         result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        )
-        result._recordTestStartTime()
-        time.sleep(0.003)
-        result.extractBenchmarkTime(self)
-        timed_string = result._testTimeString()
-        # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
-        self.time(time.sleep, 0.001)
-        result.extractBenchmarkTime(self)
-        timed_string = result._testTimeString()
-        self.assertContainsRe(
-            timed_string, "^ +[0-9]+ms/ +[0-9]+ms$")
-        # extracting the time from a non-bzrlib testcase sets to None
-        result._recordTestStartTime()
-        result.extractBenchmarkTime(
-            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
-        timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
-        # cheat. Yes, wash thy mouth out with soap.
-        self._benchtime = None
+                descriptions=0,
+                verbosity=1,
+                )
+        test_case.run(result)
+        timed_string = result._testTimeString(test_case)
+        self.assertContainsRe(timed_string, expected_re)
 
+    def test_test_reporting(self):
+        class ShortDelayTestCase(TestCase):
+            def test_short_delay(self):
+                time.sleep(0.003)
+            def test_short_benchmark(self):
+                self.time(time.sleep, 0.003)
+        self.check_timing(ShortDelayTestCase('test_short_delay'),
+                          r"^ +[0-9]+ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        self.check_timing(ShortDelayTestCase('test_short_benchmark'),
+                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+
+    def test_unittest_reporting_unittest_class(self):
+        # getting the time from a non-bzrlib test works ok
+        class ShortDelayTestCase(unittest.TestCase):
+            def test_short_delay(self):
+                time.sleep(0.003)
+        self.check_timing(ShortDelayTestCase('test_short_delay'),
+                          r"^ +[0-9]+ms$")
+        
     def test_assigned_benchmark_file_stores_date(self):
         output = StringIO()
         result = bzrlib.tests.TextTestResult(self._log_file,
@@ -740,7 +743,6 @@ class TestTestResult(TestCase):
                                         bench_history=output
                                         )
         output_string = output.getvalue()
-        
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
         # XXX: what comment?  -- Andrew Bennetts
@@ -845,7 +847,6 @@ class TestTestResult(TestCase):
             )
         test = self.get_passing_test()
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         prefix = len(result_stream.getvalue())
         # the err parameter has the shape:
         # (class, exception object, traceback)
@@ -871,7 +872,6 @@ class TestTestResult(TestCase):
         test = self.get_passing_test()
         # this seeds the state to handle reporting the test.
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         # the err parameter has the shape:
         # (class, exception object, traceback)
         # KnownFailures dont get their tracebacks shown though, so we
@@ -936,7 +936,6 @@ class TestTestResult(TestCase):
         test = self.get_passing_test()
         feature = Feature()
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
@@ -956,7 +955,6 @@ class TestTestResult(TestCase):
         feature = Feature()
         # this seeds the state to handle reporting the test.
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         result.report_unsupported(test, feature)
         # no output on unsupported features
         self.assertEqual(
@@ -995,26 +993,29 @@ class TestTestResult(TestCase):
 
     def test_strict_with_unsupported_feature(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         feature = "Unsupported Feature"
         result.addNotSupported(test, feature)
         self.assertFalse(result.wasStrictlySuccessful())
-
+        self.assertEqual(None, result._extractBenchmarkTime(test))
+ 
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         err = (KnownFailure, KnownFailure('foo'), None)
-        result.addKnownFailure(test, err)
+        result._addKnownFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._extractBenchmarkTime(test))
 
     def test_strict_with_success(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._extractBenchmarkTime(test))
 
 
 class TestRunner(TestCase):
