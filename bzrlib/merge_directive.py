@@ -486,6 +486,7 @@ class MergeDirective2(_BaseMergeDirective):
                                                self.base_revision_id)
         # Convert line-endings to UNIX
         stored_patch = re.sub('\r\n?', '\n', self.patch)
+        calculated_patch = re.sub('\r\n?', '\n', calculated_patch)
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)
@@ -504,8 +505,6 @@ class MergeDirective2(_BaseMergeDirective):
             if self._verify_patch(repository):
                 return 'verified'
             else:
-                #FIXME patch verification is broken for CRLF files
-                return 'inapplicable'
                 return 'failed'
         else:
             return 'inapplicable'
