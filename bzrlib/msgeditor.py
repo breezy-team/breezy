@@ -236,7 +236,7 @@ def make_commit_message_template(working_tree, specific_files):
 
 
 def make_commit_message_template_encoded(working_tree, specific_files,
-                                         diff=None, output_encoding=None):
+                                         diff=None, output_encoding='utf-8'):
     """Prepare a template file for a commit into a branch.
 
     Returns an encoded string.
@@ -248,9 +248,6 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.diff import show_diff_trees
-
-    if output_encoding is None:
-        output_encoding = 'utf-8'
 
     template = make_commit_message_template(working_tree, specific_files)
     template = template.encode(output_encoding, "replace")
