@@ -27,9 +27,15 @@ __all__ = [
 from cStringIO import StringIO
 import re
 
-from bzrlib import errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import trace
+from bzrlib.trace import mutter
+""")
+from bzrlib import debug, errors
 
 _OPTION_KEY_ELEMENTS = "key_elements="
+_OPTION_LEN = "len="
 _OPTION_NODE_REFS = "node_ref_lists="
 _SIGNATURE = "Bazaar Graph Index 1\n"
 
@@ -65,6 +71,7 @@ class GraphIndexBuilder(object):
         :param key_elements: The number of bytestrings in each key.
         """
         self.reference_lists = reference_lists
+        self._keys = set()
         self._nodes = {}
         self._nodes_by_key = {}
         self._key_length = key_elements
@@ -105,6 +112,7 @@ class GraphIndexBuilder(object):
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = ('', tuple(node_refs), value)
+        self._keys.add(key)
         if self._key_length > 1:
             key_dict = self._nodes_by_key
             if self.reference_lists:
@@ -123,6 +131,7 @@ class GraphIndexBuilder(object):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
+        lines.append(_OPTION_LEN + str(len(self._keys)) + '\n')
         prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the 
@@ -232,6 +241,7 @@ class GraphIndex(object):
         self._transport = transport
         self._name = name
         self._nodes = None
+        self._key_count = None
         self._keys_by_offset = None
         self._nodes_by_key = None
 
@@ -240,6 +250,8 @@ class GraphIndex(object):
 
         Mutates self._nodes and self.keys_by_offset.
         """
+        if 'index' in debug.debug_flags:
+            mutter('Reading entire index %s', self._transport.abspath(self._name))
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
         expected_elements = 3 + self._key_length
@@ -296,6 +308,7 @@ class GraphIndex(object):
                 for subkey in key[:-1]:
                     key_dict = key_dict.setdefault(subkey, {})
                 key_dict[key[-1]] = key_value
+        # cache the keys for quick set intersections
         self._keys = set(self._nodes)
         if trailers != 1:
             # there must be one line - the empty trailer line.
@@ -310,6 +323,9 @@ class GraphIndex(object):
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2,
+                "iter_all_entries scales with size of history.")
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
@@ -335,6 +351,13 @@ class GraphIndex(object):
             raise errors.BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
+        except ValueError:
+            raise errors.BadIndexOptions(self)
+        options_line = stream.readline()
+        if not options_line.startswith(_OPTION_LEN):
+            raise errors.BadIndexOptions(self)
+        try:
+            self._key_count = int(options_line[len(_OPTION_LEN):-1])
         except ValueError:
             raise errors.BadIndexOptions(self)
 
@@ -431,6 +454,16 @@ class GraphIndex(object):
             else:
                 # the last thing looked up was a terminal element
                 yield (self, ) + key_dict
+
+    def key_count(self):
+        """Return an estimate of the number of keys in this index.
+        
+        For GraphIndex the estimate is exact.
+        """
+        if self._key_count is None:
+            # really this should just read the prefix
+            self._buffer_all()
+        return self._key_count
 
     def _signature(self):
         """The file signature for this index type."""
@@ -538,6 +571,16 @@ class CombinedGraphIndex(object):
                 seen_keys.add(node[1])
                 yield node
 
+    def key_count(self):
+        """Return an estimate of the number of keys in this index.
+        
+        For CombinedGraphIndex this is approximated by the sum of the keys of
+        the child indices. As child indices may have duplicate keys this can
+        have a maximum error of the number of child indices * largest number of
+        keys in any index.
+        """
+        return sum((index.key_count() for index in self._indices), 0)
+
     def validate(self):
         """Validate that everything in the index can be accessed."""
         for index in self._indices:
@@ -571,6 +614,9 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2,
+                "iter_all_entries scales with size of history.")
         if self.reference_lists:
             for key, (absent, references, value) in self._nodes.iteritems():
                 if not absent:
@@ -590,12 +636,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """
         keys = set(keys)
         if self.reference_lists:
-            for key in keys.intersection(self._nodes):
+            for key in keys.intersection(self._keys):
                 node = self._nodes[key]
                 if not node[0]:
                     yield self, key, node[2], node[1]
         else:
-            for key in keys.intersection(self._nodes):
+            for key in keys.intersection(self._keys):
                 node = self._nodes[key]
                 if not node[0]:
                     yield self, key, node[2]
@@ -635,7 +681,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 if self.reference_lists:
                     yield self, key, node[2], node[1]
                 else:
-                    yield self ,key, node[2]
+                    yield self, key, node[2]
             return
         for key in keys:
             # sanity check
@@ -670,6 +716,13 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             else:
                 yield (self, ) + key_dict
 
+    def key_count(self):
+        """Return an estimate of the number of keys in this index.
+        
+        For InMemoryGraphIndex the estimate is exact.
+        """
+        return len(self._keys)
+
     def validate(self):
         """In memory index's have no known corruption at the moment."""
 
@@ -684,11 +737,12 @@ class GraphIndexPrefixAdapter(object):
     nodes and references being added will have prefix prepended.
     """
 
-    def __init__(self, adapted, prefix, missing_key_length, add_nodes_callback=None):
+    def __init__(self, adapted, prefix, missing_key_length,
+        add_nodes_callback=None):
         """Construct an adapter against adapted with prefix."""
         self.adapted = adapted
-        self.prefix = prefix + (None,)*missing_key_length
-        self.prefix_key = prefix
+        self.prefix_key = prefix + (None,)*missing_key_length
+        self.prefix = prefix
         self.prefix_len = len(prefix)
         self.add_nodes_callback = add_nodes_callback
 
@@ -701,18 +755,20 @@ class GraphIndexPrefixAdapter(object):
         nodes = tuple(nodes)
         translated_nodes = []
         try:
+            # Add prefix_key to each reference node_refs is a tuple of tuples,
+            # so split it apart, and add prefix_key to the internal reference
             for (key, value, node_refs) in nodes:
                 adjusted_references = (
-                    tuple(tuple(self.prefix_key + ref_node for ref_node in ref_list)
+                    tuple(tuple(self.prefix + ref_node for ref_node in ref_list)
                         for ref_list in node_refs))
-                translated_nodes.append((self.prefix_key + key, value,
+                translated_nodes.append((self.prefix + key, value,
                     adjusted_references))
         except ValueError:
             # XXX: TODO add an explicit interface for getting the reference list
             # status, to handle this bit of user-friendliness in the API more 
             # explicitly.
             for (key, value) in nodes:
-                translated_nodes.append((self.prefix_key + key, value))
+                translated_nodes.append((self.prefix + key, value))
         self.add_nodes_callback(translated_nodes)
 
     def add_node(self, key, value, references=()):
@@ -732,11 +788,11 @@ class GraphIndexPrefixAdapter(object):
         """Strip prefix data from nodes and return it."""
         for node in an_iter:
             # cross checks
-            if node[1][:self.prefix_len] != self.prefix_key:
+            if node[1][:self.prefix_len] != self.prefix:
                 raise errors.BadIndexData(self)
             for ref_list in node[3]:
                 for ref_node in ref_list:
-                    if ref_node[:self.prefix_len] != self.prefix_key:
+                    if ref_node[:self.prefix_len] != self.prefix:
                         raise errors.BadIndexData(self)
             yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
@@ -752,7 +808,7 @@ class GraphIndexPrefixAdapter(object):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        return self._strip_prefix(self.adapted.iter_entries_prefix([self.prefix]))
+        return self._strip_prefix(self.adapted.iter_entries_prefix([self.prefix_key]))
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -763,7 +819,7 @@ class GraphIndexPrefixAdapter(object):
             efficient order for the index (keys iteration order in this case).
         """
         return self._strip_prefix(self.adapted.iter_entries(
-            self.prefix_key + key for key in keys))
+            self.prefix + key for key in keys))
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -783,7 +839,15 @@ class GraphIndexPrefixAdapter(object):
             returned.
         """
         return self._strip_prefix(self.adapted.iter_entries_prefix(
-            self.prefix_key + key for key in keys))
+            self.prefix + key for key in keys))
+
+    def key_count(self):
+        """Return an estimate of the number of keys in this index.
+        
+        For GraphIndexPrefixAdapter this is relatively expensive - key
+        iteration with the prefix is done.
+        """
+        return len(list(self.iter_all_entries()))
 
     def validate(self):
         """Call the adapted's validate."""

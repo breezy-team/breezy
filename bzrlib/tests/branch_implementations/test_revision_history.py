@@ -14,10 +14,36 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Branch.revision_history."""
+"""Tests for Branch.revision_history and last_revision."""
 
-from bzrlib import branch
+from bzrlib import (
+    branch,
+    errors,
+    )
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+
+
+class TestLastRevision(TestCaseWithBranch):
+    """Tests for the last_revision property of the branch.
+    """
+
+    def test_set_last_revision_info(self):
+        # based on TestBranch.test_append_revisions, which uses the old
+        # append_revision api
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+        br = self.get_branch()
+        br.fetch(wt.branch)
+        br.set_last_revision_info(1, 'rev1')
+        self.assertEquals(br.revision_history(), ["rev1",])
+        br.set_last_revision_info(3, 'rev3')
+        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        # append_revision specifically prohibits some ids;
+        # set_last_revision_info currently does not
+        ## self.assertRaises(errors.ReservedId,
+        ##         br.set_last_revision_info, 4, 'current:')
 
 
 class TestRevisionHistoryCaching(TestCaseWithBranch):

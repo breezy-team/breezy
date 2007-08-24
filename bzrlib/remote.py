@@ -33,6 +33,10 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_ninetyone,
+    )
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -248,6 +252,8 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # for tests
+        self._reconcile_does_inventory_gc = True
 
     def abort_write_group(self):
         """Complete a write group on the decorated repository.
@@ -607,6 +613,12 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
+    def iter_files_bytes(self, desired_files):
+        """See Repository.iter_file_bytes.
+        """
+        self._ensure_real()
+        return self._real_repository.iter_files_bytes(desired_files)
+
     @needs_read_lock
     def get_signature_text(self, revision_id):
         self._ensure_real()
@@ -796,6 +808,11 @@ class RemoteBranchFormat(branch.BranchFormat):
     def initialize(self, a_bzrdir):
         assert isinstance(a_bzrdir, RemoteBzrDir)
         return a_bzrdir.create_branch()
+
+    def supports_tags(self):
+        # Remote branches might support tags, but we won't know until we
+        # access the real remote branch.
+        return True
 
 
 class RemoteBranch(branch.Branch):
@@ -1068,11 +1085,6 @@ class RemoteBranch(branch.Branch):
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
-
-    @needs_write_lock
-    def append_revision(self, *revision_ids):
-        self._ensure_real()
-        return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,

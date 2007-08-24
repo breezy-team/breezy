@@ -139,9 +139,13 @@ class TestsNeedingReweave(TestReconcile):
         # and no backup weave should have been needed/made.
         self.checkNoBackupInventory(d)
 
-    def test_reconile_empty(self):
+    def test_reconcile_empty(self):
         # in an empty repo, theres nothing to do.
         self.checkEmptyReconcile()
+
+    def test_repo_has_reconcile_does_inventory_gc_attribute(self):
+        repo = self.make_repository('repo')
+        self.assertNotEqual(None, repo._reconcile_does_inventory_gc)
 
     def test_reconcile_empty_thorough(self):
         # reconcile should accept thorough=True
@@ -151,6 +155,9 @@ class TestsNeedingReweave(TestReconcile):
         # smoke test for the all in one ui tool
         bzrdir_url = self.get_url('inventory_without_revision')
         bzrdir = bzrlib.bzrdir.BzrDir.open(bzrdir_url)
+        repo = bzrdir.open_repository()
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         reconcile(bzrdir)
         # now the backup should have it but not the current inventory
         repo = bzrdir.open_repository()
@@ -161,11 +168,13 @@ class TestsNeedingReweave(TestReconcile):
         d_url = self.get_url('inventory_without_revision')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
         repo = d.open_repository()
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         self.checkUnreconciled(d, repo.reconcile())
         reconciler = repo.reconcile(thorough=True)
         # no bad parents
         self.assertEqual(0, reconciler.inconsistent_parents)
-        # and one garbage inventoriy
+        # and one garbage inventory
         self.assertEqual(1, reconciler.garbage_inventories)
         self.check_missing_was_removed(repo)
 
@@ -173,10 +182,13 @@ class TestsNeedingReweave(TestReconcile):
             **kwargs):
         # actual low level test.
         repo = aBzrDir.open_repository()
-        if ([None, 'missing', 'references_missing'] 
+        if ([None, 'missing', 'references_missing']
             != repo.get_ancestry('references_missing')):
             # the repo handles ghosts without corruption, so reconcile has
-            # nothing to do here
+            # nothing to do here. Specifically, this test has the inventory
+            # 'missing' present and the revision 'missing' missing, so clearly
+            # 'missing' cannot be reported in the present ancestry -> missing
+            # is something that can be filled as a ghost.
             expected_inconsistent_parents = 0
         else:
             expected_inconsistent_parents = 1
@@ -206,6 +218,8 @@ class TestsNeedingReweave(TestReconcile):
         # other tests use the lower level repo.reconcile()
         d_url = self.get_url('inventory_without_revision_and_ghost')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
+        if not d.open_repository()._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         def reconcile():
             reconciler = Reconciler(d)
             reconciler.reconcile()
@@ -217,6 +231,8 @@ class TestsNeedingReweave(TestReconcile):
         d_url = self.get_url('inventory_without_revision_and_ghost')
         d = bzrlib.bzrdir.BzrDir.open(d_url)
         repo = d.open_repository()
+        if not repo._reconcile_does_inventory_gc:
+            raise TestSkipped('Irrelevant test')
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
         self.check_thorough_reweave_missing_revision(d, repo.reconcile,
@@ -351,8 +367,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         g = repo.get_revision_graph()
         self.assertEqual(('1', '2'), g['wrong-first-parent'])
 
-    def test_reconcile_wrong_order_secondary(self):
-        # a wrong order in secondary parents is ignored.
+    def test_reconcile_wrong_order_secondary_inventory(self):
+        # a wrong order in the parents for inventories is ignored.
         t = get_transport(self.get_url()).clone('reversed-secondary-parents')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()

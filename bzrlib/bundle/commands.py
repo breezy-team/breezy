@@ -45,7 +45,7 @@ class cmd_bundle_info(Command):
 
     hidden = True
     takes_args = ['location']
-    takes_options = []
+    takes_options = ['verbose']
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
@@ -55,7 +55,12 @@ class cmd_bundle_info(Command):
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
         if isinstance(bundle_info, merge_directive._BaseMergeDirective):
-            bundle_info = read_bundle(StringIO(bundle_info.get_raw_bundle()))
+            bundle_file = StringIO(bundle_info.get_raw_bundle())
+            bundle_info = read_bundle(bundle_file)
+        else:
+            if verbose:
+                raise errors.BzrCommandError('Verbose requires a merge'
+                                             ' directive')
         reader_method = getattr(bundle_info, 'get_bundle_reader', None)
         if reader_method is None:
             raise errors.BzrCommandError('Bundle format not supported')
@@ -70,7 +75,8 @@ class cmd_bundle_info(Command):
                 file_ids.add(file_id)
         print >> self.outf, 'Records'
         for kind, records in sorted(by_kind.iteritems()):
-            multiparent = sum(1 for b, p, k, r, f in records if len(p) > 1)
+            multiparent = sum(1 for b, m, k, r, f in records if
+                              len(m.get('parents', [])) > 1)
             print >> self.outf, '%s: %d (%d multiparent)' % \
                 (kind, len(records), multiparent)
         print >> self.outf, 'unique files: %d' % len(file_ids)

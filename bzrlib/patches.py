@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+import re
 
 
 class PatchSyntax(Exception):
@@ -94,23 +95,24 @@ def parse_range(textrange):
 
  
 def hunk_from_header(line):
-    if not line.startswith("@@") or not line.endswith("@@\n") \
-        or not len(line) > 4:
-        raise MalformedHunkHeader("Does not start and end with @@.", line)
+    matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
+    if matches is None:
+        raise MalformedHunkHeader("Does not match format.", line)
     try:
-        (orig, mod) = line[3:-4].split(" ")
-    except Exception, e:
+        (orig, mod) = matches.group(1).split(" ")
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if not orig.startswith('-') or not mod.startswith('+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
         (orig_pos, orig_range) = parse_range(orig[1:])
         (mod_pos, mod_range) = parse_range(mod[1:])
-    except Exception, e:
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
-    return Hunk(orig_pos, orig_range, mod_pos, mod_range)
+    tail = matches.group(3)
+    return Hunk(orig_pos, orig_range, mod_pos, mod_range, tail)
 
 
 class HunkLine:
@@ -170,18 +172,24 @@ __pychecker__=""
 
 
 class Hunk:
-    def __init__(self, orig_pos, orig_range, mod_pos, mod_range):
+    def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None):
         self.orig_pos = orig_pos
         self.orig_range = orig_range
         self.mod_pos = mod_pos
         self.mod_range = mod_range
+        self.tail = tail
         self.lines = []
 
     def get_header(self):
-        return "@@ -%s +%s @@\n" % (self.range_str(self.orig_pos, 
-                                                   self.orig_range),
-                                    self.range_str(self.mod_pos, 
-                                                   self.mod_range))
+        if self.tail is None:
+            tail_str = ''
+        else:
+            tail_str = ' ' + self.tail
+        return "@@ -%s +%s @@%s\n" % (self.range_str(self.orig_pos,
+                                                     self.orig_range),
+                                      self.range_str(self.mod_pos,
+                                                     self.mod_range),
+                                      tail_str)
 
     def range_str(self, pos, range):
         """Return a file range, special-casing for 1-line files.
