@@ -38,6 +38,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Add the option "--show-diff" to the commit command in order to display
+      the diff during the commit log creation. (Goffredo Baroncelli)
+
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
       (Aaron Bentley)
 
@@ -61,6 +64,14 @@ IN DEVELOPMENT
      (Aaron Bentley)
 
   INTERNALS:
+
+    * Add the option user_encoding to the function 'show_diff_trees()'
+      in order to move the user encoding at the UI level. (Goffredo Baroncelli)
+
+    * Add the function make_commit_message_template_encoded() and the function
+      edit_commit_message_encoded() which handle encoded strings.
+      This is done in order to mix the commit messages (which is a unicode
+      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
@@ -150,9 +161,6 @@ bzr 0.90rc1 2007-08-14
       (Aaron Bentley)
 
   IMPROVEMENTS:
-
-    * Add the option "--show-diff" to the commit command in order to display
-      the diff during the commit log creation. (Goffredo Baroncelli)
 
     * Don't show "dots" progress indicators when run non-interactively, such
       as from cron.  (Martin Pool)
@@ -286,14 +294,6 @@ bzr 0.90rc1 2007-08-14
     * Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
       the null revision, and consider using ``None`` for this purpose
       deprecated.  (Aaron Bentley)
-
-    * Add the option user_encoding to the function 'show_diff_trees()'
-      in order to move the user encoding at the UI level. (Goffredo Baroncelli)
-
-    * Add the function make_commit_message_template_encoded() and the function
-      edit_commit_message_encoded() which handle encoded strings.
-      This is done in order to mix the commit messages (which is a unicode
-      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
     * New ``index`` module with abstract index functionality. This will be
       used during the planned changes in the repository layer. Currently the
