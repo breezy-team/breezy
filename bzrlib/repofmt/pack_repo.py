@@ -1204,6 +1204,14 @@ class GraphKnitRepository1(KnitRepository):
             # - the existing name is not the actual hash - e.g.
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
+            new_pack = Pack()
+            new_pack.name = new_name
+            new_pack.transport = self._upload_transport.clone('../packs/')
+            # To populate:
+            # new_pack.revision_index = 
+            # new_pack.inventory_index = 
+            # new_pack.text_index = 
+            # new_pack.signature_index = 
             self._packs.allocate(new_name)
             self.weave_store.flush(new_name)
             self._inv_thunk.flush(new_name)
