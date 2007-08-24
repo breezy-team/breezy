@@ -2304,6 +2304,22 @@ class cmd_check(Command):
 
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
+
+    Output fields:
+
+        revisions: This is just the number of revisions checked.  It doesn't
+            indicate a problem.
+        versionedfiles: This is just the number of versionedfiles checked.  It
+            doesn't indicate a problem.
+        unreferenced ancestors: Texts that are ancestors of other texts, but
+            are not properly referenced by the revision ancestry.  This is a
+            subtle problem that Bazaar can work around.
+        unique file texts: This is the total number of unique file contents
+            seen in the checked revisions.  It does not indicate a problem.
+        repeated file texts: This is the total number of repeated texts seen
+            in the checked revisions.  Texts can be repeated when their file
+            entries are modified, but the file contents are not.  It does not
+            indicate a problem.
     """
 
     _see_also = ['reconcile']

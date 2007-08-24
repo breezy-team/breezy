@@ -93,11 +93,11 @@ class Check(object):
              self.repository.bzrdir.root_transport,
              self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
+        note('%6d versionedfiles', len(self.checked_weaves))
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
         note('%6d unreferenced text ancestors',
              len(self.unreferenced_ancestors))
-        note('%6d weaves', len(self.checked_weaves))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -165,11 +165,11 @@ class Check(object):
         if self.repository.weave_store.listable():
             weave_ids = list(self.repository.weave_store)
             n_weaves = len(weave_ids) + 1
-        self.progress.update('checking weave', 0, n_weaves)
+        self.progress.update('checking versionedfile', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
         revision_parents = repository._RevisionParentsProvider(self.repository)
         for i, weave_id in enumerate(weave_ids):
-            self.progress.update('checking weave', i, n_weaves)
+            self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
