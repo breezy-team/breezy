@@ -11,7 +11,7 @@ using Apache 2.0 and FastCGI or mod_python.
 For more information on the smart server, and other ways to configure it
 see the main `smart server documentation`_.
 
-.. _smart server documentation: server.htm
+.. _smart server documentation: server.html
 
 Example
 =======
@@ -50,7 +50,7 @@ will look like::
 
     Alias /code /srv/example.com/www/code
     <Directory /srv/example.com/www/code>
-        Options Indexes, FollowSymLinks
+        Options Indexes FollowSymLinks
         RewriteEngine On
         RewriteBase /code
         RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
@@ -105,6 +105,16 @@ Like with mod_fastcgi, we also define how our script is to be handled::
 
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
 inside `/code` to a Bazaar smart server via mod_python.
+
+NOTE: If you don't have bzrlib in your PATH, you will be need to change the
+following line::
+
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+
+To::
+
+            PythonPath "['/path/to/bzr']+sys.path+['/srv/example.com/scripts']"
+
 
 Refer to the mod_python_ documentation for further information.
 
@@ -162,6 +172,8 @@ Here's what it looks like::
         
 The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
 is part of pocoo_.
+You sould make sure you place modpywsgi.py in the same directory as
+bzr-smart.py (ie. /srv/example.com/scripts/).
 
 .. _pocoo: http://trac.pocoo.org/wiki/
 

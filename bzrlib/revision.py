@@ -31,7 +31,6 @@ from bzrlib.deprecated_graph import (
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight,
         )
 
 NULL_REVISION="null:"
@@ -430,51 +429,6 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
-@deprecated_function(zero_eight)
-def get_intervening_revisions(ancestor_id, rev_id, rev_source,
-                              revision_history=None):
-    """Find the longest line of descent from maybe_ancestor to revision.
-    Revision history is followed where possible.
-
-    If ancestor_id == rev_id, list will be empty.
-    Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
-    If ancestor_id is not an ancestor, NotAncestor will be thrown
-    """
-    root, ancestors, descendants = revision_graph(rev_id, rev_source)
-    if len(descendants) == 0:
-        raise errors.NoSuchRevision(rev_source, rev_id)
-    if ancestor_id not in descendants:
-        rev_source.get_revision(ancestor_id)
-        raise errors.NotAncestor(rev_id, ancestor_id)
-    root_descendants = all_descendants(descendants, ancestor_id)
-    root_descendants.add(ancestor_id)
-    if rev_id not in root_descendants:
-        raise errors.NotAncestor(rev_id, ancestor_id)
-    distances = node_distances(descendants, ancestors, ancestor_id,
-                               root_descendants=root_descendants)
-
-    def best_ancestor(rev_id):
-        best = None
-        for anc_id in ancestors[rev_id]:
-            try:
-                distance = distances[anc_id]
-            except KeyError:
-                continue
-            if revision_history is not None and anc_id in revision_history:
-                return anc_id
-            elif best is None or distance > best[1]:
-                best = (anc_id, distance)
-        return best[0]
-
-    next = rev_id
-    path = []
-    while next != ancestor_id:
-        path.append(next)
-        next = best_ancestor(next)
-    path.reverse()
-    return path
-
-
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
@@ -492,6 +446,9 @@ def check_not_reserved_id(revision_id):
 def ensure_null(revision_id):
     """Ensure only NULL_REVISION is used to represent the null revisionn"""
     if revision_id is None:
+        symbol_versioning.warn('NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.',
+            DeprecationWarning, stacklevel=2)
         return NULL_REVISION
     else:
         return revision_id
@@ -500,6 +457,6 @@ def ensure_null(revision_id):
 def is_null(revision_id):
     if revision_id is None:
         symbol_versioning.warn('NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.19.',
+            ' revision instead of None, as of bzr 0.90.',
             DeprecationWarning, stacklevel=2)
     return revision_id in (None, NULL_REVISION)

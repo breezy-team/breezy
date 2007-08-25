@@ -190,7 +190,7 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
+                info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
@@ -325,7 +325,7 @@ class MergeDirective(_BaseMergeDirective):
 
 class MergeDirective2(_BaseMergeDirective):
 
-    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.19)'
+    _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -486,6 +486,7 @@ class MergeDirective2(_BaseMergeDirective):
                                                self.base_revision_id)
         # Convert line-endings to UNIX
         stored_patch = re.sub('\r\n?', '\n', self.patch)
+        calculated_patch = re.sub('\r\n?', '\n', calculated_patch)
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)
@@ -511,10 +512,14 @@ class MergeDirective2(_BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 
-    def register(self, directive):
-        registry.Registry.register(self, directive._format_string, directive)
+    def register(self, directive, format_string=None):
+        if format_string is None:
+            format_string = directive._format_string
+        registry.Registry.register(self, format_string, directive)
 
 
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+_format_registry.register(MergeDirective2,
+                          'Bazaar merge directive format 2 (Bazaar 0.19)')

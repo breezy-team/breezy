@@ -285,9 +285,9 @@ class RegistryOption(Option):
         as values for the option, and they value is treated as the help.
         """
         reg = registry.Registry()
-        for name, help in kwargs.iteritems():
+        for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
-            reg.register(name, name, help=help)
+            reg.register(name, name, help=switch_help)
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 

@@ -89,6 +89,9 @@ class ChrootTransport(Transport):
     def append_file(self, relpath, f, mode=None):
         return self._call('append_file', relpath, f, mode)
 
+    def _can_roundtrip_unix_modebits(self):
+        return self.server.backing_transport._can_roundtrip_unix_modebits()
+
     def clone(self, relpath):
         return ChrootTransport(self.server, self.abspath(relpath))
 
@@ -132,6 +135,9 @@ class ChrootTransport(Transport):
 
     def mkdir(self, relpath, mode=None):
         return self._call('mkdir', relpath, mode)
+
+    def open_write_stream(self, relpath, mode=None):
+        return self._call('open_write_stream', relpath, mode)
 
     def put_file(self, relpath, f, mode=None):
         return self._call('put_file', relpath, f, mode)

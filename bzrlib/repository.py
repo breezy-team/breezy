@@ -24,6 +24,7 @@ import time
 from bzrlib import (
     bzrdir,
     check,
+    debug,
     deprecated_graph,
     errors,
     generate_ids,
@@ -45,7 +46,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -53,9 +53,8 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_nine,
         )
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 
 # Old formats display a warning, but only once
@@ -81,6 +80,30 @@ class Repository(object):
         r'file_id="(?P<file_id>[^"]+)"'
         r'.*revision="(?P<revision_id>[^"]+)"'
         )
+
+    def abort_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._abort_write_group()
+        self._write_group = None
+
+    def _abort_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called during abort before the write group is considered to be 
+        finished and should cleanup any internal state accrued during the write
+        group. There is no requirement that data handed to the repository be
+        *not* made available - this is not a rollback - but neither should any
+        attempt be made to ensure that data added is fully commited. Abort is
+        invoked when an error has occured so futher disk or network operations
+        may not be possible or may error and if possible should not be
+        attempted.
+        """
 
     @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
@@ -223,6 +246,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -230,16 +255,40 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
+        self._write_group = None
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
+
+    def has_same_location(self, other):
+        """Returns a boolean indicating if this repository is at the same
+        location as another repository.
+
+        This might return False even when two repository objects are accessing
+        the same physical repository via different URLs.
+        """
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
+
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        :seealso: start_write_group.
+        """
+        return self._write_group is not None
 
     def is_locked(self):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
         """Lock this repository for writing.
+
+        This causes caching within the repository obejct to start accumlating
+        data during reads, and allows a 'write_group' to be obtained. Write
+        groups must be used for actual data insertion.
         
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
@@ -248,6 +297,7 @@ class Repository(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+        :seealso: start_write_group.
 
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
@@ -255,10 +305,13 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
-        return self.control_files.lock_write(token=token)
+        result = self.control_files.lock_write(token=token)
+        self._refresh_data()
+        return result
 
     def lock_read(self):
         self.control_files.lock_read()
+        self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -359,6 +412,26 @@ class Repository(object):
         revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id)
 
+    def commit_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._commit_write_group()
+        self._write_group = None
+
+    def _commit_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called before the write group is considered to be 
+        finished and should ensure that all data handed to the repository
+        for writing during the write group is safely committed (to the 
+        extent possible considering file system caching etc).
+        """
+
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
@@ -389,10 +462,17 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return _CommitBuilder(self, parents, config, timestamp, timezone,
+        result =_CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
     def unlock(self):
+        if (self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'w'):
+            if self._write_group is not None:
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self.control_files.unlock()
 
     @needs_read_lock
@@ -409,6 +489,35 @@ class Repository(object):
         dest_repo = self._create_sprouting_repo(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(dest_repo, revision_id)
         return dest_repo
+
+    def start_write_group(self):
+        """Start a write group in the repository.
+
+        Write groups are used by repositories which do not have a 1:1 mapping
+        between file ids and backend store to manage the insertion of data from
+        both fetch and commit operations.
+
+        A write lock is required around the start_write_group/commit_write_group
+        for the support of lock-requiring repository formats.
+
+        One can only insert data into a repository inside a write group.
+
+        :return: None.
+        """
+        if not self.is_locked() or self.control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        if self._write_group:
+            raise errors.BzrError('already in a write group')
+        self._start_write_group()
+        # so we can detect unlock/relock - the write group is now entered.
+        self._write_group = self.get_transaction()
+
+    def _start_write_group(self):
+        """Template method for per-repository write group startup.
+        
+        This is called before the write group is considered to be 
+        entered.
+        """
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
@@ -436,6 +545,8 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -624,6 +735,84 @@ class Repository(object):
             pb.finished()
         return result
 
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of lines produced by
+        VersionedFile.get_lines().
+
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            triples
+        """
+        transaction = self.get_transaction()
+        for file_id, revision_id, callable_data in desired_files:
+            try:
+                weave = self.weave_store.get_weave(file_id, transaction)
+            except errors.NoSuchFile:
+                raise errors.NoSuchIdInRepository(self, file_id)
+            yield callable_data, weave.get_lines(revision_id)
+
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get an iterable listing the keys of all the data introduced by a set
+        of revision IDs.
+
+        The keys will be ordered so that the corresponding items can be safely
+        fetched and inserted in that order.
+
+        :returns: An iterable producing tuples of (knit-kind, file-id,
+            versions).  knit-kind is one of 'file', 'inventory', 'signatures',
+            'revisions'.  file-id is None unless knit-kind is 'file'.
+        """
+        # XXX: it's a bit weird to control the inventory weave caching in this
+        # generator.  Ideally the caching would be done in fetch.py I think.  Or
+        # maybe this generator should explicitly have the contract that it
+        # should not be iterated until the previously yielded item has been
+        # processed?
+        inv_w = self.get_inventory_weave()
+        inv_w.enable_cache()
+
+        # file ids that changed
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        count = 0
+        num_file_ids = len(file_ids)
+        for file_id, altered_versions in file_ids.iteritems():
+            if _files_pb is not None:
+                _files_pb.update("fetch texts", count, num_file_ids)
+            count += 1
+            yield ("file", file_id, altered_versions)
+        # We're done with the files_pb.  Note that it finished by the caller,
+        # just as it was created by the caller.
+        del _files_pb
+
+        # inventory
+        yield ("inventory", None, revision_ids)
+        inv_w.clear_cache()
+
+        # signatures
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
+
+        # revisions
+        yield ("revisions", None, revision_ids)
+
     @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',
@@ -683,6 +872,9 @@ class Repository(object):
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
@@ -715,6 +907,9 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
@@ -800,6 +995,16 @@ class Repository(object):
         reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
+
+    def _refresh_data(self):
+        """Helper called from lock_* to ensure coherency with disk.
+
+        The default implementation does nothing; it is however possible
+        for repositories to maintain loaded indices across multiple locks
+        by checking inside their implementation of this method to see
+        whether their indices are still valid. This depends of course on
+        the disk format being validatable in this manner.
+        """
 
     @needs_read_lock
     def revision_tree(self, revision_id):
@@ -1047,7 +1252,7 @@ def install_revision(repository, rev, revision_tree):
 
     inv = revision_tree.inventory
     entries = inv.iter_entries()
-    # backwards compatability hack: skip the root id.
+    # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():
         path, root = entries.next()
         if root.revision != rev.revision_id:
@@ -1926,8 +2131,9 @@ class CommitBuilder(object):
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
         rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev, 
+        self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self.repository.commit_write_group()
         return self._new_revision_id
 
     def revision_tree(self):

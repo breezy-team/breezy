@@ -34,6 +34,7 @@ import sys
 import time
 import urllib
 import urlparse
+import warnings
 
 from bzrlib import (
     errors,
@@ -49,16 +50,31 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_nineteen,
+        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    FileFileStream,
+    _file_streams,
     local,
     register_urlparse_netloc_protocol,
     Server,
     ssh,
     ConnectedTransport,
     )
+
+# Disable one particular warning that comes from paramiko in Python2.5; if
+# this is emitted at the wrong time it tends to cause spurious test failures
+# or at least noise in the test case::
+#
+# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
+# test_permissions.TestSftpPermissions.test_new_files
+# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
+#  self.packet.write(struct.pack('>I', n))
+warnings.filterwarnings('ignore',
+        'integer argument expected, got float',
+        category=DeprecationWarning,
+        module='paramiko.message')
 
 try:
     import paramiko
@@ -80,7 +96,7 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-@deprecated_function(zero_nineteen)
+@deprecated_function(zero_ninety)
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
@@ -205,13 +221,6 @@ class SFTPTransport(ConnectedTransport):
             self._set_connection(connection, credentials)
         return connection
 
-
-    def should_cache(self):
-        """
-        Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def has(self, relpath):
         """
         Does the target location exist?
@@ -256,6 +265,14 @@ class SFTPTransport(ConnectedTransport):
             return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For SFTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
 
     def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
@@ -524,6 +541,28 @@ class SFTPTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # initialise the file to zero-length
+        # this is three round trips, but we don't use this 
+        # api more than once per write_group at the moment so 
+        # it is a tolerable overhead. Better would be to truncate
+        # the file after opening. RBC 20070805
+        self.put_bytes_non_atomic(relpath, "", mode)
+        abspath = self._remote_path(relpath)
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+        handle = None
+        try:
+            handle = self._get_sftp().file(abspath, mode='wb')
+            handle.set_pipelined(True)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath,
+                                         ': unable to open')
+        _file_streams[self.abspath(relpath)] = handle
+        return FileFileStream(self, relpath, handle)
 
     def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):

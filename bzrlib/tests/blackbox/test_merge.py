@@ -72,6 +72,10 @@ class TestMerge(ExternalBase):
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.run_bzr('revert --no-backup')
+        self.run_bzr_error(['Show-base is not supported for this merge type'],
+                           'merge ../b -r last:1..last:1 --merge-type weave'
+                           ' --show-base')
+        self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
         self.run_bzr('revert --no-backup')
         self.run_bzr('merge ../b -r last:1')
@@ -267,7 +271,7 @@ class TestMerge(ExternalBase):
         self.pullable_branch()
         os.chdir('a')
         (out, err) = self.run_bzr('merge --pull ../b')
-        self.assertContainsRe(err, 'Now on revision 2\\.')
+        self.assertContainsRe(out, 'Now on revision 2\\.')
         tree_a = WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 
@@ -331,3 +335,30 @@ class TestMerge(ExternalBase):
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
         self.assertContainsRe(err, 'Preview patch does not match changes')
+
+    def test_merge_arbitrary(self):
+        target = self.make_branch_and_tree('target')
+        target.commit('empty')
+        # We need a revision that has no integer revno
+        branch_a = target.bzrdir.sprout('branch_a').open_workingtree()
+        self.build_tree(['branch_a/file1'])
+        branch_a.add('file1')
+        branch_a.commit('added file1', rev_id='rev2a')
+        branch_b = target.bzrdir.sprout('branch_b').open_workingtree()
+        self.build_tree(['branch_b/file2'])
+        branch_b.add('file2')
+        branch_b.commit('added file2', rev_id='rev2b')
+        branch_b.merge_from_branch(branch_a.branch)
+        self.failUnlessExists('branch_b/file1')
+        branch_b.commit('merged branch_a', rev_id='rev3b')
+
+        # It works if the revid has an interger revno
+        self.run_bzr('merge -d target -r revid:rev2a branch_a')
+        self.failUnlessExists('target/file1')
+        self.failIfExists('target/file2')
+        target.revert([])
+
+        # It should work if the revid has no integer revno
+        self.run_bzr('merge -d target -r revid:rev2a branch_b')
+        self.failUnlessExists('target/file1')
+        self.failIfExists('target/file2')

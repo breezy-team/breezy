@@ -62,7 +62,7 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_nineteen)
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
     def get_weave(self, file_id):
         return self._get_weave(file_id)
 
@@ -84,6 +84,14 @@ class RevisionTree(Tree):
     def get_file(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
+
+    def iter_files_bytes(self, desired_files):
+        """See Tree.extract_files_bytes.
+
+        This version is implemented on top of Repository.extract_files_bytes"""
+        repo_desired_files = [(f, self.inventory[f].revision, i)
+                              for f, i in desired_files]
+        return self._repository.iter_files_bytes(repo_desired_files)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):

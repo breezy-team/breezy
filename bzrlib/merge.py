@@ -89,6 +89,66 @@ class Merger(object):
         self.change_reporter = change_reporter
         self._cached_trees = {}
 
+    @staticmethod
+    def from_uncommitted(tree, other_tree, pb):
+        """Return a Merger for uncommitted changes in other_tree.
+
+        :param tree: The tree to merge into
+        :param other_tree: The tree to get uncommitted changes from
+        :param pb: A progress indicator
+        """
+        merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
+                        pb)
+        merger.base_rev_id = merger.base_tree.get_revision_id()
+        merger.other_rev_id = None
+        return merger
+
+    @classmethod
+    def from_mergeable(klass, tree, mergeable, pb):
+        """Return a Merger for a bundle or merge directive.
+
+        :param tree: The tree to merge changes into
+        :param mergeable: A merge directive or bundle
+        :param pb: A progress indicator
+        """
+        mergeable.install_revisions(tree.branch.repository)
+        base_revision_id, other_revision_id, verified =\
+            mergeable.get_merge_request(tree.branch.repository)
+        if (base_revision_id != _mod_revision.NULL_REVISION and
+            tree.branch.repository.get_graph().is_ancestor(
+            base_revision_id, tree.branch.last_revision())):
+            base_revision_id = None
+        merger = klass.from_revision_ids(pb, tree, other_revision_id,
+                                         base_revision_id)
+        return merger, verified
+
+    @staticmethod
+    def from_revision_ids(pb, this, other, base=None, other_branch=None,
+                          base_branch=None):
+        """Return a Merger for revision-ids.
+
+        :param tree: The tree to merge changes into
+        :param other: The revision-id to use as OTHER
+        :param base: The revision-id to use as BASE.  If not specified, will
+            be auto-selected.
+        :param other_branch: A branch containing the other revision-id.  If
+            not supplied, this.branch is used.
+        :param base_branch: A branch containing the base revision-id.  If
+            not supplied, other_branch or this.branch will be used.
+        :param pb: A progress indicator
+        """
+        merger = Merger(this.branch, this_tree=this, pb=pb)
+        if other_branch is None:
+            other_branch = this.branch
+        merger.set_other_revision(other, other_branch)
+        if base is None:
+            merger.find_base()
+        else:
+            if base_branch is None:
+                base_branch = other_branch
+            merger.set_base_revision(base, base_branch)
+        return merger
+
     def revision_tree(self, revision_id, branch=None):
         if revision_id not in self._cached_trees:
             if branch is None:
@@ -244,8 +304,7 @@ class Merger(object):
                                                   self.this_branch)
 
     def _maybe_fetch(self, source, target, revision_id):
-        if (source.repository.bzrdir.root_transport.base !=
-            target.repository.bzrdir.root_transport.base):
+        if not source.repository.has_same_location(target.repository):
             target.fetch(source, revision_id)
 
     def find_base(self):

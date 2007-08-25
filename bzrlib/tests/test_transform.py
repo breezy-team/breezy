@@ -944,7 +944,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
 
     def test_change_entry(self):
-        txt = 'bzrlib.transform.change_entry was deprecated in version 0.19.'
+        txt = 'bzrlib.transform.change_entry was deprecated in version 0.90.'
         self.callDeprecated([txt], change_entry, None, None, None, None, None,
             None, None, None)
 

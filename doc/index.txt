@@ -1,64 +1,46 @@
-======
-Bazaar
-======
--------------------
-Documentation index
--------------------
+============================
+Bazaar Main Document Catalog
+============================
 
-These documents originally came from the Bazaar wiki hosted at
-http://bazaar-vcs.org. The documents on the wiki take precedence 
-in the event of a discrepancy between what is documented here 
-and what is documented on the wiki.
+The latest version of these documents are available from Bazaar's
+documentation site, http://doc.bazaar-vcs.org.
+
+Core Documentation
+==================
+
+* `Mini Tutorial <en/mini-tutorial/index.html>`_ 
+
+* `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
+
+* `User Guide <en/user-guide/index.html>`_ 
+
+* `User Reference <en/user-reference/bzr_man.html>`_ 
+
+* `Release Notes <en/release-notes/NEWS.html>`_
+
+* `Developer Guide <en/developer-guide/HACKING.html>`_
 
 
-* `Tutorial <tutorial.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/IntroductionToBzr)
+Other Documentation
+===================
 
-    Explains how to use bzr. Loaded with examples.
+Moving to Bazaar (Web links):
 
-* `Configuration <configuration.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/ConfiguringBzr)
+* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
+  - for users moving from another VCS tool
 
-    Information on how to configure Bazaar.
+* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+  - for teams migrating history from another VCS tool
 
-* `Setting up email <setting_up_email.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrSettingEmail)
+Other Documents (Web links):
 
-    The various ways that exist to tell Bazaar your email address for
-    commits.
+* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
 
-* `Conflict handling <conflicts.htm>`_
+* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
 
-    The various kind of conflicts you may encounter, and how to handle them.
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
 
-* `Plugins <plugins.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrPlugins)
-    
-    Information on how to use plugins in Bazaar.
+Technical specifications, roadmaps and various
+technical notes are available in English below:
 
-* `Specifying revision <specifying_revisions.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrRevisionSpec)
-
-    Description of the subarguments for ``-r`` as used by commands such as
-    **bzr log** and **bzr merge**.
-
-* `Using aliases <using_aliases.htm>`_
-  (wiki page: http://bazaar-vcs.org/CommandAliases)
-
-    How to set up and use command aliases.
-
-* `Running a Bazaar server <server.htm>`_
-  
-    How to run a server to allow remote access to Bazaar branches.
-
-* `Running a Bazaar HTTP server <http_smart_server.htm>`_
-
-    How to run a smart HTTP server to allow remote access to Bazaar branches.
-
-* `Guidelines for modifying bzr <developers/index.htm>`_
-
-    Guide to policies and tools for working on Bazaar itself.
-
-This document automatically created based on output of **bzr help**:
-
-* `Man page (help for bzr commands) <bzr_man.htm>`_
+* `Developer Document Catalog <developers/index.html>`_
