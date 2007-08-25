@@ -386,10 +386,6 @@ class TestStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status -r 1..23..123', retcode=3)
         self.assertContainsRe(err, 'one or two revision specifiers')
 
-    def test_status_revision_and_change(self):
-        out, err = self.run_bzr('status -r 1..23 -C 22', retcode=3)
-        self.assertContainsRe(err, '--revision or --change, not both')
-
 
 class TestStatusEncodings(TestCaseWithTransport):
     

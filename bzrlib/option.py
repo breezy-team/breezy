@@ -130,12 +130,12 @@ class Option(object):
     OPTIONS = {}
 
     def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None):
+                 short_name=None, param_name=None):
         """Make a new command option.
 
         name -- regular name of the command, used in the double-dash
             form and also as the parameter to the command's run() 
-            method.
+            method (unless param_name is specified).
 
         help -- help message displayed in command help
 
@@ -143,6 +143,9 @@ class Option(object):
             None (default) if this option doesn't take an argument.
 
         argname -- name of option argument, if any
+
+        param_name -- name of the parameter, which will be passed to
+            the command's run() method.
         """
         self.name = name
         self.help = help
@@ -153,6 +156,10 @@ class Option(object):
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+        if param_name is None:
+            self._param_name = self.name
+        else:
+            self._param_name = param_name
 
     def short_name(self):
         if self._short_name:
@@ -190,7 +197,7 @@ class Option(object):
                               *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
-        setattr(parser.values, self.name, self.type(value))
+        setattr(parser.values, self._param_name, self.type(value))
 
     def iter_switches(self):
         """Iterate through the list of switches provided by the option
@@ -395,6 +402,7 @@ _global_option('revision',
 _global_option('change',
                type=_parse_change_str,
                short_name='C',
+               param_name='revision',
                help='Show changes introduced by the specified revision.')
 _global_option('show-ids',
                help='Show internal object ids.')

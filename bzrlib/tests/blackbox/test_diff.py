@@ -132,10 +132,6 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr('diff -r 1..23..123', retcode=3)
         self.assertContainsRe(err, 'one or two revision specifiers')
 
-    def test_diff_revision_and_change(self):
-        out, err = self.run_bzr('diff -r 1..23 -C 22', retcode=3)
-        self.assertContainsRe(err, '--revision or --change, not both')
-
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
         # (Malone #3619)
