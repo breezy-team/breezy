@@ -97,6 +97,8 @@ def _parse_revision_str(revstr):
 
 
 def _parse_change_str(revstr):
+    if '..' in revstr:
+        raise errors.RangeInChangeOption()
     return (revisionspec.RevisionSpec.from_string('before:' + revstr),
             revisionspec.RevisionSpec.from_string(revstr))
 
@@ -144,7 +146,7 @@ class Option(object):
 
         argname -- name of option argument, if any
 
-        param_name -- name of the parameter, which will be passed to
+        param_name -- name of the parameter which will be passed to
             the command's run() method.
         """
         self.name = name
@@ -398,12 +400,12 @@ _global_option('profile',
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
-               help='See \'help revisionspec\' for details.')
+               help='See "help revisionspec" for details.')
 _global_option('change',
                type=_parse_change_str,
                short_name='c',
                param_name='revision',
-               help='Show changes introduced by the specified revision.')
+               help='Select changes introduced by the specified revision. See also "help revisionspec".')
 _global_option('show-ids',
                help='Show internal object ids.')
 _global_option('timezone', 
