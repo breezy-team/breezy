@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * When two plugins conflict, the source of both the losing and now the
+      winning definition is shown.  (Konstantin Mikhaylov, #5454)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
