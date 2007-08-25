@@ -276,7 +276,6 @@ class KnitReconciler(RepoReconciler):
         """Perform the steps to reconcile this repository."""
         if self.thorough:
             self._load_indexes()
-            # knits never suffer this
             self._gc_inventory()
 
     def _load_indexes(self):
