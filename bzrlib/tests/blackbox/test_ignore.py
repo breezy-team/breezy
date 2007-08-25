@@ -117,3 +117,24 @@ class TestCommands(ExternalBase):
         self.assertContainsRe(out, 'CVS')
         self.assertEqual('', err)
 
+    def test_ignore_versioned_file(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a','b'])
+        tree.add('a')
+
+        # test a single versioned file
+        out, err = self.run_bzr('ignore a')
+        self.assertEqual(out, 
+                         "Warning: the following files are version controlled"\
+                         " and match your ignore pattern:\na\n")
+
+        # test a single unversioned file
+        out, err = self.run_bzr('ignore b')
+        self.assertEqual(out, '')
+
+        # test wildcards
+        tree.add('b')
+        out, err = self.run_bzr('ignore *')
+        self.assertEqual(out, 
+                         "Warning: the following files are version controlled"\
+                         " and match your ignore pattern:\n.bzrignore\na\nb\n")
