@@ -401,7 +401,7 @@ _global_option('revision',
                help='See \'help revisionspec\' for details.')
 _global_option('change',
                type=_parse_change_str,
-               short_name='C',
+               short_name='c',
                param_name='revision',
                help='Show changes introduced by the specified revision.')
 _global_option('show-ids',

@@ -56,11 +56,11 @@ class TestDiff(DiffBase):
         self.run_bzr('commit -m fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
         self.assert_('\n+hello world!' in output)
-        output = self.run_bzr('diff -C 3', retcode=1)[0]
+        output = self.run_bzr('diff -c 3', retcode=1)[0]
         self.assert_('\n+hello world!' in output)
         output = self.run_bzr('diff -r last:3..last:1', retcode=1)[0]
         self.assert_('\n+baz' in output)
-        output = self.run_bzr('diff -C last:2', retcode=1)[0]
+        output = self.run_bzr('diff -c last:2', retcode=1)[0]
         self.assert_('\n+baz' in output)
         self.build_tree(['moo'])
         self.run_bzr('add moo')

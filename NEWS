@@ -46,7 +46,7 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
-    * New option ``-C``/``--change`` for ``diff`` and ``status`` to show
+    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
       changes in one revision.  (Lukáš Lalinský)
 
   API BREAKS:

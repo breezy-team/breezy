@@ -310,7 +310,7 @@ class TestStatus(TestCaseWithTransport):
         result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        result = self.run_bzr("status -C 1")[0]
+        result = self.run_bzr("status -c 1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
