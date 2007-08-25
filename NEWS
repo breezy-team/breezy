@@ -23,6 +23,9 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Show proper exception when a svn dump file ends prematurely. 
 
+   * Don't try to open directories of which parents haven't yet been opened 
+     from commit. (#133288, Lukáš Lalinský)
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().

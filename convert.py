@@ -60,12 +60,21 @@ def load_dumpfile(dumpfile, outputdir):
     """
     from cStringIO import StringIO
     repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
-    try:
+    if dumpfile.endswith(".gz"):
+        import gzip
+        file = gzip.GzipFile(dumpfile)
+    elif dumpfile.endswith(".bz2"):
+        import bz2
+        file = bz2.BZ2File(dumpfile)
+    else:
         file = open(dumpfile)
+    try:
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except svn.core.SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
-        raise NotDumpFile(dumpfile)
+    except svn.core.SubversionException, (num, _):
+        if num == svn.core.SVN_ERR_STREAM_MALFORMED_DATA:
+            raise NotDumpFile(dumpfile)
+        raise
     return repos
 
 
