@@ -176,6 +176,8 @@ class Repository(object):
     @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "_all_possible_ids scales with size of history.")
         return self.get_inventory_weave().versions()
 
     def all_revision_ids(self):
@@ -185,6 +187,8 @@ class Repository(object):
         reachable from a particular revision, and ignore any other revisions
         that might be present.  There is no direct replacement method.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "all_revision_ids scales with size of history.")
         return self._all_revision_ids()
 
     @needs_read_lock
