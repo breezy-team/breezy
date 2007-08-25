@@ -20,7 +20,7 @@ No local changes, only new revisions
 ====================================
 1) Need to move wt.last_rev (O(1))
 2) apply delta from base to new rev (O(changes))
-applying changes to files is approx (O(size-of-changed-files))
+applying changes to files is approx (O(lines-in-files ^ 2))
 3) update meta-info (executable bits, etc) about modified files (O(changes))
 
 2/3 could be concurrent (but that may not necessarily be faster)
@@ -37,7 +37,7 @@ w/o should be safe
 "local mod" is diff between disk and last commit, not merge base
 
 Detecting name conflicts should be O(siblings). Alternatively, conflicts 
-with existing files can be detected using stat() or and conflicts with new files 
+with existing files can be detected using stat() and conflicts with new files 
 can be detected by examining the pending transform. This changes 
 complexity to O(changes).
 
