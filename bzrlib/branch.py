@@ -26,6 +26,7 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
+        debug,
         errors,
         lockdir,
         lockable_files,
@@ -61,7 +62,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine, zero_sixteen,
                                       zero_ninetyone,
                                       )
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, mutter_callsite, note
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -403,11 +404,13 @@ class Branch(object):
 
     @needs_read_lock
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch.
+        """Return sequence of revision ids on this branch.
         
         This method will cache the revision history for as long as it is safe to
         do so.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
             history = self._revision_history_cache
         else:
@@ -1352,6 +1355,8 @@ class BzrBranch(Branch):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "set_revision_history scales with history.")
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
         self._clear_cached_state()
         self._write_revision_history(rev_history)
@@ -1385,6 +1390,8 @@ class BzrBranch(Branch):
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
         if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
@@ -1434,8 +1441,10 @@ class BzrBranch(Branch):
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here regardless of whether we need to so that we pickup
-            # filled in ghosts.
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for 
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
             self.fetch(other, stop_revision)
             if self.repository.get_graph().is_ancestor(stop_revision,
                                                        last_rev):
