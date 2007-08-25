@@ -14,7 +14,7 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Support WorkingTree.update()
 
-   * Mark as supporting Bazaar 0.90 rather than 0.19.
+   * Mark as supporting Bazaar 0.90 rather than 0.19. (#133388)
 
    * Don't mutter during commit unless explicitly enabled with -Dcommit.
 
