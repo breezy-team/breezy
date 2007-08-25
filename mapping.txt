@@ -1,6 +1,6 @@
 This document specifies mapping between Subversion and Bazaar semantics.
 
-Revision: 3
+Revision: 4
 Written by Jelmer Vernooij <jelmer@samba.org>
 
 ============
@@ -62,12 +62,12 @@ stored in a revision property. To guarantee that the meaning of a revision id
 does not change, this revision id is only valid within a specific version 
 of the mappings.
 
-To override the revision id this way, set the revision property:
+To override the revision id this way, set the branch path file property:
 
 bzr:revision-id-v%d:%s (where %d is the current mapping version and %s is 
 					    the name of the branching scheme in use) 
 
-to the bzr revision number following by a space and the revision id. This o
+to the bzr revision number following by a space and the revision id. This 
 property should only be honored for the revision in which it was set, as 
 subversion will not erase the property for subsequent commits.
 
@@ -75,6 +75,11 @@ A (path,revnum) tuple is valid if:
 * path is valid according to the branching scheme
 * either path,revnum or one of its children was touched in the particular 
   revision
+
+If possible, the Subversion revision property ``bzr:revision-id`` should be 
+set to the revision id. The revision property ``bzr:root`` should be set to 
+the root path of the revision and revision property ``bzr:scheme`` should be 
+set to the name of the branching scheme.
 
 ========
 File ids
@@ -94,8 +99,8 @@ The same rules apply to the roots of branches. This means there is no
 predefined file id for tree roots.
 
 Alternatively, these file ids can be mapped to more specific file ids. Such 
-a map should be stored in the 'bzr:file-ids' property that is set on the 
-branch path.
+a map should be stored in the 'bzr:file-ids' file property that is set on the 
+branch path and, if possible, as revision property ``bzr:file-ids``.
 
 The bzr:file-ids property should contain a list of mappings. Entries are 
 separated by newlines. The path in the branch and new file-id are separated 
@@ -149,14 +154,17 @@ Ancestry Information
 ====================
 
 Ancestry in Subversion is linear. Most revisions have just one parent. Files 
-can be copied, moved or merged from other branches, which can result in partial merges 
-that bzr doesn't support at the moment.
+can be copied, moved or merged from other branches, which can result in partial 
+merges that bzr doesn't support at the moment.
 
 Whenever a Bazaar commit to Subversion has more than one parent (merges two 
 revisions), it will add a line to the 'bzr:ancestry:vX-SCHEME' property set on 
 the branch path. The format of these lines is:
 
 ([\tPARENT-REV-ID]+)\n
+
+If possible, the list of merges will also be stored in the Subversion revision 
+property ``bzr:merges``. 
 
 This property should be considered add-only. This way, it is 
 possible to know the parents of a revision when running checkout or 
@@ -179,9 +187,18 @@ for this yet.
 Revision properties
 ===================
 
-Bazaar revision metadata is stored in a Subversion revision property 
+If possible, the Bazaar revision metadata should be stored in Subversion 
+revision properties. The names of the revision properties are:
+
+- committer: ``bzr:committer``
+- timestamp: ``svn:original-date``
+
+All custom revision properties are prefixed by ``bzr:revprop:``
+
+Bazaar revision metadata is also stored in a Subversion revision property 
 ``bzr:revision-info``. The format of this property is the same as used 
 by version 0.9 of the bundle format.
+
 
 ==========
 Signatures
@@ -206,6 +223,8 @@ and added the bzr:revision-id-vX:YY property.
 
 Revision 3 uses real file ids for the tree root rather than the hardcoded 
 "TREE_ROOT" and adds the file id map.
+
+Revision 4 adds revision properties in addition to file properties.
 
 =======
 Authors

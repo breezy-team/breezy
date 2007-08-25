@@ -53,9 +53,17 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
-SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
+
+SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
+SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
+SVN_REVPROP_BZR_MERGE = 'bzr:merge'
+SVN_REVPROP_BZR_REVISION_ID = 'bzr:revision-id'
+SVN_REVPROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
+SVN_REVPROP_BZR_ROOT = 'bzr:root'
+SVN_REVPROP_BZR_SCHEME = 'bzr:scheme'
+SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 # The following two functions don't use day names (which can vary by 
 # locale) unlike the alternatives in bzrlib.timestamp
@@ -626,7 +634,8 @@ class SvnRepository(Repository):
                 self.branchprop_list.get_property(path, revnum, 
                      SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
-        rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
+        rev.inventory_sha1 = property(
+            lambda: self.get_inventory_sha1(revision_id))
 
         return rev
 
