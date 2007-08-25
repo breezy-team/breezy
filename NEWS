@@ -18,6 +18,9 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Don't mutter during commit unless explicitly enabled with -Dcommit.
 
+   * Fix pushing while svk:merge properties are not found. 
+     (#133287, Lukáš Lalinský)
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().
