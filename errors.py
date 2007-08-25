@@ -17,7 +17,8 @@
 
 from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
                            NotBranchError, PermissionDenied, 
-                           DependencyNotPresent, NoRepositoryPresent)
+                           DependencyNotPresent, NoRepositoryPresent,
+                           UnexpectedEndOfContainerError)
 
 import svn.core
 
@@ -52,6 +53,8 @@ def convert_error(err):
         return LockError(message=msg)
     elif num == svn.core.SVN_ERR_RA_NOT_AUTHORIZED:
         return PermissionDenied('.', msg)
+    elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
+        return UnexpectedEndOfContainerError()
     else:
         return err
 

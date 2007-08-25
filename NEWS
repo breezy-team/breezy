@@ -21,6 +21,8 @@ bzr-svn 0.4.1	UNRELEASED
    * Fix pushing while svk:merge properties are not found. 
      (#133287, Lukáš Lalinský)
 
+   * Show proper exception when a svn dump file ends prematurely. 
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().
