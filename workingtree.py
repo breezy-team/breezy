@@ -563,9 +563,8 @@ class SvnWorkingTree(WorkingTree):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = self.branch.lookup_revision_id(stop_revision)
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
-        self.base_revid = self.branch.repository.generate_revision_id(
-            fetched, self.branch.get_branch_path(fetched))
-        result.new_revid = self.branch.generate_revision_id(fetched)
+        self.base_revid = self.branch.generate_revision_id(fetched)
+        result.new_revid = self.base_revid
         result.new_revno = self.branch.revision_id_to_revno(result.new_revid)
         return result
 

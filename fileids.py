@@ -102,7 +102,7 @@ class FileIdMap(object):
         for line in self.idmap_knit.get_lines(revid):
             (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
             map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
-            assert isinstance(map[filename][0], str)
+            assert isinstance(map[urllib.unquote(filename)][0], str)
 
         return map
 
