@@ -1149,7 +1149,7 @@ class MetadataMarshallerTests(TestCase):
                 generate_revision_metadata(None, None, "bla", None))
 
     def test_generate_revision_metadata_timestamp(self):
-        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52.350850105 +0000\n", 
+        self.assertEquals("timestamp: 2005-06-30 17:38:52.350850105 +0000\n", 
                 generate_revision_metadata(1120153132.350850105, 0, 
                     None, None))
             
@@ -1169,6 +1169,12 @@ class MetadataMarshallerTests(TestCase):
         self.assertEquals("somebody", rev.committer)
 
     def test_parse_revision_metadata_timestamp(self):
+        rev = Revision('someid')
+        parse_revision_metadata("timestamp: 2005-06-30 12:38:52.350850105 -0500\n", rev)
+        self.assertEquals(1120153132.3508501, rev.timestamp)
+        self.assertEquals(-18000, rev.timezone)
+
+    def test_parse_revision_metadata_timestamp_day(self):
         rev = Revision('someid')
         parse_revision_metadata("timestamp: Thu 2005-06-30 12:38:52.350850105 -0500\n", rev)
         self.assertEquals(1120153132.3508501, rev.timestamp)

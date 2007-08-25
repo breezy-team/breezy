@@ -26,6 +26,8 @@ bzr-svn 0.4.1	UNRELEASED
    * Don't try to open directories of which parents haven't yet been opened 
      from commit. (#133288, Lukáš Lalinský)
 
+   * Timestamps in properties no longer include locale-specific data. (#131337)
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().
