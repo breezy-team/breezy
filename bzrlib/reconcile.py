@@ -20,7 +20,11 @@
 __all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
-from bzrlib import ui
+from bzrlib import (
+    graph,
+    ui,
+    repository,
+    )
 from bzrlib.trace import mutter
 from bzrlib.tsort import TopoSorter
 
@@ -274,9 +278,10 @@ class KnitReconciler(RepoReconciler):
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
+        self._load_indexes()
         if self.thorough:
-            self._load_indexes()
             self._gc_inventory()
+        self._fix_text_parents()
 
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
@@ -336,3 +341,51 @@ class KnitReconciler(RepoReconciler):
         self.garbage_inventories = len(garbage)
         for revision_id in garbage:
             mutter('Garbage inventory {%s} found.', revision_id)
+
+    def _fix_text_parents(self):
+        transaction = self.repo.get_transaction()
+        revision_parents = repository._RevisionParentsProvider(self.repo)
+        revision_graph = graph.Graph(revision_parents)
+        revision_versions = {}
+        for file_id in self.repo.weave_store:
+            vf = self.repo.weave_store.get_weave(file_id, transaction)
+            bad_ancestors = self.repo.find_bad_ancestors(
+                self.revisions.versions(), file_id, vf, revision_versions,
+                revision_parents)
+            if len(bad_ancestors) == 0:
+                continue
+            new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
+                self.transaction)
+            for version in vf.versions():
+                parents = vf.get_parents(version)
+                for parent_id in parents:
+                    if (parent_id in bad_ancestors and
+                        version in bad_ancestors[parent_id]):
+                        parents = self._find_correct_parents(version,
+                            file_id, revision_versions, revision_graph)
+                        break
+                new_vf.add_lines(version, parents, vf.get_lines(version))
+            self.repo.weave_store.copy(new_vf, file_id, self.transaction)
+            self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
+
+    def _find_correct_parents(self, revision_id, file_id, revision_versions,
+                              revision_graph):
+        parents = []
+        rev_parents = revision_graph.get_parents([revision_id])[0]
+        if rev_parents is None:
+            return []
+        for parent_id in rev_parents:
+            try:
+                parent_id = revision_versions[parent_id][file_id]
+            except KeyError:
+                continue
+            if parent_id not in parents:
+                parents.append(parent_id)
+        non_heads = set()
+        for num, parent in enumerate(parents):
+            for other_parent in parents[num+1:]:
+                if revision_graph.is_ancestor(parent, other_parent):
+                    non_heads.add(parent)
+                if revision_graph.is_ancestor(other_parent, parent):
+                    non_heads.add(other_parent)
+        return [p for p in parents if p not in non_heads]

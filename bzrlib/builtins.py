@@ -2329,8 +2329,7 @@ class cmd_check(Command):
     def run(self, branch=None, verbose=False):
         from bzrlib.check import check
         if branch is None:
-            tree = WorkingTree.open_containing()[0]
-            branch = tree.branch
+            branch = Branch.open_containing('.')[0]
         else:
             branch = Branch.open(branch)
         check(branch, verbose)

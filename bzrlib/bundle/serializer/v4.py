@@ -330,7 +330,7 @@ class BundleWriteOperation(object):
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
-        for vf, file_id, revision_ids in self.iter_file_revisions_aggressive():
+        for vf, file_id, revision_ids in self.iter_file_revisions():
             self.add_mp_records('file', file_id, vf, revision_ids)
 
     def write_revisions(self):
