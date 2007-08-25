@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * ``uncommit --help`` now explains the -r option adequately.  (Daniel
+      Watkins, #106726)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
