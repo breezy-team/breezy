@@ -97,10 +97,21 @@ def _parse_revision_str(revstr):
 
 
 def _parse_change_str(revstr):
-    if '..' in revstr:
+    """Parse the revision string and return a tuple with left-most
+    parent of the revision.
+
+    >>> _parse_change_str('123')
+    (<RevisionSpec_before before:123>, <RevisionSpec_revno 123>)
+    >>> _parse_change_str('123..124')
+    Traceback (most recent call last):
+      ...
+    RangeInChangeOption: Option --change does not accept revision ranges
+    """
+    revs = _parse_revision_str(revstr)
+    if len(revs) > 1:
         raise errors.RangeInChangeOption()
     return (revisionspec.RevisionSpec.from_string('before:' + revstr),
-            revisionspec.RevisionSpec.from_string(revstr))
+            revs[0])
 
 
 def _parse_merge_type(typestring):
