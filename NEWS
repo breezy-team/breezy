@@ -35,6 +35,7 @@ bzr-svn 0.4.1	UNRELEASED
    * Support initializing Subversion repositories. 
      `bzr init-repo --format=subversion` now works.
 
+   * Support reading gzip and bzip2 compressed dump files in svn-import.
 
 bzr-svn 0.4.0	2007-08-04	
   

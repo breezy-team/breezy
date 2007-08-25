@@ -58,7 +58,7 @@ PROPS-END
 
     def test_loaddumpfile_invalid(self):
         dumpfile = os.path.join(self.test_dir, "dumpfile")
-        open(dumpfile, 'w').write("""FooBar""")
+        open(dumpfile, 'w').write("""FooBar\n""")
         self.assertRaises(NotDumpFile, load_dumpfile, dumpfile, "d")
 
 

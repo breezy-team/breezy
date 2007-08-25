@@ -71,7 +71,7 @@ def load_dumpfile(dumpfile, outputdir):
     try:
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except svn.core.SubversionException, (num, _):
+    except svn.core.SubversionException, (_, num):
         if num == svn.core.SVN_ERR_STREAM_MALFORMED_DATA:
             raise NotDumpFile(dumpfile)
         raise
