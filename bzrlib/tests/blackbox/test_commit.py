@@ -152,6 +152,20 @@ class TestCommit(ExternalBase):
                          'Committed revision 2.\n',
                          err)
 
+    def test_verbose_bound_commit_includes_master_location(self):
+        """Location of master is included when committing to bound branch"""
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/b'])
+        a_tree.add('b')
+        a_tree.commit(message='Initial message')
+
+        b_tree = a_tree.branch.create_checkout('b')
+        self.build_tree_contents([('a/b', 'foo')])
+        expected = "file://" + os.getcwd() + "/a/"
+        os.chdir('b')
+        out, err = self.run_bzr('commit -m blah --unchanged')
+        self.assertEqual(err, 'Committed revision 2 to "%s".\n' % expected)
+
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
         # bzr diff or bzr status when committing, even when they were not
