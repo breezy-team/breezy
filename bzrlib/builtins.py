@@ -155,8 +155,6 @@ class cmd_status(Command):
     --short gives a status flags for each item, similar to the SVN's status
     command.
 
-    --quiet has the same effect as '--short --versioned'.
-
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
@@ -170,8 +168,11 @@ class cmd_status(Command):
     
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision',
-                     Option('short', help='Give short SVN-style status lines.'),
-                     Option('versioned', help='Only show versioned files.')]
+                     Option('short', help='Give short SVN-style status lines.',
+                            short_name='s'),
+                     Option('versioned', help='Only show versioned files.',
+                            short_name='v')
+                     ]
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
@@ -181,10 +182,6 @@ class cmd_status(Command):
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
             versioned=False):
         from bzrlib.status import show_tree_status
-
-        if is_quiet():
-            short = True
-            versioned = True
 
         tree, file_list = tree_files(file_list)
             
