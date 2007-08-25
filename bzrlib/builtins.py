@@ -1958,6 +1958,19 @@ class cmd_ignore(Command):
         if not tree.path2id('.bzrignore'):
             tree.add(['.bzrignore'])
 
+        ignored = globbing.Globster(name_pattern_list)
+        matches = []
+        tree.lock_read()
+        for entry in tree.list_files():
+            id = entry[3]
+            if id is not None:
+                filename = entry[0]
+                if ignored.match(filename):
+                    matches.append(filename)
+        tree.unlock()
+        if len(matches) > 0:
+            print "Warning: the following files are version controlled and" \
+                  " match your ignore pattern:\n%s" % ("\n".join(matches),)
 
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
