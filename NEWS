@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * The message given when committing to a bound branch now includes the
+      location of the master branch.  (Daniel Watkins, #52479)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
