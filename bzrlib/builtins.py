@@ -169,9 +169,9 @@ class cmd_status(Command):
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision',
                      Option('short', help='Give short SVN-style status lines.',
-                            short_name='s'),
+                            short_name='S'),
                      Option('versioned', help='Only show versioned files.',
-                            short_name='v')
+                            short_name='V')
                      ]
     aliases = ['st', 'stat']
 

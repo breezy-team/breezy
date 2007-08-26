@@ -49,7 +49,7 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
-    * ``bzr status`` now accepts '-sv', with SVN-like behaviour. (Daniel
+    * ``bzr status`` now accepts '-SV', with SVN-like behaviour. (Daniel
       Watkins, #115990)
 
   API BREAKS:
