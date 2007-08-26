@@ -252,7 +252,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     # to avoid downloading the whole file.
     _max_readv_combined = 0
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :param offsets: A list of (offset, size) tuples.

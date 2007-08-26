@@ -77,6 +77,11 @@ IN DEVELOPMENT
       incremental addition of data to a file without requiring that all the
       data be buffered in memory. (Robert Collins)
 
+    * New parameter on ``bzrlib.transport.Transport.readv``
+      ``adjust_for_latency`` which changes readv from returning strictly the
+      requested data to inserted return larger ranges and in forward read order
+      to reduce the effect of network latency. (Robert Collins)
+
 
 bzr 0.90 2007-08-??
 ===================
