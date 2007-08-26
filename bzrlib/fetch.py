@@ -80,11 +80,9 @@ class RepoFetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
-            # check that last_revision is in 'from' and then return a
-            # no-operation.
-            if last_revision is not None and not is_null(last_revision):
-                to_repository.get_revision(last_revision)
-            return
+            # repository.fetch should be taking care of this case.
+            raise errors.BzrError('unreachable code - Interrepository fetch'
+                ' with the same repository.')
         self.to_repository = to_repository
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance

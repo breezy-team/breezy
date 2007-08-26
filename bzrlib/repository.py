@@ -444,6 +444,14 @@ class Repository(object):
         If revision_id is None all content is copied.
         """
         revision_id = osutils.safe_revision_id(revision_id)
+        # fast path same-url fetch operations
+        if self.has_same_location(source):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
         inter = InterRepository.get(source, self)
         try:
             return inter.fetch(revision_id=revision_id, pb=pb)
