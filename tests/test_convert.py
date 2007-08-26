@@ -143,7 +143,7 @@ class TestConversion(TestCaseWithSubversionRepository):
 
     def test_shared_import_continue_remove(self):
         convert_repository(Repository.open(self.repos_url), "e", 
-                TrunkBranchingScheme(), True)
+                TrunkBranchingScheme(), create_shared_repo=True)
         self.client_update("dc")
         self.client_delete("dc/trunk")
         self.client_commit("dc", "blafoo")
@@ -151,7 +151,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "change")
         convert_repository(Repository.open(self.repos_url), "e", 
-                           TrunkBranchingScheme(), True)
+                           TrunkBranchingScheme(), create_shared_repo=True)
 
     def test_shared_import_continue_with_wt(self):
         convert_repository(Repository.open("svn+"+self.repos_url), "e", 

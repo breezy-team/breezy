@@ -186,10 +186,6 @@ class SvnRaTransport(Transport):
             self._ra = svn.client.open_ra_session(self._backing_url.encode('utf8'), 
                     self._client, self.pool)
         except SubversionException, (_, num):
-            if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
-                       svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
-                       svn.core.SVN_ERR_BAD_URL):
-                raise NotBranchError(path=url)
             if num in (svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND,):
                 raise NoSvnRepositoryPresent(url=url)
             raise

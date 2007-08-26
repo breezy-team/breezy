@@ -197,7 +197,13 @@ class SvnFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
-        transport = get_svn_ra_transport(transport)
+        try:
+            transport = get_svn_ra_transport(transport)
+        except SubversionException, (_, num):
+            if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
+                       svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
+                       svn.core.SVN_ERR_BAD_URL):
+                raise NotBranchError(path=transport.base)
 
         if isinstance(transport, SvnRaTransport):
             return format

@@ -33,7 +33,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from convert import SvnConverter
-from errors import LocalCommitsUnsupported
+from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
@@ -793,7 +793,12 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         subr_version = svn.core.svn_subr_version()
         if subr_version.major == 1 and subr_version.minor < 4:
             raise NoCheckoutSupport()
-        return SvnCheckout(transport, self)
+        try:
+            return SvnCheckout(transport, self)
+        except SubversionException, (_, num):
+            if num in (svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED,):
+                raise NoSvnRepositoryPresent(transport.base)
+            raise
 
     def get_format_string(self):
         return 'Subversion Local Checkout'
