@@ -26,7 +26,7 @@ from bzrlib import (
     repository,
     )
 from bzrlib.trace import mutter
-from bzrlib.tsort import TopoSorter
+from bzrlib.tsort import TopoSorter, topo_sort
 
 
 def reconcile(dir, other=None):
@@ -347,7 +347,9 @@ class KnitReconciler(RepoReconciler):
         revision_parents = repository._RevisionParentsProvider(self.repo)
         revision_graph = graph.Graph(revision_parents)
         revision_versions = {}
-        for file_id in self.repo.weave_store:
+        for num, file_id in enumerate(self.repo.weave_store):
+            self.pb.update('Fixing text parents', num,
+                           len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             bad_ancestors = self.repo.find_bad_ancestors(
                 self.revisions.versions(), file_id, vf, revision_versions,
@@ -356,6 +358,7 @@ class KnitReconciler(RepoReconciler):
                 continue
             new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
                 self.transaction)
+            new_parents = {}
             for version in vf.versions():
                 parents = vf.get_parents(version)
                 for parent_id in parents:
@@ -364,7 +367,10 @@ class KnitReconciler(RepoReconciler):
                         parents = self._find_correct_parents(version,
                             file_id, revision_versions, revision_graph)
                         break
-                new_vf.add_lines(version, parents, vf.get_lines(version))
+                new_parents[version] = parents
+            for version in topo_sort(new_parents.items()):
+                new_vf.add_lines(version, new_parents[version],
+                                 vf.get_lines(version))
             self.repo.weave_store.copy(new_vf, file_id, self.transaction)
             self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 
