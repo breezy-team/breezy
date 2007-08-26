@@ -46,6 +46,10 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
+    * ``check`` can detect versionedfile parent references that are
+      inconsistent with revision and inventory info, and ``reconcile`` can fix
+      them.  (Aaron Bentley)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
