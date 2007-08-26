@@ -36,7 +36,7 @@ import workingtree
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
-__version__ = '0.4.1'
+__version__ = '0.4.2dev'
 COMPATIBLE_BZR_VERSIONS = [(0, 90)]
 
 def check_bzrlib_version(desired):
