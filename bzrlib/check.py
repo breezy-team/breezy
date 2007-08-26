@@ -184,7 +184,7 @@ class Check(object):
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
         self.repository._add_revision_text_version(tree,
-            self.revision_versions)
+                                                   self.revision_versions)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:
