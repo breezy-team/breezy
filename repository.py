@@ -881,12 +881,17 @@ class SvnRepository(Repository):
 
             # Path names need to be sorted so the longer paths 
             # override the shorter ones
-            for p in sorted(paths.keys()):
+            for p in sorted(paths.keys(), reverse=True):
+                if paths[p][0] == 'M':
+                    continue
                 if branch_path.startswith(p+"/"):
-                    assert paths[p][1] is not None and paths[p][0] in ('A', 'R'), "Parent didn't exist yet, but child wasn't added !?"
+                    assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
+                    assert paths[p][1] is not None, \
+                        "Empty parent added, but child wasn't added !?"
 
                     revnum = paths[p][2]
                     branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
+                    break
 
     def follow_branch_history(self, branch_path, revnum, scheme):
         """Return all the changes that happened in a branch 

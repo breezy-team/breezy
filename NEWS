@@ -28,6 +28,8 @@ bzr-svn 0.4.1	UNRELEASED
 
    * Timestamps in properties no longer include locale-specific data. (#131337)
 
+   * Handle copies of parent directories of branches correctly. (#131180)
+
   INTERNALS
 
    * Support `topo_sorted` argument to by Repository.get_ancestry().

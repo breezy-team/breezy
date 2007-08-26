@@ -134,6 +134,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, list, 
                repos.follow_branch_history("/", 20, NoBranchingScheme()))
 
+    def test_follow_branch_switched_parents(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/pykleur/trunk/pykleur': None})
+        self.client_add("dc/pykleur")
+        self.client_commit("dc", "initial")
+        self.build_tree({'dc/pykleur/trunk/pykleur/afile': 'contents'})
+        self.client_add("dc/pykleur/trunk/pykleur/afile")
+        self.client_commit("dc", "add file")
+        self.client_copy("dc/pykleur", "dc/pygments", 1)
+        self.client_delete('dc/pykleur')
+        self.client_update("dc")
+        self.client_commit("dc", "commit")
+        repos = Repository.open(repos_url)
+        self.assertEquals([('pykleur/trunk', 1)], list(repos.follow_branch("pygments/trunk", 3,
+                                      TrunkBranchingScheme(1))))
+
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
@@ -884,7 +900,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_set_prop("dc/trunk", "some:property", "some other data\n")
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
-        self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
+        self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], 
+            list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')
