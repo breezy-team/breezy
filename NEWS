@@ -33,6 +33,9 @@ IN DEVELOPMENT
     * get_transport treats an empty possible_transports list the same as a non-
       empty one.  (Aaron Bentley)
 
+    * patch verification for merge directives is reactivated, and works with
+      CRLF and CR files.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
