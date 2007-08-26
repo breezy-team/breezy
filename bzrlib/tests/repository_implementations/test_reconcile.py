@@ -22,6 +22,7 @@ import bzrlib.errors as errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
+from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
@@ -465,6 +466,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_text_parents(self):
         repo = self.make_broken_repository()
+        if not isinstance(repo, KnitRepository):
+            raise TestSkipped("Format does not support text parent"
+                              " reconciliation")
         vf = repo.weave_store.get_weave('file2-id', repo.get_transaction())
         bad_ancestors = repo.find_bad_ancestors(['rev1a', 'rev2', 'rev3'],
                                                 'file2-id', vf, {})
@@ -472,7 +476,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         vf = repo.weave_store.get_weave('file3-id', repo.get_transaction())
         self.assertEqual(['rev2'], vf.get_parents('rev3'))
         self.assertNotEqual({}, bad_ancestors)
-        repo.reconcile()
+        repo.reconcile(thorough=True)
         vf = repo.weave_store.get_weave('file2-id', repo.get_transaction())
         revision_versions = {}
         bad_ancestors = repo.find_bad_ancestors(['rev1a', 'rev2', 'rev3'],

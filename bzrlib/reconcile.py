@@ -278,10 +278,10 @@ class KnitReconciler(RepoReconciler):
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
-        self._load_indexes()
         if self.thorough:
+            self._load_indexes()
             self._gc_inventory()
-        self._fix_text_parents()
+            self._fix_text_parents()
 
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
@@ -343,6 +343,14 @@ class KnitReconciler(RepoReconciler):
             mutter('Garbage inventory {%s} found.', revision_id)
 
     def _fix_text_parents(self):
+        """Fix bad versionedfile parent entries.
+
+        It is possible for the parents entrie in a versionedfile entry to be
+        inconsistent with the values in the revision and inventory.
+
+        This method finds entries with such inconsistencies, corrects their
+        parent lists, and replaces the versionedfile with a corrected version.
+        """
         transaction = self.repo.get_transaction()
         revision_parents = repository._RevisionParentsProvider(self.repo)
         revision_graph = graph.Graph(revision_parents)
