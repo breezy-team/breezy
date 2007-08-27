@@ -1,6 +1,3 @@
-before 0.4.1:
-- track moving branch parents (#131180)
-
 todo:
 - generate deltas rather than fulltexts when creating file id maps
 - BzrDir.create_branch() should set the revision id to NULL_REVISION

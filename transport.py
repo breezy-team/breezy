@@ -413,7 +413,8 @@ class SvnRaTransport(Transport):
 
     def clone_root(self):
         if self._is_http_transport():
-            return SvnRaTransport(self.get_repos_root(), self.base)
+            return SvnRaTransport(self.get_repos_root(), 
+                                  bzr_to_svn_url(self.base))
         return SvnRaTransport(self.get_repos_root())
 
     def clone(self, offset=None):
