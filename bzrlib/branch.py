@@ -1002,13 +1002,12 @@ class BranchHooks(Hooks):
         # invoked before a commit operation takes place.
         # the api signature is
         # (local, master, old_revno, old_revid, future_revno, future_revid,
-        #  affected_ids, future_revision_tree).
+        #  tree_delta, future_tree).
         # old_revid is NULL_REVISION for the first commit to a branch
-        # affected_ids is a dictionary of (change_type, ids) pairs where ids
-        # is a list of inventory entry ids and change_type is a string
-        # describing the change (added, deleted, renamed, etc.)
-        # future_revision_tree is an in-memory tree obtained from
-        # CommitBuilder.revision_tree()
+        # tree_delta is a TreeDelta object describing changes from the basis
+        # revision, hooks MUST NOT modify this delta
+        # future_tree is an in-memory tree obtained from
+        # CommitBuilder.revision_tree() and hooks MUST NOT modify this tree
         self['pre_commit'] = []
         # invoked after a commit operation completes.
         # the api signature is 

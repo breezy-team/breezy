@@ -359,9 +359,9 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
              ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
-             ('update', 3, 5, 'Running pre commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
-             ('update', 5, 5, 'Running post commit hooks - Stage')],
+             ('update', 5, 5, 'Running post_commit hooks - Stage')],
             factory._calls
            )
 
@@ -382,10 +382,10 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
              ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
-             ('update', 3, 5, 'Running pre commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
-             ('update', 5, 5, 'Running post commit hooks - Stage'),
-             ('update', 5, 5, 'Running post commit hooks [hook name] - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks [hook name] - Stage'),
              ],
             factory._calls
            )
@@ -407,10 +407,10 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
              ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
-             ('update', 3, 5, 'Running pre commit hooks - Stage'),
-             ('update', 3, 5, 'Running pre commit hooks [hook name] - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
-             ('update', 5, 5, 'Running post commit hooks - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
              ],
             factory._calls
            )

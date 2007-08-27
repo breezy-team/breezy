@@ -235,7 +235,6 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
-        self.affected_ids = {}
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -473,13 +472,13 @@ class Commit(object):
 
     def _process_pre_hooks(self, old_revno, new_revno):
         """Process any registered pre commit hooks."""
-        self._set_progress_stage("Running pre commit hooks")
+        self._set_progress_stage("Running pre_commit hooks")
         self._process_hooks("pre_commit", old_revno, new_revno)
 
     def _process_post_hooks(self, old_revno, new_revno):
         """Process any registered post commit hooks."""
         # Process the post commit hooks, if any
-        self._set_progress_stage("Running post commit hooks")
+        self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15)
         if self.config.post_commit() is not None:
@@ -511,7 +510,12 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
-            
+        
+        if hook_name == "pre_commit":
+            future_tree = self.builder.revision_tree()
+            tree_delta = future_tree.changes_from(self.basis_tree,
+                                             include_root=True)
+        
         for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
@@ -519,7 +523,7 @@ class Commit(object):
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
             self.pb_stage_name = "Running %s hooks [%s]" % \
-                (hook_name.replace('_', ' '), Branch.hooks.get_hook_name(hook))
+                (hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
             if 'hooks' in debug.debug_flags:
                 mutter("Invoking commit hook: %r", hook)
@@ -529,7 +533,7 @@ class Commit(object):
             elif hook_name == "pre_commit":
                 hook(hook_local, hook_master,
                      old_revno, old_revid, new_revno, self.rev_id,
-                     self.affected_ids, self.builder.revision_tree())
+                     tree_delta, future_tree)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -649,7 +653,6 @@ class Commit(object):
         for path, ie in self.basis_inv.iter_entries():
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
-                self.affected_ids.setdefault('deleted', []).append(ie.file_id)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -766,8 +769,6 @@ class Commit(object):
         else:
             basis_ie = None
         change = ie.describe_change(basis_ie, ie)
-        if change != 'unchanged' and path != '':
-            self.affected_ids.setdefault(change, []).append(ie.file_id)
         if change in (InventoryEntry.RENAMED, 
             InventoryEntry.MODIFIED_AND_RENAMED):
             old_path = self.basis_inv.id2path(ie.file_id)
