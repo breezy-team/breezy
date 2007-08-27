@@ -406,7 +406,7 @@ class Transport(object):
         """
         assert not isinstance(from_file, basestring), \
             '_pump should only be called on files not %s' % (type(from_file,))
-        osutils.pumpfile(from_file, to_file)
+        return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -635,7 +635,56 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
-    def readv(self, relpath, offsets):
+    def readv(self, relpath, offsets, adjust_for_latency=False):
+        """Get parts of the file at the given relative path.
+
+        :param relpath: The path to read data from.
+        :param offsets: A list of (offset, size) tuples.
+        :param adjust_for_latency: Adjust the requested offsets to accomdate
+            transport latency. This may re-order the offsets, expand them to
+            grab adjacent data when there is likely a high cost to requesting
+            data relative to delivering it.
+        :return: A list or generator of (offset, data) tuples
+        """
+        if adjust_for_latency:
+            offsets = sorted(offsets)
+            # short circuit empty requests
+            if len(offsets) == 0:
+                def empty_yielder():
+                    # Quick thunk to stop this function becoming a generator
+                    # itself, rather we return a generator that has nothing to
+                    # yield.
+                    if False:
+                        yield None
+                return empty_yielder()
+            # expand by page size at either end
+            expansion = self.recommended_page_size() / 2
+            new_offsets = []
+            for offset, length in offsets:
+                new_offset = offset - expansion
+                new_length = length + expansion
+                if new_offset < 0:
+                    # don't ask for anything < 0
+                    new_length -= new_offset
+                    new_offset = 0
+                new_offsets.append((new_offset, new_length))
+            # combine the expanded offsets
+            offsets = []
+            current_offset, current_length = new_offsets[0]
+            current_finish = current_length + current_offset
+            for offset, length in new_offsets[1:]:
+                if offset > current_finish:
+                    offsets.append((current_offset, current_length))
+                    current_offset = offset
+                    current_length = length
+                    continue
+                finish = offset + length
+                if finish > current_finish:
+                    current_finish = finish
+            offsets.append((current_offset, current_length))
+        return self._readv(relpath, offsets)
+
+    def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :offsets: A list of (offset, size) tuples.
@@ -794,6 +843,7 @@ class Transport(object):
         :param f:       File-like object.
         :param mode: The mode for the newly created file,
                      None means just use the default.
+        :return: The length of the file that was written.
         """
         # We would like to mark this as NotImplemented, but most likely
         # transports have defined it in terms of the old api.

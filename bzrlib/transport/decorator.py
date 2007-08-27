@@ -138,6 +138,10 @@ class TransportDecorator(Transport):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
 
+    def _readv(self, relpath, offsets):
+        """See Transport._readv."""
+        return self._decorated._readv(relpath, offsets)
+
     def recommended_page_size(self):
         """See Transport.recommended_page_size()."""
         return self._decorated.recommended_page_size()
