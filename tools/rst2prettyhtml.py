@@ -66,5 +66,6 @@ def main(template, source=None, target=None):
 
 assert len(sys.argv) > 1
 
-main(*sys.argv[1:])
-
+# Strip options so only the arguments are passed
+args = [x for x in sys.argv[1:] if not x.startswith('-')]
+main(*args)

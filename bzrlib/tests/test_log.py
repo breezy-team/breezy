@@ -428,6 +428,35 @@ message:
   simple log message
 """)
 
+    def test_author_in_log(self):
+        """Log includes the author name if it's set in
+        the revision properties
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>')
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        show_log(b, formatter)
+        self.assertEqualDiff(sio.getvalue(), '''\
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+author: John Doe <jdoe@example.com>
+branch nick: test_author_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+''')
+
+
 
 class TestLineLogFormatter(TestCaseWithTransport):
 

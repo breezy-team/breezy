@@ -543,25 +543,6 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(RevisionNotPresent,
             f.annotate, 'foo')
 
-    def test_walk(self):
-        # tests that walk returns all the inclusions for the requested
-        # revisions as well as the revisions changes themselves.
-        f = self.get_file('1')
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
-        f.add_lines('rX', ['r1'], ['d\n', 'b\n'])
-        f.add_lines('rY', ['r1'], ['c\n', 'e\n'])
-
-        lines = {}
-        for lineno, insert, dset, text in f.walk(['rX', 'rY']):
-            lines[text] = (insert, dset)
-
-        self.assertTrue(lines['a\n'], ('r0', set(['r1'])))
-        self.assertTrue(lines['b\n'], ('r0', set(['rY'])))
-        self.assertTrue(lines['c\n'], ('r1', set(['rX'])))
-        self.assertTrue(lines['d\n'], ('rX', set([])))
-        self.assertTrue(lines['e\n'], ('rY', set([])))
-
     def test_detection(self):
         # Test weaves detect corruption.
         #

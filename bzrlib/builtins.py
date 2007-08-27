@@ -959,17 +959,6 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        try:
-            os.mkdir(to_location)
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-                raise errors.BzrCommandError('Target directory "%s" already'
-                                             ' exists.' % to_location)
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Parent of "%s" does not exist.'
-                                             % to_location)
-            else:
-                raise
         source.create_checkout(to_location, revision_id, lightweight)
 
 
@@ -2146,6 +2135,10 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    If author of the change is not the same person as the committer, you can
+    specify the author's name using the --author option. The name should be
+    in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
+
     A selected-file commit may fail in some cases where the committed
     tree would be invalid. Consider::
 
@@ -2192,6 +2185,9 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
+             Option('author', type=str,
+                    help="Set the author's name, if it's different "
+                         "from the committer."),
              Option('local',
                     help="Perform a local commit in a bound "
                          "branch.  Local commits are not pushed to "
@@ -2224,7 +2220,8 @@ class cmd_commit(Command):
         return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None):
+            unchanged=False, strict=False, local=False, fixes=None,
+            author=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2281,7 +2278,8 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties)
+                        reporter=reporter, revprops=properties,
+                        author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -3783,7 +3781,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -3808,6 +3806,19 @@ class cmd_send(Command):
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
 
+    Mail is sent using your preferred mail program.  This should be transparent
+    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
+    the preferred client can't be found (or used), your editor will be used.
+    
+    To use a specific mail program, set the mail_client configuration option.
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
+    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
+    "default".
+
+    If mail is being sent, a to address is required.  This can be supplied
+    either on the commandline, or by setting the submit_to configuration
+    option.
+
     Two formats are currently supported: "4" uses revision bundle format 4 and
     merge directive format 2.  It is significantly faster and smaller than
     older formats.  It is compatible with Bazaar 0.19 and later.  It is the
@@ -3817,7 +3828,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge']
+    _see_also = ['merge', 'doc/configuration.txt']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
@@ -3835,7 +3846,10 @@ class cmd_send(Command):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
+        Option('mail-to', help='Mail the request to this address.',
+               type=unicode),
         'revision',
+        'message',
         RegistryOption.from_kwargs('format',
         'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
@@ -3844,23 +3858,30 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
-        if output is None:
-            raise errors.BzrCommandError('File must be specified with'
-                                         ' --output')
+            format='4', mail_to=None, message=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'))
+                         kwargs.get('from', '.'), mail_to, message)
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_,):
+             no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import ensure_null, NULL_REVISION
-        if output == '-':
+        if output is None:
+            outfile = StringIO()
+        elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
         try:
             branch = Branch.open_containing(from_)[0]
+            if output is None:
+                config = branch.get_config()
+                if mail_to is None:
+                    mail_to = config.get_user_option('submit_to')
+                if mail_to is None:
+                    raise errors.BzrCommandError('No mail-to address'
+                                                 ' specified')
+                mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
@@ -3908,7 +3929,7 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=None,
+                    include_bundle=not no_bundle, message=message,
                     base_revision_id=base_revision_id)
             elif format == '0.9':
                 if not no_bundle:
@@ -3926,9 +3947,18 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, patch_type=patch_type,
-                    message=None)
+                    message=message)
 
             outfile.writelines(directive.to_lines())
+            if output is None:
+                subject = '[MERGE] '
+                if message is not None:
+                    subject += message
+                else:
+                    revision = branch.repository.get_revision(revision_id)
+                    subject += revision.get_summary()
+                mail_client.compose_merge_request(mail_to, subject,
+                                                  outfile.getvalue())
         finally:
             if output != '-':
                 outfile.close()
@@ -3968,6 +3998,26 @@ class cmd_bundle_revisions(cmd_send):
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive.'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive.'),
+        Option('remember',
+               help='Remember submit and public branch.'),
+        Option('from',
+               help='Branch to generate the submission from, '
+               'rather than the one containing the working directory.',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o', help='Write directive to this file.',
+               type=unicode),
+        'revision',
+        RegistryOption.from_kwargs('format',
+        'Use the specified output format.',
+        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
+           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        ]
     aliases = ['bundle']
 
     _see_also = ['send', 'merge']
@@ -3981,7 +4031,7 @@ class cmd_bundle_revisions(cmd_send):
             output = '-'
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'))
+                         kwargs.get('from', '.'), None, None)
 
 
 class cmd_tag(Command):

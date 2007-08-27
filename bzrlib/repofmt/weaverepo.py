@@ -58,10 +58,6 @@ class AllInOneRepository(Repository):
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
-            #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
 
         # not broken out yet because the controlweaves|inventory_store

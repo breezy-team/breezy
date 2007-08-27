@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ import os
 import re
 import sys
 
+import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
@@ -26,14 +27,20 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-import bzrlib.errors
 from bzrlib.repofmt import knitrepo
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
+
+# These tests are a bit old; please instead add new tests into
+# interrepository_implementations/ so they'll run on all relevant
+# combinations.
 
 
 def has_revision(branch, revision_id):
@@ -94,18 +101,13 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
-    # InstallFailed should be raised if the branch is missing a revision
-    # from its own revision history
-    br_a2.append_revision('a-b-c')
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
+    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
 
-    # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
-    #       revisions which are not present?  In that case, this test
-    #       must be rewritten.
-    #
-    #       RBC 20060403 the way to do this is to uncommit the revision from
-    #       the repository after the commit
+    # TODO: Test trying to fetch from a branch that points to a revision not
+    # actually present in its repository.  Not every branch format allows you
+    # to directly point to such revisions, so it's a bit complicated to
+    # construct.  One way would be to uncommit and gc the revision, but not
+    # every branch supports that.  -- mbp 20070814
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
@@ -116,7 +118,7 @@ class TestFetch(TestCaseWithTransport):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches(self)
+        br_a, br_b = make_branches(self, format='dirstate-tags')
         fetch_steps(self, br_a, br_b, br_a)
 
     def test_fetch_self(self):

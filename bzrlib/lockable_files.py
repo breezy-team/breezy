@@ -24,8 +24,8 @@ from bzrlib.decorators import (needs_read_lock,
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
-from bzrlib.symbol_versioning import (deprecated_method, 
-        zero_eight)
+from bzrlib.symbol_versioning import (deprecated_method,
+        )
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 import bzrlib.urlutils as urlutils
@@ -143,34 +143,6 @@ class LockableFiles(object):
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
         return self._transport.abspath(self._escape(file_or_path))
-
-    @deprecated_method(zero_eight)
-    def controlfile(self, file_or_path, mode='r'):
-        """Open a control file for this branch.
-
-        There are two classes of file in a lockable directory: text
-        and binary.  binary files are untranslated byte streams.  Text
-        control files are stored with Unix newlines and in UTF-8, even
-        if the platform or locale defaults are different.
-
-        Such files are not openable in write mode : they are managed via
-        put and put_utf8 which atomically replace old versions using
-        atomicfile.
-        """
-
-        relpath = self._escape(file_or_path)
-        # TODO: codecs.open() buffers linewise, so it was overloaded with
-        # a much larger buffer, do we need to do the same for getreader/getwriter?
-        if mode == 'rb': 
-            return self.get(relpath)
-        elif mode == 'wb':
-            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put[_utf8]")
-        elif mode == 'r':
-            return self.get_utf8(relpath)
-        elif mode == 'w':
-            raise BzrError("Branch.controlfile(mode='w') is not supported, use put[_utf8]")
-        else:
-            raise BzrError("invalid controlfile mode %r" % mode)
 
     @needs_read_lock
     def get(self, relpath):

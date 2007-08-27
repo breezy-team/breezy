@@ -156,11 +156,6 @@ class HttpTransport_urllib(HttpTransportBase):
         self._get_connection().fake_close()
         return code, data
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def _head(self, relpath):
         """Request the HEAD of a file.
 

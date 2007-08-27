@@ -21,10 +21,9 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.tests.blackbox import ExternalBase
 
-class TestAdded(TestCaseInTempDir):
+class TestAdded(ExternalBase):
 
     def test_added(self):
         """Test that 'added' command reports added files"""
@@ -34,23 +33,20 @@ class TestAdded(TestCaseInTempDir):
             self.assertEquals(out, expected)
             self.assertEquals(err, '')
 
-        def bzr(*args):
-            self.run_bzr(*args)
-
         # in empty directory, nothing added
-        bzr('init')
+        tree = self.make_branch_and_tree('.')
         check_added('')
 
         # with unknown file, still nothing added
-        build_tree_contents([('a', 'contents of a\n')])
+        self.build_tree_contents([('a', 'contents of a\n')])
         check_added('')
 
         # after add, shows up in list
         # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
         # NameError
-        bzr('add a')
+        tree.add('a')
         check_added('a\n')
 
         # after commit, now no longer listed
-        bzr(['commit', '-m', 'add a'])
+        tree.commit(message='add a')
         check_added('')

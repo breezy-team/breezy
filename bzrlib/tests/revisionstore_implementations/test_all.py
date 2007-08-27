@@ -58,15 +58,22 @@ class TestAll(TestCaseWithTransport):
         # has of a non present id -> False
         self.assertFalse(self.store.has_revision_id('missing', self.transaction))
 
-    def test_has_None(self):
-        # has of None -> True
+    def test_has_null(self):
+        # has of null -> True
         self.assertTrue(self.store.has_revision_id('null:', self.transaction))
 
-    def test_get_revision_none(self):
-        # get_revision(None) -> raises NoSuchRevision
+    def test_get_revision_missing(self):
+        # get_revision('B') -> raises NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.store.get_revision,
                           'B',
+                          self.transaction)
+
+    def test_get_revision_null(self):
+        # get_revision(null) -> raises ReservedId
+        self.assertRaises(errors.ReservedId,
+                          self.store.get_revision,
+                          'null:',
                           self.transaction)
 
     def test_add_signature_text_missing(self):

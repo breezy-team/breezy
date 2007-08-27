@@ -108,6 +108,7 @@ class TextRevisionStore(RevisionStore):
         return revisions
 
     def _get_revision_xml_file(self, revision_id):
+        _mod_revision.check_not_reserved_id(revision_id)
         try:
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):

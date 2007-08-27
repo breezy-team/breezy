@@ -74,6 +74,13 @@ class PatchesTester(unittest.TestCase):
         assert (hunk.mod_range == 0)
         assert (str(hunk) == header)
 
+    def testPDiff(self):
+        """Parse a hunk header produced by diff -p"""
+        header = "@@ -407,7 +292,7 @@ bzr 0.18rc1  2007-07-10\n"
+        hunk = hunk_from_header(header)
+        self.assertEqual('bzr 0.18rc1  2007-07-10', hunk.tail)
+        self.assertEqual(header, str(hunk))
+
     def makeMalformed(self, header):
         self.assertRaises(MalformedHunkHeader, hunk_from_header, header)
 
