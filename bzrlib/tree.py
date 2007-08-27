@@ -674,11 +674,15 @@ class InterTree(InterObject):
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
-        specific_file_ids = self.target.paths2ids(specific_files,
-            lookup_trees, require_versioned=require_versioned)
+        if specific_files == []:
+            specific_file_ids = []
+        else:
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
         if want_unversioned:
-            all_unversioned = sorted([(p.split('/'), p) for p in self.target.extras()
-                if not specific_files or
+            all_unversioned = sorted([(p.split('/'), p) for p in
+                                     self.target.extras()
+                if specific_files is None or
                     osutils.is_inside_any(specific_files, p)])
             all_unversioned = deque(all_unversioned)
         else:
