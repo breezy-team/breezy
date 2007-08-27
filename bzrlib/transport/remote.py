@@ -234,6 +234,7 @@ class RemoteTransport(transport.ConnectedTransport):
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
         self._translate_error(resp)
+        return len(upload_contents)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False,

@@ -158,6 +158,7 @@ class MemoryTransport(Transport):
                 'undefined', bytes, 0, 1,
                 'put_file must be given a file of bytes, not unicode.')
         self._files[_abspath] = (bytes, mode)
+        return len(bytes)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
