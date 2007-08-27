@@ -36,6 +36,8 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.

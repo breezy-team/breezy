@@ -237,7 +237,6 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
 
-
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir2/'])
