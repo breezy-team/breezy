@@ -82,7 +82,8 @@ class RepoFetcher(object):
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('unreachable code - Interrepository fetch'
-                ' with the same repository.')
+                    'asked to fetch between two objects at the same location: '
+                    '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance
