@@ -1645,6 +1645,7 @@ class MissingText(BzrError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+
 class DuplicateFileId(BzrError):
 
     _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"

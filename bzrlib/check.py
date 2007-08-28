@@ -156,7 +156,7 @@ class Check(object):
         weave_ids = []
         if self.repository.weave_store.listable():
             weave_ids = list(self.repository.weave_store)
-            n_weaves = len(weave_ids)
+            n_weaves = len(weave_ids) + 1
         self.progress.update('checking weave', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
         for i, weave_id in enumerate(weave_ids):
