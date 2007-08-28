@@ -260,10 +260,11 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
+        self.base = control_files._transport.base
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, 
-                           self.bzrdir.transport.base)
+        return '%s(%r)' % (self.__class__.__name__,
+                           self.base)
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -272,10 +273,9 @@ class Repository(object):
         This might return False even when two repository objects are accessing
         the same physical repository via different URLs.
         """
-        if self.__class__ is not other.__class__:
-            return False
-        return (self.control_files._transport.base ==
-                other.control_files._transport.base)
+        ## if self.__class__ is not other.__class__:
+        ##     return False
+        return (self.base == other.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -525,6 +525,27 @@ class Repository(object):
         self._start_write_group()
         # so we can detect unlock/relock - the write group is now entered.
         self._write_group = self.get_transaction()
+
+    @needs_write_lock
+    def call_in_write_group(self, fn, *args, **kwargs):
+        """Call a callable within a write group.
+
+        On error the write group is aborted and on success it is commited.
+
+        This method may not be called if the repository is already in a 
+        write group.
+
+        This can be used for testing methods normally used within a larger 
+        write group.
+        """
+        self.start_write_group()
+        try:
+            result = fn(*args, **kwargs)
+        except:
+            self.abort_write_group()
+            raise
+        self.commit_write_group()
+        return result
 
     def _start_write_group(self):
         """Template method for per-repository write group startup.
