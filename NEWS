@@ -42,6 +42,8 @@ IN DEVELOPMENT
     * ``BZR_PLUGIN_PATH`` may now contain trailing slashes.
       (Blake Winton, #129299)
 
+    * man page no longer lists hidden options (#131667, Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
