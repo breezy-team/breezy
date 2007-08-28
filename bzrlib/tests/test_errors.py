@@ -84,7 +84,7 @@ class TestErrors(TestCaseWithTransport):
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
-                         " for file path/to/file", str(error))
+                         " for file \"path/to/file\".", str(error))
 
     def test_knit_index_unknown_method(self):
         error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
@@ -118,15 +118,14 @@ class TestErrors(TestCaseWithTransport):
 
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
-        self.assertEqualDiff("The file id anid is not present in the tree "
+        self.assertEqualDiff("The file id \"anid\" is not present in the tree "
             "atree.",
             str(error))
 
     def test_no_such_revision_in_tree(self):
         error = errors.NoSuchRevisionInTree("atree", "anid")
-        self.assertEqualDiff("The revision id anid is not present in the tree "
-            "atree.",
-            str(error))
+        self.assertEqualDiff("The revision id {anid} is not present in the"
+                             " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
     def test_not_write_locked(self):
@@ -353,7 +352,7 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of DuplicateRecordNameError."""
         e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
         self.assertEqual(
-            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
+            "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
 
 
