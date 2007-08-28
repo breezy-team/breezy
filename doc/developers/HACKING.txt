@@ -400,7 +400,7 @@ TestSkipped             pass    pass    pass
 TestNotApplicable       pass    pass    pass
 TestPlatformLimit       pass    pass    pass
 TestDependencyMissing   fail    pass    pass
-KnownFailure            fail    fail    pass
+KnownFailure            fail    pass    pass
 ======================= ======= ======= ========
      
 
