@@ -232,8 +232,8 @@ class BranchStatus(TestCaseWithTransport):
 
         tof = StringIO()
         revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
-        show_tree_status(wt, specific_files=['test.c'], to_file=tof, short=True,
-                         revision=revs)
+        show_tree_status(wt, specific_files=['test.c'], to_file=tof,
+                         short=True, revision=revs)
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
 
