@@ -523,7 +523,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_not_applicable(self, test, skip_excinfo):
         self.stream.writeln('  N/A %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
     def report_unsupported(self, test, feature):
