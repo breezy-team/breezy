@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * Accept ..\ as a path in revision specifiers. This fixes for example
+      "-r branch:..\other-branch" on Windows.  (Lukáš Lalinský) 
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
