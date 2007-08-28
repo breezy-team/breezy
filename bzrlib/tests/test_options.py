@@ -299,10 +299,10 @@ class TestOptionDefinitions(TestCase):
 
     def test_is_hidden(self):
         registry = bzrdir.BzrDirFormatRegistry()
-        registry.register_metadir('hidden', 'RepositoryFormatKnit1',
-            'two help', hidden=True)
-        registry.register_metadir('visible', 'RepositoryFormatKnit1',
-            'two help', hidden=False)
+        registry.register_metadir('hidden', 'HiddenFormat',
+            'hidden help text', hidden=True)
+        registry.register_metadir('visible', 'VisibleFormat',
+            'visible help text', hidden=False)
         format = option.RegistryOption('format', '', registry, str)
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
