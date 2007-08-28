@@ -3419,7 +3419,11 @@ class cmd_uncommit(Command):
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
-    
+
+    If --revision is specified, uncommit revisions to leave the branch at the
+    specified revision.  For example, "bzr uncommit -r 15" will leave the
+    branch at revision 15.
+
     In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """

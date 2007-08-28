@@ -46,6 +46,9 @@ IN DEVELOPMENT
 
     * man page no longer lists hidden options (#131667, Aaron Bentley)
 
+    * ``uncommit --help`` now explains the -r option adequately.  (Daniel
+      Watkins, #106726)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
