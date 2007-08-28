@@ -69,8 +69,19 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
-        print >> file(os.path.join('first', 'plugin.py'), 'w'), template % (tempattribute, 'first')
-        print >> file(os.path.join('second', 'plugin.py'), 'w'), template % (tempattribute, 'second')
+
+        outfile = open(os.path.join('first', 'plugin.py'), 'w')
+        try:
+            print >> outfile, template % (tempattribute, 'first')
+        finally:
+            outfile.close()
+
+        outfile = open(os.path.join('second', 'plugin.py'), 'w')
+        try:
+            print >> outfile, template % (tempattribute, 'second')
+        finally:
+            outfile.close()
+
         try:
             bzrlib.plugin.load_from_path(['first', 'second'])
             self.assertEqual(['first'], self.activeattributes[tempattribute])
@@ -102,8 +113,19 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
-        print >> file(os.path.join('first', 'pluginone.py'), 'w'), template % (tempattribute, 'first')
-        print >> file(os.path.join('second', 'plugintwo.py'), 'w'), template % (tempattribute, 'second')
+
+        outfile = open(os.path.join('first', 'pluginone.py'), 'w')
+        try:
+            print >> outfile, template % (tempattribute, 'first')
+        finally:
+            outfile.close()
+
+        outfile = open(os.path.join('second', 'plugintwo.py'), 'w')
+        try:
+            print >> outfile, template % (tempattribute, 'second')
+        finally:
+            outfile.close()
+
         oldpath = bzrlib.plugins.__path__
         try:
             bzrlib.plugins.__path__ = ['first', 'second']
@@ -118,6 +140,42 @@ class TestLoadingPlugins(TestCaseInTempDir):
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+    def test_plugins_can_load_from_directory_with_trailing_slash(self):
+        # This test tests that a plugin can load from a directory when the
+        # directory in the path has a trailing slash.
+        # check the plugin is not loaded already
+        self.failIf(getattr(bzrlib.plugins, 'ts_plugin', None))
+        tempattribute = "trailing-slash"
+        self.failIf(tempattribute in self.activeattributes)
+        # set a place for the plugin to record its loading, and at the same
+        # time validate that the location the plugin should record to is
+        # valid and correct.
+        bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
+            [tempattribute] = []
+        self.failUnless(tempattribute in self.activeattributes)
+        # create a directory for the plugin
+        os.mkdir('plugin_test')
+        # write a plugin that will record when its loaded in the 
+        # tempattribute list.
+        template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
+                    "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
+
+        outfile = open(os.path.join('plugin_test', 'ts_plugin.py'), 'w')
+        try:
+            print >> outfile, template % (tempattribute, 'plugin')
+        finally:
+            outfile.close()
+
+        try:
+            bzrlib.plugin.load_from_path(['plugin_test'+os.sep])
+            self.assertEqual(['plugin'], self.activeattributes[tempattribute])
+        finally:
+            # remove the plugin 'plugin'
+            del self.activeattributes[tempattribute]
+            if getattr(bzrlib.plugins, 'ts_plugin', None):
+                del bzrlib.plugins.ts_plugin
+        self.failIf(getattr(bzrlib.plugins, 'ts_plugin', None))
 
 
 class TestAllPlugins(TestCaseInTempDir):
@@ -243,6 +301,25 @@ class TestSetPluginsPath(TestCase):
         finally:
             bzrlib.plugins.__path__ = old_path
 
+    def test_set_plugins_path_with_trailing_slashes(self):
+        """set_plugins_path should set the module __path__ based on
+        BZR_PLUGIN_PATH."""
+        old_path = bzrlib.plugins.__path__
+        old_env = os.environ.get('BZR_PLUGIN_PATH')
+        try:
+            bzrlib.plugins.__path__ = []
+            os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
+                "second/\\/\\/"
+            bzrlib.plugin.set_plugins_path()
+            expected_path = ['first', 'second',
+                os.path.dirname(bzrlib.plugins.__file__)]
+            self.assertEqual(expected_path, bzrlib.plugins.__path__)
+        finally:
+            bzrlib.plugins.__path__ = old_path
+            if old_env != None:
+                os.environ['BZR_PLUGIN_PATH'] = old_env
+            else:
+                del os.environ['BZR_PLUGIN_PATH']
 
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""

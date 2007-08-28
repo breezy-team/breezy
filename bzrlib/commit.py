@@ -316,8 +316,7 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
             except:
-                # perhaps this should be done by the CommitBuilder ?
-                self.work_tree.branch.repository.abort_write_group()
+                self.builder.abort()
                 raise
 
             # Upload revision data to the master.

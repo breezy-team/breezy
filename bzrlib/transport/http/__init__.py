@@ -294,6 +294,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # After one or more tries, we get the data.
             yield start, data
 
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For HTTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
     @staticmethod
     @deprecated_method(zero_seventeen)
     def offsets_to_ranges(offsets):

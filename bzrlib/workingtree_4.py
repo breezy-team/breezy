@@ -43,6 +43,7 @@ from bzrlib import (
     bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
+    debug,
     delta,
     dirstate,
     errors,
@@ -55,6 +56,7 @@ from bzrlib import (
     revision as _mod_revision,
     revisiontree,
     textui,
+    trace,
     transform,
     urlutils,
     xml5,
@@ -431,6 +433,9 @@ class WorkingTree4(WorkingTree3):
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2,
+                "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
             return self._inventory
         self._must_be_locked()
@@ -568,7 +573,7 @@ class WorkingTree4(WorkingTree3):
         if parent_ids:
             return parent_ids[0]
         else:
-            return None
+            return _mod_revision.NULL_REVISION
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
@@ -1520,6 +1525,20 @@ class DirStateRevisionTree(Tree):
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
+
+    def iter_files_bytes(self, desired_files):
+        """See Tree.iter_files_bytes.
+
+        This version is implemented on top of Repository.iter_files_bytes"""
+        parent_index = self._get_parent_index()
+        repo_desired_files = []
+        for file_id, identifier in desired_files:
+            entry = self._get_entry(file_id)
+            if entry == (None, None):
+                raise errors.NoSuchId(self, file_id)
+            repo_desired_files.append((file_id, entry[1][parent_index][4],
+                                       identifier))
+        return self._repository.iter_files_bytes(repo_desired_files)
 
     def get_symlink_target(self, file_id):
         entry = self._get_entry(file_id=file_id)

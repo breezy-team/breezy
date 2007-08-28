@@ -25,11 +25,12 @@ directories.
 
 from cStringIO import StringIO
 import os
-import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from stat import S_ISDIR
+import textwrap
+from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -69,6 +70,11 @@ from bzrlib.trace import (
     note,
     )
 from bzrlib.transport.local import LocalTransport
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    zero_ninetyone,
+    )
 
 
 class BzrDir(object):
@@ -309,6 +315,7 @@ class BzrDir(object):
         return result
 
     @staticmethod
+    @deprecated_function(zero_ninetyone)
     def create_repository(base, shared=False, format=None):
         """Create a new BzrDir and Repository at the url 'base'.
 
@@ -323,6 +330,9 @@ class BzrDir(object):
         This must be overridden as an instance method in child classes, where
         it should take no parameters and construct whatever repository format
         that child class desires.
+
+        This method is deprecated, please call create_repository on a bzrdir
+        instance instead.
         """
         bzrdir = BzrDir.create(base, format)
         return bzrdir.create_repository(shared)
@@ -2353,6 +2363,7 @@ class BzrDirFormatRegistry(registry.Registry):
             repositories.
 
             """)
+        default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
         for key in self.keys():
@@ -2370,8 +2381,9 @@ class BzrDirFormatRegistry(registry.Registry):
             return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped(default_realkey, '(default) %s' % default_help,
-                          self.get_info('default'))
+        if default_realkey is not None:
+            output += wrapped(default_realkey, '(default) %s' % default_help,
+                              self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)

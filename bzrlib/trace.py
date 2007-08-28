@@ -56,8 +56,10 @@ import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from cStringIO import StringIO
 import errno
 import logging
+import traceback
 """)
 
 import bzrlib
@@ -120,6 +122,21 @@ def mutter(fmt, *args):
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
+
+
+def mutter_callsite(stacklevel, fmt, *args):
+    """Perform a mutter of fmt and args, logging the call trace.
+
+    :param stacklevel: The number of frames to show. None will show all
+        frames.
+    :param fmt: The format string to pass to mutter.
+    :param args: A list of substitution variables.
+    """
+    outf = StringIO()
+    traceback.print_stack(limit=stacklevel + 1, file=outf)
+    formatted_lines = outf.getvalue().splitlines()
+    formatted_stack = '\n'.join(formatted_lines[:-2])
+    mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))
 
 
 def _rollover_trace_maybe(trace_fname):

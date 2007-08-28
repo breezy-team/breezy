@@ -54,6 +54,8 @@ from bzrlib.symbol_versioning import (
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    FileFileStream,
+    _file_streams,
     local,
     register_urlparse_netloc_protocol,
     Server,
@@ -263,6 +265,14 @@ class SFTPTransport(ConnectedTransport):
             return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For SFTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
 
     def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
@@ -531,6 +541,28 @@ class SFTPTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # initialise the file to zero-length
+        # this is three round trips, but we don't use this 
+        # api more than once per write_group at the moment so 
+        # it is a tolerable overhead. Better would be to truncate
+        # the file after opening. RBC 20070805
+        self.put_bytes_non_atomic(relpath, "", mode)
+        abspath = self._remote_path(relpath)
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+        handle = None
+        try:
+            handle = self._get_sftp().file(abspath, mode='wb')
+            handle.set_pipelined(True)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath,
+                                         ': unable to open')
+        _file_streams[self.abspath(relpath)] = handle
+        return FileFileStream(self, relpath, handle)
 
     def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):

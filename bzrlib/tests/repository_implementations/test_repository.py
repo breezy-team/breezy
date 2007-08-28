@@ -375,6 +375,31 @@ class TestRepository(TestCaseWithRepository):
         format = repo.get_serializer_format()
         self.assertEqual(repo._serializer.format_num, format)
 
+    def test_iter_files_bytes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file1', 'foo'),
+                                  ('tree/file2', 'bar')])
+        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        tree.commit('rev1', rev_id='rev1')
+        self.build_tree_contents([('tree/file1', 'baz')])
+        tree.commit('rev2', rev_id='rev2')
+        repository = tree.branch.repository
+        extracted = dict((i, ''.join(b)) for i, b in
+                         repository.iter_files_bytes(
+                         [('file1-id', 'rev1', 'file1-old'),
+                          ('file1-id', 'rev2', 'file1-new'),
+                          ('file2-id', 'rev1', 'file2'),
+                         ]))
+        self.assertEqual('foo', extracted['file1-old'])
+        self.assertEqual('bar', extracted['file2'])
+        self.assertEqual('baz', extracted['file1-new'])
+        self.assertRaises(errors.RevisionNotPresent, list,
+                          repository.iter_files_bytes(
+                          [('file1-id', 'rev3', 'file1-notpresent')]))
+        self.assertRaises(errors.NoSuchId, list,
+                          repository.iter_files_bytes(
+                          [('file3-id', 'rev3', 'file1-notpresent')]))
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

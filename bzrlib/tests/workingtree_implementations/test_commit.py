@@ -271,7 +271,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # the deepest subtree has not changed, so no commit should take place.
-        self.assertEqual(None, subsubtree.last_revision())
+        self.assertEqual('null:', subsubtree.last_revision())
         # the intermediate tree should have committed a pointer to the current
         # subtree revision.
         sub_basis = subtree.basis_tree()

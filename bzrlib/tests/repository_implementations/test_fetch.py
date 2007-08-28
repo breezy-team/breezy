@@ -37,7 +37,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
+        repo = self.make_repository('b')
         if (tree_a.branch.repository.supports_rich_root() and not
             repo.supports_rich_root()):
             raise TestSkipped('Cannot fetch from model2 to model1')

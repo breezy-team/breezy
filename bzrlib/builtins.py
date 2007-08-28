@@ -3781,7 +3781,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submiting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -3806,6 +3806,19 @@ class cmd_send(Command):
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
 
+    Mail is sent using your preferred mail program.  This should be transparent
+    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
+    the preferred client can't be found (or used), your editor will be used.
+    
+    To use a specific mail program, set the mail_client configuration option.
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
+    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
+    "default".
+
+    If mail is being sent, a to address is required.  This can be supplied
+    either on the commandline, or by setting the submit_to configuration
+    option.
+
     Two formats are currently supported: "4" uses revision bundle format 4 and
     merge directive format 2.  It is significantly faster and smaller than
     older formats.  It is compatible with Bazaar 0.19 and later.  It is the
@@ -3815,7 +3828,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge']
+    _see_also = ['merge', 'doc/configuration.txt']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
@@ -3833,7 +3846,10 @@ class cmd_send(Command):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
+        Option('mail-to', help='Mail the request to this address.',
+               type=unicode),
         'revision',
+        'message',
         RegistryOption.from_kwargs('format',
         'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
@@ -3842,23 +3858,30 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
-        if output is None:
-            raise errors.BzrCommandError('File must be specified with'
-                                         ' --output')
+            format='4', mail_to=None, message=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'))
+                         kwargs.get('from', '.'), mail_to, message)
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_,):
+             no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import ensure_null, NULL_REVISION
-        if output == '-':
+        if output is None:
+            outfile = StringIO()
+        elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
         try:
             branch = Branch.open_containing(from_)[0]
+            if output is None:
+                config = branch.get_config()
+                if mail_to is None:
+                    mail_to = config.get_user_option('submit_to')
+                if mail_to is None:
+                    raise errors.BzrCommandError('No mail-to address'
+                                                 ' specified')
+                mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
@@ -3906,7 +3929,7 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=None,
+                    include_bundle=not no_bundle, message=message,
                     base_revision_id=base_revision_id)
             elif format == '0.9':
                 if not no_bundle:
@@ -3924,9 +3947,18 @@ class cmd_send(Command):
                     branch.repository, revision_id, time.time(),
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, patch_type=patch_type,
-                    message=None)
+                    message=message)
 
             outfile.writelines(directive.to_lines())
+            if output is None:
+                subject = '[MERGE] '
+                if message is not None:
+                    subject += message
+                else:
+                    revision = branch.repository.get_revision(revision_id)
+                    subject += revision.get_summary()
+                mail_client.compose_merge_request(mail_to, subject,
+                                                  outfile.getvalue())
         finally:
             if output != '-':
                 outfile.close()
@@ -3966,6 +3998,26 @@ class cmd_bundle_revisions(cmd_send):
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive.'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive.'),
+        Option('remember',
+               help='Remember submit and public branch.'),
+        Option('from',
+               help='Branch to generate the submission from, '
+               'rather than the one containing the working directory.',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o', help='Write directive to this file.',
+               type=unicode),
+        'revision',
+        RegistryOption.from_kwargs('format',
+        'Use the specified output format.',
+        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
+           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        ]
     aliases = ['bundle']
 
     _see_also = ['send', 'merge']
@@ -3979,7 +4031,7 @@ class cmd_bundle_revisions(cmd_send):
             output = '-'
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'))
+                         kwargs.get('from', '.'), None, None)
 
 
 class cmd_tag(Command):

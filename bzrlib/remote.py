@@ -252,6 +252,8 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # for tests
+        self._reconcile_does_inventory_gc = True
 
     def abort_write_group(self):
         """Complete a write group on the decorated repository.
@@ -610,6 +612,12 @@ class RemoteRepository(object):
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
+
+    def iter_files_bytes(self, desired_files):
+        """See Repository.iter_file_bytes.
+        """
+        self._ensure_real()
+        return self._real_repository.iter_files_bytes(desired_files)
 
     @needs_read_lock
     def get_signature_text(self, revision_id):

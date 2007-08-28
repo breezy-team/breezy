@@ -229,6 +229,29 @@ class TransportTests(TestTransportImplementation):
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
+    def test_get_with_open_write_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('b')
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            handle.close()
+
+    def test_get_bytes_with_open_write_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('b')
+            self.assertEqual('b', t.get_bytes('foo'))
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            handle.close()
+
     def test_put_bytes(self):
         t = self.get_transport()
 
@@ -556,6 +579,33 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dnomode', mode=None)
         self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
 
+    def test_opening_a_file_stream_creates_file(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            self.assertEqual('', t.get_bytes('foo'))
+        finally:
+            handle.close()
+
+    def test_opening_a_file_stream_can_set_mode(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        def check_mode(name, mode, expected):
+            handle = t.open_write_stream(name, mode=mode)
+            handle.close()
+            self.assertTransportMode(t, name, expected)
+        check_mode('mode644', 0644, 0644)
+        check_mode('mode666', 0666, 0666)
+        check_mode('mode600', 0600, 0600)
+        # The default permissions should be based on the current umask
+        check_mode('nomode', None, 0666 & ~osutils.get_umask())
+
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
         # same protocol two servers
@@ -768,6 +818,11 @@ class TransportTests(TestTransportImplementation):
         # working directory, so we can just do a
         # plain "listdir".
         # self.assertEqual([], os.listdir('.'))
+
+    def test_recommended_page_size(self):
+        """Transports recommend a page size for partial access to files."""
+        t = self.get_transport()
+        self.assertIsInstance(t.recommended_page_size(), int)
 
     def test_rmdir(self):
         t = self.get_transport()
@@ -1429,6 +1484,17 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
+    def test_get_with_open_write_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('bcd')
+            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0,1), (2,1)))))
+        finally:
+            handle.close()
 
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.
