@@ -70,6 +70,17 @@ IN DEVELOPMENT
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
 
+  TESTING:
+
+   * Tests may now raise TestNotApplicable to indicate they shouldn't be 
+     run in a particular scenario.  (Martin Pool)
+
+   * New function multiply_tests_from_modules to give a simpler interface
+     to test parameterization.  (Martin Pool, Robert Collins)
+
+   * ``Transport.should_cache`` has been removed.  It was not called in the
+     previous release.  (Martin Pool)
+
    * NULL_REVISION is returned to indicate the null revision, not None.
      (Aaron Bentley)
 
