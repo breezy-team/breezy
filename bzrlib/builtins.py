@@ -1966,7 +1966,7 @@ class cmd_ignore(Command):
             if id is not None:
                 filename = entry[0]
                 if ignored.match(filename):
-                    matches.append(filename)
+                    matches.append(filename.encode('utf-8'))
         tree.unlock()
         if len(matches) > 0:
             print "Warning: the following files are version controlled and" \
