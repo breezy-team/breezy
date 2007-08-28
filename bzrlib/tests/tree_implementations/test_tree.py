@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     tests,
+    conflicts,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -142,3 +143,12 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertRaises(errors.NoSuchId, lambda: list(
                           tree.iter_files_bytes(
                           [('qux-id', 'file1-notpresent')])))
+
+
+class TestConflicts(TestCaseWithTree):
+
+    def test_conflicts(self):
+        """Tree.conflicts() should return a ConflictList instance."""
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self._convert_tree(work_tree)
+        self.assertIsInstance(tree.conflicts(), conflicts.ConflictList)
