@@ -316,49 +316,55 @@ class RepositoryPackCollection(object):
             )):
             self.repo._upload_transport.delete(random_name)
             return None
-        # add to names
-        self.allocate(new_name)
-        # rename into place
-        write_stream.close()
-        self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
         result = Pack()
         result.name = new_name
         result.transport = self.repo._upload_transport.clone('../packs/')
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
-                result.transport, result.name,
-                time.time() - start_time)
         # write indices
         index_transport = self.repo._upload_transport.clone('../indices')
         rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
-        index_transport.put_file(rev_index_name, revision_index.finish())
+        revision_index_length = index_transport.put_file(rev_index_name,
+            revision_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 time.time() - start_time)
         inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
-        index_transport.put_file(inv_index_name, inv_index.finish())
+        inventory_index_length = index_transport.put_file(inv_index_name,
+            inv_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 time.time() - start_time)
         text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
-        index_transport.put_file(text_index_name, text_index.finish())
+        text_index_length = index_transport.put_file(text_index_name,
+            text_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote file texts index: %s%s t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
                 time.time() - start_time)
         signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
-        index_transport.put_file(signature_index_name, signature_index.finish())
+        signature_index_length = index_transport.put_file(signature_index_name,
+            signature_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote revision signatures index: %s%s t+%6.3fs',
                 time.ctime(), self.repo._upload_transport.base, random_name,
+                time.time() - start_time)
+        # add to name
+        self.allocate(new_name, revision_index_length, inventory_index_length,
+            text_index_length, signature_index_length)
+        # rename into place. XXX: should rename each index too rather than just
+        # uploading blind under the chosen name.
+        write_stream.close()
+        self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
+                time.ctime(), self.repo._upload_transport.base, random_name,
+                result.transport, result.name,
                 time.time() - start_time)
         result.revision_index = revision_index
         result.inventory_index = inv_index
@@ -384,7 +390,7 @@ class RepositoryPackCollection(object):
             # have a progress bar?
             self._combine_packs(pack_details)
             for pack_detail in pack_details:
-                self._remove_pack_name(pack_detail[1])
+                self._remove_pack_by_name(pack_detail[1])
         # record the newly available packs and stop advertising the old
         # packs
         self.save()
@@ -571,14 +577,31 @@ class RepositoryPackCollection(object):
 
     def ensure_loaded(self):
         if self._names is None:
-            self._names = set(node[1][0] for node in 
-                GraphIndex(self.transport, 'pack-names').iter_all_entries())
+            self._names = {}
+            for index, key, value in \
+                GraphIndex(self.transport, 'pack-names').iter_all_entries():
+                name = key[0]
+                sizes = [int(digits) for digits in value.split(' ')]
+                self._names[name] = sizes
 
-    def allocate(self, name):
+    def allocate(self, name, revision_index_length, inventory_index_length,
+        text_index_length, signature_index_length):
+        """Allocate name in the list of packs.
+
+        :param name: The basename - e.g. the md5 hash hexdigest.
+        :param revision_index_length: The length of the revision index in
+            bytes.
+        :param inventory_index_length: The length of the inventory index in
+            bytes.
+        :param text_index_length: The length of the text index in bytes.
+        :param signature_index_length: The length of the signature index in
+            bytes.
+        """
         self.ensure_loaded()
         if name in self._names:
             raise errors.DuplicateKey(name)
-        self._names.add(name)
+        self._names[name] = (revision_index_length, inventory_index_length,
+            text_index_length, signature_index_length)
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -596,7 +619,7 @@ class RepositoryPackCollection(object):
 
     def names(self):
         """Provide an order to the underlying names."""
-        return sorted(self._names)
+        return sorted(self._names.keys())
 
     def _obsolete_packs(self, pack_details):
         """Move a number of packs which have been obsoleted out of the way.
@@ -636,9 +659,9 @@ class RepositoryPackCollection(object):
                 result.append(size)
         return list(reversed(result))
 
-    def _remove_pack_name(self, name):
+    def _remove_pack_by_name(self, name):
         # strip .pack
-        self._names.remove(name[:-5])
+        self._names.pop(name[:-5])
 
     def reset(self):
         self._names = None
@@ -716,8 +739,8 @@ class RepositoryPackCollection(object):
 
     def save(self):
         builder = GraphIndexBuilder()
-        for name in self._names:
-            builder.add_node((name, ), '')
+        for name, sizes in self._names.iteritems():
+            builder.add_node((name, ), ' '.join(str(size) for size in sizes))
         self.transport.put_file('pack-names', builder.finish())
 
     def setup(self):
@@ -836,12 +859,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             return True
         return False
 
-    def flush(self, new_name):
+    def flush(self, new_name, new_pack):
         """Write out pending indices."""
         # write a revision index (might be empty)
         new_index_name = self.name_to_revision_index_name(new_name)
-        self.transport.put_file(new_index_name,
-            self.repo._revision_write_index.finish())
+        new_pack.revision_index_length = self.transport.put_file(
+            new_index_name, self.repo._revision_write_index.finish())
         if self.repo._revision_all_indices is None:
             # create a pack map for the autopack code - XXX finish
             # making a clear managed list of packs, indices and use
@@ -862,8 +885,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
 
         # write a signatures index (might be empty)
         new_index_name = self.name_to_signature_index_name(new_name)
-        self.transport.put_file(new_index_name,
-            self.repo._signature_write_index.finish())
+        new_pack.signature_index_length = self.transport.put_file(
+            new_index_name, self.repo._signature_write_index.finish())
         self.repo._signature_write_index = None
         if self.repo._signature_all_indices is not None:
             # sigatures 'knit' accessed : update it.
@@ -970,12 +993,12 @@ class GraphKnitTextStore(VersionedFileStore):
             indices.insert(0, self.repo._text_write_index)
         self.repo._text_all_indices = CombinedGraphIndex(indices)
 
-    def flush(self, new_name):
+    def flush(self, new_name, new_pack):
         """Write the index out to new_name."""
         # write a revision index (might be empty)
         new_index_name = self.name_to_text_index_name(new_name)
-        self.transport.put_file(new_index_name,
-            self.repo._text_write_index.finish())
+        new_pack.text_index_length = self.transport.put_file(
+            new_index_name, self.repo._text_write_index.finish())
         self.repo._text_write_index = None
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used, replace the mutated memory index
@@ -1085,12 +1108,12 @@ class InventoryKnitThunk(object):
         self.repo._inv_all_indices = CombinedGraphIndex(indices)
         self.repo._inv_pack_map = pack_map
 
-    def flush(self, new_name):
+    def flush(self, new_name, new_pack):
         """Write the index out to new_name."""
         # write an index (might be empty)
         new_index_name = self.name_to_inv_index_name(new_name)
-        self.transport.put_file(new_index_name,
-            self.repo._inv_write_index.finish())
+        new_pack.inventory_index_length = self.transport.put_file(
+            new_index_name, self.repo._inv_write_index.finish())
         self.repo._inv_write_index = None
         if self.repo._inv_all_indices is not None:
             # inv 'knit' has been used, replace the mutated memory index
@@ -1216,12 +1239,6 @@ class GraphKnitRepository1(KnitRepository):
         if data_inserted:
             self._open_pack_writer.end()
             new_name = self._open_pack_hash.hexdigest()
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
             new_pack = Pack()
             new_pack.name = new_name
             new_pack.transport = self._upload_transport.clone('../packs/')
@@ -1230,13 +1247,21 @@ class GraphKnitRepository1(KnitRepository):
             # new_pack.inventory_index = 
             # new_pack.text_index = 
             # new_pack.signature_index = 
-            self._packs.allocate(new_name)
-            self.weave_store.flush(new_name)
-            self._inv_thunk.flush(new_name)
-            self._revision_store.flush(new_name)
+            self.weave_store.flush(new_name, new_pack)
+            self._inv_thunk.flush(new_name, new_pack)
+            self._revision_store.flush(new_name, new_pack)
             self._write_stream.close()
             self._upload_transport.rename(self._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
+            # If this fails, its a hash collision. We should:
+            # - determine if its a collision or
+            # - the same content or
+            # - the existing name is not the actual hash - e.g.
+            #   its a deliberate attack or data corruption has
+            #   occuring during the write of that file.
+            self._packs.allocate(new_name, new_pack.revision_index_length,
+                new_pack.inventory_index_length, new_pack.text_index_length,
+                new_pack.signature_index_length)
             self._open_pack_tuple = None
             if not self._packs.autopack():
                 self._packs.save()
@@ -1343,19 +1368,29 @@ class GraphKnitRepository3(KnitRepository3):
         if data_inserted:
             self._open_pack_writer.end()
             new_name = self._open_pack_hash.hexdigest()
+            new_pack = Pack()
+            new_pack.name = new_name
+            new_pack.transport = self._upload_transport.clone('../packs/')
+            # To populate:
+            # new_pack.revision_index = 
+            # new_pack.inventory_index = 
+            # new_pack.text_index = 
+            # new_pack.signature_index = 
+            self.weave_store.flush(new_name, new_pack)
+            self._inv_thunk.flush(new_name, new_pack)
+            self._revision_store.flush(new_name, new_pack)
+            self._write_stream.close()
+            self._upload_transport.rename(self._open_pack_tuple[1],
+                '../packs/' + new_name + '.pack')
             # If this fails, its a hash collision. We should:
             # - determine if its a collision or
             # - the same content or
             # - the existing name is not the actual hash - e.g.
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
-            self._packs.allocate(new_name)
-            self.weave_store.flush(new_name)
-            self._inv_thunk.flush(new_name)
-            self._revision_store.flush(new_name)
-            self._write_stream.close()
-            self._upload_transport.rename(self._open_pack_tuple[1],
-                '../packs/' + new_name + '.pack')
+            self._packs.allocate(new_name, new_pack.revision_index_length,
+                new_pack.inventory_index_length, new_pack.text_index_length,
+                new_pack.signature_index_length)
             self._open_pack_tuple = None
             if not self._packs.autopack():
                 self._packs.save()

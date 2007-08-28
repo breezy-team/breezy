@@ -591,8 +591,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.check_databases(t)
 
-    def test_add_revision_creates_dot_rix(self):
-        """Adding a revision makes a 0.rix (Revision IndeX) file."""
+    def test_add_revision_creates_pack_indices(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
@@ -601,47 +600,14 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree.commit('foobarbaz')
         index = GraphIndex(trans, 'pack-names')
         self.assertEqual(1, len(list(index.iter_all_entries())))
-        name = list(index.iter_all_entries())[0][1][0]
-        self.assertTrue(trans.has('indices/%s.rix' % name))
-
-    def test_add_revision_creates_dot_six(self):
-        """Adding a revision makes a 0.six (Signature IndeX) file."""
-        format = self.get_format()
-        tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names').iter_all_entries()))
-        tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names')
-        self.assertEqual(1, len(list(index.iter_all_entries())))
-        name = list(index.iter_all_entries())[0][1][0]
-        self.assertTrue(trans.has('indices/%s.six' % name))
-
-    def test_add_revision_creates_dot_iix(self):
-        """Adding a revision makes a 0.iix (Inventory IndeX) file."""
-        format = self.get_format()
-        tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names').iter_all_entries()))
-        tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names')
-        self.assertEqual(1, len(list(index.iter_all_entries())))
-        name = list(index.iter_all_entries())[0][1][0]
-        self.assertTrue(trans.has('indices/%s.iix' % name))
-
-    def test_add_revision_creates_dot_tix(self):
-        """Adding a revision makes a 0.tix (Text IndeX) file."""
-        format = self.get_format()
-        tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names').iter_all_entries()))
-        tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names')
-        self.assertEqual(1, len(list(index.iter_all_entries())))
-        name = list(index.iter_all_entries())[0][1][0]
-        self.assertTrue(trans.has('indices/%s.tix' % name))
+        node = list(index.iter_all_entries())[0]
+        name = node[1][0]
+        # the pack sizes should be listed in the index
+        pack_value = node[2]
+        sizes = [int(digits) for digits in pack_value.split(' ')]
+        for size, suffix in zip(sizes, ['.rix', '.iix', '.tix', '.six']):
+            stat = trans.stat('indices/%s%s' % (name, suffix))
+            self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
         format = self.get_format()
