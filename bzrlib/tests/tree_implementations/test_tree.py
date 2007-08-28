@@ -151,4 +151,4 @@ class TestConflicts(TestCaseWithTree):
         """Tree.conflicts() should return a ConflictList instance."""
         work_tree = self.make_branch_and_tree('wt')
         tree = self._convert_tree(work_tree)
-        self.assertTrue(isinstance(tree.conflicts(), conflicts.ConflictList))
+        self.assertIsInstance(tree.conflicts(), conflicts.ConflictList)
