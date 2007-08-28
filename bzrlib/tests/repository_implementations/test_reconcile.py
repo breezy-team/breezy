@@ -60,7 +60,7 @@ class TestsNeedingReweave(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='missing')
         inv.root.revision = 'missing'
-        repo.add_inventory('missing', inv, [])
+        repo.call_in_write_group(repo.add_inventory, 'missing', inv, [])
         repo.commit_write_group()
         repo.unlock()
 
@@ -71,10 +71,10 @@ class TestsNeedingReweave(TestReconcile):
         repo = self.make_repository('inventory_without_revision_and_ghost')
         repo.lock_write()
         repo.start_write_group()
-        repo.add_inventory('missing', inv, [])
+        repo.call_in_write_group(repo.add_inventory, 'missing', inv, [])
         inv = Inventory(revision_id='references_missing')
         inv.root.revision = 'references_missing'
-        sha1 = repo.add_inventory('references_missing', inv, ['missing'])
+        sha1 = repo.call_in_write_group(repo.add_inventory, 'references_missing', inv, ['missing'])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -93,7 +93,7 @@ class TestsNeedingReweave(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='ghost')
         inv.root.revision = 'ghost'
-        sha1 = repo.add_inventory('ghost', inv, [])
+        sha1 = repo.call_in_write_group(repo.add_inventory, 'ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -114,7 +114,7 @@ class TestsNeedingReweave(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='the_ghost')
         inv.root.revision = 'the_ghost'
-        sha1 = repo.add_inventory('the_ghost', inv, [])
+        sha1 = repo.call_in_write_group(repo.add_inventory, 'the_ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -317,7 +317,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-first-parent')
         inv.root.revision = 'wrong-first-parent'
-        sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
+        sha1 = repo.call_in_write_group(repo.add_inventory,
+                'wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -335,7 +336,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-secondary-parent')
         inv.root.revision = 'wrong-secondary-parent'
-        sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
+        sha1 = repo.call_in_write_group(repo.add_inventory,
+                'wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",

@@ -186,7 +186,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.start_write_group()
         inv['id'].revision = 'b'
         inv.revision_id = 'b'
-        sha1 = source.add_inventory('b', inv, ['a'])
+        sha1 = source.call_in_write_group(
+                source.add_inventory, 'b', inv, ['a'])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -299,7 +300,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo = self.make_repository('with_ghost_rev')
         repo.lock_write()
         repo.start_write_group()
-        sha1 = repo.add_inventory('ghost', inv, [])
+        sha1 = repo.call_in_write_group(repo.add_inventory, 'ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
@@ -316,7 +317,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         inv.root.revision = 'with_ghost'
         repo.lock_write()
         repo.start_write_group()
-        sha1 = repo.add_inventory('with_ghost', inv, [])
+        sha1 = repo.call_in_write_group(
+                repo.add_inventory, 'with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
