@@ -56,6 +56,10 @@ IN DEVELOPMENT
 
     * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
 
+    * If a particular command is an alias, ``help`` will show the alias
+      instead of claiming there is no help for said alias. (Daniel Watkins,
+      #133548)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
