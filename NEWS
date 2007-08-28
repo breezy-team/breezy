@@ -1,5 +1,9 @@
 bzr-svn 0.4.2	UNRELEASED
 
+  BUG FIXES
+
+   * Fix regression that prevented the "svn+" prefix trick from working.
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES

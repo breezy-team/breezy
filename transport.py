@@ -17,7 +17,7 @@
 
 from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
-                           FileExists, NotLocalUrl)
+                           FileExists, NotLocalUrl, InvalidURL)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 
@@ -188,6 +188,8 @@ class SvnRaTransport(Transport):
         except SubversionException, (_, num):
             if num in (svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND,):
                 raise NoSvnRepositoryPresent(url=url)
+            if num == svn.core.SVN_ERR_BAD_URL:
+                raise InvalidURL(url)
             raise
 
         from bzrlib.plugins.svn import lazy_check_versions
