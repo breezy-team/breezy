@@ -54,6 +54,8 @@ IN DEVELOPMENT
       names ending in a '.' at the end of messages were confused with a
       full stop that may or not have been there. (Daniel Watkins, #129791)
 
+    * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
