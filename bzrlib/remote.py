@@ -254,6 +254,12 @@ class RemoteRepository(object):
         self._leave_lock = False
         # for tests
         self._reconcile_does_inventory_gc = True
+        self.base = self.bzrdir.transport.base
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
 
     def abort_write_group(self):
         """Complete a write group on the decorated repository.
@@ -328,8 +334,7 @@ class RemoteRepository(object):
         return response[0] == 'yes'
 
     def has_same_location(self, other):
-        return (self.__class__ == other.__class__ and
-                self.bzrdir.transport.base == other.bzrdir.transport.base)
+        return (self.base == other.base)
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
@@ -587,6 +592,8 @@ class RemoteRepository(object):
 
     def fetch(self, source, revision_id=None, pb=None):
         self._ensure_real()
+        if self.has_same_location(source) or source.has_same_location(self):
+            return 0, []
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
 

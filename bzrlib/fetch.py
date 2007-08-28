@@ -72,7 +72,7 @@ class RepoFetcher(object):
     after running:
     count_copied -- number of revisions copied
 
-    This should not be used directory, its essential a object to encapsulate
+    This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
@@ -81,8 +81,9 @@ class RepoFetcher(object):
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
-            raise errors.BzrError('unreachable code - Interrepository fetch'
-                    'asked to fetch between two objects at the same location: '
+            import pdb;pdb.set_trace()
+            raise errors.BzrError('RepoFetcher run '
+                    'between two objects at the same location: '
                     '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
