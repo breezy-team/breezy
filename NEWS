@@ -39,6 +39,9 @@ IN DEVELOPMENT
     * Accept ..\ as a path in revision specifiers. This fixes for example
       "-r branch:..\other-branch" on Windows.  (Lukáš Lalinský) 
 
+    * ``BZR_PLUGIN_PATH`` may now contain trailing slashes.
+      (Blake Winton, #129299)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
