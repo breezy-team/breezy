@@ -4,7 +4,7 @@ Bazaar Release Notes
 
 .. contents::
 
-bzr 0.90 2007-08-22
+bzr 0.90 2007-08-28
 ===================
 
   IMPROVEMENTS:
@@ -17,6 +17,13 @@ bzr 0.90 2007-08-22
       Developer Guide into the main document catalog and provided a link
       from the developer document catalog back to the main one.
       (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
+
+  BUGFIXES:
+
+    * Fix ''bzr info bzr://host/'' and other operations on ''bzr://' URLs with
+      an implicit port.  We were incorrectly raising PathNotChild due to
+      inconsistent treatment of the ''_port'' attribute on the Transport object.
+      (John Arbash Meinel, Andrew Bennetts, #133965)
 
 
 bzr 0.90rc1 2007-08-14
