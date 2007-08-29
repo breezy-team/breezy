@@ -63,6 +63,9 @@ IN DEVELOPMENT
       instead of claiming there is no help for said alias. (Daniel Watkins,
       #133548)
 
+    * TreeTransform-based operations, like pull, merge, revert, and branch,
+      now roll back if they encounter an error.  (Aaron Bentley, #67699)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
