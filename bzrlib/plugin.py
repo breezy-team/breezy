@@ -79,11 +79,16 @@ def disable_plugins():
     global _loaded
     _loaded = True
 
+def _strip_trailing_sep(path):
+    return path.rstrip("\\/")
 
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    # Get rid of trailing slashes, since Python can't handle them when
+    # it tries to import modules.
+    path = map(_strip_trailing_sep, path)
     # search the plugin path before the bzrlib installed dir
     path.append(os.path.dirname(plugins.__file__))
     plugins.__path__ = path
@@ -123,7 +128,12 @@ def load_from_path(dirs):
 
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
-    plugins.__path__ = dirs
+    # We need to strip the trailing separators here as well as in the
+    # set_plugins_path function because calling code can pass anything in to
+    # this function, and since it sets plugins.__path__, it should set it to
+    # something that will be valid for Python to use (in case people try to
+    # run "import bzrlib.plugins.PLUGINNAME" after calling this function).
+    plugins.__path__ = map(_strip_trailing_sep, dirs)
     for d in dirs:
         if not d:
             continue
