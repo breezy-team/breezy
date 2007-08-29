@@ -523,7 +523,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         open('b1/d', 'wb').write('d test\n')
         merge_inner(this.branch, other, base, this_tree=this)
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
-        this.revert([])
+        this.revert()
         self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
         self.assertIs(os.path.exists('b1/b.~1~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
@@ -677,7 +677,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_clear_conflicts2(self):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
-        tree.revert([])
+        tree.revert()
         self.assertEqual(len(tree.conflicts()), 0)
 
     def test_format_description(self):

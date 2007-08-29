@@ -34,7 +34,7 @@ class TestRevert(tests.TestCaseWithTransport):
                           target_tree.basis_tree(), this_tree=target_tree)
         self.failUnlessExists('target/dir')
         self.failUnlessExists('target/dir/contents')
-        target_tree.revert([])
+        target_tree.revert()
         self.failIfExists('target/dir/contents')
         self.failIfExists('target/dir')
 
@@ -57,26 +57,26 @@ class TestRevert(tests.TestCaseWithTransport):
         # newly-added files should not be deleted
         tree.add('new_file')
         basis_tree = tree.branch.repository.revision_tree(tree.last_revision())
-        tree.revert([])
+        tree.revert()
         self.failUnlessExists('tree/new_file')
 
         # unchanged files should be deleted
         tree.add('new_file')
         tree.commit('add new_file')
-        tree.revert([], old_tree=basis_tree)
+        tree.revert(old_tree=basis_tree)
         self.failIfExists('tree/new_file')
         
         # files should be deleted if their changes came from merges
         merge_target.merge_from_branch(tree.branch)
         self.failUnlessExists('merge_target/new_file')
-        merge_target.revert([])
+        merge_target.revert()
         self.failIfExists('merge_target/new_file')
 
         # files should not be deleted if changed after a merge
         merge_target.merge_from_branch(tree.branch)
         self.failUnlessExists('merge_target/new_file')
         self.build_tree_contents([('merge_target/new_file', 'new_contents')])
-        merge_target.revert([])
+        merge_target.revert()
         self.failUnlessExists('merge_target/new_file')
 
     def tree_with_executable(self):
@@ -97,7 +97,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tt.apply()
         tree = workingtree.WorkingTree.open('tree')
         self.assertTrue(tree.is_executable('newfile-id'))
-        transform.revert(tree, tree.basis_tree(), [], backups=True)
+        transform.revert(tree, tree.basis_tree(), None, backups=True)
         self.assertEqual('helooo!', tree.get_file('newfile-id').read())
         self.assertTrue(tree.is_executable('newfile-id'))
 
@@ -107,7 +107,7 @@ class TestRevert(tests.TestCaseWithTransport):
         newfile = tt.trans_id_tree_file_id('newfile-id')
         tt.set_executability(False, newfile)
         tt.apply()
-        transform.revert(tree, tree.basis_tree(), [])
+        transform.revert(tree, tree.basis_tree(), None)
         self.assertTrue(tree.is_executable('newfile-id'))
 
     def test_revert_deletes_files_from_revert(self):
@@ -118,8 +118,8 @@ class TestRevert(tests.TestCaseWithTransport):
         os.unlink('file')
         tree.commit('removed file')
         self.failIfExists('file')
-        tree.revert([], old_tree=tree.branch.repository.revision_tree('rev1'))
+        tree.revert(old_tree=tree.branch.repository.revision_tree('rev1'))
         self.failUnlessExists('file')
-        tree.revert([])
+        tree.revert()
         self.failIfExists('file')
         self.assertEqual({}, tree.merge_modified())

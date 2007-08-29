@@ -1890,14 +1890,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.apply_inventory_delta(inv_delta)
 
     @needs_tree_write_lock
-    def revert(self, filenames, old_tree=None, backups=True, 
+    def revert(self, filenames=None, old_tree=None, backups=True,
                pb=DummyProgress(), report_changes=False):
         from bzrlib.conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
         conflicts = transform.revert(self, old_tree, filenames, backups, pb,
                                      report_changes)
-        if not len(filenames):
+        if filenames is None:
             self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
         else:

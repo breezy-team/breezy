@@ -228,7 +228,7 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit('changed file to directory')
         tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual('directory', file_kind('tree_b/file'))
-        tree_b.revert([])
+        tree_b.revert()
         self.assertEqual('file', file_kind('tree_b/file'))
         self.build_tree_contents([('tree_b/file', 'content_2')])
         tree_b.commit('content change')
