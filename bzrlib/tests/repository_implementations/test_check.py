@@ -22,6 +22,7 @@ from bzrlib import (
     inventory,
     revision as _mod_revision,
     )
+from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 
 
@@ -29,43 +30,52 @@ class TestFindBadAncestors(TestCaseWithRepository):
 
     def make_broken_repository(self):
         repo = self.make_repository('.')
+        cleanups = []
+        try:
+            repo.lock_write()
+            cleanups.append(repo.unlock)
+            repo.start_write_group()
+            cleanups.append(repo.commit_write_group)
+            # make rev1a: A well-formed revision, containing 'file1'
+            inv = inventory.Inventory(revision_id='rev1a')
+            inv.root.revision = 'rev1a'
+            self.add_file(repo, inv, 'file1', 'rev1a', [])
+            repo.add_inventory('rev1a', inv, [])
+            revision = _mod_revision.Revision('rev1a',
+                committer='jrandom@example.com', timestamp=0,
+                inventory_sha1='', timezone=0, message='foo', parent_ids=[])
+            repo.add_revision('rev1a',revision, inv)
 
-        # make rev1a: A well-formed revision, containing 'file1'
-        inv = inventory.Inventory(revision_id='rev1a')
-        inv.root.revision = 'rev1a'
-        self.add_file(repo, inv, 'file1', 'rev1a', [])
-        repo.add_inventory('rev1a', inv, [])
-        revision = _mod_revision.Revision('rev1a',
-            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-            timezone=0, message='foo', parent_ids=[])
-        repo.add_revision('rev1a',revision, inv)
+            # make rev1b, which has no Revision, but has an Inventory, and
+            # file1
+            inv = inventory.Inventory(revision_id='rev1b')
+            inv.root.revision = 'rev1b'
+            self.add_file(repo, inv, 'file1', 'rev1b', [])
+            repo.add_inventory('rev1b', inv, [])
 
-        # make rev1b, which has no Revision, but has an Inventory, and file1
-        inv = inventory.Inventory(revision_id='rev1b')
-        inv.root.revision = 'rev1b'
-        self.add_file(repo, inv, 'file1', 'rev1b', [])
-        repo.add_inventory('rev1b', inv, [])
+            # make rev2, with file1 and file2
+            # file2 is sane
+            # file1 has 'rev1b' as an ancestor, even though this is not
+            # mentioned by 'rev1a', making it an unreferenced ancestor
+            inv = inventory.Inventory()
+            self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
+            self.add_file(repo, inv, 'file2', 'rev2', [])
+            self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
-        # make rev2, with file1 and file2
-        # file2 is sane
-        # file1 has 'rev1b' as an ancestor, even though this is not
-        # mentioned by 'rev1a', making it an unreferenced ancestor
-        inv = inventory.Inventory()
-        self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
-        self.add_file(repo, inv, 'file2', 'rev2', [])
-        self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            # make ghost revision rev1c
+            inv = inventory.Inventory()
+            self.add_file(repo, inv, 'file2', 'rev1c', [])
 
-        # make ghost revision rev1c
-        inv = inventory.Inventory()
-        self.add_file(repo, inv, 'file2', 'rev1c', [])
-
-        # make rev3 with file2
-        # file2 refers to 'rev1c', which is a ghost in this repository, so
-        # file2 cannot have rev1c as its ancestor.
-        inv = inventory.Inventory()
-        self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
-        self.add_revision(repo, 'rev3', inv, ['rev1c'])
-        return repo
+            # make rev3 with file2
+            # file2 refers to 'rev1c', which is a ghost in this repository, so
+            # file2 cannot have rev1c as its ancestor.
+            inv = inventory.Inventory()
+            self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
+            self.add_revision(repo, 'rev3', inv, ['rev1c'])
+            return repo
+        finally:
+            for cleanup in reversed(cleanups):
+                cleanup()
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
@@ -88,16 +98,20 @@ class TestFindBadAncestors(TestCaseWithRepository):
     def find_bad_ancestors(self, file_id, revision_ids):
         repo = self.make_broken_repository()
         vf = repo.weave_store.get_weave(file_id, repo.get_transaction())
-        return repo.find_bad_ancestors(revision_ids, file_id, vf, {})
+        return repo.find_bad_ancestors(revision_ids, file_id, vf,
+                                       _RevisionTextVersionCache(repo))
 
     def test_normal_first_revision(self):
         repo = self.make_broken_repository()
         vf = repo.weave_store.get_weave('file1-id', repo.get_transaction())
-        inventory_versions = {}
+        inventory_versions =_RevisionTextVersionCache(repo)
         result = repo.find_bad_ancestors(['rev1a'], 'file1-id', vf,
             inventory_versions)
-        self.assertSubset(['rev1a'], inventory_versions.keys())
-        self.assertEqual('rev1a', inventory_versions['rev1a']['file1-id'])
+        self.assertSubset(['rev1a'],
+                          inventory_versions.revision_versions.keys())
+        self.assertEqual('rev1a',
+                         inventory_versions.get_text_version('file1-id',
+                                                             'rev1a'))
         self.assertEqual({}, result)
 
     def test_not_present_in_revision(self):
@@ -108,7 +122,7 @@ class TestFindBadAncestors(TestCaseWithRepository):
     def test_second_revision(self):
         repo = self.make_broken_repository()
         vf = repo.weave_store.get_weave('file1-id', repo.get_transaction())
-        inventory_versions = {}
+        inventory_versions =_RevisionTextVersionCache(repo)
         result = repo.find_bad_ancestors(['rev2'], 'file1-id', vf,
             inventory_versions)
         self.assertEqual({'rev1b': set(['rev2'])}, result)

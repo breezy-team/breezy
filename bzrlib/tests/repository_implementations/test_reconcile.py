@@ -21,6 +21,7 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.reconcile import reconcile, Reconciler
+from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.revision import Revision
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.tests import TestSkipped
@@ -378,69 +379,78 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def make_broken_repository(self):
         repo = self.make_repository('.')
+        cleanups = []
+        try:
+            repo.lock_write()
+            cleanups.append(repo.unlock)
+            repo.start_write_group()
+            cleanups.append(repo.commit_write_group)
+            # make rev1a: A well-formed revision, containing 'file1'
+            inv = Inventory(revision_id='rev1a')
+            inv.root.revision = 'rev1a'
+            self.add_file(repo, inv, 'file1', 'rev1a', [])
+            self.add_file(repo, inv, 'file3', 'rev1a', [])
+            self.add_revision(repo, 'rev1a', inv, [''])
 
-        # make rev1a: A well-formed revision, containing 'file1'
-        inv = Inventory(revision_id='rev1a')
-        inv.root.revision = 'rev1a'
-        self.add_file(repo, inv, 'file1', 'rev1a', [])
-        self.add_file(repo, inv, 'file3', 'rev1a', [])
-        self.add_revision(repo, 'rev1a', inv, [''])
+            # make rev1b, which has no Revision, but has an Inventory, and
+            # file1
+            inv = Inventory(revision_id='rev1b')
+            inv.root.revision = 'rev1b'
+            self.add_file(repo, inv, 'file1', 'rev1b', [])
+            repo.add_inventory('rev1b', inv, [])
 
-        # make rev1b, which has no Revision, but has an Inventory, and file1
-        inv = Inventory(revision_id='rev1b')
-        inv.root.revision = 'rev1b'
-        self.add_file(repo, inv, 'file1', 'rev1b', [])
-        repo.add_inventory('rev1b', inv, [])
+            # make rev2, with file1 and file2
+            # file2 is sane
+            # file1 has 'rev1b' as an ancestor, even though this is not
+            # mentioned by 'rev1a', making it an unreferenced ancestor
+            inv = Inventory()
+            self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
+            self.add_file(repo, inv, 'file2', 'rev2', [])
+            self.add_file(repo, inv, 'file3', 'rev2', ['rev1a'],
+                          inv_revision='rev1a')
+            self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
-        # make rev2, with file1 and file2
-        # file2 is sane
-        # file1 has 'rev1b' as an ancestor, even though this is not
-        # mentioned by 'rev1a', making it an unreferenced ancestor
-        inv = Inventory()
-        self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
-        self.add_file(repo, inv, 'file2', 'rev2', [])
-        self.add_file(repo, inv, 'file3', 'rev2', ['rev1a'],
-                      inv_revision='rev1a')
-        self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            # make ghost revision rev1c
+            inv = Inventory()
+            self.add_file(repo, inv, 'file2', 'rev1c', [])
 
-        # make ghost revision rev1c
-        inv = Inventory()
-        self.add_file(repo, inv, 'file2', 'rev1c', [])
+            # make rev3 with file2
+            # file2 refers to 'rev1c', which is a ghost in this repository, so
+            # file2 cannot have rev1c as its ancestor.
+            # file3 has 'rev2' as its ancestor, but the revision in 'rev2' was
+            # rev1a
+            inv = Inventory()
+            self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
+            self.add_file(repo, inv, 'file3', 'rev3', ['rev2'])
+            self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
 
-        # make rev3 with file2
-        # file2 refers to 'rev1c', which is a ghost in this repository, so
-        # file2 cannot have rev1c as its ancestor.
-        # file3 has 'rev2' as its ancestor, but the revision in 'rev2' was
-        # rev1a
-        inv = Inventory()
-        self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
-        self.add_file(repo, inv, 'file3', 'rev3', ['rev2'])
-        self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
+            # In rev2b, the true last-modifying-revision of file3 is rev1a,
+            # which matches rev2.  This is to test deduplication in fixing rev4
+            inv = Inventory()
+            self.add_file(repo, inv, 'file3', 'rev2b', ['rev1a'],
+                inv_revision='rev1a')
+            self.add_revision(repo, 'rev2b', inv, ['rev1a'])
 
-        # In rev2b, the true last-modifying-revision of file3 is rev1a, which
-        # matches rev2.  This is to test deduplication in fixing rev4
-        inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev2b', ['rev1a'],
-            inv_revision='rev1a')
-        self.add_revision(repo, 'rev2b', inv, ['rev1a'])
+            # rev4 is for testing deduplication (rev2 and rev2b both have rev1a
+            # as the last-modifying revision).
+            inv = Inventory()
+            self.add_file(repo, inv, 'file3', 'rev4', ['rev2'])
+            self.add_revision(repo, 'rev4', inv, ['rev2', 'rev2b'])
 
-        # rev4 is for testing deduplication (rev2 and rev2b both have rev1a
-        # as the last-modifying revision).
-        inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev4', ['rev2'])
-        self.add_revision(repo, 'rev4', inv, ['rev2', 'rev2b'])
+            # rev2c is a descendant of rev1a, so the version it of file3 it
+            # introduces is a head revision wrt 5
+            inv = Inventory()
+            self.add_file(repo, inv, 'file3', 'rev2c', ['rev1a'])
+            self.add_revision(repo, 'rev2c', inv, ['rev1a'])
 
-        # rev2c is a descendant of rev1a, so the version it of file3 it
-        # introduces is a head revision wrt 5
-        inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev2c', ['rev1a'])
-        self.add_revision(repo, 'rev2c', inv, ['rev1a'])
-
-        # rev5 tests that only head revisions are selected as parents
-        inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev5', ['rev2', 'rev2c'])
-        self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
-        return repo
+            # rev5 tests that only head revisions are selected as parents
+            inv = Inventory()
+            self.add_file(repo, inv, 'file3', 'rev5', ['rev2', 'rev2c'])
+            self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
+            return repo
+        finally:
+            for cleanup in reversed(cleanups):
+                cleanup()
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
@@ -466,19 +476,19 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_text_parents(self):
         repo = self.make_broken_repository()
-        if not isinstance(repo, KnitRepository):
+        if not repo._reconcile_fixes_text_parents:
             raise TestSkipped("Format does not support text parent"
                               " reconciliation")
         vf = repo.weave_store.get_weave('file2-id', repo.get_transaction())
         bad_ancestors = repo.find_bad_ancestors(['rev1a', 'rev2', 'rev3'],
-                                                'file2-id', vf, {})
+            'file2-id', vf, _RevisionTextVersionCache(repo))
         shas = dict((v, vf.get_sha1(v)) for v in vf.versions())
         vf = repo.weave_store.get_weave('file3-id', repo.get_transaction())
         self.assertEqual(['rev2'], vf.get_parents('rev3'))
         self.assertNotEqual({}, bad_ancestors)
         repo.reconcile(thorough=True)
         vf = repo.weave_store.get_weave('file2-id', repo.get_transaction())
-        revision_versions = {}
+        revision_versions = _RevisionTextVersionCache(repo)
         bad_ancestors = repo.find_bad_ancestors(['rev1a', 'rev2', 'rev3'],
                                                 'file2-id', vf,
                                                 revision_versions)

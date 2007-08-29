@@ -21,6 +21,7 @@ __all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
 from bzrlib import (
+    errors,
     graph,
     ui,
     repository,
@@ -345,7 +346,7 @@ class KnitReconciler(RepoReconciler):
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
 
-        It is possible for the parents entrie in a versionedfile entry to be
+        It is possible for the parents entry in a versionedfile entry to be
         inconsistent with the values in the revision and inventory.
 
         This method finds entries with such inconsistencies, corrects their
@@ -354,7 +355,7 @@ class KnitReconciler(RepoReconciler):
         transaction = self.repo.get_transaction()
         revision_parents = repository._RevisionParentsProvider(self.repo)
         revision_graph = graph.Graph(revision_parents)
-        revision_versions = {}
+        revision_versions = repository._RevisionTextVersionCache(self.repo)
         for num, file_id in enumerate(self.repo.weave_store):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
@@ -390,10 +391,11 @@ class KnitReconciler(RepoReconciler):
             return []
         for parent_id in rev_parents:
             try:
-                parent_id = revision_versions[parent_id][file_id]
-            except KeyError:
+                parent_id = revision_versions.get_text_version(file_id,
+                                                               parent_id)
+            except errors.RevisionNotPresent:
                 continue
-            if parent_id not in parents:
+            if parent_id is not None and parent_id not in parents:
                 parents.append(parent_id)
         non_heads = set()
         for num, parent in enumerate(parents):

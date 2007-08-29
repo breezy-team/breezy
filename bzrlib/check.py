@@ -32,7 +32,7 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from bzrlib import repository
+from bzrlib import repository as _mod_repository
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
 from bzrlib.trace import note
@@ -54,7 +54,8 @@ class Check(object):
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
-        self.revision_versions = {}
+        self.revision_versions = _mod_repository._RevisionTextVersionCache(
+            self.repository)
         self.unreferenced_ancestors = set()
 
     def check(self):
@@ -73,6 +74,8 @@ class Check(object):
                                      len(self.planned_revisions))
                 revno += 1
                 self.check_one_rev(rev_id)
+            # check_weaves is done after the revision scan so that
+            # revision_versions is pre-populated
             self.check_weaves()
         finally:
             self.progress.finished()
@@ -167,7 +170,8 @@ class Check(object):
             n_weaves = len(weave_ids) + 1
         self.progress.update('checking versionedfile', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
-        revision_parents = repository._RevisionParentsProvider(self.repository)
+        revision_parents = _mod_repository._RevisionParentsProvider(
+            self.repository)
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
@@ -183,8 +187,7 @@ class Check(object):
 
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
-        self.repository._add_revision_text_version(tree,
-                                                   self.revision_versions)
+        self.revision_versions.add_revision_text_version(tree)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:

@@ -248,6 +248,7 @@ class Repository(object):
         self.weave_store = text_store
         # for tests
         self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = False
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -1112,15 +1113,8 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _add_revision_text_version(self, tree, revision_versions):
-        inv_revisions = {}
-        revision_versions[tree.get_revision_id()] = inv_revisions
-        for path, entry in tree.iter_entries_by_dir():
-            inv_revisions[entry.file_id] = entry.revision
-        return inv_revisions
-
     def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
-                          revision_versions, parents_provider=None):
+                           revision_versions, parents_provider=None):
         """Search the versionedfile for ancestors that are not referenced.
 
         The graph of a given versionedfile should be a subset of the graph
@@ -1143,26 +1137,19 @@ class Repository(object):
         """
         if parents_provider is None:
             parents_provider = _RevisionParentsProvider(self)
-        def get_text_revision(revision_id):
-            try:
-                inv_revisions = revision_versions[revision_id]
-            except KeyError:
-                tree = self.revision_tree(revision_id)
-                inv_revisions = self._add_revision_text_version(tree,
-                    revision_versions)
-            return inv_revisions.get(file_id)
-
         result = {}
 
         for revision_id in revision_ids:
-            text_revision = get_text_revision(revision_id)
+            text_revision = revision_versions.get_text_version(file_id,
+                                                               revision_id)
             if text_revision is None:
                 continue
             parents = parents_provider.get_parents([text_revision])[0]
             revision_parents = set()
             for parent_id in parents:
                 try:
-                    revision_parents.add(get_text_revision(parent_id))
+                    revision_parents.add(revision_versions.get_text_version(
+                                         file_id, parent_id))
                 # Skip ghosts (this means they can't provide texts...)
                 except errors.RevisionNotPresent:
                     continue
@@ -2408,6 +2395,31 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
+
+
+class _RevisionTextVersionCache(object):
+    """A cache of the versionedfile versions for revision and file-id"""
+
+    def __init__(self, repository):
+        self.repository = repository
+        self.revision_versions = {}
+
+    def add_revision_text_version(self, tree):
+        """Cache text version data from the supplied revision tree"""
+        inv_revisions = {}
+        for path, entry in tree.iter_entries_by_dir():
+            inv_revisions[entry.file_id] = entry.revision
+        self.revision_versions[tree.get_revision_id()] = inv_revisions
+        return inv_revisions
+
+    def get_text_version(self, file_id, revision_id):
+        """Determine the text version for a given file-id and revision-id"""
+        try:
+            inv_revisions = self.revision_versions[revision_id]
+        except KeyError:
+            tree = self.repository.revision_tree(revision_id)
+            inv_revisions = self.add_revision_text_version(tree)
+        return inv_revisions.get(file_id)
 
 
 class _RevisionParentsProvider(object):
