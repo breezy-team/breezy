@@ -64,10 +64,7 @@ def get_default_plugin_path():
 @deprecated_function(zero_ninetyone)
 def all_plugins():
     """Return a dictionary of the plugins."""
-    result = {}
-    for name, plugin in plugins().items():
-        result[name] = plugin.module
-    return result
+    return dict((name, plugin.module) for name, plugin in plugins().items())
 
 
 def disable_plugins():
