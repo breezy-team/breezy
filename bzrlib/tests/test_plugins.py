@@ -30,6 +30,7 @@ import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
+from bzrlib.symbol_versioning import zero_ninetyone
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath
 
@@ -88,6 +89,8 @@ class TestLoadingPlugins(TestCaseInTempDir):
         finally:
             # remove the plugin 'plugin'
             del self.activeattributes[tempattribute]
+            if 'bzrlib.plugins.plugin' in sys.modules:
+                del sys.modules['bzrlib.plugins.plugin']
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
@@ -137,9 +140,12 @@ class TestLoadingPlugins(TestCaseInTempDir):
         finally:
             # remove the plugin 'plugin'
             del self.activeattributes[tempattribute]
-            if getattr(bzrlib.plugins, 'plugin', None):
-                del bzrlib.plugins.plugin
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+            if getattr(bzrlib.plugins, 'pluginone', None):
+                del bzrlib.plugins.pluginone
+            if getattr(bzrlib.plugins, 'plugintwo', None):
+                del bzrlib.plugins.plugintwo
+        self.failIf(getattr(bzrlib.plugins, 'pluginone', None))
+        self.failIf(getattr(bzrlib.plugins, 'plugintwo', None))
 
     def test_plugins_can_load_from_directory_with_trailing_slash(self):
         # This test tests that a plugin can load from a directory when the
@@ -188,10 +194,11 @@ class TestAllPlugins(TestCaseInTempDir):
         print >> file('plugin.py', 'w'), ""
         try:
             bzrlib.plugin.load_from_path(['.'])
-            self.failUnless('plugin' in bzrlib.plugin.all_plugins())
+            all_plugins = self.applyDeprecated(zero_ninetyone,
+                bzrlib.plugin.all_plugins)
+            self.failUnless('plugin' in all_plugins)
             self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
-            self.assertEqual(bzrlib.plugin.all_plugins()['plugin'],
-                             bzrlib.plugins.plugin)
+            self.assertEqual(all_plugins['plugin'], bzrlib.plugins.plugin)
         finally:
             # remove the plugin 'plugin'
             if 'bzrlib.plugins.plugin' in sys.modules:
@@ -199,6 +206,85 @@ class TestAllPlugins(TestCaseInTempDir):
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+
+class TestPlugins(TestCaseInTempDir):
+
+    def setup_plugin(self, source=""):
+        # This test tests a new plugin appears in bzrlib.plugin.plugins().
+        # check the plugin is not loaded already
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+        # write a plugin that _cannot_ fail to load.
+        print >> file('plugin.py', 'w'), source
+        self.addCleanup(self.teardown_plugin)
+        bzrlib.plugin.load_from_path(['.'])
+    
+    def teardown_plugin(self):
+        # remove the plugin 'plugin'
+        if 'bzrlib.plugins.plugin' in sys.modules:
+            del sys.modules['bzrlib.plugins.plugin']
+        if getattr(bzrlib.plugins, 'plugin', None):
+            del bzrlib.plugins.plugin
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+    def test_plugin_appears_in_plugins(self):
+        self.setup_plugin()
+        self.failUnless('plugin' in bzrlib.plugin.plugins())
+        self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        self.assertIsInstance(plugin, bzrlib.plugin.PlugIn)
+        self.assertEqual(bzrlib.plugins.plugin, plugin.module)
+
+    def test_trivial_plugin_get_path(self):
+        self.setup_plugin()
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        plugin_path = self.test_dir + '/plugin.py'
+        self.assertEqual(plugin_path, plugin.path())
+
+    def test_no_test_suite_gives_None_for_test_suite(self):
+        self.setup_plugin()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.test_suite())
+
+    def test_test_suite_gives_test_suite_result(self):
+        source = """def test_suite(): return 'foo'"""
+        self.setup_plugin(source)
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual('foo', plugin.test_suite())
+
+    def test_no_version_info(self):
+        self.setup_plugin()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.version_info())
+
+    def test_with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual((1, 2, 3, 'dev', 4), plugin.version_info())
+
+    def test_short_version_info_gets_padded(self):
+        # the gtk plugin has version_info = (1,2,3) rather than the 5-tuple.
+        # so we adapt it
+        self.setup_plugin("version_info = (1, 2, 3)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual((1, 2, 3, 'final', 0), plugin.version_info())
+
+    def test_no_version_info___version__(self):
+        self.setup_plugin()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("unknown", plugin.__version__)
+
+    def test___version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3dev4", plugin.__version__)
+
+    def test_final__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'final', 4)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3", plugin.__version__)
 
 
 class TestPluginHelp(TestCaseInTempDir):

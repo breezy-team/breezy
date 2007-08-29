@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * ``bzr plugins`` now lists the version number for each plugin in square
+     brackets after the path. (Robert Collins, #125421)
+
     * Suppress warning "integer argument expected, got float" from Paramiko,
       which sometimes caused false test failures.  (Martin Pool)
 
@@ -95,6 +98,11 @@ IN DEVELOPMENT
      (Aaron Bentley)
 
   INTERNALS:
+
+   * ``bzrlib.plugin.all_plugins`` has been deprecated in favour of
+     ``bzrlib.plugin.plugins()`` which returns PlugIn objects that provide
+     useful functionality for determining the path of a plugin, its tests, and
+     its version information. (Robert Collins)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.

@@ -42,10 +42,11 @@ import zipfile
 from bzrlib import (
     config,
     osutils,
-    plugins,
     )
+from bzrlib import plugins as _mod_plugins
 """)
 
+from bzrlib.symbol_versioning import deprecated_function, zero_ninetyone
 from bzrlib.trace import mutter, warning, log_exception_quietly
 
 
@@ -60,12 +61,12 @@ def get_default_plugin_path():
     return DEFAULT_PLUGIN_PATH
 
 
+@deprecated_function(zero_ninetyone)
 def all_plugins():
     """Return a dictionary of the plugins."""
     result = {}
-    for name, plugin in plugins.__dict__.items():
-        if isinstance(plugin, types.ModuleType):
-            result[name] = plugin
+    for name, plugin in plugins().items():
+        result[name] = plugin.module
     return result
 
 
@@ -90,8 +91,8 @@ def set_plugins_path():
     # it tries to import modules.
     path = map(_strip_trailing_sep, path)
     # search the plugin path before the bzrlib installed dir
-    path.append(os.path.dirname(plugins.__file__))
-    plugins.__path__ = path
+    path.append(os.path.dirname(_mod_plugins.__file__))
+    _mod_plugins.__path__ = path
     return path
 
 
@@ -133,7 +134,7 @@ def load_from_path(dirs):
     # this function, and since it sets plugins.__path__, it should set it to
     # something that will be valid for Python to use (in case people try to
     # run "import bzrlib.plugins.PLUGINNAME" after calling this function).
-    plugins.__path__ = map(_strip_trailing_sep, dirs)
+    _mod_plugins.__path__ = map(_strip_trailing_sep, dirs)
     for d in dirs:
         if not d:
             continue
@@ -179,7 +180,7 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(plugins, f, None):
+        if getattr(_mod_plugins, f, None):
             mutter('Plugin name %s already loaded', f)
         else:
             # mutter('add plugin name %s', f)
@@ -263,7 +264,7 @@ def load_from_zip(zip_name):
     
         if not plugin_name:
             continue
-        if getattr(plugins, plugin_name, None):
+        if getattr(_mod_plugins, plugin_name, None):
             mutter('Plugin name %s already loaded', plugin_name)
             continue
     
@@ -277,6 +278,18 @@ def load_from_zip(zip_name):
             warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             log_exception_quietly()
+
+
+def plugins():
+    """Return a dictionary of the plugins.
+    
+    Each item in the dictionary is a PlugIn object.
+    """
+    result = {}
+    for name, plugin in _mod_plugins.__dict__.items():
+        if isinstance(plugin, types.ModuleType):
+            result[name] = PlugIn(name, plugin)
+    return result
 
 
 class PluginsHelpIndex(object):
@@ -345,3 +358,57 @@ class ModuleHelpTopic(object):
     def get_help_topic(self):
         """Return the modules help topic - its __name__ after bzrlib.plugins.."""
         return self.module.__name__[len('bzrlib.plugins.'):]
+
+
+class PlugIn(object):
+    """The bzrlib representation of a plugin.
+
+    The PlugIn object provides a way to manipulate a given plugin module.
+    """
+
+    def __init__(self, name, module):
+        """Construct a plugin for module."""
+        self.name = name
+        self.module = module
+
+    def path(self):
+        """Get the path that this plugin was loaded from."""
+        if getattr(self.module, '__path__', None) is not None:
+            return os.path.abspath(self.module.__path__[0])
+        elif getattr(self.module, '__file__', None) is not None:
+            return os.path.abspath(self.module.__file__)
+        else:
+            return repr(self.module)
+
+    def __str__(self):
+        return "<%s.%s object at %s, name=%s, module=%s>" % (
+            self.__class__.__module__, self.__class__.__name__, id(self),
+            self.name, self.module)
+
+    __repr__ = __str__
+
+    def test_suite(self):
+        """Return the plugin's test suite."""
+        if getattr(self.module, 'test_suite', None) is not None:
+            return self.module.test_suite()
+        else:
+            return None
+
+    def version_info(self):
+        """Return the plugin's version_tuple or None if unknown."""
+        version_info = getattr(self.module, 'version_info', None)
+        if version_info is not None and len(version_info) == 3:
+            version_info = tuple(version_info) + ('final', 0)
+        return version_info
+    
+    def _get__version__(self):
+        version_info = self.version_info()
+        if version_info is None:
+            return "unknown"
+        if version_info[3] == 'final':
+            version_string = '%d.%d.%d' % version_info[:3]
+        else:
+            version_string = '%d.%d.%d%s%d' % version_info
+        return version_string
+
+    __version__ = property(_get__version__)
