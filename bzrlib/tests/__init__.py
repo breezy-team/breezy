@@ -2496,22 +2496,22 @@ def test_suite():
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' %(m,e)
             raise
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'test_suite', None) is not None:
-            default_encoding = sys.getdefaultencoding()
-            try:
-                plugin_suite = plugin.test_suite()
-            except ImportError, e:
-                bzrlib.trace.warning(
-                    'Unable to test plugin "%s": %s', name, e)
-            else:
+    default_encoding = sys.getdefaultencoding()
+    for name, plugin in bzrlib.plugin.plugins().items():
+        try:
+            plugin_suite = plugin.test_suite()
+        except ImportError, e:
+            bzrlib.trace.warning(
+                'Unable to test plugin "%s": %s', name, e)
+        else:
+            if plugin_suite is not None:
                 suite.addTest(plugin_suite)
-            if default_encoding != sys.getdefaultencoding():
-                bzrlib.trace.warning(
-                    'Plugin "%s" tried to reset default encoding to: %s', name,
-                    sys.getdefaultencoding())
-                reload(sys)
-                sys.setdefaultencoding(default_encoding)
+        if default_encoding != sys.getdefaultencoding():
+            bzrlib.trace.warning(
+                'Plugin "%s" tried to reset default encoding to: %s', name,
+                sys.getdefaultencoding())
+            reload(sys)
+            sys.setdefaultencoding(default_encoding)
     return suite
 
 

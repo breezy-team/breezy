@@ -3235,15 +3235,9 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for name, plugin in bzrlib.plugin.all_plugins().items():
-            if getattr(plugin, '__path__', None) is not None:
-                print plugin.__path__[0]
-            elif getattr(plugin, '__file__', None) is not None:
-                print plugin.__file__
-            else:
-                print repr(plugin)
-                
-            d = getdoc(plugin)
+        for name, plugin in bzrlib.plugin.plugins().items():
+            print plugin.path(), "[%s]" % plugin.__version__
+            d = getdoc(plugin.module)
             if d:
                 print '\t', d.split('\n')[0]
 
