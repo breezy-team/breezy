@@ -114,25 +114,26 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
         f = file(msgfilename, 'rU')
         try:
-            for line in codecs.getreader(bzrlib.user_encoding)(f):
-                stripped_line = line.strip()
-                # strip empty line before the log message starts
-                if not started:
+            try:
+                for line in codecs.getreader(bzrlib.user_encoding)(f):
+                    stripped_line = line.strip()
+                    # strip empty line before the log message starts
+                    if not started:
+                        if stripped_line != "":
+                            started = True
+                        else:
+                            continue
+                    # check for the ignore line only if there
+                    # is additional information at the end
+                    if hasinfo and stripped_line == ignoreline:
+                        break
+                    nlines += 1
+                    # keep track of the last line that had some content
                     if stripped_line != "":
-                        started = True
-                    else:
-                        continue
-                # check for the ignore line only if there
-                # is additional information at the end
-                if hasinfo and stripped_line == ignoreline:
-                    break
-                nlines += 1
-                # keep track of the last line that had some content
-                if stripped_line != "":
-                    lastline = nlines
-                msg.append(line)
-        except UnicodeDecodeError:
-            raise BadCommitMessageEncoding()
+                        lastline = nlines
+                    msg.append(line)
+            except UnicodeDecodeError:
+                raise BadCommitMessageEncoding()
         finally:
             f.close()
 
