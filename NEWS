@@ -70,6 +70,9 @@ IN DEVELOPMENT
       current encoding is used in the commit message.  (Daniel Watkins,
       #116143)
 
+    * bzr send uses default values for ranges when only half of an elipsis
+      is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
