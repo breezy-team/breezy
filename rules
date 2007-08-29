@@ -7,7 +7,8 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
-DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/env python"
+DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
+DEB_COMPRESS_EXCLUDE += .svg
 
 clean::
 	-rm -rf build test*.tmp doc/bzr_man.txt
@@ -27,3 +28,12 @@ build/bzr:: debian/stamp-doc
 debian/stamp-doc:
 	make docs
 	touch $@
+
+install/bzr::
+# Install the documentation; since html and txt and intermixed
+# under doc/, this is handier than trying to do it from bzr.install. 
+	for ext in txt html; do \
+	    ( cd doc && find -name "*.$$ext" -print0 ) | \
+	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
+	    	"debian/bzr/usr/share/doc/bzr/$$ext/{}"; \
+	done

@@ -1,3 +1,18 @@
+bzr (0.90-1) unstable; urgency=low
+
+  * Final 0.90 upstream release:
+    + the doc/ directory has been re-organized in subdirectories, thus
+      separating between *.txt and *.html cannot be easily done from
+      bzr.install anymore. Do it from debian/rules instead.
+    + update bzr.doc-base for this new layout as well.
+
+  * Ship documents under doc/developers, following upstream wishes.
+
+  * Use "/usr/bin/python" in the she-bang line instead of "/usr/bin/env
+    python". Rationale in LP: #134046 is right.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Wed, 29 Aug 2007 12:29:26 +0200
+
 bzr (0.90~rc1-1) unstable; urgency=low
 
   * New upstream release candidate:

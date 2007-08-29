@@ -1,12 +1,10 @@
 Document: bzr
 Title: Bazaar documentation
-Author: Martin Pool
 Abstract: Documentation for Bazaar in text and HTML form.
 Section: Apps/Programming
 
-Format: text
-Files: /usr/share/doc/bzr/txt/*.txt
+Format: Text
+Files: /usr/share/doc/bzr/txt/index.txt
 
 Format: HTML
-Index: /usr/share/doc/bzr/html/tutorial.html
-Files: /usr/share/doc/bzr/html/*.html
+Index: /usr/share/doc/bzr/html/index.html
