@@ -1816,8 +1816,14 @@ class _FileMover(object):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             os.rename(to, from_)
+        # after rollback, don't reuse _FileMover
+        past_renames = None
+        pending_deletions = None
 
     def apply_deletions(self):
         """Apply all marked deletions"""
         for path in self.pending_deletions:
             delete_any(path)
+        # after apply_deletions, don't reuse _FileMover
+        past_renames = None
+        pending_deletions = None

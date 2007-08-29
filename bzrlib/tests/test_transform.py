@@ -1359,6 +1359,9 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('a', 'q')
         self.failUnlessExists('q')
         self.failIfExists('a')
+        self.failUnlessExists('q/b')
+        self.failUnlessExists('c')
+        self.failUnlessExists('c/d')
 
     def test_pre_delete_rollback(self):
         self.build_tree(['a/'])
@@ -1371,14 +1374,19 @@ class TestFileMover(tests.TestCaseWithTransport):
         self.failUnlessExists('a')
 
     def test_apply_deletions(self):
-        self.build_tree(['a/'])
+        self.build_tree(['a/', 'b/'])
         mover = _FileMover()
         mover.pre_delete('a', 'q')
+        mover.pre_delete('b', 'r')
         self.failUnlessExists('q')
+        self.failUnlessExists('r')
         self.failIfExists('a')
+        self.failIfExists('b')
         mover.apply_deletions()
         self.failIfExists('q')
+        self.failIfExists('r')
         self.failIfExists('a')
+        self.failIfExists('b')
 
     def test_file_mover_rollback(self):
         self.build_tree(['a/', 'a/b', 'c/', 'c/d/', 'c/e/'])
