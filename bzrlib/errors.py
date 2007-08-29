@@ -1845,6 +1845,16 @@ class ExistingLimbo(BzrError):
        self.limbo_dir = limbo_dir
 
 
+class ExistingPendingDeletion(BzrError):
+
+    _fmt = """This tree contains left-over files from a failed operation.
+    Please examine %(pending_deletion)s to see if it contains any files you
+    wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
+
+
 class ImmortalLimbo(BzrError):
 
     _fmt = """Unable to delete transform temporary directory $(limbo_dir)s.
@@ -1854,6 +1864,16 @@ class ImmortalLimbo(BzrError):
     def __init__(self, limbo_dir):
        BzrError.__init__(self)
        self.limbo_dir = limbo_dir
+
+
+class ImmortalPendingDeletion(BzrError):
+
+    _fmt = """Unable to delete transform temporary directory
+    %(pending_deletion)s.  Please examine %(pending_deletions)s to see if it
+    contains any files you wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
 class OutOfDateTree(BzrError):

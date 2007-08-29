@@ -110,7 +110,12 @@ class TreeTransform(object):
                     raise ExistingLimbo(self._limbodir)
             self._deletiondir = urlutils.local_path_from_url(
                 control_files.controlfilename('pending-deletion'))
-            os.mkdir(self._deletiondir)
+            try:
+                os.mkdir(self._deletiondir)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise errors.ExistingPendingDeletion(self._deletiondir)
+
         except: 
             self._tree.unlock()
             raise
@@ -173,7 +178,10 @@ class TreeTransform(object):
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
-            os.rmdir(self._deletiondir)
+            try:
+                os.rmdir(self._deletiondir)
+            except OSError:
+                raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
             self._tree.unlock()
             self._tree = None

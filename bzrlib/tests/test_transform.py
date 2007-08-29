@@ -31,7 +31,8 @@ from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
                            PathsNotVersionedError, ExistingLimbo,
-                           ImmortalLimbo, LockError)
+                           ExistingPendingDeletion, ImmortalLimbo,
+                           ImmortalPendingDeletion, LockError)
 from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
@@ -67,6 +68,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         os.rmdir(deletion_path)
         transform, root = self.get_transform()
         transform.apply()
+
+    def test_existing_pending_deletion(self):
+        transform, root = self.get_transform()
+        deletion_path = self._limbodir = urlutils.local_path_from_url(
+            transform._tree._control_files.controlfilename('pending-deletion'))
+        os.mkdir(pathjoin(deletion_path, 'blocking-directory'))
+        self.assertRaises(ImmortalPendingDeletion, transform.apply)
+        self.assertRaises(LockError, self.wt.unlock)
+        self.assertRaises(ExistingPendingDeletion, self.get_transform)
 
     def test_build(self):
         transform, root = self.get_transform() 
