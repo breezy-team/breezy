@@ -24,6 +24,7 @@ import time
 from bzrlib import (
     bzrdir,
     check,
+    debug,
     deprecated_graph,
     errors,
     generate_ids,
@@ -45,7 +46,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -54,7 +54,7 @@ from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
         )
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 
 # Old formats display a warning, but only once
@@ -246,6 +246,8 @@ class Repository(object):
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -543,6 +545,8 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -868,6 +872,9 @@ class Repository(object):
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
@@ -900,6 +907,9 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
@@ -2125,6 +2135,11 @@ class CommitBuilder(object):
             self.new_inventory, self._config)
         self.repository.commit_write_group()
         return self._new_revision_id
+
+    def abort(self):
+        """Abort the commit that is being built.
+        """
+        self.repository.abort_write_group()
 
     def revision_tree(self):
         """Return the tree that was just committed.

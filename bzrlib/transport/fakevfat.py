@@ -64,6 +64,10 @@ class FakeVFATTransportDecorator(TransportDecorator):
     which actually stored the files.
     """
 
+    def _can_roundtrip_unix_modebits(self):
+        """See Transport._can_roundtrip_unix_modebits()."""
+        return False
+
     @classmethod
     def _get_url_prefix(self):
         """Readonly transport decorators are invoked via 'vfat+'"""

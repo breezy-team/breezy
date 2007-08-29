@@ -74,10 +74,12 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     pack,
+    trace,
     )
 """)
 from bzrlib import (
     cache_utf8,
+    debug,
     diff,
     errors,
     osutils,
@@ -97,7 +99,6 @@ from bzrlib.errors import (
     RevisionAlreadyPresent,
     )
 from bzrlib.tuned_gzip import GzipFile
-from bzrlib.trace import mutter
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -632,10 +633,14 @@ class KnitVersionedFile(VersionedFile):
 
     def versions(self):
         """See VersionedFile.versions."""
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2, "versions scales with size of history")
         return self._index.get_versions()
 
     def has_version(self, version_id):
         """See VersionedFile.has_version."""
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2, "has_version is a LBYL scenario")
         version_id = osutils.safe_revision_id(version_id)
         return self._index.has_version(version_id)
 
