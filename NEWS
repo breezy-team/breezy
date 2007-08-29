@@ -66,6 +66,10 @@ IN DEVELOPMENT
     * TreeTransform-based operations, like pull, merge, revert, and branch,
       now roll back if they encounter an error.  (Aaron Bentley, #67699)
 
+    * ``bzr commit`` now exits cleanly if a character unsupported by the
+      current encoding is used in the commit message.  (Daniel Watkins,
+      #116143)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
@@ -81,6 +85,9 @@ IN DEVELOPMENT
 
     * Help on debug flags is now included in ``help global-options``.
       (Daniel Watkins, #124853)
+
+    * Parameters passed on the command line are checked to ensure they are
+      supported by the encoding in use. (Daniel Watkins)
 
   API BREAKS:
 
