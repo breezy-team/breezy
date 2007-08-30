@@ -703,18 +703,24 @@ class InventoryFile(InventoryEntry):
     def snapshot(self, revision, path, previous_entries,
                  work_tree, commit_builder):
         """See InventoryEntry.snapshot."""
-        # We have a custom implementation of this for files because it's
-        # performance critical.
+        # Note: We use a custom implementation of this method for files
+        # because it's a performance critical part of commit.
+
+        # If this is the initial commit for this file, we know the sha is
+        # coming later so skip caluculating it now (in _read_tree_state())
         if len(previous_entries) == 0:
-            # Initial commit so we know the sha is coming later
             self.executable = work_tree.is_executable(self.file_id, path=path)
         else:
             self._read_tree_state(path, work_tree)
-            if len(previous_entries) == 1:
-                parent_ie = previous_entries.values()[0]
-                if self._unchanged(parent_ie):
-                    self.revision = parent_ie.revision
-                    return False
+
+        # If nothing is changed from the sole parent, there's nothing to do
+        if len(previous_entries) == 1:
+            parent_ie = previous_entries.values()[0]
+            if self._unchanged(parent_ie):
+                self.revision = parent_ie.revision
+                return False
+
+        # Add the file to the repository
         self.revision = revision
         def get_content_byte_lines():
             return work_tree.get_file(self.file_id, path).readlines()
