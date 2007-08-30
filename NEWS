@@ -21,6 +21,17 @@ IN DEVELOPMENT
       ``bzr annotate`` display the author instead of the committer.
       (Lukáš Lalinský)
 
+    * In addition to global options and command specific options, a set of
+      standard options are now supported. Standard options are legal for
+      all commands. The initial set of standard options are:
+      
+      * ``--help`` or ``-h`` - display help message
+      * ``--verbose`` or ``-v`` - display additional information
+      * ``--quiet``  or ``-q`` - only output warnings and errors.
+
+      Unlike global options, standard options can be used in aliases and
+      may have command-specific help. (Ian Clatworthy)
+
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square

@@ -240,9 +240,8 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --quiet help").
+command.  (e.g. "bzr --profile help").
 
---quiet        Suppress informational output; only print errors and warnings.
 --version      Print the version number.
 
 --no-aliases   Do not process command aliases when running this command.
@@ -258,6 +257,7 @@ command.  (e.g. "bzr --quiet help").
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.
 -Dlock         Trace when lockdir locks are taken or released.
+
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
 --lsprof-file  Profile execution using the lsprof profiler, and write the
@@ -271,6 +271,20 @@ See doc/developers/profiling.txt for more information on profiling.
 
 Note: --version must be supplied before any command.
 """
+
+_standard_options = \
+"""Standard Options
+
+Standard options are legal for all commands.
+      
+--help, -h     Show help message.
+-v, --verbose  Display more information.
+-q, --quiet    Only display errors and warnings.
+
+Unlike global options, standard options can be used in aliases and
+may have more explicit help on a per command basis.
+"""
+
 
 _checkouts = \
 """Checkouts
@@ -512,8 +526,10 @@ def get_format_topic(topic):
     from bzrlib import bzrdir
     return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
-topic_registry.register('global-options', _global_options,
+topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
+topic_registry.register('global-options', _global_options,
+                        'Options that are applied before command are processed')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,
