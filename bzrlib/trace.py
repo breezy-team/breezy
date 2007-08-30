@@ -70,7 +70,7 @@ from bzrlib import debug
 
 _file_handler = None
 _stderr_handler = None
-_stderr_quiet = False
+_verbosity_level = 0
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
@@ -218,10 +218,34 @@ def enable_default_logging():
     _bzr_logger.setLevel(logging.DEBUG)
 
 
+def set_verbosity_level(level):
+    """Set the verbosity level.
+
+    :param level: -ve for quiet, 0 for normal, +ve for verbose
+    """
+    global _verbosity_level
+    _verbosity_level = level
+    _update_logging_level(level < 0)
+
+
+def get_verbosity_level():
+    """Get the verbosity level.
+
+    See set_verbosity_level() for values.
+    """
+    return verbosity_level
+
+
 def be_quiet(quiet=True):
-    global _stderr_handler, _stderr_quiet
-    
-    _stderr_quiet = quiet
+    # Perhaps this could be deprecated now ...
+    if quiet:
+        set_verbosity_level(-1)
+    else:
+        set_verbosity_level(0)
+
+
+def _update_logging_level(quiet=True):
+    """Hide INFO messages if quiet."""
     if quiet:
         _stderr_handler.setLevel(logging.WARNING)
     else:
@@ -229,8 +253,13 @@ def be_quiet(quiet=True):
 
 
 def is_quiet():
-    global _stderr_quiet
-    return _stderr_quiet
+    """Is the verbosity level negative?"""
+    return _verbosity_level < 0
+
+
+def is_verbose():
+    """Is the verbosity level positive?"""
+    return _verbosity_level > 0
 
 
 def disable_default_logging():
