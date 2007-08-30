@@ -93,7 +93,7 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
         opts, args = self.parse(options, [])
-        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
+        self.assertFalse(hasattr(opts, 'hello'))
         opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(False, opts.hello)
         options = [option.Option('number', type=int)]
