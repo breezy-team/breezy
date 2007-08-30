@@ -109,7 +109,6 @@ from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 import bzrlib.ui
-from bzrlib.util import bencode
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
@@ -623,28 +622,6 @@ class KnitVersionedFile(VersionedFile):
             else:
                 return pseudo_file.read(length)
         return (self.get_format_signature(), result_version_list, read)
-
-    def get_stream_as_bytes(self, required_versions):
-        """Generate a serialised data stream.
-
-        The format is a bencoding of a list.  The first element of the list is a
-        string of the format signature, then each subsequent element is a list
-        corresponding to a record.  Those lists contain:
-
-          * a version id
-          * a list of options
-          * a list of parents
-          * the bytes
-
-        :returns: a bencoded list.
-        """
-        knit_stream = self.get_data_stream(required_versions)
-        format_signature, data_list, callable = knit_stream
-        data = []
-        data.append(format_signature)
-        for version, options, length, parents in data_list:
-            data.append([version, options, parents, callable(length)])
-        return bencode.bencode(data)
 
     def _extract_blocks(self, version_id, source, target):
         if self._index.get_method(version_id) != 'line-delta':

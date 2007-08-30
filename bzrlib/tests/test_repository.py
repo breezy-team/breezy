@@ -34,8 +34,10 @@ from bzrlib.errors import (NotBranchError,
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import test_knit
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
+from bzrlib.util import bencode
 from bzrlib import (
     bzrdir,
     errors,
@@ -337,6 +339,66 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
+
+
+class KnitRepositoryStreamTests(test_knit.KnitTests):
+    """Tests for knitrepo._get_stream_as_bytes."""
+
+    def test_get_stream_as_bytes(self):
+        # Make a simple knit
+        k1 = self.make_test_knit()
+        k1.add_lines('text-a', [], test_knit.split_lines(test_knit.TEXT_1))
+        
+        # Serialise it, check the output.
+        bytes = knitrepo._get_stream_as_bytes(k1, ['text-a'])
+        data = bencode.bdecode(bytes)
+        format, record = data
+        self.assertEqual('knit-plain', format)
+        self.assertEqual(['text-a', ['fulltext'], []], record[:3])
+        self.assertRecordContentEqual(k1, 'text-a', record[3])
+
+    def test_get_stream_as_bytes_all(self):
+        """Get a serialised data stream for all the records in a knit.
+
+        Much like test_get_stream_all, except for get_stream_as_bytes.
+        """
+        k1 = self.make_test_knit()
+        # Insert the same data as BasicKnitTests.test_knit_join, as they seem
+        # to cover a range of cases (no parents, one parent, multiple parents).
+        test_data = [
+            ('text-a', [], test_knit.TEXT_1),
+            ('text-b', ['text-a'], test_knit.TEXT_1),
+            ('text-c', [], test_knit.TEXT_1),
+            ('text-d', ['text-c'], test_knit.TEXT_1),
+            ('text-m', ['text-b', 'text-d'], test_knit.TEXT_1),
+           ]
+        expected_data_list = [
+            # version, options, parents
+            ('text-a', ['fulltext'], []),
+            ('text-b', ['line-delta'], ['text-a']),
+            ('text-c', ['fulltext'], []),
+            ('text-d', ['line-delta'], ['text-c']),
+            ('text-m', ['line-delta'], ['text-b', 'text-d']),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, test_knit.split_lines(lines))
+
+        bytes = knitrepo._get_stream_as_bytes(
+            k1, ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
+
+        data = bencode.bdecode(bytes)
+        format = data.pop(0)
+        self.assertEqual('knit-plain', format)
+
+        for expected, actual in zip(expected_data_list, data):
+            expected_version = expected[0]
+            expected_options = expected[1]
+            expected_parents = expected[2]
+            version, options, parents, bytes = actual
+            self.assertEqual(expected_version, version)
+            self.assertEqual(expected_options, options)
+            self.assertEqual(expected_parents, parents)
+            self.assertRecordContentEqual(k1, version, bytes)
 
 
 class DummyRepository(object):
