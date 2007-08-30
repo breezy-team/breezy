@@ -39,8 +39,6 @@ from bzrlib import (
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_eight,
-    zero_eleven,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
@@ -176,11 +174,6 @@ class TransportStore(Store):
         """
         fileid = osutils.safe_file_id(fileid)
         mutter("add store entry %r", fileid)
-        if isinstance(f, str):
-            symbol_versioning.warn(zero_eleven % 'Passing a string to Store.add',
-                DeprecationWarning, stacklevel=2)
-            f = StringIO(f)
-        
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError("store %r already contains id %r" 
@@ -375,9 +368,3 @@ class TransportStore(Store):
             total += self._transport.stat(relpath).st_size
                 
         return count, total
-
-
-@deprecated_function(zero_eight)
-def copy_all(store_from, store_to, pb=None):
-    """Copy all ids from one store to another."""
-    store_to.copy_all_ids(store_from, pb)

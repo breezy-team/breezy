@@ -18,7 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import log
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.log import (show_log,
                         get_view_revisions,
                         LogRevision,
@@ -28,6 +28,7 @@ from bzrlib.log import (show_log,
                         LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
+from bzrlib.revision import Revision
 
 
 class LogCatcher(LogFormatter):
@@ -103,9 +104,11 @@ class TestShowLog(TestCaseWithTransport):
 
         self.build_tree(['hello'])
         wt.add('hello')
-        wt.commit('add one file')
+        wt.commit('add one file',
+                  committer=u'\u013d\xf3r\xe9m \xcdp\u0161\xfam '
+                            u'<test@example.com>')
 
-        lf = StringIO()
+        lf = self.make_utf8_encoded_stringio()
         # log using regular thing
         show_log(b, LongLogFormatter(lf))
         lf.seek(0)
@@ -198,20 +201,21 @@ def make_commits_with_trailing_newlines(wt):
     b.nick='test'
     open('a', 'wb').write('hello moto\n')
     wt.add('a')
-    wt.commit('simple log message', rev_id='a1'
-            , timestamp=1132586655.459960938, timezone=-6*3600
-            , committer='Joe Foo <joe@foo.com>')
+    wt.commit('simple log message', rev_id='a1',
+              timestamp=1132586655.459960938, timezone=-6*3600,
+              committer='Joe Foo <joe@foo.com>')
     open('b', 'wb').write('goodbye\n')
     wt.add('b')
-    wt.commit('multiline\nlog\nmessage\n', rev_id='a2'
-            , timestamp=1132586842.411175966, timezone=-6*3600
-            , committer='Joe Foo <joe@foo.com>')
+    wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
+              timestamp=1132586842.411175966, timezone=-6*3600,
+              committer='Joe Foo <joe@foo.com>',
+              author='Joe Bar <joe@bar.com>')
 
     open('c', 'wb').write('just another manic monday\n')
     wt.add('c')
-    wt.commit('single line with trailing newline\n', rev_id='a3'
-            , timestamp=1132587176.835228920, timezone=-6*3600
-            , committer = 'Joe Foo <joe@foo.com>')
+    wt.commit('single line with trailing newline\n', rev_id='a3',
+              timestamp=1132587176.835228920, timezone=-6*3600,
+              committer = 'Joe Foo <joe@foo.com>')
     return b
 
 
@@ -220,14 +224,14 @@ class TestShortLogFormatter(TestCaseWithTransport):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEquals(sio.getvalue(), """\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
 
-    2 Joe Foo\t2005-11-21
+    2 Joe Bar\t2005-11-21
       multiline
       log
       message
@@ -242,14 +246,17 @@ class TestLongLogFormatter(TestCaseWithTransport):
 
     def normalize_log(self,log):
         """Replaces the variable lines of logs with fixed lines"""
+        author = 'author: Dolor Sit <test@example.com>'
         committer = 'committer: Lorem Ipsum <test@example.com>'
         lines = log.splitlines(True)
         for idx,line in enumerate(lines):
             stripped_line = line.lstrip()
             indent = ' ' * (len(line) - len(stripped_line))
-            if stripped_line.startswith('committer:'):
+            if stripped_line.startswith('author:'):
+                lines[idx] = indent + author + '\n'
+            elif stripped_line.startswith('committer:'):
                 lines[idx] = indent + committer + '\n'
-            if stripped_line.startswith('timestamp:'):
+            elif stripped_line.startswith('timestamp:'):
                 lines[idx] = indent + 'timestamp: Just now\n'
         return ''.join(lines)
 
@@ -301,7 +308,7 @@ added:
         self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = self.normalize_log(sio.getvalue())
@@ -357,7 +364,7 @@ message:
         self.run_bzr('merge ../child')
         wt.commit('merge branch 1')
         b = wt.branch
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = self.normalize_log(sio.getvalue())
@@ -399,7 +406,7 @@ added:
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEqualDiff(sio.getvalue(), """\
@@ -412,6 +419,7 @@ message:
   single line with trailing newline
 ------------------------------------------------------------
 revno: 2
+author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: test
 timestamp: Mon 2005-11-21 09:27:22 -0600
@@ -427,6 +435,35 @@ timestamp: Mon 2005-11-21 09:24:15 -0600
 message:
   simple log message
 """)
+
+    def test_author_in_log(self):
+        """Log includes the author name if it's set in
+        the revision properties
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>')
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        show_log(b, formatter)
+        self.assertEqualDiff(sio.getvalue(), '''\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: test_author_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+''')
+
 
 
 class TestLineLogFormatter(TestCaseWithTransport):
@@ -469,7 +506,7 @@ class TestLineLogFormatter(TestCaseWithTransport):
             wt.commit('rev-2', rev_id='rev-2b',
                       timestamp=1132586800, timezone=36000,
                       committer='Joe Foo <joe@foo.com>')
-            logfile = StringIO()
+            logfile = self.make_utf8_encoded_stringio()
             formatter = ShortLogFormatter(to_file=logfile)
             show_log(wt.branch, formatter)
             logfile.flush()
@@ -487,12 +524,12 @@ class TestLineLogFormatter(TestCaseWithTransport):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         lf = LineLogFormatter(to_file=sio)
         show_log(b, lf)
         self.assertEqualDiff(sio.getvalue(), """\
 3: Joe Foo 2005-11-21 single line with trailing newline
-2: Joe Foo 2005-11-21 multiline
+2: Joe Bar 2005-11-21 multiline
 1: Joe Foo 2005-11-21 simple log message
 """)
 
@@ -756,7 +793,24 @@ class TestShowChangedRevisions(TestCaseWithTransport):
         self.build_tree(['tree_a/foo'])
         tree.add('foo')
         tree.commit('bar', rev_id='bar-id')
-        s = StringIO()
+        s = self.make_utf8_encoded_stringio()
         log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
         self.assertContainsRe(s.getvalue(), 'bar')
         self.assertNotContainsRe(s.getvalue(), 'foo')
+
+
+class TestLogFormatter(TestCase):
+
+    def test_short_committer(self):
+        rev = Revision('a-id')
+        rev.committer = 'John Doe <jdoe@example.com>'
+        lf = LogFormatter(None)
+        self.assertEqual('John Doe', lf.short_committer(rev))
+
+    def test_short_author(self):
+        rev = Revision('a-id')
+        rev.committer = 'John Doe <jdoe@example.com>'
+        lf = LogFormatter(None)
+        self.assertEqual('John Doe', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_author(rev))

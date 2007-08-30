@@ -51,8 +51,6 @@ from bzrlib import (
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_method,
-    zero_eight,
-    zero_eleven,
     )
 # Compatibility
 from bzrlib.option import Option
@@ -511,40 +509,6 @@ class Command(object):
             return None
 
 
-# Technically, this function hasn't been use in a *really* long time
-# but we are only deprecating it now.
-@deprecated_function(zero_eleven)
-def parse_spec(spec):
-    """
-    >>> parse_spec(None)
-    [None, None]
-    >>> parse_spec("./")
-    ['./', None]
-    >>> parse_spec("../@")
-    ['..', -1]
-    >>> parse_spec("../f/@35")
-    ['../f', 35]
-    >>> parse_spec('./@revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67')
-    ['.', 'revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67']
-    """
-    if spec is None:
-        return [None, None]
-    if '/@' in spec:
-        parsed = spec.split('/@')
-        assert len(parsed) == 2
-        if parsed[1] == "":
-            parsed[1] = -1
-        else:
-            try:
-                parsed[1] = int(parsed[1])
-            except ValueError:
-                pass # We can allow stuff like ./@revid:blahblahblah
-            else:
-                assert parsed[1] >=0
-    else:
-        parsed = [spec, None]
-    return parsed
-
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
@@ -806,7 +770,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    try:
+        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret

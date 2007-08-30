@@ -38,3 +38,6 @@ doc/**/*.html
 doc/developers/performance.png
 bzrlib/_dirstate_helpers_c.c
 bzrlib/_knit_load_data_c.c
+doc/en/release-notes/NEWS.txt
+doc/en/developer-guide/HACKING.txt
+doc/en/user-reference/bzr_man.txt

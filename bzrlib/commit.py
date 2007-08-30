@@ -316,8 +316,7 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
             except:
-                # perhaps this should be done by the CommitBuilder ?
-                self.work_tree.branch.repository.abort_write_group()
+                self.builder.abort()
                 raise
 
             # Upload revision data to the master.
@@ -690,9 +689,8 @@ class Commit(object):
         # it fails; a better way of approaching this is to 
         # finally implement the explicit-caches approach design
         # a while back - RBC 20070306.
-        if (sub_tree.branch.repository.bzrdir.root_transport.base
-            ==
-            self.work_tree.branch.repository.bzrdir.root_transport.base):
+        if sub_tree.branch.repository.has_same_location(
+            self.work_tree.branch.repository):
             sub_tree.branch.repository = \
                 self.work_tree.branch.repository
         try:

@@ -36,6 +36,8 @@ from bzrlib.errors import (
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
+    AppendBasedFileStream,
+    _file_streams,
     LateReadError,
     register_transport,
     Server,
@@ -164,6 +166,13 @@ class MemoryTransport(Transport):
         if _abspath in self._dirs:
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
 
     def listable(self):
         """See Transport.listable."""

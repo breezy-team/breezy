@@ -304,8 +304,7 @@ class Merger(object):
                                                   self.this_branch)
 
     def _maybe_fetch(self, source, target, revision_id):
-        if (source.repository.bzrdir.root_transport.base !=
-            target.repository.bzrdir.root_transport.base):
+        if not source.repository.has_same_location(target.repository):
             target.fetch(source, revision_id)
 
     def find_base(self):

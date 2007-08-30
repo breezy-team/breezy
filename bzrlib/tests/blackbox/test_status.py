@@ -230,6 +230,13 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['?   dir2/\n'])
 
+        tof = StringIO()
+        revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
+        show_tree_status(wt, specific_files=['test.c'], to_file=tof,
+                         short=True, revision=revs)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir2/'])
@@ -296,17 +303,17 @@ class CheckoutStatus(BranchStatus):
 class TestStatus(TestCaseWithTransport):
 
     def test_status_plain(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit(message="added")
         result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
@@ -318,17 +325,17 @@ class TestStatus(TestCaseWithTransport):
         self.assertEquals(result2, result)
 
     def test_status_short(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[?]   hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status --short")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit(message="added")
         result = self.run_bzr("status --short -r 0..1")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
@@ -340,17 +347,17 @@ class TestStatus(TestCaseWithTransport):
         self.assertEquals(result2, result)
 
     def test_status_versioned(self):
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --versioned")[0]
         self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
 
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         result = self.run_bzr("status --versioned")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
-        self.run_bzr("commit -m added")
+        tree.commit("added")
         result = self.run_bzr("status --versioned -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 

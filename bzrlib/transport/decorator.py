@@ -65,6 +65,10 @@ class TransportDecorator(Transport):
         """See Transport.append_bytes()."""
         return self._decorated.append_bytes(relpath, bytes, mode=mode)
 
+    def _can_roundtrip_unix_modebits(self):
+        """See Transport._can_roundtrip_unix_modebits()."""
+        return self._decorated._can_roundtrip_unix_modebits()
+
     def clone(self, offset=None):
         """See Transport.clone()."""
         decorated_clone = self._decorated.clone(offset)
@@ -110,6 +114,10 @@ class TransportDecorator(Transport):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        return self._decorated.open_write_stream(relpath, mode=mode)
+
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
@@ -130,16 +138,16 @@ class TransportDecorator(Transport):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
 
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size()."""
+        return self._decorated.recommended_page_size()
+
     def rename(self, rel_from, rel_to):
         return self._decorated.rename(rel_from, rel_to)
     
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
-
-    def should_cache(self):
-        """See Transport.should_cache()."""
-        return self._decorated.should_cache()
 
     def stat(self, relpath):
         """See Transport.stat()."""

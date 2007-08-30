@@ -200,6 +200,37 @@ is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 
+mail_client
+-----------
+A mail client to use for sending merge requests.
+By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
+will try ``xdg-email``. If either of these fails, it will fall back to
+``editor``.
+
+Supported values are:
+
+:xdg-email: Use xdg-email to run your preferred mail program
+:mapi: Use your preferred e-mail client on Windows.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+:evolution: Use Evolution.
+:kmail: Use KMail.
+:editor: Use your editor to compose the merge request.  This also uses
+    your commit id, (see ``bzr whoami``), smtp_server and (optionally)
+    smtp_username and smtp_password.
+:default: See above.
+
+submit_branch
+-------------
+The branch you intend to submit your current work to.  This is automatically
+set by ``bzr send``, and is also used by the ``submit:`` revision spec.  This
+should usually be set on a per-branch or per-location basis.
+
+public_branch
+-------------
+A publically-accessible version of this branch (implying that this version is
+not publically-accessible).  Used (and set) by ``bzr send``.
+
 
 Branch 6 Options
 ================

@@ -107,16 +107,18 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.timestamp,
-                      bzrlib.errors,
-                      bzrlib.export,
-                      bzrlib.inventory,
-                      bzrlib.iterablefile,
-                      bzrlib.lockdir,
-                      bzrlib.merge3,
-                      bzrlib.option,
-                      bzrlib.store,
-                      ]
+        bzrlib.timestamp,
+        bzrlib.errors,
+        bzrlib.export,
+        bzrlib.inventory,
+        bzrlib.iterablefile,
+        bzrlib.lockdir,
+        bzrlib.merge3,
+        bzrlib.option,
+        bzrlib.store,
+        # quoted to avoid module-loading circularity
+        'bzrlib.tests',
+        ]
 
 
 def packages_to_test():
@@ -158,9 +160,17 @@ def packages_to_test():
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
-    Compared to this unittest version this class adds support for profiling,
-    benchmarking, stopping as soon as a test fails,  and skipping tests.
-    There are further-specialized subclasses for different types of display.
+    Compared to this unittest version this class adds support for
+    profiling, benchmarking, stopping as soon as a test fails,  and
+    skipping tests.  There are further-specialized subclasses for
+    different types of display.
+
+    When a test finishes, in whatever way, it calls one of the addSuccess,
+    addFailure or addError classes.  These in turn may redirect to a more
+    specific case for the special test results supported by our extended
+    tests.
+
+    Note that just one of these objects is fed the results from many tests.
     """
 
     stop_early = False
@@ -196,22 +206,24 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.not_applicable_count = 0
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
     
-    def extractBenchmarkTime(self, testCase):
+    def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
-        self._benchmarkTime = getattr(testCase, "_benchtime", None)
+        return getattr(testCase, "_benchtime", None)
     
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(time.time() - self._start_time)
 
-    def _testTimeString(self):
-        if self._benchmarkTime is not None:
+    def _testTimeString(self, testCase):
+        benchmark_time = self._extractBenchmarkTime(testCase)
+        if benchmark_time is not None:
             return "%s/%s" % (
-                self._formatTime(self._benchmarkTime),
+                self._formatTime(benchmark_time),
                 self._elapsedTestTimeString())
         else:
             return "           %s" % self._elapsedTestTimeString()
@@ -245,52 +257,85 @@ class ExtendedTestResult(unittest._TextTestResult):
             setKeepLogfile()
 
     def addError(self, test, err):
-        self.extractBenchmarkTime(test)
-        self._cleanupLogFile(test)
+        """Tell result that test finished with an error.
+
+        Called from the TestCase run() method when the test
+        fails with an unexpected error.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)
+            return self._addSkipped(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
-        unittest.TestResult.addError(self, test, err)
-        self.error_count += 1
-        self.report_error(test, err)
-        if self.stop_early:
-            self.stop()
+        else:
+            unittest.TestResult.addError(self, test, err)
+            self.error_count += 1
+            self.report_error(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addFailure(self, test, err):
-        self._cleanupLogFile(test)
-        self.extractBenchmarkTime(test)
+        """Tell result that test failed.
+
+        Called from the TestCase run() method when the test
+        fails because e.g. an assert() method failed.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], KnownFailure):
-            return self.addKnownFailure(test, err)
-        unittest.TestResult.addFailure(self, test, err)
-        self.failure_count += 1
-        self.report_failure(test, err)
-        if self.stop_early:
-            self.stop()
-
-    def addKnownFailure(self, test, err):
-        self.known_failure_count += 1
-        self.report_known_failure(test, err)
-
-    def addNotSupported(self, test, feature):
-        self.unsupported.setdefault(str(feature), 0)
-        self.unsupported[str(feature)] += 1
-        self.report_unsupported(test, feature)
+            return self._addKnownFailure(test, err)
+        else:
+            unittest.TestResult.addFailure(self, test, err)
+            self.failure_count += 1
+            self.report_failure(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addSuccess(self, test):
-        self.extractBenchmarkTime(test)
+        """Tell result that test completed successfully.
+
+        Called from the TestCase run()
+        """
+        self._testConcluded(test)
         if self._bench_history is not None:
-            if self._benchmarkTime is not None:
+            benchmark_time = self._extractBenchmarkTime(test)
+            if benchmark_time is not None:
                 self._bench_history.write("%s %s\n" % (
-                    self._formatTime(self._benchmarkTime),
+                    self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
         unittest.TestResult.addSuccess(self, test)
 
-    def addSkipped(self, test, skip_excinfo):
-        self.report_skip(test, skip_excinfo)
-        # seems best to treat this as success from point-of-view of unittest
-        # -- it actually does nothing so it barely matters :)
+    def _testConcluded(self, test):
+        """Common code when a test has finished.
+
+        Called regardless of whether it succeded, failed, etc.
+        """
+        self._cleanupLogFile(test)
+
+    def _addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        """The test will not be run because of a missing feature.
+        """
+        # this can be called in two different ways: it may be that the
+        # test started running, and then raised (through addError) 
+        # UnavailableFeature.  Alternatively this method can be called
+        # while probing for features before running the tests; in that
+        # case we will see startTest and stopTest, but the test will never
+        # actually run.
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
+
+    def _addSkipped(self, test, skip_excinfo):
+        if isinstance(skip_excinfo[1], TestNotApplicable):
+            self.not_applicable_count += 1
+            self.report_not_applicable(test, skip_excinfo)
+        else:
+            self.skip_count += 1
+            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
@@ -298,6 +343,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         except:
             self.addError(test, test.__exc_info())
         else:
+            # seems best to treat this as success from point-of-view of unittest
+            # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
@@ -329,7 +376,6 @@ class ExtendedTestResult(unittest._TextTestResult):
             return False
 
         return self.wasSuccessful()
-
 
 
 class TextTestResult(ExtendedTestResult):
@@ -402,20 +448,10 @@ class TextTestResult(ExtendedTestResult):
             self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
-        if False:
-            # at the moment these are mostly not things we can fix
-            # and so they just produce stipple; use the verbose reporter
-            # to see them.
-            if False:
-                # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n', 
-                    self._shortened_test_description(test),
-                    skip_excinfo[1])
-            else:
-                # since the class name was left behind in the still-visible
-                # progress bar...
-                self.pb.note('SKIP: %s', skip_excinfo[1])
+        pass
+
+    def report_not_applicable(self, test, skip_excinfo):
+        pass
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -458,21 +494,21 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.stream.writeln('ERROR %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
         self.stream.writeln(' FAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_known_failure(self, test, err):
         self.stream.writeln('XFAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_success(self, test):
-        self.stream.writeln('   OK %s' % self._testTimeString())
+        self.stream.writeln('   OK %s' % self._testTimeString(test))
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
@@ -481,16 +517,19 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
+                   self._error_summary(skip_excinfo)))
+
+    def report_not_applicable(self, test, skip_excinfo):
+        self.stream.writeln('  N/A %s\n%s'
+                % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
         self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
-                %(self._testTimeString(), feature))
-                  
+                %(self._testTimeString(test), feature))
 
 
 class TextTestRunner(object):
@@ -589,6 +628,15 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class TestNotApplicable(TestSkipped):
+    """A test is not applicable to the situation where it was run.
+
+    This is only normally raised by parameterized tests, if they find that 
+    the instance they're constructed upon does not support one aspect 
+    of its interface.
+    """
 
 
 class KnownFailure(AssertionError):
@@ -863,12 +911,9 @@ class TestCase(unittest.TestCase):
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
-        missing = []
-        for entry in sublist:
-            if entry not in superlist:
-                missing.append(entry)
+        missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError("value(s) %r not present in container %r" % 
+            raise AssertionError("value(s) %r not present in container %r" %
                                  (missing, superlist))
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
@@ -1006,6 +1051,13 @@ class TestCase(unittest.TestCase):
 
         Note that this only captures warnings raised by symbol_versioning.warn,
         not other callers that go direct to the warning module.
+
+        To test that a deprecated method raises an error, do something like
+        this::
+
+        self.assertRaises(errors.ReservedId,
+            self.applyDeprecated, zero_ninetyone,
+                br.append_revision, 'current:')
 
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the
@@ -1198,9 +1250,14 @@ class TestCase(unittest.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Return as a string the log for this test. If the file is still
-        on disk and keep_log_file=False, delete the log file and store the
-        content in self._log_contents."""
+        """Get the log from bzrlib.trace calls from this test.
+
+        :param keep_log_file: When True, if the log is still a file on disk
+            leave it as a file on disk. When False, if the log is still a file
+            on disk, the log file is deleted and the log preserved as
+            self._log_contents.
+        :return: A string containing the log.
+        """
         # flush the log file, to get all content
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
@@ -1623,6 +1680,18 @@ class TestCase(unittest.TestCase):
             bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
         self.addCleanup(resetTimeout)
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+
+    def make_utf8_encoded_stringio(self, encoding_type=None):
+        """Return a StringIOWrapper instance, that will encode Unicode
+        input to UTF-8.
+        """
+        if encoding_type is None:
+            encoding_type = 'strict'
+        sio = StringIO()
+        output_encoding = 'utf-8'
+        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio.encoding = output_encoding
+        return sio
 
 
 class TestCaseWithMemoryTransport(TestCase):
@@ -2337,6 +2406,7 @@ def test_suite():
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_lsprof',
+                   'bzrlib.tests.test_mail_client',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
@@ -2426,22 +2496,63 @@ def test_suite():
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' %(m,e)
             raise
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'test_suite', None) is not None:
-            default_encoding = sys.getdefaultencoding()
-            try:
-                plugin_suite = plugin.test_suite()
-            except ImportError, e:
-                bzrlib.trace.warning(
-                    'Unable to test plugin "%s": %s', name, e)
-            else:
+    default_encoding = sys.getdefaultencoding()
+    for name, plugin in bzrlib.plugin.plugins().items():
+        try:
+            plugin_suite = plugin.test_suite()
+        except ImportError, e:
+            bzrlib.trace.warning(
+                'Unable to test plugin "%s": %s', name, e)
+        else:
+            if plugin_suite is not None:
                 suite.addTest(plugin_suite)
-            if default_encoding != sys.getdefaultencoding():
-                bzrlib.trace.warning(
-                    'Plugin "%s" tried to reset default encoding to: %s', name,
-                    sys.getdefaultencoding())
-                reload(sys)
-                sys.setdefaultencoding(default_encoding)
+        if default_encoding != sys.getdefaultencoding():
+            bzrlib.trace.warning(
+                'Plugin "%s" tried to reset default encoding to: %s', name,
+                sys.getdefaultencoding())
+            reload(sys)
+            sys.setdefaultencoding(default_encoding)
+    return suite
+
+
+def multiply_tests_from_modules(module_name_list, scenario_iter):
+    """Adapt all tests in some given modules to given scenarios.
+
+    This is the recommended public interface for test parameterization.
+    Typically the test_suite() method for a per-implementation test
+    suite will call multiply_tests_from_modules and return the 
+    result.
+
+    :param module_name_list: List of fully-qualified names of test
+        modules.
+    :param scenario_iter: Iterable of pairs of (scenario_name, 
+        scenario_param_dict).
+
+    This returns a new TestSuite containing the cross product of
+    all the tests in all the modules, each repeated for each scenario.
+    Each test is adapted by adding the scenario name at the end 
+    of its name, and updating the test object's __dict__ with the
+    scenario_param_dict.
+
+    >>> r = multiply_tests_from_modules(
+    ...     ['bzrlib.tests.test_sampler'],
+    ...     [('one', dict(param=1)), 
+    ...      ('two', dict(param=2))])
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    loader = TestLoader()
+    suite = TestSuite()
+    adapter = TestScenarioApplier()
+    adapter.scenarios = list(scenario_iter)
+    adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
 

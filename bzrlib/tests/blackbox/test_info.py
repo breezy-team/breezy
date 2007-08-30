@@ -41,7 +41,7 @@ class TestInfo(ExternalBase):
             location = "/i/do/not/exist/"
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: %s\n' % location)
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -483,7 +483,7 @@ Repository:
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate or knit)
+"""Standalone branch (format: dirstate-tags)
 Location:
   branch root: branch
 
