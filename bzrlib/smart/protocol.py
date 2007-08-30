@@ -573,15 +573,12 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         while not _body_decoder.finished_reading:
             bytes_wanted = _body_decoder.next_read_size()
             bytes = self._request.read_bytes(bytes_wanted)
-            mutter('wire bytes: %r',  bytes)
             _body_decoder.accept_bytes(bytes)
             body_bytes = _body_decoder.read_pending_data()
-            mutter('body bytes: %r',  body_bytes)
-            mutter('in: %r',  bytes)
-            if 'hpss' in debug.debug_flags:
-                mutter('              %d streamed body bytes read',
-                       len(body_bytes))
             if body_bytes != '':
+                if 'hpss' in debug.debug_flags:
+                    mutter('              %d streamed body bytes read',
+                           len(body_bytes))
                 yield body_bytes
         self._request.finished_reading()
 
