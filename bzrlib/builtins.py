@@ -3235,15 +3235,9 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for name, plugin in bzrlib.plugin.all_plugins().items():
-            if getattr(plugin, '__path__', None) is not None:
-                print plugin.__path__[0]
-            elif getattr(plugin, '__file__', None) is not None:
-                print plugin.__file__
-            else:
-                print repr(plugin)
-                
-            d = getdoc(plugin)
+        for name, plugin in bzrlib.plugin.plugins().items():
+            print plugin.path(), "[%s]" % plugin.__version__
+            d = getdoc(plugin.module)
             if d:
                 print '\t', d.split('\n')[0]
 
@@ -3419,7 +3413,11 @@ class cmd_uncommit(Command):
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
-    
+
+    If --revision is specified, uncommit revisions to leave the branch at the
+    specified revision.  For example, "bzr uncommit -r 15" will leave the
+    branch at revision 15.
+
     In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """

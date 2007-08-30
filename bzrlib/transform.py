@@ -108,6 +108,14 @@ class TreeTransform(object):
             except OSError, e:
                 if e.errno == errno.EEXIST:
                     raise ExistingLimbo(self._limbodir)
+            self._deletiondir = urlutils.local_path_from_url(
+                control_files.controlfilename('pending-deletion'))
+            try:
+                os.mkdir(self._deletiondir)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise errors.ExistingPendingDeletion(self._deletiondir)
+
         except: 
             self._tree.unlock()
             raise
@@ -170,6 +178,10 @@ class TreeTransform(object):
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
+            try:
+                os.rmdir(self._deletiondir)
+            except OSError:
+                raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
             self._tree.unlock()
             self._tree = None
@@ -789,7 +801,7 @@ class TreeTransform(object):
             return True
         return False
             
-    def apply(self, no_conflicts=False):
+    def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
         
         If filesystem or inventory conflicts are present, MalformedTransform
@@ -799,6 +811,7 @@ class TreeTransform(object):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
+        :param _mover: Supply an alternate FileMover, for testing
         """
         if not no_conflicts:
             conflicts = self.find_conflicts()
@@ -808,10 +821,21 @@ class TreeTransform(object):
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            child_pb.update('Apply phase', 0, 2)
-            self._apply_removals(inv, inventory_delta)
-            child_pb.update('Apply phase', 1, 2)
-            modified_paths = self._apply_insertions(inv, inventory_delta)
+            if _mover is None:
+                mover = _FileMover()
+            else:
+                mover = _mover
+            try:
+                child_pb.update('Apply phase', 0, 2)
+                self._apply_removals(inv, inventory_delta, mover)
+                child_pb.update('Apply phase', 1, 2)
+                modified_paths = self._apply_insertions(inv, inventory_delta,
+                                                        mover)
+            except:
+                mover.rollback()
+                raise
+            else:
+                mover.apply_deletions()
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
@@ -852,7 +876,7 @@ class TreeTransform(object):
         self._limbo_files[trans_id] = limbo_name
         return limbo_name
 
-    def _apply_removals(self, inv, inventory_delta):
+    def _apply_removals(self, inv, inventory_delta, mover):
         """Perform tree operations that remove directory/inventory names.
         
         That is, delete files that are to be deleted, and put any files that
@@ -868,11 +892,12 @@ class TreeTransform(object):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    delete_any(full_path)
+                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
+                                     trans_id))
                 elif trans_id in self._new_name or trans_id in \
                     self._new_parent:
                     try:
-                        os.rename(full_path, self._limbo_name(trans_id))
+                        mover.rename(full_path, self._limbo_name(trans_id))
                     except OSError, e:
                         if e.errno != errno.ENOENT:
                             raise
@@ -888,7 +913,7 @@ class TreeTransform(object):
         finally:
             child_pb.finished()
 
-    def _apply_insertions(self, inv, inventory_delta):
+    def _apply_insertions(self, inv, inventory_delta, mover):
         """Perform tree operations that insert directory/inventory names.
         
         That is, create any files that need to be created, and restore from
@@ -911,7 +936,7 @@ class TreeTransform(object):
                     full_path = self._tree.abspath(path)
                     if trans_id in self._needs_rename:
                         try:
-                            os.rename(self._limbo_name(trans_id), full_path)
+                            mover.rename(self._limbo_name(trans_id), full_path)
                         except OSError, e:
                             # We may be renaming a dangling inventory id
                             if e.errno != errno.ENOENT:
@@ -1763,3 +1788,42 @@ def iter_cook_conflicts(raw_conflicts, tt):
                                    file_id=modified_id, 
                                    conflict_path=conflicting_path,
                                    conflict_file_id=conflicting_id)
+
+
+class _FileMover(object):
+    """Moves and deletes files for TreeTransform, tracking operations"""
+
+    def __init__(self):
+        self.past_renames = []
+        self.pending_deletions = []
+
+    def rename(self, from_, to):
+        """Rename a file from one path to another.  Functions like os.rename"""
+        os.rename(from_, to)
+        self.past_renames.append((from_, to))
+
+    def pre_delete(self, from_, to):
+        """Rename a file out of the way and mark it for deletion.
+
+        Unlike os.unlink, this works equally well for files and directories.
+        :param from_: The current file path
+        :param to: A temporary path for the file
+        """
+        self.rename(from_, to)
+        self.pending_deletions.append(to)
+
+    def rollback(self):
+        """Reverse all renames that have been performed"""
+        for from_, to in reversed(self.past_renames):
+            os.rename(to, from_)
+        # after rollback, don't reuse _FileMover
+        past_renames = None
+        pending_deletions = None
+
+    def apply_deletions(self):
+        """Apply all marked deletions"""
+        for path in self.pending_deletions:
+            delete_any(path)
+        # after apply_deletions, don't reuse _FileMover
+        past_renames = None
+        pending_deletions = None

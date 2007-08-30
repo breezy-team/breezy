@@ -17,9 +17,14 @@ IN DEVELOPMENT
   FEATURES:
 
     * New option ``--author`` in ``bzr commit`` to specify the author of the
-      change, if it's different from the committer.  (Lukáš Lalinský)
+      change, if it's different from the committer. ``bzr log`` and
+      ``bzr annotate`` display the author instead of the committer.
+      (Lukáš Lalinský)
 
   BUG FIXES:
+
+   * ``bzr plugins`` now lists the version number for each plugin in square
+     brackets after the path. (Robert Collins, #125421)
 
     * Suppress warning "integer argument expected, got float" from Paramiko,
       which sometimes caused false test failures.  (Martin Pool)
@@ -36,6 +41,35 @@ IN DEVELOPMENT
     * patch verification for merge directives is reactivated, and works with
       CRLF and CR files.  (Aaron Bentley)
 
+    * Accept ..\ as a path in revision specifiers. This fixes for example
+      "-r branch:..\other-branch" on Windows.  (Lukáš Lalinský) 
+
+    * ``BZR_PLUGIN_PATH`` may now contain trailing slashes.
+      (Blake Winton, #129299)
+
+    * man page no longer lists hidden options (#131667, Aaron Bentley)
+
+    * ``uncommit --help`` now explains the -r option adequately.  (Daniel
+      Watkins, #106726)
+
+    * Error messages are now better formatted with parameters (such as
+      filenames) quoted when necessary. This avoids confusion when directory
+      names ending in a '.' at the end of messages were confused with a
+      full stop that may or not have been there. (Daniel Watkins, #129791)
+
+    * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
+
+    * If a particular command is an alias, ``help`` will show the alias
+      instead of claiming there is no help for said alias. (Daniel Watkins,
+      #133548)
+
+    * TreeTransform-based operations, like pull, merge, revert, and branch,
+      now roll back if they encounter an error.  (Aaron Bentley, #67699)
+
+    * ``bzr commit`` now exits cleanly if a character unsupported by the
+      current encoding is used in the commit message.  (Daniel Watkins,
+      #116143)
+
   IMPROVEMENTS:
 
     * ``pull`` and ``merge`` are much faster at installing bundle format 4.
@@ -49,6 +83,12 @@ IN DEVELOPMENT
 
     * Documentation updates (Martin Albisetti)
 
+    * Help on debug flags is now included in ``help global-options``.
+      (Daniel Watkins, #124853)
+
+    * Parameters passed on the command line are checked to ensure they are
+      supported by the encoding in use. (Daniel Watkins)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
@@ -57,10 +97,26 @@ IN DEVELOPMENT
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
 
+  TESTING:
+
+   * Tests may now raise TestNotApplicable to indicate they shouldn't be 
+     run in a particular scenario.  (Martin Pool)
+
+   * New function multiply_tests_from_modules to give a simpler interface
+     to test parameterization.  (Martin Pool, Robert Collins)
+
+   * ``Transport.should_cache`` has been removed.  It was not called in the
+     previous release.  (Martin Pool)
+
    * NULL_REVISION is returned to indicate the null revision, not None.
      (Aaron Bentley)
 
   INTERNALS:
+
+   * ``bzrlib.plugin.all_plugins`` has been deprecated in favour of
+     ``bzrlib.plugin.plugins()`` which returns PlugIn objects that provide
+     useful functionality for determining the path of a plugin, its tests, and
+     its version information. (Robert Collins)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
@@ -79,6 +135,11 @@ IN DEVELOPMENT
     * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
       incremental addition of data to a file without requiring that all the
       data be buffered in memory. (Robert Collins)
+
+  TESTING:
+
+    * Use UTF-8 encoded StringIO for log tests to avoid failures on
+      non-ASCII committer names.  (Lukáš Lalinský)
 
 
 bzr 0.90 2007-08-??
@@ -101,6 +162,7 @@ bzr 0.90 2007-08-??
     * The static convenience method ``BzrDir.create_repository``
       is deprecated.  Callers should instead create a ``BzrDir`` instance
       and call ``create_repository`` on that.  (Martin Pool)
+
 
 bzr 0.90rc1 2007-08-14
 ======================

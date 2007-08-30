@@ -309,3 +309,22 @@ class TestReservedId(TestCase):
         self.assertEqual(False, revision.is_reserved_id(
             'arch:a@example.com/c--b--v--r'))
         self.assertEqual(False, revision.is_reserved_id(None))
+
+
+class TestRevisionMethods(TestCase):
+
+    def test_get_summary(self):
+        r = revision.Revision('1')
+        r.message = 'a'
+        self.assertEqual('a', r.get_summary())
+        r.message = 'a\nb'
+        self.assertEqual('a', r.get_summary())
+        r.message = '\na\nb'
+        self.assertEqual('a', r.get_summary())
+
+    def test_get_apparent_author(self):
+        r = revision.Revision('1')
+        r.committer = 'A'
+        self.assertEqual('A', r.get_apparent_author())
+        r.properties['author'] = 'B'
+        self.assertEqual('B', r.get_apparent_author())

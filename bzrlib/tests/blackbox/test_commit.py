@@ -224,6 +224,15 @@ class TestCommit(ExternalBase):
         self.run_bzr('add foo.c')
         self.run_bzr('commit -m ""', retcode=3)
 
+    def test_unsupported_encoding_commit_message(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo.c', 'int main() {}')])
+        tree.add('foo.c')
+        out,err = self.run_bzr_subprocess('commit -m "\xff"', retcode=1,
+                                                    env_changes={'LANG': 'C'})
+        self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
+                                    'unsupported by the current encoding.')
+
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
