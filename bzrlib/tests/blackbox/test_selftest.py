@@ -270,6 +270,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
     def test_run_bzr_subprocess(self):
         """The run_bzr_helper_external comand behaves nicely."""
         result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
         self.assertContainsRe(result[0], 'is free software')
         self.assertRaises(AssertionError, self.run_bzr_subprocess, 
@@ -277,10 +278,14 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
+        err = self.run_bzr_subprocess(['merge', '--merge-type',
+                                      'magic merge'], retcode=3)[1]
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
+        self.callDeprecated(['passing varargs to run_bzr_subprocess was'
+                             ' deprecated in version 0.91.'],
+                            self.run_bzr_subprocess,
+                            'arg1', 'arg2', 'arg3', retcode=3)
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.
@@ -392,7 +397,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
         raise _DontSpawnProcess()
 
     def test_run_bzr_subprocess_no_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
+        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess, '')
         command = self._popen_args[0]
         self.assertEqual(sys.executable, command[0])
         self.assertEqual(self.get_bzr_path(), command[1])
@@ -400,7 +405,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess,
-                          self.run_bzr_subprocess, allow_plugins=True)
+                          self.run_bzr_subprocess, '', allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
@@ -481,13 +486,12 @@ class TestSelftestListOnly(TestCase):
     @staticmethod
     def _parse_test_list(lines, newlines_in_header=1):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
-
         in_header = True
         in_footer = False
         header = []
         body = []
         footer = []
-        header_newlines_found = 0 
+        header_newlines_found = 0
         for line in lines:
             if in_header:
                 if line == '':
@@ -505,7 +509,7 @@ class TestSelftestListOnly(TestCase):
                 footer.append(line)
         # If the last body line is blank, drop it off the list
         if len(body) > 0 and body[-1] == '':
-            body.pop()                
+            body.pop()
         return (header,body,footer)
 
     def test_list_only(self):
@@ -545,6 +549,11 @@ class TestSelftestListOnly(TestCase):
                                           'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
             out_rand.splitlines(), 2)
+        # XXX: The following line asserts that the randomized order is not the
+        # same as the default order.  It is just possible that they'll get
+        # randomized into the same order and this will falsely fail, but
+        # that's very unlikely in practice because there are thousands of
+        # tests.
         self.assertNotEqual(tests_all, tests_rand)
         self.assertEqual(sorted(tests_all), sorted(tests_rand))
         # Check that the seed can be reused to get the exact same order

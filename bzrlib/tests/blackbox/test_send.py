@@ -116,7 +116,7 @@ class TestSend(tests.TestCaseWithTransport):
         # which would break patch-based bundles
         self.make_trees()        
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('send', '-o-')[0]
+        stdout = self.run_bzr_subprocess('send -o-')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 

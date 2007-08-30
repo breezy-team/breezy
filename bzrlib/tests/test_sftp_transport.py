@@ -334,7 +334,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         # else:
         #     self.fail('Excepted ConnectionError to be raised')
 
-        out, err = self.run_bzr_subprocess('log', self.bogus_url, retcode=3)
+        out, err = self.run_bzr_subprocess(['log', self.bogus_url], retcode=3)
         self.assertEqual('', out)
         if "NameError: global name 'SSHException'" in err:
             # We aren't fixing this bug, because it is a bug in

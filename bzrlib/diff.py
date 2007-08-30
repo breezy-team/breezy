@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import difflib
 import os
 import re
 import sys
@@ -47,6 +48,16 @@ from bzrlib.trace import mutter, warning
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
+
+
+class _PrematchedMatcher(difflib.SequenceMatcher):
+    """Allow SequenceMatcher operations to use predetermined blocks"""
+
+    def __init__(self, matching_blocks):
+        difflib.SequenceMatcher(self, None, None)
+        self.matching_blocks = matching_blocks
+        self.opcodes = None
+
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
