@@ -1,3 +1,10 @@
+bzr (0.90-2) UNRELEASED; urgency=low
+
+  * Give a Files line in the HTML section of bzr.doc-base, since the doc-base
+    package in etch requires it.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Thu, 30 Aug 2007 10:12:26 +0200
+
 bzr (0.90-1) unstable; urgency=low
 
   * Final 0.90 upstream release:

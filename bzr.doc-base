@@ -8,3 +8,4 @@ Files: /usr/share/doc/bzr/txt/index.txt
 
 Format: HTML
 Index: /usr/share/doc/bzr/html/index.html
+Files: /usr/share/doc/bzr/html/*.html
