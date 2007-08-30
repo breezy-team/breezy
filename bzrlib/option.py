@@ -124,24 +124,36 @@ class Option(object):
     Otherwise None.
     """
 
-    # TODO: Some way to show in help a description of the option argument
+    # The dictionary of standard options. These are always legal.
+    STD_OPTIONS = {}
 
+    # The dictionary of commonly used options. these are only legal
+    # if a command explicitly references them by name in the list
+    # of supported options.
     OPTIONS = {}
 
     def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None):
+                 short_name=None, custom_callback=None):
         """Make a new command option.
 
-        name -- regular name of the command, used in the double-dash
+        :param name: regular name of the command, used in the double-dash
             form and also as the parameter to the command's run() 
             method.
 
-        help -- help message displayed in command help
+        :param help: help message displayed in command help
 
-        type -- function called to parse the option argument, or 
+        :param type: function called to parse the option argument, or 
             None (default) if this option doesn't take an argument.
 
-        argname -- name of option argument, if any
+        :param argname: name of option argument, if any
+
+        :param short_name: short option code for use with a single -, e.g.
+            short_name="v" to enable parsing of -v.
+
+        :param custom_callback: a callback routine to be called after normal
+            processing. The signature of the callback routine is the same
+            as that for normal option callbacks. See optparse in the standard
+            Python library for details.
         """
         self.name = name
         self.help = help
@@ -152,6 +164,7 @@ class Option(object):
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+        self.custom_callback = custom_callback
 
     def short_name(self):
         if self._short_name:
@@ -173,12 +186,15 @@ class Option(object):
             option_strings.append('-%s' % short_name)
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='store_true', dest=self.name, 
+            parser.add_option(action='callback', 
+                              callback=self._optparse_bool_callback, 
+                              callback_args=(True,),
                               help=self.help,
-                              default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='store_false', dest=self.name, 
+            parser.add_option(action='callback', 
+                              callback=self._optparse_bool_callback, 
+                              callback_args=(False,),
                               help=optparse.SUPPRESS_HELP, *negation_strings)
         else:
             parser.add_option(action='callback', 
@@ -188,8 +204,15 @@ class Option(object):
                               default=OptionParser.DEFAULT_VALUE, 
                               *option_strings)
 
+    def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
+        setattr(parser.values, self.name, bool_v)
+        if self.custom_callback is not None:
+            self.custom_callback(option, self.name, bool_v, parser)
+
     def _optparse_callback(self, option, opt, value, parser):
         setattr(parser.values, self.name, self.type(value))
+        if self.custom_callback is not None:
+            self.custom_callback(option, opt, value, parser)
 
     def iter_switches(self):
         """Iterate through the list of switches provided by the option
@@ -233,6 +256,8 @@ class ListOption(Option):
             del values[:]
         else:
             values.append(self.type(value))
+        if self.custom_callback is not None:
+            self.custom_callback(option, opt, value, parser)
 
 
 class RegistryOption(Option):
@@ -319,6 +344,8 @@ class RegistryOption(Option):
     def _optparse_value_callback(self, cb_value):
         def cb(option, opt, value, parser):
             setattr(parser.values, self.name, self.type(cb_value))
+            if self.custom_callback is not None:
+                self.custom_callback(option, opt, value, parser)
         return cb
 
     def iter_switches(self):
@@ -357,8 +384,23 @@ def get_optparser(options):
     return parser
 
 
+def custom_help(name, help):
+    """Clone a common option overriding the help."""
+    import copy
+    o = copy.copy(Option.OPTIONS[name])
+    o.help = help
+    return o
+
+
+def _standard_option(name, **kwargs):
+    """Register a standard option."""
+    # All standard options are implicitly 'global' ones
+    Option.STD_OPTIONS[name] = Option(name, **kwargs)
+    Option.OPTIONS[name] = Option.STD_OPTIONS[name]
+
+
 def _global_option(name, **kwargs):
-    """Register o as a global option."""
+    """Register a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 
@@ -371,6 +413,34 @@ class MergeTypeRegistry(registry.Registry):
     pass
 
 
+# This is the verbosity level detected during command line parsing.
+# Note that the final value is dependent on the order in which the
+# various flags (verbose, quiet, no-verbose, no-quiet) are given.
+# The final value will be one of the following:
+#
+# * -ve for quiet
+# * 0 for normal
+# * +ve for verbose
+_verbosity_level = 0
+
+
+def _verbosity_level_callback(option, opt_str, value, parser):
+    global _verbosity_level
+    if not value:
+        # Either --no-verbose or --no-quiet was specified
+        _verbosity_level = 0
+    elif opt_str == "verbose":
+        if _verbosity_level > 0:
+            _verbosity_level += 1
+        else:
+            _verbosity_level = 1
+    else:
+        if _verbosity_level < 0:
+            _verbosity_level -= 1
+        else:
+            _verbosity_level = -1
+
+
 _merge_type_registry = MergeTypeRegistry()
 _merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
                                    "Native diff3-style merge")
@@ -379,6 +449,17 @@ _merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
 _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
                                    "Weave-based merge")
 
+# Declare the standard options
+_standard_option('help', short_name='h',
+                 help='Show help message.')
+_standard_option('verbose', short_name='v',
+                 help='Display more information.',
+                 custom_callback=_verbosity_level_callback)
+_standard_option('quiet', short_name='q',
+                 help="Only display errors and warnings.",
+                 custom_callback=_verbosity_level_callback)
+
+# Declare commonly used options
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally.')
@@ -405,9 +486,6 @@ _global_option('timezone',
                type=str,
                help='display timezone as local, original, or utc')
 _global_option('unbound')
-_global_option('verbose',
-               help='Display more information.',
-               short_name='v')
 _global_option('version')
 _global_option('email')
 _global_option('update')
@@ -424,7 +502,6 @@ _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')
 _global_option('pattern', type=str)
-_global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
@@ -432,7 +509,3 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
-
-_help_option = Option('help',
-                      help='Show help message.',
-                      short_name='h')
