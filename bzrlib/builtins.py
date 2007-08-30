@@ -60,7 +60,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import ListOption, Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption, custom_help
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -569,7 +569,7 @@ class cmd_pull(Command):
 
     _see_also = ['push', 'update', 'status-flags']
     takes_options = ['remember', 'overwrite', 'revision',
-        Option('verbose', short_name='v',
+        custom_help('verbose',
             help='Show logs of pulled revisions.'),
         Option('directory',
             help='Branch to pull into, '
@@ -1621,8 +1621,7 @@ class cmd_log(Command):
             Option('timezone',
                    type=str,
                    help='Display timezone as local, original, or utc.'),
-            Option('verbose',
-                   short_name='v',
+            custom_help('verbose',
                    help='Show files changed in each revision.'),
             'show-ids',
             'revision',
@@ -2219,7 +2218,7 @@ class cmd_commit(Command):
             properties.append('%s fixed' % bug_url)
         return '\n'.join(properties)
 
-    def run(self, message=None, file=None, verbose=True, selected_list=None,
+    def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
             author=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
@@ -2269,7 +2268,7 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose:
+        if verbose or not is_quiet():
             reporter = ReportCommitToLog()
         else:
             reporter = NullCommitReporter()
