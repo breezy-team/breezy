@@ -997,6 +997,15 @@ class KnitTests(TestCaseWithTransport):
                                  factory=factory, create=True,
                                  delay_create=delay_create, index=index)
 
+    def assertRecordContentEqual(self, knit, version_id, candidate_content):
+        """Assert that some raw record content matches the raw record content
+        for a particular version_id in the given knit.
+        """
+        index_memo = knit._index.get_position(version_id)
+        record = (version_id, index_memo)
+        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
+        self.assertEqual(expected_content, candidate_content)
+
 
 class BasicKnitTests(KnitTests):
 
@@ -1460,15 +1469,6 @@ class BasicKnitTests(KnitTests):
         for plan_line, expected_line in zip(plan, AB_MERGE):
             self.assertEqual(plan_line, expected_line)
 
-    def assertRecordContentEqual(self, knit, version_id, candidate_content):
-        """Assert that some raw record content matches the raw record content
-        for a particular version_id in the given knit.
-        """
-        index_memo = knit._index.get_position(version_id)
-        record = (version_id, index_memo)
-        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
-        self.assertEqual(expected_content, candidate_content)
-
     def test_get_stream_empty(self):
         """Get a data stream for an empty knit file."""
         k1 = self.make_test_knit()
@@ -1614,62 +1614,6 @@ class BasicKnitTests(KnitTests):
         for version_id, options, length, parents in expected_data_list:
             bytes = reader_callable(length)
             self.assertRecordContentEqual(k1, version_id, bytes)
-
-    def test_get_data_stream(self):
-        # Make a simple knit
-        k1 = self.make_test_knit()
-        k1.add_lines('text-a', [], split_lines(TEXT_1))
-        
-        # Serialise it, check the output.
-        bytes = k1.get_stream_as_bytes(['text-a'])
-        data = bencode.bdecode(bytes)
-        format, record = data
-        self.assertEqual('knit-plain', format)
-        self.assertEqual(['text-a', ['fulltext'], []], record[:3])
-        self.assertRecordContentEqual(k1, 'text-a', record[3])
-
-    def test_get_stream_as_bytes_all(self):
-        """Get a serialised data stream for all the records in a knit.
-
-        Much like test_get_stream_all, except for get_stream_as_bytes.
-        """
-        k1 = self.make_test_knit()
-        # Insert the same data as test_knit_join, as they seem to cover a range
-        # of cases (no parents, one parent, multiple parents).
-        test_data = [
-            ('text-a', [], TEXT_1),
-            ('text-b', ['text-a'], TEXT_1),
-            ('text-c', [], TEXT_1),
-            ('text-d', ['text-c'], TEXT_1),
-            ('text-m', ['text-b', 'text-d'], TEXT_1),
-           ]
-        expected_data_list = [
-            # version, options, parents
-            ('text-a', ['fulltext'], []),
-            ('text-b', ['line-delta'], ['text-a']),
-            ('text-c', ['fulltext'], []),
-            ('text-d', ['line-delta'], ['text-c']),
-            ('text-m', ['line-delta'], ['text-b', 'text-d']),
-            ]
-        for version_id, parents, lines in test_data:
-            k1.add_lines(version_id, parents, split_lines(lines))
-
-        bytes = k1.get_stream_as_bytes(
-            ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
-
-        data = bencode.bdecode(bytes)
-        format = data.pop(0)
-        self.assertEqual('knit-plain', format)
-
-        for expected, actual in zip(expected_data_list, data):
-            expected_version = expected[0]
-            expected_options = expected[1]
-            expected_parents = expected[2]
-            version, options, parents, bytes = actual
-            self.assertEqual(expected_version, version)
-            self.assertEqual(expected_options, options)
-            self.assertEqual(expected_parents, parents)
-            self.assertRecordContentEqual(k1, version, bytes)
 
     def assertKnitFilesEqual(self, knit1, knit2):
         """Assert that the contents of the index and data files of two knits are
