@@ -183,7 +183,8 @@ class TestCommit(ExternalBase):
             other_tree.rename_one('dirtorename', 'renameddir')
             other_tree.rename_one('dirtoreparent', 'renameddir/reparenteddir')
             other_tree.rename_one('filetorename', 'renamedfile')
-            other_tree.rename_one('filetoreparent', 'renameddir/reparentedfile')
+            other_tree.rename_one('filetoreparent',
+                                  'renameddir/reparentedfile')
             other_tree.remove(['dirtoremove', 'filetoremove'])
             self.build_tree_contents([
                 ('other/newdir/',),
@@ -248,8 +249,8 @@ class TestCommit(ExternalBase):
                              'checkout', retcode=3)
         self.assertEqual(output,
                          ('',
-                          "bzr: ERROR: Working tree is out of date, please run "
-                          "'bzr update'.\n"))
+                          "bzr: ERROR: Working tree is out of date, please "
+                          "run 'bzr update'.\n"))
 
     def test_local_commit_unbound(self):
         # a --local commit on an unbound branch is an error

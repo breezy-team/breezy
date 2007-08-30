@@ -42,19 +42,25 @@ class TestCat(TestCaseWithTransport):
 
         tree.commit(message='2')
         self.assertEquals(self.run_bzr_subprocess('cat', 'a')[0], 'baz\n')
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '1')[0], 'foo\n')
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '-1')[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '1')[0],
+                                                  'foo\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '-1')[0],
+                                                  'baz\n')
 
         rev_id = tree.branch.last_revision()
 
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', 'revid:%s' % rev_id)[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r',
+                                                  'revid:%s' % rev_id)[0],
+                                                  'baz\n')
 
         os.chdir('..')
 
-        self.assertEquals(self.run_bzr_subprocess('cat', 'branch/a', '-r', 'revno:1:branch')[0],
-                          'foo\n')
+        self.assertEquals(self.run_bzr_subprocess('cat', 'branch/a', '-r',
+                                                  'revno:1:branch')[0],
+                                                  'foo\n')
         self.run_bzr('cat', 'a', retcode=3)
-        self.run_bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
+        self.run_bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist',
+                     retcode=3)
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
@@ -89,7 +95,8 @@ class TestCat(TestCaseWithTransport):
         self.assertEqual('bar\n', out)
         self.assertEqual('', err)
 
-        out, err = self.run_bzr_subprocess('cat a-rev-tree --name-from-revision')
+        out, err = \
+                self.run_bzr_subprocess('cat a-rev-tree --name-from-revision')
         self.assertEqual('foo\n', out)
         self.assertEqual('', err)
 
@@ -117,4 +124,4 @@ class TestCat(TestCaseWithTransport):
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
-        
+
