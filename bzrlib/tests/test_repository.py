@@ -33,8 +33,11 @@ from bzrlib.errors import (NotBranchError,
                            )
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.tests import test_knit
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    test_knit,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.util import bencode
