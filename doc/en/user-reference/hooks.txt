@@ -39,7 +39,7 @@ Run after ``uncommit`` has completed.
 
 The api signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) where local is the local branch or None, master is the target
-branch, and an empty branch recieves new_revno of 0, new_revid of None.
+branch, and an empty branch receives new_revno of 0, new_revid of None.
 
 set_rh
 ######
