@@ -27,7 +27,7 @@ To use this example, create a file named ``push_hook.py``, and stick it in
 installed any plugins, you may need to create the ``plugins`` directory).
 
 First, we define a function that will be run after ``push`` completes.  We
-could also use an intance method or a callable object.  All push hooks take a
+could also use an instance method or a callable object.  All push hooks take a
 single argument, the ``push_result``.
 
 Next, we install the hook.  ``'post_push'`` identifies where we want to install
