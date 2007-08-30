@@ -197,6 +197,28 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         """
         self._write_func(RESPONSE_VERSION_TWO)
 
+    def _send_response(self, response):
+        """Send a smart server response down the output stream."""
+        assert not self._finished, 'response already sent'
+        self._finished = True
+        self._write_protocol_version()
+        self._write_success_or_failure_prefix(response)
+        self._write_func(_encode_tuple(response.args))
+        if response.body is not None:
+            assert isinstance(response.body, str), 'body must be a str'
+            bytes = self._encode_bulk_data(response.body)
+            self._write_func(bytes)
+        elif response.body_stream is not None:
+            for chunk in response.body_stream:
+                assert isinstance(chunk, str), 'body must be a str'
+                if chunk == '':
+                    # Skip empty chunks, as they would prematurely signal
+                    # end-of-stream, and they're redundant anyway.
+                    continue
+                bytes = "%x\n%s" % (len(chunk), chunk)
+                self._write_func(bytes)
+            self._write_func('0\n')
+
 
 class _StatefulDecoder(object):
 
@@ -267,7 +289,9 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             raise AssertionError("Impossible state: %r" % (self.state_accept,))
 
     def read_pending_data(self):
-        return self._content_bytes
+        bytes = self._content_bytes
+        self._content_bytes = ''
+        return bytes
 
     def _state_accept_expecting_length(self, bytes):
         self._in_buffer += bytes
@@ -541,4 +565,23 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         Version two sends the value of REQUEST_VERSION_TWO.
         """
         self._request.accept_bytes(REQUEST_VERSION_TWO)
+
+    def read_streamed_body(self):
+        """Read bytes from the body, decoding into a byte stream.
+        """
+        _body_decoder = ChunkedBodyDecoder()
+        while not _body_decoder.finished_reading:
+            bytes_wanted = _body_decoder.next_read_size()
+            bytes = self._request.read_bytes(bytes_wanted)
+            mutter('wire bytes: %r',  bytes)
+            _body_decoder.accept_bytes(bytes)
+            body_bytes = _body_decoder.read_pending_data()
+            mutter('body bytes: %r',  body_bytes)
+            mutter('in: %r',  bytes)
+            if 'hpss' in debug.debug_flags:
+                mutter('              %d streamed body bytes read',
+                       len(body_bytes))
+            if body_bytes != '':
+                yield body_bytes
+        self._request.finished_reading()
 

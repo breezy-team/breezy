@@ -1614,6 +1614,38 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
 
+    def assertBodyStreamSerialisation(self, expected_serialisation,
+                                      body_stream):
+        """Assert that body_stream is serialised as expected_serialisation."""
+        out_stream = StringIO()
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        response = request.SuccessfulSmartServerResponse(
+            ('args',), body_stream=body_stream)
+        smart_protocol._send_response(response)
+        expected_prefix = protocol.RESPONSE_VERSION_TWO + 'success\n'
+        expected_args = 'args\n'
+        self.assertStartsWith(
+            out_stream.getvalue(), expected_prefix + expected_args)
+        body = out_stream.getvalue()[len(expected_prefix + expected_args):]
+        self.assertEqual(expected_serialisation, body)
+
+    def test_body_stream_serialisation_empty(self):
+        """A body_stream with no bytes can be serialised."""
+        self.assertBodyStreamSerialisation('0\n', [])
+
+    def test_body_stream_serialisation(self):
+        self.assertBodyStreamSerialisation(
+            '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' + '0\n',
+            ['chunk one', 'chunk two', 'chunk three'])
+
+    def test_body_stream_with_empty_element_serialisation(self):
+        """A body stream that includes '' does not prematurely end the stream.
+
+        If the body stream yields an empty string, the protocol should not send
+        an empty chunk, because that is the signal for end-of-stream.
+        """
+        self.assertBodyStreamSerialisation('5\nchunk' + '0\n', ['', 'chunk'])
+
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
@@ -1698,6 +1730,14 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         self.assertEqual(1, smart_protocol.next_read_size())
         smart_protocol._send_response(
             request.SuccessfulSmartServerResponse(('x',)))
+        self.assertEqual(0, smart_protocol.next_read_size())
+
+    def test__send_response_with_body_stream_sets_finished_reading(self):
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, lambda x: None)
+        self.assertEqual(1, smart_protocol.next_read_size())
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',), body_stream=[]))
         self.assertEqual(0, smart_protocol.next_read_size())
 
     def test__send_response_errors_with_base_response(self):
@@ -1833,7 +1873,6 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
     def test_client_cancel_read_body_does_not_eat_body_bytes(self):
         # cancelling the expected body needs to finish the request, but not
         # read any more bytes.
-        expected_bytes = "1234567"
         server_bytes = (protocol.RESPONSE_VERSION_TWO +
                         "success\nok\n7\n1234567done\n")
         input = StringIO(server_bytes)
@@ -1848,6 +1887,21 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
                          input.tell())
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
+    def test_streamed_body_bytes(self):
+        two_body_chunks = "4\n1234" + "3\n567"
+        body_terminator = "0\n"
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n" + two_body_chunks + body_terminator)
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(True)
+        stream = smart_protocol.read_streamed_body()
+        self.assertEqual(['1234', '567'], list(stream))
 
 
 class TestSmartClientUnicode(tests.TestCase):
@@ -2015,7 +2069,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         self.assertFalse(decoder.finished_reading)
         self.assertEqual('', decoder.read_pending_data())
 
-    def test_accept_two_chunks(self):
+    def test_two_chunks(self):
         """Content from multiple chunks is concatenated."""
         decoder = protocol.ChunkedBodyDecoder()
         chunk_one = '3\naaa'
@@ -2068,16 +2122,44 @@ class TestChunkedBodyDecoder(tests.TestCase):
         self.assertEqual(chunk_content, decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
 
+    def test_read_pending_data_resets(self):
+        """read_pending_data does not return the same bytes twice."""
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_one = '3\naaa'
+        chunk_two = '3\nbbb'
+        finish = '0\n'
+        decoder.accept_bytes(chunk_one)
+        self.assertEqual('aaa', decoder.read_pending_data())
+        decoder.accept_bytes(chunk_two)
+        self.assertEqual('bbb', decoder.read_pending_data())
+        self.assertEqual('', decoder.read_pending_data())
+
 
 class TestSuccessfulSmartServerResponse(tests.TestCase):
 
-    def test_construct(self):
+    def test_construct_no_body(self):
         response = request.SuccessfulSmartServerResponse(('foo', 'bar'))
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual(None, response.body)
-        response = request.SuccessfulSmartServerResponse(('foo', 'bar'), 'bytes')
+
+    def test_construct_with_body(self):
+        response = request.SuccessfulSmartServerResponse(
+            ('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+
+    def test_construct_with_body_stream(self):
+        bytes_iterable = ['abc']
+        response = request.SuccessfulSmartServerResponse(
+            ('foo', 'bar'), body_stream=bytes_iterable)
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual(bytes_iterable, response.body_stream)
+
+    def test_construct_rejects_body_and_body_stream(self):
+        """'body' and 'body_stream' are mutually exclusive."""
+        self.assertRaises(
+            errors.BzrError,
+            request.SuccessfulSmartServerResponse, (), 'body', ['stream'])
 
     def test_is_successful(self):
         """is_successful should return True for SuccessfulSmartServerResponse."""
