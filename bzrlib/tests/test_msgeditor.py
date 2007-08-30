@@ -26,6 +26,11 @@ import bzrlib.msgeditor
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 
+from bzrlib import (
+    osutils,
+    errors
+    )
+
 
 class MsgEditorTest(TestCaseWithTransport):
 
@@ -80,7 +85,7 @@ added:
         self.assertEqual(True, bzrlib.msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
-    def make_fake_editor(self):
+    def make_fake_editor(self, message='test message from fed\\n'):
         """Set up environment so that an editor will be a known script.
 
         Sets up BZR_EDITOR so that if an editor is spawned it will run a
@@ -89,6 +94,7 @@ added:
         f = file('fed.py', 'wb')
         f.write('#!%s\n' % sys.executable)
         f.write("""\
+# coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
@@ -96,10 +102,10 @@ if len(sys.argv) == 2:
     s = f.read()
     f.close()
     f = file(fn, 'wb')
-    f.write('test message from fed\\n')
+    f.write('%s')
     f.write(s)
     f.close()
-""")
+""" % (message, ))
         f.close()
         if sys.platform == "win32":
             # [win32] make batch file and set BZR_EDITOR
@@ -210,3 +216,14 @@ if len(sys.argv) == 2:
         self.assertNotEqual(None, msgfilename)
         self.assertFalse(hasinfo)
         self.assertFileEqual('', msgfilename)
+
+    def test_unsupported_encoding_commit_message(self):
+        old_env = osutils.set_or_unset_env('LANG', 'C')
+        try:
+            self.make_fake_editor(message='\xff')
+
+            working_tree = self.make_uncommitted_tree()
+            self.assertRaises(errors.BadCommitMessageEncoding,
+                                    bzrlib.msgeditor.edit_commit_message, '')
+        finally:
+            osutils.set_or_unset_env('LANG', old_env)

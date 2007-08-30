@@ -112,6 +112,8 @@ def format_command (params, cmd):
         option_str = "\nOptions:\n"
         for option_name, option in sorted(options.items()):
             for name, short_name, argname, help in option.iter_switches():
+                if option.is_hidden(name):
+                    continue
                 l = '    --' + name
                 if argname is not None:
                     l += ' ' + argname

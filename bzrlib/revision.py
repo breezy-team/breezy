@@ -114,7 +114,15 @@ class Revision(object):
     def get_summary(self):
         """Get the first line of the log message for this revision.
         """
-        return self.message.split('\n', 1)[0]
+        return self.message.lstrip().split('\n', 1)[0]
+
+    def get_apparent_author(self):
+        """Return the apparent author of this revision.
+
+        If the revision properties contain the author name,
+        return it. Otherwise return the committer name.
+        """
+        return self.properties.get('author', self.committer)
 
 
 def is_ancestor(revision_id, candidate_id, branch):

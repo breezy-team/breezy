@@ -3235,15 +3235,9 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for name, plugin in bzrlib.plugin.all_plugins().items():
-            if getattr(plugin, '__path__', None) is not None:
-                print plugin.__path__[0]
-            elif getattr(plugin, '__file__', None) is not None:
-                print plugin.__file__
-            else:
-                print repr(plugin)
-                
-            d = getdoc(plugin)
+        for name, plugin in bzrlib.plugin.plugins().items():
+            print plugin.path(), "[%s]" % plugin.__version__
+            d = getdoc(plugin.module)
             if d:
                 print '\t', d.split('\n')[0]
 
@@ -3419,7 +3413,11 @@ class cmd_uncommit(Command):
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
-    
+
+    If --revision is specified, uncommit revisions to leave the branch at the
+    specified revision.  For example, "bzr uncommit -r 15" will leave the
+    branch at revision 15.
+
     In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """
@@ -3911,6 +3909,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No public branch specified or'
                                              ' known')
             base_revision_id = None
+            revision_id = None
             if revision is not None:
                 if len(revision) > 2:
                     raise errors.BzrCommandError('bzr send takes '
@@ -3918,10 +3917,8 @@ class cmd_send(Command):
                 revision_id = revision[-1].in_history(branch).rev_id
                 if len(revision) == 2:
                     base_revision_id = revision[0].in_history(branch).rev_id
-                    base_revision_id = ensure_null(base_revision_id)
-            else:
+            if revision_id is None:
                 revision_id = branch.last_revision()
-            revision_id = ensure_null(revision_id)
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
             if format == '4':
