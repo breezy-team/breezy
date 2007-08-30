@@ -1954,6 +1954,121 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         self.assertEqual('', decoder.unused_data)
 
 
+class TestChunkedBodyDecoder(tests.TestCase):
+    """Tests for ChunkedBodyDecoder."""
+
+    def test_construct(self):
+        decoder = protocol.ChunkedBodyDecoder()
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual(2, decoder.next_read_size())
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+    def test_empty_content(self):
+        """'0' + LF is the complete chunked encoding of a zero-length body."""
+        decoder = protocol.ChunkedBodyDecoder()
+        decoder.accept_bytes('0\n')
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+    def test_one_chunk(self):
+        """A body in a single chunk is decoded correctly."""
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_length = 'f\n'
+        chunk_content = '123456789abcdef'
+        finish = '0\n'
+        decoder.accept_bytes(chunk_length + chunk_content + finish)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual(chunk_content, decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        
+    def test_incomplete_chunk(self):
+        """When there are less bytes in the chunk than declared by the length,
+        then we haven't finished reading yet.
+        """
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_length = '8\n'
+        three_bytes = '123'
+        decoder.accept_bytes(chunk_length + three_bytes)
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual(
+            5 + 2, decoder.next_read_size(),
+            "The next_read_size hint should be the number of missing bytes in "
+            "this chunk plus 2 (the shortest possible next chunk: '0\\n')")
+        self.assertEqual(three_bytes, decoder.read_pending_data())
+
+    def test_incomplete_length(self):
+        """A chunk length hasn't been read until a newline byte has been read.
+        """
+        decoder = protocol.ChunkedBodyDecoder()
+        decoder.accept_bytes('9')
+        self.assertEqual(
+            1, decoder.next_read_size(),
+            "The next_read_size hint should be 1, because we don't know the "
+            "length yet.")
+        decoder.accept_bytes('\n')
+        self.assertEqual(
+            9 + 2, decoder.next_read_size(),
+            "The next_read_size hint should be the length of the chunk plus 2 "
+            "(the shortest possible next chunk: '0\\n')")
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+
+    def test_accept_two_chunks(self):
+        """Content from multiple chunks is concatenated."""
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_one = '3\naaa'
+        chunk_two = '5\nbbbbb'
+        finish = '0\n'
+        decoder.accept_bytes(chunk_one + chunk_two + finish)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('aaabbbbb', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+    def test_excess_bytes(self):
+        """Bytes after the chunked body are reported as unused bytes."""
+        decoder = protocol.ChunkedBodyDecoder()
+        chunked_body = "5\naaaaa0\n"
+        excess_bytes = "excess bytes"
+        decoder.accept_bytes(chunked_body + excess_bytes)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('aaaaa', decoder.read_pending_data())
+        self.assertEqual(excess_bytes, decoder.unused_data)
+        self.assertEqual(
+            1, decoder.next_read_size(),
+            "next_read_size hint should be 1 when finished_reading.")
+
+    def test_multidigit_length(self):
+        """Lengths in the chunk prefixes can have multiple digits."""
+        decoder = protocol.ChunkedBodyDecoder()
+        length = 0x123
+        chunk_prefix = hex(length) + '\n'
+        chunk_bytes = 'z' * length
+        finish = '0\n'
+        decoder.accept_bytes(chunk_prefix + chunk_bytes + finish)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual(chunk_bytes, decoder.read_pending_data())
+
+    def test_byte_at_a_time(self):
+        """A complete body fed to the decoder one byte at a time should not
+        confuse the decoder.  That is, it should give the same result as if the
+        bytes had been received in one batch.
+
+        This test is the same as test_one_chunk apart from the way accept_bytes
+        is called.
+        """
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_length = 'f\n'
+        chunk_content = '123456789abcdef'
+        finish = '0\n'
+        for byte in (chunk_length + chunk_content + finish):
+            decoder.accept_bytes(byte)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual(chunk_content, decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+
 class TestSuccessfulSmartServerResponse(tests.TestCase):
 
     def test_construct(self):

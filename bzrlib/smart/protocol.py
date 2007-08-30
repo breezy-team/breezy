@@ -198,18 +198,13 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         self._write_func(RESPONSE_VERSION_TWO)
 
 
-class LengthPrefixedBodyDecoder(object):
-    """Decodes the length-prefixed bulk data."""
-    
+class _StatefulDecoder(object):
+
     def __init__(self):
-        self.bytes_left = None
         self.finished_reading = False
         self.unused_data = ''
-        self.state_accept = self._state_accept_expecting_length
-        self.state_read = self._state_read_no_data
-        self._in_buffer = ''
-        self._trailer_buffer = ''
-    
+        self.bytes_left = None
+
     def accept_bytes(self, bytes):
         """Decode as much of bytes as possible.
 
@@ -226,6 +221,99 @@ class LengthPrefixedBodyDecoder(object):
             current_state = self.state_accept
             self.state_accept('')
 
+
+class ChunkedBodyDecoder(_StatefulDecoder):
+    """Decoder for chunked body data.
+
+    This is very similar the HTTP's chunked encoding::
+
+        BODY := CHUNKS TERMINATOR
+        CHUNKS := CHUNK [CHUNKS]
+        CHUNK := CHUNK_LENGTH CHUNK_CONTENT
+        CHUNK_LENGTH := HEX_DIGITS NEWLINE
+        CHUNK_CONTENT := bytes
+        TERMINATOR := '0' NEWLINE
+
+    That is, the body consists of a series of chunks.  Each chunk starts with a
+    length prefix in hexadecimal digits, followed by an ASCII newline byte.
+    The end of the body is signaled by a zero the zero-length chunk, i.e.
+    '0\\n'.
+    """
+
+    def __init__(self):
+        _StatefulDecoder.__init__(self)
+        self.state_accept = self._state_accept_expecting_length
+        self._in_buffer = ''
+        self._content_bytes = ''
+    
+    def next_read_size(self):
+        # Note: the shortest possible chunk is 2 bytes: '0\n'.
+        if self.state_accept == self._state_accept_reading_chunk:
+            # We're expecting more chunk content.  So we're expecting at least
+            # the rest of this chunk plus another chunk header.
+            return self.bytes_left + 2
+        elif self.state_accept == self._state_accept_expecting_length:
+            if self._in_buffer == '':
+                # We're expecting a chunk length.  There's at least two bytes
+                # left: a digit plus '\n'.
+                return 2
+            else:
+                # We're in the middle of reading a chunk length.  So there's at
+                # least one byte left, the '\n' that terminates the length.
+                return 1
+        elif self.state_accept == self._state_accept_reading_unused:
+            return 1
+        else:
+            raise AssertionError("Impossible state: %r" % (self.state_accept,))
+
+    def read_pending_data(self):
+        return self._content_bytes
+
+    def _state_accept_expecting_length(self, bytes):
+        self._in_buffer += bytes
+        pos = self._in_buffer.find('\n')
+        if pos == -1:
+            # We haven't read a complete length prefix yet, so there's nothing
+            # to do.
+            return
+        self.bytes_left = int(self._in_buffer[:pos], 16)
+        # Trim the length and '\n' delimiter from the _in_buffer.
+        self._in_buffer = self._in_buffer[pos+1:]
+        if self.bytes_left == 0:
+            # Any further bytes are unused data, including the bytes left in
+            # the _in_buffer.
+            self.unused_data = self._in_buffer
+            self._in_buffer = None
+            self.state_accept = self._state_accept_reading_unused
+            self.finished_reading = True
+            return
+        self.state_accept = self._state_accept_reading_chunk
+
+    def _state_accept_reading_chunk(self, bytes):
+        self._in_buffer += bytes
+        in_buffer_len = len(self._in_buffer)
+        self._content_bytes += self._in_buffer[:self.bytes_left]
+        self._in_buffer = self._in_buffer[self.bytes_left:]
+        self.bytes_left -= in_buffer_len
+        if self.bytes_left <= 0:
+            # Finished with chunk
+            self.bytes_left = None
+            self.state_accept = self._state_accept_expecting_length
+        
+    def _state_accept_reading_unused(self, bytes):
+        self.unused_data += bytes
+
+
+class LengthPrefixedBodyDecoder(_StatefulDecoder):
+    """Decodes the length-prefixed bulk data."""
+    
+    def __init__(self):
+        _StatefulDecoder.__init__(self)
+        self.state_accept = self._state_accept_expecting_length
+        self.state_read = self._state_read_no_data
+        self._in_buffer = ''
+        self._trailer_buffer = ''
+    
     def next_read_size(self):
         if self.bytes_left is not None:
             # Ideally we want to read all the remainder of the body and the
