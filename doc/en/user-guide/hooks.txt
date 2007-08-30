@@ -2,21 +2,9 @@
 Using hooks
 ###########
 
-One way to configure Bazaar's behaviour is with *hooks*.  Hooks allow you to
-perform actions before or after certain Bazaar operations.
-
-Available hooks
-###############
-
-The following hooks are currently available:
-
-:post_push: Run after ``push`` has completed
-:post_pull: Run after ``pull`` has completed
-:post_commit: Run after ``commit`` has completed
-:post_uncommit: Run after ``uncommit`` has completed
-:set_rh: Run after the branch's revision history has been modified (push, pull,
-    commit and uncommit can all modify the revision history).
-
+One way to customize Bazaar's behaviour is with *hooks*.  Hooks allow you to
+perform actions before or after certain Bazaar operations.  The operations
+include ``commit``, ``push``, ``pull``, and ``uncommit``.
 
 Using Hooks
 ###########
@@ -27,8 +15,8 @@ an example::
     from bzrlib import branch
 
 
-    def post_push_hook(pull_result):
-        print "The new revno is %d" % pull_result.new_revno
+    def post_push_hook(push_result):
+        print "The new revno is %d" % push_result.new_revno
 
 
     branch.Branch.hooks.install_hook('post_push', post_push_hook)
@@ -40,7 +28,7 @@ installed any plugins, you may need to create the ``plugins`` directory).
 
 First, we define a function that will be run after ``push`` completes.  We
 could also use an intance method or a callable object.  All push hooks take a
-single argument, the ``pull_result``.
+single argument, the ``push_result``.
 
 Next, we install the hook.  ``'post_push'`` identifies where we want to install
 the hook, and the second parameter is the hook itself.
@@ -48,53 +36,10 @@ the hook, and the second parameter is the hook itself.
 Finally, we name the hook.  This is optional, but it means the hook name can
 be used in progress messages and error messages.
 
+That's it!  The next time you push, it should show "The new revno is...".
+Of course, hooks can be much more elaborate than this, because you have the
+full power of Python at your disposal.  Now that you know how to use hooks,
+what you do with them is up to you.
 
-Hook details
-############
-
-post_push
----------
-
-Run after ``push`` has completed.
-
-The hook signature is (push_result), containing the members
-(source, local, master, old_revno, old_revid, new_revno, new_revid)
-where local is the local target branch or None, master is the target 
-master branch, and the rest should be self-explanatory. The source
-is read-locked and the target branches are write-locked. Source will
-be the local low-latency branch.
-
-
-post_pull
----------
-Run after ``pull`` has completed.
-
-The hook signature is (push_result) containing the members
-(source, local, master, old_revno, old_revid, new_revno, new_revid)
-where local is the local target branch or None, master is the target 
-master branch, and the rest should be self explanatory. The source
-is read-locked and the target branches are write-locked. Source will
-be the local low-latency branch.
-
-post_commit
------------
-Run after ``commit`` has completed.
-
-The hook signature is (local, master, old_revno, old_revid, new_revno,
-new_revid) old_revid is NULL_REVISION for the first commit to a branch.
-
-post_uncommit
--------------
-Run after ``uncommit`` has completed.
-
-The api signature is (local, master, old_revno, old_revid, new_revno,
-new_revid) where local is the local branch or None, master is the target
-branch, and an empty branch recieves new_revno of 0, new_revid of None.
-
-set_rh
-------
-Run after the branch's revision history has been modified (push, pull, commit
-and uncommit can all modify the revision history).
-
-The hook signature is (branch, revision_history), and the branch will be
-write-locked.
+For a complete list of hooks and their parameters, see the `Hooks Reference
+<../user-reference/hooks.html>`_.
