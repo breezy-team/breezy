@@ -114,10 +114,11 @@ class SSHVendorManager(object):
             stdout = stderr = ''
         return stdout + stderr
 
-    def _get_vendor_by_version_string(self, version):
+    def _get_vendor_by_version_string(self, version, arg):
         """Return the vendor or None based on output from the subprocess.
 
         :param version: The output of 'ssh -V' like command.
+        :param arg: Argument executed.
         """
         vendor = None
         if 'OpenSSH' in version:
@@ -126,7 +127,10 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
-        elif 'plink' in version:
+        elif 'plink' in version and arg[0] == 'plink':
+            # Checking if "plink" was the executed argument as Windows sometimes 
+            # reports 'ssh -V' incorrectly with 'plink' in it's version. 
+            # See https://bugs.launchpad.net/bzr/+bug/107155
             mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
         return vendor
@@ -135,7 +139,7 @@ class SSHVendorManager(object):
         """Return the vendor or None by checking for known SSH implementations."""
         for args in [['ssh', '-V'], ['plink', '-V']]:
             version = self._get_ssh_version_string(args)
-            vendor = self._get_vendor_by_version_string(version)
+            vendor = self._get_vendor_by_version_string(version, args)
             if vendor is not None:
                 return vendor
         return None
