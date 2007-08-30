@@ -221,6 +221,39 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
 
+class PackSource(object):
+    def __init__(self, chunked_stream):
+        self.chunked_stream = chunked_stream
+        self.buffer = ''
+    def read(self, length):
+        if length is not None:
+            while len(self.buffer) < length:
+                self.buffer += self.chunked_stream.next()
+            bytes = self.buffer[:length]
+            self.buffer = self.buffer[length:]
+            return bytes
+        else:
+            for bytes in self.chunked_stream:
+                self.buffer += bytes
+            bytes = self.buffer
+            self.buffer = None
+            return bytes
+    def readline(self):
+        while '\n' not in self.buffer:
+            try:
+                self.buffer += self.chunked_stream.next()
+            except StopIteration:
+                break
+        pos = self.buffer.find('\n')
+        if pos == -1:
+            bytes = self.buffer
+            self.buffer = ''
+        else:
+            bytes = self.buffer[:pos+1]
+            self.buffer = self.buffer[pos+1:]
+        return bytes
+
+
 class RemoteRepository(object):
     """Repository accessed over rpc.
 
@@ -755,9 +788,12 @@ class RemoteRepository(object):
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
             'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+
         if response == ('ok',):
-            buffer = StringIO(protocol.read_body_bytes())
-            reader = ContainerReader(buffer)
+            #buffer = StringIO(protocol.read_body_bytes())
+            stream = protocol.read_streamed_body()
+            pack_source = PackSource(stream)
+            reader = ContainerReader(pack_source)
             for record_names, read_bytes in reader.iter_records():
                 try:
                     # These records should have only one name, and that name

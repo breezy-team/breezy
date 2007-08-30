@@ -790,7 +790,8 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
         response = request.execute(backing.local_abspath(''), rev_id2_utf8)
         self.assertEqual(('ok',), response.args)
         from cStringIO import StringIO
-        unpacker = pack.ContainerReader(StringIO(response.body))
+        from bzrlib.remote import PackSource
+        unpacker = pack.ContainerReader(PackSource(response.body_stream))
         names = []
         for [name], read_bytes in unpacker.iter_records():
             names.append(name)

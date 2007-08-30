@@ -108,10 +108,16 @@ class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
 
     def __init__(self, body):
-        self._body_buffer = StringIO(body)
+        self.body = body
+        self._body_buffer = None
 
     def read_body_bytes(self, count=-1):
+        if self._body_buffer is None:
+            self._body_buffer = StringIO(self.body)
         return self._body_buffer.read(count)
+
+    def read_streamed_body(self):
+        return self.body
 
 
 class FakeClient(_SmartClient):
@@ -766,6 +772,18 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         pack_file.seek(0)
         return pack_file
 
+    def make_pack_stream(self, records):
+        m = ['']
+        def w(bytes):
+            m[0] += bytes
+        pack_writer = pack.ContainerWriter(w)
+        pack_writer.begin()
+        for bytes, names in records:
+            pack_writer.add_bytes_record(bytes, names)
+            yield m[0]
+            m[0] = ''
+        pack_writer.end()
+
     def test_bad_pack_from_server(self):
         """A response with invalid data (e.g. it has a record with multiple
         names) triggers an exception.
@@ -774,8 +792,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         malformed data should be.
         """
         record = ('bytes', [('name1',), ('name2',)])
-        pack_file = self.make_pack_file([record])
-        responses = [(('ok',), pack_file.getvalue()), ]
+        pack_stream = self.make_pack_stream([record])
+        responses = [(('ok',), pack_stream), ]
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)

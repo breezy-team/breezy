@@ -247,14 +247,22 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
 
     def do_repository_request(self, repository, *revision_ids):
         stream = repository.get_data_stream(revision_ids)
-        filelike = StringIO()
-        pack = ContainerWriter(filelike.write)
+        return SuccessfulSmartServerResponse(('ok',),
+            body_stream=self.body_stream(stream))
+
+    def body_stream(self, stream):
+        m = ['']
+        def fake_write(bytes):
+            m[0] += bytes
+        pack = ContainerWriter(fake_write)
         pack.begin()
         try:
             for name_tuple, bytes in stream:
                 pack.add_bytes_record(bytes, [name_tuple])
+                yield m[0]
+                m[0] = ''
         except errors.RevisionNotPresent, e:
-            return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+            yield 'ERROR'
+            #return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         pack.end()
-        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
 
