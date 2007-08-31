@@ -568,8 +568,9 @@ class KnitVersionedFile(VersionedFile):
         Versions may be returned in any order, not necessarily the order
         specified.
 
-        :param required_versions: the exact set of versions to be returned, i.e.
-            not a transitive closure.
+        :param required_versions: The exact set of versions to be extracted.
+            Unlike some other knit methods, this is not used to generate a
+            transitive closure, rather it is used precisely as given.
         
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
