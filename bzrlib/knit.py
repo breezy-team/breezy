@@ -106,7 +106,6 @@ from bzrlib.osutils import (
     sha_strings,
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
-from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 import bzrlib.ui
 import bzrlib.weave
@@ -569,8 +568,9 @@ class KnitVersionedFile(VersionedFile):
         Versions may be returned in any order, not necessarily the order
         specified.
 
-        :param required_versions: the exact set of versions to be returned, i.e.
-            not a transitive closure.
+        :param required_versions: The exact set of versions to be extracted.
+            Unlike some other knit methods, this is not used to generate a
+            transitive closure, rather it is used precisely as given.
         
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
@@ -712,7 +712,7 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            mutter('incompatible format signature inserting to %r', self)
+            trace.mutter('incompatible format signature inserting to %r', self)
             raise KnitDataStreamIncompatible(
                 format, self.get_format_signature())
 
