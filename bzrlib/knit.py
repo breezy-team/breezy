@@ -106,7 +106,6 @@ from bzrlib.osutils import (
     sha_strings,
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
-from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 import bzrlib.ui
 import bzrlib.weave
@@ -712,7 +711,7 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            mutter('incompatible format signature inserting to %r', self)
+            trace.mutter('incompatible format signature inserting to %r', self)
             raise KnitDataStreamIncompatible(
                 format, self.get_format_signature())
 
