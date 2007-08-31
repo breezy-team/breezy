@@ -210,8 +210,12 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
-    def get_file(self, file_id):
-        """Return a file object for the file file_id in the tree."""
+    def get_file(self, file_id, path=None):
+        """Return a file object for the file file_id in the tree.
+        
+        If both file_id and path are defined, it is implementation defined as
+        to which one is used.
+        """
         raise NotImplementedError(self.get_file)
 
     def get_file_mtime(self, file_id, path=None):
