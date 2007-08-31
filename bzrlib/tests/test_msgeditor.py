@@ -20,17 +20,19 @@
 import os
 import sys
 
+from bzrlib import (
+    errors,
+    msgeditor,
+    osutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.config import ensure_config_dir_exists, config_filename
-import bzrlib.msgeditor 
+from bzrlib.msgeditor import (
+    make_commit_message_template_encoded,
+    edit_commit_message_encoded
+)
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
-
-from bzrlib import (
-    osutils,
-    errors
-    )
-
 
 class MsgEditorTest(TestCaseWithTransport):
 
@@ -50,12 +52,43 @@ class MsgEditorTest(TestCaseWithTransport):
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
-        template = bzrlib.msgeditor.make_commit_message_template(working_tree, None)
+        template = msgeditor.make_commit_message_template(working_tree,
+                                                                 None)
         self.assertEqualDiff(template,
 u"""\
 added:
   hell\u00d8
 """)
+
+    def test_commit_template_encoded(self):
+        """Test building a commit message template"""
+        working_tree = self.make_uncommitted_tree()
+        template = make_commit_message_template_encoded(working_tree,
+                                                        None,
+                                                        output_encoding='utf8')
+        self.assertEqualDiff(template,
+u"""\
+added:
+  hell\u00d8
+""".encode("utf8"))
+
+
+    def test_commit_template_and_diff(self):
+        """Test building a commit message template"""
+        working_tree = self.make_uncommitted_tree()
+        template = make_commit_message_template_encoded(working_tree,
+                                                        None,
+                                                        diff=True,
+                                                        output_encoding='utf8')
+
+        self.assertTrue("""\
+@@ -0,0 +1,1 @@
++contents of hello
+""" in template)
+        self.assertTrue(u"""\
+added:
+  hell\u00d8
+""".encode('utf8') in template)
 
     def setUp(self):
         super(MsgEditorTest, self).setUp()
@@ -82,7 +115,7 @@ added:
             os.chmod('fed.sh', 0755)
             os.environ['BZR_EDITOR'] = './fed.sh'
 
-        self.assertEqual(True, bzrlib.msgeditor._run_editor(''),
+        self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
     def make_fake_editor(self, message='test message from fed\\n'):
@@ -127,20 +160,23 @@ if len(sys.argv) == 2:
 
         mutter('edit_commit_message without infotext')
         self.assertEqual('test message from fed\n',
-                         bzrlib.msgeditor.edit_commit_message(''))
+                         msgeditor.edit_commit_message(''))
 
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
-                         bzrlib.msgeditor.edit_commit_message(u'\u1234'))
+                         msgeditor.edit_commit_message(u'\u1234'))
+
+        tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
+        self.assertEqual('test message from fed\n', tmpl)
 
     def test_start_message(self):
         self.make_uncommitted_tree()
         self.make_fake_editor()
         self.assertEqual('test message from fed\nstart message\n',
-                         bzrlib.msgeditor.edit_commit_message('',
+                         msgeditor.edit_commit_message('',
                                               start_message='start message\n'))
         self.assertEqual('test message from fed\n',
-                         bzrlib.msgeditor.edit_commit_message('',
+                         msgeditor.edit_commit_message('',
                                               start_message=''))
 
     def test_deleted_commit_message(self):
@@ -151,7 +187,7 @@ if len(sys.argv) == 2:
         else:
             os.environ['BZR_EDITOR'] = 'rm'
 
-        self.assertRaises((IOError, OSError), bzrlib.msgeditor.edit_commit_message, '')
+        self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
         # Test that _get_editor can return a decent list of items
@@ -168,7 +204,7 @@ if len(sys.argv) == 2:
             f.write('editor = config_editor\n')
             f.close()
 
-            editors = list(bzrlib.msgeditor._get_editor())
+            editors = list(msgeditor._get_editor())
 
             self.assertEqual(['bzr_editor', 'config_editor', 'visual',
                               'editor'], editors[:4])
@@ -197,7 +233,7 @@ if len(sys.argv) == 2:
     def test__create_temp_file_with_commit_template(self):
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
-        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        create_file = msgeditor._create_temp_file_with_commit_template
         msgfilename, hasinfo = create_file('infotext','----','start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
@@ -211,7 +247,7 @@ if len(sys.argv) == 2:
 
     def test__create_temp_file_with_empty_commit_template(self):
         # empty file
-        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        create_file = msgeditor._create_temp_file_with_commit_template
         msgfilename, hasinfo = create_file('')
         self.assertNotEqual(None, msgfilename)
         self.assertFalse(hasinfo)
@@ -224,6 +260,6 @@ if len(sys.argv) == 2:
 
             working_tree = self.make_uncommitted_tree()
             self.assertRaises(errors.BadCommitMessageEncoding,
-                                    bzrlib.msgeditor.edit_commit_message, '')
+                              msgeditor.edit_commit_message, '')
         finally:
             osutils.set_or_unset_env('LANG', old_env)
