@@ -278,8 +278,8 @@ _standard_options = \
 Standard options are legal for all commands.
       
 --help, -h     Show help message.
--v, --verbose  Display more information.
--q, --quiet    Only display errors and warnings.
+--verbose, -v  Display more information.
+--quiet, -q    Only display errors and warnings.
 
 Unlike global options, standard options can be used in aliases and
 may have more explicit help on a per command basis.
@@ -529,7 +529,7 @@ topic_registry.register('formats', get_format_topic, 'Directory formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
-                        'Options that are applied before command are processed')
+                    'Options that are applied before the command is processed')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,
