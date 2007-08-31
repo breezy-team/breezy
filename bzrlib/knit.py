@@ -294,9 +294,6 @@ class KnitAnnotateFactory(_KnitFactory):
         for origin, text in content.annotate_iter():
             yield origin, text
 
-    def annotate_iter(self, knit, version_id):
-        return annotate_knit(knit, version_id)
-
 
 class KnitPlainFactory(_KnitFactory):
     """Factory for creating plain Content objects."""
