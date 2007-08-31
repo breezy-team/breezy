@@ -83,7 +83,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: wibble\n')
+        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: \"wibble\".\n')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""

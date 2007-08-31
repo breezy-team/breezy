@@ -2324,6 +2324,11 @@ class CommitBuilder(object):
         self.repository.commit_write_group()
         return self._new_revision_id
 
+    def abort(self):
+        """Abort the commit that is being built.
+        """
+        self.repository.abort_write_group()
+
     def revision_tree(self):
         """Return the tree that was just committed.
 

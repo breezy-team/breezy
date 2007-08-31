@@ -68,6 +68,7 @@ import operator
 import os
 import sys
 import warnings
+from zlib import Z_DEFAULT_COMPRESSION
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
@@ -1883,7 +1884,8 @@ class _KnitData(object):
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
         sio = StringIO()
-        data_file = GzipFile(None, mode='wb', fileobj=sio)
+        data_file = GzipFile(None, mode='wb', fileobj=sio,
+            compresslevel=Z_DEFAULT_COMPRESSION)
 
         assert isinstance(version_id, str)
         data_file.writelines(chain(

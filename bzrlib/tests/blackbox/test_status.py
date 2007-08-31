@@ -230,6 +230,13 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['?   dir2/\n'])
 
+        tof = StringIO()
+        revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
+        show_tree_status(wt, specific_files=['test.c'], to_file=tof,
+                         short=True, revision=revs)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir2/'])

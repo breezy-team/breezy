@@ -592,6 +592,9 @@ class LogFormatter(object):
     def short_committer(self, rev):
         return re.sub('<.*@.*>', '', rev.committer).strip(' ')
 
+    def short_author(self, rev):
+        return re.sub('<.*@.*>', '', rev.get_apparent_author()).strip(' ')
+
 
 class LongLogFormatter(LogFormatter):
 
@@ -624,11 +627,11 @@ class LongLogFormatter(LogFormatter):
             print >>to_file, indent + 'revision-id:', revision.rev.revision_id
             for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent + 'parent:', parent_id
-        print >>to_file, indent + 'committer:', revision.rev.committer
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
             print >>to_file, indent + 'author:', author
+        print >>to_file, indent + 'committer:', revision.rev.committer
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
@@ -670,7 +673,7 @@ class ShortLogFormatter(LogFormatter):
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
         print >>to_file, "%5s %s\t%s%s" % (revision.revno,
-                self.short_committer(revision.rev),
+                self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
@@ -737,7 +740,7 @@ class LineLogFormatter(LogFormatter):
         if revno:
             # show revno only when is not None
             out.append("%s:" % revno)
-        out.append(self.truncate(self.short_committer(rev), 20))
+        out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
         out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
