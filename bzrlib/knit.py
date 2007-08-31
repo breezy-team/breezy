@@ -294,6 +294,9 @@ class KnitAnnotateFactory(_KnitFactory):
         for origin, text in content.annotate_iter():
             yield origin, text
 
+    def annotate_iter(self, knit, version_id):
+        return annotate_knit(knit, version_id)
+
 
 class KnitPlainFactory(_KnitFactory):
     """Factory for creating plain Content objects."""
@@ -2421,10 +2424,21 @@ def annotate_knit(knit, revision_id):
     It will work for knits with cached annotations, but this is not
     recommended.
     """
-    parents_lines = [list(annotate_knit(knit, p)) for p in
-                     knit.get_parents(revision_id)]
-    new_lines = knit.get_lines(revision_id)
-    return annotate.reannotate(parents_lines, new_lines, revision_id)
+    ancestry = knit.get_ancestry(revision_id, topo_sorted=False)
+    fulltext = dict(zip(ancestry, knit.get_line_list(ancestry)))
+    annotations = {}
+    pending_annotation = [revision_id]
+    while len(pending_annotation) > 0:
+        candidate = pending_annotation.pop()
+        parents = knit.get_parents(candidate)
+        pending_parents = [p for p in parents if p not in annotations]
+        if len(pending_parents) > 0:
+            pending_annotation.append(candidate)
+            pending_annotation.extend(pending_parents)
+        else:
+            annotations[candidate] = list(annotate.reannotate([annotations[p]
+                for p in parents], fulltext[candidate], candidate))
+    return iter(annotations[revision_id])
 
 
 try:
