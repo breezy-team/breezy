@@ -1872,7 +1872,7 @@ class ExistingPendingDeletion(BzrError):
 
 class ImmortalLimbo(BzrError):
 
-    _fmt = """Unable to delete transform temporary directory $(limbo_dir)s.
+    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
 
