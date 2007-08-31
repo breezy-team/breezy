@@ -73,6 +73,9 @@ IN DEVELOPMENT
    * bzr send uses default values for ranges when only half of an elipsis
      is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
 
+   * Avoid trouble when Windows ssh calls itself 'plink' but no plink
+     binary is present.  (Martin Albisetti, #107155)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
