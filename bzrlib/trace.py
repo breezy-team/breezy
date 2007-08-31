@@ -233,7 +233,7 @@ def get_verbosity_level():
 
     See set_verbosity_level() for values.
     """
-    return verbosity_level
+    return _verbosity_level
 
 
 def be_quiet(quiet=True):
