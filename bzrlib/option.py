@@ -151,9 +151,8 @@ class Option(object):
             short_name="v" to enable parsing of -v.
 
         :param custom_callback: a callback routine to be called after normal
-            processing. The signature of the callback routine is the same
-            as that for normal option callbacks. See optparse in the standard
-            Python library for details.
+            processing. The signature of the callback routine is
+            (option, name, new_value, parser).
         """
         self.name = name
         self.help = help
@@ -210,9 +209,10 @@ class Option(object):
             self.custom_callback(option, self.name, bool_v, parser)
 
     def _optparse_callback(self, option, opt, value, parser):
-        setattr(parser.values, self.name, self.type(value))
+        v = self.type(value)
+        setattr(parser.values, self.name, v)
         if self.custom_callback is not None:
-            self.custom_callback(option, opt, value, parser)
+            self.custom_callback(option, self.name, v, parser)
 
     def iter_switches(self):
         """Iterate through the list of switches provided by the option
@@ -257,7 +257,7 @@ class ListOption(Option):
         else:
             values.append(self.type(value))
         if self.custom_callback is not None:
-            self.custom_callback(option, opt, value, parser)
+            self.custom_callback(option, self.name, values, parser)
 
 
 class RegistryOption(Option):
@@ -343,9 +343,10 @@ class RegistryOption(Option):
 
     def _optparse_value_callback(self, cb_value):
         def cb(option, opt, value, parser):
-            setattr(parser.values, self.name, self.type(cb_value))
+            v = self.type(cb_value)
+            setattr(parser.values, self.name, v)
             if self.custom_callback is not None:
-                self.custom_callback(option, opt, value, parser)
+                self.custom_callback(option, self.name, v, parser)
         return cb
 
     def iter_switches(self):
