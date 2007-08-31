@@ -758,7 +758,7 @@ def run_bzr(argv):
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
-        trace.be_quiet(False)
+        option._verbosity_level = 0
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
