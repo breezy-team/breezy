@@ -119,6 +119,11 @@ IN DEVELOPMENT
     * Parameters passed on the command line are checked to ensure they are
       supported by the encoding in use. (Daniel Watkins)
 
+    * The compression used within the bzr repository has changed from zlib
+      level 9 to the zlib default level. This improves commit performance with
+      only a small increase in space used (and in some cases a reduction in
+      space). (Robert Collins)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
@@ -165,6 +170,12 @@ IN DEVELOPMENT
     * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
       incremental addition of data to a file without requiring that all the
       data be buffered in memory. (Robert Collins)
+
+    * New methods on ``bzrlib.knit.KnitVersionedFile``:
+      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
+      ``get_format_signature()``.  These provide some infrastructure for
+      efficiently streaming the knit data for a set of versions over the smart
+      protocol.
 
     * Three new methods have been added to ``bzrlib.trace``:
       ``set_verbosity_level``, ``get_verbosity_level`` and ``is_verbose``.
