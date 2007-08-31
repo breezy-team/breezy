@@ -176,16 +176,3 @@ def _reannotate(parent_lines, new_lines, new_revision_id):
         for data in parent_lines[i:i+n]:
             yield data
         new_cur = j + n
-
-
-def annotate_versionedfile(vf, revision_id):
-    """Annotate a versionedfile with no cached annotations.
-
-    This implementation is for versionedfiles with no cached annotations.
-    It will work for versionedfiles with no cached annotations, but this is not
-    recommended.
-    """
-    parents_lines = [annotate_versionedfile(vf, p) for p in
-                     vf.get_parents(revision_id)]
-    new_lines = vf.get_lines(revision_id)
-    return list(reannotate(parents_lines, new_lines, revision_id))

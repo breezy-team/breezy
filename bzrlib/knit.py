@@ -350,7 +350,7 @@ class KnitPlainFactory(_KnitFactory):
         return out
 
     def annotate_iter(self, knit, version_id):
-        return iter(annotate.annotate_versionedfile(knit, version_id))
+        return annotate_knit(knit, version_id)
 
 
 def make_empty_knit(transport, relpath):
@@ -2412,6 +2412,19 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             bestsize = bestsize + 1
 
         return besti, bestj, bestsize
+
+
+def annotate_knit(knit, revision_id):
+    """Annotate a knit with no cached annotations.
+
+    This implementation is for knits with no cached annotations.
+    It will work for knits with cached annotations, but this is not
+    recommended.
+    """
+    parents_lines = [list(annotate_knit(knit, p)) for p in
+                     knit.get_parents(revision_id)]
+    new_lines = knit.get_lines(revision_id)
+    return annotate.reannotate(parents_lines, new_lines, revision_id)
 
 
 try:
