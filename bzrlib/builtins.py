@@ -1054,10 +1054,14 @@ class cmd_info(Command):
     takes_options = ['verbose']
 
     @display_command
-    def run(self, location=None, verbose=0):
+    def run(self, location=None, verbose=False):
+        if verbose:
+            noise_level = 2
+        else:
+            noise_level = 0
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
-                         verbose=verbose)
+                         verbose=noise_level)
 
 
 class cmd_remove(Command):
