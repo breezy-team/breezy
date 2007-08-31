@@ -209,15 +209,19 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
             bytes = self._encode_bulk_data(response.body)
             self._write_func(bytes)
         elif response.body_stream is not None:
-            for chunk in response.body_stream:
-                assert isinstance(chunk, str), 'body must be a str'
-                if chunk == '':
-                    # Skip empty chunks, as they would prematurely signal
-                    # end-of-stream, and they're redundant anyway.
-                    continue
-                bytes = "%x\n%s" % (len(chunk), chunk)
-                self._write_func(bytes)
-            self._write_func('0\n')
+            _send_chunks(response.body_stream, self._write_func)
+
+
+def _send_chunks(stream, write_func):
+    for chunk in stream:
+        assert isinstance(chunk, str), 'body must be a str'
+        if chunk == '':
+            # Skip empty chunks, as they would prematurely signal
+            # end-of-stream, and they're redundant anyway.
+            continue
+        bytes = "%x\n%s" % (len(chunk), chunk)
+        write_func(bytes)
+    write_func('0\n')
 
 
 class _StatefulDecoder(object):

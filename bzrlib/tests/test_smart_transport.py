@@ -1618,16 +1618,8 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
                                       body_stream):
         """Assert that body_stream is serialised as expected_serialisation."""
         out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(None, out_stream.write)
-        response = request.SuccessfulSmartServerResponse(
-            ('args',), body_stream=body_stream)
-        smart_protocol._send_response(response)
-        expected_prefix = protocol.RESPONSE_VERSION_TWO + 'success\n'
-        expected_args = 'args\n'
-        self.assertStartsWith(
-            out_stream.getvalue(), expected_prefix + expected_args)
-        body = out_stream.getvalue()[len(expected_prefix + expected_args):]
-        self.assertEqual(expected_serialisation, body)
+        protocol._send_chunks(body_stream, out_stream.write)
+        self.assertEqual(expected_serialisation, out_stream.getvalue())
 
     def test_body_stream_serialisation_empty(self):
         """A body_stream with no bytes can be serialised."""
