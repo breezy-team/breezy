@@ -107,16 +107,18 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.timestamp,
-                      bzrlib.errors,
-                      bzrlib.export,
-                      bzrlib.inventory,
-                      bzrlib.iterablefile,
-                      bzrlib.lockdir,
-                      bzrlib.merge3,
-                      bzrlib.option,
-                      bzrlib.store,
-                      ]
+        bzrlib.timestamp,
+        bzrlib.errors,
+        bzrlib.export,
+        bzrlib.inventory,
+        bzrlib.iterablefile,
+        bzrlib.lockdir,
+        bzrlib.merge3,
+        bzrlib.option,
+        bzrlib.store,
+        # quoted to avoid module-loading circularity
+        'bzrlib.tests',
+        ]
 
 
 def packages_to_test():
@@ -204,6 +206,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.not_applicable_count = 0
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
@@ -327,9 +330,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_unsupported(test, feature)
 
     def _addSkipped(self, test, skip_excinfo):
-        self.report_skip(test, skip_excinfo)
-        # seems best to treat this as success from point-of-view of
-        # unittest -- it actually does nothing so it barely matters :)
+        if isinstance(skip_excinfo[1], TestNotApplicable):
+            self.not_applicable_count += 1
+            self.report_not_applicable(test, skip_excinfo)
+        else:
+            self.skip_count += 1
+            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
@@ -337,6 +343,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         except:
             self.addError(test, test.__exc_info())
         else:
+            # seems best to treat this as success from point-of-view of unittest
+            # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
@@ -368,7 +376,6 @@ class ExtendedTestResult(unittest._TextTestResult):
             return False
 
         return self.wasSuccessful()
-
 
 
 class TextTestResult(ExtendedTestResult):
@@ -441,20 +448,10 @@ class TextTestResult(ExtendedTestResult):
             self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
-        if False:
-            # at the moment these are mostly not things we can fix
-            # and so they just produce stipple; use the verbose reporter
-            # to see them.
-            if False:
-                # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n', 
-                    self._shortened_test_description(test),
-                    skip_excinfo[1])
-            else:
-                # since the class name was left behind in the still-visible
-                # progress bar...
-                self.pb.note('SKIP: %s', skip_excinfo[1])
+        pass
+
+    def report_not_applicable(self, test, skip_excinfo):
+        pass
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -520,8 +517,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
+                % (self._testTimeString(test),
+                   self._error_summary(skip_excinfo)))
+
+    def report_not_applicable(self, test, skip_excinfo):
+        self.stream.writeln('  N/A %s\n%s'
                 % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
@@ -627,6 +628,15 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class TestNotApplicable(TestSkipped):
+    """A test is not applicable to the situation where it was run.
+
+    This is only normally raised by parameterized tests, if they find that 
+    the instance they're constructed upon does not support one aspect 
+    of its interface.
+    """
 
 
 class KnownFailure(AssertionError):
@@ -2486,22 +2496,63 @@ def test_suite():
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' %(m,e)
             raise
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'test_suite', None) is not None:
-            default_encoding = sys.getdefaultencoding()
-            try:
-                plugin_suite = plugin.test_suite()
-            except ImportError, e:
-                bzrlib.trace.warning(
-                    'Unable to test plugin "%s": %s', name, e)
-            else:
+    default_encoding = sys.getdefaultencoding()
+    for name, plugin in bzrlib.plugin.plugins().items():
+        try:
+            plugin_suite = plugin.test_suite()
+        except ImportError, e:
+            bzrlib.trace.warning(
+                'Unable to test plugin "%s": %s', name, e)
+        else:
+            if plugin_suite is not None:
                 suite.addTest(plugin_suite)
-            if default_encoding != sys.getdefaultencoding():
-                bzrlib.trace.warning(
-                    'Plugin "%s" tried to reset default encoding to: %s', name,
-                    sys.getdefaultencoding())
-                reload(sys)
-                sys.setdefaultencoding(default_encoding)
+        if default_encoding != sys.getdefaultencoding():
+            bzrlib.trace.warning(
+                'Plugin "%s" tried to reset default encoding to: %s', name,
+                sys.getdefaultencoding())
+            reload(sys)
+            sys.setdefaultencoding(default_encoding)
+    return suite
+
+
+def multiply_tests_from_modules(module_name_list, scenario_iter):
+    """Adapt all tests in some given modules to given scenarios.
+
+    This is the recommended public interface for test parameterization.
+    Typically the test_suite() method for a per-implementation test
+    suite will call multiply_tests_from_modules and return the 
+    result.
+
+    :param module_name_list: List of fully-qualified names of test
+        modules.
+    :param scenario_iter: Iterable of pairs of (scenario_name, 
+        scenario_param_dict).
+
+    This returns a new TestSuite containing the cross product of
+    all the tests in all the modules, each repeated for each scenario.
+    Each test is adapted by adding the scenario name at the end 
+    of its name, and updating the test object's __dict__ with the
+    scenario_param_dict.
+
+    >>> r = multiply_tests_from_modules(
+    ...     ['bzrlib.tests.test_sampler'],
+    ...     [('one', dict(param=1)), 
+    ...      ('two', dict(param=2))])
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    loader = TestLoader()
+    suite = TestSuite()
+    adapter = TestScenarioApplier()
+    adapter.scenarios = list(scenario_iter)
+    adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
 

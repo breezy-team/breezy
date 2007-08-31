@@ -2194,6 +2194,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
+              Option('show-diff',
+                     help='When no message is supplied, show the diff along'
+                     ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2221,12 +2224,20 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None):
-        from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
-        from bzrlib.errors import (PointlessCommit, ConflictsInTree,
-                StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message, \
-                make_commit_message_template
+            author=None, show_diff=False):
+        from bzrlib.commit import (
+            NullCommitReporter,
+            ReportCommitToLog
+        )
+        from bzrlib.errors import (
+            PointlessCommit,
+            ConflictsInTree,
+            StrictCommitFailed
+        )
+        from bzrlib.msgeditor import (
+            edit_commit_message_encoded,
+            make_commit_message_template_encoded
+        )
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -2254,8 +2265,10 @@ class cmd_commit(Command):
             """Callback to get commit message"""
             my_message = message
             if my_message is None and not file:
-                template = make_commit_message_template(tree, selected_list)
-                my_message = edit_commit_message(template)
+                t = make_commit_message_template_encoded(tree,
+                        selected_list, diff=show_diff,
+                        output_encoding=bzrlib.user_encoding)
+                my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -3235,15 +3248,9 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for name, plugin in bzrlib.plugin.all_plugins().items():
-            if getattr(plugin, '__path__', None) is not None:
-                print plugin.__path__[0]
-            elif getattr(plugin, '__file__', None) is not None:
-                print plugin.__file__
-            else:
-                print repr(plugin)
-                
-            d = getdoc(plugin)
+        for name, plugin in bzrlib.plugin.plugins().items():
+            print plugin.path(), "[%s]" % plugin.__version__
+            d = getdoc(plugin.module)
             if d:
                 print '\t', d.split('\n')[0]
 
@@ -3419,7 +3426,11 @@ class cmd_uncommit(Command):
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
-    
+
+    If --revision is specified, uncommit revisions to leave the branch at the
+    specified revision.  For example, "bzr uncommit -r 15" will leave the
+    branch at revision 15.
+
     In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """
@@ -3911,6 +3922,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No public branch specified or'
                                              ' known')
             base_revision_id = None
+            revision_id = None
             if revision is not None:
                 if len(revision) > 2:
                     raise errors.BzrCommandError('bzr send takes '
@@ -3918,10 +3930,8 @@ class cmd_send(Command):
                 revision_id = revision[-1].in_history(branch).rev_id
                 if len(revision) == 2:
                     base_revision_id = revision[0].in_history(branch).rev_id
-                    base_revision_id = ensure_null(base_revision_id)
-            else:
+            if revision_id is None:
                 revision_id = branch.last_revision()
-            revision_id = ensure_null(revision_id)
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
             if format == '4':
