@@ -87,6 +87,14 @@ d
 e
 """.splitlines(True)
 
+expected_1 = annotation("""\
+blahblah a
+blahblah b
+blahblah c
+blahblah d
+blahblah e
+""")
+
 
 new_2 = """\
 a
@@ -377,3 +385,6 @@ class TestReannotate(tests.TestCase):
         self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
         self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
                            'blahblah')
+
+    def test_reannotate_no_parents(self):
+        self.annotateEqual(expected_1, [], new_1, 'blahblah')
