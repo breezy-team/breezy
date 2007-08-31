@@ -16,86 +16,89 @@ IN DEVELOPMENT
 
   FEATURES:
 
-    * New option ``--author`` in ``bzr commit`` to specify the author of the
-      change, if it's different from the committer. ``bzr log`` and
-      ``bzr annotate`` display the author instead of the committer.
-      (Lukáš Lalinský)
+   * New option ``--author`` in ``bzr commit`` to specify the author of the
+     change, if it's different from the committer. ``bzr log`` and
+     ``bzr annotate`` display the author instead of the committer.
+     (Lukáš Lalinský)
 
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square
      brackets after the path. (Robert Collins, #125421)
 
-    * Suppress warning "integer argument expected, got float" from Paramiko,
-      which sometimes caused false test failures.  (Martin Pool)
+   * Suppress warning "integer argument expected, got float" from Paramiko,
+     which sometimes caused false test failures.  (Martin Pool)
 
-    * Fix bug in bundle 4 that could cause attempts to write data to wrong
-      versionedfile.  (Aaron Bentley)
+   * Fix bug in bundle 4 that could cause attempts to write data to wrong
+     versionedfile.  (Aaron Bentley)
 
-    * Diffs generated using "diff -p" no longer break the patch parser.
-      (Aaron Bentley)
+   * Diffs generated using "diff -p" no longer break the patch parser.
+     (Aaron Bentley)
 
-    * get_transport treats an empty possible_transports list the same as a non-
-      empty one.  (Aaron Bentley)
+   * get_transport treats an empty possible_transports list the same as a non-
+     empty one.  (Aaron Bentley)
 
-    * patch verification for merge directives is reactivated, and works with
-      CRLF and CR files.  (Aaron Bentley)
+   * patch verification for merge directives is reactivated, and works with
+     CRLF and CR files.  (Aaron Bentley)
 
-    * Accept ..\ as a path in revision specifiers. This fixes for example
-      "-r branch:..\other-branch" on Windows.  (Lukáš Lalinský) 
+   * Accept ..\ as a path in revision specifiers. This fixes for example
+     "-r branch:..\other-branch" on Windows.  (Lukáš Lalinský) 
 
-    * ``BZR_PLUGIN_PATH`` may now contain trailing slashes.
-      (Blake Winton, #129299)
+   * ``BZR_PLUGIN_PATH`` may now contain trailing slashes.
+     (Blake Winton, #129299)
 
-    * man page no longer lists hidden options (#131667, Aaron Bentley)
+   * man page no longer lists hidden options (#131667, Aaron Bentley)
 
-    * ``uncommit --help`` now explains the -r option adequately.  (Daniel
-      Watkins, #106726)
+   * ``uncommit --help`` now explains the -r option adequately.  (Daniel
+     Watkins, #106726)
 
-    * Error messages are now better formatted with parameters (such as
-      filenames) quoted when necessary. This avoids confusion when directory
-      names ending in a '.' at the end of messages were confused with a
-      full stop that may or not have been there. (Daniel Watkins, #129791)
+   * Error messages are now better formatted with parameters (such as
+     filenames) quoted when necessary. This avoids confusion when directory
+     names ending in a '.' at the end of messages were confused with a
+     full stop that may or not have been there. (Daniel Watkins, #129791)
 
-    * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
+   * Fix ``status FILE -r X..Y``. (Lukáš Lalinský)
 
-    * If a particular command is an alias, ``help`` will show the alias
-      instead of claiming there is no help for said alias. (Daniel Watkins,
-      #133548)
+   * If a particular command is an alias, ``help`` will show the alias
+     instead of claiming there is no help for said alias. (Daniel Watkins,
+     #133548)
 
-    * TreeTransform-based operations, like pull, merge, revert, and branch,
-      now roll back if they encounter an error.  (Aaron Bentley, #67699)
+   * TreeTransform-based operations, like pull, merge, revert, and branch,
+     now roll back if they encounter an error.  (Aaron Bentley, #67699)
 
-    * ``bzr commit`` now exits cleanly if a character unsupported by the
-      current encoding is used in the commit message.  (Daniel Watkins,
-      #116143)
+   * ``bzr commit`` now exits cleanly if a character unsupported by the
+     current encoding is used in the commit message.  (Daniel Watkins,
+     #116143)
 
-    * bzr send uses default values for ranges when only half of an elipsis
-      is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
+   * bzr send uses default values for ranges when only half of an elipsis
+     is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
 
   IMPROVEMENTS:
 
-    * ``pull`` and ``merge`` are much faster at installing bundle format 4.
-      (Aaron Bentley)
+   * Add the option "--show-diff" to the commit command in order to display
+     the diff during the commit log creation. (Goffredo Baroncelli)
 
-    * ``pull -v`` no longer includes deltas, making it much faster.
-      (Aaron Bentley)
+   * ``pull`` and ``merge`` are much faster at installing bundle format 4.
+     (Aaron Bentley)
 
-    * ``send`` now sends the directive as an attachment by default.
-      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
+   * ``pull -v`` no longer includes deltas, making it much faster.
+     (Aaron Bentley)
 
-    * Documentation updates (Martin Albisetti)
+   * ``send`` now sends the directive as an attachment by default.
+     (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
 
-    * Help on debug flags is now included in ``help global-options``.
-      (Daniel Watkins, #124853)
+   * Documentation updates (Martin Albisetti)
 
-    * Parameters passed on the command line are checked to ensure they are
-      supported by the encoding in use. (Daniel Watkins)
+   * Help on debug flags is now included in ``help global-options``.
+     (Daniel Watkins, #124853)
 
-    * The compression used within the bzr repository has changed from zlib
-      level 9 to the zlib default level. This improves commit performance with
-      only a small increase in space used (and in some cases a reduction in
-      space). (Robert Collins)
+   * Parameters passed on the command line are checked to ensure they are
+     supported by the encoding in use. (Daniel Watkins)
+
+   * The compression used within the bzr repository has changed from zlib
+     level 9 to the zlib default level. This improves commit performance with
+     only a small increase in space used (and in some cases a reduction in
+     space). (Robert Collins)
 
   API BREAKS:
 
@@ -125,6 +128,14 @@ IN DEVELOPMENT
      ``bzrlib.plugin.plugins()`` which returns PlugIn objects that provide
      useful functionality for determining the path of a plugin, its tests, and
      its version information. (Robert Collins)
+
+   * Add the option user_encoding to the function 'show_diff_trees()'
+     in order to move the user encoding at the UI level. (Goffredo Baroncelli)
+
+   * Add the function make_commit_message_template_encoded() and the function
+     edit_commit_message_encoded() which handle encoded strings.
+     This is done in order to mix the commit messages (which is a unicode
+     string), and the diff which is a raw string. (Goffredo Baroncelli)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
