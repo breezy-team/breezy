@@ -92,6 +92,11 @@ IN DEVELOPMENT
     * Parameters passed on the command line are checked to ensure they are
       supported by the encoding in use. (Daniel Watkins)
 
+    * The compression used within the bzr repository has changed from zlib
+      level 9 to the zlib default level. This improves commit performance with
+      only a small increase in space used (and in some cases a reduction in
+      space). (Robert Collins)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
