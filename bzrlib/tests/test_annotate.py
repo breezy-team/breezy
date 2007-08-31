@@ -373,9 +373,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
 class TestReannotate(tests.TestCase):
 
-    def annotateEqual(self, expected, parents, newlines, revision_id):
+    def annotateEqual(self, expected, parents, newlines, revision_id,
+                      blocks=None):
         annotate_list = list(annotate.reannotate(parents, newlines,
-                             revision_id))
+                             revision_id, blocks))
         self.assertEqual(len(expected), len(annotate_list))
         for e, a in zip(expected, annotate_list):
             self.assertEqual(e, a)
@@ -388,3 +389,18 @@ class TestReannotate(tests.TestCase):
 
     def test_reannotate_no_parents(self):
         self.annotateEqual(expected_1, [], new_1, 'blahblah')
+
+    def test_reannotate_left_matching_blocks(self):
+        """Ensure that left_matching_blocks has an impact.
+
+        In this case, the annotation is ambiguous, so the hint isn't actually
+        lying.
+        """
+        parent = [('rev1', 'a\n')]
+        new_text = ['a\n', 'a\n']
+        blocks = [(0, 0, 1), (1, 2, 0)]
+        self.annotateEqual([('rev1', 'a\n'), ('rev2', 'a\n')], [parent],
+                           new_text, 'rev2', blocks)
+        blocks = [(0, 1, 1), (1, 2, 0)]
+        self.annotateEqual([('rev2', 'a\n'), ('rev1', 'a\n')], [parent],
+                           new_text, 'rev2', blocks)
