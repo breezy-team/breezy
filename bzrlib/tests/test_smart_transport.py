@@ -1638,6 +1638,15 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         """
         self.assertBodyStreamSerialisation('5\nchunk' + '0\n', ['', 'chunk'])
 
+    def test_body_stream_error_serialistion(self):
+        stream = ['first chunk',
+                  request.FailedSmartServerResponse(
+                      ('FailureName', 'failure arg'))]
+        expected_bytes = (
+            'b\nfirst chunk' +
+            'ERR\nFailureName\x01failure arg\n')
+        self.assertBodyStreamSerialisation(expected_bytes, stream)
+
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
@@ -1895,6 +1904,25 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         stream = smart_protocol.read_streamed_body()
         self.assertEqual(['1234', '567'], list(stream))
 
+    def test_read_streamed_body_error(self):
+        """When a stream is interrupted by an error..."""
+        a_body_chunk = '4\naaaa'
+        err_chunk = 'ERR\nErrorArg1\x01arg2\n'
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n" + a_body_chunk + err_chunk)
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        smart_request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(smart_request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(True)
+        expected_chunks = [
+            'aaaa',
+            request.FailedSmartServerResponse(('ErrorArg1', 'arg2'))]
+        stream = smart_protocol.read_streamed_body()
+        self.assertEqual(expected_chunks, list(stream))
+
 
 class TestSmartClientUnicode(tests.TestCase):
     """_SmartClient tests for unicode arguments.
@@ -2007,7 +2035,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         self.assertFalse(decoder.finished_reading)
         self.assertEqual(2, decoder.next_read_size())
-        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual(None, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
 
     def test_empty_content(self):
@@ -2015,7 +2043,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         decoder.accept_bytes('0\n')
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual(None, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
 
     def test_one_chunk(self):
@@ -2026,7 +2054,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         finish = '0\n'
         decoder.accept_bytes(chunk_length + chunk_content + finish)
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual(chunk_content, decoder.read_pending_data())
+        self.assertEqual(chunk_content, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
         
     def test_incomplete_chunk(self):
@@ -2042,7 +2070,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
             5 + 2, decoder.next_read_size(),
             "The next_read_size hint should be the number of missing bytes in "
             "this chunk plus 2 (the shortest possible next chunk: '0\\n')")
-        self.assertEqual(three_bytes, decoder.read_pending_data())
+        self.assertEqual(None, decoder.read_next_chunk())
 
     def test_incomplete_length(self):
         """A chunk length hasn't been read until a newline byte has been read.
@@ -2059,7 +2087,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
             "The next_read_size hint should be the length of the chunk plus 2 "
             "(the shortest possible next chunk: '0\\n')")
         self.assertFalse(decoder.finished_reading)
-        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual(None, decoder.read_next_chunk())
 
     def test_two_chunks(self):
         """Content from multiple chunks is concatenated."""
@@ -2069,7 +2097,9 @@ class TestChunkedBodyDecoder(tests.TestCase):
         finish = '0\n'
         decoder.accept_bytes(chunk_one + chunk_two + finish)
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual('aaabbbbb', decoder.read_pending_data())
+        self.assertEqual('aaa', decoder.read_next_chunk())
+        self.assertEqual('bbbbb', decoder.read_next_chunk())
+        self.assertEqual(None, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
 
     def test_excess_bytes(self):
@@ -2079,7 +2109,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         excess_bytes = "excess bytes"
         decoder.accept_bytes(chunked_body + excess_bytes)
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual('aaaaa', decoder.read_pending_data())
+        self.assertEqual('aaaaa', decoder.read_next_chunk())
         self.assertEqual(excess_bytes, decoder.unused_data)
         self.assertEqual(
             1, decoder.next_read_size(),
@@ -2094,7 +2124,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         finish = '0\n'
         decoder.accept_bytes(chunk_prefix + chunk_bytes + finish)
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual(chunk_bytes, decoder.read_pending_data())
+        self.assertEqual(chunk_bytes, decoder.read_next_chunk())
 
     def test_byte_at_a_time(self):
         """A complete body fed to the decoder one byte at a time should not
@@ -2111,7 +2141,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         for byte in (chunk_length + chunk_content + finish):
             decoder.accept_bytes(byte)
         self.assertTrue(decoder.finished_reading)
-        self.assertEqual(chunk_content, decoder.read_pending_data())
+        self.assertEqual(chunk_content, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
 
     def test_read_pending_data_resets(self):
@@ -2121,10 +2151,21 @@ class TestChunkedBodyDecoder(tests.TestCase):
         chunk_two = '3\nbbb'
         finish = '0\n'
         decoder.accept_bytes(chunk_one)
-        self.assertEqual('aaa', decoder.read_pending_data())
+        self.assertEqual('aaa', decoder.read_next_chunk())
         decoder.accept_bytes(chunk_two)
-        self.assertEqual('bbb', decoder.read_pending_data())
-        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('bbb', decoder.read_next_chunk())
+        self.assertEqual(None, decoder.read_next_chunk())
+
+    def test_decode_error(self):
+        decoder = protocol.ChunkedBodyDecoder()
+        chunk_one = 'b\nfirst chunk'
+        error_chunk = 'ERR\nFailureName\x01failure arg\n'
+        decoder.accept_bytes(chunk_one + error_chunk)
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('first chunk', decoder.read_next_chunk())
+        expected_failure = request.FailedSmartServerResponse(
+            ('FailureName', 'failure arg'))
+        self.assertEqual(expected_failure, decoder.read_next_chunk())
 
 
 class TestSuccessfulSmartServerResponse(tests.TestCase):
