@@ -167,7 +167,7 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision',
+    takes_options = ['show-ids', 'revision', 'change',
                      Option('short', help='Give short SVN-style status lines.'),
                      Option('versioned', help='Only show versioned files.')]
     aliases = ['st', 'stat']
@@ -179,6 +179,10 @@ class cmd_status(Command):
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
             versioned=False):
         from bzrlib.status import show_tree_status
+
+        if revision and len(revision) > 2:
+            raise errors.BzrCommandError('bzr status --revision takes exactly'
+                                         ' one or two revision specifiers')
 
         tree, file_list = tree_files(file_list)
             
@@ -1417,6 +1421,7 @@ class cmd_diff(Command):
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
+        'change',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'

@@ -107,6 +107,9 @@ IN DEVELOPMENT
       rather than looking it up again, making it faster.
       (Ian Clatworthy)
 
+    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
+      changes in one revision.  (Lukáš Lalinský)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
