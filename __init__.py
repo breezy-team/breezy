@@ -427,7 +427,7 @@ class cmd_import_dsc(Command):
       if to is None:
         raise BzrCommandError("You must specify the name of the "
                               "destination branch using the --to option.")
-      importer = DscImporter(files)
+      importer = DscImporter(files_list)
     else:
       if to is None:
         to = snapshot
