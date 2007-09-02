@@ -291,8 +291,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
     def annotate_iter(self, knit, version_id):
         content = knit._get_content(version_id)
-        for origin, text in content.annotate_iter():
-            yield origin, text
+        return content.annotate_iter()
 
 
 class KnitPlainFactory(_KnitFactory):
