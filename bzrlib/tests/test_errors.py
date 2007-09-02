@@ -81,6 +81,13 @@ class TestErrors(TestCaseWithTransport):
             "cannot be broken.",
             str(error))
 
+    def test_knit_data_stream_incompatible(self):
+        error = errors.KnitDataStreamIncompatible(
+            'stream format', 'target format')
+        self.assertEqual('Cannot insert knit data stream of format '
+                         '"stream format" into knit of format '
+                         '"target format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"

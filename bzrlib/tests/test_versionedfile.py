@@ -37,9 +37,9 @@ from bzrlib.errors import (
 from bzrlib.knit import (
     KnitVersionedFile,
     KnitAnnotateFactory,
-    KnitPlainFactory
+    KnitPlainFactory,
     )
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -829,7 +829,7 @@ class VersionedFileTestMixIn(object):
                           vf.get_sha1s(['a', 'c', 'b']))
         
 
-class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -881,7 +881,7 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         return WeaveFile
 
 
-class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return self.get_factory()(name, get_transport(self.get_url('.')),
@@ -943,7 +943,7 @@ class InterString(versionedfile.InterVersionedFile):
 # if we make the registry a separate class though we still need to 
 # test the behaviour in the active registry to catch failure-to-handle-
 # stange-objects
-class TestInterVersionedFile(TestCaseWithTransport):
+class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
     def test_get_default_inter_versionedfile(self):
         # test that the InterVersionedFile.get(a, b) probes
@@ -1263,7 +1263,7 @@ class MergeCasesMixin(object):
         self._test_merge_from_strings(base, a, b, result)
 
 
-class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
@@ -1273,7 +1273,7 @@ class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
         pass
 
 
-class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -1286,3 +1286,23 @@ class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
+
+
+class TestFormatSignatures(TestCaseWithMemoryTransport):
+
+    def get_knit_file(self, name, annotated):
+        if annotated:
+            factory = KnitAnnotateFactory()
+        else:
+            factory = KnitPlainFactory()
+        return KnitVersionedFile(
+            name, get_transport(self.get_url('.')), create=True,
+            factory=factory)
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.get_knit_file('a', True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('p', False)
+        self.assertEqual('knit-plain', knit.get_format_signature())
+
