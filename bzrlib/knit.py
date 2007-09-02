@@ -2421,30 +2421,23 @@ def annotate_knit(knit, revision_id):
     It will work for knits with cached annotations, but this is not
     recommended.
     """
-    ancestry = knit.get_ancestry(revision_id, topo_sorted=False)
+    ancestry = knit.get_ancestry(revision_id)
     fulltext = dict(zip(ancestry, knit.get_line_list(ancestry)))
     annotations = {}
-    pending_annotation = [revision_id]
-    while len(pending_annotation) > 0:
-        candidate = pending_annotation.pop()
+    for candidate in ancestry:
         if candidate in annotations:
             continue
         parents = knit.get_parents(candidate)
-        pending_parents = [p for p in parents if p not in annotations]
-        if len(pending_parents) > 0:
-            pending_annotation.append(candidate)
-            pending_annotation.extend(pending_parents)
+        if len(parents) == 0:
+            blocks = None
+        elif knit._index.get_method(candidate) != 'line-delta':
+            blocks = None
         else:
-            if len(parents) == 0:
-                blocks = None
-            elif knit._index.get_method(candidate) != 'line-delta':
-                blocks = None
-            else:
-                parent, sha1, noeol, delta = knit.get_delta(candidate)
-                blocks = KnitContent.get_line_delta_blocks(delta,
-                    fulltext[parents[0]], fulltext[candidate])
-            annotations[candidate] = list(annotate.reannotate([annotations[p]
-                for p in parents], fulltext[candidate], candidate, blocks))
+            parent, sha1, noeol, delta = knit.get_delta(candidate)
+            blocks = KnitContent.get_line_delta_blocks(delta,
+                fulltext[parents[0]], fulltext[candidate])
+        annotations[candidate] = list(annotate.reannotate([annotations[p]
+            for p in parents], fulltext[candidate], candidate, blocks))
     return iter(annotations[revision_id])
 
 
