@@ -1,3 +1,10 @@
+bzr-builddeb (0.91) unstable; urgency=low
+
+  * Correct unknown variable (files) when importing dsc.
+  * chmod 755 debian/rules when importing dsc
+
+ -- Frédéric Brin <frederic.brin@assonetworx.com>  Sun, 02 Sep 2007 16:31:32 +0200
+
 bzr-builddeb (0.90) unstable; urgency=low
 
   * Support exporting the working tree when it contains symlinks. Thanks
