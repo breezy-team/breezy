@@ -12,7 +12,7 @@ Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree
 Recommends: python-paramiko, python-pycurl
-Suggests: libxml2-utils
+Suggests: xdg-utils, libxml2-utils
 Conflicts: bzr-doc
 XB-Python-Version: ${python:Versions}
 Description: Bazaar, the next-generation distributed version control system
