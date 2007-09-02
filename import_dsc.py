@@ -400,7 +400,8 @@ class DscImporter(object):
     f = gzip.GzipFile(fileobj=f)
     try:
       self._patch_tree(f, tree.basedir)
-      os.chmod(os.path.join(tree.basedir, 'debian', 'rules'), (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH))
+      if os.path.isfile(os.path.join(tree.basedir, 'debian', 'rules')):
+        os.chmod(os.path.join(tree.basedir, 'debian', 'rules'), (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH))
       f.seek(0)
       touched_paths = self._get_touched_paths(f)
       self._update_path_info(tree, touched_paths, current_tree, up_tree)
