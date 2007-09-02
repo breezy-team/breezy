@@ -318,8 +318,7 @@ class Commit(object):
                 self.rev_id = self.builder.commit(self.message)
 
             except:
-                # perhaps this should be done by the CommitBuilder ?
-                self.work_tree.branch.repository.abort_write_group()
+                self.builder.abort()
                 raise
 
             self._process_pre_hooks(old_revno, new_revno)

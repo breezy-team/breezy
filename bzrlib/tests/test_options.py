@@ -134,6 +134,18 @@ class OptionTests(TestCase):
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--format', 'two'])
 
+    def test_override(self):
+        options = [option.Option('hello', type=str),
+                   option.Option('hi', type=str, param_name='hello')]
+        opts, args = self.parse(options, ['--hello', 'a', '--hello', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'a', '--hi', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hi', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
                    bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
@@ -296,3 +308,13 @@ class TestOptionDefinitions(TestCase):
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
+
+    def test_is_hidden(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('hidden', 'HiddenFormat',
+            'hidden help text', hidden=True)
+        registry.register_metadir('visible', 'VisibleFormat',
+            'visible help text', hidden=False)
+        format = option.RegistryOption('format', '', registry, str)
+        self.assertTrue(format.is_hidden('hidden'))
+        self.assertFalse(format.is_hidden('visible'))
