@@ -1887,7 +1887,7 @@ class DirState(object):
                 current_new_minikind = \
                     DirState._kind_to_minikind[current_new[1].kind]
                 if current_new_minikind == 't':
-                    fingerprint = current_new[1].reference_revision
+                    fingerprint = current_new[1].reference_revision or ''
                 else:
                     fingerprint = ''
             else:
