@@ -255,22 +255,8 @@ class _StatefulDecoder(object):
 class ChunkedBodyDecoder(_StatefulDecoder):
     """Decoder for chunked body data.
 
-    This is very similar the HTTP's chunked encoding::
-
-        STREAMED_BODY := CHUNKS TERMINATOR
-        CHUNKS := CHUNK [CHUNKS]
-        CHUNK := CHUNK_LENGTH CHUNK_CONTENT
-        CHUNK_LENGTH := HEX_DIGITS NEWLINE
-        CHUNK_CONTENT := bytes
-
-        TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
-        SUCCESS_TERMINATOR := '0' NEWLINE
-        ERROR_TERMINATOR := 'ERR' NEWLINE CHUNKS SUCCESS_TERMINATOR
-
-    That is, the body consists of a series of chunks.  Each chunk starts with a
-    length prefix in hexadecimal digits, followed by an ASCII newline byte.
-    The end of the body is signaled by a zero the zero-length chunk, i.e.
-    '0\\n', or by 'ERR\\n' followed by error args, one per chunk.
+    This is very similar the HTTP's chunked encoding.  See the description of
+    streamed body data in `doc/developers/network-protocol.txt` for details.
     """
 
     def __init__(self):
