@@ -150,6 +150,9 @@ IN DEVELOPMENT
    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
      changes in one revision.  (Lukáš Lalinský)
 
+   * If versioned files match a given ignore pattern, a warning is now
+     given. (Daniel Watkins, #48623)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
