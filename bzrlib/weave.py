@@ -419,7 +419,8 @@ class Weave(VersionedFile):
     def _add_lines(self, version_id, parents, lines, parent_texts,
                    left_matching_blocks=None):
         """See VersionedFile.add_lines."""
-        return self._add(version_id, lines, map(self._lookup, parents))
+        idx = self._add(version_id, lines, map(self._lookup, parents))
+        return sha_strings(lines), sum(map(len, lines)), idx
 
     def _add(self, version_id, lines, parents, sha1=None):
         """Add a single text on top of the weave.
@@ -491,7 +492,7 @@ class Weave(VersionedFile):
         # another small special case: a merge, producing the same text
         # as auto-merge
         if lines == basis_lines:
-            return new_version            
+            return new_version
 
         # add a sentinel, because we can also match against the final line
         basis_lineno.append(len(self._weave))
