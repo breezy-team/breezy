@@ -2544,7 +2544,6 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
-        from bzrlib.version import show_version
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2598,10 +2597,12 @@ class cmd_selftest(Command):
 class cmd_version(Command):
     """Show version of bzr."""
 
+    encoding_type = 'replace'
+
     @display_command
     def run(self):
         from bzrlib.version import show_version
-        show_version()
+        show_version(to_file=self.outf)
 
 
 class cmd_rocks(Command):
