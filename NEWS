@@ -153,6 +153,14 @@ IN DEVELOPMENT
    * If versioned files match a given ignore pattern, a warning is now
      given. (Daniel Watkins, #48623)
 
+   * ``commit`` is now less verbose by default showing just the
+     "Committed revision n" message. Use -v or --verbose to get the
+     previous amount of output. A side effect of this change is a speed
+     improvement of over 50% on initial commits on a tree of 3700 files.
+     Even when the output is redirected to /dev/null, a 10-15% improvement
+     is realised as certain output is no longer calculated unless verbose
+     mode is being used. (Ian Clatworthy)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
