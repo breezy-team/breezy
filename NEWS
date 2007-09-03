@@ -76,6 +76,16 @@ IN DEVELOPMENT
    * Avoid trouble when Windows ssh calls itself 'plink' but no plink
      binary is present.  (Martin Albisetti, #107155)
 
+    * ``bzr remove`` should remove clean subtrees.
+      Now it will remove (without needing ``--force``) subtrees that contain no
+      files with text changes or modified files.
+      With ``--force`` it removes the subtree regardless of text changes or
+      unknown files.
+      Directories with renames in or out (but not changed otherwise)
+      will now be removed without needing ``--force``.
+      Unknown ignored files will be deleted without needing ``--force``.
+      (Marius Kruger, #111665)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
