@@ -387,8 +387,8 @@ class TestRepository(TestCaseWithRepository):
 
         # The data stream is a iterator that yields (name, versioned_file)
         # pairs for:
-        #   * the file knit (or knits; if this repo has rich roots there will be
-        #     a file knit for that as well as for 'file1').
+        #   * the file knit (or knits; if this repo has rich roots there will
+        #     be a file knit for that as well as for 'file1').
         #   * the inventory knit
         #   * the revisions knit
         # in that order.
