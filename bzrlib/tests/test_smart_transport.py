@@ -1963,6 +1963,8 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
         response = request.SuccessfulSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return True for SuccessfulSmartServerResponse."""
@@ -1979,6 +1981,8 @@ class TestFailedSmartServerResponse(tests.TestCase):
         response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return False for FailedSmartServerResponse."""

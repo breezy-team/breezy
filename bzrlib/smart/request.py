@@ -93,8 +93,8 @@ class SmartServerResponse(object):
         return other.args == self.args and other.body == self.body
 
     def __repr__(self):
-        return "<SmartServerResponse args=%r body=%r>" % (self.is_successful(), 
-            self.args, self.body)
+        return ("<SmartServerResponse successful=%s args=%r body=%r>"
+                % (self.is_successful(), self.args, self.body))
 
 
 class FailedSmartServerResponse(SmartServerResponse):
