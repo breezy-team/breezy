@@ -14,12 +14,39 @@ IN DEVELOPMENT
      This format is compatible with Bazaar 0.15 and later.
      (Martin Pool)
 
+   * ``--quiet`` or ``-q`` is no longer a global option. If present, it
+     must now appear after the command name. Scripts doing things like
+     ``bzr -q missing`` need to be rewritten as ``bzr missing -q``.
+     (Ian Clatworthy)
+
   FEATURES:
 
    * New option ``--author`` in ``bzr commit`` to specify the author of the
      change, if it's different from the committer. ``bzr log`` and
      ``bzr annotate`` display the author instead of the committer.
      (Lukáš Lalinský)
+
+   * In addition to global options and command specific options, a set of
+     standard options are now supported. Standard options are legal for
+     all commands. The initial set of standard options are:
+     
+     * ``--help`` or ``-h`` - display help message
+     * ``--verbose`` or ``-v`` - display additional information
+     * ``--quiet``  or ``-q`` - only output warnings and errors.
+
+     Unlike global options, standard options can be used in aliases and
+     may have command-specific help. (Ian Clatworthy)
+
+   * Verbosity level processing has now been unified. If ``--verbose``
+     or ``-v`` is specified on the command line multiple times, the
+     verbosity level is made positive the first time then increased.
+     If ``--quiet`` or ``-q`` is specified on the command line
+     multiple times, the verbosity level is made negative the first
+     time then decreased. To get the default verbosity level of zero,
+     either specify none of the above , ``--no-verbose`` or ``--no-quiet``.
+     Note that most commands currently ignore the magnitude of the
+     verbosity level but do respect *quiet vs normal vs verbose* when
+     generating output. (Ian Clatworthy)
 
   BUG FIXES:
 
@@ -187,6 +214,26 @@ IN DEVELOPMENT
    * Knits with no annotation cache still produce correct annotations.
      (Aaron Bentley)
 
+   * Three new methods have been added to ``bzrlib.trace``:
+     ``set_verbosity_level``, ``get_verbosity_level`` and ``is_verbose``.
+     ``set_verbosity_level`` expects a numeric value: negative for quiet,
+     zero for normal, positive for verbose. The size of the number can be
+     used to determine just how quiet or verbose the application should be.
+     The existing ``be_quiet`` and ``is_quiet`` routines have been
+     integrated into this new scheme. (Ian Clatworthy)
+
+   * Options can now be delcared with a ``custom_callback`` parameter. If
+     set, this routine is called after the option is processed. This feature
+     is now used by the standard options ``verbose`` and ``quiet`` so that
+     setting one implicitly resets the other. (Ian Clatworthy)
+
+   * Rather than declaring a new option from scratch in order to provide
+     custom help, a centrally registered option can be decorated using the
+     new ``bzrlib.Option.custom_help`` routine. In particular, this routine
+     is useful when declaring better help for the ``verbose`` and ``quiet``
+     standard options as the base definition of these is now more complex
+     than before thanks to their use of a custom callback. (Ian Clatworthy)
+      
 
 bzr 0.90 2007-08-28
 ===================
