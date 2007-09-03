@@ -110,9 +110,6 @@ IN DEVELOPMENT
    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
      changes in one revision.  (Lukáš Lalinský)
 
-    * ``send`` now sends the directive as an attachment by default.
-      (Aaron Bentley, Lukáš Lalinský, Alexander Belchenko)
-
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
@@ -201,6 +198,7 @@ bzr 0.90 2007-08-28
     * The static convenience method ``BzrDir.create_repository``
       is deprecated.  Callers should instead create a ``BzrDir`` instance
       and call ``create_repository`` on that.  (Martin Pool)
+
 
 bzr 0.90rc1 2007-08-14
 ======================
