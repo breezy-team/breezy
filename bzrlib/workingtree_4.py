@@ -43,6 +43,7 @@ from bzrlib import (
     bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
+    debug,
     delta,
     dirstate,
     errors,
@@ -55,6 +56,7 @@ from bzrlib import (
     revision as _mod_revision,
     revisiontree,
     textui,
+    trace,
     transform,
     urlutils,
     xml5,
@@ -431,6 +433,9 @@ class WorkingTree4(WorkingTree3):
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(2,
+                "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
             return self._inventory
         self._must_be_locked()
@@ -1505,7 +1510,7 @@ class DirStateRevisionTree(Tree):
         return self._repository.weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):

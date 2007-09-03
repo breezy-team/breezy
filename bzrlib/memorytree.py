@@ -79,9 +79,11 @@ class MemoryTree(mutabletree.MutableTree):
         missing files, so is a no-op.
         """
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         """See Tree.get_file."""
-        return self._file_transport.get(self.id2path(file_id))
+        if path is None:
+            path = self.id2path(file_id)
+        return self._file_transport.get(path)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """See Tree.get_file_sha1()."""

@@ -87,6 +87,14 @@ d
 e
 """.splitlines(True)
 
+expected_1 = annotation("""\
+blahblah a
+blahblah b
+blahblah c
+blahblah d
+blahblah e
+""")
+
 
 new_2 = """\
 a
@@ -338,12 +346,37 @@ class TestAnnotate(tests.TestCaseWithTransport):
         annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
+    def test_annotate_author_or_committer(self):
+        tree1 = self.make_branch_and_tree('tree1')
+
+        self.build_tree_contents([('tree1/a', 'hello')])
+        tree1.add(['a'], ['a-id'])
+        tree1.commit('a', rev_id='rev-1',
+                     committer='Committer <committer@example.com>',
+                     timestamp=1166046000.00, timezone=0)
+
+        self.build_tree_contents([('tree1/b', 'bye')])
+        tree1.add(['b'], ['b-id'])
+        tree1.commit('b', rev_id='rev-2',
+                     committer='Committer <committer@example.com>',
+                     author='Author <author@example.com>',
+                     timestamp=1166046000.00, timezone=0)
+
+        to_file = StringIO()
+        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
+        self.assertEqual('1   committ | hello\n', to_file.getvalue())
+
+        to_file = StringIO()
+        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        self.assertEqual('2   author@ | bye\n', to_file.getvalue())
+
 
 class TestReannotate(tests.TestCase):
 
-    def annotateEqual(self, expected, parents, newlines, revision_id):
+    def annotateEqual(self, expected, parents, newlines, revision_id,
+                      blocks=None):
         annotate_list = list(annotate.reannotate(parents, newlines,
-                             revision_id))
+                             revision_id, blocks))
         self.assertEqual(len(expected), len(annotate_list))
         for e, a in zip(expected, annotate_list):
             self.assertEqual(e, a)
@@ -353,3 +386,21 @@ class TestReannotate(tests.TestCase):
         self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
         self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
                            'blahblah')
+
+    def test_reannotate_no_parents(self):
+        self.annotateEqual(expected_1, [], new_1, 'blahblah')
+
+    def test_reannotate_left_matching_blocks(self):
+        """Ensure that left_matching_blocks has an impact.
+
+        In this case, the annotation is ambiguous, so the hint isn't actually
+        lying.
+        """
+        parent = [('rev1', 'a\n')]
+        new_text = ['a\n', 'a\n']
+        blocks = [(0, 0, 1), (1, 2, 0)]
+        self.annotateEqual([('rev1', 'a\n'), ('rev2', 'a\n')], [parent],
+                           new_text, 'rev2', blocks)
+        blocks = [(0, 1, 1), (1, 2, 0)]
+        self.annotateEqual([('rev2', 'a\n'), ('rev1', 'a\n')], [parent],
+                           new_text, 'rev2', blocks)

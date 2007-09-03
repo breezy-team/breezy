@@ -242,18 +242,24 @@ _global_options = \
 These options may be used with any command, and may appear in front of any
 command.  (e.g. "bzr --quiet help").
 
---quiet        Suppress informational output; only print errors and warnings
---version      Print the version number
+--quiet        Suppress informational output; only print errors and warnings.
+--version      Print the version number.
 
---no-aliases   Do not process command aliases when running this command
+--no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
-               This does not suppress other plugin effects
---no-plugins   Do not process any plugins
+               This does not suppress other plugin effects.
+--no-plugins   Do not process any plugins.
 
+-Devil         Capture call sites that do expensive or badly-scaling
+               operations.
 -Derror        Instead of normal error handling, always print a traceback on
                error.
---profile      Profile execution using the hotshot profiler
---lsprof       Profile execution using the lsprof profiler
+-Dhooks        Trace hook execution.
+-Dhpss         Trace smart protocol requests and responses.
+-Dindex        Trace major index operations.
+-Dlock         Trace when lockdir locks are taken or released.
+--profile      Profile execution using the hotshot profiler.
+--lsprof       Profile execution using the lsprof profiler.
 --lsprof-file  Profile execution using the lsprof profiler, and write the
                results to a specified file.  If the filename ends with ".txt",
                text format will be used.  If the filename either starts with

@@ -451,9 +451,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
-        return self.get_file_byname(self.id2path(file_id))
+    def get_file(self, file_id, path=None):
+        if path is None:
+            file_id = osutils.safe_file_id(file_id)
+            path = self.id2path(file_id)
+        return self.get_file_byname(path)
 
     def get_file_text(self, file_id):
         file_id = osutils.safe_file_id(file_id)

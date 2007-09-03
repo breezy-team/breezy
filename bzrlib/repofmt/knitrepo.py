@@ -37,6 +37,7 @@ from bzrlib.repository import (
 import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 
 
 class _KnitParentsProvider(object):
@@ -480,3 +481,27 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
                                      _revision_store=_revision_store,
                                      control_store=control_store,
                                      text_store=text_store)
+
+
+def _get_stream_as_bytes(knit, required_versions):
+    """Generate a serialised data stream.
+
+    The format is a bencoding of a list.  The first element of the list is a
+    string of the format signature, then each subsequent element is a list
+    corresponding to a record.  Those lists contain:
+
+      * a version id
+      * a list of options
+      * a list of parents
+      * the bytes
+
+    :returns: a bencoded list.
+    """
+    knit_stream = knit.get_data_stream(required_versions)
+    format_signature, data_list, callable = knit_stream
+    data = []
+    data.append(format_signature)
+    for version, options, length, parents in data_list:
+        data.append([version, options, parents, callable(length)])
+    return bencode.bencode(data)
+

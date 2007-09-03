@@ -65,13 +65,13 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename unversioned.txt => elsewhere."
-             " .*unversioned.txt is not versioned$"],
+             " .*unversioned.txt is not versioned\.$"],
             'mv unversioned.txt elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename doesnotexist => somewhereelse."
-             " .*doesnotexist is not versioned$"],
+             " .*doesnotexist is not versioned\.$"],
             'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
@@ -83,12 +83,12 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned$"],
+            ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned\.$"],
             'mv test.txt sub1')
 
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
-             "sub1 is not versioned$"],
+             "sub1 is not versioned\.$"],
             'mv test.txt sub1/hello.txt')
         
     def test_mv_dirs(self):
@@ -177,7 +177,7 @@ class TestMove(TestCaseWithTransport):
         os.remove('b')
         osutils.rename('a', 'b')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move a => b. b is already versioned$"],
+            ["^bzr: ERROR: Could not move a => b. b is already versioned\.$"],
             'mv a b')
         #check that nothing changed
         self.failIfExists('a')
@@ -213,7 +213,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move a => a: sub is not versioned$"],
+            ["^bzr: ERROR: Could not move a => a: sub is not versioned\.$"],
             'mv a sub/a')
         self.failIfExists('a')
         self.failUnlessExists('sub/a')
@@ -249,7 +249,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move to sub. sub is not versioned$"],
+            ["^bzr: ERROR: Could not move to sub. sub is not versioned\.$"],
             'mv a1 a2 sub')
         self.failIfExists('a1')
         self.failUnlessExists('sub/a1')

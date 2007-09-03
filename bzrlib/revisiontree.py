@@ -81,7 +81,7 @@ class RevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         return ''.join(self.get_file_lines(file_id))
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
 
