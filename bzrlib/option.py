@@ -100,6 +100,24 @@ def _parse_revision_str(revstr):
     return revs
 
 
+def _parse_change_str(revstr):
+    """Parse the revision string and return a tuple with left-most
+    parent of the revision.
+
+    >>> _parse_change_str('123')
+    (<RevisionSpec_before before:123>, <RevisionSpec_revno 123>)
+    >>> _parse_change_str('123..124')
+    Traceback (most recent call last):
+      ...
+    RangeInChangeOption: Option --change does not accept revision ranges
+    """
+    revs = _parse_revision_str(revstr)
+    if len(revs) > 1:
+        raise errors.RangeInChangeOption()
+    return (revisionspec.RevisionSpec.from_string('before:' + revstr),
+            revs[0])
+
+
 def _parse_merge_type(typestring):
     return get_merge_type(typestring)
 
@@ -133,12 +151,12 @@ class Option(object):
     OPTIONS = {}
 
     def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None, custom_callback=None):
+                 short_name=None, param_name=None, custom_callback=None):
         """Make a new command option.
 
         :param name: regular name of the command, used in the double-dash
             form and also as the parameter to the command's run() 
-            method.
+            method (unless param_name is specified).
 
         :param help: help message displayed in command help
 
@@ -149,6 +167,9 @@ class Option(object):
 
         :param short_name: short option code for use with a single -, e.g.
             short_name="v" to enable parsing of -v.
+
+        :param param_name: name of the parameter which will be passed to
+            the command's run() method.
 
         :param custom_callback: a callback routine to be called after normal
             processing. The signature of the callback routine is
@@ -163,6 +184,10 @@ class Option(object):
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+        if param_name is None:
+            self._param_name = self.name
+        else:
+            self._param_name = param_name
         self.custom_callback = custom_callback
 
     def short_name(self):
@@ -204,13 +229,13 @@ class Option(object):
                               *option_strings)
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
-        setattr(parser.values, self.name, bool_v)
+        setattr(parser.values, self._param_name, bool_v)
         if self.custom_callback is not None:
-            self.custom_callback(option, self.name, bool_v, parser)
+            self.custom_callback(option, self._param_name, bool_v, parser)
 
     def _optparse_callback(self, option, opt, value, parser):
         v = self.type(value)
-        setattr(parser.values, self.name, v)
+        setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
 
@@ -251,13 +276,13 @@ class ListOption(Option):
                           *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
-        values = getattr(parser.values, self.name)
+        values = getattr(parser.values, self._param_name)
         if value == '-':
             del values[:]
         else:
             values.append(self.type(value))
         if self.custom_callback is not None:
-            self.custom_callback(option, self.name, values, parser)
+            self.custom_callback(option, self._param_name, values, parser)
 
 
 class RegistryOption(Option):
@@ -344,9 +369,9 @@ class RegistryOption(Option):
     def _optparse_value_callback(self, cb_value):
         def cb(option, opt, value, parser):
             v = self.type(cb_value)
-            setattr(parser.values, self.name, v)
+            setattr(parser.values, self._param_name, v)
             if self.custom_callback is not None:
-                self.custom_callback(option, self.name, v, parser)
+                self.custom_callback(option, self._param_name, v, parser)
         return cb
 
     def iter_switches(self):
@@ -480,7 +505,12 @@ _global_option('profile',
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
-               help='See \'help revisionspec\' for details.')
+               help='See "help revisionspec" for details.')
+_global_option('change',
+               type=_parse_change_str,
+               short_name='c',
+               param_name='revision',
+               help='Select changes introduced by the specified revision. See also "help revisionspec".')
 _global_option('show-ids',
                help='Show internal object ids.')
 _global_option('timezone', 

@@ -317,6 +317,9 @@ class TestStatus(TestCaseWithTransport):
         result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
+        result = self.run_bzr("status -c 1")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -r 0")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n" \
@@ -385,6 +388,10 @@ class TestStatus(TestCaseWithTransport):
         self.assertStatusContains('RK  file => directory/')
         rmdir('directory')
         self.assertStatusContains('RD  file => directory')
+
+    def test_status_illegal_revision_specifiers(self):
+        out, err = self.run_bzr('status -r 1..23..123', retcode=3)
+        self.assertContainsRe(err, 'one or two revision specifiers')
 
 
 class TestStatusEncodings(TestCaseWithTransport):

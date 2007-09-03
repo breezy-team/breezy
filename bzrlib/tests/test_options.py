@@ -134,6 +134,18 @@ class OptionTests(TestCase):
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--format', 'two'])
 
+    def test_override(self):
+        options = [option.Option('hello', type=str),
+                   option.Option('hi', type=str, param_name='hello')]
+        opts, args = self.parse(options, ['--hello', 'a', '--hello', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'a', '--hi', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hi', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
                    bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
