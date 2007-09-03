@@ -4,6 +4,9 @@ bzr-svn 0.4.2	UNRELEASED
 
    * Fix regression that prevented the "svn+" prefix trick from working.
 
+   * Export version information so the version is displayed properly 
+     in "bzr plugins".
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES

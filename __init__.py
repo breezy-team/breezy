@@ -36,7 +36,14 @@ import workingtree
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
-__version__ = '0.4.2dev'
+version_info = (0, 4, 2, 'dev', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
 COMPATIBLE_BZR_VERSIONS = [(0, 90)]
 
 def check_bzrlib_version(desired):
