@@ -115,6 +115,11 @@ IN DEVELOPMENT
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
 
+   * The ``add_lines`` methods on ``VersionedFile`` implementations has changed
+     its return value to include the sha1 and length of the inserted text. This
+     allows the avoidance of double-sha1 calculations during commit.
+     (Robert Collins)
+
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
 
