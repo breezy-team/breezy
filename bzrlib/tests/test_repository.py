@@ -535,23 +535,25 @@ class TestInterRemoteToOther(TestCaseWithTransport):
         second repository that have the same format."""
         local_repo = self.make_repository('local')
         remote_repo = self.make_remote_repository('remote')
+        is_compatible = repository.InterRemoteToOther.is_compatible
         self.assertTrue(
-            repository.InterRemoteToOther.is_compatible(remote_repo, local_repo),
+            is_compatible(remote_repo, local_repo),
             "InterRemoteToOther(%r, %r) is false" % (remote_repo, local_repo))
           
     def test_is_incompatible_different_format(self):
         local_repo = self.make_repository('local', 'dirstate')
         remote_repo = self.make_remote_repository('a', 'dirstate-with-subtree')
+        is_compatible = repository.InterRemoteToOther.is_compatible
         self.assertFalse(
-            repository.InterRemoteToOther.is_compatible(local_repo, remote_repo),
+            is_compatible(remote_repo, local_repo),
             "InterRemoteToOther(%r, %r) is true" % (local_repo, remote_repo))
 
     def test_is_incompatible_different_format_both_remote(self):
         remote_repo_a = self.make_remote_repository('a', 'dirstate-with-subtree')
         remote_repo_b = self.make_remote_repository('b', 'dirstate')
+        is_compatible = repository.InterRemoteToOther.is_compatible
         self.assertFalse(
-            repository.InterRemoteToOther.is_compatible(remote_repo_a,
-                remote_repo_b),
+            is_compatible(remote_repo_a, remote_repo_b),
             "InterRemoteToOther(%r, %r) is true" % (remote_repo_a, remote_repo_b))
 
 

@@ -130,7 +130,8 @@ class KnitRepository(MetaDirRepository):
     @needs_read_lock
     def get_data_stream(self, revision_ids):
         """See Repository.get_data_stream."""
-        for knit_kind, file_id, versions in self.item_keys_introduced_by(revision_ids):
+        item_keys = self.item_keys_introduced_by(revision_ids)
+        for knit_kind, file_id, versions in item_keys:
             name = (knit_kind,)
             if knit_kind == 'file':
                 name = ('file', file_id)

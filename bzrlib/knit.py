@@ -750,15 +750,15 @@ class KnitVersionedFile(VersionedFile):
                         self.filename, 'sha-1 does not match %s' % version_id)
             else:
                 if 'line-delta' in options:
-                    # Make sure that this knit record is actually useful.
-                    # Fetching from a broken repository shouldn't break the
-                    # target repository.
-                    for parent in parents:
-                        if not self._index.has_version(parent):
-                            raise KnitCorrupt(
-                                self.filename,
-                                'line-delta from stream references '
-                                'missing parent %s' % parent)
+                    # Make sure that this knit record is actually useful: a
+                    # line-delta is no use unless we have its parent.
+                    # Fetching from a broken repository with this problem
+                    # shouldn't break the target repository.
+                    if not self._index.has_version(parents[0]):
+                        raise KnitCorrupt(
+                            self.filename,
+                            'line-delta from stream references '
+                            'missing parent %s' % parents[0])
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))

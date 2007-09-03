@@ -400,10 +400,10 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
-        
+
 
 class RemoteToOtherFetcher(GenericRepoFetcher):
-    
+
     def _fetch_everything_for_revisions(self, revs, pp):
         data_stream = self.from_repository.get_data_stream(revs)
         self.to_repository.insert_data_stream(data_stream)
