@@ -1334,7 +1334,6 @@ class KnitHeaderError(KnitError):
         self.badline = badline
         self.filename = filename
 
-
 class KnitIndexUnknownMethod(KnitError):
     """Raised when we don't understand the storage method.
 
