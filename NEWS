@@ -48,6 +48,9 @@ IN DEVELOPMENT
      verbosity level but do respect *quiet vs normal vs verbose* when
      generating output. (Ian Clatworthy)
 
+   * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
+     is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
+
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square
