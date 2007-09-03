@@ -78,6 +78,9 @@ Extending Bazaar
 
 * `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
 
+* `Hooks <hooks.html>`_ |--| How to set up hooks that are executed on certain
+  Bazaar operations.
+
 * `Using aliases <using_aliases.html>`_ |--| How to set up 
   and use command aliases.
 

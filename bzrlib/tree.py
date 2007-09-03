@@ -26,6 +26,7 @@ from bzrlib import (
     delta,
     osutils,
     revision as _mod_revision,
+    conflicts as _mod_conflicts,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -104,7 +105,7 @@ class Tree(object):
 
         Each conflict is an instance of bzrlib.conflicts.Conflict.
         """
-        return []
+        return _mod_conflicts.ConflictList()
 
     def extras(self):
         """For trees that can have unversioned files, return all such paths."""
@@ -209,8 +210,12 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
-    def get_file(self, file_id):
-        """Return a file object for the file file_id in the tree."""
+    def get_file(self, file_id, path=None):
+        """Return a file object for the file file_id in the tree.
+        
+        If both file_id and path are defined, it is implementation defined as
+        to which one is used.
+        """
         raise NotImplementedError(self.get_file)
 
     def get_file_mtime(self, file_id, path=None):
