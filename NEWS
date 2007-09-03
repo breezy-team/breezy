@@ -147,6 +147,11 @@ IN DEVELOPMENT
      This is done in order to mix the commit messages (which is a unicode
      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
+    * Deprecated method ``find_previous_heads`` on
+      ``bzrlib.inventory.InventoryEntry``. This has been superceded by the use
+      of ``parent_candidates`` and a separate heads check via the repository
+      API. (Robert Collins)
+
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
      (Robert Collins)
@@ -170,6 +175,10 @@ IN DEVELOPMENT
       ``get_format_signature()``.  These provide some infrastructure for
       efficiently streaming the knit data for a set of versions over the smart
       protocol.
+
+    * New public method ``heads`` on the ``bzrlib.graph.Graph`` class. This is
+      a simple rename of a previously internal method which implements the same
+      semantics as heads(). (Robert Collins, John A Meinel)
 
   TESTING:
 

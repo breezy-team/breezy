@@ -134,7 +134,10 @@ class Graph(object):
            ancestor of all border ancestors.
         """
         border_common, common, sides = self._find_border_ancestors(revisions)
-        return self._filter_candidate_lca(border_common)
+        # We may have common ancestors that can be reached from each other.
+        # - ask for the heads of them to filter it down to only ones that
+        # cannot be reached from each other - phase 2.
+        return self.heads(border_common)
 
     def find_difference(self, left_revision, right_revision):
         """Determine the graph difference between two revisions"""
@@ -212,21 +215,20 @@ class Graph(object):
                     for searcher in searchers:
                         update_common(searcher, revision)
 
-    def _filter_candidate_lca(self, candidate_lca):
-        """Remove candidates which are ancestors of other candidates.
+    def heads(self, keys):
+        """Return the heads from amongst keys.
 
-        This is done by searching the ancestries of each border ancestor.  It
-        is perfomed on the principle that a border ancestor that is not an
-        ancestor of any other border ancestor is a lowest common ancestor.
+        This is done by searching the ancestries of each key.  Any key that is
+        reachable from another key is not returned; all the others are.
 
-        Searches are stopped when they find a node that is determined to be a
-        common ancestor of all border ancestors, because this shows that it
-        cannot be a descendant of any border ancestor.
+        This operation scales with the relative depth between any two keys. If
+        any two keys are completely disconnected all ancestry of both sides
+        will be retrieved.
 
-        This will scale with the number of candidate ancestors and the length
-        of the shortest path from a candidate to an ancestor common to all
-        candidates.
+        :param keys: An iterable of keys.
+        :return: A set of the heads.
         """
+        candidate_lca = set(keys)
         searchers = dict((c, self._make_breadth_first_searcher([c]))
                           for c in candidate_lca)
         active_searchers = dict(searchers)
