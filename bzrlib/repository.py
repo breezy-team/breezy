@@ -2372,6 +2372,27 @@ class CommitBuilder(object):
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
 
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
+
+        :param ie: An entry being added.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param tree: The tree that is being committed.
+        """
+        if ie.parent_id is not None:
+            # if ie is not root, add a root automatically.
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
+                                       '', tree)
+        else:
+            # In this revision format, root entries have no knit or weave When
+            # serializing out to disk and back in root.revision is always
+            # _new_revision_id
+            ie.revision = self._new_revision_id
+
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
@@ -2384,12 +2405,8 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
-        if self.new_inventory.root is None and ie.parent_id is not None:
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
+        if self.new_inventory.root is None:
+            self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
@@ -2398,18 +2415,14 @@ class CommitBuilder(object):
         if ie.revision is not None:
             return
 
-        # In this revision format, root entries have no knit or weave
-        if ie is self.new_inventory.root:
-            # When serializing out to disk and back in
-            # root.revision is always _new_revision_id
-            ie.revision = self._new_revision_id
-            return
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        heads = self.repository.get_graph().heads(parent_candiate_entries.keys())
+        # XXX: Note that this is unordered - and this is tolerable because 
+        # the previous code was also unordered.
+        previous_entries = dict((head, parent_candiate_entries[head]) for head
+            in heads)
+        # we are creating a new revision for ie in the history store and
+        # inventory.
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
     def modified_directory(self, file_id, file_parents):
@@ -2490,34 +2503,16 @@ class RootCommitBuilder(CommitBuilder):
     
     record_root_entry = True
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
-        """Record the content of ie from tree into the commit if needed.
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
 
-        Side effect: sets ie.revision when unchanged
-
-        :param ie: An inventory entry present in the commit.
+        :param ie: An entry being added.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
-        :param path: The path the entry is at in the tree.
-        :param tree: The tree which contains this entry and should be used to 
-        obtain content.
+        :param tree: The tree that is being committed.
         """
-        assert self.new_inventory.root is not None or ie.parent_id is None
-        self.new_inventory.add(ie)
-
-        # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
-        if ie.revision is not None:
-            return
-
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
+        # ie must be root for this builder
+        assert ie.parent_id is None
 
 
 _unescape_map = {
