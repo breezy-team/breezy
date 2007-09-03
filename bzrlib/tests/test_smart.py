@@ -27,7 +27,11 @@ import tempfile
 import tarfile
 
 from bzrlib import bzrdir, errors, pack, smart, tests
-from bzrlib.smart.request import SmartServerResponse
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerResponse,
+    SuccessfulSmartServerResponse,
+    )
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
@@ -807,9 +811,16 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
         repo = self.make_repository('.')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
         response = request.execute(backing.local_abspath(''), rev_id1_utf8)
+        # There's no error initially.
+        self.assertTrue(response.is_successful())
+        self.assertEqual(('ok',), response.args)
+        # We only get an error while streaming the body.
+        body = list(response.body_stream)
+        last_chunk = body[-1]
+        self.assertIsInstance(last_chunk, FailedSmartServerResponse)
         self.assertEqual(
-            SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
-            response)
+            last_chunk,
+            FailedSmartServerResponse(('NoSuchRevision', rev_id1_utf8)))
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):

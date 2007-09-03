@@ -18,6 +18,7 @@
 client and server.
 """
 
+import collections
 from cStringIO import StringIO
 import time
 
@@ -209,15 +210,27 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
             bytes = self._encode_bulk_data(response.body)
             self._write_func(bytes)
         elif response.body_stream is not None:
-            for chunk in response.body_stream:
-                assert isinstance(chunk, str), 'body must be a str'
-                if chunk == '':
-                    # Skip empty chunks, as they would prematurely signal
-                    # end-of-stream, and they're redundant anyway.
-                    continue
-                bytes = "%x\n%s" % (len(chunk), chunk)
-                self._write_func(bytes)
-            self._write_func('0\n')
+            _send_stream(response.body_stream, self._write_func)
+
+
+def _send_stream(stream, write_func):
+    _send_chunks(stream, write_func)
+    write_func('END\n')
+
+
+def _send_chunks(stream, write_func):
+    for chunk in stream:
+        if isinstance(chunk, str):
+            bytes = "%x\n%s" % (len(chunk), chunk)
+            write_func(bytes)
+        elif isinstance(chunk, request.FailedSmartServerResponse):
+            write_func('ERR\n')
+            _send_chunks(chunk.args, write_func)
+            return
+        else:
+            raise BzrError(
+                'Chunks must be str or FailedSmartServerResponse, got %r'
+                % chunks)
 
 
 class _StatefulDecoder(object):
@@ -247,33 +260,26 @@ class _StatefulDecoder(object):
 class ChunkedBodyDecoder(_StatefulDecoder):
     """Decoder for chunked body data.
 
-    This is very similar the HTTP's chunked encoding::
-
-        BODY := CHUNKS TERMINATOR
-        CHUNKS := CHUNK [CHUNKS]
-        CHUNK := CHUNK_LENGTH CHUNK_CONTENT
-        CHUNK_LENGTH := HEX_DIGITS NEWLINE
-        CHUNK_CONTENT := bytes
-        TERMINATOR := '0' NEWLINE
-
-    That is, the body consists of a series of chunks.  Each chunk starts with a
-    length prefix in hexadecimal digits, followed by an ASCII newline byte.
-    The end of the body is signaled by a zero the zero-length chunk, i.e.
-    '0\\n'.
+    This is very similar the HTTP's chunked encoding.  See the description of
+    streamed body data in `doc/developers/network-protocol.txt` for details.
     """
 
     def __init__(self):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_length
         self._in_buffer = ''
-        self._content_bytes = ''
+        self.chunk_in_progress = None
+        self.chunks = collections.deque()
+        self.error = False
+        self.error_in_progress = None
     
     def next_read_size(self):
-        # Note: the shortest possible chunk is 2 bytes: '0\n'.
+        # Note: the shortest possible chunk is 2 bytes: '0\n', and the
+        # end-of-body marker is 4 bytes: 'END\n'.
         if self.state_accept == self._state_accept_reading_chunk:
             # We're expecting more chunk content.  So we're expecting at least
-            # the rest of this chunk plus another chunk header.
-            return self.bytes_left + 2
+            # the rest of this chunk plus an END chunk.
+            return self.bytes_left + 4
         elif self.state_accept == self._state_accept_expecting_length:
             if self._in_buffer == '':
                 # We're expecting a chunk length.  There's at least two bytes
@@ -288,40 +294,70 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         else:
             raise AssertionError("Impossible state: %r" % (self.state_accept,))
 
-    def read_pending_data(self):
-        bytes = self._content_bytes
-        self._content_bytes = ''
-        return bytes
+    def read_next_chunk(self):
+        try:
+            return self.chunks.popleft()
+        except IndexError:
+            return None
 
-    def _state_accept_expecting_length(self, bytes):
-        self._in_buffer += bytes
+    def _extract_line(self):
         pos = self._in_buffer.find('\n')
         if pos == -1:
             # We haven't read a complete length prefix yet, so there's nothing
             # to do.
-            return
-        self.bytes_left = int(self._in_buffer[:pos], 16)
-        # Trim the length and '\n' delimiter from the _in_buffer.
+            return None
+        line = self._in_buffer[:pos]
+        # Trim the prefix (including '\n' delimiter) from the _in_buffer.
         self._in_buffer = self._in_buffer[pos+1:]
-        if self.bytes_left == 0:
+        return line
+
+    def _finished(self):
+        self.unused_data = self._in_buffer
+        self._in_buffer = None
+        self.state_accept = self._state_accept_reading_unused
+        if self.error:
+            error_args = tuple(self.error_in_progress)
+            self.chunks.append(request.FailedSmartServerResponse(error_args))
+            self.error_in_progress = None
+        self.finished_reading = True
+
+    def _state_accept_expecting_length(self, bytes):
+        self._in_buffer += bytes
+        prefix = self._extract_line()
+        if prefix is None:
+            # We haven't read a complete length prefix yet, so there's nothing
+            # to do.
+            return
+        elif prefix == 'ERR':
+            self.error = True
+            self.error_in_progress = []
+            self._state_accept_expecting_length('')
+            return
+        elif prefix == 'END':
+            # We've read the end-of-body marker.
             # Any further bytes are unused data, including the bytes left in
             # the _in_buffer.
-            self.unused_data = self._in_buffer
-            self._in_buffer = None
-            self.state_accept = self._state_accept_reading_unused
-            self.finished_reading = True
+            self._finished()
             return
-        self.state_accept = self._state_accept_reading_chunk
+        else:
+            self.bytes_left = int(prefix, 16)
+            self.chunk_in_progress = ''
+            self.state_accept = self._state_accept_reading_chunk
 
     def _state_accept_reading_chunk(self, bytes):
         self._in_buffer += bytes
         in_buffer_len = len(self._in_buffer)
-        self._content_bytes += self._in_buffer[:self.bytes_left]
+        self.chunk_in_progress += self._in_buffer[:self.bytes_left]
         self._in_buffer = self._in_buffer[self.bytes_left:]
         self.bytes_left -= in_buffer_len
         if self.bytes_left <= 0:
             # Finished with chunk
             self.bytes_left = None
+            if self.error:
+                self.error_in_progress.append(self.chunk_in_progress)
+            else:
+                self.chunks.append(self.chunk_in_progress)
+            self.chunk_in_progress = None
             self.state_accept = self._state_accept_expecting_length
         
     def _state_accept_reading_unused(self, bytes):
@@ -560,7 +596,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         return SmartClientRequestProtocolOne.read_response_tuple(self, expect_body)
 
     def _write_protocol_version(self):
-        r"""Write any prefixes this protocol requires.
+        """Write any prefixes this protocol requires.
         
         Version two sends the value of REQUEST_VERSION_TWO.
         """
@@ -574,10 +610,9 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
             bytes_wanted = _body_decoder.next_read_size()
             bytes = self._request.read_bytes(bytes_wanted)
             _body_decoder.accept_bytes(bytes)
-            body_bytes = _body_decoder.read_pending_data()
-            if body_bytes != '':
+            for body_bytes in iter(_body_decoder.read_next_chunk, None):
                 if 'hpss' in debug.debug_flags:
-                    mutter('              %d streamed body bytes read',
+                    mutter('              %d byte chunk read',
                            len(body_bytes))
                 yield body_bytes
         self._request.finished_reading()

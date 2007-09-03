@@ -262,7 +262,6 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
                 yield m[0]
                 m[0] = ''
         except errors.RevisionNotPresent, e:
-            yield 'ERROR'
-            #return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+            yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         pack.end()
 
