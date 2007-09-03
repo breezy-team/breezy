@@ -39,45 +39,6 @@ On top of the medium is the *protocol*.  This is the layer that
 deserialises bytes into the structured data that requests and responses
 consist of.
 
-Version one of the protocol (for requests and responses) is described by::
-
-  REQUEST := MESSAGE_V1
-  RESPONSE := MESSAGE_V1
-  MESSAGE_V1 := ARGS BODY
-
-  ARGS := ARG [MORE_ARGS] NEWLINE
-  MORE_ARGS := SEP ARG [MORE_ARGS]
-  SEP := 0x01
-
-  BODY := LENGTH NEWLINE BODY_BYTES TRAILER
-  LENGTH := decimal integer
-  TRAILER := "done" NEWLINE
-
-That is, a tuple of arguments separated by Ctrl-A and terminated with a
-newline, followed by length prefixed body with a constant trailer.  Note
-that although arguments are not 8-bit safe (they cannot include 0x01 or
-0x0a bytes without breaking the protocol encoding), the body is.
-
-Version two of the request protocol is::
-
-  REQUEST_V2 := "bzr request 2" NEWLINE MESSAGE_V1
-
-Version two of the response protocol is::
-
-  RESPONSE_V2 := "bzr request 2" NEWLINE MESSAGE_V1
-
-Future versions should follow this structure, like version two does::
-
-  FUTURE_MESSAGE := VERSION_STRING NEWLINE REST_OF_MESSAGE
-
-This is that clients and servers can read bytes up to the first newline
-byte to determine what version a message is.
-
-For compatibility will all versions (past and future) of bzr clients,
-servers that receive a request in an unknown protocol version should
-respond with a single-line error terminated with 0x0a (NEWLINE), rather
-than structured response prefixed with a version string.
-
 Request/Response processing
 ---------------------------
 
@@ -146,6 +107,92 @@ and so on.
 There is also an plain file-level transport that calls remote methods to
 manipulate files on the server in `bzrlib.transport.remote`.
 
+Protocol description
+====================
+
+Version one
+-----------
+
+Version one of the protocol (for requests and responses) is described by::
+
+  REQUEST := MESSAGE_V1
+  RESPONSE := MESSAGE_V1
+  MESSAGE_V1 := ARGS BODY
+
+  ARGS := ARG [MORE_ARGS] NEWLINE
+  MORE_ARGS := SEP ARG [MORE_ARGS]
+  SEP := 0x01
+
+  BODY := LENGTH NEWLINE BODY_BYTES TRAILER
+  LENGTH := decimal integer
+  TRAILER := "done" NEWLINE
+
+That is, a tuple of arguments separated by Ctrl-A and terminated with a
+newline, followed by length prefixed body with a constant trailer.  Note
+that although arguments are not 8-bit safe (they cannot include 0x01 or
+0x0a bytes without breaking the protocol encoding), the body is.
+
+Version two
+-----------
+
+Version two of the request protocol is::
+
+  REQUEST_V2 := "bzr request 2" NEWLINE MESSAGE_V2
+
+Version two of the response protocol is::
+
+  RESPONSE_V2 := "bzr request 2" NEWLINE MESSAGE_V2
+
+Future versions should follow this structure, like version two does::
+
+  FUTURE_MESSAGE := VERSION_STRING NEWLINE REST_OF_MESSAGE
+
+This is so that clients and servers can read bytes up to the first newline
+byte to determine what version a message is.
+
+For compatibility will all versions (past and future) of bzr clients,
+servers that receive a request in an unknown protocol version should
+respond with a single-line error terminated with 0x0a (NEWLINE), rather
+than structured response prefixed with a version string.
+
+Version two of the message protocol is::
+
+  MESSAGE_V2 := ARGS BODY
+  BODY_V2 := BODY | STREAMED_BODY
+
+That is, a version one length-prefixed body, or a version two streamed
+body.
+
+A streamed body looks a lot like HTTP's chunked encoding::
+ 
+  STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
+  CHUNKS := CHUNK [CHUNKS]
+  CHUNK := CHUNK_LENGTH CHUNK_CONTENT
+  CHUNK_LENGTH := HEX_DIGITS NEWLINE
+  CHUNK_CONTENT := bytes
+  
+  TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
+  SUCCESS_TERMINATOR := 'END' NEWLINE
+  ERROR_TERMINATOR := 'ERR' NEWLINE CHUNKS SUCCESS_TERMINATOR
+
+That is, the body consists of a series of chunks.  Each chunk starts with
+a length prefix in hexadecimal digits, followed by an ASCII newline byte.
+The end of the body is signaled by 'END\\n', or by 'ERR\\n' followed by
+error args, one per chunk.  Note that this allows an 8-bit clean error
+response.
+
+A streamed body starts with the string "chunked" so that legacy clients
+and servers will not mistake the first chunk as the start of a version one
+body.
+
+Software versions
+-----------------
+
+Version 1 of the protocol was introduced in Bazaar 0.11.
+
+Version 2 was introduced in Bazaar 0.16.
+
+
 Paths
 =====
 
@@ -165,6 +212,11 @@ URLs that include ~ should probably be passed across to the server
 verbatim and the server can expand them.  This will proably not be
 meaningful when limited to a directory?
 
+
+Requests
+========
+
+The available request methods are registered in `bzrlib.smart.request`.
 
 ..
    vim: ft=rst tw=74 ai

@@ -31,6 +31,6 @@ Specifications
 
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
-* 'Network protocol <network-protocol.html>'_ |--| Custom network protocol.
+* `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
 .. |--| unicode:: U+2014
