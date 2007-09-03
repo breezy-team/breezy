@@ -210,7 +210,12 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
             bytes = self._encode_bulk_data(response.body)
             self._write_func(bytes)
         elif response.body_stream is not None:
-            _send_chunks(response.body_stream, self._write_func)
+            _send_stream(response.body_stream, self._write_func)
+
+
+def _send_stream(stream, write_func):
+    _send_chunks(stream, write_func)
+    write_func('END\n')
 
 
 def _send_chunks(stream, write_func):
@@ -219,13 +224,13 @@ def _send_chunks(stream, write_func):
             bytes = "%x\n%s" % (len(chunk), chunk)
             write_func(bytes)
         elif isinstance(chunk, request.FailedSmartServerResponse):
-            write_func('ERR\n' + _encode_tuple(chunk.args))
+            write_func('ERR\n')
+            _send_chunks(chunk.args, write_func)
             return
         else:
             raise BzrError(
                 'Chunks must be str or FailedSmartServerResponse, got %r'
                 % chunks)
-    write_func('END\n')
 
 
 class _StatefulDecoder(object):

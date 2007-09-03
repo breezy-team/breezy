@@ -1618,25 +1618,41 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
                                       body_stream):
         """Assert that body_stream is serialised as expected_serialisation."""
         out_stream = StringIO()
-        protocol._send_chunks(body_stream, out_stream.write)
+        protocol._send_stream(body_stream, out_stream.write)
         self.assertEqual(expected_serialisation, out_stream.getvalue())
+
+    def assertBodyStreamRoundTrips(self, body_stream):
+        """Assert that body_stream is the same after being serialised and
+        deserialised.
+        """
+        out_stream = StringIO()
+        protocol._send_stream(body_stream, out_stream.write)
+        decoder = protocol.ChunkedBodyDecoder()
+        decoder.accept_bytes(out_stream.getvalue())
+        decoded_stream = list(iter(decoder.read_next_chunk, None))
+        self.assertEqual(body_stream, decoded_stream)
 
     def test_body_stream_serialisation_empty(self):
         """A body_stream with no bytes can be serialised."""
         self.assertBodyStreamSerialisation('END\n', [])
+        self.assertBodyStreamRoundTrips([])
 
     def test_body_stream_serialisation(self):
+        stream = ['chunk one', 'chunk two', 'chunk three']
         self.assertBodyStreamSerialisation(
             '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' + 'END\n',
-            ['chunk one', 'chunk two', 'chunk three'])
+            stream)
+        self.assertBodyStreamRoundTrips(stream)
 
     def test_body_stream_with_empty_element_serialisation(self):
         """A body stream can include ''.
 
         The empty string can be transmitted like any other string.
         """
+        stream = ['', 'chunk']
         self.assertBodyStreamSerialisation(
-            '0\n' + '5\nchunk' + 'END\n', ['', 'chunk'])
+            '0\n' + '5\nchunk' + 'END\n', stream)
+        self.assertBodyStreamRoundTrips(stream)
 
     def test_body_stream_error_serialistion(self):
         stream = ['first chunk',
@@ -1644,8 +1660,10 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
                       ('FailureName', 'failure arg'))]
         expected_bytes = (
             'b\nfirst chunk' +
-            'ERR\nFailureName\x01failure arg\n')
+            'ERR\n' + 'b\nFailureName' + 'b\nfailure arg' +
+            'END\n')
         self.assertBodyStreamSerialisation(expected_bytes, stream)
+        self.assertBodyStreamRoundTrips(stream)
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
