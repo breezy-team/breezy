@@ -34,8 +34,11 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory, KnitPlainFactory
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitAnnotateFactory,
+    KnitPlainFactory,
+    )
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -897,8 +900,8 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return self.get_factory()(name, get_transport(self.get_url('.')),
+                                  delta=True, create=True)
 
     def get_factory(self):
         return KnitVersionedFile
@@ -910,7 +913,7 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo', create=False):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return self.get_factory()(name, get_transport(self.get_url('.')),
             delta=True,
             create=create)
 
@@ -923,6 +926,19 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
                           KnitVersionedFile,
                           'foo',
                           get_transport(self.get_url('.')))
+
+
+class TestPlaintextKnit(TestKnit):
+    """Test a knit with no cached annotations"""
+
+    def _factory(self, name, transport, file_mode=None, access_mode=None,
+                 delta=True, create=False):
+        return KnitVersionedFile(name, transport, file_mode, access_mode,
+                                 KnitPlainFactory(), delta=delta,
+                                 create=create)
+
+    def get_factory(self):
+        return self._factory
 
 
 class InterString(versionedfile.InterVersionedFile):

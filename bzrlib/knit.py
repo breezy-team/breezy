@@ -74,6 +74,7 @@ import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    annotate,
     pack,
     trace,
     )
@@ -290,6 +291,10 @@ class KnitAnnotateFactory(_KnitFactory):
                        for origin, text in lines)
         return out
 
+    def annotate_iter(self, knit, version_id):
+        content = knit._get_content(version_id)
+        return content.annotate_iter()
+
 
 class KnitPlainFactory(_KnitFactory):
     """Factory for creating plain Content objects."""
@@ -344,6 +349,9 @@ class KnitPlainFactory(_KnitFactory):
             out.append('%d,%d,%d\n' % (start, end, c))
             out.extend([text for origin, text in lines])
         return out
+
+    def annotate_iter(self, knit, version_id):
+        return annotate_knit(knit, version_id)
 
 
 def make_empty_knit(transport, relpath):
@@ -1105,9 +1113,7 @@ class KnitVersionedFile(VersionedFile):
     def annotate_iter(self, version_id):
         """See VersionedFile.annotate_iter."""
         version_id = osutils.safe_revision_id(version_id)
-        content = self._get_content(version_id)
-        for origin, text in content.annotate_iter():
-            yield origin, text
+        return self.factory.annotate_iter(self, version_id)
 
     def get_parents(self, version_id):
         """See VersionedFile.get_parents."""
@@ -2524,6 +2530,33 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             bestsize = bestsize + 1
 
         return besti, bestj, bestsize
+
+
+def annotate_knit(knit, revision_id):
+    """Annotate a knit with no cached annotations.
+
+    This implementation is for knits with no cached annotations.
+    It will work for knits with cached annotations, but this is not
+    recommended.
+    """
+    ancestry = knit.get_ancestry(revision_id)
+    fulltext = dict(zip(ancestry, knit.get_line_list(ancestry)))
+    annotations = {}
+    for candidate in ancestry:
+        if candidate in annotations:
+            continue
+        parents = knit.get_parents(candidate)
+        if len(parents) == 0:
+            blocks = None
+        elif knit._index.get_method(candidate) != 'line-delta':
+            blocks = None
+        else:
+            parent, sha1, noeol, delta = knit.get_delta(candidate)
+            blocks = KnitContent.get_line_delta_blocks(delta,
+                fulltext[parents[0]], fulltext[candidate])
+        annotations[candidate] = list(annotate.reannotate([annotations[p]
+            for p in parents], fulltext[candidate], candidate, blocks))
+    return iter(annotations[revision_id])
 
 
 try:
