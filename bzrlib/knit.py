@@ -907,6 +907,7 @@ class KnitVersionedFile(VersionedFile):
             delta = False
 
         digest = sha_strings(lines)
+        text_length = sum(map(len, lines))
         options = []
         if lines:
             if lines[-1][-1] != '\n':
@@ -936,7 +937,7 @@ class KnitVersionedFile(VersionedFile):
 
         access_memo = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, access_memo, parents)
-        return lines
+        return digest, text_length, lines
 
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""

@@ -130,9 +130,9 @@ class VersionedFile(object):
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.
-        :return: An opaque representation of the inserted version which can be
-                 provided back to future add_lines calls in the parent_texts
-                 dictionary.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future add_lines calls in the parent_texts dictionary.
         """
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
