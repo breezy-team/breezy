@@ -1769,7 +1769,8 @@ class BzrRenameFailedError(BzrMoveFailedError):
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
 
-    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+    _fmt = ("Can't safely remove modified or unknown files:\n"
+        "%(changes_as_text)s"
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
@@ -1876,7 +1877,7 @@ class ExistingPendingDeletion(BzrError):
 
 class ImmortalLimbo(BzrError):
 
-    _fmt = """Unable to delete transform temporary directory $(limbo_dir)s.
+    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
 

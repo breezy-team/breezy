@@ -1793,29 +1793,29 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        ## TODO: Normalize names
-
         if isinstance(files, basestring):
             files = [files]
 
         inv_delta = []
 
         new_files=set()
-        unknown_files_in_directory=set()
+        unknown_nested_files=set()
 
         def recurse_directory_to_add_files(directory):
-            # recurse directory and add all files
+            # Recurse directory and add all files
             # so we can check if they have changed.
             for parent_info, file_infos in\
                 osutils.walkdirs(self.abspath(directory),
                     directory):
                 for relpath, basename, kind, lstat, abspath in file_infos:
-                    if kind == 'file':
-                        if self.path2id(relpath): #is it versioned?
-                            new_files.add(relpath)
-                        else:
-                            unknown_files_in_directory.add(
-                                (relpath, None, kind))
+                    # Is it versioned or ignored?
+                    if self.path2id(relpath) or self.is_ignored(relpath):
+                        # Add nested content for deletion.
+                        new_files.add(relpath)
+                    else:
+                        # Files which are not versioned and not ignored
+                        # should be treated as unknown.
+                        unknown_nested_files.add((relpath, None, kind))
 
         for filename in files:
             # Get file name into canonical form.
@@ -1825,40 +1825,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 new_files.add(filename)
                 if osutils.isdir(abspath):
                     recurse_directory_to_add_files(filename)
-        files = [f for f in new_files]
+
+        files = list(new_files)
 
         if len(files) == 0:
             return # nothing to do
 
         # Sort needed to first handle directory content before the directory
         files.sort(reverse=True)
+
+        # Bail out if we are going to delete files we shouldn't
         if not keep_files and not force:
-            has_changed_files = len(unknown_files_in_directory) > 0
+            has_changed_files = len(unknown_nested_files) > 0
             if not has_changed_files:
                 for (file_id, path, content_change, versioned, parent_id, name,
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # check if it's unknown OR changed but not deleted:
-                    if (versioned == (False, False)
-                        or (content_change and kind[1] != None)):
+                    # Check if it's an unknown (but not ignored) OR
+                    # changed (but not deleted) :
+                    if not self.is_ignored(path[1]) and (
+                        versioned == (False, False) or
+                        content_change and kind[1] != None):
                         has_changed_files = True
                         break
 
             if has_changed_files:
-                # make delta to show ALL applicable changes in error message.
+                # Make delta show ALL applicable changes in error message.
                 tree_delta = self.changes_from(self.basis_tree(),
+                    require_versioned=False, want_unversioned=True,
                     specific_files=files)
-                for unknown_file in unknown_files_in_directory:
-                    tree_delta.unversioned.extend((unknown_file,))
+                for unknown_file in unknown_nested_files:
+                    if unknown_file not in tree_delta.unversioned:
+                        tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
-        # do this before any modifications
+        # Build inv_delta and delete files where applicaple,
+        # do this before any modifications to inventory.
         for f in files:
             fid = self.path2id(f)
-            message=None
+            message = None
             if not fid:
-                message="%s is not versioned." % (f,)
+                message = "%s is not versioned." % (f,)
             else:
                 if verbose:
                     # having removed it, it must be either ignored or unknown
@@ -1868,25 +1876,28 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = '?'
                     textui.show_status(new_status, self.kind(fid), f,
                                        to_file=to_file)
-                # unversion file
+                # Unversion file
                 inv_delta.append((f, None, fid, None))
-                message="removed %s" % (f,)
+                message = "removed %s" % (f,)
 
             if not keep_files:
                 abs_path = self.abspath(f)
                 if osutils.lexists(abs_path):
                     if (osutils.isdir(abs_path) and
                         len(os.listdir(abs_path)) > 0):
-                        message="%s is not empty directory "\
-                            "and won't be deleted." % (f,)
+                        if force:
+                            osutils.rmtree(abs_path)
+                        else:
+                            message = "%s is not an empty directory "\
+                                "and won't be deleted." % (f,)
                     else:
                         osutils.delete_any(abs_path)
-                        message="deleted %s" % (f,)
+                        message = "deleted %s" % (f,)
                 elif message is not None:
-                    # only care if we haven't done anything yet.
-                    message="%s does not exist." % (f,)
+                    # Only care if we haven't done anything yet.
+                    message = "%s does not exist." % (f,)
 
-            # print only one message (if any) per file.
+            # Print only one message (if any) per file.
             if message is not None:
                 note(message)
         self.apply_inventory_delta(inv_delta)

@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os, re, shlex
+import os
 
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -59,7 +59,7 @@ class TestRemove(ExternalBase):
         f.close()
 
     def run_bzr_remove_changed_files(self, error_regexes, files_to_remove):
-        error_regexes.extend(["Can't remove changed or unknown files:",
+        error_regexes.extend(["Can't safely remove modified or unknown files:",
             'Use --keep to not delete them,'
             ' or --force to delete them regardless.'
             ])
