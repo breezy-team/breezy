@@ -85,8 +85,7 @@ Sketch::
           (e.g. reading from a bundle generated in bzrlib to deliver a
           complete request).
 
-          Possibly this should just be RemoteBzrDir, RemoteTransport,
-          ...
+          This is RemoteBzrDir, RemoteRepository, etc.
   ^
   | structured data
   v
@@ -98,8 +97,8 @@ Sketch::
   | bytes.
   v
 
- MEDIUM  (accepts bytes from the protocol & delivers to the remote server.
-          Allows the potocol to read bytes e.g. socket, pipe, HTTP request.
+ MEDIUM   accepts bytes from the protocol & delivers to the remote server.
+          Allows the protocol to read bytes e.g. socket, pipe, HTTP request.
 
 The domain logic is in `bzrlib.remote`: `RemoteBzrDir`, `RemoteBranch`,
 and so on.
@@ -113,7 +112,9 @@ Protocol description
 Version one
 -----------
 
-Version one of the protocol (for requests and responses) is described by::
+Version one of the protocol was introduced in Bazaar 0.11.
+
+The protocol (for both requests and responses) is described by::
 
   REQUEST := MESSAGE_V1
   RESPONSE := MESSAGE_V1
@@ -135,13 +136,15 @@ that although arguments are not 8-bit safe (they cannot include 0x01 or
 Version two
 -----------
 
-Version two of the request protocol is::
+Version two was introduced in Bazaar 0.16.
+
+The request protocol is::
 
   REQUEST_V2 := "bzr request 2" NEWLINE MESSAGE_V2
 
-Version two of the response protocol is::
+The response protocol is::
 
-  RESPONSE_V2 := "bzr request 2" NEWLINE MESSAGE_V2
+  RESPONSE_V2 := "bzr response 2" NEWLINE MESSAGE_V2
 
 Future versions should follow this structure, like version two does::
 
@@ -163,7 +166,11 @@ Version two of the message protocol is::
 That is, a version one length-prefixed body, or a version two streamed
 body.
 
-A streamed body looks a lot like HTTP's chunked encoding::
+Version two with streamed bodies
+--------------------------------
+
+An extension to version two allows streamed bodies.  A streamed body looks
+a lot like HTTP's chunked encoding::
  
   STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
   CHUNKS := CHUNK [CHUNKS]
@@ -185,13 +192,9 @@ A streamed body starts with the string "chunked" so that legacy clients
 and servers will not mistake the first chunk as the start of a version one
 body.
 
-Software versions
------------------
-
-Version 1 of the protocol was introduced in Bazaar 0.11.
-
-Version 2 was introduced in Bazaar 0.16.
-
+The type of body (length-prefixed or chunked) in a response is always the
+same for a given request method.  Only new request methods introduced in
+Bazaar 0.91 and later use streamed bodies.
 
 Paths
 =====
@@ -206,17 +209,26 @@ http, ssh or tcp) will typically want to restrict access to only a
 particular directory and its children, so will want to do a software
 virtual root at that level.  In other words they'll want to rewrite
 incoming paths to be under that level (and prevent escaping using ../
-tricks.)
+tricks).  The default implementation in bzrlib does this using the
+`bzrlib.transport.chroot` module.
 
 URLs that include ~ should probably be passed across to the server
 verbatim and the server can expand them.  This will proably not be
-meaningful when limited to a directory?
+meaningful when limited to a directory?  See `bug 109143`_.
+
+.. _bug 109143: https://bugs.launchpad.net/bzr/+bug/109143
 
 
 Requests
 ========
 
+The first argument of a request specifies the request method.
+
 The available request methods are registered in `bzrlib.smart.request`.
+
+**XXX**: ideally the request methods should be documented here.
+Contributions welcome!
+
 
 ..
    vim: ft=rst tw=74 ai
