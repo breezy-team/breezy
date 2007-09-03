@@ -461,6 +461,43 @@ class TestRepository(TestCaseWithRepository):
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
 
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, []),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
