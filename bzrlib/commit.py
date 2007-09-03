@@ -254,7 +254,7 @@ class Commit(object):
             self._check_bound_branch()
 
             # Check that the working tree is up to date
-            old_revno,new_revno = self._check_out_of_date_tree()
+            old_revno, new_revno = self._check_out_of_date_tree()
 
             if self.config is None:
                 self.config = self.branch.get_config()
@@ -275,7 +275,7 @@ class Commit(object):
             # information in the progress bar during the relevant stages.
             self.pb_stage_name = ""
             self.pb_stage_count = 0
-            self.pb_stage_total = 4
+            self.pb_stage_total = 5
             if self.bound_branch:
                 self.pb_stage_total += 1
             self.pb.show_pct = False
@@ -296,6 +296,7 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
+            
             try:
                 self._update_builder_with_changes()
                 self._check_pointless()
@@ -315,9 +316,12 @@ class Commit(object):
 
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
+
             except:
                 self.builder.abort()
                 raise
+
+            self._process_pre_hooks(old_revno, new_revno)
 
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
@@ -339,7 +343,7 @@ class Commit(object):
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
-            self._process_hooks(old_revno, new_revno)
+            self._process_post_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
         return self.rev_id
@@ -465,10 +469,15 @@ class Commit(object):
             new_revno = 1
         return old_revno,new_revno
 
-    def _process_hooks(self, old_revno, new_revno):
-        """Process any registered commit hooks."""
+    def _process_pre_hooks(self, old_revno, new_revno):
+        """Process any registered pre commit hooks."""
+        self._set_progress_stage("Running pre_commit hooks")
+        self._process_hooks("pre_commit", old_revno, new_revno)
+
+    def _process_post_hooks(self, old_revno, new_revno):
+        """Process any registered post commit hooks."""
         # Process the post commit hooks, if any
-        self._set_progress_stage("Running post commit hooks")
+        self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15)
         if self.config.post_commit() is not None:
@@ -479,6 +488,13 @@ class Commit(object):
                               {'branch':self.branch,
                                'bzrlib':bzrlib,
                                'rev_id':self.rev_id})
+        # process new style post commit hooks
+        self._process_hooks("post_commit", old_revno, new_revno)
+
+    def _process_hooks(self, hook_name, old_revno, new_revno):
+        if not Branch.hooks[hook_name]:
+            return
+        
         # new style commit hooks:
         if not self.bound_branch:
             hook_master = self.branch
@@ -493,19 +509,30 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
-        for hook in Branch.hooks['post_commit']:
+        
+        if hook_name == "pre_commit":
+            future_tree = self.builder.revision_tree()
+            tree_delta = future_tree.changes_from(self.basis_tree,
+                                             include_root=True)
+        
+        for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running post commit hooks [%s]" % \
-                Branch.hooks.get_hook_name(hook)
+            self.pb_stage_name = "Running %s hooks [%s]" % \
+                (hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
             if 'hooks' in debug.debug_flags:
                 mutter("Invoking commit hook: %r", hook)
-            hook(hook_local, hook_master, old_revno, old_revid, new_revno,
-                self.rev_id)
+            if hook_name == "post_commit":
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                     self.rev_id)
+            elif hook_name == "pre_commit":
+                hook(hook_local, hook_master,
+                     old_revno, old_revid, new_revno, self.rev_id,
+                     tree_delta, future_tree)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
