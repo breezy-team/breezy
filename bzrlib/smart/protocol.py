@@ -269,13 +269,12 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
         TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
         SUCCESS_TERMINATOR := '0' NEWLINE
-        ERROR_TERMINATOR := 'ERR' NEWLINE ARGS
-        ARGS := (see bzrlib/smart/__init__.py)
+        ERROR_TERMINATOR := 'ERR' NEWLINE CHUNKS SUCCESS_TERMINATOR
 
     That is, the body consists of a series of chunks.  Each chunk starts with a
     length prefix in hexadecimal digits, followed by an ASCII newline byte.
     The end of the body is signaled by a zero the zero-length chunk, i.e.
-    '0\\n', or by 'ERR\\n' followed by a response args tuple of the error.
+    '0\\n', or by 'ERR\\n' followed by error args, one per chunk.
     """
 
     def __init__(self):
@@ -284,6 +283,8 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         self._in_buffer = ''
         self.chunk_in_progress = None
         self.chunks = collections.deque()
+        self.error = False
+        self.error_in_progress = None
     
     def next_read_size(self):
         # Note: the shortest possible chunk is 2 bytes: '0\n'.
@@ -300,10 +301,6 @@ class ChunkedBodyDecoder(_StatefulDecoder):
                 # We're in the middle of reading a chunk length.  So there's at
                 # least one byte left, the '\n' that terminates the length.
                 return 1
-        elif self.state_accept == self._state_accept_reading_error:
-            # We're reading an error tuple.  There's at least one byte left,
-            # '\n'.
-            return 1
         elif self.state_accept == self._state_accept_reading_unused:
             return 1
         else:
@@ -330,6 +327,10 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         self.unused_data = self._in_buffer
         self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
+        if self.error:
+            error_args = tuple(self.error_in_progress)
+            self.chunks.append(request.FailedSmartServerResponse(error_args))
+            self.error_in_progress = None
         self.finished_reading = True
 
     def _state_accept_expecting_length(self, bytes):
@@ -340,8 +341,9 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             # to do.
             return
         elif prefix == 'ERR':
-            self.state_accept = self._state_accept_reading_error
-            self.state_accept('')
+            self.error = True
+            self.error_in_progress = []
+            self._state_accept_expecting_length('')
             return
         self.bytes_left = int(prefix, 16)
         if self.bytes_left == 0:
@@ -362,19 +364,13 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         if self.bytes_left <= 0:
             # Finished with chunk
             self.bytes_left = None
-            self.chunks.append(self.chunk_in_progress)
+            if self.error:
+                self.error_in_progress.append(self.chunk_in_progress)
+            else:
+                self.chunks.append(self.chunk_in_progress)
             self.chunk_in_progress = None
             self.state_accept = self._state_accept_expecting_length
         
-    def _state_accept_reading_error(self, bytes):
-        self._in_buffer += bytes
-        line = self._extract_line()
-        if line is None:
-            return
-        error_args = _decode_tuple(line + '\n')
-        self.chunks.append(request.FailedSmartServerResponse(error_args))
-        self._finished()
-
     def _state_accept_reading_unused(self, bytes):
         self.unused_data += bytes
 

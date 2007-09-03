@@ -1907,9 +1907,12 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
     def test_read_streamed_body_error(self):
         """When a stream is interrupted by an error..."""
         a_body_chunk = '4\naaaa'
-        err_chunk = 'ERR\nErrorArg1\x01arg2\n'
+        err_signal = 'ERR\n'
+        err_chunks = 'a\nerror arg1' + '4\narg2'
+        finish = '0\n'
+        body = a_body_chunk + err_signal + err_chunks + finish
         server_bytes = (protocol.RESPONSE_VERSION_TWO +
-                        "success\nok\n" + a_body_chunk + err_chunk)
+                        "success\nok\n" + body)
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
@@ -1919,7 +1922,7 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         smart_protocol.read_response_tuple(True)
         expected_chunks = [
             'aaaa',
-            request.FailedSmartServerResponse(('ErrorArg1', 'arg2'))]
+            request.FailedSmartServerResponse(('error arg1', 'arg2'))]
         stream = smart_protocol.read_streamed_body()
         self.assertEqual(expected_chunks, list(stream))
 
@@ -2159,12 +2162,14 @@ class TestChunkedBodyDecoder(tests.TestCase):
     def test_decode_error(self):
         decoder = protocol.ChunkedBodyDecoder()
         chunk_one = 'b\nfirst chunk'
-        error_chunk = 'ERR\nFailureName\x01failure arg\n'
-        decoder.accept_bytes(chunk_one + error_chunk)
+        error_signal = 'ERR\n'
+        error_chunks = '5\npart1' + '5\npart2'
+        finish = '0\n'
+        decoder.accept_bytes(chunk_one + error_signal + error_chunks + finish)
         self.assertTrue(decoder.finished_reading)
         self.assertEqual('first chunk', decoder.read_next_chunk())
         expected_failure = request.FailedSmartServerResponse(
-            ('FailureName', 'failure arg'))
+            ('part1', 'part2'))
         self.assertEqual(expected_failure, decoder.read_next_chunk())
 
 
