@@ -20,7 +20,7 @@ No local changes, only new revisions
 ====================================
 1) Need to move wt.last_rev (O(1))
 2) apply delta from base to new rev (O(changes))
-applying changes to files is approx (O(lines-in-files ^ 2))
+   applying changes to files is approx (O(lines-in-files ^ 2))
 3) update meta-info (executable bits, etc) about modified files (O(changes))
 
 2/3 could be concurrent (but that may not necessarily be faster)
@@ -46,15 +46,15 @@ out of date heavyweight checkout, out of date w/master
 1) open working tree, check latest revision
 2) open working tree branch, check latest revision
 3) mismatch => update wt => wt.b.lastrev
-apply delta to tree O(changed file size)
----- conflicts
-stop on conflicts
-stop always -> inform user they need to repeat (why not?, GFD)
+   apply delta to tree O(changed file size)
+   ---- conflicts
+   stop on conflicts
+   stop always -> inform user they need to repeat (why not?, GFD)
 4) pull new revs M => L O(newrevs)
 5) apply delta to wt
-local committed changes become a pending merge
-local uncommitted stay uncommitted
-local pending merges are retained (should be gc'd)
+   local committed changes become a pending merge
+   local uncommitted stay uncommitted
+   local pending merges are retained (should be gc'd)
 
 offtopic:
 should bzr update report where the source is ?

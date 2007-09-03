@@ -103,12 +103,12 @@ IN DEVELOPMENT
      only a small increase in space used (and in some cases a reduction in
      space). (Robert Collins)
 
-    * Initial commit no longer SHAs files twice and now reuses the path
-      rather than looking it up again, making it faster.
-      (Ian Clatworthy)
+   * Initial commit no longer SHAs files twice and now reuses the path
+     rather than looking it up again, making it faster.
+     (Ian Clatworthy)
 
-    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
-      changes in one revision.  (Lukáš Lalinský)
+   * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
+     changes in one revision.  (Lukáš Lalinský)
 
   API BREAKS:
 
@@ -132,6 +132,9 @@ IN DEVELOPMENT
    * NULL_REVISION is returned to indicate the null revision, not None.
      (Aaron Bentley)
 
+   * Use UTF-8 encoded StringIO for log tests to avoid failures on
+     non-ASCII committer names.  (Lukáš Lalinský)
+
   INTERNALS:
 
    * ``bzrlib.plugin.all_plugins`` has been deprecated in favour of
@@ -151,36 +154,31 @@ IN DEVELOPMENT
      stack to the log, which can be useful for gathering debug details.
      (Robert Collins)
 
-    * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
-      added via a public attribute records_written. (Robert Collins)
+   * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
+     added via a public attribute records_written. (Robert Collins)
 
-    * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
-      This provides a hint to users of transports as to the reasonable
-      minimum data to read. In principle this can take latency and
-      bandwidth into account on a per-connection basis, but for now it
-      just has hard coded values based on the url. (e.g. http:// has a large
-      page size, file:// has a small one.) (Robert Collins)
+   * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
+     This provides a hint to users of transports as to the reasonable
+     minimum data to read. In principle this can take latency and
+     bandwidth into account on a per-connection basis, but for now it
+     just has hard coded values based on the url. (e.g. http:// has a large
+     page size, file:// has a small one.) (Robert Collins)
 
-    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
-      incremental addition of data to a file without requiring that all the
-      data be buffered in memory. (Robert Collins)
+   * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
+     incremental addition of data to a file without requiring that all the
+     data be buffered in memory. (Robert Collins)
 
-    * New methods on ``bzrlib.knit.KnitVersionedFile``:
-      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
-      ``get_format_signature()``.  These provide some infrastructure for
-      efficiently streaming the knit data for a set of versions over the smart
-      protocol.
+   * New methods on ``bzrlib.knit.KnitVersionedFile``:
+     ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
+     ``get_format_signature()``.  These provide some infrastructure for
+     efficiently streaming the knit data for a set of versions over the smart
+     protocol.
 
-    * Knits with no annotation cache still produce correct annotations.
-      (Aaron Bentley)
-
-  TESTING:
-
-    * Use UTF-8 encoded StringIO for log tests to avoid failures on
-      non-ASCII committer names.  (Lukáš Lalinský)
+   * Knits with no annotation cache still produce correct annotations.
+     (Aaron Bentley)
 
 
-bzr 0.90 2007-08-??
+bzr 0.90 2007-08-28
 ===================
 
   IMPROVEMENTS:
