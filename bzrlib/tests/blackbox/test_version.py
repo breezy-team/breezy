@@ -17,10 +17,11 @@
 """Black-box tests for bzr version."""
 
 import bzrlib
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCase
+from bzrlib import trace
 
 
-class TestVersion(ExternalBase):
+class TestVersion(TestCase):
 
     def test_version(self):
         out = self.run_bzr("version")[0]
@@ -31,3 +32,27 @@ class TestVersion(ExternalBase):
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*bzr\.log')
+
+
+class TestVersionUnicodeOutput(TestCase):
+
+    def _check(self, args):
+        old_trace_file = trace._bzr_log_filename
+        trace._bzr_log_filename = u'/\u1234/.bzr.log'
+        try:
+            out = self.run_bzr(args)[0]
+        finally:
+            trace._bzr_log_filename = old_trace_file
+        self.assertTrue(len(out) > 0)
+        self.assertEquals(1, out.count(bzrlib.__version__))
+        self.assertContainsRe(out, r"(?m)^  Python interpreter:")
+        self.assertContainsRe(out, r"(?m)^  Python standard library:")
+        self.assertContainsRe(out, r"(?m)^  bzrlib:")
+        self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
+        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*bzr\.log')
+
+    def test_command(self):
+        self._check("version")
+
+    def test_flag(self):
+        self._check("--version")
