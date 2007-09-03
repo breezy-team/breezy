@@ -50,6 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
+from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
 from bzrlib.trace import mutter
 
 
@@ -161,33 +162,19 @@ class InventoryEntry(object):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
+    
+    def parent_candidates(self, previous_inventories):
+        """Find possible per-file graph parents.
 
-    def find_previous_heads(self, previous_inventories,
-                            versioned_file_store,
-                            transaction,
-                            entry_vf=None):
-        """Return the revisions and entries that directly precede this.
-
-        Returned as a map from revision to inventory entry.
-
-        This is a map containing the file revisions in all parents
-        for which the file exists, and its revision is not a parent of
-        any other. If the file is new, the set will be empty.
-
-        :param versioned_file_store: A store where ancestry data on this
-                                     file id can be queried.
-        :param transaction: The transaction that queries to the versioned 
-                            file store should be completed under.
-        :param entry_vf: The entry versioned file, if its already available.
+        This is currently defined by:
+         - The kind has not changed (* not sure why this is a clause *)
+         - Select the last changed revision in the parent inventory.
+         - Do deal with a short lived bug in bzr 0.8's development two entries
+           that have the same last changed but different 'x' bit settings are
+           changed in-place.
         """
-        def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
         # revision:ie mapping for each ie found in previous_inventories.
         candidates = {}
-        # revision:ie mapping with one revision for each head.
-        heads = {}
-        # revision: ancestor list for each head
-        head_ancestors = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
             if self.file_id in inv:
@@ -212,19 +199,52 @@ class InventoryEntry(object):
                 else:
                     # add this revision as a candidate.
                     candidates[ie.revision] = ie
+        return candidates
 
+    @deprecated_method(zero_ninetyone)
+    def find_previous_heads(self, previous_inventories,
+                            versioned_file_store,
+                            transaction,
+                            entry_vf=None):
+        """Return the revisions and entries that directly precede this.
+
+        Returned as a map from revision to inventory entry.
+
+        This is a map containing the file revisions in all parents
+        for which the file exists, and its revision is not a parent of
+        any other. If the file is new, the set will be empty.
+
+        :param versioned_file_store: A store where ancestry data on this
+                                     file id can be queried.
+        :param transaction: The transaction that queries to the versioned 
+                            file store should be completed under.
+        :param entry_vf: The entry versioned file, if its already available.
+        """
+        candidates = self.parent_candidates(previous_inventories)
+
+        # revision:ie mapping with one revision for each head.
+        heads = {}
         # common case optimisation
         if len(candidates) == 1:
             # if there is only one candidate revision found
-            # then we can opening the versioned file to access ancestry:
+            # then we can avoid opening the versioned file to access ancestry:
             # there cannot be any ancestors to eliminate when there is 
             # only one revision available.
-            heads[ie.revision] = ie
-            return heads
+            return candidates
+        
+        # --- what follows is now encapsulated in repository.get_graph.heads(), 
+        #     but that is not accessible from here as we have no repository
+        #     pointer. Note that the repository.get_graph.heads() call can return
+        #     different results *at the moment* because of the kind-changing check
+        #     we have in parent_candidates().
 
         # eliminate ancestors amongst the available candidates:
         # heads are those that are not an ancestor of any other candidate
         # - this provides convergence at a per-file level.
+        def get_ancestors(weave, entry):
+            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
+        # revision: ancestor list for each head
+        head_ancestors = {}
         for ie in candidates.values():
             # may be an ancestor of a known head:
             already_present = 0 != len(
