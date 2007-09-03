@@ -26,27 +26,27 @@ IN DEVELOPMENT
      ``bzr annotate`` display the author instead of the committer.
      (Lukáš Lalinský)
 
-    * In addition to global options and command specific options, a set of
-      standard options are now supported. Standard options are legal for
-      all commands. The initial set of standard options are:
-      
-      * ``--help`` or ``-h`` - display help message
-      * ``--verbose`` or ``-v`` - display additional information
-      * ``--quiet``  or ``-q`` - only output warnings and errors.
+   * In addition to global options and command specific options, a set of
+     standard options are now supported. Standard options are legal for
+     all commands. The initial set of standard options are:
+     
+     * ``--help`` or ``-h`` - display help message
+     * ``--verbose`` or ``-v`` - display additional information
+     * ``--quiet``  or ``-q`` - only output warnings and errors.
 
-      Unlike global options, standard options can be used in aliases and
-      may have command-specific help. (Ian Clatworthy)
+     Unlike global options, standard options can be used in aliases and
+     may have command-specific help. (Ian Clatworthy)
 
-    * Verbosity level processing has now been unified. If ``--verbose``
-      or ``-v`` is specified on the command line multiple times, the
-      verbosity level is made positive the first time then increased.
-      If ``--quiet`` or ``-q`` is specified on the command line
-      multiple times, the verbosity level is made negative the first
-      time then decreased. To get the default verbosity level of zero,
-      either specify none of the above , ``--no-verbose`` or ``--no-quiet``.
-      Note that most commands currently ignore the magnitude of the
-      verbosity level but do respect *quiet vs normal vs verbose* when
-      generating output. (Ian Clatworthy)
+   * Verbosity level processing has now been unified. If ``--verbose``
+     or ``-v`` is specified on the command line multiple times, the
+     verbosity level is made positive the first time then increased.
+     If ``--quiet`` or ``-q`` is specified on the command line
+     multiple times, the verbosity level is made negative the first
+     time then decreased. To get the default verbosity level of zero,
+     either specify none of the above , ``--no-verbose`` or ``--no-quiet``.
+     Note that most commands currently ignore the magnitude of the
+     verbosity level but do respect *quiet vs normal vs verbose* when
+     generating output. (Ian Clatworthy)
 
   BUG FIXES:
 
@@ -130,12 +130,12 @@ IN DEVELOPMENT
      only a small increase in space used (and in some cases a reduction in
      space). (Robert Collins)
 
-    * Initial commit no longer SHAs files twice and now reuses the path
-      rather than looking it up again, making it faster.
-      (Ian Clatworthy)
+   * Initial commit no longer SHAs files twice and now reuses the path
+     rather than looking it up again, making it faster.
+     (Ian Clatworthy)
 
-    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
-      changes in one revision.  (Lukáš Lalinský)
+   * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
+     changes in one revision.  (Lukáš Lalinský)
 
   API BREAKS:
 
@@ -159,6 +159,9 @@ IN DEVELOPMENT
    * NULL_REVISION is returned to indicate the null revision, not None.
      (Aaron Bentley)
 
+   * Use UTF-8 encoded StringIO for log tests to avoid failures on
+     non-ASCII committer names.  (Lukáš Lalinský)
+
   INTERNALS:
 
    * ``bzrlib.plugin.all_plugins`` has been deprecated in favour of
@@ -178,56 +181,51 @@ IN DEVELOPMENT
      stack to the log, which can be useful for gathering debug details.
      (Robert Collins)
 
-    * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
-      added via a public attribute records_written. (Robert Collins)
+   * ``bzrlib.pack.ContainerWriter`` now tracks how many records have been
+     added via a public attribute records_written. (Robert Collins)
 
-    * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
-      This provides a hint to users of transports as to the reasonable
-      minimum data to read. In principle this can take latency and
-      bandwidth into account on a per-connection basis, but for now it
-      just has hard coded values based on the url. (e.g. http:// has a large
-      page size, file:// has a small one.) (Robert Collins)
+   * New method ``bzrlib.transport.Transport.get_recommended_page_size``.
+     This provides a hint to users of transports as to the reasonable
+     minimum data to read. In principle this can take latency and
+     bandwidth into account on a per-connection basis, but for now it
+     just has hard coded values based on the url. (e.g. http:// has a large
+     page size, file:// has a small one.) (Robert Collins)
 
-    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
-      incremental addition of data to a file without requiring that all the
-      data be buffered in memory. (Robert Collins)
+   * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
+     incremental addition of data to a file without requiring that all the
+     data be buffered in memory. (Robert Collins)
 
-    * New methods on ``bzrlib.knit.KnitVersionedFile``:
-      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
-      ``get_format_signature()``.  These provide some infrastructure for
-      efficiently streaming the knit data for a set of versions over the smart
-      protocol.
+   * New methods on ``bzrlib.knit.KnitVersionedFile``:
+     ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
+     ``get_format_signature()``.  These provide some infrastructure for
+     efficiently streaming the knit data for a set of versions over the smart
+     protocol.
 
-    * Knits with no annotation cache still produce correct annotations.
-      (Aaron Bentley)
+   * Knits with no annotation cache still produce correct annotations.
+     (Aaron Bentley)
 
-    * Three new methods have been added to ``bzrlib.trace``:
-      ``set_verbosity_level``, ``get_verbosity_level`` and ``is_verbose``.
-      ``set_verbosity_level`` expects a numeric value: negative for quiet,
-      zero for normal, positive for verbose. The size of the number can be
-      used to determine just how quiet or verbose the application should be.
-      The existing ``be_quiet`` and ``is_quiet`` routines have been
-      integrated into this new scheme. (Ian Clatworthy)
+   * Three new methods have been added to ``bzrlib.trace``:
+     ``set_verbosity_level``, ``get_verbosity_level`` and ``is_verbose``.
+     ``set_verbosity_level`` expects a numeric value: negative for quiet,
+     zero for normal, positive for verbose. The size of the number can be
+     used to determine just how quiet or verbose the application should be.
+     The existing ``be_quiet`` and ``is_quiet`` routines have been
+     integrated into this new scheme. (Ian Clatworthy)
 
-    * Options can now be delcared with a ``custom_callback`` parameter. If
-      set, this routine is called after the option is processed. This feature
-      is now used by the standard options ``verbose`` and ``quiet`` so that
-      setting one implicitly resets the other. (Ian Clatworthy)
+   * Options can now be delcared with a ``custom_callback`` parameter. If
+     set, this routine is called after the option is processed. This feature
+     is now used by the standard options ``verbose`` and ``quiet`` so that
+     setting one implicitly resets the other. (Ian Clatworthy)
 
-    * Rather than declaring a new option from scratch in order to provide
-      custom help, a centrally registered option can be decorated using the
-      new ``bzrlib.Option.custom_help`` routine. In particular, this routine
-      is useful when declaring better help for the ``verbose`` and ``quiet``
-      standard options as the base definition of these is now more complex
-      than before thanks to their use of a custom callback. (Ian Clatworthy)
+   * Rather than declaring a new option from scratch in order to provide
+     custom help, a centrally registered option can be decorated using the
+     new ``bzrlib.Option.custom_help`` routine. In particular, this routine
+     is useful when declaring better help for the ``verbose`` and ``quiet``
+     standard options as the base definition of these is now more complex
+     than before thanks to their use of a custom callback. (Ian Clatworthy)
       
-  TESTING:
 
-    * Use UTF-8 encoded StringIO for log tests to avoid failures on
-      non-ASCII committer names.  (Lukáš Lalinský)
-
-
-bzr 0.90 2007-08-??
+bzr 0.90 2007-08-28
 ===================
 
   IMPROVEMENTS:
