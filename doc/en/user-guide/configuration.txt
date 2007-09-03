@@ -209,16 +209,17 @@ will try ``xdg-email``. If either of these fails, it will fall back to
 
 Supported values are:
 
-:xdg-email: Use xdg-email to run your preferred mail program
-:mapi: Use your preferred e-mail client on Windows.
-:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
-    this works around some bugs that xdg-email doesn't handle.
-:evolution: Use Evolution.
-:kmail: Use KMail.
+:default: See above.
 :editor: Use your editor to compose the merge request.  This also uses
     your commit id, (see ``bzr whoami``), smtp_server and (optionally)
     smtp_username and smtp_password.
-:default: See above.
+:evolution: Use Evolution.
+:kmail: Use KMail.
+:mapi: Use your preferred e-mail client on Windows.
+:mutt: Use Mutt.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+:xdg-email: Use xdg-email to run your preferred mail program
 
 submit_branch
 -------------

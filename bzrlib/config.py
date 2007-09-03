@@ -152,11 +152,12 @@ class Config(object):
                 None: mail_client.DefaultMail,
                 'default': mail_client.DefaultMail,
                 'editor': mail_client.Editor,
-                'thunderbird': mail_client.Thunderbird,
                 'evolution': mail_client.Evolution,
-                'mapi': mail_client.MAPIClient,
-                'xdg-email': mail_client.XDGEmail,
                 'kmail': mail_client.KMail,
+                'mapi': mail_client.MAPIClient,
+                'mutt': mail_client.Mutt,
+                'thunderbird': mail_client.Thunderbird,
+                'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:
             raise errors.UnknownMailClient(selected_client)

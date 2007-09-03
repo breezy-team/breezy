@@ -3848,8 +3848,8 @@ class cmd_send(Command):
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values are
-    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
-    "default".
+    "default", "editor", "evolution", "kmail", "mapi", "mutt", "thunderbird",
+    and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration

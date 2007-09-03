@@ -156,6 +156,9 @@ IN DEVELOPMENT
    * If versioned files match a given ignore pattern, a warning is now
      given. (Daniel Watkins, #48623)
 
+   * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
+     bazaar.conf and ``send`` will use mutt. (Keir Mierle)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
