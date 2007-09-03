@@ -167,7 +167,7 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision',
+    takes_options = ['show-ids', 'revision', 'change',
                      Option('short', help='Give short SVN-style status lines.'),
                      Option('versioned', help='Only show versioned files.')]
     aliases = ['st', 'stat']
@@ -179,6 +179,10 @@ class cmd_status(Command):
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
             versioned=False):
         from bzrlib.status import show_tree_status
+
+        if revision and len(revision) > 2:
+            raise errors.BzrCommandError('bzr status --revision takes exactly'
+                                         ' one or two revision specifiers')
 
         tree, file_list = tree_files(file_list)
             
@@ -1417,6 +1421,7 @@ class cmd_diff(Command):
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
+        'change',
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -2194,6 +2199,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
+              Option('show-diff',
+                     help='When no message is supplied, show the diff along'
+                     ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2221,12 +2229,20 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None):
-        from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
-        from bzrlib.errors import (PointlessCommit, ConflictsInTree,
-                StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message, \
-                make_commit_message_template
+            author=None, show_diff=False):
+        from bzrlib.commit import (
+            NullCommitReporter,
+            ReportCommitToLog
+        )
+        from bzrlib.errors import (
+            PointlessCommit,
+            ConflictsInTree,
+            StrictCommitFailed
+        )
+        from bzrlib.msgeditor import (
+            edit_commit_message_encoded,
+            make_commit_message_template_encoded
+        )
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -2254,8 +2270,10 @@ class cmd_commit(Command):
             """Callback to get commit message"""
             my_message = message
             if my_message is None and not file:
-                template = make_commit_message_template(tree, selected_list)
-                my_message = edit_commit_message(template)
+                t = make_commit_message_template_encoded(tree,
+                        selected_list, diff=show_diff,
+                        output_encoding=bzrlib.user_encoding)
+                my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -3004,6 +3022,10 @@ class cmd_revert(Command):
     from the target revision.  So you can use revert to "undelete" a file by
     name.  If you name a directory, all the contents of that directory will be
     reverted.
+
+    Any files that have been newly added since that revision will be deleted,
+    with a backup kept if appropriate.  Directories containing unknown files
+    will not be deleted.
     """
 
     _see_also = ['cat', 'export']
@@ -3909,6 +3931,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No public branch specified or'
                                              ' known')
             base_revision_id = None
+            revision_id = None
             if revision is not None:
                 if len(revision) > 2:
                     raise errors.BzrCommandError('bzr send takes '
@@ -3916,10 +3939,8 @@ class cmd_send(Command):
                 revision_id = revision[-1].in_history(branch).rev_id
                 if len(revision) == 2:
                     base_revision_id = revision[0].in_history(branch).rev_id
-                    base_revision_id = ensure_null(base_revision_id)
-            else:
+            if revision_id is None:
                 revision_id = branch.last_revision()
-            revision_id = ensure_null(revision_id)
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
             if format == '4':

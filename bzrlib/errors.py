@@ -1000,6 +1000,11 @@ class NotLeftParentDescendant(BzrError):
                           new_revision=new_revision)
 
 
+class RangeInChangeOption(BzrError):
+
+    _fmt = "Option --change does not accept revision ranges"
+
+
 class NoSuchRevisionSpec(BzrError):
 
     _fmt = "No namespace registered for string: %(spec)r"
@@ -1328,7 +1333,6 @@ class KnitHeaderError(KnitError):
         KnitError.__init__(self)
         self.badline = badline
         self.filename = filename
-
 
 class KnitIndexUnknownMethod(KnitError):
     """Raised when we don't understand the storage method.

@@ -122,6 +122,23 @@ class TestFileIds(TestCaseWithTree):
             tree.unlock()
 
 
+class TestFileContent(TestCaseWithTree):
+
+    def test_get_file(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        try:
+            # Test lookup without path works
+            lines = tree.get_file('a-id').readlines()
+            self.assertEqual(['foobar\n'], lines)
+            # Test lookup with path works
+            lines = tree.get_file('a-id', path='a').readlines()
+            self.assertEqual(['foobar\n'], lines)
+        finally:
+            tree.unlock()
+
+
 class TestExtractFilesBytes(TestCaseWithTree):
 
     def test_iter_files_bytes(self):

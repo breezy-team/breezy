@@ -45,10 +45,6 @@ import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
 
-lazy_import(globals(), """
-from bzrlib import remote
-""")
-
 # TODO: Avoid repeatedly opening weaves so many times.
 
 # XXX: This doesn't handle ghost (not present in branch) revisions at
