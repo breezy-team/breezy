@@ -85,6 +85,8 @@ def register_command(cmd, decorate=False):
     else:
         trace.log_error('Two plugins defined the same command: %r' % k)
         trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+        trace.log_error('Previously this command was registered from %r' %
+                        sys.modules[plugin_cmds[k_unsquished].__module__])
 
 
 def _squish_command_name(cmd):

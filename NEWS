@@ -113,6 +113,9 @@ IN DEVELOPMENT
       Unknown ignored files will be deleted without needing ``--force``.
       (Marius Kruger, #111665)
 
+    * When two plugins conflict, the source of both the losing and now the
+      winning definition is shown.  (Konstantin Mikhaylov, #5454)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
