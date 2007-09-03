@@ -1623,20 +1623,20 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
 
     def test_body_stream_serialisation_empty(self):
         """A body_stream with no bytes can be serialised."""
-        self.assertBodyStreamSerialisation('0\n', [])
+        self.assertBodyStreamSerialisation('END\n', [])
 
     def test_body_stream_serialisation(self):
         self.assertBodyStreamSerialisation(
-            '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' + '0\n',
+            '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' + 'END\n',
             ['chunk one', 'chunk two', 'chunk three'])
 
     def test_body_stream_with_empty_element_serialisation(self):
-        """A body stream that includes '' does not prematurely end the stream.
+        """A body stream can include ''.
 
-        If the body stream yields an empty string, the protocol should not send
-        an empty chunk, because that is the signal for end-of-stream.
+        The empty string can be transmitted like any other string.
         """
-        self.assertBodyStreamSerialisation('5\nchunk' + '0\n', ['', 'chunk'])
+        self.assertBodyStreamSerialisation(
+            '0\n' + '5\nchunk' + 'END\n', ['', 'chunk'])
 
     def test_body_stream_error_serialistion(self):
         stream = ['first chunk',
@@ -1891,7 +1891,7 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
 
     def test_streamed_body_bytes(self):
         two_body_chunks = "4\n1234" + "3\n567"
-        body_terminator = "0\n"
+        body_terminator = "END\n"
         server_bytes = (protocol.RESPONSE_VERSION_TWO +
                         "success\nok\n" + two_body_chunks + body_terminator)
         input = StringIO(server_bytes)
@@ -1909,7 +1909,7 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         a_body_chunk = '4\naaaa'
         err_signal = 'ERR\n'
         err_chunks = 'a\nerror arg1' + '4\narg2'
-        finish = '0\n'
+        finish = 'END\n'
         body = a_body_chunk + err_signal + err_chunks + finish
         server_bytes = (protocol.RESPONSE_VERSION_TWO +
                         "success\nok\n" + body)
@@ -2044,7 +2044,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
     def test_empty_content(self):
         """'0' + LF is the complete chunked encoding of a zero-length body."""
         decoder = protocol.ChunkedBodyDecoder()
-        decoder.accept_bytes('0\n')
+        decoder.accept_bytes('END\n')
         self.assertTrue(decoder.finished_reading)
         self.assertEqual(None, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
@@ -2054,7 +2054,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         chunk_length = 'f\n'
         chunk_content = '123456789abcdef'
-        finish = '0\n'
+        finish = 'END\n'
         decoder.accept_bytes(chunk_length + chunk_content + finish)
         self.assertTrue(decoder.finished_reading)
         self.assertEqual(chunk_content, decoder.read_next_chunk())
@@ -2070,9 +2070,10 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder.accept_bytes(chunk_length + three_bytes)
         self.assertFalse(decoder.finished_reading)
         self.assertEqual(
-            5 + 2, decoder.next_read_size(),
+            5 + 4, decoder.next_read_size(),
             "The next_read_size hint should be the number of missing bytes in "
-            "this chunk plus 2 (the shortest possible next chunk: '0\\n')")
+            "this chunk plus 4 (the length of the end-of-body marker: "
+            "'END\\n')")
         self.assertEqual(None, decoder.read_next_chunk())
 
     def test_incomplete_length(self):
@@ -2086,9 +2087,9 @@ class TestChunkedBodyDecoder(tests.TestCase):
             "length yet.")
         decoder.accept_bytes('\n')
         self.assertEqual(
-            9 + 2, decoder.next_read_size(),
-            "The next_read_size hint should be the length of the chunk plus 2 "
-            "(the shortest possible next chunk: '0\\n')")
+            9 + 4, decoder.next_read_size(),
+            "The next_read_size hint should be the length of the chunk plus 4 "
+            "(the length of the end-of-body marker: 'END\\n')")
         self.assertFalse(decoder.finished_reading)
         self.assertEqual(None, decoder.read_next_chunk())
 
@@ -2097,7 +2098,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         chunk_one = '3\naaa'
         chunk_two = '5\nbbbbb'
-        finish = '0\n'
+        finish = 'END\n'
         decoder.accept_bytes(chunk_one + chunk_two + finish)
         self.assertTrue(decoder.finished_reading)
         self.assertEqual('aaa', decoder.read_next_chunk())
@@ -2108,7 +2109,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
     def test_excess_bytes(self):
         """Bytes after the chunked body are reported as unused bytes."""
         decoder = protocol.ChunkedBodyDecoder()
-        chunked_body = "5\naaaaa0\n"
+        chunked_body = "5\naaaaaEND\n"
         excess_bytes = "excess bytes"
         decoder.accept_bytes(chunked_body + excess_bytes)
         self.assertTrue(decoder.finished_reading)
@@ -2124,7 +2125,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         length = 0x123
         chunk_prefix = hex(length) + '\n'
         chunk_bytes = 'z' * length
-        finish = '0\n'
+        finish = 'END\n'
         decoder.accept_bytes(chunk_prefix + chunk_bytes + finish)
         self.assertTrue(decoder.finished_reading)
         self.assertEqual(chunk_bytes, decoder.read_next_chunk())
@@ -2140,7 +2141,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         chunk_length = 'f\n'
         chunk_content = '123456789abcdef'
-        finish = '0\n'
+        finish = 'END\n'
         for byte in (chunk_length + chunk_content + finish):
             decoder.accept_bytes(byte)
         self.assertTrue(decoder.finished_reading)
@@ -2152,7 +2153,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         decoder = protocol.ChunkedBodyDecoder()
         chunk_one = '3\naaa'
         chunk_two = '3\nbbb'
-        finish = '0\n'
+        finish = 'END\n'
         decoder.accept_bytes(chunk_one)
         self.assertEqual('aaa', decoder.read_next_chunk())
         decoder.accept_bytes(chunk_two)
@@ -2164,7 +2165,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         chunk_one = 'b\nfirst chunk'
         error_signal = 'ERR\n'
         error_chunks = '5\npart1' + '5\npart2'
-        finish = '0\n'
+        finish = 'END\n'
         decoder.accept_bytes(chunk_one + error_signal + error_chunks + finish)
         self.assertTrue(decoder.finished_reading)
         self.assertEqual('first chunk', decoder.read_next_chunk())

@@ -216,10 +216,6 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
 def _send_chunks(stream, write_func):
     for chunk in stream:
         if isinstance(chunk, str):
-            if chunk == '':
-                # Skip empty chunks, as they would prematurely signal
-                # end-of-stream, and they're redundant anyway.
-                continue
             bytes = "%x\n%s" % (len(chunk), chunk)
             write_func(bytes)
         elif isinstance(chunk, request.FailedSmartServerResponse):
@@ -229,7 +225,7 @@ def _send_chunks(stream, write_func):
             raise BzrError(
                 'Chunks must be str or FailedSmartServerResponse, got %r'
                 % chunks)
-    write_func('0\n')
+    write_func('END\n')
 
 
 class _StatefulDecoder(object):
@@ -287,11 +283,12 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         self.error_in_progress = None
     
     def next_read_size(self):
-        # Note: the shortest possible chunk is 2 bytes: '0\n'.
+        # Note: the shortest possible chunk is 2 bytes: '0\n', and the
+        # end-of-body marker is 4 bytes: 'END\n'.
         if self.state_accept == self._state_accept_reading_chunk:
             # We're expecting more chunk content.  So we're expecting at least
-            # the rest of this chunk plus another chunk header.
-            return self.bytes_left + 2
+            # the rest of this chunk plus an END chunk.
+            return self.bytes_left + 4
         elif self.state_accept == self._state_accept_expecting_length:
             if self._in_buffer == '':
                 # We're expecting a chunk length.  There's at least two bytes
@@ -345,15 +342,16 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.error_in_progress = []
             self._state_accept_expecting_length('')
             return
-        self.bytes_left = int(prefix, 16)
-        if self.bytes_left == 0:
+        elif prefix == 'END':
             # We've read the end-of-body marker.
             # Any further bytes are unused data, including the bytes left in
             # the _in_buffer.
             self._finished()
             return
-        self.chunk_in_progress = ''
-        self.state_accept = self._state_accept_reading_chunk
+        else:
+            self.bytes_left = int(prefix, 16)
+            self.chunk_in_progress = ''
+            self.state_accept = self._state_accept_reading_chunk
 
     def _state_accept_reading_chunk(self, bytes):
         self._in_buffer += bytes
