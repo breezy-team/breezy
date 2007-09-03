@@ -242,21 +242,11 @@ _global_options = \
 These options may be used with any command, and may appear in front of any
 command.  (e.g. "bzr --profile help").
 
---version      Print the version number.
-
+--version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
-
--Devil         Capture call sites that do expensive or badly-scaling
-               operations.
--Derror        Instead of normal error handling, always print a traceback on
-               error.
--Dhooks        Trace hook execution.
--Dhpss         Trace smart protocol requests and responses.
--Dindex        Trace major index operations.
--Dlock         Trace when lockdir locks are taken or released.
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -268,8 +258,17 @@ command.  (e.g. "bzr --profile help").
                will be a pickle.
 
 See doc/developers/profiling.txt for more information on profiling.
+A number of debug flags are also available to assist troubleshooting and
+development.
 
-Note: --version must be supplied before any command.
+-Derror        Instead of normal error handling, always print a traceback on
+               error.
+-Devil         Capture call sites that do expensive or badly-scaling
+               operations.
+-Dhooks        Trace hook execution.
+-Dhpss         Trace smart protocol requests and responses.
+-Dindex        Trace major index operations.
+-Dlock         Trace when lockdir locks are taken or released.
 """
 
 _standard_options = \
@@ -281,8 +280,7 @@ Standard options are legal for all commands.
 --verbose, -v  Display more information.
 --quiet, -q    Only display errors and warnings.
 
-Unlike global options, standard options can be used in aliases and
-may have more explicit help on a per command basis.
+Unlike global options, standard options can be used in aliases.
 """
 
 
@@ -529,7 +527,7 @@ topic_registry.register('formats', get_format_topic, 'Directory formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
-                    'Options that are applied before the command is processed')
+                    'Options that control how Bazaar runs')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,
