@@ -34,8 +34,11 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory, KnitPlainFactory
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitAnnotateFactory,
+    KnitPlainFactory,
+    )
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -81,18 +84,14 @@ class VersionedFileTestMixIn(object):
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}
-        parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
+        _, _, parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
         try:
-            parent_texts['r1'] = f.add_lines_with_ghosts('r1',
-                                                         ['r0', 'ghost'], 
-                                                         ['b\n', 'c\n'],
-                                                         parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines_with_ghosts('r1',
+                ['r0', 'ghost'], ['b\n', 'c\n'], parent_texts=parent_texts)
         except NotImplementedError:
             # if the format doesn't support ghosts, just add normally.
-            parent_texts['r1'] = f.add_lines('r1',
-                                             ['r0'], 
-                                             ['b\n', 'c\n'],
-                                             parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines('r1',
+                ['r0'], ['b\n', 'c\n'], parent_texts=parent_texts)
         f.add_lines('r2', ['r1'], ['c\n', 'd\n'], parent_texts=parent_texts)
         self.assertNotEqual(None, parent_texts['r0'])
         self.assertNotEqual(None, parent_texts['r1'])
@@ -167,6 +166,26 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(errors.ReservedId,
             vf.add_delta, 'a:', [], None, 'sha1', False, ((0, 0, 0, []),))
+
+    def test_add_lines_return_value(self):
+        # add_lines should return the sha1 and the text size.
+        vf = self.get_file()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        # check results for the three cases:
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            # the first two elements are the same for all versioned files:
+            # - the digest and the size of the text. For some versioned files
+            #   additional data is returned in additional tuple elements.
+            result = vf.add_lines(version, [], lines)
+            self.assertEqual(3, len(result))
+            self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+                result[0:2])
+        # parents should not affect the result:
+        lines = sample_text_nl[1]
+        self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+            vf.add_lines('d', ['b', 'c'], lines)[0:2])
 
     def test_get_reserved(self):
         vf = self.get_file()
@@ -881,8 +900,8 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return self.get_factory()(name, get_transport(self.get_url('.')),
+                                  delta=True, create=True)
 
     def get_factory(self):
         return KnitVersionedFile
@@ -894,7 +913,7 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo', create=False):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return self.get_factory()(name, get_transport(self.get_url('.')),
             delta=True,
             create=create)
 
@@ -907,6 +926,19 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
                           KnitVersionedFile,
                           'foo',
                           get_transport(self.get_url('.')))
+
+
+class TestPlaintextKnit(TestKnit):
+    """Test a knit with no cached annotations"""
+
+    def _factory(self, name, transport, file_mode=None, access_mode=None,
+                 delta=True, create=False):
+        return KnitVersionedFile(name, transport, file_mode, access_mode,
+                                 KnitPlainFactory(), delta=delta,
+                                 create=create)
+
+    def get_factory(self):
+        return self._factory
 
 
 class InterString(versionedfile.InterVersionedFile):

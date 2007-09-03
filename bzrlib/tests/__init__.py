@@ -135,6 +135,7 @@ def packages_to_test():
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
+    import bzrlib.tests.inventory_implementations
     import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
@@ -149,6 +150,7 @@ def packages_to_test():
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
+            bzrlib.tests.inventory_implementations,
             bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
@@ -374,7 +376,6 @@ class ExtendedTestResult(unittest._TextTestResult):
     def wasStrictlySuccessful(self):
         if self.unsupported or self.known_failure_count:
             return False
-
         return self.wasSuccessful()
 
 
@@ -2077,7 +2078,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         else:
             self.failIf(osutils.lexists(path),path+" exists")
 
-    def assertInWorkingTree(self,path,root_path='.',tree=None):
+    def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2088,7 +2089,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
 
-    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
