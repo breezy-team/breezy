@@ -7,6 +7,8 @@ bzr-svn 0.4.2	UNRELEASED
    * Export version information so the version is displayed properly 
      in "bzr plugins".
 
+   * Avoid deprecated static BzrDir.create_repository().
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES
