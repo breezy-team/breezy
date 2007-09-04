@@ -154,6 +154,11 @@ IN DEVELOPMENT
    * If versioned files match a given ignore pattern, a warning is now
      given. (Daniel Watkins, #48623)
 
+   * ``bzr status`` now has -S as a short name for --short and -V as a
+     short name for --versioned. These have been added to assist users
+     migrating from Subversion: ``bzr status -SV`` is now like
+     ``svn status -q``.  (Daniel Watkins, #115990)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
