@@ -86,6 +86,9 @@ import bzrlib.ui
 class NullCommitReporter(object):
     """I report on progress of a commit."""
 
+    def started(self, revno, revid, location=None):
+        pass
+
     def snapshot_change(self, change, path):
         pass
 
@@ -121,12 +124,15 @@ class ReportCommitToLog(NullCommitReporter):
             return
         self._note("%s %s", change, path)
 
-    def completed(self, revno, rev_id, location=None):
+    def started(self, revno, rev_id, location=None):
         if location is not None:
             location = ' to "' + location + '"'
         else:
             location = ''
-        self._note('Committed revision %d%s.', revno, location)
+        self._note('Committing revision %d%s.', revno, location)
+
+    def completed(self, revno, rev_id):
+        self._note('Committed revision %d.', revno)
     
     def deleted(self, file_id):
         self._note('deleted %s', file_id)
@@ -324,8 +330,6 @@ class Commit(object):
                 self.work_tree.branch.repository.abort_write_group()
                 raise
 
-            master_location = None
-
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
@@ -337,7 +341,6 @@ class Commit(object):
                 # local branch to be out of date
                 self.master_branch.set_last_revision_info(new_revno,
                                                           self.rev_id)
-                master_location = self.branch.get_bound_location()
 
             # and now do the commit locally.
             self.branch.set_last_revision_info(new_revno, self.rev_id)
@@ -346,7 +349,7 @@ class Commit(object):
             self._set_progress_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
-            self.reporter.completed(new_revno, self.rev_id, master_location)
+            self.reporter.completed(new_revno, self.rev_id)
             self._process_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
