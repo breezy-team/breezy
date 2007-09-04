@@ -18,8 +18,8 @@
 import bzrlib
 from bzrlib import osutils, ui
 from bzrlib.branch import BranchCheckResult
-from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
-                           NotBranchError, UninitializableFormat)
+from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
+                           UninitializableFormat, UnrelatedBranches)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -303,6 +303,14 @@ class SvnRepository(Repository):
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
+
+    def lhs_missing_revisions(self, revhistory, stop_revision):
+        for revid in revhistory:
+            if not self.has_revision(revid):
+                yield revid
+            if revid == stop_revision:
+                return
+        raise UnrelatedBranches()
     
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)

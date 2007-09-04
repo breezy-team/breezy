@@ -735,7 +735,7 @@ class InterToSvnRepository(InterRepository):
         """See InterRepository._get_repo_format_to_test()."""
         return None
 
-    def copy_content(self, revision_id=None, basis=None, pb=None):
+    def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
         assert revision_id is not None, "fetching all revisions not supported"
         # Go back over the LHS parent until we reach a revid we know

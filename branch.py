@@ -190,15 +190,14 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        self._revision_history = []
+        revhistory = []
         for (branch, rev) in self.repository.follow_branch(
                 self.get_branch_path(last_revnum), last_revnum, self.scheme):
-            self._revision_history.append(
+            revhistory.append(
                 self.repository.generate_revision_id(rev, branch, 
                     str(self.scheme)))
-        self._revision_history.reverse()
-        self._revision_history_revnum = last_revnum
-        self.repository.revmap.insert_revision_history(self._revision_history)
+        revhistory.reverse()
+        return revhistory
 
     def _get_nick(self):
         """Find the nick name for this branch.
@@ -256,7 +255,9 @@ class SvnBranch(Branch):
             last_revnum = self.get_revnum()
         if (self._revision_history is None or 
             self._revision_history_revnum != last_revnum):
-            self._generate_revision_history(last_revnum)
+            self._revision_history = self._generate_revision_history(last_revnum)
+            self._revision_history_revnum = last_revnum
+            self.repository.revmap.insert_revision_history(self._revision_history)
         return self._revision_history
 
     def last_revision(self):
@@ -333,25 +334,26 @@ class SvnBranch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions()."""
+        if stop_revision is None:
+            stop_revision = other.last_revision()
         if (self.last_revision() == stop_revision or
             self.last_revision() == other.last_revision()):
             return
-        if isinstance(other, SvnBranch) and \
-            other.repository.uuid == self.repository.uuid:
-            # FIXME: Make sure branches haven't diverged
-            # FIXME: svn.ra.del_dir(self.base_path)
-            # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
-            raise NotImplementedError(self.pull)
-        else:
-            todo = self.missing_revisions(other, stop_revision)
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for rev_id in todo:
-                    pb.update("pushing revisions", todo.index(rev_id), 
-                              len(todo))
-                    push(self, other, rev_id)
-            finally:
-                pb.finished()
+        if not other.repository.get_graph().is_ancestor(self.last_revision(), 
+                                                        stop_revision):
+            if self.repository.get_graph().is_ancestor(stop_revision, 
+                                                       self.last_revision()):
+                return
+            raise DivergedBranches(self, other)
+        todo = list(self.repository.lhs_missing_revisions(other.revision_history(), stop_revision))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for revid in todo:
+                pb.update("pushing revisions", todo.index(revid), 
+                          len(todo))
+                push(self, other, revid)
+        finally:
+            pb.finished()
 
     def lock_write(self):
         """See Branch.lock_write()."""
