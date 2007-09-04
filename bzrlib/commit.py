@@ -300,13 +300,22 @@ class Commit(object):
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
-            
+
             # Collect the changes
             self._set_progress_stage("Collecting changes",
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             try:
+                # find the location being committed to
+                if self.bound_branch:
+                    master_location = self.master_branch.base
+                else:
+                    master_location = self.branch.base
+
+                # report the start of the commit
+                self.reporter.started(new_revno, self.rev_id, master_location)
+
                 self._update_builder_with_changes()
                 self._check_pointless()
 
