@@ -54,7 +54,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     else:
         print >>to_file, bzrlib.__path__[0]
     if show_config:
-        print >>to_file, "  Bazaar configuration:", config.config_dir()
+        config_dir = os.path.normpath(config.config_dir())  # use native slashes
+        if not isinstance(config_dir, unicode):
+            config_dir = config_dir.decode(bzrlib.user_encoding)
+        print >>to_file, "  Bazaar configuration:", config_dir
         print >>to_file, "  Bazaar log file:", trace._bzr_log_filename
     if show_copyright:
         print >>to_file
