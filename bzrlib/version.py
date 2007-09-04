@@ -43,8 +43,22 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         print >>to_file, "    revision:", revno
         print >>to_file, "    revid:", src_revision_id
         print >>to_file, "    branch nick:", src_tree.branch.nick
+
     print >>to_file, "  Python interpreter:",
-    print >>to_file, sys.executable, '.'.join(map(str, sys.version_info))
+    # show path to python interpreter
+    # (bzr.exe use python interpreter from pythonXY.dll
+    # but sys.executable point to bzr.exe itself)
+    if not hasattr(sys, 'frozen'):  # check for bzr.exe
+        # python executable
+        print >>to_file, sys.executable,
+    else:
+        # pythonXY.dll
+        basedir = os.path.dirname(sys.executable)
+        python_dll = "python%d%d.dll" % sys.version_info[:2]
+        print >>to_file, os.path.join(basedir, python_dll),
+    # and now version of python interpreter
+    print >>to_file, '.'.join(map(str, sys.version_info))
+
     print >>to_file, "  Python standard library:", os.path.dirname(os.__file__)
     print >>to_file, "  bzrlib:",
     if len(bzrlib.__path__) > 1:
