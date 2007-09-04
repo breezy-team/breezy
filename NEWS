@@ -159,13 +159,17 @@ IN DEVELOPMENT
      migrating from Subversion: ``bzr status -SV`` is now like
      ``svn status -q``.  (Daniel Watkins, #115990)
 
-   * ``commit`` is now less verbose by default showing just the
-     "Committed revision n" message. Use -v or --verbose to get the
-     previous amount of output. A side effect of this change is a speed
-     improvement of over 50% on initial commits on a tree of 3700 files.
-     Even when the output is redirected to /dev/null, a 10-15% improvement
-     is realised as certain output is no longer calculated unless verbose
-     mode is being used. (Ian Clatworthy)
+   * Initial commit is now less verbose by default showing just the
+     "Committed revision n" message and the count of changes. To get
+     the complete list of added files, use ``--verbose`` or ``-v``.
+     A side effect of this change is a speed improvement of over 50% on
+     initial commits on a tree of 3700 files. Even when the output is
+     redirected to /dev/null, a 10-15% improvement is realised as certain
+     output is no longer calculated unless verbose mode is being used.
+     (Ian Clatworthy)
+
+   * ``bzr commit -v`` now shows the total number of changes made
+     when it reports the committed revision number. (Ian Clatworthy)
 
   API BREAKS:
 
