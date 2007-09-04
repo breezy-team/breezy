@@ -116,8 +116,8 @@ class MapTree:
         return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
                                           path=path)
 
-    def get_file(self, file_id):
-        return self.oldtree.get_file(self.old_id(file_id=file_id))
+    def get_file(self, file_id, path=None):
+        return self.oldtree.get_file(self.old_id(file_id=file_id), path)
 
     def is_executable(self, file_id, path=None):
         return self.oldtree.is_executable(self.old_id(file_id=file_id), 
