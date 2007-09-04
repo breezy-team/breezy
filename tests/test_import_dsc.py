@@ -20,6 +20,7 @@
 
 import os
 import shutil
+import stat
 import tarfile
 
 from bzrlib.config import ConfigObj
@@ -65,6 +66,10 @@ class TestDscImporter(TestCaseWithTransport):
 
   config_files = ['.bzr-builddeb/', '.bzr-builddeb/default.conf']
 
+  def assertRulesExecutable(self, tree):
+    """Checks that the debian/rules in the tree is executable"""
+    self.assertTrue(tree.is_executable(tree.path2id('debian/rules')))
+
   def make_base_package(self):
     os.mkdir(self.basedir)
     write_to_file(os.path.join(self.basedir, 'README'), 'hello\n')
@@ -100,6 +105,7 @@ class TestDscImporter(TestCaseWithTransport):
                   'version 1-1\n')
     write_to_file(os.path.join(diffdir, 'debian', 'install'), 'install\n')
     write_to_file(os.path.join(diffdir, 'Makefile'), 'good command\n')
+    write_to_file(os.path.join(diffdir, 'debian', 'rules'), '\n')
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_1))
 
@@ -128,6 +134,7 @@ class TestDscImporter(TestCaseWithTransport):
     write_to_file(os.path.join(diffdir, 'debian', 'changelog'),
                   'version 1-1\nversion 1-2\nversion 1-3\nversion 2-1\n')
     write_to_file(os.path.join(diffdir, 'debian', 'install'), 'install\n')
+    write_to_file(os.path.join(diffdir, 'debian', 'rules'), '\n')
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_2))
 
@@ -221,7 +228,7 @@ Files:
     tree = WorkingTree.open(self.target)
     tree.lock_read()
     expected_inv = ['README', 'CHANGELOG', 'Makefile', 'debian/',
-                    'debian/changelog', 'debian/install']
+                    'debian/changelog', 'debian/install', 'debian/rules']
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
     finally:
@@ -234,6 +241,7 @@ Files:
                            'version 1-1\n')
     self.assertEqual(tree.changes_from(tree.basis_tree()).has_changed(),
                      False)
+    self.assertRulesExecutable(tree)
 
   def test_import_one_dsc_history(self):
     self.import_dsc_1()
@@ -245,7 +253,8 @@ Files:
     self.check_revision_message(tree, rh[1],
                           'merge packaging changes from %s' % self.diff_1)
     changes = tree.changes_from(tree.branch.repository.revision_tree(rh[0]))
-    expected_added = ['debian/', 'debian/changelog', 'debian/install']
+    expected_added = ['debian/', 'debian/changelog', 'debian/install',
+                      'debian/rules']
     expected_modified = ['Makefile']
     self.check_changes(changes, added=expected_added,
                        modified=expected_modified)
@@ -258,7 +267,7 @@ Files:
     tree = WorkingTree.open(self.target)
     tree.lock_read()
     expected_inv = ['README', 'CHANGELOG', 'Makefile', 'debian/',
-                    'debian/changelog', 'debian/control']
+                    'debian/changelog', 'debian/control', 'debian/rules']
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
     finally:
@@ -271,6 +280,7 @@ Files:
                            'version 1-1\nversion 1-2\n')
     self.assertEqual(tree.changes_from(tree.basis_tree()).has_changed(),
                      False)
+    self.assertRulesExecutable(tree)
 
   def test_import_two_dsc_one_upstream_history(self):
     self.import_dsc_1b()
@@ -283,12 +293,14 @@ Files:
                           'merge packaging changes from %s' % self.diff_1)
     self.check_revision_message(tree, rh[2],
                           'merge packaging changes from %s' % self.diff_1b)
-    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
+    prev_tree = tree.branch.repository.revision_tree(rh[1])
+    changes = tree.changes_from(prev_tree)
     expected_added = ['debian/control']
     expected_removed = ['debian/install']
     expected_modified = ['debian/changelog']
     self.check_changes(changes, added=expected_added,
                        removed=expected_removed, modified=expected_modified)
+    self.assertRulesExecutable(prev_tree)
 
   def test_import_two_dsc_one_upstream_history_repeated_diff(self):
     self.import_dsc_1b_repeated_diff()
@@ -301,12 +313,14 @@ Files:
                           'merge packaging changes from %s' % self.diff_1)
     self.check_revision_message(tree, rh[2],
                           'merge packaging changes from %s' % self.diff_1b)
-    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
+    prev_tree = tree.branch.repository.revision_tree(rh[1])
+    changes = tree.changes_from(prev_tree)
     expected_added = ['debian/control']
     expected_removed = ['debian/install']
     expected_modified = ['debian/changelog']
     self.check_changes(changes, added=expected_added,
                        removed=expected_removed, modified=expected_modified)
+    self.assertRulesExecutable(prev_tree)
 
   def test_import_three_dsc_one_upstream_tree(self):
     self.import_dsc_1c()
@@ -315,7 +329,7 @@ Files:
     tree.lock_read()
     expected_inv = ['README', 'CHANGELOG', 'Makefile', 'from_debian',
                     'debian/', 'debian/changelog', 'debian/control',
-                    'debian/install']
+                    'debian/install', 'debian/rules']
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
     finally:
@@ -328,6 +342,7 @@ Files:
                            'version 1-1\nversion 1-2\nversion 1-3\n')
     self.assertEqual(tree.changes_from(tree.basis_tree()).has_changed(),
                      False)
+    self.assertRulesExecutable(tree)
 
   def test_import_three_dsc_one_upstream_history(self):
     self.import_dsc_1c()
@@ -342,11 +357,13 @@ Files:
                           'merge packaging changes from %s' % self.diff_1b)
     self.check_revision_message(tree, rh[3],
                           'merge packaging changes from %s' % self.diff_1c)
-    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[2]))
+    prev_tree = tree.branch.repository.revision_tree(rh[2])
+    changes = tree.changes_from(prev_tree)
     expected_added = ['debian/install', 'from_debian']
     expected_modified = ['debian/changelog']
     self.check_changes(changes, added=expected_added,
                        modified=expected_modified)
+    self.assertRulesExecutable(prev_tree)
 
   def test_import_three_dsc_two_upstream_tree(self):
     self.import_dsc_2()
@@ -354,7 +371,8 @@ Files:
     tree = WorkingTree.open(self.target)
     tree.lock_read()
     expected_inv = ['README', 'CHANGELOG', 'Makefile', 'NEWS', 'from_debian',
-                    'debian/', 'debian/changelog', 'debian/install']
+                    'debian/', 'debian/changelog', 'debian/install',
+                    'debian/rules']
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
     finally:
@@ -367,6 +385,7 @@ Files:
                      'version 1-1\nversion 1-2\nversion 1-3\nversion 2-1\n')
     self.assertEqual(tree.changes_from(tree.basis_tree()).has_changed(),
                      False)
+    self.assertRulesExecutable(tree)
 
   def assertContentsAre(self, filename, expected_contents):
     f = open(filename)
@@ -397,16 +416,19 @@ Files:
                      'merge packaging changes from %s' % self.diff_1c)
     # Check the diff against upstream.
     changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
-    expected_added = ['debian/', 'debian/changelog', 'debian/install']
+    expected_added = ['debian/', 'debian/changelog', 'debian/install',
+                      'debian/rules']
     self.check_changes(changes, added=expected_added)
     # Check the diff against last packaging version
-    changes = tree.changes_from(
-                 tree.branch.repository.revision_tree(parents[1]))
+    last_package_tree = tree.branch.repository.revision_tree(parents[1])
+    changes = tree.changes_from(last_package_tree)
     expected_added = ['NEWS']
     expected_removed = ['debian/control']
     expected_modified = ['debian/changelog']
     self.check_changes(changes, added=expected_added,
                        removed=expected_removed, modified=expected_modified)
+    self.assertRulesExecutable(tree)
+    self.assertRulesExecutable(last_package_tree)
 
   def test_import_dsc_restrictions_on_dscs(self):
     """Test that errors are raised for confusing sets of .dsc files."""
@@ -454,16 +476,19 @@ Files:
                      'merge packaging changes from %s' % self.diff_1c)
     # Check the diff against upstream.
     changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
-    expected_added = ['debian/', 'debian/changelog', 'debian/install']
+    expected_added = ['debian/', 'debian/changelog', 'debian/install',
+                      'debian/rules']
     self.check_changes(changes, added=expected_added)
     # Check the diff against last packaging version
-    changes = tree.changes_from(
-                 tree.branch.repository.revision_tree(parents[1]))
+    last_package_tree = tree.branch.repository.revision_tree(parents[1])
+    changes = tree.changes_from(last_package_tree)
     expected_added = ['NEWS']
     expected_removed = ['debian/control']
     expected_modified = ['debian/changelog']
     self.check_changes(changes, added=expected_added,
                        removed=expected_removed, modified=expected_modified)
+    self.assertRulesExecutable(tree)
+    self.assertRulesExecutable(last_package_tree)
 
   def test_import_dsc_different_dir(self):
     source = 'source'
@@ -476,19 +501,21 @@ Files:
     tree = WorkingTree.open(self.target)
     tree.lock_read()
     expected_inv = ['README', 'CHANGELOG', 'Makefile', 'debian/',
-                    'debian/changelog', 'debian/install']
+                    'debian/changelog', 'debian/install', 'debian/rules']
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
     finally:
       tree.unlock()
     for path in expected_inv:
       self.failUnlessExists(os.path.join(self.target, path))
+    self.assertRulesExecutable(tree)
 
   def make_native_dsc_1(self):
     self.make_base_package()
     os.mkdir(os.path.join(self.basedir, 'debian'))
     write_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
                   'version 1\n')
+    write_to_file(os.path.join(self.basedir, 'debian', 'rules'), '\n')
     tar = tarfile.open(self.native_1, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -500,6 +527,7 @@ Files:
     self.extend_base_package()
     append_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
                    'version 2\n')
+    write_to_file(os.path.join(self.basedir, 'debian', 'rules'), '\n')
     tar = tarfile.open(self.native_2, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -512,6 +540,7 @@ Files:
     os.mkdir(os.path.join(self.basedir, 'debian'))
     write_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
                   'version 1\nversion 2\n')
+    write_to_file(os.path.join(self.basedir, 'debian', 'rules'), '\n')
     tar = tarfile.open(self.native_2, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -525,7 +554,7 @@ Files:
     importer.import_dsc(self.target)
     tree = WorkingTree.open(self.target)
     expected_inv = ['CHANGELOG', 'README', 'Makefile', 'debian/',
-                    'debian/changelog'] + self.config_files
+                    'debian/changelog', 'debian/rules'] + self.config_files
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
@@ -537,6 +566,7 @@ Files:
                      os.path.basename(self.native_1))
     self.assertEqual(len(tree.get_parent_ids()), 1)
     self.check_is_native_in_config(tree)
+    self.assertRulesExecutable(tree)
 
   def test_import_dsc_native_double(self):
     self.make_native_dsc_1()
@@ -545,7 +575,8 @@ Files:
     importer.import_dsc(self.target)
     tree = WorkingTree.open(self.target)
     expected_inv = ['CHANGELOG', 'README', 'Makefile', 'NEWS', 'from_debian',
-                    'debian/', 'debian/changelog'] + self.config_files
+                    'debian/', 'debian/changelog', 'debian/rules'] \
+                   + self.config_files
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
@@ -568,6 +599,8 @@ Files:
     expected_modified = ['Makefile', 'debian/changelog']
     self.check_changes(changes, added=expected_added,
                        modified=expected_modified)
+    self.assertRulesExecutable(tree)
+    self.assertRulesExecutable(old_tree)
 
   def check_revision_message(self, tree, revision, expected_message):
     rev = tree.branch.repository.get_revision(revision)
@@ -580,7 +613,8 @@ Files:
     importer.import_dsc(self.target)
     tree = WorkingTree.open(self.target)
     expected_inv = ['CHANGELOG', 'README', 'Makefile', 'NEWS', 'from_debian',
-                    'debian/', 'debian/changelog'] + self.config_files
+                    'debian/', 'debian/changelog', 'debian/rules'] \
+                   + self.config_files
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
@@ -601,7 +635,8 @@ Files:
                      os.path.basename(self.diff_1))
     up_tree = tree.branch.repository.revision_tree(rh[0])
     changes = tree.changes_from(up_tree)
-    expected_added = ['NEWS', 'debian/', 'debian/changelog', 'from_debian']
+    expected_added = ['NEWS', 'debian/', 'debian/changelog', 'debian/rules',
+                      'from_debian']
     expected_added += self.config_files
     self.check_changes(changes, added=expected_added, modified=['Makefile'])
     package_tree = tree.branch.repository.revision_tree(parents[1])
@@ -614,6 +649,8 @@ Files:
     self.check_is_not_native_in_config(up_tree)
     self.check_is_not_native_in_config(package_tree)
     self.check_is_native_in_config(tree)
+    self.assertRulesExecutable(tree)
+    self.assertRulesExecutable(package_tree)
 
   def check_changes(self, changes, added=[], removed=[], modified=[],
                     renamed=[]):
@@ -676,7 +713,8 @@ Files:
     importer.import_dsc(self.target)
     tree = WorkingTree.open(self.target)
     expected_inv = ['CHANGELOG', 'README', 'Makefile', 'NEWS', 'from_debian',
-                    'debian/', 'debian/changelog', 'debian/install']
+                    'debian/', 'debian/changelog', 'debian/install',
+                    'debian/rules']
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory, expected_inv)
@@ -701,26 +739,31 @@ Files:
     self.assertEqual(len(parents), 1)
     up_tree = tree.branch.repository.revision_tree(rh[1])
     changes = tree.changes_from(up_tree)
-    expected_added = ['debian/', 'debian/changelog', 'debian/install']
+    expected_added = ['debian/', 'debian/changelog', 'debian/install',
+                      'debian/rules']
     self.check_changes(changes, added=expected_added)
     native_tree = tree.branch.repository.revision_tree(rh[0])
     changes = up_tree.changes_from(native_tree)
     expected_added = ['NEWS', 'from_debian']
     expected_modified = ['Makefile']
-    expected_removed = ['debian/', 'debian/changelog'] + self.config_files
+    expected_removed = ['debian/', 'debian/changelog', 'debian/rules'] \
+                       + self.config_files
     self.check_changes(changes, added=expected_added, removed=expected_removed,
                        modified=expected_modified)
     # FIXME: Should changelog etc. be added/removed or not?
     changes = tree.changes_from(native_tree)
     expected_added = ['NEWS', 'debian/', 'debian/install', 'from_debian',
-                      'debian/changelog']
+                      'debian/changelog', 'debian/rules']
     expected_modified = ['Makefile']
-    expected_removed = ['debian/', 'debian/changelog'] + self.config_files
+    expected_removed = ['debian/', 'debian/changelog', 'debian/rules'] \
+                       + self.config_files
     self.check_changes(changes, added=expected_added,
                        modified=expected_modified, removed=expected_removed)
     self.check_is_native_in_config(native_tree)
     self.check_is_not_native_in_config(up_tree)
     self.check_is_not_native_in_config(tree)
+    self.assertRulesExecutable(tree)
+    self.assertRulesExecutable(native_tree)
 
   def _get_tree_default_config(self, tree, fail_on_none=True):
     config_file_id = tree.path2id('.bzr-builddeb/default.conf')
