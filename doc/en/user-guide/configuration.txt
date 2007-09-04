@@ -207,6 +207,14 @@ By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
 will try ``xdg-email``. If either of these fails, it will fall back to
 ``editor``.
 
+Supported values for specific clients:
+
+:evolution: Use Evolution.
+:kmail: Use KMail.
+:mutt: Use Mutt.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+
 Supported generic values are:
 
 :default: See above.
@@ -215,14 +223,6 @@ Supported generic values are:
     smtp_username and smtp_password.
 :mapi: Use your preferred e-mail client on Windows.
 :xdg-email: Use xdg-email to run your preferred mail program
-
-There is also support for specific clients:
-
-:evolution: Use Evolution.
-:kmail: Use KMail.
-:mutt: Use Mutt.
-:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
-    this works around some bugs that xdg-email doesn't handle.
 
 submit_branch
 -------------
