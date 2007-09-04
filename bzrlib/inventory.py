@@ -167,7 +167,6 @@ class InventoryEntry(object):
         """Find possible per-file graph parents.
 
         This is currently defined by:
-         - The kind has not changed (* not sure why this is a clause *)
          - Select the last changed revision in the parent inventory.
          - Do deal with a short lived bug in bzr 0.8's development two entries
            that have the same last changed but different 'x' bit settings are
@@ -180,9 +179,6 @@ class InventoryEntry(object):
             if self.file_id in inv:
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
-                if ie.kind != self.kind:
-                    # Can't be a candidate if the kind has changed.
-                    continue
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
