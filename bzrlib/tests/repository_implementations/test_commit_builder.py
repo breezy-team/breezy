@@ -56,6 +56,17 @@ class TestCommitBuilder(TestCaseWithRepository):
         finally:
             tree.unlock()
 
+    def test_abort(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            self.record_root(builder, tree)
+            builder.finish_inventory()
+            builder.abort()
+        finally:
+            tree.unlock()
+
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()

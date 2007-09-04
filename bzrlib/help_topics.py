@@ -240,20 +240,16 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --quiet help").
+command.  (e.g. "bzr --profile help").
 
---quiet        Suppress informational output; only print errors and warnings
---version      Print the version number
-
---no-aliases   Do not process command aliases when running this command
+--version      Print the version number. Must be supplied before the command.
+--no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
-               This does not suppress other plugin effects
---no-plugins   Do not process any plugins
+               This does not suppress other plugin effects.
+--no-plugins   Do not process any plugins.
 
--Derror        Instead of normal error handling, always print a traceback on
-               error.
---profile      Profile execution using the hotshot profiler
---lsprof       Profile execution using the lsprof profiler
+--profile      Profile execution using the hotshot profiler.
+--lsprof       Profile execution using the lsprof profiler.
 --lsprof-file  Profile execution using the lsprof profiler, and write the
                results to a specified file.  If the filename ends with ".txt",
                text format will be used.  If the filename either starts with
@@ -262,9 +258,31 @@ command.  (e.g. "bzr --quiet help").
                will be a pickle.
 
 See doc/developers/profiling.txt for more information on profiling.
+A number of debug flags are also available to assist troubleshooting and
+development.
 
-Note: --version must be supplied before any command.
+-Derror        Instead of normal error handling, always print a traceback on
+               error.
+-Devil         Capture call sites that do expensive or badly-scaling
+               operations.
+-Dhooks        Trace hook execution.
+-Dhpss         Trace smart protocol requests and responses.
+-Dindex        Trace major index operations.
+-Dlock         Trace when lockdir locks are taken or released.
 """
+
+_standard_options = \
+"""Standard Options
+
+Standard options are legal for all commands.
+      
+--help, -h     Show help message.
+--verbose, -v  Display more information.
+--quiet, -q    Only display errors and warnings.
+
+Unlike global options, standard options can be used in aliases.
+"""
+
 
 _checkouts = \
 """Checkouts
@@ -506,8 +524,10 @@ def get_format_topic(topic):
     from bzrlib import bzrdir
     return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
-topic_registry.register('global-options', _global_options,
+topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
+topic_registry.register('global-options', _global_options,
+                    'Options that control how Bazaar runs')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,

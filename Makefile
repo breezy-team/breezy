@@ -31,7 +31,7 @@ extensions:
 check: docs extensions
 	python -Werror -O ./bzr selftest -1v $(tests)
 	@echo "Running all tests with no locale."
-	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests)
+	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
 
 check-msgeditor:
 	./bzr --no-plugins selftest -v msgeditor

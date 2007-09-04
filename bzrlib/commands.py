@@ -85,6 +85,8 @@ def register_command(cmd, decorate=False):
     else:
         trace.log_error('Two plugins defined the same command: %r' % k)
         trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+        trace.log_error('Previously this command was registered from %r' %
+                        sys.modules[plugin_cmds[k_unsquished].__module__])
 
 
 def _squish_command_name(cmd):
@@ -238,6 +240,8 @@ class Command(object):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
+        # List of standard options directly supported
+        self.supported_std_options = []
 
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
@@ -417,12 +421,14 @@ class Command(object):
         """Return dict of valid options for this command.
 
         Maps from long option name to option object."""
-        r = dict()
-        r['help'] = option._help_option
+        r = Option.STD_OPTIONS.copy()
+        std_names = r.keys()
         for o in self.takes_options:
             if isinstance(o, basestring):
                 o = option.Option.OPTIONS[o]
             r[o.name] = o
+            if o.name in std_names:
+                self.supported_std_options.append(o.name)
         return r
 
     def _setup_outf(self):
@@ -458,9 +464,21 @@ class Command(object):
                  DeprecationWarning, stacklevel=2)
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
+
+        # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
             sys.stdout.write(self.get_help_text())
             return 0
+        trace.set_verbosity_level(option._verbosity_level)
+        if 'verbose' in self.supported_std_options:
+            opts['verbose'] = trace.is_verbose()
+        elif opts.has_key('verbose'):
+            del opts['verbose']
+        if 'quiet' in self.supported_std_options:
+            opts['quiet'] = trace.is_quiet()
+        elif opts.has_key('quiet'):
+            del opts['quiet']
+
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -691,8 +709,6 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
-        elif a in ('--quiet', '-q'):
-            trace.be_quiet()
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
@@ -744,7 +760,7 @@ def run_bzr(argv):
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
-        trace.be_quiet(False)
+        option._verbosity_level = 0
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -770,7 +786,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    try:
+        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret

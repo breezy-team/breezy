@@ -130,9 +130,9 @@ class VersionedFile(object):
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.
-        :return: An opaque representation of the inserted version which can be
-                 provided back to future add_lines calls in the parent_texts
-                 dictionary.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future add_lines calls in the parent_texts dictionary.
         """
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
@@ -261,6 +261,13 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def get_format_signature(self):
+        """Get a text description of the data encoding in this file.
+        
+        :since: 0.19
+        """
+        raise NotImplementedError(self.get_format_signature)
+
     def make_mpdiffs(self, version_ids):
         """Create multiparent diffs for specified versions"""
         knit_versions = set()
@@ -311,7 +318,7 @@ class VersionedFile(object):
                     mpvf.get_diff(parent_ids[0]).num_lines()))
             else:
                 left_matching_blocks = None
-            version_text = self.add_lines(version, parent_ids, lines,
+            _, _, version_text = self.add_lines(version, parent_ids, lines,
                 vf_parents, left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
@@ -680,7 +687,7 @@ class InterVersionedFile(InterObject):
             # deltas = self.source.get_deltas(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                parent_text = target.add_lines(version,
+                _, _, parent_text = target.add_lines(version,
                                                self.source.get_parents(version),
                                                self.source.get_lines(version),
                                                parent_texts=parent_texts)

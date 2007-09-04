@@ -34,9 +34,12 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitAnnotateFactory,
+    KnitPlainFactory,
+    )
+from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -81,18 +84,14 @@ class VersionedFileTestMixIn(object):
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}
-        parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
+        _, _, parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
         try:
-            parent_texts['r1'] = f.add_lines_with_ghosts('r1',
-                                                         ['r0', 'ghost'], 
-                                                         ['b\n', 'c\n'],
-                                                         parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines_with_ghosts('r1',
+                ['r0', 'ghost'], ['b\n', 'c\n'], parent_texts=parent_texts)
         except NotImplementedError:
             # if the format doesn't support ghosts, just add normally.
-            parent_texts['r1'] = f.add_lines('r1',
-                                             ['r0'], 
-                                             ['b\n', 'c\n'],
-                                             parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines('r1',
+                ['r0'], ['b\n', 'c\n'], parent_texts=parent_texts)
         f.add_lines('r2', ['r1'], ['c\n', 'd\n'], parent_texts=parent_texts)
         self.assertNotEqual(None, parent_texts['r0'])
         self.assertNotEqual(None, parent_texts['r1'])
@@ -167,6 +166,26 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(errors.ReservedId,
             vf.add_delta, 'a:', [], None, 'sha1', False, ((0, 0, 0, []),))
+
+    def test_add_lines_return_value(self):
+        # add_lines should return the sha1 and the text size.
+        vf = self.get_file()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        # check results for the three cases:
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            # the first two elements are the same for all versioned files:
+            # - the digest and the size of the text. For some versioned files
+            #   additional data is returned in additional tuple elements.
+            result = vf.add_lines(version, [], lines)
+            self.assertEqual(3, len(result))
+            self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+                result[0:2])
+        # parents should not affect the result:
+        lines = sample_text_nl[1]
+        self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+            vf.add_lines('d', ['b', 'c'], lines)[0:2])
 
     def test_get_reserved(self):
         vf = self.get_file()
@@ -826,7 +845,7 @@ class VersionedFileTestMixIn(object):
                           vf.get_sha1s(['a', 'c', 'b']))
         
 
-class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -878,11 +897,11 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         return WeaveFile
 
 
-class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return self.get_factory()(name, get_transport(self.get_url('.')),
+                                  delta=True, create=True)
 
     def get_factory(self):
         return KnitVersionedFile
@@ -894,7 +913,7 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo', create=False):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return self.get_factory()(name, get_transport(self.get_url('.')),
             delta=True,
             create=create)
 
@@ -907,6 +926,19 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
                           KnitVersionedFile,
                           'foo',
                           get_transport(self.get_url('.')))
+
+
+class TestPlaintextKnit(TestKnit):
+    """Test a knit with no cached annotations"""
+
+    def _factory(self, name, transport, file_mode=None, access_mode=None,
+                 delta=True, create=False):
+        return KnitVersionedFile(name, transport, file_mode, access_mode,
+                                 KnitPlainFactory(), delta=delta,
+                                 create=create)
+
+    def get_factory(self):
+        return self._factory
 
 
 class InterString(versionedfile.InterVersionedFile):
@@ -927,7 +959,7 @@ class InterString(versionedfile.InterVersionedFile):
 # if we make the registry a separate class though we still need to 
 # test the behaviour in the active registry to catch failure-to-handle-
 # stange-objects
-class TestInterVersionedFile(TestCaseWithTransport):
+class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
     def test_get_default_inter_versionedfile(self):
         # test that the InterVersionedFile.get(a, b) probes
@@ -1247,7 +1279,7 @@ class MergeCasesMixin(object):
         self._test_merge_from_strings(base, a, b, result)
 
 
-class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
@@ -1257,7 +1289,7 @@ class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
         pass
 
 
-class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -1270,3 +1302,23 @@ class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
+
+
+class TestFormatSignatures(TestCaseWithMemoryTransport):
+
+    def get_knit_file(self, name, annotated):
+        if annotated:
+            factory = KnitAnnotateFactory()
+        else:
+            factory = KnitPlainFactory()
+        return KnitVersionedFile(
+            name, get_transport(self.get_url('.')), create=True,
+            factory=factory)
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.get_knit_file('a', True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('p', False)
+        self.assertEqual('knit-plain', knit.get_format_signature())
+
