@@ -126,15 +126,17 @@ class NullCommitReporter(object):
 class _InitialCommitReporter(NullCommitReporter):
 
     def snapshot_change(self, change, path):
-        self._note_change("%s %s", change, path)
+        if path != '':
+            self.changes += 1
 
     def completed(self, revno, rev_id):
-        self._note('Committed revision %d.', revno)
-        if self.show_change_total:
-            if self.changes == 1:
-                self._note('%d change committed.', self.changes)
-            else:
-                self._note('%d changes committed.', self.changes)
+        if not self.show_change_total:
+            details = ''
+        elif self.changes == 1:
+            details = ' (%d change made)' % self.changes
+        else:
+            details = ' (%d changes made)' % self.changes
+        self._note('Committed revision %d%s.', revno, details)
 
 
 class ReportCommitToLog(_InitialCommitReporter):
@@ -268,15 +270,9 @@ class Commit(object):
         self.strict = strict
         self.verbose = verbose
 
-        self.basis_tree = self.work_tree.basis_tree()
-        self.initial_commit = self.basis_tree is None
-        if reporter is not None:
-            self.reporter = reporter
-        elif self.reporter is None:
-            self.reporter = self._select_reporter()
-
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         self.work_tree.lock_write()
+        self.basis_tree = self.work_tree.basis_tree()
+        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
@@ -289,6 +285,12 @@ class Commit(object):
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
 
+            # Complete configuration setup
+            self.initial_commit = new_revno == 1
+            if reporter is not None:
+                self.reporter = reporter
+            elif self.reporter is None:
+                self.reporter = self._select_reporter()
             if self.config is None:
                 self.config = self.branch.get_config()
 

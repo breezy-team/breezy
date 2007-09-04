@@ -76,26 +76,26 @@ class TestCommit(ExternalBase):
         out,err = self.run_bzr('commit -v -m added')
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
-                         'Committed revision 1.\n',
+                         'Committed revision 1 (1 change made).\n',
                          err)
 
     def test_10_quiet_commit(self):
         """Add one file and examine quiet commit output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -q -m added')
         self.assertEqual('', out)
         self.assertEqual('', err)
 
     def test_10_normal_commit(self):
         """Add one file and examine normal commit output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('Committed revision 1.\n',
+        self.assertEqual('Committed revision 1 (1 change made).\n',
                          err)
 
     def prepare_simple_history(self):
@@ -113,7 +113,8 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('hello.txt', 'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
-        self.assertEqual('Committed revision 2.\n',
+        self.assertEqual('modified hello.txt\n'
+                         'Committed revision 2.\n',
                          err)
 
     def test_verbose_commit_modified(self):
@@ -123,7 +124,7 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr('commit -v -m modified')
         self.assertEqual('', out)
         self.assertEqual('modified hello.txt\n'
-                         'Committed revision 2.\n',
+                         'Committed revision 2 (1 change made).\n',
                          err)
 
     def test_normal_commit_renamed(self):
@@ -132,7 +133,8 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'gutentag.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertEqual('Committed revision 2.\n',
+        self.assertEqual('renamed hello.txt => gutentag.txt\n'
+                         'Committed revision 2.\n',
                          err)
 
     def test_verbose_commit_renamed(self):
@@ -142,7 +144,7 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr('commit -v -m renamed')
         self.assertEqual('', out)
         self.assertEqual('renamed hello.txt => gutentag.txt\n'
-                         'Committed revision 2.\n',
+                         'Committed revision 2 (1 change made).\n',
                          err)
 
     def test_normal_commit_moved(self):
@@ -154,7 +156,9 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertEqualDiff('Committed revision 2.\n',
+        self.assertEqualDiff('added subdir\n'
+                             'renamed hello.txt => subdir/hello.txt\n'
+                             'Committed revision 2.\n',
                              err)
 
     def test_verbose_commit_moved(self):
@@ -167,7 +171,7 @@ class TestCommit(ExternalBase):
         self.assertEqual('', out)
         self.assertEqualDiff('added subdir\n'
                              'renamed hello.txt => subdir/hello.txt\n'
-                             'Committed revision 2.\n',
+                             'Committed revision 2 (2 changes made).\n',
                              err)
 
     def test_normal_commit_with_unknown(self):
@@ -178,7 +182,7 @@ class TestCommit(ExternalBase):
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('Committed revision 1.\n',
+        self.assertEqual('Committed revision 1 (1 change made).\n',
                          err)
 
     def test_verbose_commit_with_unknown(self):
@@ -190,19 +194,20 @@ class TestCommit(ExternalBase):
         out,err = self.run_bzr('commit -v -m added')
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
-                         'Committed revision 1.\n',
+                         'Committed revision 1 (1 change made).\n',
                          err)
 
     def test_normal_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in normal output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'unchanged.txt'])
-        self.run_bzr('add unchanged.txt')
+        tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
         self.run_bzr("add hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('Committed revision 2.\n',
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 2.\n',
                          err)
 
     def test_verbose_commit_with_unchanged(self):
@@ -215,7 +220,7 @@ class TestCommit(ExternalBase):
         out,err = self.run_bzr('commit -v -m added')
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
-                         'Committed revision 2.\n',
+                         'Committed revision 2 (1 change made).\n',
                          err)
 
     def test_commit_merge_reports_all_modified_files(self):
@@ -282,7 +287,7 @@ class TestCommit(ExternalBase):
             'renamed filetorename => renamedfile\n'
             'deleted dirtoremove\n'
             'deleted filetoremove\n'
-            'Committed revision 2.\n',
+            'Committed revision 2 (9 changes made).\n',
             err)
 
     def test_empty_commit_message(self):
@@ -439,7 +444,8 @@ class TestCommit(ExternalBase):
         output, err = self.run_bzr(
             'commit -v -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
-        self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
+        self.assertEqual('added hello.txt\n'
+            'Committed revision 1 (1 change made).\n', err)
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
