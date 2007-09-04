@@ -549,12 +549,14 @@ class TestInterRemoteToOther(TestCaseWithTransport):
             "InterRemoteToOther(%r, %r) is true" % (local_repo, remote_repo))
 
     def test_is_incompatible_different_format_both_remote(self):
-        remote_repo_a = self.make_remote_repository('a', 'dirstate-with-subtree')
+        remote_repo_a = self.make_remote_repository(
+            'a', 'dirstate-with-subtree')
         remote_repo_b = self.make_remote_repository('b', 'dirstate')
         is_compatible = repository.InterRemoteToOther.is_compatible
         self.assertFalse(
             is_compatible(remote_repo_a, remote_repo_b),
-            "InterRemoteToOther(%r, %r) is true" % (remote_repo_a, remote_repo_b))
+            "InterRemoteToOther(%r, %r) is true"
+            % (remote_repo_a, remote_repo_b))
 
 
 class TestRepositoryConverter(TestCaseWithTransport):
