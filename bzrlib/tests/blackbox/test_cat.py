@@ -31,36 +31,39 @@ class TestCat(TestCaseWithTransport):
         tree.add('a')
         os.chdir('branch')
         # 'bzr cat' without an option should cat the last revision
-        self.run_bzr('cat', 'a', retcode=3)
+        self.run_bzr(['cat', 'a'], retcode=3)
 
         tree.commit(message='1')
         self.build_tree_contents([('a', 'baz\n')])
 
         # We use run_bzr_subprocess rather than run_bzr here so that we can
         # test mangling of line-endings on Windows.
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a')[0], 'foo\n')
+        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'foo\n')
 
         tree.commit(message='2')
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a')[0], 'baz\n')
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '1')[0],
-                                                  'foo\n')
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r', '-1')[0],
-                                                  'baz\n')
+        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', '1'])[0],
+            'foo\n')
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', '-1'])[0],
+            'baz\n')
 
         rev_id = tree.branch.last_revision()
 
-        self.assertEquals(self.run_bzr_subprocess('cat', 'a', '-r',
-                                                  'revid:%s' % rev_id)[0],
-                                                  'baz\n')
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', 'revid:%s' % rev_id])[0],
+            'baz\n')
 
         os.chdir('..')
 
-        self.assertEquals(self.run_bzr_subprocess('cat', 'branch/a', '-r',
-                                                  'revno:1:branch')[0],
-                                                  'foo\n')
-        self.run_bzr('cat', 'a', retcode=3)
-        self.run_bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist',
-                     retcode=3)
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'branch/a', '-r', 'revno:1:branch'])[0],
+            'foo\n')
+        self.run_bzr(['cat', 'a'], retcode=3)
+        self.run_bzr(
+                ['cat', 'a', '-r', 'revno:1:branch-that-does-not-exist'],
+                retcode=3)
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
