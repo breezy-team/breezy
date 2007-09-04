@@ -92,7 +92,7 @@ class NullCommitReporter(object):
     def snapshot_change(self, change, path):
         pass
 
-    def completed(self, revno, rev_id, location=None):
+    def completed(self, revno, rev_id):
         pass
 
     def deleted(self, file_id):
