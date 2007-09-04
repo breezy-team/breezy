@@ -3847,9 +3847,9 @@ class cmd_send(Command):
     the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
-    "default", "editor", "evolution", "kmail", "mapi", "mutt", "thunderbird",
-    and "xdg-email".
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
+    specific cliets are "evolution", "kmail", "mutt", and "thunderbird";
+    generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration

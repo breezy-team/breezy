@@ -150,13 +150,15 @@ class Config(object):
         try:
             mail_client_class = {
                 None: mail_client.DefaultMail,
-                'default': mail_client.DefaultMail,
-                'editor': mail_client.Editor,
+                # Specific clients
                 'evolution': mail_client.Evolution,
                 'kmail': mail_client.KMail,
-                'mapi': mail_client.MAPIClient,
                 'mutt': mail_client.Mutt,
                 'thunderbird': mail_client.Thunderbird,
+                # Generic options
+                'default': mail_client.DefaultMail,
+                'editor': mail_client.Editor,
+                'mapi': mail_client.MAPIClient,
                 'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:
