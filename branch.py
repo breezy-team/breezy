@@ -343,8 +343,7 @@ class SvnBranch(Branch):
             # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
             raise NotImplementedError(self.pull)
         else:
-            # TODO: Use stop_revision
-            todo = self.missing_revisions(other)
+            todo = self.missing_revisions(other, stop_revision)
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for rev_id in todo:
