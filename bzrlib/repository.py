@@ -2260,18 +2260,15 @@ class CommitBuilder(object):
             and text_sha1 == file_parents.values()[0].text_sha1
             and text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            versionedfile = self.repository.weave_store.get_weave(file_id, 
+            versionedfile = self.repository.weave_store.get_weave(file_id,
                 self.repository.get_transaction())
-            versionedfile.clone_text(self._new_revision_id, 
+            versionedfile.clone_text(self._new_revision_id,
                 previous_ie.revision, file_parents.keys())
             return text_sha1, text_size
         else:
             new_lines = get_content_byte_lines()
-            # TODO: Rather than invoking sha_strings here, _add_text_to_weave
-            # should return the SHA1 and size
-            self._add_text_to_weave(file_id, new_lines, file_parents.keys())
-            return osutils.sha_strings(new_lines), \
-                sum(map(len, new_lines))
+            return self._add_text_to_weave(file_id, new_lines,
+                file_parents.keys())
 
     def modified_link(self, file_id, file_parents, link_target):
         """Record the presence of a symbolic link.
@@ -2285,8 +2282,10 @@ class CommitBuilder(object):
     def _add_text_to_weave(self, file_id, new_lines, parents):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
-        versionedfile.add_lines(self._new_revision_id, parents, new_lines)
+        result = versionedfile.add_lines(
+            self._new_revision_id, parents, new_lines)[0:2]
         versionedfile.clear_cache()
+        return result
 
 
 class _CommitBuilder(CommitBuilder):
