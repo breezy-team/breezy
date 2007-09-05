@@ -305,11 +305,13 @@ class SvnRepository(Repository):
         self._hinted_branch_path = branch_path
 
     def lhs_missing_revisions(self, revhistory, stop_revision):
-        for revid in revhistory:
-            if not self.has_revision(revid):
-                yield revid
-            if revid == stop_revision:
-                return
+        missing = []
+        slice = revhistory[:revhistory.index(stop_revision)+1]
+        for revid in reversed(slice):
+            if self.has_revision(revid):
+                missing.reverse()
+                return missing
+            missing.append(revid)
         raise UnrelatedBranches()
     
     def get_transaction(self):

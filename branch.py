@@ -345,7 +345,7 @@ class SvnBranch(Branch):
                                                        self.last_revision()):
                 return
             raise DivergedBranches(self, other)
-        todo = list(self.repository.lhs_missing_revisions(other.revision_history(), stop_revision))
+        todo = self.repository.lhs_missing_revisions(other.revision_history(), stop_revision)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
