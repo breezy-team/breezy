@@ -48,6 +48,9 @@ IN DEVELOPMENT
      verbosity level but do respect *quiet vs normal vs verbose* when
      generating output. (Ian Clatworthy)
 
+   * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
+     is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
+
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square
@@ -103,15 +106,19 @@ IN DEVELOPMENT
    * Avoid trouble when Windows ssh calls itself 'plink' but no plink
      binary is present.  (Martin Albisetti, #107155)
 
-   * ``bzr remove`` should remove clean subtrees.
-     Now it will remove (without needing ``--force``) subtrees that contain no
-     files with text changes or modified files.
-     With ``--force`` it removes the subtree regardless of text changes or
-     unknown files.
-     Directories with renames in or out (but not changed otherwise)
-     will now be removed without needing ``--force``.
+   * ``bzr remove`` should remove clean subtrees.  Now it will remove (without
+     needing ``--force``) subtrees that contain no files with text changes or
+     modified files.  With ``--force`` it removes the subtree regardless of
+     text changes or unknown files. Directories with renames in or out (but
+     not changed otherwise) will now be removed without needing ``--force``.
      Unknown ignored files will be deleted without needing ``--force``.
      (Marius Kruger, #111665)
+
+   * When two plugins conflict, the source of both the losing and now the
+     winning definition is shown.  (Konstantin Mikhaylov, #5454)
+
+   * When committing to a branch, the location being committed to is
+     displayed.  (Daniel Watkins, #52479)
 
    * ``bzr --version`` takes care about encoding of stdout, especially
      when output is redirected. (Alexander Belchenko, #131100)
@@ -150,10 +157,28 @@ IN DEVELOPMENT
    * New option ``-c``/``--change`` for ``diff`` and ``status`` to show
      changes in one revision.  (Lukáš Lalinský)
 
+   * If versioned files match a given ignore pattern, a warning is now
+     given. (Daniel Watkins, #48623)
+
+   * ``bzr status`` now has -S as a short name for --short and -V as a
+     short name for --versioned. These have been added to assist users
+     migrating from Subversion: ``bzr status -SV`` is now like
+     ``svn status -q``.  (Daniel Watkins, #115990)
+
+   * Added C implementation of  ``PatienceSequenceMatcher``, which is about
+     10x faster than the Python version. This speeds up commands that
+     need file diffing, such as ``bzr commit`` or ``bzr diff``.
+     (Lukáš Lalinský)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
+
+   * The ``add_lines`` methods on ``VersionedFile`` implementations has changed
+     its return value to include the sha1 and length of the inserted text. This
+     allows the avoidance of double-sha1 calculations during commit.
+     (Robert Collins)
 
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
@@ -189,6 +214,11 @@ IN DEVELOPMENT
      edit_commit_message_encoded() which handle encoded strings.
      This is done in order to mix the commit messages (which is a unicode
      string), and the diff which is a raw string. (Goffredo Baroncelli)
+
+    * Deprecated method ``find_previous_heads`` on
+      ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
+      of ``parent_candidates`` and a separate heads check via the repository
+      API. (Robert Collins)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
@@ -237,6 +267,13 @@ IN DEVELOPMENT
      standard options as the base definition of these is now more complex
      than before thanks to their use of a custom callback. (Ian Clatworthy)
       
+    * Tree._iter_changes(specific_file=[]) now iterates through no files,
+      instead of iterating through all files.  None is used to iterate through
+      all files.  (Aaron Bentley)
+
+    * WorkingTree.revert() now accepts None to revert all files.  The use of
+      [] to revert all files is deprecated.  (Aaron Bentley)
+
 
 bzr 0.90 2007-08-28
 ===================

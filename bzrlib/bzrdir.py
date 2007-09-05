@@ -35,6 +35,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     errors,
+    graph,
     lockable_files,
     lockdir,
     registry,
@@ -1083,7 +1084,7 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert([], old_tree=empty)
+        wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
@@ -1934,17 +1935,23 @@ class ConvertBzrDir4To5(Converter):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_entries = ie.find_previous_heads(parent_invs,
-                                                  None,
-                                                  None,
-                                                  entry_vf=w)
-        for old_revision in previous_entries:
-                # if this fails, its a ghost ?
-                assert old_revision in self.converted_revs, \
-                    "Revision {%s} not in converted_revs" % old_revision
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        for old_revision in parent_candiate_entries.keys():
+            # if this fails, its a ghost ?
+            assert old_revision in self.converted_revs, \
+                "Revision {%s} not in converted_revs" % old_revision
+        heads = graph.Graph(self).heads(parent_candiate_entries.keys())
+        # XXX: Note that this is unordered - and this is tolerable because 
+        # the previous code was also unordered.
+        previous_entries = dict((head, parent_candiate_entries[head]) for head
+            in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
+
+    def get_parents(self, revision_ids):
+        for revision_id in revision_ids:
+            yield self.revisions[revision_id].parent_ids
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
