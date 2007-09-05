@@ -67,15 +67,15 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr_error(['Show-base is not supported for this merge type'],
                            'merge ../b -r last:1..last:1 --merge-type weave'
                            ' --show-base')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
@@ -83,7 +83,7 @@ class TestMerge(ExternalBase):
         b_tip = b.last_revision()
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3)
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
@@ -91,7 +91,7 @@ class TestMerge(ExternalBase):
         self.assertEquals(a.get_parent_ids(), 
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
