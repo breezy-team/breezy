@@ -106,18 +106,16 @@ IN DEVELOPMENT
    * Avoid trouble when Windows ssh calls itself 'plink' but no plink
      binary is present.  (Martin Albisetti, #107155)
 
-    * ``bzr remove`` should remove clean subtrees.
-      Now it will remove (without needing ``--force``) subtrees that contain no
-      files with text changes or modified files.
-      With ``--force`` it removes the subtree regardless of text changes or
-      unknown files.
-      Directories with renames in or out (but not changed otherwise)
-      will now be removed without needing ``--force``.
-      Unknown ignored files will be deleted without needing ``--force``.
-      (Marius Kruger, #111665)
+   * ``bzr remove`` should remove clean subtrees.  Now it will remove (without
+     needing ``--force``) subtrees that contain no files with text changes or
+     modified files.  With ``--force`` it removes the subtree regardless of
+     text changes or unknown files. Directories with renames in or out (but
+     not changed otherwise) will now be removed without needing ``--force``.
+     Unknown ignored files will be deleted without needing ``--force``.
+     (Marius Kruger, #111665)
 
-    * When two plugins conflict, the source of both the losing and now the
-      winning definition is shown.  (Konstantin Mikhaylov, #5454)
+   * When two plugins conflict, the source of both the losing and now the
+     winning definition is shown.  (Konstantin Mikhaylov, #5454)
 
   IMPROVEMENTS:
 
@@ -155,6 +153,11 @@ IN DEVELOPMENT
 
    * If versioned files match a given ignore pattern, a warning is now
      given. (Daniel Watkins, #48623)
+
+   * ``bzr status`` now has -S as a short name for --short and -V as a
+     short name for --versioned. These have been added to assist users
+     migrating from Subversion: ``bzr status -SV`` is now like
+     ``svn status -q``.  (Daniel Watkins, #115990)
 
   API BREAKS:
 

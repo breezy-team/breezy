@@ -152,8 +152,9 @@ class cmd_status(Command):
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
-    --short gives a status flags for each item, similar to the SVN's status
-    command.
+    Note that --short or -S gives status flags for each item, similar
+    to Subversion's status command. To get output similar to svn -q,
+    use bzr -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -168,8 +169,11 @@ class cmd_status(Command):
     
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision', 'change',
-                     Option('short', help='Give short SVN-style status lines.'),
-                     Option('versioned', help='Only show versioned files.')]
+                     Option('short', help='Use short status indicators.',
+                            short_name='S'),
+                     Option('versioned', help='Only show versioned files.',
+                            short_name='V')
+                     ]
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'

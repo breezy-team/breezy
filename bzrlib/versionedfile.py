@@ -114,7 +114,7 @@ class VersionedFile(object):
         self.add_lines(version_id, parents, new_full)
 
     def add_lines(self, version_id, parents, lines, parent_texts=None,
-                  left_matching_blocks=None):
+                  left_matching_blocks=None, nostore_sha=None):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -130,6 +130,8 @@ class VersionedFile(object):
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
         :return: The text sha1, the number of bytes in the text, and an opaque
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
@@ -138,26 +140,27 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
-                               left_matching_blocks)
+            left_matching_blocks, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks):
+        left_matching_blocks, nostore_sha):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
-                              parent_texts=None):
+                              parent_texts=None, nostore_sha=None):
         """Add lines to the versioned file, allowing ghosts to be present.
         
-        This takes the same parameters as add_lines.
+        This takes the same parameters as add_lines and returns the same.
         """
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-                                           parent_texts)
+            parent_texts, nostore_sha)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
+        nostore_sha):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 

@@ -2614,6 +2614,17 @@ class Feature(object):
         return self.__class__.__name__
 
 
+class _SymlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_symlinks()
+
+    def feature_name(self):
+        return 'symlinks'
+
+SymlinkFeature = _SymlinkFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 

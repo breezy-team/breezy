@@ -226,11 +226,13 @@ class Graph(object):
         will be retrieved.
 
         :param keys: An iterable of keys.
-        :return: A set of the heads.
+        :return: A set of the heads. Note that as a set there is no ordering
+            information. Callers will need to filter their input to create
+            order if they need it.
         """
-        candidate_lca = set(keys)
+        candidate_heads = set(keys)
         searchers = dict((c, self._make_breadth_first_searcher([c]))
-                          for c in candidate_lca)
+                          for c in candidate_heads)
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
@@ -250,8 +252,8 @@ class Graph(object):
                     del active_searchers[candidate]
                     continue
                 for ancestor in ancestors:
-                    if ancestor in candidate_lca:
-                        candidate_lca.remove(ancestor)
+                    if ancestor in candidate_heads:
+                        candidate_heads.remove(ancestor)
                         del searchers[ancestor]
                         if ancestor in active_searchers:
                             del active_searchers[ancestor]
@@ -266,7 +268,7 @@ class Graph(object):
                             seen_ancestors =\
                                 searcher.find_seen_ancestors(ancestor)
                             searcher.stop_searching_any(seen_ancestors)
-        return candidate_lca
+        return candidate_heads
 
     def find_unique_lca(self, left_revision, right_revision):
         """Find a unique LCA.

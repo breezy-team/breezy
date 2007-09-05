@@ -855,18 +855,20 @@ class KnitVersionedFile(VersionedFile):
         """Check that all specified versions are present."""
         self._index.check_versions_present(version_ids)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
+        nostore_sha):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
+        return self._add(version_id, lines[:], parents, self.delta,
+            parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks=None):
+                   left_matching_blocks, nostore_sha):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
-                         parent_texts, left_matching_blocks)
+            parent_texts, left_matching_blocks, nostore_sha)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -881,7 +883,7 @@ class KnitVersionedFile(VersionedFile):
         self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
-             left_matching_blocks=None):
+             left_matching_blocks, nostore_sha):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -915,6 +917,8 @@ class KnitVersionedFile(VersionedFile):
             delta = False
 
         digest = sha_strings(lines)
+        if nostore_sha == digest:
+            raise errors.ExistingContent
         text_length = sum(map(len, lines))
         options = []
         if lines:
