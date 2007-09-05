@@ -107,11 +107,18 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
 
-    def __init__(self, body):
+    def __init__(self, body, fake_client):
         self._body_buffer = StringIO(body)
+        self._fake_client = fake_client
 
     def read_body_bytes(self, count=-1):
-        return self._body_buffer.read(count)
+        bytes = self._body_buffer.read(count)
+        if self._body_buffer.tell() == len(self._body_buffer.getvalue()):
+            self._fake_client.expecting_body = False
+        return bytes
+
+    def cancel_read_body(self):
+        self._fake_client.expecting_body = False
 
 
 class FakeClient(_SmartClient):
@@ -119,13 +126,14 @@ class FakeClient(_SmartClient):
     
     def __init__(self, responses):
         # We don't call the super init because there is no medium.
-        """create a FakeClient.
+        """Create a FakeClient.
 
         :param respones: A list of response-tuple, body-data pairs to be sent
             back to callers.
         """
         self.responses = responses
         self._calls = []
+        self.expecting_body = False
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -134,7 +142,8 @@ class FakeClient(_SmartClient):
     def call_expecting_body(self, method, *args):
         self._calls.append(('call_expecting_body', method, args))
         result = self.responses.pop(0)
-        return result[0], FakeProtocol(result[1])
+        self.expecting_body = True
+        return result[0], FakeProtocol(result[1], self)
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -782,3 +791,32 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         stream = repo.get_data_stream(['revid'])
         self.assertRaises(errors.SmartProtocolError, list, stream)
     
+    def test_backwards_compatibility(self):
+        """If the server doesn't recognise this request, fallback to VFS."""
+        error_msg = (
+            "Generic bzr smart protocol error: "
+            "bad request 'Repository.stream_knit_data_for_revisions'")
+        responses = [
+            (('error', error_msg), '')]
+        repo, client = self.setup_fake_client_and_repository(
+            responses, 'path')
+        self.mock_called = False
+        repo._real_repository = MockRealRepository(self)
+        repo.get_data_stream(['revid'])
+        self.assertTrue(self.mock_called)
+        self.failIf(client.expecting_body,
+            "The protocol has been left in an unclean state that will cause "
+            "TooManyConcurrentRequests errors.")
+
+
+class MockRealRepository(object):
+    """Helper class for TestRepositoryStreamKnitData.test_unknown_method."""
+
+    def __init__(self, test):
+        self.test = test
+
+    def get_data_stream(self, revision_ids):
+        self.test.assertEqual(['revid'], revision_ids)
+        self.test.mock_called = True
+
+

@@ -756,20 +756,30 @@ class RemoteRepository(object):
         response, protocol = self._client.call_expecting_body(
             'Repository.stream_knit_data_for_revisions', path, *revision_ids)
         if response == ('ok',):
-            buffer = StringIO(protocol.read_body_bytes())
-            reader = ContainerReader(buffer)
-            for record_names, read_bytes in reader.iter_records():
-                try:
-                    # These records should have only one name, and that name
-                    # should be a one-element tuple.
-                    [name_tuple] = record_names
-                except ValueError:
-                    raise errors.SmartProtocolError(
-                        'Repository data stream had invalid record name %r'
-                        % (record_names,))
-                yield name_tuple, read_bytes(None)
+            return self._deserialise_stream(protocol)
+        elif (response == ('error', "Generic bzr smart protocol error: "
+                "bad request 'Repository.stream_knit_data_for_revisions'") or
+              response == ('error', "Generic bzr smart protocol error: "
+                "bad request u'Repository.stream_knit_data_for_revisions'")):
+            protocol.cancel_read_body()
+            self._ensure_real()
+            return self._real_repository.get_data_stream(revision_ids)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
+
+    def _deserialise_stream(self, protocol):
+        buffer = StringIO(protocol.read_body_bytes())
+        reader = ContainerReader(buffer)
+        for record_names, read_bytes in reader.iter_records():
+            try:
+                # These records should have only one name, and that name
+                # should be a one-element tuple.
+                [name_tuple] = record_names
+            except ValueError:
+                raise errors.SmartProtocolError(
+                    'Repository data stream had invalid record name %r'
+                    % (record_names,))
+            yield name_tuple, read_bytes(None)
 
     def insert_data_stream(self, stream):
         self._ensure_real()
