@@ -1016,7 +1016,6 @@ class GraphKnitTextStore(VersionedFileStore):
         The transaction parameter is ignored.
         """
         self._ensure_all_index()
-        filename = self.weavestore.filename(file_id)
         if self.repo.is_in_write_group():
             add_callback = self.repo._text_write_index.add_nodes
             self.repo._text_pack_map[self.repo._text_write_index] = self.repo._open_pack_tuple
@@ -1031,11 +1030,10 @@ class GraphKnitTextStore(VersionedFileStore):
             add_callback=file_id_index.add_nodes,
             deltas=True, parents=True)
         knit_access = _PackAccess(self.repo._text_pack_map, writer)
-        return knit.KnitVersionedFile(filename, self.weavestore._transport,
+        return knit.KnitVersionedFile('text:' + file_id, self.weavestore._transport,
             self.weavestore._file_mode,
             index=knit_index,
-            access_method=knit_access,
-            **self.weavestore._versionedfile_kwargs)
+            access_method=knit_access)
 
     get_weave = get_weave_or_empty
 
