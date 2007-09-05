@@ -433,7 +433,7 @@ class InventoryEntry(object):
                    self.revision))
 
     def snapshot(self, revision, path, previous_entries,
-                 work_tree, commit_builder):
+        work_tree, commit_builder, store_if_unchanged):
         """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
@@ -442,7 +442,7 @@ class InventoryEntry(object):
         :return: True if anything was recorded
         """
         # cannot be unchanged unless there is only one parent file rev.
-        self._read_tree_state(path, work_tree)
+        # self._read_tree_state(path, work_tree)
         if len(previous_entries) == 1:
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
@@ -582,11 +582,6 @@ class InventoryDirectory(InventoryEntry):
         """See InventoryEntry._put_on_disk."""
         os.mkdir(fullpath)
 
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
-        commit_builder.modified_directory(self.file_id, file_parents)
-        return True
-
 
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
@@ -716,35 +711,6 @@ class InventoryFile(InventoryEntry):
     def _forget_tree_state(self):
         self.text_sha1 = None
 
-    def snapshot(self, revision, path, previous_entries,
-                 work_tree, commit_builder):
-        """See InventoryEntry.snapshot."""
-        # Note: We use a custom implementation of this method for files
-        # because it's a performance critical part of commit.
-
-        # If this is the initial commit for this file, we know the sha is
-        # coming later so skip calculating it now (in _read_tree_state())
-        if len(previous_entries) == 0:
-            self.executable = work_tree.is_executable(self.file_id, path=path)
-        else:
-            self._read_tree_state(path, work_tree)
-
-        # If nothing is changed from the sole parent, there's nothing to do
-        if len(previous_entries) == 1:
-            parent_ie = previous_entries.values()[0]
-            if self._unchanged(parent_ie):
-                self.revision = parent_ie.revision
-                return False
-
-        # Add the file to the repository
-        self.revision = revision
-        def get_content_byte_lines():
-            return work_tree.get_file(self.file_id, path).readlines()
-        self.text_sha1, self.text_size = commit_builder.modified_file_text(
-            self.file_id, previous_entries, get_content_byte_lines,
-            self.text_sha1, self.text_size)
-        return True
-
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
         compatible = super(InventoryFile, self)._unchanged(previous_ie)
@@ -845,12 +811,6 @@ class InventoryLink(InventoryEntry):
             compatible = False
         return compatible
 
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
-        commit_builder.modified_link(
-            self.file_id, file_parents, self.symlink_target)
-        return True
-
 
 class TreeReference(InventoryEntry):
     
@@ -865,10 +825,6 @@ class TreeReference(InventoryEntry):
     def copy(self):
         return TreeReference(self.file_id, self.name, self.parent_id,
                              self.revision, self.reference_revision)
-
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        commit_builder.modified_reference(self.file_id, file_parents)
-        return True
 
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.

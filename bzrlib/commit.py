@@ -227,7 +227,6 @@ class Commit(object):
         self.rev_id = None
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.recursive = recursive
         self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -296,6 +295,8 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
+            # tell the builder about the chosen recursive behaviour
+            self.builder.recursive = recursive
             
             try:
                 self._update_builder_with_changes()
@@ -665,6 +666,7 @@ class Commit(object):
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
         entries = work_inv.iter_entries()
+        # XXX: Note that entries may have the wrong kind.
         if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
@@ -683,15 +685,18 @@ class Commit(object):
             if is_inside_any(deleted_paths, path):
                 continue
             if not specific_files or is_inside_any(specific_files, path):
+                # TODO: fix double-stat here.
                 if not self.work_tree.has_filename(path):
                     deleted_paths.add(path)
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
                     continue
+            # TODO: have the builder do the nested commit just-in-time IF and
+            # only if needed.
             try:
                 kind = self.work_tree.kind(file_id)
                 # TODO: specific_files filtering before nested tree processing
-                if kind == 'tree-reference' and self.recursive == 'down':
+                if kind == 'tree-reference' and self.builder.recursive == 'down':
                     self._commit_nested_tree(file_id, path)
             except errors.NoSuchFile:
                 pass
@@ -700,7 +705,7 @@ class Commit(object):
             # Note: I don't particularly want to have the existing_ie
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
-            definitely_changed = kind != existing_ie.kind 
+            definitely_changed = kind != existing_ie.kind
             self._record_entry(path, file_id, specific_files, kind, name,
                 parent_id, definitely_changed, existing_ie)
 
@@ -722,7 +727,7 @@ class Commit(object):
                 self.work_tree.branch.repository
         try:
             sub_tree.commit(message=None, revprops=self.revprops,
-                recursive=self.recursive,
+                recursive=self.builder.recursive,
                 message_callback=self.message_callback,
                 timestamp=self.timestamp, timezone=self.timezone,
                 committer=self.committer,
