@@ -684,6 +684,31 @@ future::
         )
 
 
+In emacs::
+
+    ;(defface my-invalid-face
+    ;  '((t (:background "Red" :underline t)))
+    ;  "Face used to highlight invalid constructs or other uglyties"
+    ;  )
+
+    (defun my-python-mode-hook ()
+     ;; setup preferred indentation style.
+     (setq fill-column 79)
+     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
+    ;  (font-lock-add-keywords 'python-mode
+    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
+    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
+    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
+    ;                          )
+     )
+
+    (add-hook 'python-mode-hook 'my-python-mode-hook)
+
+The lines beginning with ';' are comments. They can be activated
+if one want to have a strong notice of some tab/space usage
+violations.
+
+
 Module Imports
 --------------
 
