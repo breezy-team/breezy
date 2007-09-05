@@ -80,6 +80,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+from bzrlib.urlutils import unescape_for_display
 import bzrlib.ui
 
 
@@ -126,7 +127,7 @@ class ReportCommitToLog(NullCommitReporter):
 
     def started(self, revno, rev_id, location=None):
         if location is not None:
-            location = ' to "' + location + '"'
+            location = ' to "' + unescape_for_display(location, 'utf-8') + '"'
         else:
             location = ''
         self._note('Committing revision %d%s.', revno, location)
