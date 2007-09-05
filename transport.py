@@ -340,10 +340,10 @@ class SvnRaTransport(Transport):
     @needs_busy
     def get_dir(self, path, revnum, pool=None, kind=False):
         self.mutter("svn ls -r %d '%r'" % (revnum, path))
+        assert len(path) == 0 or path[0] != "/"
         path = self._request_path(path)
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
-        assert len(path) == 0 or path[0] != "/"
         if hasattr(svn.ra, 'get_dir2'):
             fields = 0
             if kind:
@@ -357,7 +357,6 @@ class SvnRaTransport(Transport):
             relpath = urlutils.join(
                     urlutils.relative_url(self._backing_url, self.svn_url),
                     relpath)
-        relpath = relpath.rstrip("/")
         return relpath
 
     @convert_svn_error
@@ -407,8 +406,8 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     @needs_busy
     def check_path(self, path, revnum, *args, **kwargs):
-        path = self._request_path(path)
         assert len(path) == 0 or path[0] != "/"
+        path = self._request_path(path)
         self.mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
 
