@@ -425,4 +425,27 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         self.assertEquals([revid1, revid2, revid3], trunk.revision_history())
 
+    def test_complex_replace_dir(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/registry/generic.c': "Tour"})
+        bzrwt.add(["registry"], ["origdir"])
+        bzrwt.add(["registry/generic.c"], ["file"])
+        revid1 = bzrwt.commit("Add initial directory + file")
 
+        bzrwt.remove('registry/generic.c')
+        bzrwt.remove('registry')
+        bzrwt.add(["registry"], ["newdir"])
+        bzrwt.add(["registry/generic.c"], ["file"])
+        revid2 = bzrwt.commit("Do some funky things")
+
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid2, newbranch.last_revision())
+        self.assertEquals([revid1, revid2], newbranch.revision_history())
+
+        os.mkdir("n")
+        BzrDir.open(repos_url+"/trunk").sprout("n")
+        import pdb
+        pdb.set_trace()

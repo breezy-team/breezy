@@ -260,7 +260,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
 
             # copy if they existed at different location
-            elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
+            elif (self.old_inv.id2path(child_ie.file_id) != new_child_path or
+                    self.old_inv[child_ie.file_id].parent_id != child_ie.parent_id):
                 self.mutter('copy %s %r -> %r' % (child_ie.kind, 
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path))
