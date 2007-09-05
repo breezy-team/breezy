@@ -120,6 +120,9 @@ IN DEVELOPMENT
    * When committing to a branch, the location being committed to is
      displayed.  (Daniel Watkins, #52479)
 
+   * ``bzr --version`` takes care about encoding of stdout, especially
+     when output is redirected. (Alexander Belchenko, #131100)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
