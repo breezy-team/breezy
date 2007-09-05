@@ -417,12 +417,13 @@ class Weave(VersionedFile):
         return idx
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks=None):
+       left_matching_blocks, nostore_sha):
         """See VersionedFile.add_lines."""
-        idx = self._add(version_id, lines, map(self._lookup, parents))
+        idx = self._add(version_id, lines, map(self._lookup, parents),
+            nostore_sha=nostore_sha)
         return sha_strings(lines), sum(map(len, lines)), idx
 
-    def _add(self, version_id, lines, parents, sha1=None):
+    def _add(self, version_id, lines, parents, sha1=None, nostore_sha=None):
         """Add a single text on top of the weave.
   
         Returns the index number of the newly added version.
@@ -436,13 +437,16 @@ class Weave(VersionedFile):
             
         lines
             Sequence of lines to be added in the new version.
-        """
 
+        :param nostore_sha: See VersionedFile.add_lines.
+        """
         assert isinstance(version_id, basestring)
         self._check_lines_not_unicode(lines)
         self._check_lines_are_lines(lines)
         if not sha1:
             sha1 = sha_strings(lines)
+        if sha1 == nostore_sha:
+            raise errors.ExistingContent
         if version_id in self._name_map:
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
@@ -1022,11 +1026,11 @@ class WeaveFile(Weave):
             self._save()
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks=None):
+        left_matching_blocks, nostore_sha):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
-                                                   parent_texts)
+            parent_texts, left_matching_blocks, nostore_sha)
         self._save()
         return result
 
