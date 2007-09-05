@@ -117,6 +117,9 @@ IN DEVELOPMENT
    * When two plugins conflict, the source of both the losing and now the
      winning definition is shown.  (Konstantin Mikhaylov, #5454)
 
+   * When committing to a branch, the location being committed to is
+     displayed.  (Daniel Watkins, #52479)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
