@@ -651,9 +651,9 @@ def _setup_medusa():
                 channel.read_only = 0
 
             # Only 'foo' user is allowed for the tests
-            if self.secured_user is not None \
-                    and username == self.secured_user \
-                    and password != self.secured_password:
+            if (self.secured_user is not None
+                and username == self.secured_user
+                and password != self.secured_password):
                 return 0, 'Password invalid.', None
             else:
                 return 1, 'OK.', medusa.filesys.os_filesystem(self.root)

@@ -16,19 +16,14 @@
 
 import sys
 
-from bzrlib import ui
-from bzrlib.tests import (
-    Feature,
-    TestCaseWithTransport,
-    TestUIFactory,
+from bzrlib import (
+    tests,
+    transport,
+    ui,
     )
-from bzrlib.tests import (
-    StringIOWrapper,
-    )
-import bzrlib.transport
 
 
-class _MedusaFeature(Feature):
+class _MedusaFeature(tests.Feature):
     """Some tests want an FTP Server, check if one is available.
 
     Right now, the only way this is available is if 'medusa' is installed.
@@ -49,7 +44,7 @@ class _MedusaFeature(Feature):
 MedusaFeature = _MedusaFeature()
 
 
-class TestCaseWithFTPServer(TestCaseWithTransport):
+class TestCaseWithFTPServer(tests.TestCaseWithTransport):
 
     _test_needs_features = [MedusaFeature]
 
@@ -60,11 +55,11 @@ class TestCaseWithFTPServer(TestCaseWithTransport):
 
 
 
-class TestCaseAFTP(TestCaseWithTransport):
+class TestCaseAFTP(tests.TestCaseWithTransport):
     """Test aftp transport."""
 
     def test_aftp_degrade(self):
-        t = bzrlib.transport.get_transport('aftp://host/path')
+        t = transport.get_transport('aftp://host/path')
         self.failUnless(t.is_active)
         parent = t.clone('..')
         self.failUnless(parent.is_active)
@@ -93,7 +88,7 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         # for debugging purposes but leave them in place, there are needed to
         # run the tests without any console
         self.old_stdout = sys.stdout
-        sys.stdout = StringIOWrapper()
+        sys.stdout = tests.StringIOWrapper()
         self.addCleanup(self.restoreUIFactory)
 
     def restoreUIFactory(self):
@@ -108,7 +103,7 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         # reset it to None in the transport before the connection).
         password = t._password
         t._password = None
-        ui.ui_factory = TestUIFactory(stdin=password+'\n')
+        ui.ui_factory = tests.TestUIFactory(stdin=password+'\n')
         # Ask the server to check the password
         server = self.get_server()
         # FIXME: There should be a better way to declare authorized users and
