@@ -1102,7 +1102,7 @@ class cmd_remove(Command):
         tree, file_list = tree_files(file_list)
 
         if file_list is not None:
-            file_list = [f for f in file_list if f != '']
+            file_list = [f for f in file_list]
         elif not new:
             raise errors.BzrCommandError('Specify one or more files to'
             ' remove, or use --new.')
@@ -3059,8 +3059,6 @@ class cmd_revert(Command):
         if file_list is not None:
             if len(file_list) == 0:
                 raise errors.BzrCommandError("No files specified")
-        else:
-            file_list = []
         
         tree, file_list = tree_files(file_list)
         if revision is None:

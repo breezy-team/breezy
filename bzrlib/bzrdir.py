@@ -1084,7 +1084,7 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert([], old_tree=empty)
+        wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):

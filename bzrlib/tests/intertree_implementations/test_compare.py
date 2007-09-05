@@ -513,6 +513,29 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
 
+    def test_empty_specific_files(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.assertEqual([],
+            self.do_iter_changes(tree1, tree2, specific_files=[]))
+
+    def test_no_specific_files(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.assertEqual([self.added(tree2, 'a-id'),
+                          self.added(tree2, 'b-id'),
+                          self.added(tree2, 'c-id'),
+                          self.deleted(tree1, 'empty-root-id'),
+                          self.added(tree2, 'root-id'),
+                          ],
+            self.do_iter_changes(tree1, tree2, specific_files=None))
+
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')

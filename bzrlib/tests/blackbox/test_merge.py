@@ -235,7 +235,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge a --uncommitted -d b')
         self.failUnlessExists('b/file_1')
         self.failUnlessExists('b/file_ii')
-        tree_b.revert([])
+        tree_b.revert()
         self.run_bzr_error(('Cannot use --uncommitted and --revision',),
                            'merge /a --uncommitted -r1 -d b')
 
@@ -270,7 +270,7 @@ class TestMerge(ExternalBase):
         os.chdir('tree_b')
         self.run_bzr('merge ../tree_a')
         self.assertEqual('directory', file_kind('file'))
-        tree_b.revert([])
+        tree_b.revert()
         self.assertEqual('file', file_kind('file'))
         self.build_tree_contents([('file', 'content_2')])
         tree_b.commit('content change')
@@ -313,7 +313,7 @@ class TestMerge(ExternalBase):
         self.write_directive('directive', source.branch, 'target', 'rev1')
         err = self.run_bzr('merge -d target directive')[1]
         self.assertNotContainsRe(err, 'Preview patch does not match changes')
-        target.revert([])
+        target.revert()
         self.write_directive('directive', source.branch, 'target', 'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
@@ -339,7 +339,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge -d target -r revid:rev2a branch_a')
         self.failUnlessExists('target/file1')
         self.failIfExists('target/file2')
-        target.revert([])
+        target.revert()
 
         # It should work if the revid has no integer revno
         self.run_bzr('merge -d target -r revid:rev2a branch_b')

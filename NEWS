@@ -259,6 +259,13 @@ IN DEVELOPMENT
      standard options as the base definition of these is now more complex
      than before thanks to their use of a custom callback. (Ian Clatworthy)
       
+    * Tree._iter_changes(specific_file=[]) now iterates through no files,
+      instead of iterating through all files.  None is used to iterate through
+      all files.  (Aaron Bentley)
+
+    * WorkingTree.revert() now accepts None to revert all files.  The use of
+      [] to revert all files is deprecated.  (Aaron Bentley)
+
 
 bzr 0.90 2007-08-28
 ===================

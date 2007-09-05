@@ -39,7 +39,7 @@ class TestRevert(TestCaseWithWorkingTree):
         self.assertEqual(len(wt.inventory), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
-        wt.revert([])
+        wt.revert()
         self.assertEqual(len(wt.inventory), 1)
 
 
