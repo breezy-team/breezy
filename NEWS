@@ -162,6 +162,9 @@ IN DEVELOPMENT
      migrating from Subversion: ``bzr status -SV`` is now like
      ``svn status -q``.  (Daniel Watkins, #115990)
 
+   * HACKING has been extended with a large section on core developer tasks.
+     (Ian Clatworthy)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
