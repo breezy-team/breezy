@@ -12,6 +12,9 @@ bzr-svn 0.4.2	UNRELEASED
    * Fix pushing of revisions of which only a non-left hand side parent
      is present in the Subversion repository. (#131692)
 
+   * Fix some problems pushing to HTTP repositories because of 
+     the backing URL hack introduced to fix #80553. (#137176)
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES

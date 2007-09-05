@@ -298,7 +298,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_switch(self, switch_rev, recurse, switch_url, *args, **kwargs):
-        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
+        self._open_real_transport()
         self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
         self._mark_busy()
         return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", recurse, switch_url, *args, **kwargs))
@@ -308,6 +308,10 @@ class SvnRaTransport(Transport):
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         return svn.ra.get_log(self._ra, [self._request_path(path)], from_revnum, to_revnum, *args, **kwargs)
+
+    def _open_real_transport(self):
+        if self._backing_url != self.svn_url:
+            self.reparent(self.svn_url)
 
     def reparent_root(self):
         if self._is_http_transport():
@@ -319,7 +323,7 @@ class SvnRaTransport(Transport):
     @needs_busy
     def reparent(self, url):
         url = url.rstrip("/")
-        if url == self.svn_url:
+        if url == self._backing_url:
             return
         self.base = url
         self.svn_url = url
@@ -424,14 +428,14 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_update(self, revnum, *args, **kwargs):
-        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
+        self._open_real_transport()
         self.mutter('svn update -r %r' % revnum)
         self._mark_busy()
         return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", *args, **kwargs))
 
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
-        assert self._backing_url == self.svn_url, "backing url invalid: %r != %r" % (self._backing_url, self.svn_url)
+        self._open_real_transport()
         self._mark_busy()
         return Editor(self, svn.ra.get_commit_editor(self._ra, *args, **kwargs))
 
