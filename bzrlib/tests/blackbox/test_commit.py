@@ -146,7 +146,7 @@ class TestCommit(ExternalBase):
                               'added hello\.txt\n'
                               'Committed revision 2\.$\n')
 
-    def test_verbose_bound_commit_includes_master_location(self):
+    def test_verbose_commit_includes_master_location(self):
         """Location of master is displayed when committing to bound branch"""
         a_tree = self.make_branch_and_tree('a')
         self.build_tree(['a/b'])
