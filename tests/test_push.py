@@ -26,7 +26,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import svn.core
-from commit import push, push_as_merged
+from commit import push
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from revids import generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
@@ -207,34 +207,6 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual(rev1.message, rev2.message)
         self.assertEqual(rev1.revision_id, rev2.revision_id)
 
-    def test_multiple_merged(self):
-        self.build_tree({'dc/file': 'data'})
-        wt = self.bzrdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.build_tree({'dc/file': 'data2', 'dc/adir': None})
-        wt.add('adir')
-        wt.commit(message="Another commit from Bzr")
-
-        push_as_merged(self.svndir.open_branch(),
-                       self.bzrdir.open_branch(),
-                       self.bzrdir.open_branch().last_revision())
-                       
-        repos = self.svndir.find_repository()
-
-        self.assertEqual(
-           generate_svn_revision_id(self.svndir.find_repository().uuid, 2, "", "none"), 
-                        self.svndir.open_branch().last_revision())
-
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
-        self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(inv.has_filename('adir'))
-
-        self.assertEqual([repos.generate_revision_id(1, "", "none"), 
-            self.bzrdir.open_branch().last_revision()],
-              repos.revision_parents(repos.generate_revision_id(2, "", "none")))
-
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()
@@ -414,3 +386,43 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         os.mkdir("n")
         BzrDir.open(repos_url+"/trunk").sprout("n")
     
+    def test_push_non_lhs_parent(self):        
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/registry/generic.c': "Tour"})
+        bzrwt.add("registry")
+        bzrwt.add("registry/generic.c")
+        revid1 = bzrwt.commit("Add initial directory + file", rev_id="initialrevid")
+
+        # Push first branch into Subversion
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+
+        # Should create dc/trunk
+        self.client_update("dc")
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk", "dc/branches/foo")
+        self.client_commit("dc", "Copy branches")
+        self.client_update("dc")
+
+        self.build_tree({'dc/branches/foo/registry/generic.c': "France"})
+        merge_revno = self.client_commit("dc", "Change copied branch")[0]
+        merge_revid = newdir.find_repository().generate_revision_id(merge_revno, "branches/foo", "trunk0")
+
+        self.build_tree({'c/registry/generic.c': "de"})
+        revid2 = bzrwt.commit("Change something", rev_id="changerevid")
+
+        # Merge 
+        self.build_tree({'c/registry/generic.c': "France"})
+        bzrwt.add_pending_merge(merge_revid)
+        revid3 = bzrwt.commit("Merge something", rev_id="mergerevid")
+
+        trunk = Branch.open(repos_url + "/branches/foo")
+        trunk.pull(bzrwt.branch)
+
+        self.assertEquals([revid1, revid2, revid3], trunk.revision_history())
+
+

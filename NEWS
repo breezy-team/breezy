@@ -9,6 +9,9 @@ bzr-svn 0.4.2	UNRELEASED
 
    * Avoid deprecated static BzrDir.create_repository().
 
+   * Fix pushing of revisions of which only a non-left hand side parent
+     is present in the Subversion repository. (#131692)
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES

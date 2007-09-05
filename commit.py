@@ -83,7 +83,11 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         # Gather information about revision on top of which the commit is 
         # happening
-        (self.base_revno, self.base_revid) = self.branch.last_revision_info()
+        if parents == []:
+            self.base_revid = None
+        else:
+            self.base_revid = parents[0]
+        self.base_revno = self.branch.revision_id_to_revno(self.base_revid)
         if self.base_revid is None:
             self.base_revnum = -1
             self.base_path = None
@@ -555,55 +559,6 @@ def replay_delta(builder, old_tree, new_tree):
     builder.finish_inventory()
 
 
-def push_as_merged(target, source, revision_id):
-    """Push a revision as merged revision.
-
-    This will create a new revision in the target repository that 
-    merges the specified revision but does not contain any other differences. 
-    This is done so that the revision that is being pushed does not need 
-    to completely match the target revision and so it can not have the 
-    same revision id.
-
-    :param target: Repository to push to
-    :param source: Repository to pull the revision from
-    :param revision_id: Revision id of the revision to push
-    :return: The revision id of the created revision
-    """
-    assert isinstance(source, Branch)
-    rev = source.repository.get_revision(revision_id)
-
-    # revision on top of which to commit
-    prev_revid = target.last_revision()
-
-    mutter('committing %r on top of %r' % (revision_id, prev_revid))
-
-    old_tree = source.repository.revision_tree(revision_id)
-    if source.repository.has_revision(prev_revid):
-        base_tree = source.repository.revision_tree(prev_revid)
-    else:
-        base_tree = target.repository.revision_tree(prev_revid)
-
-    builder = SvnCommitBuilder(target.repository, target, 
-                               [revision_id, prev_revid],
-                               target.get_config(),
-                               None,
-                               None,
-                               None,
-                               rev.properties, 
-                               None,
-                               base_tree.inventory)
-                         
-    builder.new_inventory = source.repository.get_inventory(revision_id)
-    replay_delta(builder, base_tree, old_tree)
-
-    try:
-        return builder.commit(rev.message)
-    except SubversionException, (_, num):
-        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
-            raise DivergedBranches(source, target)
-        raise
-
-
 def push_new(target_repository, target_branch_path, source, 
              stop_revision=None, validate=False):
     """Push a revision into Subversion, creating a new branch.
@@ -642,6 +597,11 @@ def push_new(target_repository, target_branch_path, source,
         def get_config(self):
             """See Branch.get_config()."""
             return None
+
+        def revision_id_to_revno(self, revid):
+            if revid is None:
+                return 0
+            return history.index(revid)
 
         def last_revision_info(self):
             """See Branch.last_revision_info()."""
@@ -686,7 +646,10 @@ def push(target, source, revision_id, validate=False):
     mutter('pushing %r' % (revision_id))
     rev = source.repository.get_revision(revision_id)
 
-    base_revid = target.last_revision()
+    if rev.parent_ids == []:
+        base_revid = None
+    else:
+        base_revid = rev.parent_ids[0]
 
     # revision on top of which to commit
     assert (base_revid in rev.parent_ids or 
