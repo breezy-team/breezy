@@ -15,12 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
-from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
-                           NotBranchError, PermissionDenied, 
+from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset, 
+                           LockError, NotBranchError, PermissionDenied, 
                            DependencyNotPresent, NoRepositoryPresent,
                            UnexpectedEndOfContainerError)
 
 import svn.core
+
+# APR define, not in svn.core
+SVN_ERR_UNKNOWN_HOSTNAME = 670002
 
 class NotSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that did not exist."""
@@ -55,6 +58,8 @@ def convert_error(err):
         return PermissionDenied('.', msg)
     elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
         return UnexpectedEndOfContainerError()
+    elif num == SVN_ERR_UNKNOWN_HOSTNAME:
+        return ConnectionError(msg=msg)
     else:
         return err
 
