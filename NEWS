@@ -162,6 +162,11 @@ IN DEVELOPMENT
      migrating from Subversion: ``bzr status -SV`` is now like
      ``svn status -q``.  (Daniel Watkins, #115990)
 
+   * Added C implementation of  ``PatienceSequenceMatcher``, which is about
+     10x faster than the Python version. This speeds up commands that
+     need file diffing, such as ``bzr commit`` or ``bzr diff``.
+     (Lukáš Lalinský)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
