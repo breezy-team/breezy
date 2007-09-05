@@ -60,7 +60,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import ListOption, Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption, custom_help
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -152,8 +152,9 @@ class cmd_status(Command):
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
-    --short gives a status flags for each item, similar to the SVN's status
-    command.
+    Note that --short or -S gives status flags for each item, similar
+    to Subversion's status command. To get output similar to svn -q,
+    use bzr -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -168,8 +169,11 @@ class cmd_status(Command):
     
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision', 'change',
-                     Option('short', help='Give short SVN-style status lines.'),
-                     Option('versioned', help='Only show versioned files.')]
+                     Option('short', help='Use short status indicators.',
+                            short_name='S'),
+                     Option('versioned', help='Only show versioned files.',
+                            short_name='V')
+                     ]
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
@@ -573,7 +577,7 @@ class cmd_pull(Command):
 
     _see_also = ['push', 'update', 'status-flags']
     takes_options = ['remember', 'overwrite', 'revision',
-        Option('verbose', short_name='v',
+        custom_help('verbose',
             help='Show logs of pulled revisions.'),
         Option('directory',
             help='Branch to pull into, '
@@ -1058,10 +1062,14 @@ class cmd_info(Command):
     takes_options = ['verbose']
 
     @display_command
-    def run(self, location=None, verbose=0):
+    def run(self, location=None, verbose=False):
+        if verbose:
+            noise_level = 2
+        else:
+            noise_level = 0
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
-                         verbose=verbose)
+                         verbose=noise_level)
 
 
 class cmd_remove(Command):
@@ -1626,8 +1634,7 @@ class cmd_log(Command):
             Option('timezone',
                    type=str,
                    help='Display timezone as local, original, or utc.'),
-            Option('verbose',
-                   short_name='v',
+            custom_help('verbose',
                    help='Show files changed in each revision.'),
             'show-ids',
             'revision',
@@ -1963,6 +1970,19 @@ class cmd_ignore(Command):
         if not tree.path2id('.bzrignore'):
             tree.add(['.bzrignore'])
 
+        ignored = globbing.Globster(name_pattern_list)
+        matches = []
+        tree.lock_read()
+        for entry in tree.list_files():
+            id = entry[3]
+            if id is not None:
+                filename = entry[0]
+                if ignored.match(filename):
+                    matches.append(filename.encode('utf-8'))
+        tree.unlock()
+        if len(matches) > 0:
+            print "Warning: the following files are version controlled and" \
+                  " match your ignore pattern:\n%s" % ("\n".join(matches),)
 
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
@@ -2227,7 +2247,7 @@ class cmd_commit(Command):
             properties.append('%s fixed' % bug_url)
         return '\n'.join(properties)
 
-    def run(self, message=None, file=None, verbose=True, selected_list=None,
+    def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False):
         from bzrlib.commit import (
@@ -2287,7 +2307,7 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose:
+        if verbose or not is_quiet():
             reporter = ReportCommitToLog()
         else:
             reporter = NullCommitReporter()

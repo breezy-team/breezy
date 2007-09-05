@@ -39,6 +39,7 @@ TEXT_1 = ["Hello world",
 
 
 class TestBase(TestCase):
+
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
@@ -75,36 +76,12 @@ class Easy(TestBase):
         k = Weave()
 
 
-class StoreText(TestBase):
-    """Store and retrieve a simple text."""
-
-    def test_storing_text(self):
-        k = Weave()
-        idx = k.add_lines('text0', [], TEXT_0)
-        self.assertEqual(k.get_lines(idx), TEXT_0)
-        self.assertEqual(idx, 0)
-
-
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Weave()
         k.add_lines('text0', [], TEXT_0)
         self.assertEqual(k.annotate('text0'),
                          [('text0', TEXT_0[0])])
-
-
-class StoreTwo(TestBase):
-    def runTest(self):
-        k = Weave()
-
-        idx = k.add_lines('text0', [], TEXT_0)
-        self.assertEqual(idx, 0)
-
-        idx = k.add_lines('text1', [], TEXT_1)
-        self.assertEqual(idx, 1)
-
-        self.assertEqual(k.get_lines(0), TEXT_0)
-        self.assertEqual(k.get_lines(1), TEXT_1)
 
 
 class GetSha1(TestBase):
@@ -133,7 +110,8 @@ class InvalidAdd(TestBase):
 
 class RepeatedAdd(TestBase):
     """Add the same version twice; harmless."""
-    def runTest(self):
+
+    def test_duplicate_add(self):
         k = Weave()
         idx = k.add_lines('text0', [], TEXT_0)
         idx2 = k.add_lines('text0', [], TEXT_0)
