@@ -1,9 +1,16 @@
 bzr-builddeb (0.91) unstable; urgency=low
 
+  [ Frédéric Brin ]
   * Correct unknown variable (files) when importing dsc.
   * chmod 755 debian/rules when importing dsc
 
- -- Frédéric Brin <frederic.brin@assonetworx.com>  Sun, 02 Sep 2007 16:31:32 +0200
+  [ James Westby ]
+  * Now handles merge mode with multiple entries in the root of
+    upstream's tarball, which was causing havoc with dh-make-php packages.
+    Thanks to Mark A. Hershberger for the report and Adeodato Simó
+    for the pointer to the fix. (Closes: #440069)
+
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 05 Sep 2007 21:56:31 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

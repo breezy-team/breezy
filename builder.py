@@ -285,9 +285,11 @@ class DebMergeBuild(DebBuild):
         tar.close()
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
-      for file in files:
-        shutil.move(file, source_dir)
-      shutil.rmtree(tempdir)
+      if len(files) == 1:
+        shutil.move(files[0], source_dir)
+        shutil.rmtree(tempdir)
+      else:
+        shutil.move(tempdir, source_dir)
       if not upstream:
         shutil.copy(tarball, build_dir)
     else:

@@ -130,11 +130,10 @@ class BuilderTestCase(TestCaseWithTransport):
                               self.package_version.upstream_version)
 
   def __init__(self, *args, **kwargs):
-    self.basedir = 'base'
-    self.build_dir = join(self.basedir, 'build')
-    self.orig_dir = join(self.basedir, 'orig')
-    self.result_dir = join(self.basedir, 'result')
-    self.branch_dir = join(self.basedir, 'branch')
+    self.build_dir = 'build'
+    self.orig_dir = 'orig'
+    self.result_dir = 'result'
+    self.branch_dir = 'branch'
     self.source_dir = join(self.build_dir,
                            self.package_name + '-' + self.upstream_version)
     self.tarball_name = self.package_name + '_' + self.upstream_version + \
@@ -148,7 +147,6 @@ class BuilderTestCase(TestCaseWithTransport):
     os.chdir(self.branch_dir)
 
   def _make_branch(self):
-    os.mkdir(self.basedir)
     tree = self.make_branch_and_tree(self.branch_dir)
     return tree
 
@@ -798,11 +796,36 @@ class TestMergeBuilder(BuilderTestCase):
     self.assertEqual(contents, 'branch')
     self.failIfExists(join(self.source_dir, basedir, 'install'))
 
+  def test_export_multiple_members_upstream(self):
+    """#440069: test when upstream tarball has multiple members in the root"""
+    wt = self._make_branch()
+    files = ['a']
+    self.build_branch_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    builder = self.get_builder(wt=wt)
+    tarball_root = self.package_name + "-" + self.upstream_version
+    self.build_tree(['outside', tarball_root+'/',
+                     join(tarball_root, 'inside')])
+    os.mkdir(self.orig_dir)
+    tarball = join(self.orig_dir, self.tarball_name)
+    f = tarfile.open(tarball, 'w:gz')
+    try:
+      f.add('outside')
+      f.add(tarball_root)
+    finally:
+      f.close()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(join(self.source_dir, 'outside'))
+    self.failUnlessExists(join(self.source_dir, tarball_root, 'inside'))
+    self.failUnlessExists(join(self.source_dir, 'a'))
+
 
 class TestMergeExportUpstreamBuilder(BuilderTestCase):
 
-  upstream_branch = property(lambda self: join(self.basedir, 'upstream'))
-  upstream_parent = property(lambda self: join(self.basedir, 'parent'))
+  upstream_branch = 'upstream'
+  upstream_parent = 'parent'
 
   def get_builder(self, wt=None, version=None, larstiq=False,
                   export_revision=None, export_prepull=False,
