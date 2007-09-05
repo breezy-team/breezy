@@ -119,6 +119,9 @@ IN DEVELOPMENT
     * When two plugins conflict, the source of both the losing and now the
       winning definition is shown.  (Konstantin Mikhaylov, #5454)
 
+    * Prompt for an ftp password if none is provided.
+      (Vincent Ladeuil, #137044)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
