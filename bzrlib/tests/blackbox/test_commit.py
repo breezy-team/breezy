@@ -154,7 +154,7 @@ class TestCommit(ExternalBase):
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = self.get_url('a') + '/'
+        expected = "%s/" % (os.path.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
         self.assertEqual(err, 'Committing revision 2 to "%s".\n'
                          'Committed revision 2.\n' % expected)
@@ -212,6 +212,7 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
+        expected = '%s/' % (os.getcwd(), )
         self.assertEqualDiff(
             'Committing revision 2 to "%s".\n'
             'modified filetomodify\n'
@@ -223,7 +224,7 @@ class TestCommit(ExternalBase):
             'renamed filetorename => renamedfile\n'
             'deleted dirtoremove\n'
             'deleted filetoremove\n'
-            'Committed revision 2.\n' % (this_tree.branch.base, ),
+            'Committed revision 2.\n' % (expected, ),
             err)
 
     def test_empty_commit_message(self):
