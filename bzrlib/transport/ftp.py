@@ -650,7 +650,7 @@ def _setup_medusa():
             else:
                 channel.read_only = 0
 
-            # Only 'foo' user is allowed for the tests
+            # Check secured_user if set
             if (self.secured_user is not None
                 and username == self.secured_user
                 and password != self.secured_password):
