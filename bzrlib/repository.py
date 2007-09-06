@@ -2198,14 +2198,15 @@ class CommitBuilder(object):
                 ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
+                '', tree, tree.path_content_summary(''))
         else:
             # In this revision format, root entries have no knit or weave When
             # serializing out to disk and back in root.revision is always
             # _new_revision_id
             ie.revision = self._new_revision_id
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+        content_summary):
         """Record the content of ie from tree into the commit if needed.
 
         Side effect: sets ie.revision when unchanged
@@ -2215,11 +2216,12 @@ class CommitBuilder(object):
             commit.
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
-        obtain content.
+            obtain content.
+        :param content_summary: Summary data from the tree about the paths
+            content - stat, length, exec, sha/link target.
         """
         if self.new_inventory.root is None:
             self._check_root(ie, parent_invs, tree)
-        content_summary = tree.path_content_summary(path)
         kind = content_summary[0]
         # XXX: repository specific check for nested tree support goes here - if
         # the repo doesn't want nested trees we skip it ?
