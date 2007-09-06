@@ -683,6 +683,10 @@ future::
         marmalade,
         )
 
+There should be spaces between function paramaters, but not between the
+keyword name and the value::
+
+    call(1, 3, cheese=quark)
 
 In emacs::
 
