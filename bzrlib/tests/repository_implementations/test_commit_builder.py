@@ -16,8 +16,9 @@
 
 """Tests for repository commit builder."""
 
-from errno import EISDIR
+from errno import EACCES, EISDIR
 import os
+import sys
 
 from bzrlib import inventory
 from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
@@ -415,11 +416,20 @@ class TestCommitBuilder(TestCaseWithRepository):
         path = 'name'
         make_before(path)
         def change_kind():
-            try:
+            # 'Easier to ask for forgiveness than permission' paradigm
+            # is monstrous here
+            #try:
+            #    os.unlink(path)
+            #except OSError, e:
+            #    if not (e.errno == EISDIR or
+            #        (sys.platform == 'win32' and e.errno == EACCES)):
+            #        raise
+            #    os.rmdir(path)
+            # because it's a test we can do it via direct check
+            # (bialix 20070906)
+            if not os.path.isdir(path):
                 os.unlink(path)
-            except OSError, e:
-                if e.errno != EISDIR:
-                    raise
+            else:
                 os.rmdir(path)
             make_after(path)
         self._add_commit_change_check_changed(tree, path, change_kind)
