@@ -182,7 +182,7 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
                 version + "2")
 
-    def test_add_lines_nostoresha(self):
+    def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_file()
         empty_text = ('a', [])
