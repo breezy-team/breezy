@@ -858,7 +858,8 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Repository.gather_stats'),
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertEqual(
-            smart.request.request_handlers.get('Repository.get_revision_graph'),
+            smart.request.request_handlers.get(
+                'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
@@ -870,11 +871,15 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
         self.assertEqual(
-            smart.request.request_handlers.get('Repository.unlock'),
-            smart.repository.SmartServerRepositoryUnlock)
+            smart.request.request_handlers.get(
+                'Repository.stream_knit_data_for_revisions'),
+            smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.unlock'),
+            smart.repository.SmartServerRepositoryUnlock)
         self.assertEqual(
             smart.request.request_handlers.get('Transport.is_readonly'),
             smart.request.SmartServerIsReadonly)
