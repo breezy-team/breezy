@@ -6,7 +6,7 @@ Bazaar Developer Guide
 
 (The current version of this document is available in the file 
 ``doc/developers/HACKING.txt`` in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/developers/HACKING.html)
+http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html)
 
 
 Getting Started
@@ -1286,6 +1286,384 @@ Making Installers for OS Windows
 To build a win32 installer, see the instructions on the wiki page:
 http://bazaar-vcs.org/BzrWin32Installer
 
+
+Core Developer Tasks
+####################
+
+Overview
+========
+
+What is a Core Developer?
+-------------------------
+
+While everyone in the Bazaar community is welcome and encouraged to
+propose and submit changes, a smaller team is reponsible for pulling those
+changes together into a cohesive whole. In addition to the general developer
+stuff covered above, "core" developers have responsibility for:
+
+* reviewing changes
+* reviewing blueprints
+* planning releases
+* managing releases.
+
+.. note::
+  Removing barriers to community participation is a key reason for adopting
+  distributed VCS technology. While DVCS removes many technical barriers,
+  a small number of social barriers are often necessary instead.
+  By documenting how the above things are done, we hope to
+  encourage more people to participate in these activities, keeping the
+  differences between core and non-core contributors to a minimum.
+
+
+The Development Lifecycle
+-------------------------
+
+As a rule, Bazaar development follows a 4 week cycle:
+
+* 2 weeks - general changes
+* 1 week - feature freeze
+* 1 week+ - Release Candidate stabilization
+
+During the FeatureFreeze week, the trunk (bzr.dev) is open in a limited
+way: only low risk changes, critical and high priority fixes are accepted
+during this time. At the end of FeatureFreeze, a branch is created for the
+first Release Candidate and the trunk is reopened for general development
+on the *next* release. A week or so later, the final release is packaged
+assuming no serious problems were encountered with the one or more Release
+Candidates.
+
+.. note::
+  There is a one week overlap between the start of one release and
+  the end of the previous one.
+
+
+Communicating and Coordinating
+------------------------------
+
+While it has many advantages, one of the challenges of distributed
+development is keeping everyone else aware of what you're working on.
+There are numerous ways to do this:
+
+#. Assign bugs to yourself in Launchpad
+#. Mention it on the mailing list
+#. Mention it on IRC
+
+As well as the email notifcations that occur when merge requests are sent
+and reviewed, you can keep others informed of where you're spending your
+energy by emailing the **bazaar-commits** list implicitly. To do this,
+install and configure the Email plugin. One way to do this is add these
+configuration settings to your central configuration file (e.g.
+``~/.bazaar/bazaar.conf`` on Linux)::
+
+  [DEFAULT]
+  email = Joe Smith <joe.smith@internode.on.net>
+  smtp_server = mail.internode.on.net:25
+
+Then add these lines for the relevant branches in ``locations.conf``::
+
+  post_commit_to = bazaar-commits@lists.canonical.com
+  post_commit_mailer = smtplib
+
+While attending a sprint, RobertCollins' Dbus plugin is useful for the
+same reason. See the documentation within the plugin for information on
+how to set it up and configure it.
+
+
+Reviewing Changes
+=================
+
+Setting Up Your Workspace for Reviews
+-------------------------------------
+
+TODO: Incorporate John Arbash Meinel's detailed email to Ian C on the
+numerous ways of setting up integration branches.
+
+
+The Review Checklist
+--------------------
+
+See `A Closer Look at the Merge & Review Process`_
+for information on the gates used to decide whether code can be merged
+or not and details on how review results are recorded and communicated.
+
+
+The Importance of Timely Reviews
+--------------------------------
+
+Good reviews do take time. They also regularly require a solid
+understanding of the overall code base. In practice, this means a small
+number of people often have a large review burden - with knowledge comes
+responsibility. No one like their merge requests sitting in a queue going
+nowhere, so reviewing sooner rather than later is strongly encouraged.
+
+
+Submitting Changes
+==================
+
+An Overview of PQM
+------------------
+
+Of the many workflows supported by Bazaar, the one adopted for Bazaar
+development itself is known as "Decentralized with automatic gatekeeper".
+To repeat the explanation of this given on
+http://bazaar-vcs.org/Workflows:
+
+.. pull-quote::
+  In this workflow, each developer has their own branch or
+  branches, plus read-only access to the mainline. A software gatekeeper
+  (e.g. PQM) has commit rights to the main branch. When a developer wants
+  their work merged, they request the gatekeeper to merge it. The gatekeeper
+  does a merge, a compile, and runs the test suite. If the code passes, it
+  is merged into the mainline.
+
+In a nutshell, here's the overall submission process:
+
+#. get your work ready (including review except for trivial changes)
+#. push to a public location
+#. ask PQM to merge from that location
+
+.. note::
+  At present, PQM always takes the changes to merge from a branch
+  at a URL that can be read by it. For Bazaar, that means a public,
+  typically http, URL.
+
+As a result, the following things are needed to use PQM for submissions:
+
+#. A publicly available web server
+#. Your OpenPGP key registered with PQM (contact RobertCollins for this)
+#. The PQM plugin installed and configured (not strictly required but
+   highly recommended).
+
+
+Selecting a Public Branch Location
+----------------------------------
+
+If you don't have your own web server running, branches can always be
+pushed to Launchpad. Here's the process for doing that:
+
+Depending on your location throughout the world and the size of your
+repository though, it is often quicker to use an alternative public
+location to Launchpad, particularly if you can set up your own repo and
+push into that. By using an existing repo, push only needs to send the
+changes, instead of the complete repository every time. Note that it is
+easy to register branches in other locations with Launchpad so no benefits
+are lost by going this way.
+
+.. note::
+  For Canonical staff, http://people.ubuntu.com/~<user>/ is one
+  suggestion for public http branches. Contact your manager for information
+  on accessing this system if required.
+
+It should also be noted that best practice in this area is subject to
+change as things evolve. For example, once the Bazaar smart server on
+Launchpad supports server-side branching, the performance situation will
+be very different to what it is now (Jun 2007).
+
+
+Configuring the PQM Plug-In
+---------------------------
+
+While not strictly required, the PQM plugin automates a few things and
+reduces the chance of error. Before looking at the plugin, it helps to
+understand  a little more how PQM operates. Basically, PQM requires an
+email indicating what you want it to do. The email typically looks like
+this::
+
+  star-merge source-branch target-branch
+
+For example::
+
+  star-merge http://bzr.arbash-meinel.com/branches/bzr/jam-integration http://bazaar-vcs.org/bzr/bzr.dev
+
+Note that the command needs to be on one line. The subject of the email
+will be used for the commit message. The email also needs to be ``gpg``
+signed with a key that PQM accepts.
+
+The advantages of using the PQM plugin are:
+
+#. You can use the config policies to make it easy to set up public
+   branches, so you don't have to ever type the full paths you want to merge
+   from or into.
+
+#. It checks to make sure the public branch last revision matches the
+   local last revision so you are submitting what you think you are.
+
+#. It uses the same public_branch and smtp sending settings as bzr-email,
+   so if you have one set up, you have the other mostly set up.
+
+#. Thunderbird refuses to not wrap lines, and request lines are usually
+   pretty long (you have 2 long URLs in there).
+
+Here are sample configuration settings for the PQM plugin. Here are the
+lines in bazaar.conf::
+
+  [DEFAULT]
+  email = Joe Smith <joe.smith@internode.on.net>
+  smtp_server=mail.internode.on.net:25
+
+And here are the lines in ``locations.conf`` (or ``branch.conf`` for
+dirstate-tags branches)::
+
+  [/home/joe/bzr/my-integration]
+  push_location = sftp://joe-smith@bazaar.launchpad.net/%7Ejoe-smith/bzr/my-integration/
+  push_location:policy = norecurse
+  public_branch = http://bazaar.launchpad.net/~joe-smith/bzr/my-integration/
+  public_branch:policy = appendpath
+  pqm_email = Bazaar PQM <pqm@bazaar-vcs.org>
+  pqm_branch = http://bazaar-vcs.org/bzr/bzr.dev
+
+Note that the push settings will be added by the first ``push`` on
+a branch. Indeed the preferred way to generate the lines above is to use
+``push`` with an argument, then copy-and-paste the other lines into
+the relevant file.
+
+
+Submitting a Change
+-------------------
+
+Here is one possible recipe once the above environment is set up:
+
+#. pull bzr.dev => my-integration
+#. merge patch => my-integration
+#. fix up any final merge conflicts (NEWS being the big killer here).
+#. commit
+#. push
+#. pqm-submit
+
+.. note::
+  The ``push`` step is not required if ``my-integration`` is a checkout of
+  a public branch.
+
+  Because of defaults, you can type a single message into commit and
+  pqm-commit will reuse that.
+
+
+Tracking Change Acceptance
+--------------------------
+
+The web interface to PQM is https://pqm.bazaar-vcs.org/. After submitting
+a change, you can visit this URL to confirm it was received and placed in
+PQM's queue.
+
+When PQM completes processing a change, an email is sent to you with the
+results.
+
+
+Reviewing Blueprints
+====================
+
+Blueprint Tracking Using Launchpad
+----------------------------------
+
+New features typically require a fair amount of discussion, design and
+debate. For Bazaar, that information is often captured in a so-called
+"blueprint" on our Wiki. Overall tracking of blueprints and their status
+is done using Launchpad's relevant tracker,
+https://blueprints.launchpad.net/bzr/. Once a blueprint for ready for
+review, please announce it on the mailing list.
+
+Alternatively, send an email begining with [RFC] with the proposal to the
+list. In some cases, you may wish to attach proposed code  or a proposed
+developer document if that best communicates the idea. Debate can then
+proceed using the normal merge review processes.
+
+
+Recording Blueprint Review Feedback
+-----------------------------------
+
+Unlike its Bug Tracker, Launchpad's Blueprint Tracker doesn't currently
+(Jun 2007) support a chronological list of comment responses. Review
+feedback can either be recorded on the Wiki hosting the blueprints or by
+using Launchpad's whiteboard feature.
+
+
+Planning Releases
+=================
+
+Roadmaps
+--------
+
+As the two senior developers, Martin Pool and Robert Collins coordinate
+the overall Bazaar product development roadmap. Core developers provide
+input and review into this, particularly during sprints. It's totally
+expected that community members ought to be working on things that
+interest them the most. The roadmap is valuable though because it provides
+context for understanding where the product is going as a whole and why.
+
+
+Using Releases and Milestones in Launchpad
+------------------------------------------
+
+TODO ... (Exact policies still under discussion)
+
+
+Bug Triage
+----------
+
+Keeping on top of bugs reported is an important part of ongoing release
+planning. Everyone in the community is welcome and encouraged to raise
+bugs, confirm bugs raised by others, and nominate a priority. Practically
+though, a good percentage of bug triage is often done by the core
+developers, partially because of their depth of product knowledge.
+
+With respect to bug triage, core developers are encouraged to play an
+active role with particular attention to the following tasks:
+
+* keeping the number of unconfirmed bugs low
+* ensuring the priorities are generally right (everything as critical - or
+  medium - is meaningless)
+* looking out for regressions and turning those around sooner rather than later.
+
+.. note::
+  As well as prioritizing bugs and nominating them against a
+  target milestone, Launchpad lets core developers offer to mentor others in
+  fixing them. Nice.
+
+
+Managing a Release
+==================
+
+Starting a Release
+------------------
+
+TODO: Things to cover:
+
+* RFI on release objectives
+* RFI on higher risk things that are best done early, e.g. changes to file
+  format defaults
+* Communication of proposed dates
+
+
+Weekly Status Updates
+---------------------
+
+TODO: Things to cover:
+
+* Early communication to downstream teams (e.g. Launchpad) about changes in dependencies.
+* Reminder re lifecycle and where we're up to right now
+* Summary of recent successes and pending work
+* Reminder re release objectives
+* Reminder re things needing attention, e.g. bug triage, reviews, testing of certain things, etc.
+
+
+Feature Freeze
+--------------
+
+TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
+
+
+Release Candidates
+------------------
+
+TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
+it up to make it clearer what the RC vs final vs both tasks are.
+
+
+The Final Release
+-----------------
+
+TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
+it up to make it clearer what the RC vs final vs both tasks are.
 
 ..
    vim: ft=rst tw=74 ai
