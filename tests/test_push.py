@@ -447,5 +447,3 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         os.mkdir("n")
         BzrDir.open(repos_url+"/trunk").sprout("n")
-        import pdb
-        pdb.set_trace()
