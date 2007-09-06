@@ -1382,53 +1382,19 @@ numerous ways of setting up integration branches.
 The Review Checklist
 --------------------
 
-There are broadly three gates for code to get in:
-
-* Doesn't reduce test coverage: if it adds new methods or commands, there
-  should be tests for them.  There is a good test framework and plenty of
-  examples to crib from, but if you are having trouble working out how to
-  test something feel free to post a draft patch and ask for help.
-
-* Doesn't reduce design clarity, such as by entangling objects we're
-  trying to separate.  This is mostly something the more experienced
-  reviewers need to help check.
-
-* Improves bugs, features, speed, or code simplicity.
-
-As we approach and pass 1.0, a fourth gate - performance impact - will
-also be a consideration.
+See `A Closer Look at the Merge & Review Process`_
+for information on the gates used to decide whether code can be merged
+or not and details on how review results are recorded and communicated.
 
 
-Communicating Review Results
-----------------------------
-
-The preferred way of communicating review results is via email, i.e. by
-replying to the original merge/patch submission. It isn't necessary to
-include every bit of the diff in your response - just the bits you have
-feedback on.
+The Importance of Timely Reviews
+--------------------------------
 
 Good reviews do take time. They also regularly require a solid
 understanding of the overall code base. In practice, this means a small
 number of people often have a large review burden - with knowledge comes
 responsibility. No one like their merge requests sitting in a queue going
 nowhere, so reviewing sooner rather than later is strongly encouraged.
-
-
-Recording Votes on Changes
---------------------------
-
-Everyone in the community is welcome to review
-and vote on whatever they like, though 2 positive votes from core
-developers are required before a change will be approved. Merge requests
-are tracked using Aaron Bentley's nifty Bundle Buggy (BB) tool:
-http://bundlebuggy.aaronbentley.com/. To get a login on BB, contact Aaron
-directly.
-
-For very small changes, simply voting on BB can be enough, together with a
-brief comment made while voting. The more common case though is sending a
-detailed review to the mailing list including an embedded directive
-(like "bb: approve") in the email. Alternatively, small changes can be
-voted for directly on BB.
 
 
 Submitting Changes
