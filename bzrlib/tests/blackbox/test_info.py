@@ -23,6 +23,7 @@ import sys
 import bzrlib
 from bzrlib import (
     bzrdir,
+    errors,
     osutils,
     repository,
     urlutils,
