@@ -170,6 +170,9 @@ IN DEVELOPMENT
      need file diffing, such as ``bzr commit`` or ``bzr diff``.
      (Lukáš Lalinský)
 
+   * HACKING has been extended with a large section on core developer tasks.
+     (Ian Clatworthy)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
