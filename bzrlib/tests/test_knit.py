@@ -36,6 +36,7 @@ from bzrlib.errors import (
     )
 from bzrlib.index import *
 from bzrlib.knit import (
+    AnnotatedKnitContent,
     KnitContent,
     KnitGraphIndex,
     KnitVersionedFile,
@@ -45,6 +46,7 @@ from bzrlib.knit import (
     _KnitData,
     _KnitIndex,
     _PackAccess,
+    PlainKnitContent,
     WeaveToKnit,
     KnitSequenceMatcher,
     )
@@ -76,53 +78,141 @@ class _CompiledKnitFeature(Feature):
 CompiledKnitFeature = _CompiledKnitFeature()
 
 
-class KnitContentTests(TestCase):
+class KnitContentTestsMixin(object):
 
     def test_constructor(self):
-        content = KnitContent([])
+        content = self._make_content([])
 
     def test_text(self):
-        content = KnitContent([])
+        content = self._make_content([])
         self.assertEqual(content.text(), [])
 
-        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
         self.assertEqual(content.text(), ["text1", "text2"])
 
+    def test_copy(self):
+        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
+        copy = content.copy()
+        self.assertIsInstance(copy, content.__class__)
+        self.assertEqual(copy.annotate(), content.annotate())
+
+    def assertDerivedBlocksEqual(self, source, target, noeol=False):
+        """Assert that the derived matching blocks match real output"""
+        source_lines = source.splitlines(True)
+        target_lines = target.splitlines(True)
+        def nl(line):
+            if noeol and not line.endswith('\n'):
+                return line + '\n'
+            else:
+                return line
+        source_content = self._make_content([(None, nl(l)) for l in source_lines])
+        target_content = self._make_content([(None, nl(l)) for l in target_lines])
+        line_delta = source_content.line_delta(target_content)
+        delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
+            source_lines, target_lines))
+        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        self.assertEqual(matcher_blocks, delta_blocks)
+
+    def test_get_line_delta_blocks(self):
+        self.assertDerivedBlocksEqual('a\nb\nc\n', 'q\nc\n')
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1)
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1A)
+        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1B)
+        self.assertDerivedBlocksEqual(TEXT_1B, TEXT_1A)
+        self.assertDerivedBlocksEqual(TEXT_1A, TEXT_1B)
+        self.assertDerivedBlocksEqual(TEXT_1A, '')
+        self.assertDerivedBlocksEqual('', TEXT_1A)
+        self.assertDerivedBlocksEqual('', '')
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
+
+    def test_get_line_delta_blocks_noeol(self):
+        """Handle historical knit deltas safely
+
+        Some existing knit deltas don't consider the last line to differ
+        when the only difference whether it has a final newline.
+
+        New knit deltas appear to always consider the last line to differ
+        in this case.
+        """
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd\n', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\nd\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\n', noeol=True)
+
+
+class TestPlainKnitContent(TestCase, KnitContentTestsMixin):
+
+    def _make_content(self, lines):
+        annotated_content = AnnotatedKnitContent(lines)
+        return PlainKnitContent(annotated_content.text(), 'bogus')
+
     def test_annotate(self):
-        content = KnitContent([])
+        content = self._make_content([])
         self.assertEqual(content.annotate(), [])
 
-        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
+        self.assertEqual(content.annotate(),
+            [("bogus", "text1"), ("bogus", "text2")])
+
+    def test_annotate_iter(self):
+        content = self._make_content([])
+        it = content.annotate_iter()
+        self.assertRaises(StopIteration, it.next)
+
+        content = self._make_content([("bogus", "text1"), ("bogus", "text2")])
+        it = content.annotate_iter()
+        self.assertEqual(it.next(), ("bogus", "text1"))
+        self.assertEqual(it.next(), ("bogus", "text2"))
+        self.assertRaises(StopIteration, it.next)
+
+    def test_line_delta(self):
+        content1 = self._make_content([("", "a"), ("", "b")])
+        content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
+        self.assertEqual(content1.line_delta(content2),
+            [(1, 2, 2, ["a", "c"])])
+
+    def test_line_delta_iter(self):
+        content1 = self._make_content([("", "a"), ("", "b")])
+        content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
+        it = content1.line_delta_iter(content2)
+        self.assertEqual(it.next(), (1, 2, 2, ["a", "c"]))
+        self.assertRaises(StopIteration, it.next)
+
+
+class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
+
+    def _make_content(self, lines):
+        return AnnotatedKnitContent(lines)
+
+    def test_annotate(self):
+        content = self._make_content([])
+        self.assertEqual(content.annotate(), [])
+
+        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
         self.assertEqual(content.annotate(),
             [("origin1", "text1"), ("origin2", "text2")])
 
     def test_annotate_iter(self):
-        content = KnitContent([])
+        content = self._make_content([])
         it = content.annotate_iter()
         self.assertRaises(StopIteration, it.next)
 
-        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
         it = content.annotate_iter()
         self.assertEqual(it.next(), ("origin1", "text1"))
         self.assertEqual(it.next(), ("origin2", "text2"))
         self.assertRaises(StopIteration, it.next)
 
-    def test_copy(self):
-        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
-        copy = content.copy()
-        self.assertIsInstance(copy, KnitContent)
-        self.assertEqual(copy.annotate(),
-            [("origin1", "text1"), ("origin2", "text2")])
-
     def test_line_delta(self):
-        content1 = KnitContent([("", "a"), ("", "b")])
-        content2 = KnitContent([("", "a"), ("", "a"), ("", "c")])
+        content1 = self._make_content([("", "a"), ("", "b")])
+        content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         self.assertEqual(content1.line_delta(content2),
             [(1, 2, 2, [("", "a"), ("", "c")])])
 
     def test_line_delta_iter(self):
-        content1 = KnitContent([("", "a"), ("", "b")])
-        content2 = KnitContent([("", "a"), ("", "a"), ("", "c")])
+        content1 = self._make_content([("", "a"), ("", "b")])
+        content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         it = content1.line_delta_iter(content2)
         self.assertEqual(it.next(), (1, 2, 2, [("", "a"), ("", "c")]))
         self.assertRaises(StopIteration, it.next)
@@ -1074,56 +1164,11 @@ class BasicKnitTests(KnitTests):
     def test_delta(self):
         """Expression of knit delta as lines"""
         k = self.make_test_knit()
-        KnitContent
         td = list(line_delta(TEXT_1.splitlines(True),
                              TEXT_1A.splitlines(True)))
         self.assertEqualDiff(''.join(td), delta_1_1a)
         out = apply_line_delta(TEXT_1.splitlines(True), td)
         self.assertEqualDiff(''.join(out), TEXT_1A)
-
-    def assertDerivedBlocksEqual(self, source, target, noeol=False):
-        """Assert that the derived matching blocks match real output"""
-        source_lines = source.splitlines(True)
-        target_lines = target.splitlines(True)
-        def nl(line):
-            if noeol and not line.endswith('\n'):
-                return line + '\n'
-            else:
-                return line
-        source_content = KnitContent([(None, nl(l)) for l in source_lines])
-        target_content = KnitContent([(None, nl(l)) for l in target_lines])
-        line_delta = source_content.line_delta(target_content)
-        delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
-            source_lines, target_lines))
-        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        matcher_blocks = list(list(matcher.get_matching_blocks()))
-        self.assertEqual(matcher_blocks, delta_blocks)
-
-    def test_get_line_delta_blocks(self):
-        self.assertDerivedBlocksEqual('a\nb\nc\n', 'q\nc\n')
-        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1)
-        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1A)
-        self.assertDerivedBlocksEqual(TEXT_1, TEXT_1B)
-        self.assertDerivedBlocksEqual(TEXT_1B, TEXT_1A)
-        self.assertDerivedBlocksEqual(TEXT_1A, TEXT_1B)
-        self.assertDerivedBlocksEqual(TEXT_1A, '')
-        self.assertDerivedBlocksEqual('', TEXT_1A)
-        self.assertDerivedBlocksEqual('', '')
-        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
-
-    def test_get_line_delta_blocks_noeol(self):
-        """Handle historical knit deltas safely
-
-        Some existing knit deltas don't consider the last line to differ
-        when the only difference whether it has a final newline.
-
-        New knit deltas appear to always consider the last line to differ
-        in this case.
-        """
-        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd\n', noeol=True)
-        self.assertDerivedBlocksEqual('a\nb\nc\nd\n', 'a\nb\nc', noeol=True)
-        self.assertDerivedBlocksEqual('a\nb\nc\n', 'a\nb\nc', noeol=True)
-        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\n', noeol=True)
 
     def test_add_with_parents(self):
         """Store in knit with parents"""
