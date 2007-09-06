@@ -201,7 +201,12 @@ class AnnotatedKnitContent(KnitContent):
 
 
 class PlainKnitContent(KnitContent):
-    """Unannotated content."""
+    """Unannotated content.
+    
+    When annotate[_iter] is called on this content, the same version is reported
+    for all lines. Generally, annotate[_iter] is not useful on PlainKnitContent
+    objects.
+    """
 
     def __init__(self, lines, version_id):
         self._lines = lines
@@ -847,7 +852,7 @@ class KnitVersionedFile(VersionedFile):
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
-        # Technically this is a case of LBYL, but:
+        # Technically this is a case of Look Before You Leap, but:
         # - for knits this saves wasted space in the error case
         # - for packs this avoids dead space in the pack
         # - it also avoids undetected poisoning attacks.
