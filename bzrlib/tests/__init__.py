@@ -2614,6 +2614,17 @@ class Feature(object):
         return self.__class__.__name__
 
 
+class _SymlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_symlinks()
+
+    def feature_name(self):
+        return 'symlinks'
+
+SymlinkFeature = _SymlinkFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 
@@ -2641,3 +2652,21 @@ class TestScenarioApplier(object):
         new_id = "%s(%s)" % (new_test.id(), scenario[0])
         new_test.id = lambda: new_id
         return new_test
+
+
+def probe_unicode_in_user_encoding():
+    """Try to encode several unicode strings to use in unicode-aware tests.
+    Return first successfull match.
+
+    :return:  (unicode value, encoded plain string value) or (None, None)
+    """
+    possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+    for uni_val in possible_vals:
+        try:
+            str_val = uni_val.encode(bzrlib.user_encoding)
+        except UnicodeEncodeError:
+            # Try a different character
+            pass
+        else:
+            return uni_val, str_val
+    return None, None

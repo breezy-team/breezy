@@ -445,7 +445,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
 
     def test_revert_inventory(self):
         tree = self.make_branch_and_tree('source')
@@ -464,7 +464,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
                                      './.bzr/checkout/dirstate',

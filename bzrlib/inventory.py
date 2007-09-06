@@ -50,6 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
+from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
 from bzrlib.trace import mutter
 
 
@@ -161,7 +162,42 @@ class InventoryEntry(object):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
+    
+    def parent_candidates(self, previous_inventories):
+        """Find possible per-file graph parents.
 
+        This is currently defined by:
+         - Select the last changed revision in the parent inventory.
+         - Do deal with a short lived bug in bzr 0.8's development two entries
+           that have the same last changed but different 'x' bit settings are
+           changed in-place.
+        """
+        # revision:ie mapping for each ie found in previous_inventories.
+        candidates = {}
+        # identify candidate head revision ids.
+        for inv in previous_inventories:
+            if self.file_id in inv:
+                ie = inv[self.file_id]
+                assert ie.file_id == self.file_id
+                if ie.revision in candidates:
+                    # same revision value in two different inventories:
+                    # correct possible inconsistencies:
+                    #     * there was a bug in revision updates with 'x' bit 
+                    #       support.
+                    try:
+                        if candidates[ie.revision].executable != ie.executable:
+                            candidates[ie.revision].executable = False
+                            ie.executable = False
+                    except AttributeError:
+                        pass
+                    # must now be the same.
+                    assert candidates[ie.revision] == ie
+                else:
+                    # add this revision as a candidate.
+                    candidates[ie.revision] = ie
+        return candidates
+
+    @deprecated_method(zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
@@ -180,51 +216,31 @@ class InventoryEntry(object):
                             file store should be completed under.
         :param entry_vf: The entry versioned file, if its already available.
         """
-        def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
-        # revision:ie mapping for each ie found in previous_inventories.
-        candidates = {}
+        candidates = self.parent_candidates(previous_inventories)
+
         # revision:ie mapping with one revision for each head.
         heads = {}
-        # revision: ancestor list for each head
-        head_ancestors = {}
-        # identify candidate head revision ids.
-        for inv in previous_inventories:
-            if self.file_id in inv:
-                ie = inv[self.file_id]
-                assert ie.file_id == self.file_id
-                if ie.kind != self.kind:
-                    # Can't be a candidate if the kind has changed.
-                    continue
-                if ie.revision in candidates:
-                    # same revision value in two different inventories:
-                    # correct possible inconsistencies:
-                    #     * there was a bug in revision updates with 'x' bit 
-                    #       support.
-                    try:
-                        if candidates[ie.revision].executable != ie.executable:
-                            candidates[ie.revision].executable = False
-                            ie.executable = False
-                    except AttributeError:
-                        pass
-                    # must now be the same.
-                    assert candidates[ie.revision] == ie
-                else:
-                    # add this revision as a candidate.
-                    candidates[ie.revision] = ie
-
         # common case optimisation
         if len(candidates) == 1:
             # if there is only one candidate revision found
-            # then we can opening the versioned file to access ancestry:
+            # then we can avoid opening the versioned file to access ancestry:
             # there cannot be any ancestors to eliminate when there is 
             # only one revision available.
-            heads[ie.revision] = ie
-            return heads
+            return candidates
+        
+        # --- what follows is now encapsulated in repository.get_graph.heads(), 
+        #     but that is not accessible from here as we have no repository
+        #     pointer. Note that the repository.get_graph.heads() call can return
+        #     different results *at the moment* because of the kind-changing check
+        #     we have in parent_candidates().
 
         # eliminate ancestors amongst the available candidates:
         # heads are those that are not an ancestor of any other candidate
         # - this provides convergence at a per-file level.
+        def get_ancestors(weave, entry):
+            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
+        # revision: ancestor list for each head
+        head_ancestors = {}
         for ie in candidates.values():
             # may be an ancestor of a known head:
             already_present = 0 != len(

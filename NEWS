@@ -117,6 +117,12 @@ IN DEVELOPMENT
    * When two plugins conflict, the source of both the losing and now the
      winning definition is shown.  (Konstantin Mikhaylov, #5454)
 
+   * When committing to a branch, the location being committed to is
+     displayed.  (Daniel Watkins, #52479)
+
+   * ``bzr --version`` takes care about encoding of stdout, especially
+     when output is redirected. (Alexander Belchenko, #131100)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
@@ -158,6 +164,14 @@ IN DEVELOPMENT
      short name for --versioned. These have been added to assist users
      migrating from Subversion: ``bzr status -SV`` is now like
      ``svn status -q``.  (Daniel Watkins, #115990)
+
+   * Added C implementation of  ``PatienceSequenceMatcher``, which is about
+     10x faster than the Python version. This speeds up commands that
+     need file diffing, such as ``bzr commit`` or ``bzr diff``.
+     (Lukáš Lalinský)
+
+   * HACKING has been extended with a large section on core developer tasks.
+     (Ian Clatworthy)
 
    * Initial commit is now less verbose by default showing just the
      "Committed revision n" message and the count of changes. To get
@@ -216,6 +230,11 @@ IN DEVELOPMENT
      This is done in order to mix the commit messages (which is a unicode
      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
+    * Deprecated method ``find_previous_heads`` on
+      ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
+      of ``parent_candidates`` and a separate heads check via the repository
+      API. (Robert Collins)
+
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
      (Robert Collins)
@@ -263,6 +282,13 @@ IN DEVELOPMENT
      standard options as the base definition of these is now more complex
      than before thanks to their use of a custom callback. (Ian Clatworthy)
       
+    * Tree._iter_changes(specific_file=[]) now iterates through no files,
+      instead of iterating through all files.  None is used to iterate through
+      all files.  (Aaron Bentley)
+
+    * WorkingTree.revert() now accepts None to revert all files.  The use of
+      [] to revert all files is deprecated.  (Aaron Bentley)
+
 
 bzr 0.90 2007-08-28
 ===================
