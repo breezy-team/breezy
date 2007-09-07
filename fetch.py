@@ -462,7 +462,9 @@ class InterFromSvnRepository(InterRepository):
                 edit, edit_baton = svn.delta.make_editor(editor, pool)
 
                 if parent_revid is None:
-                    transport.reparent(urlutils.join(repos_root, branch))
+                    branch_url = urlutils.join(repos_root, branch)
+                    transport.reparent(branch_url)
+                    assert transport.svn_url == branch_url
                     reporter = transport.do_update(
                                    revnum, True, edit, edit_baton, pool)
 

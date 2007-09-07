@@ -312,6 +312,7 @@ class SvnRaTransport(Transport):
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
             self.reparent(self.svn_url)
+        assert self._backing_url == self.svn_url
 
     def reparent_root(self):
         if self._is_http_transport():
@@ -323,11 +324,10 @@ class SvnRaTransport(Transport):
     @needs_busy
     def reparent(self, url):
         url = url.rstrip("/")
-        if url == self._backing_url:
-            return
         self.base = url
         self.svn_url = url
-        self._backing_url = url
+        if url == self._backing_url:
+            return
         if hasattr(svn.ra, 'reparent'):
             self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url, self.pool)
@@ -335,6 +335,7 @@ class SvnRaTransport(Transport):
             self.mutter('svn reparent (reconnect) %r' % url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
+        self._backing_url = url
 
     @convert_svn_error
     @needs_busy
@@ -430,7 +431,8 @@ class SvnRaTransport(Transport):
         self._open_real_transport()
         self.mutter('svn update -r %r' % revnum)
         self._mark_busy()
-        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", *args, **kwargs))
+        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
+                             *args, **kwargs))
 
     @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
