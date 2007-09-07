@@ -80,11 +80,15 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+from bzrlib.urlutils import unescape_for_display
 import bzrlib.ui
 
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
+
+    def started(self, revno, revid, location=None):
+        pass
 
     def snapshot_change(self, change, path):
         pass
@@ -120,6 +124,13 @@ class ReportCommitToLog(NullCommitReporter):
         if change == 'added' and path == '':
             return
         self._note("%s %s", change, path)
+
+    def started(self, revno, rev_id, location=None):
+        if location is not None:
+            location = ' to "' + unescape_for_display(location, 'utf-8') + '"'
+        else:
+            location = ''
+        self._note('Committing revision %d%s.', revno, location)
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
@@ -290,7 +301,7 @@ class Commit(object):
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
-            
+
             # Collect the changes
             self._set_progress_stage("Collecting changes",
                     entries_title="Directory")
@@ -298,6 +309,15 @@ class Commit(object):
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             
             try:
+                # find the location being committed to
+                if self.bound_branch:
+                    master_location = self.master_branch.base
+                else:
+                    master_location = self.branch.base
+
+                # report the start of the commit
+                self.reporter.started(new_revno, self.rev_id, master_location)
+
                 self._update_builder_with_changes()
                 self._check_pointless()
 

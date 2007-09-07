@@ -152,8 +152,9 @@ class cmd_status(Command):
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
-    --short gives a status flags for each item, similar to the SVN's status
-    command.
+    Note that --short or -S gives status flags for each item, similar
+    to Subversion's status command. To get output similar to svn -q,
+    use bzr -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -168,8 +169,11 @@ class cmd_status(Command):
     
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision', 'change',
-                     Option('short', help='Give short SVN-style status lines.'),
-                     Option('versioned', help='Only show versioned files.')]
+                     Option('short', help='Use short status indicators.',
+                            short_name='S'),
+                     Option('versioned', help='Only show versioned files.',
+                            short_name='V')
+                     ]
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
@@ -1098,7 +1102,7 @@ class cmd_remove(Command):
         tree, file_list = tree_files(file_list)
 
         if file_list is not None:
-            file_list = [f for f in file_list if f != '']
+            file_list = [f for f in file_list]
         elif not new:
             raise errors.BzrCommandError('Specify one or more files to'
             ' remove, or use --new.')
@@ -2557,7 +2561,6 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
-        from bzrlib.version import show_version
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2611,10 +2614,12 @@ class cmd_selftest(Command):
 class cmd_version(Command):
     """Show version of bzr."""
 
+    encoding_type = 'replace'
+
     @display_command
     def run(self):
         from bzrlib.version import show_version
-        show_version()
+        show_version(to_file=self.outf)
 
 
 class cmd_rocks(Command):
@@ -3055,8 +3060,6 @@ class cmd_revert(Command):
         if file_list is not None:
             if len(file_list) == 0:
                 raise errors.BzrCommandError("No files specified")
-        else:
-            file_list = []
         
         tree, file_list = tree_files(file_list)
         if revision is None:

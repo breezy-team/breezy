@@ -62,7 +62,6 @@ in the deltas to provide line annotation
 
 from copy import copy
 from cStringIO import StringIO
-import difflib
 from itertools import izip, chain
 import operator
 import os
@@ -134,13 +133,6 @@ INDEX_SUFFIX = '.kndx'
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied."""
 
-    def __init__(self, lines):
-        self._lines = lines
-
-    def annotate_iter(self):
-        """Yield tuples of (origin, text) for each content line."""
-        return iter(self._lines)
-
     def annotate(self):
         """Return a list of (origin, text) tuples."""
         return list(self.annotate_iter())
@@ -149,7 +141,7 @@ class KnitContent(object):
         """Generate line-based delta from this content to new_lines."""
         new_texts = new_lines.text()
         old_texts = self.text()
-        s = KnitSequenceMatcher(None, old_texts, new_texts)
+        s = patiencediff.PatienceSequenceMatcher(None, old_texts, new_texts)
         for tag, i1, i2, j1, j2 in s.get_opcodes():
             if tag == 'equal':
                 continue
@@ -158,12 +150,6 @@ class KnitContent(object):
 
     def line_delta(self, new_lines):
         return list(self.line_delta_iter(new_lines))
-
-    def text(self):
-        return [text for origin, text in self._lines]
-
-    def copy(self):
-        return KnitContent(self._lines[:])
 
     @staticmethod
     def get_line_delta_blocks(knit_delta, source, target):
@@ -192,18 +178,62 @@ class KnitContent(object):
         yield s_pos + (target_len - t_pos), target_len, 0
 
 
-class _KnitFactory(object):
-    """Base factory for creating content objects."""
+class AnnotatedKnitContent(KnitContent):
+    """Annotated content."""
 
-    def make(self, lines, version_id):
-        num_lines = len(lines)
-        return KnitContent(zip([version_id] * num_lines, lines))
+    def __init__(self, lines):
+        self._lines = lines
+
+    def annotate_iter(self):
+        """Yield tuples of (origin, text) for each content line."""
+        return iter(self._lines)
+
+    def strip_last_line_newline(self):
+        line = self._lines[-1][1].rstrip('\n')
+        self._lines[-1] = (self._lines[-1][0], line)
+
+    def text(self):
+        return [text for origin, text in self._lines]
+
+    def copy(self):
+        return AnnotatedKnitContent(self._lines[:])
 
 
-class KnitAnnotateFactory(_KnitFactory):
+class PlainKnitContent(KnitContent):
+    """Unannotated content.
+    
+    When annotate[_iter] is called on this content, the same version is reported
+    for all lines. Generally, annotate[_iter] is not useful on PlainKnitContent
+    objects.
+    """
+
+    def __init__(self, lines, version_id):
+        self._lines = lines
+        self._version_id = version_id
+
+    def annotate_iter(self):
+        """Yield tuples of (origin, text) for each content line."""
+        for line in self._lines:
+            yield self._version_id, line
+
+    def copy(self):
+        return PlainKnitContent(self._lines[:], self._version_id)
+
+    def strip_last_line_newline(self):
+        self._lines[-1] = self._lines[-1].rstrip('\n')
+
+    def text(self):
+        return self._lines
+
+
+class KnitAnnotateFactory(object):
     """Factory for creating annotated Content objects."""
 
     annotated = True
+
+    def make(self, lines, version_id):
+        num_lines = len(lines)
+        return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
 
     def parse_fulltext(self, content, version_id):
         """Convert fulltext to internal representation
@@ -218,7 +248,7 @@ class KnitAnnotateFactory(_KnitFactory):
         #       Figure out a way to not require the overhead of turning the
         #       list back into tuples.
         lines = [tuple(line.split(' ', 1)) for line in content]
-        return KnitContent(lines)
+        return AnnotatedKnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
         return iter(self.parse_line_delta(lines))
@@ -296,10 +326,13 @@ class KnitAnnotateFactory(_KnitFactory):
         return content.annotate_iter()
 
 
-class KnitPlainFactory(_KnitFactory):
+class KnitPlainFactory(object):
     """Factory for creating plain Content objects."""
 
     annotated = False
+
+    def make(self, lines, version_id):
+        return PlainKnitContent(lines, version_id)
 
     def parse_fulltext(self, content, version_id):
         """This parses an unannotated fulltext.
@@ -316,7 +349,7 @@ class KnitPlainFactory(_KnitFactory):
             header = lines[cur]
             cur += 1
             start, end, c = [int(n) for n in header.split(',')]
-            yield start, end, c, zip([version_id] * c, lines[cur:cur+c])
+            yield start, end, c, lines[cur:cur+c]
             cur += c
 
     def parse_line_delta(self, lines, version_id):
@@ -347,7 +380,7 @@ class KnitPlainFactory(_KnitFactory):
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
-            out.extend([text for origin, text in lines])
+            out.extend(lines)
         return out
 
     def annotate_iter(self, knit, version_id):
@@ -452,61 +485,6 @@ class KnitVersionedFile(VersionedFile):
             return False
 
         return fulltext_size > delta_size
-
-    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
-        """See VersionedFile._add_delta()."""
-        self._check_add(version_id, []) # should we check the lines ?
-        self._check_versions_present(parents)
-        present_parents = []
-        ghosts = []
-        parent_texts = {}
-        for parent in parents:
-            if not self.has_version(parent):
-                ghosts.append(parent)
-            else:
-                present_parents.append(parent)
-
-        if delta_parent is None:
-            # reconstitute as full text.
-            assert len(delta) == 1 or len(delta) == 0
-            if len(delta):
-                assert delta[0][0] == 0
-                assert delta[0][1] == 0, delta[0][1]
-            return super(KnitVersionedFile, self)._add_delta(version_id,
-                                                             parents,
-                                                             delta_parent,
-                                                             sha1,
-                                                             noeol,
-                                                             delta)
-
-        digest = sha1
-
-        options = []
-        if noeol:
-            options.append('no-eol')
-
-        if delta_parent is not None:
-            # determine the current delta chain length.
-            # To speed the extract of texts the delta chain is limited
-            # to a fixed number of deltas.  This should minimize both
-            # I/O and the time spend applying deltas.
-            # The window was changed to a maximum of 200 deltas, but also added
-            # was a check that the total compressed size of the deltas is
-            # smaller than the compressed size of the fulltext.
-            if not self._check_should_delta([delta_parent]):
-                # We don't want a delta here, just do a normal insertion.
-                return super(KnitVersionedFile, self)._add_delta(version_id,
-                                                                 parents,
-                                                                 delta_parent,
-                                                                 sha1,
-                                                                 noeol,
-                                                                 delta)
-
-        options.append('line-delta')
-        store_lines = self.factory.lower_line_delta(delta)
-
-        access_memo = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, access_memo, parents)
 
     def _add_raw_records(self, records, data):
         """Add all the records 'records' with data pre-joined in 'data'.
@@ -642,9 +620,6 @@ class KnitVersionedFile(VersionedFile):
         """Get a delta for constructing version from some other version."""
         version_id = osutils.safe_revision_id(version_id)
         self.check_not_reserved_id(version_id)
-        if not self.has_version(version_id):
-            raise RevisionNotPresent(version_id, self.filename)
-        
         parents = self.get_parents(version_id)
         if len(parents):
             parent = parents[0]
@@ -661,7 +636,8 @@ class KnitVersionedFile(VersionedFile):
             else:
                 old_texts = []
             new_texts = new_content.text()
-            delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
+            delta_seq = patiencediff.PatienceSequenceMatcher(None, old_texts,
+                                                             new_texts)
             return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
         else:
             delta = self.factory.parse_line_delta(data, version_id)
@@ -841,11 +817,10 @@ class KnitVersionedFile(VersionedFile):
     def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
-        if not self.has_version(version_id):
-            raise RevisionNotPresent(version_id, self.filename)
-
         cached_version = parent_texts.get(version_id, None)
         if cached_version is not None:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
             return cached_version
 
         text_map, contents_map = self._get_content_maps([version_id])
@@ -855,18 +830,20 @@ class KnitVersionedFile(VersionedFile):
         """Check that all specified versions are present."""
         self._index.check_versions_present(version_ids)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
+        nostore_sha):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
+        return self._add(version_id, lines[:], parents, self.delta,
+            parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks=None):
+                   left_matching_blocks, nostore_sha):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
-                         parent_texts, left_matching_blocks)
+            parent_texts, left_matching_blocks, nostore_sha)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -875,13 +852,19 @@ class KnitVersionedFile(VersionedFile):
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
+        # Technically this is a case of Look Before You Leap, but:
+        # - for knits this saves wasted space in the error case
+        # - for packs this avoids dead space in the pack
+        # - it also avoids undetected poisoning attacks.
+        # - its 1.5% of total commit time, so ignore it unless it becomes a
+        #   larger percentage.
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)
         self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
-             left_matching_blocks=None):
+             left_matching_blocks, nostore_sha):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -915,6 +898,9 @@ class KnitVersionedFile(VersionedFile):
             delta = False
 
         digest = sha_strings(lines)
+        if nostore_sha == digest:
+            raise errors.ExistingContent
+        text_length = sum(map(len, lines))
         options = []
         if lines:
             if lines[-1][-1] != '\n':
@@ -928,10 +914,10 @@ class KnitVersionedFile(VersionedFile):
             delta = self._check_should_delta(present_parents)
 
         assert isinstance(version_id, str)
-        lines = self.factory.make(lines, version_id)
+        content = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
-            delta_hunks = self._merge_annotations(lines, present_parents,
+            delta_hunks = self._merge_annotations(content, present_parents,
                 parent_texts, delta, self.factory.annotated,
                 left_matching_blocks)
 
@@ -940,11 +926,11 @@ class KnitVersionedFile(VersionedFile):
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
             options.append('fulltext')
-            store_lines = self.factory.lower_fulltext(lines)
+            store_lines = self.factory.lower_fulltext(content)
 
         access_memo = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, access_memo, parents)
-        return lines
+        return digest, text_length, content
 
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
@@ -1034,24 +1020,23 @@ class KnitVersionedFile(VersionedFile):
                     elif method == 'line-delta':
                         delta = self.factory.parse_line_delta(data, version_id)
                         content = content.copy()
-                        content._lines = self._apply_delta(content._lines, 
+                        content._lines = self._apply_delta(content._lines,
                                                            delta)
                     content_map[component_id] = content
 
             if 'no-eol' in self._index.get_options(version_id):
                 content = content.copy()
-                line = content._lines[-1][1].rstrip('\n')
-                content._lines[-1] = (content._lines[-1][0], line)
+                content.strip_last_line_newline()
             final_content[version_id] = content
 
             # digest here is the digest from the last applied component.
             text = content.text()
             if sha_strings(text) != digest:
-                raise KnitCorrupt(self.filename, 
+                raise KnitCorrupt(self.filename,
                                   'sha-1 does not match %s' % version_id)
 
-            text_map[version_id] = text 
-        return text_map, final_content 
+            text_map[version_id] = text
+        return text_map, final_content
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
@@ -2394,138 +2379,8 @@ class WeaveToKnit(InterVersionedFile):
 InterVersionedFile.register_optimiser(WeaveToKnit)
 
 
-class KnitSequenceMatcher(difflib.SequenceMatcher):
-    """Knit tuned sequence matcher.
-
-    This is based on profiling of difflib which indicated some improvements
-    for our usage pattern.
-    """
-
-    def find_longest_match(self, alo, ahi, blo, bhi):
-        """Find longest matching block in a[alo:ahi] and b[blo:bhi].
-
-        If isjunk is not defined:
-
-        Return (i,j,k) such that a[i:i+k] is equal to b[j:j+k], where
-            alo <= i <= i+k <= ahi
-            blo <= j <= j+k <= bhi
-        and for all (i',j',k') meeting those conditions,
-            k >= k'
-            i <= i'
-            and if i == i', j <= j'
-
-        In other words, of all maximal matching blocks, return one that
-        starts earliest in a, and of all those maximal matching blocks that
-        start earliest in a, return the one that starts earliest in b.
-
-        >>> s = SequenceMatcher(None, " abcd", "abcd abcd")
-        >>> s.find_longest_match(0, 5, 0, 9)
-        (0, 4, 5)
-
-        If isjunk is defined, first the longest matching block is
-        determined as above, but with the additional restriction that no
-        junk element appears in the block.  Then that block is extended as
-        far as possible by matching (only) junk elements on both sides.  So
-        the resulting block never matches on junk except as identical junk
-        happens to be adjacent to an "interesting" match.
-
-        Here's the same example as before, but considering blanks to be
-        junk.  That prevents " abcd" from matching the " abcd" at the tail
-        end of the second sequence directly.  Instead only the "abcd" can
-        match, and matches the leftmost "abcd" in the second sequence:
-
-        >>> s = SequenceMatcher(lambda x: x==" ", " abcd", "abcd abcd")
-        >>> s.find_longest_match(0, 5, 0, 9)
-        (1, 0, 4)
-
-        If no blocks match, return (alo, blo, 0).
-
-        >>> s = SequenceMatcher(None, "ab", "c")
-        >>> s.find_longest_match(0, 2, 0, 1)
-        (0, 0, 0)
-        """
-
-        # CAUTION:  stripping common prefix or suffix would be incorrect.
-        # E.g.,
-        #    ab
-        #    acab
-        # Longest matching block is "ab", but if common prefix is
-        # stripped, it's "a" (tied with "b").  UNIX(tm) diff does so
-        # strip, so ends up claiming that ab is changed to acab by
-        # inserting "ca" in the middle.  That's minimal but unintuitive:
-        # "it's obvious" that someone inserted "ac" at the front.
-        # Windiff ends up at the same place as diff, but by pairing up
-        # the unique 'b's and then matching the first two 'a's.
-
-        a, b, b2j, isbjunk = self.a, self.b, self.b2j, self.isbjunk
-        besti, bestj, bestsize = alo, blo, 0
-        # find longest junk-free match
-        # during an iteration of the loop, j2len[j] = length of longest
-        # junk-free match ending with a[i-1] and b[j]
-        j2len = {}
-        # nothing = []
-        b2jget = b2j.get
-        for i in xrange(alo, ahi):
-            # look at all instances of a[i] in b; note that because
-            # b2j has no junk keys, the loop is skipped if a[i] is junk
-            j2lenget = j2len.get
-            newj2len = {}
-            
-            # changing b2j.get(a[i], nothing) to a try:KeyError pair produced the
-            # following improvement
-            #     704  0   4650.5320   2620.7410   bzrlib.knit:1336(find_longest_match)
-            # +326674  0   1655.1210   1655.1210   +<method 'get' of 'dict' objects>
-            #  +76519  0    374.6700    374.6700   +<method 'has_key' of 'dict' objects>
-            # to 
-            #     704  0   3733.2820   2209.6520   bzrlib.knit:1336(find_longest_match)
-            #  +211400 0   1147.3520   1147.3520   +<method 'get' of 'dict' objects>
-            #  +76519  0    376.2780    376.2780   +<method 'has_key' of 'dict' objects>
-
-            try:
-                js = b2j[a[i]]
-            except KeyError:
-                pass
-            else:
-                for j in js:
-                    # a[i] matches b[j]
-                    if j >= blo:
-                        if j >= bhi:
-                            break
-                        k = newj2len[j] = 1 + j2lenget(-1 + j, 0)
-                        if k > bestsize:
-                            besti, bestj, bestsize = 1 + i-k, 1 + j-k, k
-            j2len = newj2len
-
-        # Extend the best by non-junk elements on each end.  In particular,
-        # "popular" non-junk elements aren't in b2j, which greatly speeds
-        # the inner loop above, but also means "the best" match so far
-        # doesn't contain any junk *or* popular non-junk elements.
-        while besti > alo and bestj > blo and \
-              not isbjunk(b[bestj-1]) and \
-              a[besti-1] == b[bestj-1]:
-            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
-        while besti+bestsize < ahi and bestj+bestsize < bhi and \
-              not isbjunk(b[bestj+bestsize]) and \
-              a[besti+bestsize] == b[bestj+bestsize]:
-            bestsize += 1
-
-        # Now that we have a wholly interesting match (albeit possibly
-        # empty!), we may as well suck up the matching junk on each
-        # side of it too.  Can't think of a good reason not to, and it
-        # saves post-processing the (possibly considerable) expense of
-        # figuring out what to do with it.  In the case of an empty
-        # interesting match, this is clearly the right thing to do,
-        # because no other kind of match is possible in the regions.
-        while besti > alo and bestj > blo and \
-              isbjunk(b[bestj-1]) and \
-              a[besti-1] == b[bestj-1]:
-            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
-        while besti+bestsize < ahi and bestj+bestsize < bhi and \
-              isbjunk(b[bestj+bestsize]) and \
-              a[besti+bestsize] == b[bestj+bestsize]:
-            bestsize = bestsize + 1
-
-        return besti, bestj, bestsize
+# Deprecated, use PatienceSequenceMatcher instead
+KnitSequenceMatcher = patiencediff.PatienceSequenceMatcher
 
 
 def annotate_knit(knit, revision_id):
