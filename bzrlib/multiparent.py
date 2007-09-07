@@ -540,6 +540,9 @@ class MultiVersionedFile(BaseVersionedFile):
     def add_diff(self, diff, version_id, parent_ids):
         outfile = open(self._filename + '.mpknit', 'ab')
         try:
+            outfile.seek(0, 2)      # workaround for windows bug:
+                                    # .tell() for files opened in 'ab' mode
+                                    # before any write returns 0
             start = outfile.tell()
             try:
                 zipfile = GzipFile(None, mode='ab', fileobj=outfile)
