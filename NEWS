@@ -123,6 +123,9 @@ IN DEVELOPMENT
    * ``bzr --version`` takes care about encoding of stdout, especially
      when output is redirected. (Alexander Belchenko, #131100)
 
+   * Overwrite conflicting tags by ``push`` and ``pull`` if the
+     ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display

@@ -1485,7 +1485,7 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     stop_revision = source.last_revision()
                 self.generate_revision_history(stop_revision)
-            result.tag_conflicts = source.tags.merge_to(self.tags)
+            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
@@ -1594,7 +1594,7 @@ class BzrBranch(Branch):
                 raise
         if overwrite:
             target.set_revision_history(self.revision_history())
-        result.tag_conflicts = self.tags.merge_to(target.tags)
+        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
