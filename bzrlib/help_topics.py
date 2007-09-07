@@ -446,6 +446,37 @@ Useful commands::
                this will update the tree to match the branch.
 """
 
+
+_branches = \
+"""Branches
+
+A branch consists of the state of a project, including all of its
+history. All branches have a repository associated (which is where the
+branch history is stored), but multiple branches may share the same
+repository (a shared repository). Branches can be copied and merged.
+
+Related commands::
+
+  init    Make a directory into a versioned branch.
+  branch  Create a new copy of a branch.
+  merge   Perform a three-way merge.
+"""
+
+
+_standalone_trees = \
+"""Standalone Trees
+
+A standalone tree is a working tree with an associated repository. It
+is an independently usable branch, with no dependencies on any other.
+Creating a standalone tree (via bzr init) is the quickest way to put
+an existing project under version control.
+
+Related Commands::
+
+  init    Make a directory into a versioned branch.
+"""
+
+
 _status_flags = \
 """Status Flags
 
@@ -516,6 +547,7 @@ A typical config file might look something like::
 """
 
 
+# Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
@@ -528,8 +560,6 @@ topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
                     'Options that control how Bazaar runs')
-topic_registry.register('checkouts', _checkouts,
-                        'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
 topic_registry.register('status-flags', _status_flags,
@@ -538,15 +568,28 @@ def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
-topic_registry.register('repositories', _repositories,
-                        'Basic information on shared repositories.',
-                        SECT_CONCEPT)
-topic_registry.register('working-trees', _working_trees,
-                        'Information on working trees', SECT_CONCEPT)
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+
+# Register concept topics.
+# Note that we might choose to remove these from the online help in the
+# future or implement them via loading content from files. In the meantime,
+# please keep them concise.
+topic_registry.register('branches', _branches,
+                        'Information on what a branch is', SECT_CONCEPT)
+topic_registry.register('checkouts', _checkouts,
+                        'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('repositories', _repositories,
+                        'Basic information on shared repositories.',
+                        SECT_CONCEPT)
+topic_registry.register('standalone-trees', _standalone_trees,
+                        'Information on what a standalone tree is',
+                        SECT_CONCEPT)
+topic_registry.register('working-trees', _working_trees,
+                        'Information on working trees', SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):
