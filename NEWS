@@ -20,6 +20,9 @@ bzr-svn 0.4.2	UNRELEASED
    * Handle files of which path didn't change but parent did when pushing. 
      (#137455)
 
+   * Fix sqlite index that was causing indexing errors when a repository 
+     contains multiple copies of a single revision. 
+
 bzr-svn 0.4.1	2007-08-26
 
   BUG FIXES
