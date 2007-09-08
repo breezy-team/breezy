@@ -34,6 +34,8 @@ class Reconfigure(object):
             branch = bzrdir.open_branch()
         except errors.NotBranchError:
             raise errors.ReconfigurationNotSupported(bzrdir)
+        if branch.bzrdir.root_transport.base != bzrdir.root_transport.base:
+            raise errors.ReconfigurationNotSupported(bzrdir)
         unbind = (branch.get_bound_location() is not None)
         try:
             tree = bzrdir.open_workingtree()

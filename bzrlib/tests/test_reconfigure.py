@@ -58,3 +58,9 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
         reconfiguration.apply()
         self.assertIs(None, checkout.branch.get_bound_location())
+
+    def test_lightweight_checkout_to_branch(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        self.assertRaises(errors.ReconfigurationNotSupported,
+                          reconfigure.Reconfigure.to_branch, checkout.bzrdir)
