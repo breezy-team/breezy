@@ -64,3 +64,52 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout', lightweight=True)
         self.assertRaises(errors.ReconfigurationNotSupported,
                           reconfigure.Reconfigure.to_branch, checkout.bzrdir)
+
+    def test_branch_to_tree(self):
+        branch = self.make_branch('branch')
+        reconfiguration=reconfigure.Reconfigure.to_tree(branch.bzrdir)
+        reconfiguration.apply()
+        branch.bzrdir.open_workingtree()
+
+    def test_tree_to_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.AlreadyTree, reconfigure.Reconfigure.to_tree,
+                          tree.bzrdir)
+
+    def test_select_bind_location(self):
+        branch = self.make_branch('branch')
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
+        self.assertRaises(errors.NoBindLocation,
+                          reconfiguration._select_bind_location)
+        branch.set_parent('http://parent')
+        self.assertEqual('http://parent',
+                         reconfiguration._select_bind_location())
+        branch.set_push_location('sftp://push')
+        self.assertEqual('sftp://push',
+                         reconfiguration._select_bind_location())
+        branch.set_bound_location('bzr:old-bound')
+        branch.set_bound_location(None)
+        self.assertEqual('bzr:old-bound',
+                         reconfiguration._select_bind_location())
+
+    def test_tree_to_checkout(self):
+        # A tree with no related branches and no supplied bind location cannot
+        # become a checkout
+        parent = self.make_branch('parent')
+
+        tree = self.make_branch_and_tree('tree')
+        reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
+        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        # setting a parent allows it to become a checkout
+        tree.branch.set_parent(parent.base)
+        reconfiguration.apply()
+        # supplying a location allows it to become a checkout
+        tree2 = self.make_branch_and_tree('tree2')
+        reconfiguration = reconfigure.Reconfigure.to_checkout(tree2.bzrdir,
+                                                              parent.base)
+
+    def test_checkout_to_checkout(self):
+        parent = self.make_branch('parent')
+        checkout = parent.create_checkout('checkout')
+        self.assertRaises(errors.AlreadyCheckout,
+                          reconfigure.Reconfigure.to_checkout, checkout.bzrdir)

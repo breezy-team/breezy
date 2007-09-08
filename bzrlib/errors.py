@@ -2414,14 +2414,29 @@ class AlreadyBranch(BzrDirError):
     _fmt = "'%(display_url)s' is already a branch."
 
 
+class AlreadyTree(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a tree."
+
+
+class AlreadyCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a checkout."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
 
 
+class NoBindLocation(BzrDirError):
+
+    _fmt = "No location could be found to bind to at %(display_url)s."
+
+
 class UncommittedChanges(BzrError):
 
-    _fmt = 'Working tree "%(display_url)" has uncommitted changes.'
+    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
 
     def __init__(self, tree):
         import bzrlib.urlutils as urlutils
