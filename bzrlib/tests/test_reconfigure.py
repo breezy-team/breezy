@@ -107,6 +107,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree2.bzrdir,
                                                               parent.base)
+        reconfiguration.apply()
 
     def test_checkout_to_checkout(self):
         parent = self.make_branch('parent')

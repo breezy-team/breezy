@@ -118,5 +118,8 @@ class Reconfigure(object):
         if self.unbind:
             self.local_branch.unbind()
         if self.bind:
-            bind_location = self._select_bind_location()
+            if self.new_bound_location is None:
+                bind_location = self._select_bind_location()
+            else:
+                bind_location = self.new_bound_location
             self.local_branch.bind(branch.Branch.open(bind_location))
