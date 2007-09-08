@@ -21,6 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
                            NotBranchError)
 from bzrlib.inventory import (Inventory)
+from bzrlib.revision import ensure_null
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
@@ -271,13 +272,13 @@ class SvnBranch(Branch):
                 self.get_branch_path(), last_revnum, self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
                                                             str(self.scheme))
-            return None
+            return NULL_REVISION
 
         ph = self.revision_history(last_revnum)
         if ph:
             return ph[-1]
         else:
-            return None
+            return NULL_REVISION
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              _hook_master=None, run_hooks=True):
@@ -335,7 +336,7 @@ class SvnBranch(Branch):
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions()."""
         if stop_revision is None:
-            stop_revision = other.last_revision()
+            stop_revision = ensure_null(other.last_revision())
         if (self.last_revision() == stop_revision or
             self.last_revision() == other.last_revision()):
             return
@@ -345,7 +346,8 @@ class SvnBranch(Branch):
                                                        self.last_revision()):
                 return
             raise DivergedBranches(self, other)
-        todo = self.repository.lhs_missing_revisions(other.revision_history(), stop_revision)
+        todo = self.repository.lhs_missing_revisions(other.revision_history(), 
+                                                     stop_revision)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:

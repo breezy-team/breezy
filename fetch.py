@@ -464,7 +464,8 @@ class InterFromSvnRepository(InterRepository):
                 if parent_revid is None:
                     branch_url = urlutils.join(repos_root, branch)
                     transport.reparent(branch_url)
-                    assert transport.svn_url == branch_url
+                    assert transport.svn_url == branch_url.rstrip("/"), \
+                        "Expected %r, got %r" % (transport.svn_url, branch_url)
                     reporter = transport.do_update(
                                    revnum, True, edit, edit_baton, pool)
 
