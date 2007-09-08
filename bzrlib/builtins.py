@@ -42,6 +42,7 @@ from bzrlib import (
     merge as _mod_merge,
     merge_directive,
     osutils,
+    reconfigure,
     registry,
     repository,
     revision as _mod_revision,
@@ -4155,6 +4156,36 @@ class cmd_tags(Command):
         branch, relpath = Branch.open_containing(directory)
         for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
             self.outf.write('%-20s %s\n' % (tag_name, target))
+
+
+class cmd_reconfigure(Command):
+    """Reconfigure the type of a bzr directory"""
+
+    takes_args = ['location?']
+    takes_options = [RegistryOption.from_kwargs('target_type',
+                     title='Target type',
+                     help='The type to reconfigure the directory to.',
+                     value_switches=True, enum_switch=False,
+                     branch='Reconfigure to a branch.',
+                     tree='Reconfigure to a tree.',
+                     checkout='Reconfigure to a checkout.'),
+                     Option('bind-to', help='Branch to bind checkout to.',
+                            type=str),
+                     Option('force',
+                        help='Perform reconfiguration even if local changes'
+                        ' will be lost.')
+                     ]
+
+    def run(self, location=None, target_type=None, bind_to=None, force=False):
+        directory = bzrdir.BzrDir.open(location)
+        if target_type == 'branch':
+            reconfiguration = reconfigure.Reconfigure.to_branch(directory)
+        elif target_type == 'tree':
+            reconfiguration = reconfigure.Reconfigure.to_tree(directory)
+        elif target_type == 'checkout':
+            reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
+                                                                  bind_to)
+        reconfiguration.apply(force)
 
 
 def _create_prefix(cur_transport):
