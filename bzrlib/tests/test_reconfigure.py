@@ -1,0 +1,60 @@
+# Copyright (C) 2007 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+from bzrlib import (
+    branch as _mod_branch,
+    errors,
+    reconfigure,
+    tests,
+    workingtree,
+    )
+
+
+class TestReconfigure(tests.TestCaseWithTransport):
+
+    def test_tree_to_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
+        reconfiguration.apply()
+        self.assertRaises(errors.NoWorkingTree, workingtree.WorkingTree.open,
+                          'tree')
+
+    def test_modified_tree_to_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add('file')
+        reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
+        self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
+        reconfiguration.apply(force=True)
+        self.assertRaises(errors.NoWorkingTree, workingtree.WorkingTree.open,
+                          'tree')
+
+    def test_branch_to_branch(self):
+        branch = self.make_branch('branch')
+        self.assertRaises(errors.AlreadyBranch,
+                          reconfigure.Reconfigure.to_branch, branch.bzrdir)
+
+    def test_repo_to_branch(self):
+        repo = self.make_repository('repo')
+        self.assertRaises(errors.ReconfigurationNotSupported,
+                          reconfigure.Reconfigure.to_branch, repo.bzrdir)
+
+    def test_checkout_to_branch(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout')
+        reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
+        reconfiguration.apply()
+        self.assertIs(None, checkout.branch.get_bound_location())
