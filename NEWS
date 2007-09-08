@@ -51,6 +51,10 @@ IN DEVELOPMENT
    * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
      is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
 
+   * ``bzr tags`` now prints the revision number for each tag, in
+      addition to the revision id. Can be disabled with the --no-revno
+      option. (Adeodato Simó)
+
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square

@@ -4145,15 +4145,27 @@ class cmd_tags(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('no-revno',
+            help=('Do not print the revno of each tag'
+                  ' (faster for remote branches).'),
+            ),
     ]
 
     @display_command
     def run(self,
             directory='.',
+            no_revno=False,
             ):
         branch, relpath = Branch.open_containing(directory)
         for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
-            self.outf.write('%-20s %s\n' % (tag_name, target))
+            if no_revno:
+                revno = ''
+            else:
+                try:
+                    revno = '%d:' % branch.revision_id_to_revno(target)
+                except errors.NoSuchRevision:
+                    revno = '?:'
+            self.outf.write('%-20s %s%s\n' % (tag_name, revno, target))
 
 
 def _create_prefix(cur_transport):

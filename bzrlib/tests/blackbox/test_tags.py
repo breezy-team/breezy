@@ -109,10 +109,21 @@ class TestTagging(TestCaseWithTransport):
         b1 = t.branch
         tagname = u'\u30d0zaar'
         b1.tags.set_tag(tagname, 'revid-1')
-        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        out, err = self.run_bzr('tags --no-revno -d branch1', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out,
             u'^\u30d0zaar  *revid-1\n'.encode('utf-8'))
+        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        self.assertEquals(err, '')
+        # the revno is '?' because the revid is not present in the branch
+        self.assertContainsRe(out,
+            u'^\u30d0zaar  *\\?:revid-1\n'.encode('utf-8'))
+        # now commit a revid-1
+        t.commit(allow_pointless=True, message='revision 1', rev_id='revid-1')
+        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out,
+            u'^\u30d0zaar  *1:revid-1\n'.encode('utf-8'))
 
     def test_conflicting_tags(self):
         # setup two empty branches with different tags
