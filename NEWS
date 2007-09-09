@@ -1,4 +1,8 @@
 bzr-svn 0.4.3	UNRELEASED
+ 
+  PERFORMANCE
+
+   * Avoid extra RA connection in LogWalker if it isn't going to be used.
 
 bzr-svn 0.4.2	2007-09-09
 
