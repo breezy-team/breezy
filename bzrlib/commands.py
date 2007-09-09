@@ -449,9 +449,8 @@ class Command(object):
 
         output_encoding = osutils.get_terminal_encoding()
 
-        # use 'replace' so that we don't abort if trying to write out
-        # in e.g. the default C locale.
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
+        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
+                        errors=self.encoding_type)
         # For whatever reason codecs.getwriter() does not advertise its encoding
         # it just returns the encoding of the wrapped file, which is completely
         # bogus. So set the attribute, so we can find the correct encoding later.
@@ -722,8 +721,8 @@ def run_bzr(argv):
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.version import show_version
-        show_version()
+        from bzrlib.builtins import cmd_version
+        cmd_version().run_argv_aliases([])
         return 0
         
     if not opt_no_plugins:

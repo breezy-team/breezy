@@ -461,8 +461,8 @@ class Repository(object):
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
                            revision_id=None):
         """Obtain a CommitBuilder for this repository.
         
@@ -476,7 +476,7 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        result =_CommitBuilder(self, parents, config, timestamp, timezone,
+        result = CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
         return result
@@ -2261,7 +2261,9 @@ class CommitBuilder(object):
     know the internals of the format of the repository.
     """
     
-    record_root_entry = False
+    # all clients should supply tree roots.
+    record_root_entry = True
+
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -2540,27 +2542,16 @@ class CommitBuilder(object):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
         try:
-            return versionedfile.add_lines(
+            return versionedfile.add_lines_with_ghosts(
                 self._new_revision_id, parents, new_lines,
                 nostore_sha=nostore_sha)[0:2]
         finally:
             versionedfile.clear_cache()
 
 
-class _CommitBuilder(CommitBuilder):
-    """Temporary class so old CommitBuilders are detected properly
-    
-    Note: CommitBuilder works whether or not root entry is recorded.
-    """
-
-    record_root_entry = True
-
-
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
-    record_root_entry = True
-
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
