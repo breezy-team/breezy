@@ -50,7 +50,7 @@ def _escape_commit_message(message):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, transport=None, cache_db=None):
+    def __init__(self, transport, cache_db=None):
         """Create a new instance.
 
         :param transport:   SvnRaTransport to use to access the repository.
@@ -59,7 +59,8 @@ class LogWalker(object):
         """
         assert isinstance(transport, SvnRaTransport)
 
-        self.transport = SvnRaTransport(transport.base)
+        self.url = transport.base
+        self._transport = None
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -79,16 +80,19 @@ class LogWalker(object):
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
+    def _get_transport(self):
+        if self._transport is not None:
+            return self._transport
+        self._transport = SvnRaTransport(self.url)
+        return self._transport
+
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
         :param to_revnum: End of range to fetch information for
         """
-        if to_revnum is None:
-            to_revnum = self.transport.get_latest_revnum()
-        else:
-            to_revnum = max(self.transport.get_latest_revnum(), to_revnum)
+        to_revnum = max(self._get_transport().get_latest_revnum(), to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 
@@ -117,8 +121,9 @@ class LogWalker(object):
         pool = Pool()
         try:
             try:
-                self.transport.get_log("/", self.saved_revnum, to_revnum, 
-                               0, True, True, rcvr, pool)
+                self._get_transport().get_log("/", self.saved_revnum, 
+                                             to_revnum, 0, True, True, rcvr, 
+                                             pool)
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -247,7 +252,8 @@ class LogWalker(object):
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
         path = path.strip("/")
-        ft = self.transport.check_path(path, revnum)
+        transport = self._get_transport()
+        ft = transport.check_path(path, revnum)
         if ft == svn.core.svn_node_file:
             return []
         assert ft == svn.core.svn_node_dir
@@ -297,16 +303,15 @@ class LogWalker(object):
         pool = Pool()
         editor = TreeLister(path)
         edit, baton = svn.delta.make_editor(editor, pool)
-        old_base = self.transport.base
+        old_base = transport.base
         try:
-            root_repos = self.transport.get_repos_root()
-            self.transport.reparent(urlutils.join(root_repos, path))
-            reporter = self.transport.do_update(
-                            revnum,  True, edit, baton, pool)
+            root_repos = transport.get_repos_root()
+            transport.reparent(urlutils.join(root_repos, path))
+            reporter = transport.do_update(revnum,  True, edit, baton, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:
-            self.transport.reparent(old_base)
+            transport.reparent(old_base)
         return editor.files
 
     def get_previous(self, path, revnum):
