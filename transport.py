@@ -354,11 +354,13 @@ class SvnRaTransport(Transport):
             return svn.ra.get_dir(self._ra, path, revnum)
 
     def _request_path(self, relpath):
-        if self._backing_url != self.svn_url:
-            relpath = urlutils.join(
-                    urlutils.relative_url(self._backing_url, self.svn_url),
-                    relpath)
-        return relpath
+        if self._backing_url == self.svn_url:
+            return relpath
+        newrelpath = urlutils.join(
+                urlutils.relative_url(self._backing_url, self.svn_url),
+                relpath).rstrip("/")
+        self.mutter('request path %r -> %r' % (relpath, newrelpath))
+        return newrelpath
 
     @convert_svn_error
     def list_dir(self, relpath):
