@@ -36,7 +36,8 @@ import workingtree
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
-version_info = (0, 4, 2, 'dev', 0)
+# versions ending in 'final' mean release (well tested, etc)
+version_info = (0, 4, 2, 'final', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -73,7 +74,7 @@ def check_bzrlib_version(desired):
 
 def check_bzrsvn_version():
     """Warn about use of experimental mappings."""
-    if __version__.endswith("exp"):
+    if version_info[3] == "exp":
         warning('version of bzr-svn is experimental; output may change between revisions')
 
 def check_subversion_version():
