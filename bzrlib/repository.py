@@ -2198,7 +2198,7 @@ class CommitBuilder(object):
                 ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                '', tree, tree.path_content_summary(''))
+                                       '', tree)
         else:
             # In this revision format, root entries have no knit or weave When
             # serializing out to disk and back in root.revision is always
@@ -2309,7 +2309,6 @@ class CommitBuilder(object):
                 lines = tree.get_file(ie.file_id, path).readlines()
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
-                ie.revision = self._new_revision_id
             except errors.ExistingContent:
                 # we are not going to store a new file graph node as it turns
                 # out to be unchanged.

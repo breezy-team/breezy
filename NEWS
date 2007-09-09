@@ -123,6 +123,9 @@ IN DEVELOPMENT
    * ``bzr --version`` takes care about encoding of stdout, especially
      when output is redirected. (Alexander Belchenko, #131100)
 
+   * Prompt for an ftp password if none is provided.
+     (Vincent Ladeuil, #137044)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
@@ -169,6 +172,9 @@ IN DEVELOPMENT
      10x faster than the Python version. This speeds up commands that
      need file diffing, such as ``bzr commit`` or ``bzr diff``.
      (Lukáš Lalinský)
+
+   * HACKING has been extended with a large section on core developer tasks.
+     (Ian Clatworthy)
 
   API BREAKS:
 

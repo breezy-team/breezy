@@ -1855,7 +1855,7 @@ class NoDiff3(BzrError):
 
 
 class ExistingContent(BzrError):
-    """Added in bzrlib 0.92, used by VersionedFile.add_lines."""
+    # Added in bzrlib 0.92, used by VersionedFile.add_lines.
 
     _fmt = "The content being inserted is already present."
 
