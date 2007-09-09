@@ -178,6 +178,12 @@ IN DEVELOPMENT
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
 
+   * CommitBuilder now advertises itself as requiring the root entry to be
+     supplied. This only affects foreign repository implementations which reuse
+     CommitBuilder directly and have changed record_entry_contents to require
+     that the root not be supplied. This should be precisely zero plugins
+     affected. (Robert Collins)
+
    * The ``add_lines`` methods on ``VersionedFile`` implementations has changed
      its return value to include the sha1 and length of the inserted text. This
      allows the avoidance of double-sha1 calculations during commit.
@@ -218,10 +224,14 @@ IN DEVELOPMENT
      This is done in order to mix the commit messages (which is a unicode
      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
-    * Deprecated method ``find_previous_heads`` on
-      ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
-      of ``parent_candidates`` and a separate heads check via the repository
-      API. (Robert Collins)
+   * CommitBuilder now defaults to using add_lines_with_ghosts, reducing
+     overhead on non-weave repositories which don't require all parents to be
+     present. (Robert Collins)
+
+   * Deprecated method ``find_previous_heads`` on
+     ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
+     of ``parent_candidates`` and a separate heads check via the repository
+     API. (Robert Collins)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
