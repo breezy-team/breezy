@@ -975,7 +975,7 @@ class GraphKnitTextStore(VersionedFileStore):
             self.repo._text_write_index.key_count()):
             return True
 
-    def _ensure_all_index(self):
+    def _ensure_all_index(self, for_write=None):
         """Create the combined index for all texts."""
         if getattr(self.repo, '_text_all_indices', None) is not None:
             return
@@ -988,9 +988,10 @@ class GraphKnitTextStore(VersionedFileStore):
             index_name = self.name_to_text_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
             self.repo._text_pack_map[indices[-1]] = (self.repo._pack_tuple(name))
-        if self.repo.is_in_write_group():
+        if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._text_write_index)
+        self._setup_knit_access(self.repo.is_in_write_group())
         self.repo._text_all_indices = CombinedGraphIndex(indices)
 
     def flush(self, new_name, new_pack):
@@ -1000,6 +1001,7 @@ class GraphKnitTextStore(VersionedFileStore):
         new_pack.text_index_length = self.transport.put_file(
             new_index_name, self.repo._text_write_index.finish())
         self.repo._text_write_index = None
+        self._setup_knit_access(False)
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used, replace the mutated memory index
             # with the new on-disk one. XXX: is this really a good idea?
@@ -1019,21 +1021,18 @@ class GraphKnitTextStore(VersionedFileStore):
         if self.repo.is_in_write_group():
             add_callback = self.repo._text_write_index.add_nodes
             self.repo._text_pack_map[self.repo._text_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._text_write_index
         else:
             add_callback = None # no data-adding permitted.
-            writer = None
 
         file_id_index = GraphIndexPrefixAdapter(self.repo._text_all_indices,
             (file_id, ), 1, add_nodes_callback=add_callback)
         knit_index = KnitGraphIndex(file_id_index,
             add_callback=file_id_index.add_nodes,
             deltas=True, parents=True)
-        knit_access = _PackAccess(self.repo._text_pack_map, writer)
-        return knit.KnitVersionedFile('text:' + file_id, self.weavestore._transport,
-            self.weavestore._file_mode,
+        return knit.KnitVersionedFile('text:' + file_id, None,
+            None,
             index=knit_index,
-            access_method=knit_access)
+            access_method=self.repo._text_knit_access)
 
     get_weave = get_weave_or_empty
 
@@ -1053,6 +1052,8 @@ class GraphKnitTextStore(VersionedFileStore):
         """Clear all cached data."""
         # remove any accumlating index of text data
         self.repo._text_write_index = None
+        # no access object.
+        self.repo._text_knit_access = None
         # remove all constructed text data indices
         self.repo._text_all_indices = None
         # and the pack map
@@ -1066,6 +1067,17 @@ class GraphKnitTextStore(VersionedFileStore):
         # group to be able to be written to, simply because it makes this
         # code cleaner - we don't need to track all 'open' knits and 
         # adjust them.
+        # prepare to do writes.
+        self._ensure_all_index(True)
+        self._setup_knit_access(True)
+    
+    def _setup_knit_access(self, for_write):
+        if for_write:
+            writer = (self.repo._open_pack_writer, self.repo._text_write_index)
+        else:
+            writer = None
+        self.repo._text_knit_access = _PackAccess(
+            self.repo._text_pack_map, writer)
 
 
 class InventoryKnitThunk(object):
