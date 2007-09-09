@@ -182,52 +182,7 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
                 version + "2")
 
-    def test_add_lines_nostoresha(self):
-        """When nostore_sha is supplied using old content raises."""
-        vf = self.get_file()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
-        shas = []
-        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
-            sha, _, _ = vf.add_lines(version, [], lines)
-            shas.append(sha)
-        # we now have a copy of all the lines in the vf.
-        # is the test applicable to this vf implementation?
-        try:
-            vf.add_lines_with_ghosts('d', [], [])
-        except NotImplementedError:
-            raise TestSkipped("add_lines_with_ghosts is optional")
-        for sha, (version, lines) in zip(
-            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
-            self.assertRaises(errors.ExistingContent,
-                vf.add_lines_with_ghosts, version + "2", [], lines,
-                nostore_sha=sha)
-            # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
-                version + "2")
-
-    def test_add_lines_nostoresha(self):
-        """When nostore_sha is supplied using old content raises."""
-        vf = self.get_file()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
-        shas = []
-        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
-            sha, _, _ = vf.add_lines(version, [], lines)
-            shas.append(sha)
-        # we now have a copy of all the lines in the vf.
-        for sha, (version, lines) in zip(
-            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
-            self.assertRaises(errors.ExistingContent,
-                vf.add_lines, version + "2", [], lines,
-                nostore_sha=sha)
-            # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
-                version + "2")
-
-    def test_add_lines_nostoresha(self):
+    def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_file()
         empty_text = ('a', [])

@@ -46,7 +46,8 @@ class TestCommitBuilder(TestCaseWithRepository):
                 tree.unlock()
             parent_tree = tree.branch.repository.revision_tree(None)
             parent_invs = []
-            builder.record_entry_contents(ie, parent_invs, '', tree)
+            builder.record_entry_contents(ie, parent_invs, '', tree,
+                tree.path_content_summary(''))
 
     def test_finish_inventory(self):
         tree = self.make_branch_and_tree(".")
@@ -127,7 +128,8 @@ class TestCommitBuilder(TestCaseWithRepository):
             builder = tree.branch.get_commit_builder([])
             self.callDeprecated(['Root entry should be supplied to'
                 ' record_entry_contents, as of bzr 0.10.'],
-                builder.record_entry_contents, entry, [], 'foo', tree)
+                builder.record_entry_contents, entry, [], 'foo', tree,
+                    tree.path_content_summary('foo'))
             builder.finish_inventory()
             rev_id = builder.commit('foo bar')
         finally:

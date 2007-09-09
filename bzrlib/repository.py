@@ -2395,7 +2395,8 @@ class CommitBuilder(object):
             # _new_revision_id
             ie.revision = self._new_revision_id
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+        content_summary):
         """Record the content of ie from tree into the commit if needed.
 
         Side effect: sets ie.revision when unchanged
@@ -2405,11 +2406,12 @@ class CommitBuilder(object):
             commit.
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
-        obtain content.
+            obtain content.
+        :param content_summary: Summary data from the tree about the paths
+            content - stat, length, exec, sha/link target.
         """
         if self.new_inventory.root is None:
             self._check_root(ie, parent_invs, tree)
-        content_summary = tree.path_content_summary(path)
         kind = content_summary[0]
         # XXX: repository specific check for nested tree support goes here - if
         # the repo doesn't want nested trees we skip it ?
@@ -2497,7 +2499,6 @@ class CommitBuilder(object):
                 lines = tree.get_file(ie.file_id, path).readlines()
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
-                ie.revision = self._new_revision_id
             except errors.ExistingContent:
                 # we are not going to store a new file graph node as it turns
                 # out to be unchanged.

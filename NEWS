@@ -123,6 +123,9 @@ IN DEVELOPMENT
    * ``bzr --version`` takes care about encoding of stdout, especially
      when output is redirected. (Alexander Belchenko, #131100)
 
+   * Prompt for an ftp password if none is provided.
+     (Vincent Ladeuil, #137044)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
@@ -254,6 +257,10 @@ IN DEVELOPMENT
    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and

@@ -713,13 +713,17 @@ class Commit(object):
                     continue
             # TODO: have the builder do the nested commit just-in-time IF and
             # only if needed.
-            try:
-                kind = self.work_tree.kind(file_id)
-                # TODO: specific_files filtering before nested tree processing
-                if kind == 'tree-reference' and self.builder.recursive == 'down':
-                    self._commit_nested_tree(file_id, path)
-            except errors.NoSuchFile:
-                pass
+            content_summary = self.work_tree.path_content_summary(path)
+            if content_summary[0] == 'tree-reference':
+                # enforce repository nested tree policy.
+                if (not self.work_tree.supports_tree_reference() or
+                    # repository does not support it either.
+                    not self.branch.repository._format.supports_tree_reference()):
+                    content_summary = ('directory',) + content_summary[1:]
+            kind = content_summary[0]
+            # TODO: specific_files filtering before nested tree processing
+            if kind == 'tree-reference' and self.builder.recursive == 'down':
+                self._commit_nested_tree(file_id, path)
 
             # Record an entry for this item
             # Note: I don't particularly want to have the existing_ie
@@ -727,7 +731,7 @@ class Commit(object):
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind
             self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie)
+                parent_id, definitely_changed, existing_ie, content_summary)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -758,7 +762,7 @@ class Commit(object):
             pass
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-                      parent_id, definitely_changed, existing_ie=None):
+        parent_id, definitely_changed, existing_ie, content_summary):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         if (not specific_files or 
@@ -777,8 +781,8 @@ class Commit(object):
                 # this entry is new and not being committed
                 ie = None
         if ie is not None:
-            self.builder.record_entry_contents(ie, self.parent_invs, 
-                path, self.work_tree)
+            self.builder.record_entry_contents(ie, self.parent_invs,
+                path, self.work_tree, content_summary)
             self._report_change(ie, path)
         return ie
 
