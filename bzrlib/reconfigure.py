@@ -27,6 +27,10 @@ class Reconfigure(object):
         self.bzrdir = bzrdir
         self.new_bound_location = new_bound_location
         try:
+            self.repository = self.bzrdir.open_repository()
+        except errors.NoRepositoryPresent:
+            self.repository = None
+        try:
             branch = self.bzrdir.open_branch()
             if branch.bzrdir.root_transport.base == bzrdir.root_transport.base:
                 self.local_branch = branch
@@ -42,8 +46,11 @@ class Reconfigure(object):
             self.tree = None
         self.unbind = False
         self.bind = False
+        self.destroy_reference = False
+        self.create_branch = False
         self.destroy_tree = False
         self.create_tree = False
+        self.create_repository = False
 
     @staticmethod
     def to_branch(bzrdir):
@@ -70,9 +77,13 @@ class Reconfigure(object):
         return reconfiguration
 
     def select_changes(self, tree, branch, bound):
+        if self.repository is None:
+            self.create_repository = True
         if self.local_branch is None:
             if branch is True:
-                raise errors.ReconfigurationNotSupported(self.bzrdir)
+                if self.referenced_branch is not None:
+                    self.destroy_reference = True
+                    self.create_branch = True
         else:
             if bound:
                 if self.local_branch.get_bound_location() is None:
@@ -111,6 +122,12 @@ class Reconfigure(object):
     def apply(self, force=False):
         if not force:
             self._check()
+        if self.create_repository:
+            self.bzrdir.create_repository()
+        if self.destroy_reference:
+            self.bzrdir.destroy_branch()
+        if self.create_branch:
+            self.bzrdir.create_branch()
         if self.destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self.create_tree:

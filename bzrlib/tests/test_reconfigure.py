@@ -62,8 +62,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
-        self.assertRaises(errors.ReconfigurationNotSupported,
-                          reconfigure.Reconfigure.to_branch, checkout.bzrdir)
+        reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertEqual(checkout_branch.bzrdir.root_transport.base,
+                         checkout.bzrdir.root_transport.base)
+        checkout.bzrdir.open_repository()
 
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
