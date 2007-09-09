@@ -244,6 +244,9 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_branch)
 
+    def destroy_branch(self):
+        raise NotImplementedError(self.destroy_branch)
+
     @staticmethod
     def create_branch_and_repo(base, force_new_repo=False, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
@@ -894,6 +897,10 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.create_branch."""
         return self.open_branch()
 
+    def destroy_branch(self):
+        """See BzrDir.destroy_workingtree."""
+        raise errors.UnsupportedOperation(self.destroy_branch, self)
+
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         if shared:
@@ -1069,6 +1076,10 @@ class BzrDirMeta1(BzrDir):
     def create_branch(self):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self)
+
+    def destroy_branch(self):
+        """See BzrDir.create_branch."""
+        self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
