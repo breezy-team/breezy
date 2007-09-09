@@ -123,11 +123,15 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self.create_repository:
-            self.bzrdir.create_repository()
+            new_repo = self.bzrdir.create_repository()
+            new_repo.fetch(self.referenced_branch.repository,
+                           self.referenced_branch.last_revision())
         if self.destroy_reference:
+            reference_info = self.referenced_branch.last_revision_info()
             self.bzrdir.destroy_branch()
         if self.create_branch:
-            self.bzrdir.create_branch()
+            new_branch = self.bzrdir.create_branch()
+            new_branch.set_last_revision_info(*reference_info)
         if self.destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self.create_tree:

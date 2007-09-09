@@ -62,12 +62,15 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
+        checkout.commit('first commit', rev_id='rev1')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
         reconfiguration.apply()
         checkout_branch = checkout.bzrdir.open_branch()
         self.assertEqual(checkout_branch.bzrdir.root_transport.base,
                          checkout.bzrdir.root_transport.base)
-        checkout.bzrdir.open_repository()
+        self.assertEqual('rev1', checkout_branch.last_revision())
+        repo = checkout.bzrdir.open_repository()
+        repo.get_revision('rev1')
 
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
