@@ -35,6 +35,7 @@ def test_suite():
         'bzrlib.tests.commands.test_missing',
         'bzrlib.tests.commands.test_pull',
         'bzrlib.tests.commands.test_push',
+        'bzrlib.tests.commands.test_update',
         ]
     loader = TestLoader()
     suite = loader.loadTestsFromModuleNames(testmod_names)
