@@ -834,7 +834,7 @@ class KnitVersionedFile(VersionedFile):
         nostore_sha):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta,
+        return self._add(version_id, lines, parents, self.delta,
             parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
@@ -847,8 +847,6 @@ class KnitVersionedFile(VersionedFile):
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
-        assert self.writable, "knit is not opened for write"
-        ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
@@ -885,16 +883,16 @@ class KnitVersionedFile(VersionedFile):
         # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
 
         present_parents = []
-        ghosts = []
         if parent_texts is None:
             parent_texts = {}
         for parent in parents:
-            if not self.has_version(parent):
-                ghosts.append(parent)
-            else:
+            if self.has_version(parent):
                 present_parents.append(parent)
 
-        if delta and not len(present_parents):
+        # can only compress against the left most present parent.
+        if (delta and
+            (len(present_parents) == 0 or
+             present_parents[0] != parents[0])):
             delta = False
 
         digest = sha_strings(lines)
@@ -904,10 +902,12 @@ class KnitVersionedFile(VersionedFile):
         options = []
         if lines:
             if lines[-1][-1] != '\n':
+                # copy the contents of lines.
+                lines = lines[:]
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
 
-        if len(present_parents) and delta:
+        if delta:
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
@@ -916,7 +916,7 @@ class KnitVersionedFile(VersionedFile):
         assert isinstance(version_id, str)
         content = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
-            # Merge annotations from parent texts if so is needed.
+            # Merge annotations from parent texts if needed.
             delta_hunks = self._merge_annotations(content, present_parents,
                 parent_texts, delta, self.factory.annotated,
                 left_matching_blocks)
