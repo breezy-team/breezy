@@ -831,32 +831,30 @@ class KnitVersionedFile(VersionedFile):
         self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha):
+        nostore_sha, random_id):
         """See VersionedFile.add_lines_with_ghosts()."""
-        self._check_add(version_id, lines)
+        self._check_add(version_id, lines, random_id)
         return self._add(version_id, lines, parents, self.delta,
             parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks, nostore_sha):
+                   left_matching_blocks, nostore_sha, random_id):
         """See VersionedFile.add_lines."""
-        self._check_add(version_id, lines)
+        self._check_add(version_id, lines, random_id)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
             parent_texts, left_matching_blocks, nostore_sha)
 
-    def _check_add(self, version_id, lines):
+    def _check_add(self, version_id, lines, random_id):
         """check that version_id and lines are safe to add."""
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
-        # Technically this is a case of Look Before You Leap, but:
-        # - for knits this saves wasted space in the error case
-        # - for packs this avoids dead space in the pack
-        # - it also avoids undetected poisoning attacks.
-        # - its 1.5% of total commit time, so ignore it unless it becomes a
-        #   larger percentage.
-        if self.has_version(version_id):
+        # Technically this could be avoided if we are happy to allow duplicate
+        # id insertion when other things than bzr core insert texts, but it
+        # seems useful for folk using the knit api directly to have some safety
+        # blanket that we can disable.
+        if not random_id and self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,

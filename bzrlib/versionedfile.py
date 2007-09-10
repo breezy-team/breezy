@@ -78,7 +78,7 @@ class VersionedFile(object):
         raise NotImplementedError(self.has_version)
 
     def add_lines(self, version_id, parents, lines, parent_texts=None,
-                  left_matching_blocks=None, nostore_sha=None):
+        left_matching_blocks=None, nostore_sha=None, random_id=False):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -104,6 +104,12 @@ class VersionedFile(object):
             the SequenceMatcher.get_matching_blocks format.
         :param nostore_sha: Raise ExistingContent and do not add the lines to
             the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
         :return: The text sha1, the number of bytes in the text, and an opaque
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
@@ -112,15 +118,15 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha)
+            left_matching_blocks, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
-                              parent_texts=None, nostore_sha=None):
+        parent_texts=None, nostore_sha=None, random_id=False):
         """Add lines to the versioned file, allowing ghosts to be present.
         
         This takes the same parameters as add_lines and returns the same.
@@ -129,10 +135,10 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-            parent_texts, nostore_sha)
+            parent_texts, nostore_sha, random_id)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha):
+        nostore_sha, random_id):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
