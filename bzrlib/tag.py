@@ -143,7 +143,7 @@ class BasicTags(_Tags):
 
         :param new_dict: Dictionary from tag name to target.
         """
-        self.branch.lock_read()
+        self.branch.lock_write()
         try:
             self.branch._transport.put_bytes('tags',
                 self._serialize_tag_dict(new_dict))
