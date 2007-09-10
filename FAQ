@@ -1,0 +1,20 @@
+==================================================================
+Bazaar is using a lot of memory accessing a Subversion repository!
+==================================================================
+bzr-svn can use a lot of memory cloning big branches. The problem appears to be 
+caused both by a memory leak in the python-subversion bindings or Subversion
+(the svn_ra_get_log() function) and the memory overhead from Bazaar.
+
+The easiest way to work around this problem is to Ctrl+C the branch operation 
+and restart it.
+
+More information can be found in the bug report at 
+https://launchpad.net/bugs/54253
+
+==============================================================================
+I am unable to access a repository that requires user/password authentication.
+==============================================================================
+bzr-svn doesn't support prompting for passwords yet, but it can 
+use passwords cached by Subversion. Subversion can be forced to cache 
+the password by accessing the repository using the Subversion command-line 
+client. For example, try running 'svn info <url>'.
