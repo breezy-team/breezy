@@ -2183,6 +2183,9 @@ class CommitBuilder(object):
         """
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
+            self.random_revid = True
+        else:
+            self.random_revid = False
 
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
