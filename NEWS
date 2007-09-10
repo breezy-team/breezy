@@ -176,6 +176,10 @@ IN DEVELOPMENT
    * HACKING has been extended with a large section on core developer tasks.
      (Ian Clatworthy)
 
+   * Add ``branches`` and ``standalone-trees`` as online help topics and
+     include them as Concepts within the User Reference.
+     (Paul Moore, Ian Clatworthy)
+
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
