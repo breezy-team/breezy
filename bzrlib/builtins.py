@@ -3865,7 +3865,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge', 'doc/configuration.txt']
+    _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
