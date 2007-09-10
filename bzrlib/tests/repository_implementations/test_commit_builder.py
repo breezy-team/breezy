@@ -34,6 +34,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         builder = branch.repository.get_commit_builder(
             branch, [], branch.get_config())
         self.assertIsInstance(builder, CommitBuilder)
+        self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
         branch.repository.unlock()
 
@@ -102,6 +103,7 @@ class TestCommitBuilder(TestCaseWithRepository):
             except CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
+            self.assertFalse(builder.random_revid)
             self.record_root(builder, tree)
             builder.finish_inventory()
             self.assertEqual(revision_id, builder.commit('foo bar'))

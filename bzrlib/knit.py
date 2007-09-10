@@ -831,37 +831,31 @@ class KnitVersionedFile(VersionedFile):
         self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha):
+        nostore_sha, random_id):
         """See VersionedFile.add_lines_with_ghosts()."""
-        self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta,
+        self._check_add(version_id, lines, random_id)
+        return self._add(version_id, lines, parents, self.delta,
             parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks, nostore_sha):
+                   left_matching_blocks, nostore_sha, random_id):
         """See VersionedFile.add_lines."""
-        self._check_add(version_id, lines)
+        self._check_add(version_id, lines, random_id)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
             parent_texts, left_matching_blocks, nostore_sha)
 
-    def _check_add(self, version_id, lines):
+    def _check_add(self, version_id, lines, random_id):
         """check that version_id and lines are safe to add."""
-        assert self.writable, "knit is not opened for write"
-        ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
-        # Technically this is a case of Look Before You Leap, but:
-        # - for knits this saves wasted space in the error case
-        # - for packs this avoids dead space in the pack
-        # - it also avoids undetected poisoning attacks.
-        # - its 1.5% of total commit time, so ignore it unless it becomes a
-        #   larger percentage.
-        if self.has_version(version_id):
+        # Technically this could be avoided if we are happy to allow duplicate
+        # id insertion when other things than bzr core insert texts, but it
+        # seems useful for folk using the knit api directly to have some safety
+        # blanket that we can disable.
+        if not random_id and self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
-        self._check_lines_not_unicode(lines)
-        self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
              left_matching_blocks, nostore_sha):
@@ -885,16 +879,16 @@ class KnitVersionedFile(VersionedFile):
         # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
 
         present_parents = []
-        ghosts = []
         if parent_texts is None:
             parent_texts = {}
         for parent in parents:
-            if not self.has_version(parent):
-                ghosts.append(parent)
-            else:
+            if self.has_version(parent):
                 present_parents.append(parent)
 
-        if delta and not len(present_parents):
+        # can only compress against the left most present parent.
+        if (delta and
+            (len(present_parents) == 0 or
+             present_parents[0] != parents[0])):
             delta = False
 
         digest = sha_strings(lines)
@@ -904,10 +898,12 @@ class KnitVersionedFile(VersionedFile):
         options = []
         if lines:
             if lines[-1][-1] != '\n':
+                # copy the contents of lines.
+                lines = lines[:]
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
 
-        if len(present_parents) and delta:
+        if delta:
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
@@ -916,7 +912,7 @@ class KnitVersionedFile(VersionedFile):
         assert isinstance(version_id, str)
         content = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
-            # Merge annotations from parent texts if so is needed.
+            # Merge annotations from parent texts if needed.
             delta_hunks = self._merge_annotations(content, present_parents,
                 parent_texts, delta, self.factory.annotated,
                 left_matching_blocks)

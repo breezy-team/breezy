@@ -192,6 +192,11 @@ IN DEVELOPMENT
      allows the avoidance of double-sha1 calculations during commit.
      (Robert Collins)
 
+   * The ``VersionedFile`` interface no longer protects against misuse when
+     lines that are not lines, or are not strings are supplied. This saves
+     nearly 30% of the minimum cost to store a version of a file.
+     (Robert Collins)
+
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
 

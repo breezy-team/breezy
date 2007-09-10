@@ -2373,6 +2373,9 @@ class CommitBuilder(object):
         """
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
+            self.random_revid = True
+        else:
+            self.random_revid = False
 
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
@@ -2545,7 +2548,7 @@ class CommitBuilder(object):
         try:
             return versionedfile.add_lines_with_ghosts(
                 self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha)[0:2]
+                nostore_sha=nostore_sha, random_id=self.random_id)[0:2]
         finally:
             versionedfile.clear_cache()
 
