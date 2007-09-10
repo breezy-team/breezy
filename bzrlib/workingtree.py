@@ -2022,7 +2022,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self, change_reporter=None):
+    def update(self, change_reporter=None, possible_transports=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2047,7 +2047,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        if self.branch.get_master_branch() is not None:
+        if self.branch.get_master_branch(possible_transports) is not None:
             self.lock_write()
             update_branch = True
         else:
@@ -2055,7 +2055,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             update_branch = False
         try:
             if update_branch:
-                old_tip = self.branch.update()
+                old_tip = self.branch.update(possible_transports)
             else:
                 old_tip = None
             return self._update_tree(old_tip, change_reporter)

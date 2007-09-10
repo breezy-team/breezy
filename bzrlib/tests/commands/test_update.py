@@ -29,10 +29,10 @@ class TestUpdate(TestCaseWithConnectionHookedTransport):
         wt1.commit('empty commit')
         wt2.commit('empty commit too')
 
-        self.install_hooks()
-
         bind = builtins.cmd_bind()
         bind.run(location=self.get_url('branch1'))
+
+        self.install_hooks()
 
         update = builtins.cmd_update()
         update.run()
