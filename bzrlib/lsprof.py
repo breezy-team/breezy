@@ -31,8 +31,16 @@ def profile(f, *args, **kwds):
     p = Profiler()
     p.enable(subcalls=True)
     threading.setprofile(_thread_profile)
+    # Note: The except clause is needed below so that profiling data still
+    # gets dumped even when exceptions are encountered. The except clause code
+    # is taken straight from run_bzr_catch_errrors() in commands.py and ought
+    # to be kept in sync with it.
     try:
         ret = f(*args, **kwds)
+    except (KeyboardInterrupt, Exception), e:
+        import bzrlib.trace
+        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+        ret = 3
     finally:
         p.disable()
         for pp in _g_threadmap.values():
