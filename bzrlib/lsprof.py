@@ -10,6 +10,10 @@ import thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
+
+import bzrlib.osutils
+
+
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
@@ -36,11 +40,12 @@ def profile(f, *args, **kwds):
     # is taken straight from run_bzr_catch_errrors() in commands.py and ought
     # to be kept in sync with it.
     try:
-        ret = f(*args, **kwds)
-    except (KeyboardInterrupt, Exception), e:
-        import bzrlib.trace
-        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
-        ret = 3
+        try:
+            ret = f(*args, **kwds)
+        except Exception:
+            import bzrlib.trace
+            bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+            ret = 3
     finally:
         p.disable()
         for pp in _g_threadmap.values():
@@ -126,11 +131,11 @@ class Stats(object):
             otherwise the format is given by the filename extension.
         """
         if format is None:
-            basename = os.path.basename(filename)
+            basename = bzrlib.osutils.basename(filename)
             if basename.startswith('callgrind.out'):
                 format = "callgrind"
             else:
-                ext = os.path.splitext(filename)[1]
+                ext = bzrlib.osutils.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
         outfile = open(filename, 'wb')
