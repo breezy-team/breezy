@@ -123,8 +123,18 @@ IN DEVELOPMENT
    * ``bzr --version`` takes care about encoding of stdout, especially
      when output is redirected. (Alexander Belchenko, #131100)
 
-    * Prompt for an ftp password if none is provided.
-      (Vincent Ladeuil, #137044)
+   * Prompt for an ftp password if none is provided.
+     (Vincent Ladeuil, #137044)
+
+   * The basename, not the full path, is now used when checking whether
+     the profiling dump file begins with ``callgrind.out`` or not. This
+     fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
+
+   * Commands reporting exceptions can now be profiled and still have their
+     data correctly dumped to a file. For example, a ``bzr commit`` with
+     no changes still reports the operation as pointless but doing so no
+     longer throws away the profiling data if this command is run with
+     ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
 
   IMPROVEMENTS:
 
