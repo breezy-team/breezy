@@ -42,7 +42,7 @@ def profile(f, *args, **kwds):
     try:
         try:
             ret = f(*args, **kwds)
-        except Exception:
+        except (KeyboardInterrupt, Exception), e:
             import bzrlib.trace
             bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
             ret = 3
