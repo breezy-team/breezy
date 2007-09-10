@@ -86,11 +86,19 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
+
+        :param lines: A list of lines. Each line must be a bytestring. And all
+            of them except the last must be terminated with \n and contain no
+            other \n's. The last line may either contain no \n's or a single
+            terminated \n. If the lines list does meet this constraint the add
+            routine may error or may succeed - but you will be unable to read
+            the data back accurately. (Checking the lines have been split
+            correctly is expensive and extermely unlikely to catch bugs so it
+            is not done at runtime.)
         :param parent_texts: An optional dictionary containing the opaque 
-             representations of some or all of the parents of 
-             version_id to allow delta optimisations. 
-             VERY IMPORTANT: the texts must be those returned
-             by add_lines or data corruption can be caused.
+            representations of some or all of the parents of version_id to
+            allow delta optimisations.  VERY IMPORTANT: the texts must be those
+            returned by add_lines or data corruption can be caused.
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.

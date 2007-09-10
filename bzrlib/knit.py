@@ -858,8 +858,6 @@ class KnitVersionedFile(VersionedFile):
         #   larger percentage.
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
-        self._check_lines_not_unicode(lines)
-        self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
              left_matching_blocks, nostore_sha):
