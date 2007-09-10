@@ -412,7 +412,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 class WeaveCommitBuilder(CommitBuilder):
     """A builder for weave based repos that don't support ghosts."""
 
-    def _add_text_to_weave(self, file_id, new_lines, parents):
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
         result = versionedfile.add_lines(
