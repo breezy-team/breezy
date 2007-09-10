@@ -26,6 +26,7 @@ from bzrlib.tag import (
     _merge_tags_if_possible,
     )
 from bzrlib.tests import (
+    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -78,3 +79,19 @@ class TestTagMerging(TestCaseWithTransport):
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
             new_branch.tags.merge_to, old_branch.tags)
+
+
+class TestTagsInCheckouts(TestCaseWithTransport):
+
+    def make_branch_supporting_tags(self, relpath):
+        return self.make_branch(relpath)
+
+    def test_tag_in_checkout(self):
+        # checkouts are directly connected to the tags of their master branch:
+        # adding a tag in the checkout pushes it to the master
+        raise KnownFailure("not tested yet")
+
+    def test_update_updates_tags(self):
+        raise KnownFailure(
+            "TODO: updating the checkout should update the checkout's copy of the\
+            tag dictionary")
