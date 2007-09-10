@@ -64,7 +64,7 @@ class TestStatsSave(tests.TestCaseInTempDir):
 
     def _tempfile(self, ext):
         dir = self.test_dir
-        return os.path.join(dir, "tmp_profile_data." + ext)
+        return bzrlib.osutils.pathjoin(dir, "tmp_profile_data." + ext)
 
     def test_stats_save_to_txt(self):
         f = self._tempfile("txt")
@@ -77,7 +77,7 @@ class TestStatsSave(tests.TestCaseInTempDir):
         self.stats.save(f)
         lines = open(f).readlines()
         self.assertEqual(lines[0], "events: Ticks\n")
-        f = os.path.join(self.test_dir, "callgrind.out.foo")
+        f = bzrlib.osutils.pathjoin(self.test_dir, "callgrind.out.foo")
         self.stats.save(f)
         lines = open(f).readlines()
         self.assertEqual(lines[0], "events: Ticks\n")
