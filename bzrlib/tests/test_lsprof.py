@@ -77,6 +77,10 @@ class TestStatsSave(tests.TestCaseInTempDir):
         self.stats.save(f)
         lines = open(f).readlines()
         self.assertEqual(lines[0], "events: Ticks\n")
+        f = os.path.join(self.test_dir, "callgrind.out.foo")
+        self.stats.save(f)
+        lines = open(f).readlines()
+        self.assertEqual(lines[0], "events: Ticks\n")
         # Test explicit format nommination
         f2 = self._tempfile("txt")
         self.stats.save(f2, format="callgrind")

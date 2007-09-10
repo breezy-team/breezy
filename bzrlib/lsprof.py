@@ -126,7 +126,8 @@ class Stats(object):
             otherwise the format is given by the filename extension.
         """
         if format is None:
-            if filename.startswith('callgrind.out'):
+            basename = os.path.basename(filename)
+            if basename.startswith('callgrind.out'):
                 format = "callgrind"
             else:
                 ext = os.path.splitext(filename)[1]
