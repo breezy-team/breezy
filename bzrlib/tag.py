@@ -62,7 +62,7 @@ class DisabledTags(_Tags):
     lookup_tag = _not_supported
     delete_tag = _not_supported
 
-    def merge_to(self, to_tags):
+    def merge_to(self, to_tags, overwrite=False):
         # we never have anything to copy
         pass
 
@@ -170,7 +170,7 @@ class BasicTags(_Tags):
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                 % (tag_content, e))
 
-    def merge_to(self, to_tags):
+    def merge_to(self, to_tags, overwrite=False):
         """Copy tags between repositories if necessary and possible.
         
         This method has common command-line behaviour about handling 
@@ -180,9 +180,7 @@ class BasicTags(_Tags):
         exist keep their existing definitions.
 
         :param to_tags: Branch to receive these tags
-        :param just_warn: If the destination doesn't support tags and the 
-            source does have tags, just give a warning.  Otherwise, raise
-            TagsNotSupported (default).
+        :param overwrite: Overwrite conflicting tags in the target branch
 
         :returns: A list of tags that conflicted, each of which is 
             (tagname, source_target, dest_target).
@@ -200,20 +198,22 @@ class BasicTags(_Tags):
         to_tags.branch.lock_write()
         try:
             dest_dict = to_tags.get_tag_dict()
-            result, conflicts = self._reconcile_tags(source_dict, dest_dict)
+            result, conflicts = self._reconcile_tags(source_dict, dest_dict,
+                                                     overwrite)
             if result != dest_dict:
                 to_tags._set_tag_dict(result)
         finally:
             to_tags.branch.unlock()
         return conflicts
 
-    def _reconcile_tags(self, source_dict, dest_dict):
+    def _reconcile_tags(self, source_dict, dest_dict, overwrite):
         """Do a two-way merge of two tag dictionaries.
 
         only in source => source value
         only in destination => destination value
         same definitions => that
-        different definitions => keep destination value, give a warning
+        different definitions => if overwrite is False, keep destination
+            value and give a warning, otherwise use the source value
 
         :returns: (result_dict,
             [(conflicting_tag, source_target, dest_target)])
@@ -221,7 +221,7 @@ class BasicTags(_Tags):
         conflicts = []
         result = dict(dest_dict) # copy
         for name, target in source_dict.items():
-            if name not in result:
+            if name not in result or overwrite:
                 result[name] = target
             elif result[name] == target:
                 pass
