@@ -103,7 +103,7 @@ class TestTagMerging(TestCaseWithTransport):
 
 class TestTagsInCheckouts(TestCaseWithTransport):
 
-    def test_tag_in_checkout(self):
+    def test_update_tag_into_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
         # adding a tag in the checkout pushes it to the master
         # https://bugs.launchpad.net/bzr/+bug/93860
@@ -116,6 +116,14 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
             master.tags.lookup_tag, 'foo')
+    
+    def test_tag_copied_by_initial_checkout(self):
+        # https://bugs.launchpad.net/bzr/+bug/93860
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        co_tree = master.create_checkout('checkout')
+        self.assertEquals('rev-1',
+            co_tree.branch.tags.lookup_tag('foo'))
 
     def test_update_updates_tags(self):
         # https://bugs.launchpad.net/bzr/+bug/93856
