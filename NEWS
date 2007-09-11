@@ -138,6 +138,9 @@ IN DEVELOPMENT
       changed or deleted, and are copied into the checkout when it is 
       updated.  (Martin Pool, #93856, #93860)
 
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.  (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
