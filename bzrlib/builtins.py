@@ -2552,7 +2552,7 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
-    def run(self, testspecs_list=None, verbose=None, one=False,
+    def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
@@ -2578,14 +2578,12 @@ class cmd_selftest(Command):
             pattern = ".*"
         if benchmark:
             test_suite_factory = benchmarks.test_suite
-            if verbose is None:
-                verbose = True
+            # Unless user explicitly asks for quiet, be verbose in benchmarks
+            verbose = not is_quiet()
             # TODO: should possibly lock the history file...
             benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
-            if verbose is None:
-                verbose = False
             benchfile = None
         try:
             result = selftest(verbose=verbose,
@@ -3867,7 +3865,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge', 'doc/configuration.txt']
+    _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
 

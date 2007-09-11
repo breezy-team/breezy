@@ -126,6 +126,9 @@ IN DEVELOPMENT
    * Prompt for an ftp password if none is provided.
      (Vincent Ladeuil, #137044)
 
+   * Overwrite conflicting tags by ``push`` and ``pull`` if the
+     ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
@@ -175,6 +178,10 @@ IN DEVELOPMENT
 
    * HACKING has been extended with a large section on core developer tasks.
      (Ian Clatworthy)
+
+   * Add ``branches`` and ``standalone-trees`` as online help topics and
+     include them as Concepts within the User Reference.
+     (Paul Moore, Ian Clatworthy)
 
   API BREAKS:
 
