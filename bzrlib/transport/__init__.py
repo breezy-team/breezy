@@ -88,7 +88,6 @@ def _set_protocol_handlers(new_handlers):
 def _clear_protocol_handlers():
     global transport_list_registry
     transport_list_registry = TransportListRegistry()
-    _default_ports.clear()
 
 
 def _get_transport_modules():
@@ -105,17 +104,6 @@ def _get_transport_modules():
     result = list(modules)
     result.sort()
     return result
-
-
-_default_ports = {}
-
-def _get_default_port(scheme):
-    """Return the registered default port for this protocol scheme."""
-    try:
-        port = _default_ports.get(scheme + '://')
-    except KeyError:
-        port = None
-    return port
 
 
 class TransportListRegistry(registry.Registry):
@@ -140,21 +128,26 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, 
                 registry._LazyObjectGetter(module_name, member_name))
 
-    def register_transport(self, key, help=None, info=None):
-        self.register(key, [], help, info)
+    def register_transport(self, key, help=None, default_port=None):
+        self.register(key, [], help, default_port)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
+
+    def get_default_port(self, scheme):
+        """Return the registered default port for this protocol scheme."""
+        try:
+            return self.get_info(scheme + '://')
+        except LookupError:
+            return None
 
 
 transport_list_registry = TransportListRegistry( )
 
 
 def register_transport_proto(prefix, help=None, info=None, default_port=None):
-    transport_list_registry.register_transport(prefix, help, info)
-    if default_port is not None:
-        _default_ports[prefix] = default_port
+    transport_list_registry.register_transport(prefix, help, default_port)
 
 
 def register_lazy_transport(prefix, module, classname):
@@ -1272,7 +1265,7 @@ class ConnectedTransport(Transport):
         if port is None:
             # The port isn't explicitly specified, so return the default (if
             # there is one).
-            port = _get_default_port(scheme)
+            port = transport_list_registry.get_default_port(scheme)
         return (scheme, user, password, host, port, path)
 
     @staticmethod
@@ -1303,7 +1296,8 @@ class ConnectedTransport(Transport):
             # have one so that it doesn't get accidentally
             # exposed.
             netloc = '%s@%s' % (urllib.quote(user), netloc)
-        if port is not None and port != _get_default_port(scheme):
+        if (port is not None and 
+            port != transport_list_registry.get_default_port(scheme)):
             # Include the port in the netloc (unless it's the same as the
             # default, in which case we omit it as it is redundant).
             netloc = '%s:%d' % (netloc, port)
