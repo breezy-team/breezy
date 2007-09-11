@@ -130,6 +130,9 @@ IN DEVELOPMENT
      connections.
      (Vincent Ladeuil, #128076, #131396)
 
+   * Overwrite conflicting tags by ``push`` and ``pull`` if the
+     ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
