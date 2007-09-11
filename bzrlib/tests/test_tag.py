@@ -80,6 +80,26 @@ class TestTagMerging(TestCaseWithTransport):
         self.assertRaises(errors.TagsNotSupported,
             new_branch.tags.merge_to, old_branch.tags)
 
+    def test_merge_to(self):
+        a = self.make_branch_supporting_tags('a')
+        b = self.make_branch_supporting_tags('b')
+        # simple merge
+        a.tags.set_tag('tag-1', 'x')
+        b.tags.set_tag('tag-2', 'y')
+        a.tags.merge_to(b.tags)
+        self.assertEqual('x', b.tags.lookup_tag('tag-1'))
+        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
+        # conflicting merge
+        a.tags.set_tag('tag-2', 'z')
+        conflicts = a.tags.merge_to(b.tags)
+        self.assertEqual(conflicts, [('tag-2', 'z', 'y')])
+        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        # overwrite conflicts
+        conflicts = a.tags.merge_to(b.tags, overwrite=True)
+        self.assertEqual(conflicts, [])
+        self.assertEqual('z', b.tags.lookup_tag('tag-2'))
+
 
 class TestTagsInCheckouts(TestCaseWithTransport):
 
