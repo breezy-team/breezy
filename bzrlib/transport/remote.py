@@ -450,8 +450,6 @@ class RemoteTCPTransport(RemoteTransport):
 
     def _build_medium(self):
         assert self.base.startswith('bzr://')
-        if self._port is None:
-            self._port = BZR_DEFAULT_PORT
         return medium.SmartTCPClientMedium(self._host, self._port), None
 
 
