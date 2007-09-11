@@ -587,6 +587,8 @@ class RemoteRepository(object):
 
     def fetch(self, source, revision_id=None, pb=None):
         self._ensure_real()
+
+        import pdb;pdb.set_trace()
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
 
