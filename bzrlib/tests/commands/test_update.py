@@ -32,7 +32,7 @@ class TestUpdate(TestCaseWithConnectionHookedTransport):
         bind = builtins.cmd_bind()
         bind.run(location=self.get_url('branch1'))
 
-        self.install_hooks()
+        self.start_logging_connections()
 
         update = builtins.cmd_update()
         update.run()
