@@ -83,13 +83,18 @@ class TestTagMerging(TestCaseWithTransport):
 
 class TestTagsInCheckouts(TestCaseWithTransport):
 
-    def make_branch_supporting_tags(self, relpath):
-        return self.make_branch(relpath)
-
     def test_tag_in_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
         # adding a tag in the checkout pushes it to the master
-        raise KnownFailure("not tested yet")
+        master = self.make_branch('master')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.tags.set_tag('foo', 'rev-1')
+        self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        # deleting a tag updates the master too
+        child.tags.delete_tag('foo')
+        self.assertRaises(errors.NoSuchTag,
+            master.tags.lookup_tag, 'foo')
 
     def test_update_updates_tags(self):
         raise KnownFailure(

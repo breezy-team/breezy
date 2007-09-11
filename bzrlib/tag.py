@@ -82,6 +82,9 @@ class BasicTags(_Tags):
         # all done with a write lock held, so this looks atomic
         self.branch.lock_write()
         try:
+            master = self.branch.get_master_branch()
+            if master is not None:
+                master.tags.set_tag(tag_name, tag_target)
             td = self.get_tag_dict()
             td[tag_name] = tag_target
             self._set_tag_dict(td)
@@ -134,6 +137,12 @@ class BasicTags(_Tags):
                 del d[tag_name]
             except KeyError:
                 raise errors.NoSuchTag(tag_name)
+            master = self.branch.get_master_branch()
+            if master is not None:
+                try:
+                    master.tags.delete_tag(tag_name)
+                except errors.NoSuchTag:
+                    pass
             self._set_tag_dict(d)
         finally:
             self.branch.unlock()
@@ -152,7 +161,7 @@ class BasicTags(_Tags):
 
     def _serialize_tag_dict(self, tag_dict):
         td = dict((k.encode('utf-8'), v)
-                for k,v in tag_dict.items())
+                  for k,v in tag_dict.items())
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
