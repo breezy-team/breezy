@@ -4,8 +4,14 @@ Bazaar Release Notes
 
 .. contents::
 
-bzr 0.91 2007-09-11
-===================
+bzr 0.91rc2 2007-09-11
+======================
+
+   * Replaced incorrect tarball for previous release; a debug statement was left 
+     in bzrlib/remote.py.
+
+bzr 0.91rc1 2007-09-11
+======================
 
   CHANGES:
 
