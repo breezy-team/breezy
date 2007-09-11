@@ -659,13 +659,17 @@ class Commit(object):
         if specific_files:
             for path, new_ie in self.basis_inv.iter_entries():
                 if new_ie.file_id in self.builder.new_inventory:
+                    # already added - skip.
                     continue
                 if is_inside_any(specific_files, path):
+                    # was inside the selected path, if not present it has been
+                    # deleted so skip.
                     continue
+                # not in final inv yet, was not in the selected files, so is an
+                # entry to be preserved unaltered.
                 ie = new_ie.copy()
-                ie.revision = None
                 self.builder.record_entry_contents(ie, self.parent_invs, path,
-                                                   self.basis_tree)
+                                                   self.basis_tree, None)
 
         # Report what was deleted. We could skip this when no deletes are
         # detected to gain a performance win, but it arguably serves as a
@@ -718,12 +722,21 @@ class Commit(object):
                 # enforce repository nested tree policy.
                 if (not self.work_tree.supports_tree_reference() or
                     # repository does not support it either.
-                    not self.branch.repository._format.supports_tree_reference()):
+                    not self.branch.repository._format.supports_tree_reference):
                     content_summary = ('directory',) + content_summary[1:]
             kind = content_summary[0]
             # TODO: specific_files filtering before nested tree processing
-            if kind == 'tree-reference' and self.builder.recursive == 'down':
-                self._commit_nested_tree(file_id, path)
+            # TODO: push this down into record_entry so the new ie can be set
+            # directly.
+            if kind == 'tree-reference':
+                if self.builder.recursive == 'down':
+                    nested_revision_id = self._commit_nested_tree(
+                        file_id, path)
+                    content_summary = content_summary[:3] + (
+                        nested_revision_id,)
+                else:
+                    content_summary = content_summary[:3] + (
+                        self.work_tree.get_reference_revision(file_id),)
 
             # Record an entry for this item
             # Note: I don't particularly want to have the existing_ie
@@ -750,7 +763,7 @@ class Commit(object):
             sub_tree.branch.repository = \
                 self.work_tree.branch.repository
         try:
-            sub_tree.commit(message=None, revprops=self.revprops,
+            return sub_tree.commit(message=None, revprops=self.revprops,
                 recursive=self.builder.recursive,
                 message_callback=self.message_callback,
                 timestamp=self.timestamp, timezone=self.timezone,
@@ -759,7 +772,7 @@ class Commit(object):
                 strict=self.strict, verbose=self.verbose,
                 local=self.local, reporter=self.reporter)
         except errors.PointlessCommit:
-            pass
+            return self.work_tree.get_reference_revision(file_id)
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
         parent_id, definitely_changed, existing_ie, content_summary):
