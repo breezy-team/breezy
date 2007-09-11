@@ -126,6 +126,10 @@ IN DEVELOPMENT
    * Prompt for an ftp password if none is provided.
      (Vincent Ladeuil, #137044)
 
+   * Reuse bound branch associated transport to avoid multiple
+     connections.
+     (Vincent Ladeuil, #128076, #131396)
+
    * Overwrite conflicting tags by ``push`` and ``pull`` if the
      ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
 
