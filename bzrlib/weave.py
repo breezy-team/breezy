@@ -261,7 +261,7 @@ class Weave(VersionedFile):
         return idx
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-       left_matching_blocks, nostore_sha):
+       left_matching_blocks, nostore_sha, random_id):
         """See VersionedFile.add_lines."""
         idx = self._add(version_id, lines, map(self._lookup, parents),
             nostore_sha=nostore_sha)
@@ -874,7 +874,7 @@ class WeaveFile(Weave):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
-            parent_texts, left_matching_blocks, nostore_sha)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
         self._save()
         return result
 
