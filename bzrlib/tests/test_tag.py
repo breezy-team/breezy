@@ -26,6 +26,7 @@ from bzrlib.tag import (
     _merge_tags_if_possible,
     )
 from bzrlib.tests import (
+    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -98,3 +99,55 @@ class TestTagMerging(TestCaseWithTransport):
         conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(conflicts, [])
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
+
+
+class TestTagsInCheckouts(TestCaseWithTransport):
+
+    def test_update_tag_into_checkout(self):
+        # checkouts are directly connected to the tags of their master branch:
+        # adding a tag in the checkout pushes it to the master
+        # https://bugs.launchpad.net/bzr/+bug/93860
+        master = self.make_branch('master')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.tags.set_tag('foo', 'rev-1')
+        self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        # deleting a tag updates the master too
+        child.tags.delete_tag('foo')
+        self.assertRaises(errors.NoSuchTag,
+            master.tags.lookup_tag, 'foo')
+    
+    def test_tag_copied_by_initial_checkout(self):
+        # https://bugs.launchpad.net/bzr/+bug/93860
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        co_tree = master.create_checkout('checkout')
+        self.assertEquals('rev-1',
+            co_tree.branch.tags.lookup_tag('foo'))
+
+    def test_update_updates_tags(self):
+        # https://bugs.launchpad.net/bzr/+bug/93856
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # after an update, the child has all the master's tags
+        self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
+        # add another tag and update again
+        master.tags.set_tag('tag2', 'target2')
+        child.update()
+        self.assertEquals('target2', child.tags.lookup_tag('tag2'))
+
+    def test_tag_deletion_from_master_to_bound(self):
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # and deletion of tags should also propagate
+        master.tags.delete_tag('foo')
+        raise KnownFailure("tag deletion does not propagate: "
+            "https://bugs.launchpad.net/bzr/+bug/138802")
+        self.assertRaises(errors.NoSuchTag,
+            child.tags.lookup_tag, 'foo')
