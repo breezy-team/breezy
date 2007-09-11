@@ -2297,6 +2297,9 @@ class CommitBuilder(object):
     def _add_text_to_weave(self, file_id, new_lines, parents):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
+        # Don't change this to add_lines - add_lines_with_ghosts is cheaper
+        # than add_lines, and allows committing when a parent is ghosted for
+        # some reason.
         result = versionedfile.add_lines_with_ghosts(
             self._new_revision_id, parents, new_lines)[0:2]
         versionedfile.clear_cache()
