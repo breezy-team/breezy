@@ -12,6 +12,7 @@ IN DEVELOPMENT
    * The default branch and repository format has changed to 
      ``dirstate-tags``, so tag commands are active by default.
      This format is compatible with Bazaar 0.15 and later.
+     This incidentally fixes bug #126141.
      (Martin Pool)
 
    * ``--quiet`` or ``-q`` is no longer a global option. If present, it
@@ -125,6 +126,10 @@ IN DEVELOPMENT
 
     * Prompt for an ftp password if none is provided.
       (Vincent Ladeuil, #137044)
+
+    * In checkouts, tags are copied into the master branch when created,
+      changed or deleted, and are copied into the checkout when it is 
+      updated.  (Martin Pool, #93856, #93860)
 
   IMPROVEMENTS:
 

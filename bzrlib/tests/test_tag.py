@@ -86,6 +86,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
     def test_tag_in_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
         # adding a tag in the checkout pushes it to the master
+        # https://bugs.launchpad.net/bzr/+bug/93860
         master = self.make_branch('master')
         child = self.make_branch('child')
         child.bind(master)
@@ -97,6 +98,28 @@ class TestTagsInCheckouts(TestCaseWithTransport):
             master.tags.lookup_tag, 'foo')
 
     def test_update_updates_tags(self):
-        raise KnownFailure(
-            "TODO: updating the checkout should update the checkout's copy of the\
-            tag dictionary")
+        # https://bugs.launchpad.net/bzr/+bug/93856
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # after an update, the child has all the master's tags
+        self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
+        # add another tag and update again
+        master.tags.set_tag('tag2', 'target2')
+        child.update()
+        self.assertEquals('target2', child.tags.lookup_tag('tag2'))
+
+    def test_tag_deletion_from_master_to_bound(self):
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # and deletion of tags should also propagate
+        master.tags.delete_tag('foo')
+        raise KnownFailure("tag deletion does not propagate: "
+            "https://bugs.launchpad.net/bzr/+bug/138802")
+        self.assertRaises(errors.NoSuchTag,
+            child.tags.lookup_tag, 'foo')
