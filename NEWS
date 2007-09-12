@@ -7,6 +7,30 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  NOTES WHEN UPGRADING:
+
+  FEATURES:
+
+  PERFORMANCE:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  API BREAKS:
+  
+  TESTING:
+
+
+bzr 0.91rc2 2007-09-11
+======================
+
+   * Replaced incorrect tarball for previous release; a debug statement was left 
+     in bzrlib/remote.py.
+
+bzr 0.91rc1 2007-09-11
+======================
+
   CHANGES:
 
    * The default branch and repository format has changed to 
