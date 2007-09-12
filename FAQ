@@ -18,3 +18,13 @@ bzr-svn doesn't support prompting for passwords yet, but it can
 use passwords cached by Subversion. Subversion can be forced to cache 
 the password by accessing the repository using the Subversion command-line 
 client. For example, try running 'svn info <url>'.
+
+==============================================================================
+Trying to branch into repository gives prints an error about incompatibility:
+bzr: ERROR: Repository KnitRepository is not compatible with repository SvnRepository
+==============================================================================
+bzr-svn requires a repository format that supports recording root file ids. To 
+upgrade the repository, run: 
+
+$ bzr upgrade --dirstate-with-subtree
+
