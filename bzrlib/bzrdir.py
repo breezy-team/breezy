@@ -533,12 +533,12 @@ class BzrDir(object):
         return BzrDir.open(base, _unsupported=True)
         
     @staticmethod
-    def open(base, _unsupported=False):
+    def open(base, _unsupported=False, possible_transports=None):
         """Open an existing bzrdir, rooted at 'base' (url)
         
         _unsupported is a private parameter to the BzrDir class.
         """
-        t = get_transport(base)
+        t = get_transport(base, possible_transports=possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod

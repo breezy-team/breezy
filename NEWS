@@ -7,11 +7,40 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  NOTES WHEN UPGRADING:
+
+  FEATURES:
+
+  PERFORMANCE:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  API BREAKS:
+
+   * The ``VersionedFile`` interface now allows content checks to be bypassed
+     by supplying check_content=False.  This saves nearly 30% of the minimum
+     cost to store a version of a file. (Robert Collins)
+  
+  TESTING:
+
+
+bzr 0.91rc2 2007-09-11
+======================
+
+   * Replaced incorrect tarball for previous release; a debug statement was left 
+     in bzrlib/remote.py.
+
+bzr 0.91rc1 2007-09-11
+======================
+
   CHANGES:
 
    * The default branch and repository format has changed to 
      ``dirstate-tags``, so tag commands are active by default.
      This format is compatible with Bazaar 0.15 and later.
+     This incidentally fixes bug #126141.
      (Martin Pool)
 
    * ``--quiet`` or ``-q`` is no longer a global option. If present, it
@@ -55,6 +84,10 @@ IN DEVELOPMENT
 
    * ``bzr plugins`` now lists the version number for each plugin in square
      brackets after the path. (Robert Collins, #125421)
+
+   * Pushing, pulling and branching branches with subtree references was not
+     copying the subtree weave, preventing the file graph from being accessed
+     and causing errors in commits in clones. (Robert Collins)
 
    * Suppress warning "integer argument expected, got float" from Paramiko,
      which sometimes caused false test failures.  (Martin Pool)
@@ -126,8 +159,16 @@ IN DEVELOPMENT
    * Prompt for an ftp password if none is provided.
      (Vincent Ladeuil, #137044)
 
+   * Reuse bound branch associated transport to avoid multiple
+     connections.
+     (Vincent Ladeuil, #128076, #131396)
+
    * Overwrite conflicting tags by ``push`` and ``pull`` if the
      ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
+
+    * In checkouts, tags are copied into the master branch when created,
+      changed or deleted, and are copied into the checkout when it is 
+      updated.  (Martin Pool, #93856, #93860)
 
   IMPROVEMENTS:
 
@@ -197,11 +238,6 @@ IN DEVELOPMENT
    * The ``add_lines`` methods on ``VersionedFile`` implementations has changed
      its return value to include the sha1 and length of the inserted text. This
      allows the avoidance of double-sha1 calculations during commit.
-     (Robert Collins)
-
-   * The ``VersionedFile`` interface no longer protects against misuse when
-     lines that are not lines, or are not strings are supplied. This saves
-     nearly 30% of the minimum cost to store a version of a file.
      (Robert Collins)
 
    * ``Transport.should_cache`` has been removed.  It was not called in the

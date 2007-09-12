@@ -97,8 +97,9 @@ class KnitRepository(MetaDirRepository):
         # This class isn't deprecated
         pass
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
+        inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)
 
     @needs_read_lock
     def _all_revision_ids(self):

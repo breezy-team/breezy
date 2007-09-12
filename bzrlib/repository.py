@@ -368,10 +368,16 @@ class CommitBuilder(object):
         # Don't change this to add_lines - add_lines_with_ghosts is cheaper
         # than add_lines, and allows committing when a parent is ghosted for
         # some reason.
+        # Note: as we read the content directly from the tree, we know its not
+        # been turned into unicode or badly split - but a broken tree
+        # implementation could give us bad output from readlines() so this is
+        # not a guarantee of safety. What would be better is always checking
+        # the content during test suite execution. RBC 20070912
         try:
             return versionedfile.add_lines_with_ghosts(
                 self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
+                nostore_sha=nostore_sha, random_id=self.random_revid,
+                check_content=False)[0:2]
         finally:
             versionedfile.clear_cache()
 
@@ -461,16 +467,17 @@ class Repository(object):
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.get_inventory_weave()
         self._inventory_add_lines(inv_vf, revision_id, parents,
-                                  osutils.split_lines(inv_text))
+            osutils.split_lines(inv_text), check_content=False)
         return inv_sha1
 
-    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines,
+        check_content=True):
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-
-        inv_vf.add_lines(revision_id, final_parents, lines)
+        inv_vf.add_lines(revision_id, final_parents, lines,
+            check_content=check_content)
 
     @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
@@ -2067,8 +2074,13 @@ class InterSameDataRepository(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        """Repository format for testing with."""
-        return RepositoryFormat.get_default_format()
+        """Repository format for testing with.
+        
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod
     def is_compatible(source, target):

@@ -1016,7 +1016,9 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        master = tree.branch.get_master_branch()
+        possible_transports = []
+        master = tree.branch.get_master_branch(
+            possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
         else:
@@ -1032,8 +1034,9 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(delta._ChangeReporter(
-                                        unversioned_filter=tree.is_ignored))
+            conflicts = tree.update(
+                delta._ChangeReporter(unversioned_filter=tree.is_ignored),
+                possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
