@@ -1639,34 +1639,37 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).")
+            help="Access using SFTP (most SSH servers provide SFTP).",
+            default_port=22)
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            )
+            default_port=80)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+            default_port=443)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            )
+            default_port=80)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+            default_port=443)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-            help="Read-only access of branches exported on the web.")
+            help="Read-only access of branches exported on the web.",
+            default_port=80)
 register_transport_proto('https://',
-            help="Read-only access of branches exported on the web using SSL.")
+            help="Read-only access of branches exported on the web using SSL.",
+            default_port=443)
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
@@ -1675,10 +1678,12 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 
 register_transport_proto('ftp://',
-            help="Access using passive FTP.")
+            help="Access using passive FTP.",
+            default_port=21)
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://',
-            help="Access using active FTP.")
+            help="Access using active FTP.",
+            default_port=21)
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
@@ -1713,12 +1718,13 @@ register_lazy_transport('bzr://',
                         'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-             )
+            default_port=80)
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.")
+            help="Fast access using the Bazaar smart server over SSH.",
+            default_port=22)
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'RemoteSSHTransport')

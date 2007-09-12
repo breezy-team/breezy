@@ -621,7 +621,7 @@ class TestConnectedTransport(TestCase):
     def test_parse_url(self):
         t = ConnectedTransport('sftp://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, None)
+        self.assertEquals(t._port, 22)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
