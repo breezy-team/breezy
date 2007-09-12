@@ -2,13 +2,14 @@ Authentication ring
 ===================
 
 When accessing a remote branch (specified as an URL), it may occur that the
-server request an authentication.
+server requests an authentication.
 
 This authentication can be provided in different ways:
 
-1. Embedding the user and password in the URL::
+1. Embedding the user and password
+in the URL::
 
-    bzr branch <scheme>://<user>:<password>@host:port/path
+  bzr branch <scheme>://<user>:<password>@host:port/path
 
 * ``scheme``: Any transport protocol requiring authentication.
 * ``user``: The login used to authenticate.
@@ -18,23 +19,29 @@ This authentication can be provided in different ways:
 * ``path``: The path on the server.
 
 2. Embedding the user in the URL and let bzr find the right password or prompt
-for one:
+for one::
 
- . {{{bzr branch <scheme>://<user>@host/path}}}
+  bzr branch <scheme>://<user>@host/path
 
 3. Embedding nothing in the URL and let bzr find user and password or prompt
-for user and/or password:
+for user and/or password::
 
- . {{{bzr branch <scheme>://host/path}}}
+  bzr branch <scheme>://host/path
 
-This spec proposes a mechanism that will allow users to just use ``bzr branch
-<scheme>://host/path`` or ``bzr branch <scheme>://<user>@host/path`` and leaves
-bzr find the ``user`` and ``password`` in its configuration files.
+This specification proposes a mechanism that will allow users to
+just use ``bzr branch <scheme>://host/path`` or ``bzr branch
+<scheme>://<user>@host/path`` and leaves bzr find the ``user``
+and ``password`` in its configuration files.
 
 When no user is specified for ``FTP``, ``SFTP`` or ``SSH``, the actual behavior
 of ``bzr`` is to default to ``getpass.get_user()``.
 
 Any implementation of this specification should respect that behaviour.
+
+This specification also proposes a way to describe credentials so that several
+remote branches can use the same definition. This is particularily important
+for users handling a lot of passwords and need to update them on a regular
+basis.
 
 Rationale
 ---------
@@ -79,12 +86,15 @@ to define several (``user, realm, password``) for a given ``host``. So what is
 really needed is (``user``, ``password``, ``host``, ``path``). The ``realm``
 can be ignored [#ignored_realm]_ as long as it is still presented to the user
 when prompting for the password (unless someone found a way to declare two
-different realms for the same path). ``HTTP proxy`` can be handled as ``HTTP``
-(or ``HTTPS``).
+different realms for the same path). 
+
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitely
+specifying the appropriate port.
 
 .. [#ignored_realm] The true purpose of realms is to allow the same credentials
-   to be reused for disjoint hierarchies. Ignoring them in this specifications
-   aims to simplify the user experience.
+   to be reused for disjoint hierarchies. Ignoring them in this specification
+   aims to simplify the user experience while still allowing to share the same
+   credentials for a whole hierarchy.
 
 To take all schemes into account, the password will be deduced from a set of
 authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
@@ -100,11 +110,13 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``path``: can be empty (FTP or SFTP will never user it),
 
-  * ``user``: is mandatory (if no user is provided, there is no point in
-    defining these rules),
+  * ``user``: can be empty (and will use the same default as ``bzr``, python's
+    ``getpass.get_user()``),
 
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted).
+
+  * ``password_encoding``: can be empty (default is ``plaintext``).
 
 Also note that an optional ``self_certified`` field will be allowed to force
 the connection to ``HTTPS`` hosts that provides a self certified certificate
@@ -127,7 +139,8 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
  6. ``path`` matches if included in the requested URL (and by rule #2 above,
     empty paths will match any provided path).
 
-An optional ``password_encoding`` field may specify how the password is encoded.
+An optional ``password_encoding`` field may specify how the password is encoded
+but has no impact on the definition selection.
 
 Possible values are ``plaintext`` (no encoding at all) and ``base64``. When the
 field is absent, ``plaintext`` is assumed. Additional encodings may be added in
@@ -140,7 +153,14 @@ see the passwords in clear).
 This specification intend to ease the authentication providing, not to secure
 it in the best possible way.
 
-Future versions of this specification may provide additional encodings.
+Future versions of this specification may provide additional
+encodings [#password_encoding]_.
+
+.. [#password_encoding] Additional password encoding methods may be defined
+   that will rely on external means to store the password which, in these
+   cases, will not appear anymore in the definition but be provided. An
+   encoding named ``netrc`` for example will provide passwords by using the
+   ``.netrc`` file.
 
 File format
 -----------
@@ -153,9 +173,10 @@ reasons:
   * allow the user to protect the content of one file only, relaxing security
     constraints on the others,
 
-  * while ``locations.conf`` is intended to describe *local* branches,
-    ``authentication.conf`` is intended to describe *remote* branches or
-    servers.
+  * while ``locations.conf`` is organized around *local* branches,
+    ``authentication.conf`` is organized around *remote* branches or more
+    generally servers. The same authentification definition can even be used
+    for several schemes for servers providing those schemes.
 
 ``~/.bazaar/authentication.conf`` will use the same file format than
 ``~/.bazaar/bazaar.conf``.
@@ -175,8 +196,9 @@ Each section could define:
 
   * ``port``: the port the server is listening,
 
-  * ``self_certified``: whether a self certified certificate should be accepted
-    (this applies to HTTP[S] only). Accepted values are yes and no.
+  * ``verify_certificates``: to control certificate verification (useful
+    for self certified hosts). This applies to HTTP[S] only. Accepted values
+    are yes and no, default to yes.
 
   * ``path``: the branch location,
 
@@ -221,7 +243,7 @@ The use cases described below use the file format defined above.
         [hobby]
         scheme=https
         host=r.hobby.net
-        self_certified==yes
+        verify_certificates=no
         user=jim
         password=obvious1234
         
@@ -315,12 +337,18 @@ Implementation constraints
 Questions and Answers
 ---------------------
 
-  * What if a ``.netrc`` or a ``.authinfo`` file exists ?
+  * What if a ``.authinfo`` file exists ?
 
-    * They will be ignored,
+    * It will be ignored,
 
     * Automatic (one-time) conversions may be proposed if sufficient demand
       exists,
+
+  * What if a ``.netrc`` file exists ?
+
+    * It will be honored if the definition specifies
+      ``password_encoding=netrc`` once the appropriate plugin have been
+      written.
 
   * What mode should the authentication file use ?
 
@@ -330,9 +358,7 @@ Questions and Answers
 
   * What about using ``seahorse`` on Ubuntu or ``KeyChain Access`` on Mac OS X ?
 
-    * ``svn`` use some native APIs to encode its cached credentials, that may
-      provides examples on how this can be done for bzr, then these services
-      could be used to encrypt the passwords and define a new
+    * plugins can be written and registered to handle the associated
       ``password_encoding``.
 
   * Could it be possible to encode the whole authentication file with a ssh key
@@ -348,6 +374,13 @@ Questions and Answers
     * a future version may address that but:
 
       1. The user may want to decide which passwords are stored in the file and
-         which aren't.
+      which aren't.
 
-      2. The user should decide if the passwords are encoded or not.
+      2. The user should decide if the passwords are encoded (and how) or not
+      (but we may default to base64).
+
+      3. The right definition may be hard to get right, but reducing it to
+      (``scheme, host, [port,] user, password``) may be a good start. I.e. no
+      path so that all paths on the host will match. The user will have to
+      modify it for more complex configurations anyway.
+
