@@ -32,7 +32,12 @@ from bzrlib.inventory import Inventory
 import bzrlib.repofmt.weaverepo as weaverepo
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
 
@@ -325,3 +330,27 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # rev must not be corrupt now
         rev = repo.get_revision('with_ghost')
         self.assertEqual([None, 'ghost', 'with_ghost'], repo.get_ancestry('with_ghost'))
+
+
+class TestFetchDependentData(TestCaseWithInterRepository):
+
+    def test_reference(self):
+        from_tree = self.make_branch_and_tree('tree')
+        to_repo = self.make_to_repository('to')
+        if (not from_tree.supports_tree_reference() or
+            not from_tree.branch.repository._format.supports_tree_reference or
+            not to_repo._format.supports_tree_reference):
+            raise TestNotApplicable("Need subtree support.")
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.commit('subrev 1')
+        from_tree.add_reference(subtree)
+        tree_rev = from_tree.commit('foo')
+        # now from_tree has a last-modified of subtree of the rev id of the
+        # commit for foo, and a reference revision of the rev id of the commit
+        # for subrev 1
+        to_repo.fetch(from_tree.branch.repository, tree_rev)
+        # to_repo should have a file_graph for from_tree.path2id('subtree') and
+        # revid tree_rev.
+        file_vf = to_repo.weave_store.get_weave(
+            from_tree.path2id('subtree'), to_repo.get_transaction())
+        self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
