@@ -1,4 +1,4 @@
-bzr-svn 0.4.3	UNRELEASED
+bzr-svn 0.4.3	2007-09-12
  
   PERFORMANCE
 
@@ -8,6 +8,8 @@ bzr-svn 0.4.3	UNRELEASED
 
    * Fix determination of relative URLs in SvnRaTransport._request_path(). 
      (#139020)
+
+   * Mark as compatible with Bazaar 0.91.
 
 bzr-svn 0.4.2	2007-09-09
 
