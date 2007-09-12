@@ -301,13 +301,15 @@ class SvnRaTransport(Transport):
         self._open_real_transport()
         self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
         self._mark_busy()
-        return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", recurse, switch_url, *args, **kwargs))
+        return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
+                             recurse, switch_url, *args, **kwargs))
 
     @convert_svn_error
     @needs_busy
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
-        return svn.ra.get_log(self._ra, [self._request_path(path)], from_revnum, to_revnum, *args, **kwargs)
+        return svn.ra.get_log(self._ra, [self._request_path(path)], 
+                              from_revnum, to_revnum, *args, **kwargs)
 
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
@@ -357,7 +359,7 @@ class SvnRaTransport(Transport):
         if self._backing_url == self.svn_url:
             return relpath
         newrelpath = urlutils.join(
-                urlutils.relative_url(self._backing_url, self.svn_url),
+                urlutils.relative_url(self._backing_url+"/", self.svn_url+"/"),
                 relpath).rstrip("/")
         self.mutter('request path %r -> %r' % (relpath, newrelpath))
         return newrelpath

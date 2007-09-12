@@ -4,6 +4,11 @@ bzr-svn 0.4.3	UNRELEASED
 
    * Avoid extra RA connection in LogWalker if it isn't going to be used.
 
+  BUG FIXES
+
+   * Fix determination of relative URLs in SvnRaTransport._request_path(). 
+     (#139020)
+
 bzr-svn 0.4.2	2007-09-09
 
   BUG FIXES

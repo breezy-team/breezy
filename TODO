@@ -4,6 +4,7 @@ todo:
 - avoid extra connect in logwalker?
 - free memory! (#54253)
 - tests for setting svk:merge from .bzr checkout
+- tests for http-specific SvnRaTransport._request_path() code
 - more blackbox tests
  - svn-import without scheme specified should guess
  - bzr missing
