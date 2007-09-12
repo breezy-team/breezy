@@ -136,6 +136,7 @@ def test_suite():
             'test_import_dsc',
             'test_repack_tarball_extra',
             'test_util',
+            'test_version',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
                                             for i in testmod_names]))

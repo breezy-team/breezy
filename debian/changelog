@@ -9,8 +9,11 @@ bzr-builddeb (0.91) unstable; urgency=low
     upstream's tarball, which was causing havoc with dh-make-php packages.
     Thanks to Mark A. Hershberger for the report and Adeodato Simó
     for the pointer to the fix. (Closes: #440069)
+  * Add version_info attribute so that bzrlib can find out the version of
+    the plugin. Please try and remember to update it when releasing (set
+    the word to 'final').
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 05 Sep 2007 21:56:31 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 12 Sep 2007 21:55:54 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

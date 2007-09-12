@@ -45,6 +45,18 @@ from errors import (ChangedError,
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
 
+
+# same format as sys.version_info: "A tuple containing the five components of
+# the version number: major, minor, micro, releaselevel, and serial. All
+# values except releaselevel are integers; the release level is 'alpha',
+# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
+# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+# releaselevel of 'dev' for unreleased under-development code.
+#
+# Please set this to 'final' before upload.
+version_info = (0, 91, 0, 'dev', 0)
+
+
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building")
 result_opt = Option('result',
@@ -73,6 +85,7 @@ builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
 global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
+
 
 class cmd_builddeb(Command):
   """Builds a Debian package from a branch.
@@ -445,6 +458,7 @@ def test_suite():
     result = TestSuite()
     result.addTest(tests.test_suite())
     return result
+
 
 if __name__ == '__main__':
   print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
