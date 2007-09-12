@@ -78,7 +78,7 @@ class Repository(object):
 
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
-        r'.*revision="(?P<revision_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def abort_write_group(self):
@@ -2391,7 +2391,7 @@ class CommitBuilder(object):
                 ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
+                                       '', tree, tree.path_content_summary(''))
         else:
             # In this revision format, root entries have no knit or weave When
             # serializing out to disk and back in root.revision is always
@@ -2411,11 +2411,17 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
             obtain content.
         :param content_summary: Summary data from the tree about the paths
-            content - stat, length, exec, sha/link target.
+            content - stat, length, exec, sha/link target. This is only
+            accessed when the entry has a revision of None - that is when it is
+            a candidate to commit.
         """
         if self.new_inventory.root is None:
             self._check_root(ie, parent_invs, tree)
-        kind = content_summary[0]
+        if ie.revision is None:
+            kind = content_summary[0]
+        else:
+            # ie is carried over from a prior commit
+            kind = ie.kind
         # XXX: repository specific check for nested tree support goes here - if
         # the repo doesn't want nested trees we skip it ?
         if (kind == 'tree-reference' and
@@ -2512,7 +2518,8 @@ class CommitBuilder(object):
                 return
         elif kind == 'directory':
             if not store:
-                # all data is meta here, so carry over:
+                # all data is meta here, nothing specific to directory, so
+                # carry over:
                 ie.revision = parent_entry.revision
                 return
             lines = []
@@ -2525,6 +2532,7 @@ class CommitBuilder(object):
                 if current_link_target != parent_entry.symlink_target:
                     store = True
             if not store:
+                # unchanged, carry over.
                 ie.revision = parent_entry.revision
                 ie.symlink_target = parent_entry.symlink_target
                 return
@@ -2533,9 +2541,14 @@ class CommitBuilder(object):
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         elif kind == 'tree-reference':
             if not store:
-                # all data is meta here, so carry over:
+                if content_summary[3] != parent_entry.reference_revision:
+                    store = True
+            if not store:
+                # unchanged, carry over.
+                ie.reference_revision = parent_entry.reference_revision
                 ie.revision = parent_entry.revision
                 return
+            ie.reference_revision = content_summary[3]
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         else:

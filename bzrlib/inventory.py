@@ -432,32 +432,6 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
-    def snapshot(self, revision, path, previous_entries,
-        work_tree, commit_builder, store_if_unchanged):
-        """Make a snapshot of this entry which may or may not have changed.
-        
-        This means that all its fields are populated, that it has its
-        text stored in the text store or weave.
-
-        :return: True if anything was recorded
-        """
-        # cannot be unchanged unless there is only one parent file rev.
-        # self._read_tree_state(path, work_tree)
-        if len(previous_entries) == 1:
-            parent_ie = previous_entries.values()[0]
-            if self._unchanged(parent_ie):
-                self.revision = parent_ie.revision
-                return False
-        self.revision = revision
-        return self._snapshot_text(previous_entries, work_tree, commit_builder)
-
-    def _snapshot_text(self, file_parents, work_tree, commit_builder): 
-        """Record the 'text' of this entry, whatever form that takes.
-
-        :return: True if anything was recorded
-        """
-        raise NotImplementedError(self._snapshot_text)
-
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
