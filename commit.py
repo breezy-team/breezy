@@ -46,7 +46,8 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     """
     for i in range(len(bp_parts), 0, -1):
         current = bp_parts[:i]
-        if transport.check_path("/".join(current).strip("/"), base_rev) == svn.core.svn_node_dir:
+        path = "/".join(current).strip("/")
+        if (transport.check_path(path, base_rev) == svn.core.svn_node_dir:
             return current
     return []
 
@@ -109,7 +110,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         # At least one of the parents has to be the last revision on the 
         # mainline in Subversion.
-        assert (self.base_revid is None or self.base_revid in parents)
+        assert (self.base_revid is None or self.base_revid == parents[0])
 
         if old_inv is None:
             if self.base_revid is None:
@@ -659,15 +660,10 @@ def push(target, source, revision_id, validate=False):
     old_tree = source.repository.revision_tree(revision_id)
     base_tree = source.repository.revision_tree(base_revid)
 
-    builder = SvnCommitBuilder(target.repository, target, 
-                               rev.parent_ids,
-                               target.get_config(),
-                               rev.timestamp,
-                               rev.timezone,
-                               rev.committer,
-                               rev.properties, 
-                               revision_id,
-                               base_tree.inventory)
+    builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
+                               target.get_config(), rev.timestamp,
+                               rev.timezone, rev.committer, rev.properties, 
+                               revision_id, base_tree.inventory)
                          
     builder.new_inventory = source.repository.get_inventory(revision_id)
     replay_delta(builder, base_tree, old_tree)
@@ -732,14 +728,9 @@ class InterToSvnRepository(InterRepository):
                 target_branch.set_branch_path(bp)
 
             builder = SvnCommitBuilder(self.target, target_branch, 
-                               rev.parent_ids,
-                               target_branch.get_config(),
-                               rev.timestamp,
-                               rev.timezone,
-                               rev.committer,
-                               rev.properties, 
-                               revision_id,
-                               base_tree.inventory)
+                               rev.parent_ids, target_branch.get_config(),
+                               rev.timestamp, rev.timezone, rev.committer,
+                               rev.properties, revision_id, base_tree.inventory)
                          
             builder.new_inventory = self.source.get_inventory(revision_id)
             replay_delta(builder, base_tree, old_tree)

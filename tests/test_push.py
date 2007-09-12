@@ -393,7 +393,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.build_tree({'c/registry/generic.c': "Tour"})
         bzrwt.add("registry")
         bzrwt.add("registry/generic.c")
-        revid1 = bzrwt.commit("Add initial directory + file", rev_id="initialrevid")
+        revid1 = bzrwt.commit("Add initial directory + file", 
+                              rev_id="initialrevid")
 
         # Push first branch into Subversion
         newdir = BzrDir.open(repos_url+"/trunk")
@@ -424,6 +425,10 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         trunk.pull(bzrwt.branch)
 
         self.assertEquals([revid1, revid2, revid3], trunk.revision_history())
+        self.client_update("dc")
+        self.assertEquals(
+                '1 initialrevid\n2 changerevid\n3 mergerevid\n',
+                self.client_get_prop("dc/branches/foo", SVN_PROP_BZR_REVISION_ID+"trunk0"))
 
     def test_complex_replace_dir(self):
         repos_url = self.make_client("a", "dc")
