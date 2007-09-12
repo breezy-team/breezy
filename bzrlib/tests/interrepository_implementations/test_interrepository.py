@@ -294,18 +294,16 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = Inventory(revision_id='ghost')
-        inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
-        sha1 = repo.add_inventory('ghost', inv, [])
-        rev = bzrlib.revision.Revision(timestamp=0,
-                                       timezone=None,
-                                       committer="Foo Bar <foo@example.com>",
-                                       message="Message",
-                                       inventory_sha1=sha1,
-                                       revision_id='ghost')
-        rev.parent_ids = []
-        repo.add_revision('ghost', rev)
+        repo.lock_write()
+        builder = repo.get_commit_builder(None, [], None,
+            committer="Foo Bar <foo@example.com>",
+            revision_id='ghost')
+        ie = bzrlib.inventory.InventoryDirectory('TREE_ROOT', '', None)
+        builder.record_entry_contents(ie, [], '', None)
+        builder.finish_inventory()
+        builder.commit("Message")
+        repo.unlock()
          
         repo = self.make_to_repository('missing_ghost')
         inv = Inventory(revision_id='with_ghost')
