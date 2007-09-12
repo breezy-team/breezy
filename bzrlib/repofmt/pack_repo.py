@@ -150,7 +150,7 @@ class RepositoryPackCollection(object):
         self.repo._text_knit._index._add_callback = file_id_index.add_nodes
         return self.repo._text_knit.add_lines_with_ghosts(
             revision_id, parents, new_lines, nostore_sha=nostore_sha,
-            random_id=random_revid)[0:2]
+            random_id=random_revid, check_content=False)[0:2]
 
     def all_pack_details(self):
         """Return a list of all the packs as transport,name tuples.
