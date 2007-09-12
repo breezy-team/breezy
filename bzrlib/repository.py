@@ -78,7 +78,7 @@ class Repository(object):
 
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
-        r'.*revision="(?P<revision_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def abort_write_group(self):
@@ -1645,8 +1645,13 @@ class InterSameDataRepository(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        """Repository format for testing with."""
-        return RepositoryFormat.get_default_format()
+        """Repository format for testing with.
+        
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod
     def is_compatible(source, target):
