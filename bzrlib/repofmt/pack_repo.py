@@ -53,13 +53,41 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repofmt.knitrepo import KnitRepository, KnitRepository3
 from bzrlib.repository import (
+    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
+    RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
+
+
+class PackCommitBuilder(CommitBuilder):
+    """A subclass of CommitBuilder to add texts with pack semantics.
+    
+    Specifically this uses one knit object rather than one knit object per
+    added text, reducing memory and object pressure.
+    """
+
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
+        return self.repository._packs._add_text_to_weave(file_id,
+            self._new_revision_id, new_lines, parents, nostore_sha,
+            self.random_revid)
+
+
+class PackRootCommitBuilder(RootCommitBuilder):
+    """A subclass of RootCommitBuilder to add texts with pack semantics.
+    
+    Specifically this uses one knit object rather than one knit object per
+    added text, reducing memory and object pressure.
+    """
+
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
+        return self.repository._packs._add_text_to_weave(file_id,
+            self._new_revision_id, new_lines, parents, nostore_sha,
+            self.random_revid)
 
 
 class Pack(object):
@@ -111,6 +139,18 @@ class RepositoryPackCollection(object):
             # sigatures 'knit' accessed : update it.
             self.repo._signature_all_indices.insert_index(0,
                 pack.signature_index)
+        
+    def _add_text_to_weave(self, file_id, revision_id, new_lines, parents,
+        nostore_sha, random_revid):
+        file_id_index = GraphIndexPrefixAdapter(
+            self.repo._text_all_indices,
+            (file_id, ), 1,
+            add_nodes_callback=self.repo._text_write_index.add_nodes)
+        self.repo._text_knit._index._graph_index = file_id_index
+        self.repo._text_knit._index._add_callback = file_id_index.add_nodes
+        return self.repo._text_knit.add_lines_with_ghosts(
+            revision_id, parents, new_lines, nostore_sha=nostore_sha,
+            random_id=random_revid)[0:2]
 
     def all_pack_details(self):
         """Return a list of all the packs as transport,name tuples.
@@ -991,7 +1031,7 @@ class GraphKnitTextStore(VersionedFileStore):
         if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._text_write_index)
-        self._setup_knit_access(self.repo.is_in_write_group())
+        self._setup_knit(self.repo.is_in_write_group())
         self.repo._text_all_indices = CombinedGraphIndex(indices)
 
     def flush(self, new_name, new_pack):
@@ -1001,7 +1041,7 @@ class GraphKnitTextStore(VersionedFileStore):
         new_pack.text_index_length = self.transport.put_file(
             new_index_name, self.repo._text_write_index.finish())
         self.repo._text_write_index = None
-        self._setup_knit_access(False)
+        self._setup_knit(False)
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used, replace the mutated memory index
             # with the new on-disk one. XXX: is this really a good idea?
@@ -1012,13 +1052,13 @@ class GraphKnitTextStore(VersionedFileStore):
             # - clearly we need a remove_index call too.
             del self.repo._text_all_indices._indices[1]
 
-    def get_weave_or_empty(self, file_id, transaction):
+    def get_weave_or_empty(self, file_id, transaction, force_write=False):
         """Get a 'Knit' backed by the .tix indices.
 
         The transaction parameter is ignored.
         """
         self._ensure_all_index()
-        if self.repo.is_in_write_group():
+        if force_write or self.repo.is_in_write_group():
             add_callback = self.repo._text_write_index.add_nodes
             self.repo._text_pack_map[self.repo._text_write_index] = self.repo._open_pack_tuple
         else:
@@ -1054,6 +1094,8 @@ class GraphKnitTextStore(VersionedFileStore):
         self.repo._text_write_index = None
         # no access object.
         self.repo._text_knit_access = None
+        # no write-knit
+        self.repo._text_knit = None
         # remove all constructed text data indices
         self.repo._text_all_indices = None
         # and the pack map
@@ -1069,15 +1111,21 @@ class GraphKnitTextStore(VersionedFileStore):
         # adjust them.
         # prepare to do writes.
         self._ensure_all_index(True)
-        self._setup_knit_access(True)
+        self._setup_knit(True)
     
-    def _setup_knit_access(self, for_write):
+    def _setup_knit(self, for_write):
         if for_write:
             writer = (self.repo._open_pack_writer, self.repo._text_write_index)
         else:
             writer = None
         self.repo._text_knit_access = _PackAccess(
             self.repo._text_pack_map, writer)
+        if for_write:
+            # a reused knit object for commit specifically.
+            self.repo._text_knit = self.get_weave_or_empty(
+                'all-texts', self.repo.get_transaction(), for_write)
+        else:
+            self.repo._text_knit = None
 
 
 class InventoryKnitThunk(object):
@@ -1190,6 +1238,8 @@ class InventoryKnitThunk(object):
 
 class GraphKnitRepository1(KnitRepository):
     """Experimental graph-knit using repository."""
+
+    _commit_builder_class = PackCommitBuilder
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
@@ -1319,6 +1369,8 @@ class GraphKnitRepository1(KnitRepository):
 
 class GraphKnitRepository3(KnitRepository3):
     """Experimental graph-knit using subtrees repository."""
+
+    _commit_builder_class = PackRootCommitBuilder
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):

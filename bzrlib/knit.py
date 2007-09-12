@@ -408,9 +408,8 @@ class KnitVersionedFile(VersionedFile):
     """
 
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
-                 factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
-                 create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None, index=None, access_method=None):
+        factory=None, delta=True, create=False, create_parent_dir=False,
+        delay_create=False, dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -421,10 +420,6 @@ class KnitVersionedFile(VersionedFile):
             actually be created until the first data is stored.
         :param index: An index to use for the knit.
         """
-        if deprecated_passed(basis_knit):
-            warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
-                 " deprecated as of bzr 0.9.",
-                 DeprecationWarning, stacklevel=2)
         if access_mode is None:
             access_mode = 'w'
         super(KnitVersionedFile, self).__init__(access_mode)

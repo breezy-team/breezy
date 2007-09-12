@@ -708,16 +708,15 @@ class Commit(object):
             # deleted files matching that filter.
             if is_inside_any(deleted_paths, path):
                 continue
+            # TODO: have the builder do the nested commit just-in-time IF and
+            # only if needed.
+            content_summary = self.work_tree.path_content_summary(path)
             if not specific_files or is_inside_any(specific_files, path):
-                # TODO: fix double-stat here.
-                if not self.work_tree.has_filename(path):
+                if content_summary[0] == 'missing':
                     deleted_paths.add(path)
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
                     continue
-            # TODO: have the builder do the nested commit just-in-time IF and
-            # only if needed.
-            content_summary = self.work_tree.path_content_summary(path)
             if content_summary[0] == 'tree-reference':
                 # enforce repository nested tree policy.
                 if (not self.work_tree.supports_tree_reference() or
