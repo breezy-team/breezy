@@ -63,6 +63,10 @@ bzr 0.91rc1 2007-09-11
    * ``bzr plugins`` now lists the version number for each plugin in square
      brackets after the path. (Robert Collins, #125421)
 
+   * Pushing, pulling and branching branches with subtree references was not
+     copying the subtree weave, preventing the file graph from being accessed
+     and causing errors in commits in clones. (Robert Collins)
+
    * Suppress warning "integer argument expected, got float" from Paramiko,
      which sometimes caused false test failures.  (Martin Pool)
 
