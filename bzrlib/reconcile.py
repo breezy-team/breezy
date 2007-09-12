@@ -171,7 +171,7 @@ class RepoReconciler(object):
                 # reconcile.
                 new_inventory_vf._check_write_ok()
                 Weave._add_lines(new_inventory_vf, rev_id, parents,
-                    self.inventory.get_lines(rev_id), None, None, None, False)
+                    self.inventory.get_lines(rev_id), None, None, None, False, True)
             else:
                 new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 

@@ -831,21 +831,21 @@ class KnitVersionedFile(VersionedFile):
         self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha, random_id):
+        nostore_sha, random_id, check_content):
         """See VersionedFile.add_lines_with_ghosts()."""
-        self._check_add(version_id, lines, random_id)
+        self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
             parent_texts, None, nostore_sha)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks, nostore_sha, random_id):
+        left_matching_blocks, nostore_sha, random_id, check_content):
         """See VersionedFile.add_lines."""
-        self._check_add(version_id, lines, random_id)
+        self._check_add(version_id, lines, random_id, check_content)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
             parent_texts, left_matching_blocks, nostore_sha)
 
-    def _check_add(self, version_id, lines, random_id):
+    def _check_add(self, version_id, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
@@ -856,6 +856,9 @@ class KnitVersionedFile(VersionedFile):
         # blanket that we can disable.
         if not random_id and self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
+        if check_content:
+            self._check_lines_not_unicode(lines)
+            self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
              left_matching_blocks, nostore_sha):
