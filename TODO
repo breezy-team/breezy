@@ -1,9 +1,6 @@
 - create new package
-  import from old source debs -- Does dato's tool cover this?
 
 - record a version
-
-- new upstream
 
 - migrate from arch-buildpackage?  use baz-import?
 
