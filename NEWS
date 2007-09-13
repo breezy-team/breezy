@@ -11,6 +11,10 @@ bzr-svn 0.4.3	2007-09-12
 
    * Mark as compatible with Bazaar 0.91.
 
+  INTERNALS
+
+   * Track moving parents correctly in follow_path().
+
 bzr-svn 0.4.2	2007-09-09
 
   BUG FIXES

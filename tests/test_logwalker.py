@@ -43,6 +43,48 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(2, len(list(walker.follow_path("", 1))))
 
+    def test_get_branch_follow_branch(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+
+        os.mkdir("dc/branches")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "Add branches")
+        self.client_update("dc")
+
+        self.client_copy("dc/trunk", "dc/branches/foo")
+        self.client_commit("dc", "Copy")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(2, len(list(walker.follow_path("branches/foo", 3))))
+
+    def test_get_branch_follow_branch_changing_parent(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+
+        os.mkdir("dc/branches")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "Add branches")
+        self.client_update("dc")
+
+        self.client_copy("dc/trunk", "dc/branches/abranch")
+        self.client_commit("dc", "Copy")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEquals([
+            ("branches/abranch/foo", {"branches/abranch": ('A', 'trunk', 2)}, 3),
+            ("trunk/foo", {"trunk/foo": ('A', None, -1), 
+                           "trunk": ('A', None, -1)}, 1)
+        ], list(walker.follow_path("branches/abranch/foo", 3)))
+
     def test_get_revision_paths(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/foo': "data"})

@@ -102,7 +102,7 @@ class LogWalker(object):
                 orig_paths = {}
             for p in orig_paths:
                 copyfrom_path = orig_paths[p].copyfrom_path
-                if copyfrom_path:
+                if copyfrom_path is not None:
                     copyfrom_path = copyfrom_path.strip("/")
 
                 self.db.execute(
@@ -150,13 +150,20 @@ class LogWalker(object):
         if revnum == 0 and path == "":
             return
 
+        recurse = (path != "")
+
         path = path.strip("/")
 
         while revnum >= 0:
-            revpaths = self.get_revision_paths(revnum, path)
+            assert revnum > 0 or path == ""
+            revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
 
             if revpaths != {}:
                 yield (path, revpaths, revnum)
+
+            if path == "":
+                revnum -= 1
+                continue
 
             if revpaths.has_key(path):
                 if revpaths[path][1] is None:
@@ -168,19 +175,28 @@ class LogWalker(object):
                     # somewhere else
                     revnum = revpaths[path][2]
                     path = revpaths[path][1]
+                    assert path == "" or revnum > 0
                     continue
             revnum -= 1
+            for p in sorted(revpaths.keys()):
+                if path.startswith(p+"/") and revpaths[p][0] in ('A', 'R'):
+                    assert revpaths[p][1]
+                    path = path.replace(p, revpaths[p][1])
+                    revnum = revpaths[p][2]
+                    break
 
-    def get_revision_paths(self, revnum, path=None):
+    def get_revision_paths(self, revnum, path=None, recurse=True):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
         :param path: optional path under which to return all entries
+        :param recurse: Report changes to parents as well
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
 
         if revnum == 0:
+            assert path is None or path == ""
             return {'': ('A', None, -1)}
                 
         if revnum > self.saved_revnum:
@@ -188,7 +204,10 @@ class LogWalker(object):
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
         if path is not None and path != "":
-            query += " and (path='%s' or path like '%s/%%')" % (path, path)
+            query += " and (path='%s' or path like '%s/%%'" % (path, path)
+            if recurse:
+                query += " or ('%s' LIKE path || '/%%')" % path
+            query += ")"
 
         paths = {}
         for p, act, cf, cr in self.db.execute(query):

@@ -852,6 +852,7 @@ class SvnRepository(Repository):
         branch_path = branch_path.strip("/")
 
         while revnum >= 0:
+            assert revnum > 0 or branch_path == ""
             paths = self._log.get_revision_paths(revnum)
 
             yielded = False
@@ -859,7 +860,9 @@ class SvnRepository(Repository):
             # revision there, so yield it.
             for p in paths:
                 assert isinstance(p, str)
-                if p == branch_path or p.startswith(branch_path+"/") or branch_path == "":
+                if (p == branch_path or 
+                    p.startswith(branch_path+"/") or 
+                    branch_path == ""):
                     yield (branch_path, revnum)
                     yielded = True
                     break
@@ -914,8 +917,8 @@ class SvnRepository(Repository):
         assert scheme.is_branch(branch_path) or scheme.is_tag(branch_path)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
-            if (paths.has_key(bp) and 
-                paths[bp][1] is not None and 
+            assert revnum > 0 or bp == ""
+            if (paths.has_key(bp) and paths[bp][1] is not None and 
                 not scheme.is_branch(paths[bp][1]) and
                 not scheme.is_tag(paths[bp][1])):
                 # FIXME: if copyfrom_path is not a branch path, 
