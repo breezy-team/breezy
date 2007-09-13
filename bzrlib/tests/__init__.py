@@ -162,7 +162,7 @@ def packages_to_test():
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
-    Compared to this unittest version this class adds support for
+    Compared to the unittest version this class adds support for
     profiling, benchmarking, stopping as soon as a test fails,  and
     skipping tests.  There are further-specialized subclasses for
     different types of display.
@@ -343,7 +343,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         except KeyboardInterrupt:
             raise
         except:
-            self.addError(test, test.__exc_info())
+            self.addError(test, test._exc_info())
         else:
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
@@ -1875,19 +1875,45 @@ class TestCaseWithMemoryTransport(TestCase):
         base = self.get_vfs_only_server().get_url()
         return self._adjust_url(base, relpath)
 
-    def _make_test_root(self):
-        if TestCaseWithMemoryTransport.TEST_ROOT is not None:
-            return
-        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
-        TestCaseWithMemoryTransport.TEST_ROOT = root
-        
-        # make a fake bzr directory there to prevent any tests propagating
-        # up onto the source directory's real branch
+    def _create_safety_net(self):
+        """Make a fake bzr directory.
+
+        This prevents any tests propagating up onto the source directory's real
+        branch.
+        """
+        root = TestCaseWithMemoryTransport.TEST_ROOT
         bzrdir.BzrDir.create_standalone_workingtree(root)
 
-        # The same directory is used by all tests, and we're not specifically
-        # told when all tests are finished.  This will do.
-        atexit.register(_rmtree_temp_dir, root)
+    def _check_safety_net(self):
+        """Check that the safety .bzr directory have not been touched.
+
+        _make_test_root have created a .bzr directory to prevent tests from
+        propagating. This method ensures than a test did not leaked.
+        """
+        root = TestCaseWithMemoryTransport.TEST_ROOT
+        wt = workingtree.WorkingTree.open(root)
+        last_rev = wt.last_revision()
+        if last_rev != 'null:':
+            # The current test have modified the /bzr directory, we need to
+            # recreate a new one or all the followng tests will fail.
+            # If you need to inspect its content uncomment the following line
+            # import pdb; pdb.set_trace()
+            _rmtree_temp_dir(root + '/.bzr')
+            self._create_safety_net()
+            raise AssertionError('%s/.bzr should not be modified' % root)
+
+    def _make_test_root(self):
+        if TestCaseWithMemoryTransport.TEST_ROOT is None:
+            root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            TestCaseWithMemoryTransport.TEST_ROOT = root
+
+            self._create_safety_net()
+
+            # The same directory is used by all tests, and we're not
+            # specifically told when all tests are finished.  This will do.
+            atexit.register(_rmtree_temp_dir, root)
+
+        self.addCleanup(self._check_safety_net)
 
     def makeAndChdirToTestDir(self):
         """Create a temporary directories for this one test.
