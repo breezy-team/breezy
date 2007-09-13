@@ -91,17 +91,6 @@ class NullCommitReporter(object):
         self.show_change_total = show_change_total
         self.changes = 0
 
-    def _note(self, format, *args):
-        """Output a message.
-
-        Subclasses may choose to override this method.
-        """
-        note(format, *args)
-
-    def _note_change(self, format, *args):
-        self._note(format, *args)
-        self.changes += 1
-
     def started(self, revno, revid, location=None):
         pass
 
@@ -123,15 +112,29 @@ class NullCommitReporter(object):
     def renamed(self, change, old_path, new_path):
         pass
 
+    def _note(self, format, *args):
+        """Output a message.
+
+        Subclasses may choose to override this method.
+        """
+        note(format, *args)
+
+    def _note_change(self, format, *args):
+        self._note(format, *args)
+        self.changes += 1
+
     def is_verbose(self):
         return False
 
 
-class _InitialCommitReporter(NullCommitReporter):
+class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
-        if path != '':
-            self.changes += 1
+        if change == 'unchanged':
+            return
+        if change == 'added' and path == '':
+            return
+        self._note_change("%s %s", change, path)
 
     def started(self, revno, rev_id, location=None):
         if location is not None:
@@ -149,16 +152,6 @@ class _InitialCommitReporter(NullCommitReporter):
             details = ' (%d changes made)' % self.changes
         self._note('Committed revision %d%s.', revno, details)
 
-
-class ReportCommitToLog(_InitialCommitReporter):
-
-    def snapshot_change(self, change, path):
-        if change == 'unchanged':
-            return
-        if change == 'added' and path == '':
-            return
-        self._note_change("%s %s", change, path)
-
     def deleted(self, file_id):
         self._note_change('deleted %s', file_id)
 
@@ -173,10 +166,6 @@ class ReportCommitToLog(_InitialCommitReporter):
 
     def is_verbose(self):
         return True
-
-
-# Provide an alias
-VerboseCommitReporter = ReportCommitToLog
 
 
 class Commit(object):
@@ -200,7 +189,7 @@ class Commit(object):
         """
         self.reporter = reporter
         self.config = config
- 
+
     def commit(self,
                message=None,
                timestamp=None,
@@ -210,11 +199,11 @@ class Commit(object):
                rev_id=None,
                allow_pointless=True,
                strict=False,
+               verbose=False,
                revprops=None,
                working_tree=None,
                local=False,
                reporter=None,
-               verbose=False,
                config=None,
                message_callback=None,
                recursive='down'):
@@ -282,8 +271,8 @@ class Commit(object):
         self.verbose = verbose
 
         self.work_tree.lock_write()
-        self.basis_tree = self.work_tree.basis_tree()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_tree = self.work_tree.basis_tree()
         self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
@@ -407,19 +396,8 @@ class Commit(object):
         """Select the CommitReporter to use."""
         if is_quiet():
             return NullCommitReporter()
-
-        # For the initial commit in a branch which typically adds many files,
-        # the filenames are not printed unless verbose is explicitly asked for.
-        # We show the total number of changes regardless.
-        if self.initial_commit:
-            if self.verbose:
-                return VerboseCommitReporter(True)
-            else:
-                return _InitialCommitReporter(True)
-
-        # Otherwise, the changes are shown. In verbose mode, the total number
-        # of changes is shown as well.
-        return VerboseCommitReporter(self.verbose)
+        # TODO: In verbose mode, show the total number of changes
+        return ReportCommitToLog()
 
     def _any_real_changes(self):
         """Are there real changes between new_inventory and basis?
@@ -828,12 +806,12 @@ class Commit(object):
         if ie is not None:
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-
-            # Special case initial commit for performance and UI reasons
-            if self.initial_commit:
-                self.reporter.snapshot_change('added', path)
-            elif report_changes:
-                self._report_change(ie, path)
+            if report_changes:
+                # Special case initial commit for performance
+                if self.initial_commit:
+                    self.reporter.snapshot_change('added', path)
+                else:
+                    self._report_change(ie, path)
         return ie
 
     def _report_change(self, ie, path):
