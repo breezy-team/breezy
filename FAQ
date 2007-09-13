@@ -28,3 +28,8 @@ upgrade the repository, run:
 
 $ bzr upgrade --dirstate-with-subtree
 
+==============================================================================
+Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
+==============================================================================
+At the moment, only `bzr svn-push` can be used to push new branches into 
+Subversion.
