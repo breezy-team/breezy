@@ -87,10 +87,6 @@ import bzrlib.ui
 class NullCommitReporter(object):
     """I report on progress of a commit."""
 
-    def __init__(self, show_change_total=False):
-        self.show_change_total = show_change_total
-        self.changes = 0
-
     def started(self, revno, revid, location=None):
         pass
 
@@ -112,6 +108,12 @@ class NullCommitReporter(object):
     def renamed(self, change, old_path, new_path):
         pass
 
+    def is_verbose(self):
+        return False
+
+
+class ReportCommitToLog(NullCommitReporter):
+
     def _note(self, format, *args):
         """Output a message.
 
@@ -119,22 +121,12 @@ class NullCommitReporter(object):
         """
         note(format, *args)
 
-    def _note_change(self, format, *args):
-        self._note(format, *args)
-        self.changes += 1
-
-    def is_verbose(self):
-        return False
-
-
-class ReportCommitToLog(NullCommitReporter):
-
     def snapshot_change(self, change, path):
         if change == 'unchanged':
             return
         if change == 'added' and path == '':
             return
-        self._note_change("%s %s", change, path)
+        self._note("%s %s", change, path)
 
     def started(self, revno, rev_id, location=None):
         if location is not None:
@@ -144,25 +136,19 @@ class ReportCommitToLog(NullCommitReporter):
         self._note('Committing revision %d%s.', revno, location)
 
     def completed(self, revno, rev_id):
-        if not self.show_change_total:
-            details = ''
-        elif self.changes == 1:
-            details = ' (%d change made)' % self.changes
-        else:
-            details = ' (%d changes made)' % self.changes
-        self._note('Committed revision %d%s.', revno, details)
+        self._note('Committed revision %d.', revno)
 
     def deleted(self, file_id):
-        self._note_change('deleted %s', file_id)
+        self._note('deleted %s', file_id)
 
     def escaped(self, escape_count, message):
         self._note("replaced %d control characters in message", escape_count)
 
     def missing(self, path):
-        self._note_change('missing %s', path)
+        self._note('missing %s', path)
 
     def renamed(self, change, old_path, new_path):
-        self._note_change('%s %s => %s', change, old_path, new_path)
+        self._note('%s %s => %s', change, old_path, new_path)
 
     def is_verbose(self):
         return True
@@ -396,7 +382,6 @@ class Commit(object):
         """Select the CommitReporter to use."""
         if is_quiet():
             return NullCommitReporter()
-        # TODO: In verbose mode, show the total number of changes
         return ReportCommitToLog()
 
     def _any_real_changes(self):
@@ -710,6 +695,7 @@ class Commit(object):
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
                
+        report_changes = self.reporter.is_verbose()
         deleted_ids = []
         deleted_paths = set()
         work_inv = self.work_tree.inventory
@@ -717,7 +703,6 @@ class Commit(object):
         entries = work_inv.iter_entries()
         if not self.builder.record_root_entry:
             entries.next()
-        report_changes = self.reporter.is_verbose()
         for path, existing_ie in entries:
             file_id = existing_ie.file_id
             name = existing_ie.name
@@ -752,8 +737,10 @@ class Commit(object):
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind 
-            self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie, report_changes)
+            ie = self._record_entry(path, file_id, specific_files, kind, name,
+                parent_id, definitely_changed, existing_ie)
+            if report_changes and ie is not None:
+                self._report_change(ie, path)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -784,8 +771,7 @@ class Commit(object):
             pass
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-                      parent_id, definitely_changed, existing_ie=None,
-                      report_changes=False):
+            parent_id, definitely_changed, existing_ie=None):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         if (not specific_files or 
@@ -806,12 +792,6 @@ class Commit(object):
         if ie is not None:
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-            if report_changes:
-                # Special case initial commit for performance
-                if self.initial_commit:
-                    self.reporter.snapshot_change('added', path)
-                else:
-                    self._report_change(ie, path)
         return ie
 
     def _report_change(self, ie, path):
@@ -820,6 +800,10 @@ class Commit(object):
         The change that has occurred is described relative to the basis
         inventory.
         """
+        # Special case initial commit for performance
+        if self.initial_commit:
+            self.reporter.snapshot_change('added', path)
+            return
         if (self.basis_inv.has_id(ie.file_id)):
             basis_ie = self.basis_inv[ie.file_id]
         else:

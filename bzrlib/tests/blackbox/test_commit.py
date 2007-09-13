@@ -73,30 +73,11 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -v -m added')
-        self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
-            'added hello.txt\n'
-            'Committed revision 1 \(1 change made\).\n$',)
-
-    def test_10_quiet_commit(self):
-        """Add one file and examine quiet commit output"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt'])
-        tree.add("hello.txt")
-        out,err = self.run_bzr('commit -q -m added')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
-
-    def test_10_normal_commit(self):
-        """Add one file and examine normal commit output"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt'])
-        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
-                              'Committed revision 1 \(1 change made\).\n$',)
+                              'added hello.txt\n'
+                              'Committed revision 1.\n$',)
 
     def prepare_simple_history(self):
         """Prepare and return a working tree with one commit of one file"""
@@ -107,39 +88,28 @@ class TestCommit(ExternalBase):
         wt.commit(message='added')
         return wt
 
-    def test_normal_commit_modified(self):
-        # Normal commit of modified file should say just the new revision
+    def test_verbose_commit_modified(self):
+        # Verbose commit of modified file should say so
         wt = self.prepare_simple_history()
         self.build_tree_contents([('hello.txt', 'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
-            'modified hello.txt\n'
-            'Committed revision 2.\n$')
-
-    def test_verbose_commit_modified(self):
-        # Verbose commit of modified file should say so
-        wt = self.prepare_simple_history()
-        self.build_tree_contents([('hello.txt', 'new contents')])
-        out, err = self.run_bzr('commit -v -m modified')
-        self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
                               'modified hello\.txt\n'
-                              'Committed revision 2 \(1 change made\)\.\n$')
+                              'Committed revision 2\.\n$')
 
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
         wt = self.prepare_simple_history()
         wt.rename_one('hello.txt', 'gutentag.txt')
-        out, err = self.run_bzr('commit -v -m renamed')
+        out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
                               'renamed hello\.txt => gutentag\.txt\n'
-                              'Committed revision 2 \(1 change made\)\.$\n')
+                              'Committed revision 2\.$\n')
 
-    def test_normal_commit_moved(self):
-        # Verbose commit of file moved to new directory should say just
-        # the new revision
+    def test_verbose_commit_moved(self):
+        # Verbose commit of file moved to new directory should say so
         wt = self.prepare_simple_history()
         os.mkdir('subdir')
         wt.add(['subdir'])
@@ -151,54 +121,17 @@ class TestCommit(ExternalBase):
                               'renamed hello\.txt => subdir/hello\.txt\n'
                               'Committed revision 2\.\n$')
 
-    def test_verbose_commit_moved(self):
-        # Verbose commit of file moved to new directory should say so
-        wt = self.prepare_simple_history()
-        os.mkdir('subdir')
-        wt.add(['subdir'])
-        wt.rename_one('hello.txt', 'subdir/hello.txt')
-        out, err = self.run_bzr('commit -v -m renamed')
-        self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
-                              'added subdir\n'
-                              'renamed hello\.txt => subdir/hello\.txt\n'
-                              'Committed revision 2 \(2 changes made\)\.\n$')
-
-    def test_normal_commit_with_unknown(self):
-        """Unknown files should not be listed by default in normal output"""
-        # Is that really the best policy?
-        wt = BzrDir.create_standalone_workingtree('.')
-        self.build_tree(['hello.txt', 'extra.txt'])
-        wt.add(['hello.txt'])
-        out,err = self.run_bzr('commit -m added')
-        self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
-            'Committed revision 1 \(1 change made\).\n$',)
-
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
         # Is that really the best policy?
         wt = BzrDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
-        out,err = self.run_bzr('commit -v -m added')
-        self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
-            'added hello.txt\n'
-            'Committed revision 1 \(1 change made\).\n$',)
-
-    def test_normal_commit_with_unchanged(self):
-        """Unchanged files should not be listed by default in normal output"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt', 'unchanged.txt'])
-        tree.add('unchanged.txt')
-        self.run_bzr('commit -m unchanged unchanged.txt')
-        self.run_bzr("add hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
                               'added hello\.txt\n'
-                              'Committed revision 2\.\n$')
+                              'Committed revision 1\.\n$')
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
@@ -207,11 +140,11 @@ class TestCommit(ExternalBase):
         tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -v -m added')
+        out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
                               'added hello\.txt\n'
-                              'Committed revision 2 \(1 change made\)\.$\n')
+                              'Committed revision 2\.$\n')
 
     def test_verbose_commit_includes_master_location(self):
         """Location of master is displayed when committing to bound branch"""
@@ -446,11 +379,11 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         output, err = self.run_bzr(
-            'commit -v -m hello --fixes=lp:23452 tree/hello.txt')
+            'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
         self.assertContainsRe(err, 'Committing revision 1 to ".*"\.\n'
                               'added hello\.txt\n'
-                              'Committed revision 1 \(1 change made\)\.\n')
+                              'Committed revision 1\.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
