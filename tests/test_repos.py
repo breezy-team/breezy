@@ -62,8 +62,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        self.assertEqual(2, 
-             len(list(repos.follow_branch_history("", 1, NoBranchingScheme()))))
+        self.assertEqual([
+            ('', {'foo': ('A', None, -1)}, 1), 
+            ('', {'': ('A', None, -1)}, 0)],
+             list(repos.follow_branch_history("", 1, NoBranchingScheme())))
 
     def test_make_working_trees(self):
         repos_url = self.make_client("a", "dc")

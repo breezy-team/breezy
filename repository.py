@@ -918,6 +918,15 @@ class SvnRepository(Repository):
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             assert revnum > 0 or bp == ""
+            assert scheme.is_branch(bp) or schee.is_tag(bp)
+            # Remove non-bp paths from paths
+            for p in paths.keys():
+                if not p.startswith(bp+"/") and bp != p and bp != "":
+                    del paths[p]
+
+            if paths == {}:
+                continue
+
             if (paths.has_key(bp) and paths[bp][1] is not None and 
                 not scheme.is_branch(paths[bp][1]) and
                 not scheme.is_tag(paths[bp][1])):

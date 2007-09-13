@@ -18,6 +18,7 @@
 from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision
 import bzrlib.ui as ui
+from copy import copy
 
 from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
@@ -159,7 +160,7 @@ class LogWalker(object):
             revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
 
             if revpaths != {}:
-                yield (path, revpaths, revnum)
+                yield (path, copy(revpaths), revnum)
 
             if path == "":
                 revnum -= 1
@@ -185,7 +186,7 @@ class LogWalker(object):
                     revnum = revpaths[p][2]
                     break
 
-    def get_revision_paths(self, revnum, path=None, recurse=True):
+    def get_revision_paths(self, revnum, path=None, recurse=False):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
