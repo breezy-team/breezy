@@ -737,10 +737,8 @@ class Commit(object):
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind 
-            ie = self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie)
-            if report_changes and ie is not None:
-                self._report_change(ie, path)
+            self._record_entry(path, file_id, specific_files, kind, name,
+                parent_id, definitely_changed, existing_ie, report_changes)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -771,7 +769,8 @@ class Commit(object):
             pass
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-            parent_id, definitely_changed, existing_ie=None):
+            parent_id, definitely_changed, existing_ie=None,
+            report_changes=True):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         if (not specific_files or 
@@ -792,6 +791,8 @@ class Commit(object):
         if ie is not None:
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
+            if report_changes:
+                self._report_change(ie, path)
         return ie
 
     def _report_change(self, ie, path):
@@ -800,10 +801,6 @@ class Commit(object):
         The change that has occurred is described relative to the basis
         inventory.
         """
-        # Special case initial commit for performance
-        if self.initial_commit:
-            self.reporter.snapshot_change('added', path)
-            return
         if (self.basis_inv.has_id(ie.file_id)):
             basis_ie = self.basis_inv[ie.file_id]
         else:
