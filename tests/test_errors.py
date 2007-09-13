@@ -14,10 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import ConnectionReset, LockError, PermissionDenied
+from bzrlib.errors import (ConnectionError, ConnectionReset, LockError, 
+                           PermissionDenied, UnexpectedEndOfContainerError)
 from bzrlib.tests import TestCase
 
-from errors import convert_svn_error, convert_error, InvalidPropertyValue
+from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
+                    SVN_ERR_UNKNOWN_HOSTNAME)
 
 import svn.core
 from svn.core import SubversionException
@@ -49,6 +51,12 @@ class TestConvertError(TestCase):
 
     def test_convert_perm_denied(self):
         self.assertIsInstance(convert_error(SubversionException("Permission Denied", svn.core.SVN_ERR_RA_NOT_AUTHORIZED)), PermissionDenied)
+
+    def test_convert_unexpected_end(self):
+        self.assertIsInstance(convert_error(SubversionException("Unexpected end of stream", svn.core.SVN_ERR_INCOMPLETE_DATA)), UnexpectedEndOfContainerError)
+
+    def test_convert_unknown_hostname(self):
+        self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", SVN_ERR_UNKNOWN_HOSTNAME)), ConnectionError)
 
     def test_decorator_nothrow(self):
         @convert_svn_error

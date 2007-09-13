@@ -16,32 +16,35 @@
 """Fetching revisions from Subversion repositories in batches."""
 
 import bzrlib
+from bzrlib import osutils, ui, urlutils
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
-import bzrlib.ui as ui
 
 from copy import copy
 from cStringIO import StringIO
 import md5
-import os
 
 from svn.core import Pool
 import svn.core
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
-                SVN_PROP_SVK_MERGE,
+                SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                SVN_PROP_BZR_BRANCHING_SCHEME,
-                SvnRepositoryFormat, parse_revision_metadata,
-                parse_merge_property)
+                SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                SVN_PROP_BZR_FILEIDS, SvnRepositoryFormat, 
+                parse_revision_metadata, parse_merge_property)
 from tree import apply_txdelta_handler
 
 
 def md5_strings(strings):
+    """Return the MD5sum of the concatenation of strings.
+
+    :param strings: Strings to find the MD5sum of.
+    :return: MD5sum
+    """
     s = md5.new()
     map(s.update, strings)
     return s.hexdigest()
@@ -68,6 +71,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._svk_merges = []
         self._revinfo = None
         self._svn_revprops = svn_revprops
+        self._premature_deletes = set()
         self.pool = Pool()
 
     def _get_revision(self, revid):
@@ -124,7 +128,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return self._get_old_id(parent_id, path)
 
     def _get_old_id(self, parent_id, old_path):
-        return self.old_inventory[parent_id].children[os.path.basename(old_path)].file_id
+        return self.old_inventory[parent_id].children[urlutils.basename(old_path)].file_id
 
     def _get_new_id(self, parent_id, new_path):
         if self.id_map.has_key(new_path):
@@ -133,7 +137,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")
-        del self.inventory[self._get_old_id(parent_id, path)]
+        if path in self._premature_deletes:
+            self._premature_deletes.remove(path)
+        else:
+            self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
 
     def close_directory(self, id):
         self.inventory[id].revision = self.revid
@@ -150,7 +157,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
-        ie = self.inventory.add_path(path, 'directory', file_id)
+        if file_id in self.inventory:
+            # This directory was moved here from somewhere else, but the 
+            # other location hasn't been removed yet. 
+            if copyfrom_path is None:
+                # FIXME: This should never happen!
+                copyfrom_path = self.old_inventory.id2path(file_id)
+            assert copyfrom_path == self.old_inventory.id2path(file_id)
+            assert copyfrom_path not in self._premature_deletes
+            self._premature_deletes.add(copyfrom_path)
+            self.inventory.rename(file_id, parent_id, urlutils.basename(path))
+            ie = self.inventory[file_id]
+        else:
+            ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = self.revid
 
         return file_id
@@ -188,6 +207,9 @@ class RevisionBuildEditor(svn.delta.Editor):
                 return
             
             self._bzr_merges = parse_merge_property(value.splitlines()[-1])
+        elif (name.startswith(SVN_PROP_BZR_ANCESTRY) or 
+              name.startswith(SVN_PROP_BZR_REVISION_ID)):
+            pass
         elif name == SVN_PROP_SVK_MERGE:
             self._svk_merges = None # Force Repository.revision_parents() to look it up
         elif name == SVN_PROP_BZR_REVISION_INFO:
@@ -205,9 +227,11 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
+        elif name in (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS):
+            pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
@@ -240,6 +264,16 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_parents = []
         self.file_stream = None
         self.file_id = self._get_new_id(parent_id, path)
+        if self.file_id in self.inventory:
+            # This file was moved here from somewhere else, but the 
+            # other location hasn't been removed yet. 
+            if copyfrom_path is None:
+                # FIXME: This should never happen!
+                copyfrom_path = self.old_inventory.id2path(self.file_id)
+            assert copyfrom_path == self.old_inventory.id2path(self.file_id)
+            assert copyfrom_path not in self._premature_deletes
+            self._premature_deletes.add(copyfrom_path)
+            self.inventory.rename(self.file_id, parent_id, urlutils.basename(path))
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
@@ -298,12 +332,18 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_stream = None
 
     def close_edit(self):
+        assert len(self._premature_deletes) == 0
         rev = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         rev.inventory_sha1 = osutils.sha_string(
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
                 self.inventory))
-        self.target.add_revision(self.revid, rev, self.inventory)
+        self.target.start_write_group()
+        try:
+            self.target.add_revision(self.revid, rev, self.inventory)
+            self.target.commit_write_group()
+        except:
+            self.target.abort_write_group()
         self.pool.destroy()
 
     def abort_edit(self):
@@ -326,7 +366,7 @@ class InterFromSvnRepository(InterRepository):
 
     @staticmethod
     def _get_repo_format_to_test():
-        return SvnRepositoryFormat()
+        return None
 
     def _find_all(self):
         parents = {}
@@ -339,6 +379,12 @@ class InterFromSvnRepository(InterRepository):
         return (needed, parents)
 
     def _find_until(self, revision_id):
+        """Find all missing revisions until revision_id
+
+        :param revision_id: Stop revision
+        :return: Tuple with revisions missing and a dictionary with 
+            parents for those revision.
+        """
         needed = []
         parents = {}
         (path, until_revnum, scheme) = self.source.lookup_revision_id(
@@ -360,9 +406,8 @@ class InterFromSvnRepository(InterRepository):
         parents[prev_revid] = None
         return (needed, parents)
 
-    def copy_content(self, revision_id=None, basis=None, pb=None):
+    def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
-        # FIXME: Use basis
         # Dictionary with paths as keys, revnums as values
 
         # Loop over all the revnums until revision_id
@@ -383,7 +428,6 @@ class InterFromSvnRepository(InterRepository):
 
         repos_root = self.source.transport.get_repos_root()
 
-        needed.reverse()
         prev_revid = None
         transport = self.source.transport
         self.target.lock_write()
@@ -395,7 +439,7 @@ class InterFromSvnRepository(InterRepository):
         num = 0
         prev_inv = None
         try:
-            for revid in needed:
+            for revid in reversed(needed):
                 (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
@@ -423,25 +467,28 @@ class InterFromSvnRepository(InterRepository):
                 edit, edit_baton = svn.delta.make_editor(editor, pool)
 
                 if parent_revid is None:
-                    transport.reparent("%s/%s" % (repos_root, branch))
+                    branch_url = urlutils.join(repos_root, branch)
+                    transport.reparent(branch_url)
+                    assert transport.svn_url == branch_url.rstrip("/"), \
+                        "Expected %r, got %r" % (transport.svn_url, branch_url)
                     reporter = transport.do_update(
-                                   revnum, "", True, edit, edit_baton, pool)
+                                   revnum, True, edit, edit_baton, pool)
 
                     # Report status of existing paths
                     reporter.set_path("", revnum, True, None, pool)
                 else:
                     (parent_branch, parent_revnum, scheme) = \
                             self.source.lookup_revision_id(parent_revid)
-                    transport.reparent("%s/%s" % (repos_root, parent_branch))
+                    transport.reparent(urlutils.join(repos_root, parent_branch))
 
                     if parent_branch != branch:
-                        switch_url = "%s/%s" % (repos_root, branch)
                         reporter = transport.do_switch(
-                                   revnum, "", True, 
-                                   switch_url, edit, edit_baton, pool)
+                                   revnum, True, 
+                                   urlutils.join(repos_root, branch), 
+                                   edit, edit_baton, pool)
                     else:
                         reporter = transport.do_update(
-                                   revnum, "", True, edit, edit_baton, pool)
+                                   revnum, True, edit, edit_baton, pool)
 
                     # Report status of existing paths
                     reporter.set_path("", parent_revnum, False, None, pool)
@@ -458,7 +505,7 @@ class InterFromSvnRepository(InterRepository):
             self.target.unlock()
             if nested_pb is not None:
                 nested_pb.finished()
-        self.source.transport.reparent(repos_root)
+        self.source.transport.reparent_root()
 
     def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """

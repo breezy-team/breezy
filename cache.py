@@ -22,6 +22,10 @@ from bzrlib.trace import warning
 import os
 
 def create_cache_dir():
+    """Create the top-level bzr-svn cache directory.
+    
+    :return: Path to cache directory.
+    """
     ensure_config_dir_exists()
     cache_dir = os.path.join(config_dir(), 'svn-cache')
 

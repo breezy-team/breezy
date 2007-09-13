@@ -18,14 +18,13 @@
 Support for Subversion branches
 """
 import bzrlib
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
 from bzrlib.lazy_import import lazy_import
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 from bzrlib.repository import InterRepository
-from bzrlib.workingtree import WorkingTreeFormat
 
 lazy_import(globals(), """
 import branch
@@ -37,8 +36,16 @@ import workingtree
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
-__version__ = '0.4.0exp'
-COMPATIBLE_BZR_VERSIONS = [(0, 19)]
+# versions ending in 'final' mean release (well tested, etc)
+version_info = (0, 4, 3, 'dev', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
+COMPATIBLE_BZR_VERSIONS = [(0, 90), (0, 91)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -67,7 +74,7 @@ def check_bzrlib_version(desired):
 
 def check_bzrsvn_version():
     """Warn about use of experimental mappings."""
-    if __version__.endswith("exp"):
+    if version_info[3] == "exp":
         warning('version of bzr-svn is experimental; output may change between revisions')
 
 def check_subversion_version():
@@ -108,13 +115,9 @@ topic_registry.register_lazy('svn-branching-schemes',
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
-
-bzrlib.branch.BranchFormat.register_format(branch.SvnBranchFormat())
-bzrlib.repository.format_registry.register_lazy(
-        "Subversion Repository Format",
-        "bzrlib.plugins.svn.repository",
-        "SvnRepositoryFormat")
-WorkingTreeFormat.register_format(workingtree.SvnWorkingTreeFormat())
+format_registry.register("subversion", format.SvnFormat, 
+                         "Subversion repository. ", 
+                         native=False)
 
 versions_checked = False
 def lazy_check_versions():
@@ -162,15 +165,15 @@ class cmd_svn_import(Command):
             standalone=False, scheme=None, all=False, prefix=None):
         from bzrlib.errors import NoRepositoryPresent
         from bzrlib.bzrdir import BzrDir
-        from bzrlib.trace import info
         from convert import convert_repository
         import os
-        from scheme import TrunkBranchingScheme
 
         if to_location is None:
             to_location = os.path.basename(from_location.rstrip("/\\"))
 
         if all:
+            # All implies shared repository 
+            # (otherwise there is no repository to store revisions in)
             standalone = False
 
         if os.path.isfile(from_location):
@@ -217,7 +220,7 @@ class cmd_svn_upgrade(Command):
 
     @display_command
     def run(self, from_repository=None, verbose=False):
-        from upgrade import upgrade_branch
+        from upgrade import upgrade_branch, upgrade_workingtree
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
@@ -243,18 +246,26 @@ class cmd_svn_upgrade(Command):
         else:
             from_repository = Repository.open(from_repository)
 
-        upgrade_branch(branch_to, from_repository, allow_changes=True, 
-                       verbose=verbose)
+        if wt_to is not None:
+            upgrade_workingtree(wt_to, from_repository, allow_changes=True,
+                                verbose=verbose)
+        else:
+            upgrade_branch(branch_to, from_repository, allow_changes=True, 
+                           verbose=verbose)
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())
 
 register_command(cmd_svn_upgrade)
 
-class cmd_svn_push_new(Command):
-    """Create a new branch in Subversion.
+class cmd_svn_push(Command):
+    """Push revisions to Subversion, creating a new branch if necessary.
+
+    The behaviour of this command is the same as that of "bzr push", except 
+    that it also creates new branches.
     
-    This command is experimental and will be removed in the future.
+    This command is experimental and will be removed in the future when all 
+    functionality is included in "bzr push".
     """
     takes_args = ['location']
     takes_options = ['revision']
@@ -262,19 +273,66 @@ class cmd_svn_push_new(Command):
     def run(self, location, revision=None):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
+        from bzrlib.errors import NotBranchError, BzrCommandError
         bzrdir = BzrDir.open(location)
-        branch = Branch.open(".")
+        source_branch = Branch.open_containing(".")[0]
         if revision is not None:
             if len(revision) > 1:
-                raise errors.BzrCommandError(
-                    'bzr svn-push-new --revision takes exactly one revision' 
+                raise BzrCommandError(
+                    'bzr svn-push --revision takes exactly one revision' 
                     ' identifier')
-            revision_id = revision[0].in_history(branch).rev_id
+            revision_id = revision[0].in_history(source_branch).rev_id
         else:
             revision_id = None
-        bzrdir.import_branch(branch, revision_id)
+        try:
+            target_branch = bzrdir.open_branch()
+            target_branch.pull(source_branch, revision_id)
+        except NotBranchError:
+            target_branch = bzrdir.import_branch(source_branch, revision_id)
 
-register_command(cmd_svn_push_new)
+register_command(cmd_svn_push)
+
+
+class cmd_svn_branching_scheme(Command):
+    """Show or change the branching scheme for a Subversion repository.
+
+    See 'bzr help svn-branching-scheme' for details.
+    """
+    takes_args = ['location?']
+    takes_options = [
+        Option('set', help="Change the branching scheme. "),
+        Option('repository-wide', 
+            help="Act on repository-wide setting rather than local.")
+        ]
+
+    def run(self, location=".", set=False, repository_wide=False):
+        from bzrlib.msgeditor import edit_commit_message
+        from bzrlib.repository import Repository
+        from bzrlib.trace import info
+        from scheme import scheme_from_branch_list
+        def scheme_str(scheme):
+            if scheme is None:
+                return ""
+            return "".join(map(lambda x: x+"\n", scheme.to_lines()))
+        repos = Repository.open(location)
+        if repository_wide:
+            scheme = repos._get_property_scheme()
+        else:
+            scheme = repos.get_scheme()
+        if set:
+            schemestr = edit_commit_message("", 
+                                            start_message=scheme_str(scheme))
+            scheme = scheme_from_branch_list(
+                map(lambda x:x.strip("\n"), schemestr.splitlines()))
+            if repository_wide:
+                repos.set_property_scheme(scheme)
+            else:
+                repos.set_branching_scheme(scheme)
+        elif scheme is not None:
+            info(scheme_str(scheme))
+
+
+register_command(cmd_svn_branching_scheme)
 
 
 def test_suite():
@@ -283,6 +341,7 @@ def test_suite():
     suite = TestSuite()
     suite.addTest(tests.test_suite())
     return suite
+
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "

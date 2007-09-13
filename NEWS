@@ -1,4 +1,91 @@
-bzr-svn 0.4	UNRELEASED
+bzr-svn 0.4.3	2007-09-12
+ 
+  PERFORMANCE
+
+   * Avoid extra RA connection in LogWalker if it isn't going to be used.
+
+  BUG FIXES
+
+   * Fix determination of relative URLs in SvnRaTransport._request_path(). 
+     (#139020)
+
+   * Mark as compatible with Bazaar 0.91.
+
+   * Use write groups in fetch as required by the packs branch.
+
+  INTERNALS
+
+   * Track moving parents correctly in follow_path().
+
+bzr-svn 0.4.2	2007-09-09
+
+  BUG FIXES
+
+   * Fix regression that prevented the "svn+" prefix trick from working.
+
+   * Export version information so the version is displayed properly 
+     in "bzr plugins".
+
+   * Avoid deprecated static BzrDir.create_repository().
+
+   * Fix pushing of revisions of which only a non-left hand side parent
+     is present in the Subversion repository. (#131692)
+
+   * Fix some problems pushing to HTTP repositories because of 
+     the backing URL hack introduced to fix #80553. (#137176)
+
+   * Display unknown hostname errors properly without tracebacks.
+
+   * Handle files of which path didn't change but parent did when pushing. 
+     (#137455)
+
+   * Fix sqlite index that was causing indexing errors when a repository 
+     contains multiple copies of a single revision. 
+
+bzr-svn 0.4.1	2007-08-26
+
+  BUG FIXES
+
+   * Convert errors to bzr errors when fetching data (avoids backtraces).
+
+   * Raise proper exception when repository can't be found remotely. (#130633)
+
+   * Use knits to store file id maps.
+
+   * Don't try to open repository root for http:// or https:// URLs. (#80553)
+   
+   * Handle corner cases fetching renames.
+
+   * Support WorkingTree.update()
+
+   * Mark as supporting Bazaar 0.90 rather than 0.19. (#133388)
+
+   * Don't mutter during commit unless explicitly enabled with -Dcommit.
+
+   * Fix pushing while svk:merge properties are not found. 
+     (#133287, Lukáš Lalinský)
+
+   * Show proper exception when a svn dump file ends prematurely. 
+
+   * Don't try to open directories of which parents haven't yet been opened 
+     from commit. (#133288, Lukáš Lalinský)
+
+   * Timestamps in properties no longer include locale-specific data. (#131337)
+
+   * Handle copies of parent directories of branches correctly. (#131180)
+
+  INTERNALS
+
+   * Support `topo_sorted` argument to by Repository.get_ancestry().
+
+  FEATURES
+
+   * Support initializing Subversion repositories. 
+     `bzr init-repo --format=subversion` now works.
+
+   * Support reading gzip and bzip2 compressed dump files in svn-import.
+
+bzr-svn 0.4.0	2007-08-04	
   
   BUG FIXES
 
@@ -35,9 +122,17 @@ bzr-svn 0.4	UNRELEASED
 
    * Fix import of svk:merge properties (need to be sorted lexicographically).
 
+   * Support possible_transports argument to BzrDir.sprout(). (#128500)
+
+   * Fix incorrect delete when a child of a renamed directory is removed.
+
+   * Support pushing adding empty files. (#113667)
+
   BEHAVIOUR CHANGES
 
    * Use shared repositories by default in svn-import command.
+
+   * Avoid muttering when possible.
 
   TESTS
 
@@ -74,6 +169,9 @@ bzr-svn 0.4	UNRELEASED
 
    * Branching schemes can now be autodetected using some simple heuristics. 
      (#81976)
+
+   * Added command `svn-branching-scheme` for setting branching schemes.
+     (#127003)
 
   INTERNALS
 

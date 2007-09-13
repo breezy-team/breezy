@@ -15,10 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Cache of the Subversion history log."""
 
+from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision
 import bzrlib.ui as ui
-
-import os
+from copy import copy
 
 from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
@@ -51,7 +51,7 @@ def _escape_commit_message(message):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, transport=None, cache_db=None):
+    def __init__(self, transport, cache_db=None):
         """Create a new instance.
 
         :param transport:   SvnRaTransport to use to access the repository.
@@ -60,7 +60,8 @@ class LogWalker(object):
         """
         assert isinstance(transport, SvnRaTransport)
 
-        self.transport = SvnRaTransport(transport.base)
+        self.url = transport.base
+        self._transport = None
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -80,16 +81,19 @@ class LogWalker(object):
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
+    def _get_transport(self):
+        if self._transport is not None:
+            return self._transport
+        self._transport = SvnRaTransport(self.url)
+        return self._transport
+
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
         :param to_revnum: End of range to fetch information for
         """
-        if to_revnum is None:
-            to_revnum = self.transport.get_latest_revnum()
-        else:
-            to_revnum = max(self.transport.get_latest_revnum(), to_revnum)
+        to_revnum = max(self._get_transport().get_latest_revnum(), to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 
@@ -99,7 +103,7 @@ class LogWalker(object):
                 orig_paths = {}
             for p in orig_paths:
                 copyfrom_path = orig_paths[p].copyfrom_path
-                if copyfrom_path:
+                if copyfrom_path is not None:
                     copyfrom_path = copyfrom_path.strip("/")
 
                 self.db.execute(
@@ -118,8 +122,9 @@ class LogWalker(object):
         pool = Pool()
         try:
             try:
-                self.transport.get_log("/", self.saved_revnum, to_revnum, 
-                               0, True, True, rcvr, pool)
+                self._get_transport().get_log("/", self.saved_revnum, 
+                                             to_revnum, 0, True, True, rcvr, 
+                                             pool)
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -146,13 +151,20 @@ class LogWalker(object):
         if revnum == 0 and path == "":
             return
 
+        recurse = (path != "")
+
         path = path.strip("/")
 
         while revnum >= 0:
-            revpaths = self.get_revision_paths(revnum, path)
+            assert revnum > 0 or path == ""
+            revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
 
             if revpaths != {}:
-                yield (path, revpaths, revnum)
+                yield (path, copy(revpaths), revnum)
+
+            if path == "":
+                revnum -= 1
+                continue
 
             if revpaths.has_key(path):
                 if revpaths[path][1] is None:
@@ -164,19 +176,28 @@ class LogWalker(object):
                     # somewhere else
                     revnum = revpaths[path][2]
                     path = revpaths[path][1]
+                    assert path == "" or revnum > 0
                     continue
             revnum -= 1
+            for p in sorted(revpaths.keys()):
+                if path.startswith(p+"/") and revpaths[p][0] in ('A', 'R'):
+                    assert revpaths[p][1]
+                    path = path.replace(p, revpaths[p][1])
+                    revnum = revpaths[p][2]
+                    break
 
-    def get_revision_paths(self, revnum, path=None):
+    def get_revision_paths(self, revnum, path=None, recurse=False):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
         :param path: optional path under which to return all entries
+        :param recurse: Report changes to parents as well
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
 
         if revnum == 0:
+            assert path is None or path == ""
             return {'': ('A', None, -1)}
                 
         if revnum > self.saved_revnum:
@@ -184,7 +205,10 @@ class LogWalker(object):
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
         if path is not None and path != "":
-            query += " and (path='%s' or path like '%s/%%')" % (path, path)
+            query += " and (path='%s' or path like '%s/%%'" % (path, path)
+            if recurse:
+                query += " or ('%s' LIKE path || '/%%')" % path
+            query += ")"
 
         paths = {}
         for p, act, cf, cr in self.db.execute(query):
@@ -248,7 +272,8 @@ class LogWalker(object):
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
         path = path.strip("/")
-        ft = self.transport.check_path(path, revnum)
+        transport = self._get_transport()
+        ft = transport.check_path(path, revnum)
         if ft == svn.core.svn_node_file:
             return []
         assert ft == svn.core.svn_node_dir
@@ -259,13 +284,16 @@ class LogWalker(object):
                 self.base = base
 
             def set_target_revision(self, revnum):
+                """See Editor.set_target_revision()."""
                 pass
 
             def open_root(self, revnum, baton):
+                """See Editor.open_root()."""
                 return path
 
             def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-                self.files.append(os.path.join(self.base, path))
+                """See Editor.add_directory()."""
+                self.files.append(urlutils.join(self.base, path))
                 return path
 
             def change_dir_prop(self, id, name, value, pool):
@@ -275,7 +303,7 @@ class LogWalker(object):
                 pass
 
             def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-                self.files.append(os.path.join(self.base, path))
+                self.files.append(urlutils.join(self.base, path))
                 return path
 
             def close_dir(self, id):
@@ -295,16 +323,15 @@ class LogWalker(object):
         pool = Pool()
         editor = TreeLister(path)
         edit, baton = svn.delta.make_editor(editor, pool)
-        old_base = self.transport.base
+        old_base = transport.base
         try:
-            root_repos = self.transport.get_repos_root()
-            self.transport.reparent(os.path.join(root_repos, path))
-            reporter = self.transport.do_update(
-                            revnum, "", True, edit, baton, pool)
+            root_repos = transport.get_repos_root()
+            transport.reparent(urlutils.join(root_repos, path))
+            reporter = transport.do_update(revnum,  True, edit, baton, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:
-            self.transport.reparent(old_base)
+            transport.reparent(old_base)
         return editor.files
 
     def get_previous(self, path, revnum):

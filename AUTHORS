@@ -2,7 +2,8 @@ Jelmer Vernooij <jelmer@samba.org>
 
 Thanks to David Allouche, Erik Bågfors, Andrew Bennetts, Aaron Bentley, 
 Max Bowser, Jerry Carter, Robert Collins, Wouter van Heyst, Michael Hudson, 
-David James, Matthias Klose, John Arbash Meinel, Stefan Metzmacher, 
-Andrew Mitchell, Martin Pool, Garrett Rooney, Johan Rydberg, Peter Samuelson,
-Mark Shuttleworth and Reinhard Tartler for comments, code reviews, funding, 
+David James, Luká¿ Lalinský, Matthias Klose, John Arbash Meinel, 
+Stefan Metzmacher, Andrew Mitchell, Gustavo Niemeyer, Martin Pool, 
+Garrett Rooney, Johan Rydberg, Peter Samuelson, Mark Shuttleworth, 
+Mikhail Sobolev and Reinhard Tartler for comments, code reviews, funding, 
 committing patches/bundles and generally keeping up while I was asking annoying questions.

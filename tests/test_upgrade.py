@@ -27,8 +27,9 @@ from format import get_rich_root_format
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
-                     UpgradeChangesContent, parse_legacy_revision_id,
-                     create_upgraded_revid)
+                     upgrade_workingtree, UpgradeChangesContent, 
+                     parse_legacy_revision_id, create_upgraded_revid, 
+                     generate_upgrade_map)
 
 class TestUpgradeChangesContent(TestCase):
     def test_init(self):
@@ -217,7 +218,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         renames = upgrade_repository(newrepos, oldrepos, allow_changes=True)
         self.assertEqual({
-            "svn-v1:1@%s-" % oldrepos.uuid: oldrepos.generate_revision_id(1, "", "none"),
+            'svn-v1:1@%s-' % oldrepos.uuid: 'svn-v3-none:%s::1' % oldrepos.uuid,
             "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
             "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
             renames)
@@ -251,6 +252,34 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message='fix it again', rev_id="anotherrev")
 
         upgrade_branch(b, oldrepos, allow_changes=True)
+        self.assertEqual([oldrepos.generate_revision_id(0, "", "none"),
+                          oldrepos.generate_revision_id(1, "", "none"),
+                          "customrev-svn%d-upgrade" % MAPPING_VERSION,
+                          "anotherrev-svn%d-upgrade" % MAPPING_VERSION
+                          ], b.revision_history())
+
+    @skip_no_rebase
+    def test_workingtree(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f",format=get_rich_root_format())
+        newrepos = dir.create_repository()
+        b = dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+        file("f/a", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+        file("f/a", 'w').write("blackfield")
+        wt.commit(message='fix it again', rev_id="anotherrev")
+
+        upgrade_workingtree(wt, oldrepos, allow_changes=True)
+        self.assertEquals(wt.last_revision(), b.last_revision())
         self.assertEqual([oldrepos.generate_revision_id(0, "", "none"),
                           oldrepos.generate_revision_id(1, "", "none"),
                           "customrev-svn%d-upgrade" % MAPPING_VERSION,
@@ -298,3 +327,11 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
 
         self.assertRaises(UpgradeChangesContent, upgrade_branch, b, oldrepos)
+
+
+class TestGenerateUpdateMapTests(TestCase):
+    def test_nothing(self):
+        self.assertEquals({}, generate_upgrade_map(["bla", "bloe"]))
+
+    def test_v2(self):
+        self.assertEquals({"svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk": "svn-v3-trunk0:65390229-12b7-0310-b90b-f21a5aa7ec8e:trunk:12"}, generate_upgrade_map(["svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk", "bloe", "blaaa"]))

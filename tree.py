@@ -17,7 +17,7 @@
 
 from bzrlib.inventory import Inventory
 
-import bzrlib.osutils as osutils
+from bzrlib import osutils, urlutils
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -70,8 +70,8 @@ class SvnRevisionTree(RevisionTree):
         editor, baton = svn.delta.make_editor(self.editor, pool)
         root_repos = repository.transport.get_repos_root()
         reporter = repository.transport.do_switch(
-                self.revnum, "", True, 
-                os.path.join(root_repos, self.branch_path), editor, baton, pool)
+                self.revnum, True, 
+                urlutils.join(root_repos, self.branch_path), editor, baton, pool)
         reporter.set_path("", 0, True, None, pool)
         reporter.finish_report(pool)
         pool.destroy()
@@ -108,17 +108,20 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_SVK_MERGE, 
+        from repository import (SVN_PROP_BZR_ANCESTRY, 
                         SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
-                        SVN_PROP_BZR_BRANCHING_SCHEME)
+                        SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
 
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
-        elif name in (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
-                      SVN_PROP_BZR_BRANCHING_SCHEME):
+        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
+            if id != self.tree._inventory.root.file_id:
+                mutter('%r set on non-root dir!' % name)
+                return
+        elif name in (SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_BRANCHING_SCHEME):
             if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % name)
                 return
@@ -132,6 +135,8 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif (name == SVN_PROP_BZR_REVISION_INFO or 
               name.startswith(SVN_PROP_BZR_REVISION_ID)):
+            pass
+        elif name == SVN_PROP_BZR_MERGE:
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):

@@ -145,16 +145,16 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEquals(1, paths["/bar"].copyfrom_rev)
         self.assertEquals("bar\t%s\n" % oldid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 2))
-                          
 
     def test_commit_rename_file_from_directory(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/adir/foo': "data"})
         self.client_add("dc/adir")
         wt = self.open_checkout("dc")
-        wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         wt.rename_one("adir/foo", "bar")
+        self.assertFalse(wt.has_filename("adir/foo"))
+        self.assertTrue(wt.has_filename("bar"))
         wt.commit(message="doe")
         paths = self.client_log("dc", 2, 0)[2][0]
         self.assertEquals('D', paths["/adir/foo"].action)
@@ -206,7 +206,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("3 my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
 
-        self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 
+        self.assertEqual(
+                "timestamp: 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n",
                 self.client_get_prop("dc", "bzr:revision-info", 2))
 
     def test_mwh(self):
@@ -396,9 +397,10 @@ class TestPush(TestCaseWithSubversionRepository):
         self.build_tree({'dc/adir/foo': "data"})
         wt.add("adir")
         wt.add("adir/foo")
-        wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         wt.rename_one("adir/foo", "bar")
+        self.assertTrue(wt.has_filename("bar"))
+        self.assertFalse(wt.has_filename("adir/foo"))
         wt.commit(message="doe")
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
@@ -407,6 +409,48 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEquals('A', paths["/bar"].action)
         self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
         self.assertEquals(2, paths["/bar"].copyfrom_rev)
+
+    def test_commit_remove(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/foob': "data"})
+        wt.add("foob")
+        wt.commit(message="data")
+        wt.remove(["foob"])
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/foob"].action)
+
+    def test_commit_rename_remove_parent(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/adir/foob': "data"})
+        wt.add("adir")
+        wt.add("adir/foob")
+        wt.commit(message="data")
+        wt.rename_one("adir/foob", "bar")
+        wt.remove(["adir"])
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/adir"].action)
+        self.assertEquals('A', paths["/bar"].action)
+        self.assertEquals('/adir/foob', paths["/bar"].copyfrom_path)
+        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+
+    def test_commit_remove_nested(self):
+        wt = self.newdir.open_workingtree()
+        self.build_tree({'dc/adir/foob': "data"})
+        wt.add("adir")
+        wt.add("adir/foob")
+        wt.commit(message="data")
+        wt.remove(["adir/foob"])
+        wt.commit(message="doe")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        paths = self.client_log(self.repos_url, 3, 0)[3][0]
+        mutter('paths %r' % paths)
+        self.assertEquals('D', paths["/adir/foob"].action)
 
 
 class TestPushNested(TestCaseWithSubversionRepository):
@@ -467,8 +511,35 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         self.build_tree({'b/file': 'data'})
         wt.add('file')
         oldid = wt.path2id("file")
-        revid = wt.commit(message="Commit from Bzr")
+        revid1 = wt.commit(message="Commit from Bzr")
+        wt.rename_one('file', 'file2')
+        revid2 = wt.commit(message="Commit from Bzr")
         master_branch = Branch.open(repos_url)
-        self.assertEquals(revid, master_branch.last_revision())
         self.assertEquals("file\t%s\n" % oldid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 1))
+        self.assertEquals("file2\t%s\n" % oldid, 
+                          self.client_get_prop(repos_url, "bzr:file-ids", 2))
+        tree1 = master_branch.repository.revision_tree(revid1)
+        tree2 = master_branch.repository.revision_tree(revid2)
+        delta = tree2.changes_from(tree1)
+        self.assertEquals(0, len(delta.added))
+        self.assertEquals(0, len(delta.removed))
+        self.assertEquals(1, len(delta.renamed))
+
+    def test_nested_fileid(self):
+        repos_url = self.make_client("d", "sc")
+        master_branch = Branch.open(repos_url)
+        os.mkdir("b")
+        local_dir = master_branch.bzrdir.sprout("b")
+        wt = local_dir.open_workingtree()
+        local_dir.open_branch().bind(master_branch)
+        self.build_tree({'b/dir/file': 'data'})
+        wt.add('dir')
+        wt.add('dir/file')
+        dirid = wt.path2id("dir")
+        fileid = wt.path2id("dir/file")
+        revid1 = wt.commit(message="Commit from Bzr")
+        master_branch = Branch.open(repos_url)
+        self.assertEquals("dir\t%s\n" % dirid +
+                          "dir/file\t%s\n" % fileid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 1))

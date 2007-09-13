@@ -16,6 +16,7 @@
 
 """Remote access tests."""
 
+from bzrlib import osutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
@@ -141,4 +142,10 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
         self.assertTrue(x.needs_format_conversion(SvnFormat()))
+
+    def test_find_repository_not_found(self):
+        repos_url = self.make_client('d', 'dc')
+        osutils.rmtree("d")
+        self.assertRaises(NoRepositoryPresent, 
+                lambda: BzrDir.open("dc").find_repository())
 

@@ -208,4 +208,4 @@ Node-copyfrom-path: x
         self.client_add("dc/bla")
         self.client_commit("dc", "Msg")
         self.check_output(
-                "Repository branch (format: unnamed)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n  parent branch: a\n", 'info a')
+                "Repository branch (format: subversion)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n  parent branch: a\n", 'info a')

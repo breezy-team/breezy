@@ -17,7 +17,7 @@
 """Subversion transport tests."""
 
 from tests import TestCaseWithSubversionRepository
-from bzrlib.errors import NotBranchError, NoSuchFile, FileExists
+from bzrlib.errors import NotBranchError, NoSuchFile, FileExists, InvalidURL
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
 
@@ -25,7 +25,8 @@ import os
 
 class SvnRaTest(TestCaseWithSubversionRepository):
     def test_open_nonexisting(self):
-        self.assertRaises(NotBranchError, SvnRaTransport, "svn+nonexisting://foo/bar")
+        self.assertRaises(InvalidURL, SvnRaTransport, 
+                          "svn+nonexisting://foo/bar")
 
     def test_create(self):
         repos_url = self.make_client('a', 'ac')

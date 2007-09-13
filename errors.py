@@ -15,10 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
-from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
-                           NotBranchError, PermissionDenied, DependencyNotPresent)
+from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset, 
+                           LockError, NotBranchError, PermissionDenied, 
+                           DependencyNotPresent, NoRepositoryPresent,
+                           UnexpectedEndOfContainerError)
 
 import svn.core
+
+# APR define, not in svn.core
+SVN_ERR_UNKNOWN_HOSTNAME = 670002
 
 class NotSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that did not exist."""
@@ -30,7 +35,19 @@ See 'bzr help svn-branching-schemes' for details."""
         self.scheme = scheme
 
 
+class NoSvnRepositoryPresent(NoRepositoryPresent):
+
+    def __init__(self, url):
+        BzrError.__init__(self)
+        self.path = url
+
+
 def convert_error(err):
+    """Convert a Subversion exception to the matching BzrError.
+
+    :param err: SubversionException.
+    :return: BzrError instance if it could be converted, err otherwise
+    """
     (msg, num) = err.args
 
     if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
@@ -39,6 +56,10 @@ def convert_error(err):
         return LockError(message=msg)
     elif num == svn.core.SVN_ERR_RA_NOT_AUTHORIZED:
         return PermissionDenied('.', msg)
+    elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
+        return UnexpectedEndOfContainerError()
+    elif num == SVN_ERR_UNKNOWN_HOSTNAME:
+        return ConnectionError(msg=msg)
     else:
         return err
 

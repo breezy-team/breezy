@@ -325,12 +325,15 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.build_tree({"dc/trunk/file": 'data', 'dc/trunk/bar': 'data2'})
         self.client_add("dc/trunk/file")
         self.client_add("dc/trunk/bar")
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk", "trunk0")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
 
     def test_copy(self):

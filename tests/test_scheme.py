@@ -24,7 +24,7 @@ from scheme import (ListBranchingScheme, NoBranchingScheme,
                     SingleBranchingScheme, UnknownBranchingScheme,
                     parse_list_scheme_text, find_commit_paths, 
                     guess_scheme_from_branch_path, guess_scheme_from_history,
-                    guess_scheme_from_path)
+                    guess_scheme_from_path, scheme_from_branch_list)
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
@@ -240,7 +240,7 @@ class ListScheme(TestCase):
         self.assertEqual(self.scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
 
     def test_str(self):
-        self.assertEqual("list-ffcc22c56739f8d862c2a7578274dd2649565451", str(self.scheme))
+        self.assertEqual("list-QlpoOTFBWSZTWSDz6woAAAPRgAAQAACzBJAAIAAiDRo9QgyYjmbjatAeLuSKcKEgQefWFA==", str(self.scheme))
 
     def test_parse_text(self):
         self.assertEqual(["bla/bloe"], parse_list_scheme_text("bla/bloe\n"))
@@ -606,3 +606,17 @@ class TestGuessBranchingSchemeFromHistory(TestCase):
     def test_simple_no_history_bp(self):
         scheme = guess_scheme_from_history([], 0, "trunk")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
+
+class SchemeFromBranchListTests(TestCase):
+    def test_nobranchingscheme(self):
+        self.assertIsInstance(scheme_from_branch_list(["."]), NoBranchingScheme)
+
+    def test_listbranchingscheme(self):
+        self.assertIsInstance(scheme_from_branch_list(["aap/*"]), 
+                              ListBranchingScheme)
+
+    def test_trunk(self):
+        self.assertIsInstance(scheme_from_branch_list(["trunk", "branches/*", 
+                                                       "tags/*"]), 
+                              TrunkBranchingScheme)
+

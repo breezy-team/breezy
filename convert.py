@@ -14,25 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Conversion of full repositories."""
-import os
-import tempfile
-
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, Converter
+from bzrlib import ui, urlutils
+from bzrlib.bzrdir import BzrDir, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
                            NoRepositoryPresent, NoSuchRevision)
-import bzrlib.osutils as osutils
-from bzrlib.trace import mutter
+from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
-import bzrlib.urlutils as urlutils
-import bzrlib.ui as ui
 
 from format import get_rich_root_format
-from repository import SvnRepository
 
 import svn.core, svn.repos
 
 def transport_makedirs(transport, location_url):
+    """Create missing directories.
+    
+    :param transport: Transport to use.
+    :param location_url: URL for which parents should be created.
+    """
     needed = [(transport, transport.relpath(location_url))]
     while needed:
         try:
@@ -54,20 +53,35 @@ class NotDumpFile(BzrError):
 
 
 def load_dumpfile(dumpfile, outputdir):
+    """Load a Subversion dump file.
+
+    :param dumpfile: Path to dump file.
+    :param outputdir: Directory in which Subversion repository should be 
+        created.
+    """
     from cStringIO import StringIO
     repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
-    try:
+    if dumpfile.endswith(".gz"):
+        import gzip
+        file = gzip.GzipFile(dumpfile)
+    elif dumpfile.endswith(".bz2"):
+        import bz2
+        file = bz2.BZ2File(dumpfile)
+    else:
         file = open(dumpfile)
+    try:
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except svn.core.SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
-        raise NotDumpFile(dumpfile)
+    except svn.core.SubversionException, (_, num):
+        if num == svn.core.SVN_ERR_STREAM_MALFORMED_DATA:
+            raise NotDumpFile(dumpfile)
+        raise
     return repos
 
 
 def convert_repository(source_repos, output_url, scheme=None, 
                        create_shared_repo=True, working_trees=False, all=False,
-                       format=None, pb=None, filter_branch=None):
+                       format=None, filter_branch=None):
     """Convert a Subversion repository and its' branches to a 
     Bazaar repository.
 
@@ -79,7 +93,6 @@ def convert_repository(source_repos, output_url, scheme=None,
     :param all: Whether old revisions, even those not part of any existing 
         branches, should be imported
     :param format: Format to use
-    :param pb: Progress bar to use
     """
     assert not all or create_shared_repo
     if format is None:
@@ -119,6 +132,7 @@ def convert_repository(source_repos, output_url, scheme=None,
             filter(filter_branch,
                    source_repos.find_branches(source_repos.get_scheme()))]
 
+    source_graph = source_repos.get_graph()
     pb = ui.ui_factory.nested_progress_bar()
     try:
         i = 0
@@ -147,10 +161,9 @@ def convert_repository(source_repos, output_url, scheme=None,
                 # source_branch. If that is not the case, 
                 # assume that source_branch has been replaced 
                 # and remove target_branch
-                try:
-                    source_branch.revision_id_to_revno(
-                            target_branch.last_revision())
-                except NoSuchRevision:
+                if not source_graph.is_ancestor(
+                        ensure_null(target_branch.last_revision()),
+                        ensure_null(source_branch.last_revision())):
                     target_branch.set_revision_history([])
                 target_branch.pull(source_branch)
             if working_trees and not target_dir.has_workingtree():
@@ -163,11 +176,12 @@ def convert_repository(source_repos, output_url, scheme=None,
 class SvnConverter(Converter):
     """Converts from a Subversion directory to a bzr dir."""
     def __init__(self, target_format):
-        """Create a CopyConverter.
+        """Create a SvnConverter.
         :param target_format: The format the resulting repository should be.
         """
         self.target_format = target_format
 
     def convert(self, to_convert, pb):
+        """See Converter.convert()."""
         convert_repository(to_convert.open_repository(), to_convert.base, 
                            format=self.target_format, all=True, pb=pb)

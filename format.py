@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion BzrDir formats."""
 
+from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree, AlreadyBranchError)
@@ -24,6 +25,7 @@ from bzrlib.transport.local import LocalTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
+from errors import NoSvnRepositoryPresent
 from repository import SvnRepository
 from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
 
@@ -44,10 +46,12 @@ class SvnRemoteAccess(BzrDir):
     This is used for all non-checkout connections 
     to Subversion repositories.
     """
-    def __init__(self, _transport, _format, scheme=None):
+    def __init__(self, _transport, _format):
         """See BzrDir.__init__()."""
         _transport = get_svn_ra_transport(_transport)
-        super(SvnRemoteAccess, self).__init__(_transport, _format)
+        self._format = _format
+        self.transport = None
+        self.root_transport = _transport
 
         svn_url = bzr_to_svn_url(self.root_transport.base)
         self.svn_root_url = _transport.get_repos_root()
@@ -63,8 +67,9 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-            recurse='down'):
+            recurse='down', possible_transports=None):
         """See BzrDir.sprout()."""
+        # FIXME: Use possible_transports
         # FIXME: Use recurse
         format = get_rich_root_format()
         result = format.initialize(url)
@@ -83,14 +88,14 @@ class SvnRemoteAccess(BzrDir):
             result.create_workingtree()
         return result
 
-    def open_repository(self):
+    def open_repository(self, _unsupported=False):
         """Open the repository associated with this BzrDir.
         
         :return: instance of SvnRepository.
         """
         if self.branch_path == "":
             return SvnRepository(self, self.root_transport)
-        raise NoRepositoryPresent(self)
+        raise NoSvnRepositoryPresent(self.root_transport.base)
 
     def find_repository(self):
         """Open the repository associated with this BzrDir.
@@ -99,7 +104,7 @@ class SvnRemoteAccess(BzrDir):
         """
         transport = self.root_transport
         if self.svn_root_url != transport.base:
-            transport = SvnRaTransport(self.svn_root_url)
+            transport = transport.clone_root()
         return SvnRepository(self, transport, self.branch_path)
 
     def open_workingtree(self, _unsupported=False,
@@ -139,10 +144,16 @@ class SvnRemoteAccess(BzrDir):
         from commit import push_new
         if stop_revision is None:
             stop_revision = source.last_revision()
-        push_new(self.find_repository(), self.branch_path, source, 
-                 stop_revision)
+        target_branch_path = self.branch_path.strip("/")
+        repos = self.find_repository()
+        full_branch_url = urlutils.join(repos.transport.base, 
+                                        target_branch_path)
+        if repos.transport.check_path(target_branch_path,
+            repos.transport.get_latest_revnum()) != svn.core.svn_node_none:
+            raise AlreadyBranchError(full_branch_url)
+        push_new(repos, target_branch_path, source, stop_revision)
         branch = self.open_branch()
-        branch.pull(source)
+        branch.pull(source, stop_revision=stop_revision)
         return branch
 
     def create_branch(self):
@@ -152,7 +163,7 @@ class SvnRemoteAccess(BzrDir):
 
         if self.branch_path != "":
             # TODO: Set NULL_REVISION in SVN_PROP_BZR_BRANCHING_SCHEME
-            repos.transport.mkdir(self.branch_path)
+            repos.transport.mkdir(self.branch_path.strip("/"))
         elif repos.transport.get_latest_revnum() > 0:
             # Bail out if there are already revisions in this repository
             raise AlreadyBranchError(self.root_transport.base)
@@ -168,6 +179,10 @@ class SvnRemoteAccess(BzrDir):
         branch.bzrdir = self
         return branch
 
+    def create_repository(self, shared=False, format=None):
+        """See BzrDir.create_repository."""
+        return self.open_repository()
+
 
 class SvnFormat(BzrDirFormat):
     """Format for the Subversion smart server."""
@@ -182,7 +197,13 @@ class SvnFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
-        transport = get_svn_ra_transport(transport)
+        try:
+            transport = get_svn_ra_transport(transport)
+        except SubversionException, (_, num):
+            if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
+                       svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
+                       svn.core.SVN_ERR_BAD_URL):
+                raise NotBranchError(path=transport.base)
 
         if isinstance(transport, SvnRaTransport):
             return format
@@ -212,7 +233,7 @@ class SvnFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         svn.repos.create(local_path, '', '', None, None)
-        return self.open(SvnRaTransport(transport.base), _found=True)
+        return self.open(get_svn_ra_transport(transport), _found=True)
 
     def is_supported(self):
         """See BzrDir.is_supported()."""

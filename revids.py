@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
-                           NotBranchError, UninitializableFormat)
-from bzrlib.trace import mutter
+from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
 MAPPING_VERSION = 3
 REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
@@ -91,7 +89,7 @@ class RevidMap(object):
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
         create unique index if not exists revid_path_scheme on revmap (revid, path, scheme);
-        create unique index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
+        create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
         create table if not exists revno_cache (revid text unique, dist_to_origin integer);
         create index if not exists revid on revno_cache (revid);
         """)

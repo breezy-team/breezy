@@ -17,14 +17,19 @@
 
 from bzrlib import ui
 from bzrlib.errors import NotBranchError, BzrError
-from bzrlib.osutils import sha_strings
 from bzrlib.trace import mutter
+
+import base64
+import bz2
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.
     """
+    def __init__(self):
+        pass
+
     def is_branch(self, path):
         """Check whether a location refers to a branch.
         
@@ -42,6 +47,11 @@ class BranchingScheme:
 
     @staticmethod
     def find_scheme(name):
+        """Find a branching scheme by name.
+
+        :param name: Name of branching scheme.
+        :return: Branching scheme instance.
+        """
         if name.startswith("trunk"):
             if name == "trunk":
                 return TrunkBranchingScheme()
@@ -55,6 +65,9 @@ class BranchingScheme:
 
         if name.startswith("single-"):
             return SingleBranchingScheme(name[len("single-"):])
+
+        if name.startswith("list-"):
+            return ListBranchingScheme(name[len("list-"):])
 
         raise UnknownBranchingScheme(name)
 
@@ -85,13 +98,119 @@ class BranchingScheme:
         """
         raise NotImplementedError
 
+    def to_lines(self):
+        """Generate a list of lines for this branching scheme.
 
-class TrunkBranchingScheme(BranchingScheme):
+        :return: List of lines representing the data in this branching 
+            scheme.
+        """
+        raise NotImplementedError(self.to_lines)
+
+
+def parse_list_scheme_text(text):
+    """Parse a text containing the branches for a ListBranchingScheme.
+
+    :param text: Text.
+    :return: List of branch paths.
+    """
+    branches = []
+    for line in text.splitlines():
+        if line.startswith("#"):
+            continue
+        branches.append(line.strip("/"))
+    return branches
+
+
+class ListBranchingScheme(BranchingScheme):
+    """Branching scheme that keeps a list of branch paths, including 
+    wildcards."""
+    def __init__(self, branch_list):
+        """Create new ListBranchingScheme instance.
+
+        :param branch_list: List of know branch locations.
+        """
+        if isinstance(branch_list, basestring):
+            branch_list = bz2.decompress(base64.b64decode(branch_list)).splitlines()
+        self.branch_list = [p.strip("/") for p in branch_list]
+        self.split_branch_list = [p.split("/") for p in self.branch_list]
+
+    def __str__(self):
+        return "list-%s" % base64.b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list))))
+
+    def is_tag(self, path):
+        """See BranchingScheme.is_tag()."""
+        return False
+
+    @staticmethod
+    def _pattern_cmp(parts, pattern):
+        if len(parts) != len(pattern):
+            return False
+        for (p, q) in zip(pattern, parts):
+            if p != q and p != "*":
+                return False
+        return True
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        parts = path.strip("/").split("/")
+        for pattern in self.split_branch_list:
+            if self._pattern_cmp(parts, pattern):
+                return True
+        return False
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        parts = path.strip("/").split("/")
+        for pattern in self.split_branch_list:
+            if self._pattern_cmp(parts[:len(pattern)], pattern):
+                return ("/".join(parts[:len(pattern)]), 
+                        "/".join(parts[len(pattern):]))
+        raise NotBranchError(path=path)
+
+    def __eq__(self, other):
+        return self.branch_list == other.branch_list
+
+    def to_lines(self):
+        return self.branch_list
+
+
+class NoBranchingScheme(ListBranchingScheme):
+    """Describes a scheme where there is just one branch, the 
+    root of the repository."""
+    def __init__(self):
+        ListBranchingScheme.__init__(self, [""])
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        return path.strip("/") == ""
+
+    def is_tag(self, path):
+        return False
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        return ("", path.strip("/"))
+
+    def __str__(self):
+        return "none"
+
+    def is_branch_parent(self, path):
+        return False
+
+    def is_tag_parent(self, path):
+        return False
+
+
+class TrunkBranchingScheme(ListBranchingScheme):
     """Standard Subversion repository layout. Each project contains three 
     directories `trunk', `tags' and `branches'. 
     """
     def __init__(self, level=0):
         self.level = level
+        ListBranchingScheme.__init__(self,
+            ["*/" * level + "trunk",
+             "*/" * level + "branches/*",
+             "*/" * level + "tags/*"])
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
@@ -143,84 +262,6 @@ class TrunkBranchingScheme(BranchingScheme):
         return self.is_tag(path+"/aname")
 
 
-class NoBranchingScheme(BranchingScheme):
-    """Describes a scheme where there is just one branch, the 
-    root of the repository."""
-    def is_branch(self, path):
-        """See BranchingScheme.is_branch()."""
-        return path.strip("/") == ""
-
-    def is_tag(self, path):
-        return False
-
-    def unprefix(self, path):
-        """See BranchingScheme.unprefix()."""
-        return ("", path.strip("/"))
-
-    def __str__(self):
-        return "none"
-
-    def is_branch_parent(self, path):
-        return False
-
-    def is_tag_parent(self, path):
-        return False
-
-
-def parse_list_scheme_text(text):
-    branches = []
-    for l in text.splitlines():
-        if l.startswith("#"):
-            continue
-        branches.append(l.strip("/"))
-    return branches
-
-
-class ListBranchingScheme(BranchingScheme):
-    def __init__(self, branch_list):
-        """Create new ListBranchingScheme instance.
-
-        :param branch_list: List of know branch locations.
-        """
-        self.branch_list = [p.strip("/") for p in branch_list]
-        self.split_branch_list = [p.split("/") for p in self.branch_list]
-
-    def __str__(self):
-        return "list-%s" % sha_strings(self.branch_list)
-
-    def is_tag(self, path):
-        """See BranchingScheme.is_tag()."""
-        return False
-
-    @staticmethod
-    def _pattern_cmp(parts, pattern):
-        if len(parts) != len(pattern):
-            return False
-        for (p, q) in zip(pattern, parts):
-            if p != q and p != "*":
-                return False
-        return True
-
-    def is_branch(self, path):
-        """See BranchingScheme.is_branch()."""
-        parts = path.strip("/").split("/")
-        for pattern in self.split_branch_list:
-            if self._pattern_cmp(parts, pattern):
-                return True
-        return False
-
-    def unprefix(self, path):
-        """See BranchingScheme.unprefix()."""
-        parts = path.strip("/").split("/")
-        for pattern in self.split_branch_list:
-            if self._pattern_cmp(parts[:len(pattern)], pattern):
-                return ("/".join(parts[:len(pattern)]), 
-                        "/".join(parts[len(pattern):]))
-        raise NotBranchError(path=path)
-
-    def __eq__(self, other):
-        return self.branch_list == other.branch_list
-
 
 class UnknownBranchingScheme(BzrError):
     _fmt = "Branching scheme could not be found: %(name)s"
@@ -229,13 +270,14 @@ class UnknownBranchingScheme(BzrError):
         self.name = name
 
 
-class SingleBranchingScheme(BranchingScheme):
+class SingleBranchingScheme(ListBranchingScheme):
     """Recognizes just one directory in the repository as branch.
     """
     def __init__(self, path):
         self.path = path.strip("/")
         if self.path == "":
             raise BzrError("NoBranchingScheme should be used")
+        ListBranchingScheme.__init__(self, [self.path])
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
@@ -367,6 +409,20 @@ def guess_scheme_from_history(changed_paths, last_revnum,
             return scheme
 
     return guess_scheme_from_branch_path(relpath)
+
+
+def scheme_from_branch_list(branch_list):
+    """Determine a branching scheme for a branch list.
+
+    :param branch_list: List of branch paths, may contain wildcards.
+    :return: New branching scheme.
+    """
+    if branch_list == ["."] or branch_list == []:
+        return NoBranchingScheme()
+    if branch_list == TrunkBranchingScheme(0).branch_list:
+        return TrunkBranchingScheme(0)
+    return ListBranchingScheme(branch_list) 
+
 
 help_schemes = """Subversion Branching Schemes
 
