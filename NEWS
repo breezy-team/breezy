@@ -7,11 +7,45 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  NOTES WHEN UPGRADING:
+
+  FEATURES:
+
+  PERFORMANCE:
+
+   * Initial commit is now slightly faster reporting the files added.
+     Even when the output is redirected to /dev/null, a 10-15% improvement
+     is realised as certain output is no longer calculated.
+     (Ian Clatworthy)
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  API BREAKS:
+
+   * The ``VersionedFile`` interface now allows content checks to be bypassed
+     by supplying check_content=False.  This saves nearly 30% of the minimum
+     cost to store a version of a file. (Robert Collins)
+  
+  TESTING:
+
+
+bzr 0.91rc2 2007-09-11
+======================
+
+   * Replaced incorrect tarball for previous release; a debug statement was left 
+     in bzrlib/remote.py.
+
+bzr 0.91rc1 2007-09-11
+======================
+
   CHANGES:
 
    * The default branch and repository format has changed to 
      ``dirstate-tags``, so tag commands are active by default.
      This format is compatible with Bazaar 0.15 and later.
+     This incidentally fixes bug #126141.
      (Martin Pool)
 
    * ``--quiet`` or ``-q`` is no longer a global option. If present, it
@@ -55,6 +89,10 @@ IN DEVELOPMENT
 
    * ``bzr plugins`` now lists the version number for each plugin in square
      brackets after the path. (Robert Collins, #125421)
+
+   * Pushing, pulling and branching branches with subtree references was not
+     copying the subtree weave, preventing the file graph from being accessed
+     and causing errors in commits in clones. (Robert Collins)
 
    * Suppress warning "integer argument expected, got float" from Paramiko,
      which sometimes caused false test failures.  (Martin Pool)
@@ -126,6 +164,17 @@ IN DEVELOPMENT
    * Prompt for an ftp password if none is provided.
      (Vincent Ladeuil, #137044)
 
+   * Reuse bound branch associated transport to avoid multiple
+     connections.
+     (Vincent Ladeuil, #128076, #131396)
+
+   * Overwrite conflicting tags by ``push`` and ``pull`` if the
+     ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
+
+    * In checkouts, tags are copied into the master branch when created,
+      changed or deleted, and are copied into the checkout when it is 
+      updated.  (Martin Pool, #93856, #93860)
+
   IMPROVEMENTS:
 
    * Add the option "--show-diff" to the commit command in order to display
@@ -176,22 +225,20 @@ IN DEVELOPMENT
    * HACKING has been extended with a large section on core developer tasks.
      (Ian Clatworthy)
 
-   * Initial commit is now less verbose by default showing just the
-     "Committed revision n" message and the count of changes. To get
-     the complete list of added files, use ``--verbose`` or ``-v``.
-     A side effect of this change is a speed improvement of over 50% on
-     initial commits on a tree of 3700 files. Even when the output is
-     redirected to /dev/null, a 10-15% improvement is realised as certain
-     output is no longer calculated unless verbose mode is being used.
-     (Ian Clatworthy)
-
-   * ``bzr commit -v`` now shows the total number of changes made
-     when it reports the committed revision number. (Ian Clatworthy)
+   * Add ``branches`` and ``standalone-trees`` as online help topics and
+     include them as Concepts within the User Reference.
+     (Paul Moore, Ian Clatworthy)
 
   API BREAKS:
 
    * ``Branch.append_revision`` is removed altogether; please use 
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
+
+   * CommitBuilder now advertises itself as requiring the root entry to be
+     supplied. This only affects foreign repository implementations which reuse
+     CommitBuilder directly and have changed record_entry_contents to require
+     that the root not be supplied. This should be precisely zero plugins
+     affected. (Robert Collins)
 
    * The ``add_lines`` methods on ``VersionedFile`` implementations has changed
      its return value to include the sha1 and length of the inserted text. This
@@ -233,10 +280,14 @@ IN DEVELOPMENT
      This is done in order to mix the commit messages (which is a unicode
      string), and the diff which is a raw string. (Goffredo Baroncelli)
 
-    * Deprecated method ``find_previous_heads`` on
-      ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
-      of ``parent_candidates`` and a separate heads check via the repository
-      API. (Robert Collins)
+   * CommitBuilder now defaults to using add_lines_with_ghosts, reducing
+     overhead on non-weave repositories which don't require all parents to be
+     present. (Robert Collins)
+
+   * Deprecated method ``find_previous_heads`` on
+     ``bzrlib.inventory.InventoryEntry``. This has been superseded by the use
+     of ``parent_candidates`` and a separate heads check via the repository
+     API. (Robert Collins)
 
    * New trace function ``mutter_callsite`` will print out a subset of the
      stack to the log, which can be useful for gathering debug details.
