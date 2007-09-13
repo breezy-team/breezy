@@ -11,6 +11,8 @@ IN DEVELOPMENT
 
   FEATURES:
 
+  * New ``reconfigure`` command (Aaron Bentley)
+
   PERFORMANCE:
 
   IMPROVEMENTS:
