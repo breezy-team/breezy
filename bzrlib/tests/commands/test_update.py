@@ -15,26 +15,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import builtins
-from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+from bzrlib import (
+    branch,
+    builtins,
+    )
+from bzrlib.tests import transport_util
 
 
-class TestUpdate(TestCaseWithConnectionHookedTransport):
+class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_update(self):
-        wt1 = self.make_branch_and_tree('branch1')
-        wt2 = self.make_branch_and_tree('branch2')
-        wt2.pull(wt1.branch)
+        remote_wt = self.make_branch_and_tree('remote')
+        local_wt = self.make_branch_and_tree('local')
 
-        wt1.commit('empty commit')
-        wt2.commit('empty commit too')
+        remote_branch = branch.Branch.open(self.get_url('remote'))
+        local_wt.branch.bind(remote_branch)
 
-        bind = builtins.cmd_bind()
-        bind.run(location=self.get_url('branch1'))
+        remote_wt.commit('empty commit')
 
         self.start_logging_connections()
 
         update = builtins.cmd_update()
-        update.run()
+        # update calls it 'dir' where other commands calls it 'directory'
+        update.run(dir='local')
         self.assertEquals(1, len(self.connections))
 
