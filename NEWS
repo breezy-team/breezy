@@ -22,7 +22,13 @@ IN DEVELOPMENT
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
-  
+ 
+  INTERNALS:
+
+   * New helper ``bzrlib.tuned_gzip.bytes_to_gzip`` which takes a byte string
+     and returns a gzipped version of the same. This is used to avoid a bunch
+     of api friction during adding of knit hunks. (Robert Collins)
+
   TESTING:
 
 
