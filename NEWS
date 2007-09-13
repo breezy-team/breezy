@@ -13,10 +13,8 @@ IN DEVELOPMENT
 
   PERFORMANCE:
 
-   * Initial commit is now slightly faster reporting the files added.
-     Even when the output is redirected to /dev/null, a 10-15% improvement
-     is realised as certain output is no longer calculated.
-     (Ian Clatworthy)
+   * Initial commit in quiet mode is now slightly faster as the information to
+     output is no longer calculated. (Ian Clatworthy)
 
   IMPROVEMENTS:
 
