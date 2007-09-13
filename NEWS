@@ -139,7 +139,8 @@ IN DEVELOPMENT
       updated.  (Martin Pool, #93856, #93860)
 
    * Print a warning instead of aborting the ``python setup.py install``
-     process if building of a C extension is not possible.  (Lukáš Lalinský)
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
 
   IMPROVEMENTS:
 

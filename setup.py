@@ -150,7 +150,7 @@ class bzr_build(build):
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build}
 from distutils import log
-from distutils.errors import CCompilerError
+from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
@@ -170,6 +170,15 @@ else:
 
 
 class build_ext_if_possible(build_ext):
+
+    def run(self):
+        try:
+            build_ext.run(self)
+        except DistutilsPlatformError, e:
+            if sys.platform == 'win32':
+                log.warn(str(e))
+                log.warn("Extensions cannot be compiled, "
+                         "will use pure Python modules instead")
 
     def build_extension(self, ext):
         try:
