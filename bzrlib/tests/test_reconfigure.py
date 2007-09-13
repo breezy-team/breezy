@@ -115,6 +115,9 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch.set_bound_location(None)
         self.assertEqual('bzr:old-bound',
                          reconfiguration._select_bind_location())
+        reconfiguration.new_bound_location = 'ftp://user-specified'
+        self.assertEqual('ftp://user-specified',
+                         reconfiguration._select_bind_location())
 
     def test_select_reference_bind_location(self):
         branch = self.make_branch('branch')

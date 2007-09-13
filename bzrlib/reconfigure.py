@@ -103,17 +103,30 @@ class Reconfigure(object):
             self.create_tree = True
 
     def planned_changes(self):
+        """Return True if changes are planned, False otherwise"""
         return (self.unbind or self.bind or self.destroy_tree
                 or self.create_tree or self.destroy_reference
                 or self.create_branch or self.create_repository)
 
     def _check(self):
+        """Raise if reconfiguration would destroy local changes"""
         if self.destroy_tree:
             changes = self.tree.changes_from(self.tree.basis_tree())
             if changes.has_changed():
                 raise errors.UncommittedChanges(self.tree)
 
     def _select_bind_location(self):
+        """Select a location to bind to.
+
+        Preference is:
+        1. user specified location
+        2. branch reference location (it's a kind of bind location)
+        3. previous bind location (it was a good choice once)
+        4. push location (it's writeable, so committable)
+        5. parent location (it's pullable, so update-from-able)
+        """
+        if self.new_bound_location is not None:
+            return self.new_bound_location
         if self.local_branch is not None:
             old_bound = self.local_branch.get_old_bound_location()
             if old_bound is not None:
@@ -153,8 +166,5 @@ class Reconfigure(object):
         if self.unbind:
             self.local_branch.unbind()
         if self.bind:
-            if self.new_bound_location is None:
-                bind_location = self._select_bind_location()
-            else:
-                bind_location = self.new_bound_location
+            bind_location = self._select_bind_location()
             local_branch.bind(branch.Branch.open(bind_location))
