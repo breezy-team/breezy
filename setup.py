@@ -179,6 +179,8 @@ class build_ext_if_possible(build_ext):
                 log.warn(str(e))
                 log.warn("Extensions cannot be compiled, "
                          "will use pure Python modules instead")
+            else:
+                raise
 
     def build_extension(self, ext):
         try:
