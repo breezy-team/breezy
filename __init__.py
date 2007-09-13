@@ -39,8 +39,7 @@ from builder import (DebBuild,
                      DebMergeExportUpstreamBuild,
                      )
 from config import DebBuildConfig
-from errors import (ChangedError,
-                    StopBuild,
+from errors import (StopBuild,
                     )
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
@@ -93,9 +92,9 @@ class cmd_builddeb(Command):
   If BRANCH is specified it is assumed that the branch you wish to build is
   located there. If it is not specified then the current directory is used.
 
-  By default the commited modifications of the branch are used to build
-  the package. If you wish to use the woking tree to build the package use
-  --working-tree.
+  By default the working tree is used to build. If you wish to build the
+  last committed revision use --revision -1. You can specify any other
+  revision using the --revision option.
 
   If you only wish to export the package, and not build it (especially useful
   for merge mode), use --export-only.
@@ -112,10 +111,6 @@ class cmd_builddeb(Command):
   used for the build directory. --result-dir will have problems if you use a
   build command that places the results in a different directory.
 
-  When not using --working-tree and there uncommited changes or unknown files 
-  in the working tree the build will not proceed. Use --ignore-changes to 
-  override this and build ignoring all changes in the working tree.
-  
   The --reuse option will be useful if you are in merge mode, and the upstream
   tarball is very large. It attempts to reuse a build directory from an earlier
   build. It will fail if one doesn't exist, but you can create one by using 
@@ -124,8 +119,7 @@ class cmd_builddeb(Command):
   --quick allows you to define a quick-builder in your configuration files, 
   which will be used when this option is passed. It defaults to 'fakeroot 
   debian/rules binary'. It is overriden if --builder is passed. Using this
-  and --reuse allows for fast rebuilds. If --working-tree is used as well 
-  then changes do not need to be commited. 
+  and --reuse allows for fast rebuilds. 
 
   --source allows you to build a source package without having to
   specify a builder to do so with --builder. It uses the source-builder
@@ -134,16 +128,14 @@ class cmd_builddeb(Command):
   used.
 
   """
-  working_tree_opt = Option('working-tree', help="Use the working tree",
+  working_tree_opt = Option('working-tree', help="This option has no effect",
                             short_name='w')
   export_only_opt = Option('export-only', help="Export only, don't build",
                            short_name='e')
   use_existing_opt = Option('use-existing',
                             help="Use an existing build directory")
   ignore_changes_opt = Option('ignore-changes',
-      help="Ignore any changes that are in the working tree when building the"
-         +" branch. You may also want --working to use these uncommited "
-         + "changes")
+      help="This option has no effect")
   ignore_unknowns_opt = Option('ignore-unknowns',
       help="Ignore any unknown files, but still fail if there are any changes"
          +", the default is to fail if there are unknowns as well.")
@@ -163,7 +155,7 @@ class cmd_builddeb(Command):
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt, source_opt]
+      export_upstream_revision_opt, source_opt, 'revision']
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
@@ -171,7 +163,7 @@ class cmd_builddeb(Command):
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
           export_upstream=None, export_upstream_revision=None,
-          source=False):
+          source=False, revision=None):
 
     goto_branch(branch)
 
@@ -225,21 +217,19 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
-    if not working_tree:
-      working_tree = config.working_tree
-
-    if not working_tree:
-      b = tree.branch
-      rev_id = b.last_revision()
-      info("Building branch from revision %s", rev_id)
-      t = b.repository.revision_tree(rev_id)
-      if not ignore_changes:
-        changes = tree.changes_from(t)
-        if changes.has_changed():
-          raise ChangedError
-    else:
+    if revision is None:
       info("Building using working tree")
       t = tree
+      working_tree = True
+    else:
+      if len(revision) != 1:
+        raise BzrCommandError('bzr builddeb --revision takes exactly one '
+                              'revision specifier.')
+      b = tree.branch
+      rev = revision[0].in_history(b)
+      info("Building branch from revision %s", rev.rev_id)
+      t = b.repository.revision_tree(rev.rev_id)
+      working_tree = False
 
     (changelog, larstiq) = find_changelog(t, merge)
 

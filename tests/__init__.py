@@ -29,6 +29,9 @@ from unittest import TestSuite
 
 from bzrlib.tests import TestUtil, adapt_modules
 
+import blackbox
+
+
 def make_new_upstream_dir(dir):
   def _make_upstream_dir():
     os.rename('package-0.2', dir)
@@ -152,6 +155,13 @@ def test_suite():
                   MergeUpstreamAdaptor(), loader, suite)
     adapt_modules(['%s.test_repack_tarball' % __name__],
                   RepackTarballAdaptor(), loader, suite)
+
+    packages_to_test = [
+             blackbox,
+             ]
+
+    for package in packages_to_test:
+      suite.addTest(package.test_suite())
 
     return suite
 

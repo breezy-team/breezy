@@ -1,0 +1,10 @@
+bzr-builddeb (0.91) unstable; urgency=low
+
+  --working-tree is no longer needed, as the default is now to use the
+  working tree. If you want the old behaviour then please use -r-1. This
+  also means that --ignore-changes and the like have no effect.
+
+  None of the options are removed or deprecated yet. That will be done in a
+  later release.
+
+ -- James Westby <jw+debian@jameswestby.net>  Thu, 13 Sep 2007 22:39:04 +0100

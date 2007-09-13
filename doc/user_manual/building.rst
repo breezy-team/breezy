@@ -31,15 +31,6 @@ See the `Configuration Files`_ section for how to do this.
 
 .. _Configuration Files: configuration.html
 
-If you have some changes to the package that you would like to test before
-commiting then you can use the ``-w`` option to ``builddeb`` which tells the
-plugin to build the working tree, rather than the latest version committed
-to the branch
-
-::
-
-  $ bzr builddeb -w
-
 If you have a slow builder defined in your configuration (see `Configuration
 Files`_) then you may want to bypass this sometimes. If you are trying to
 quickly test changes to a package you might just want a quick build. It

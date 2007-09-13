@@ -129,9 +129,6 @@ option of ``builddeb`` to get the unpacked source::
 
   $ bzr builddeb --export
 
-(the ``-w`` option might also be useful here, see the `Building the
-package`_ section for more details on this option).
-
 Then you can ``cd`` to the exported directory, refresh the patches, and copy
 them back in to the branch.
 

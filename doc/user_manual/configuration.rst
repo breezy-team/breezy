@@ -152,14 +152,6 @@ situations.
     the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
     -S``). Will only be read from the file in your home directory.
 
-Others
-^^^^^^
-
-  * ``working-tree = True``
-
-    Always build the working tree, rather than the last revision committed
-    to the branch.
-
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 
 wanted that differs from the default provided. ``merge = True`` is a perfect 

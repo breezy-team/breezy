@@ -215,9 +215,6 @@ class DebBuildConfig(object):
   source_builder = _opt_property('source-builder',
                           "The command to build source packages with", True)
 
-  working_tree = _bool_property('working-tree',
-                         "Always build the working tree.")
-
   native = _bool_property('native', "Build a native package")
 
   split = _bool_property('split', "Split a full source package")
