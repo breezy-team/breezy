@@ -27,7 +27,7 @@ class Reconfigure(object):
         self.bzrdir = bzrdir
         self.new_bound_location = new_bound_location
         try:
-            self.repository = self.bzrdir.open_repository()
+            self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
         try:
@@ -78,6 +78,7 @@ class Reconfigure(object):
         return reconfiguration
 
     def select_changes(self, tree, branch, bound):
+        """Determine which changes are needed to assume the configuration"""
         if self.repository is None:
             self.create_repository = True
         if self.local_branch is None:
@@ -131,9 +132,12 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self.create_repository:
-            new_repo = self.bzrdir.create_repository()
-            new_repo.fetch(self.referenced_branch.repository,
-                           self.referenced_branch.last_revision())
+            repo = self.bzrdir.create_repository()
+        else:
+            repo = self.repository
+        if self.create_branch:
+            repo.fetch(self.referenced_branch.repository,
+                       self.referenced_branch.last_revision())
         if self.destroy_reference:
             reference_info = self.referenced_branch.last_revision_info()
             self.bzrdir.destroy_branch()

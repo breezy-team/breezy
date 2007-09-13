@@ -80,6 +80,15 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout_branch = checkout.bzrdir.open_branch()
         self.assertIsNot(checkout_branch.get_bound_location(), None)
 
+    def test_lightweight_conversion_uses_shared_repo(self):
+        parent = self.make_branch('parent')
+        shared_repo = self.make_repository('repo', shared=True)
+        checkout = parent.create_checkout('repo/checkout', lightweight=True)
+        reconfigure.Reconfigure.to_tree(checkout.bzrdir).apply()
+        checkout_repo = checkout.bzrdir.open_branch().repository
+        self.assertEqual(shared_repo.bzrdir.root_transport.base,
+                         checkout_repo.bzrdir.root_transport.base)
+
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
         reconfiguration=reconfigure.Reconfigure.to_tree(branch.bzrdir)
