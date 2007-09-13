@@ -338,7 +338,12 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev.inventory_sha1 = osutils.sha_string(
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
                 self.inventory))
-        self.target.add_revision(self.revid, rev, self.inventory)
+        self.target.start_write_group()
+        try:
+            self.target.add_revision(self.revid, rev, self.inventory)
+            self.target.commit_write_group()
+        except:
+            self.target.abort_write_group()
         self.pool.destroy()
 
     def abort_edit(self):
