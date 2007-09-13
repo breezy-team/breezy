@@ -40,6 +40,7 @@ class Reconfigure(object):
                 self.referenced_branch = branch
         except errors.NotBranchError:
             self.local_branch = None
+            self.referenced_branch = None
         try:
             self.tree = bzrdir.open_workingtree()
         except errors.NoWorkingTree:
@@ -84,6 +85,10 @@ class Reconfigure(object):
                 if self.referenced_branch is not None:
                     self.destroy_reference = True
                     self.create_branch = True
+                    if bound:
+                        self.bind = True
+                else:
+                    raise errors.ReconfigurationNotSupported(self.bzrdir)
         else:
             if bound:
                 if self.local_branch.get_bound_location() is None:
@@ -98,7 +103,8 @@ class Reconfigure(object):
 
     def planned_changes(self):
         return (self.unbind or self.bind or self.destroy_tree
-                or self.create_tree)
+                or self.create_tree or self.destroy_reference
+                or self.create_branch or self.create_repository)
 
     def _check(self):
         if self.destroy_tree:
@@ -117,6 +123,8 @@ class Reconfigure(object):
             parent = self.local_branch.get_parent()
             if parent is not None:
                 return parent
+        elif self.referenced_branch is not None:
+            return self.referenced_branch.base
         raise errors.NoBindLocation(self.bzrdir)
 
     def apply(self, force=False):
@@ -130,8 +138,10 @@ class Reconfigure(object):
             reference_info = self.referenced_branch.last_revision_info()
             self.bzrdir.destroy_branch()
         if self.create_branch:
-            new_branch = self.bzrdir.create_branch()
-            new_branch.set_last_revision_info(*reference_info)
+            local_branch = self.bzrdir.create_branch()
+            local_branch.set_last_revision_info(*reference_info)
+        else:
+            local_branch = self.local_branch
         if self.destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self.create_tree:
@@ -143,4 +153,4 @@ class Reconfigure(object):
                 bind_location = self._select_bind_location()
             else:
                 bind_location = self.new_bound_location
-            self.local_branch.bind(branch.Branch.open(bind_location))
+            local_branch.bind(branch.Branch.open(bind_location))

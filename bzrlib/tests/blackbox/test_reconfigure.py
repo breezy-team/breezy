@@ -47,3 +47,7 @@ class TestReconcile(tests.TestCaseWithTransport):
                             'reconfigure --branch tree')
         self.run_bzr('reconfigure --force --branch tree')
 
+    def test_lightweight_checkout_to_checkout(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr('reconfigure --checkout checkout')

@@ -72,6 +72,14 @@ class TestReconfigure(tests.TestCaseWithTransport):
         repo = checkout.bzrdir.open_repository()
         repo.get_revision('rev1')
 
+    def test_lightweight_checkout_to_checkout(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        reconfiguration = reconfigure.Reconfigure.to_checkout(checkout.bzrdir)
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertIsNot(checkout_branch.get_bound_location(), None)
+
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
         reconfiguration=reconfigure.Reconfigure.to_tree(branch.bzrdir)
@@ -97,6 +105,13 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch.set_bound_location('bzr:old-bound')
         branch.set_bound_location(None)
         self.assertEqual('bzr:old-bound',
+                         reconfiguration._select_bind_location())
+
+    def test_select_reference_bind_location(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        reconfiguration = reconfigure.Reconfigure(checkout.bzrdir)
+        self.assertEqual(branch.base,
                          reconfiguration._select_bind_location())
 
     def test_tree_to_checkout(self):
