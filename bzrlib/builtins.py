@@ -1016,7 +1016,9 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        master = tree.branch.get_master_branch()
+        possible_transports = []
+        master = tree.branch.get_master_branch(
+            possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
         else:
@@ -1032,8 +1034,9 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(delta._ChangeReporter(
-                                        unversioned_filter=tree.is_ignored))
+            conflicts = tree.update(
+                delta._ChangeReporter(unversioned_filter=tree.is_ignored),
+                possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
@@ -2552,7 +2555,7 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
-    def run(self, testspecs_list=None, verbose=None, one=False,
+    def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
@@ -2578,14 +2581,12 @@ class cmd_selftest(Command):
             pattern = ".*"
         if benchmark:
             test_suite_factory = benchmarks.test_suite
-            if verbose is None:
-                verbose = True
+            # Unless user explicitly asks for quiet, be verbose in benchmarks
+            verbose = not is_quiet()
             # TODO: should possibly lock the history file...
             benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
-            if verbose is None:
-                verbose = False
             benchfile = None
         try:
             result = selftest(verbose=verbose,
@@ -3867,7 +3868,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge', 'doc/configuration.txt']
+    _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
