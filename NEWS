@@ -13,6 +13,12 @@ IN DEVELOPMENT
 
   PERFORMANCE:
 
+   * Inventory serialisation no longer double-sha's the content.
+     (Robert Collins)
+
+   * XML inventory serialisation takes 20% less time while being stricter about
+     the contents. (Robert Collins)
+
   IMPROVEMENTS:
 
   BUG FIXES:
@@ -22,7 +28,17 @@ IN DEVELOPMENT
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
-  
+
+   * Tree's with bad state such as files with no length or sha will no longer
+     be silently accepted by the repository XML serialiser. To serialise
+     inventories without such data, pass working=True to write_inventory.
+     (Robert Collins)
+
+  INTERNALS:
+
+   * New method on xml serialisers, write_inventory_to_lines, which matches the
+     API used by knits for adding content. (Robert Collins)
+
   TESTING:
 
 

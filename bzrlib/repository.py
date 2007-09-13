@@ -120,22 +120,20 @@ class Repository(object):
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
         assert inv.root is not None
-        inv_text = self.serialise_inventory(inv)
-        inv_sha1 = osutils.sha_string(inv_text)
-        inv_vf = self.control_weaves.get_weave('inventory',
-                                               self.get_transaction())
-        self._inventory_add_lines(inv_vf, revision_id, parents,
-            osutils.split_lines(inv_text), check_content=False)
-        return inv_sha1
+        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_vf = self.get_inventory_weave()
+        return self._inventory_add_lines(inv_vf, revision_id, parents,
+            inv_lines, check_content=False)
 
     def _inventory_add_lines(self, inv_vf, revision_id, parents, lines,
         check_content=True):
+        """Store lines in inv_vf and return the sha1 of the inventory."""
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-        inv_vf.add_lines(revision_id, final_parents, lines,
-            check_content=check_content)
+        return inv_vf.add_lines(revision_id, final_parents, lines,
+            check_content=check_content)[0]
 
     @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
@@ -841,6 +839,9 @@ class Repository(object):
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
+
+    def _serialise_inventory_to_lines(self, inv):
+        return self._serializer.write_inventory_to_lines(inv)
 
     def get_serializer_format(self):
         return self._serializer.format_num
