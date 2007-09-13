@@ -1854,6 +1854,12 @@ class NoDiff3(BzrError):
     _fmt = "Diff3 is not installed on this machine."
 
 
+class ExistingContent(BzrError):
+    # Added in bzrlib 0.92, used by VersionedFile.add_lines.
+
+    _fmt = "The content being inserted is already present."
+
+
 class ExistingLimbo(BzrError):
 
     _fmt = """This tree contains left-over files from a failed operation.

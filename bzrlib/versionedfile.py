@@ -77,44 +77,9 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
-    def add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
-        """Add a text to the versioned file via a pregenerated delta.
-
-        :param version_id: The version id being added.
-        :param parents: The parents of the version_id.
-        :param delta_parent: The parent this delta was created against.
-        :param sha1: The sha1 of the full text.
-        :param delta: The delta instructions. See get_delta for details.
-        """
-        version_id = osutils.safe_revision_id(version_id)
-        parents = [osutils.safe_revision_id(v) for v in parents]
-        self._check_write_ok()
-        if self.has_version(version_id):
-            raise errors.RevisionAlreadyPresent(version_id, self)
-        return self._add_delta(version_id, parents, delta_parent, sha1, noeol, delta)
-
-    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
-        """Class specific routine to add a delta.
-
-        This generic version simply applies the delta to the delta_parent and
-        then inserts it.
-        """
-        # strip annotation from delta
-        new_delta = []
-        for start, stop, delta_len, delta_lines in delta:
-            new_delta.append((start, stop, delta_len, [text for origin, text in delta_lines]))
-        if delta_parent is not None:
-            parent_full = self.get_lines(delta_parent)
-        else:
-            parent_full = []
-        new_full = self._apply_delta(parent_full, new_delta)
-        # its impossible to have noeol on an empty file
-        if noeol and new_full[-1][-1] == '\n':
-            new_full[-1] = new_full[-1][:-1]
-        self.add_lines(version_id, parents, new_full)
-
     def add_lines(self, version_id, parents, lines, parent_texts=None,
-                  left_matching_blocks=None):
+        left_matching_blocks=None, nostore_sha=None, random_id=False,
+        check_content=True):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -122,14 +87,32 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
+
+        :param lines: A list of lines. Each line must be a bytestring. And all
+            of them except the last must be terminated with \n and contain no
+            other \n's. The last line may either contain no \n's or a single
+            terminated \n. If the lines list does meet this constraint the add
+            routine may error or may succeed - but you will be unable to read
+            the data back accurately. (Checking the lines have been split
+            correctly is expensive and extremely unlikely to catch bugs so it
+            is not done at runtime unless check_content is True.)
         :param parent_texts: An optional dictionary containing the opaque 
-             representations of some or all of the parents of 
-             version_id to allow delta optimisations. 
-             VERY IMPORTANT: the texts must be those returned
-             by add_lines or data corruption can be caused.
+            representations of some or all of the parents of version_id to
+            allow delta optimisations.  VERY IMPORTANT: the texts must be those
+            returned by add_lines or data corruption can be caused.
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
         :return: The text sha1, the number of bytes in the text, and an opaque
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
@@ -138,26 +121,28 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
-                               left_matching_blocks)
+            left_matching_blocks, nostore_sha, random_id, check_content)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks):
+        left_matching_blocks, nostore_sha, random_id, check_content):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
-                              parent_texts=None):
+        parent_texts=None, nostore_sha=None, random_id=False,
+        check_content=True):
         """Add lines to the versioned file, allowing ghosts to be present.
         
-        This takes the same parameters as add_lines.
+        This takes the same parameters as add_lines and returns the same.
         """
         version_id = osutils.safe_revision_id(version_id)
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-                                           parent_texts)
+            parent_texts, nostore_sha, random_id, check_content)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
+        nostore_sha, random_id, check_content):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -240,26 +225,6 @@ class VersionedFile(object):
     def _fix_parents(self, version_id, new_parents):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
-
-    def get_delta(self, version):
-        """Get a delta for constructing version from some other version.
-        
-        :return: (delta_parent, sha1, noeol, delta)
-        Where delta_parent is a version id or None to indicate no parent.
-        """
-        raise NotImplementedError(self.get_delta)
-
-    def get_deltas(self, version_ids):
-        """Get multiple deltas at once for constructing versions.
-        
-        :return: dict(version_id:(delta_parent, sha1, noeol, delta))
-        Where delta_parent is a version id or None to indicate no parent, and
-        version_id is the version_id created by that delta.
-        """
-        result = {}
-        for version_id in version_ids:
-            result[version_id] = self.get_delta(version_id)
-        return result
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
@@ -684,7 +649,6 @@ class InterVersionedFile(InterObject):
             # TODO: remove parent texts when they are not relevant any more for 
             # memory pressure reduction. RBC 20060313
             # pb.update('Converting versioned data', 0, len(order))
-            # deltas = self.source.get_deltas(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
                 _, _, parent_text = target.add_lines(version,
@@ -692,14 +656,6 @@ class InterVersionedFile(InterObject):
                                                self.source.get_lines(version),
                                                parent_texts=parent_texts)
                 parent_texts[version] = parent_text
-                #delta_parent, sha1, noeol, delta = deltas[version]
-                #target.add_delta(version,
-                #                 self.source.get_parents(version),
-                #                 delta_parent,
-                #                 sha1,
-                #                 noeol,
-                #                 delta)
-                #target.get_lines(version)
             
             # this should hit the native code path for target
             if target is not self.target:

@@ -1903,14 +1903,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.apply_inventory_delta(inv_delta)
 
     @needs_tree_write_lock
-    def revert(self, filenames, old_tree=None, backups=True, 
+    def revert(self, filenames=None, old_tree=None, backups=True,
                pb=DummyProgress(), report_changes=False):
         from bzrlib.conflicts import resolve
+        if filenames == []:
+            filenames = None
+            symbol_versioning.warn('Using [] to revert all files is deprecated'
+                ' as of bzr 0.91.  Please use None (the default) instead.',
+                DeprecationWarning, stacklevel=2)
         if old_tree is None:
             old_tree = self.basis_tree()
         conflicts = transform.revert(self, old_tree, filenames, backups, pb,
                                      report_changes)
-        if not len(filenames):
+        if filenames is None:
             self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
         else:
@@ -2017,7 +2022,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self, change_reporter=None):
+    def update(self, change_reporter=None, possible_transports=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2042,7 +2047,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        if self.branch.get_master_branch() is not None:
+        if self.branch.get_master_branch(possible_transports) is not None:
             self.lock_write()
             update_branch = True
         else:
@@ -2050,7 +2055,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             update_branch = False
         try:
             if update_branch:
-                old_tip = self.branch.update()
+                old_tip = self.branch.update(possible_transports)
             else:
                 old_tip = None
             return self._update_tree(old_tip, change_reporter)

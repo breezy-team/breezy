@@ -35,6 +35,7 @@ from bzrlib.osutils import (
         pathjoin,
         )
 from bzrlib.tests import (
+        probe_unicode_in_user_encoding,
         StringIOWrapper,
         TestCase,
         TestCaseInTempDir,
@@ -1001,18 +1002,8 @@ class TestSetUnsetEnv(TestCase):
         
         So Unicode strings must be encoded.
         """
-        # Try a few different characters, to see if we can get
-        # one that will be valid in the user_encoding
-        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
-        for uni_val in possible_vals:
-            try:
-                env_val = uni_val.encode(bzrlib.user_encoding)
-            except UnicodeEncodeError:
-                # Try a different character
-                pass
-            else:
-                break
-        else:
+        uni_val, env_val = probe_unicode_in_user_encoding()
+        if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (bzrlib.user_encoding,))
 

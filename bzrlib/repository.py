@@ -78,7 +78,7 @@ class Repository(object):
 
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
-        r'.*revision="(?P<revision_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def abort_write_group(self):
@@ -125,16 +125,17 @@ class Repository(object):
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
         self._inventory_add_lines(inv_vf, revision_id, parents,
-                                  osutils.split_lines(inv_text))
+            osutils.split_lines(inv_text), check_content=False)
         return inv_sha1
 
-    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines,
+        check_content=True):
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-
-        inv_vf.add_lines(revision_id, final_parents, lines)
+        inv_vf.add_lines(revision_id, final_parents, lines,
+            check_content=check_content)
 
     @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
@@ -447,8 +448,8 @@ class Repository(object):
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
                            revision_id=None):
         """Obtain a CommitBuilder for this repository.
         
@@ -462,7 +463,7 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        result =_CommitBuilder(self, parents, config, timestamp, timezone,
+        result = CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
         return result
@@ -1645,8 +1646,13 @@ class InterSameDataRepository(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        """Repository format for testing with."""
-        return RepositoryFormat.get_default_format()
+        """Repository format for testing with.
+        
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod
     def is_compatible(source, target):
@@ -2073,7 +2079,9 @@ class CommitBuilder(object):
     know the internals of the format of the repository.
     """
     
-    record_root_entry = False
+    # all clients should supply tree roots.
+    record_root_entry = True
+
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -2183,6 +2191,9 @@ class CommitBuilder(object):
         """
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
+            self.random_revid = True
+        else:
+            self.random_revid = False
 
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
@@ -2295,26 +2306,24 @@ class CommitBuilder(object):
     def _add_text_to_weave(self, file_id, new_lines, parents):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
-        result = versionedfile.add_lines(
-            self._new_revision_id, parents, new_lines)[0:2]
+        # Don't change this to add_lines - add_lines_with_ghosts is cheaper
+        # than add_lines, and allows committing when a parent is ghosted for
+        # some reason.
+        # Note: as we read the content directly from the tree, we know its not
+        # been turned into unicode or badly split - but a broken tree
+        # implementation could give us bad output from readlines() so this is
+        # not a guarantee of safety. What would be better is always checking
+        # the content during test suite execution. RBC 20070912
+        result = versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            random_id=self.random_revid, check_content=False)[0:2]
         versionedfile.clear_cache()
         return result
-
-
-class _CommitBuilder(CommitBuilder):
-    """Temporary class so old CommitBuilders are detected properly
-    
-    Note: CommitBuilder works whether or not root entry is recorded.
-    """
-
-    record_root_entry = True
 
 
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
-    record_root_entry = True
-
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
