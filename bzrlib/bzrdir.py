@@ -1805,7 +1805,7 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
                     self.branch.control_files.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
@@ -1890,10 +1890,10 @@ class ConvertBzrDir4To5(Converter):
         present_parents = [p for p in rev.parent_ids
                            if p not in self.absent_revisions]
         self._convert_revision_contents(rev, inv, present_parents)
-        self._store_new_weave(rev, inv, present_parents)
+        self._store_new_inv(rev, inv, present_parents)
         self.converted_revs.add(rev_id)
 
-    def _store_new_weave(self, rev, inv, present_parents):
+    def _store_new_inv(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
             entries = inv.iter_entries()
@@ -1904,7 +1904,7 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add_lines(rev.revision_id, 
+        self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1

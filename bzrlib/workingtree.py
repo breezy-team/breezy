@@ -1044,7 +1044,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return wt
 
     def _serialize(self, inventory, out_file):
-        xml5.serializer_v5.write_inventory(self._inventory, out_file)
+        xml5.serializer_v5.write_inventory(self._inventory, out_file,
+            working=True)
 
     def _deserialize(selt, in_file):
         return xml5.serializer_v5.read_inventory(in_file)
@@ -2689,7 +2690,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """
         sio = StringIO()
         inv = Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio)
+        xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         control_files.put('inventory', sio)
 
