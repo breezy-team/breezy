@@ -796,6 +796,8 @@ def main(argv):
 
 
 def run_bzr_catch_errors(argv):
+    # Note: The except clause logic below should be kept in sync with the
+    # profile() routine in lsprof.py.
     try:
         return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
