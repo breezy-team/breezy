@@ -75,8 +75,8 @@ class KnitRepository(MetaDirRepository):
         pass
 
     def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines,
-            check_content=check_content)
+        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)[0]
 
     @needs_read_lock
     def _all_revision_ids(self):

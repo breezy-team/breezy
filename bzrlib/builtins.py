@@ -2310,16 +2310,11 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose or not is_quiet():
-            reporter = ReportCommitToLog()
-        else:
-            reporter = NullCommitReporter()
-
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties,
+                        reporter=None, verbose=verbose, revprops=properties,
                         author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
