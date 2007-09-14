@@ -55,6 +55,13 @@ class Reconfigure(object):
 
     @staticmethod
     def to_branch(bzrdir):
+        """Return a Reconfiguration to convert this bzrdir into a branch
+
+        :param bzrdir: The bzrdir to reconfigure
+        :raise errors.AlreadyBranch: if bzrdir is already a branch
+        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
+            a branch or branch reference
+        """
         reconfiguration = Reconfigure(bzrdir)
         reconfiguration._plan_changes(want_tree=False, want_branch=True,
                                       want_bound=False)
@@ -64,6 +71,13 @@ class Reconfigure(object):
 
     @staticmethod
     def to_tree(bzrdir):
+        """Return a Reconfiguration to convert this bzrdir into a tree
+
+        :param bzrdir: The bzrdir to reconfigure
+        :raise errors.AlreadyTree: if bzrdir is already a tree
+        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
+            a branch or branch reference
+        """
         reconfiguration = Reconfigure(bzrdir)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
                                       want_bound=False)
@@ -73,6 +87,14 @@ class Reconfigure(object):
 
     @staticmethod
     def to_checkout(bzrdir, bound_location=None):
+        """Return a Reconfiguration to convert this bzrdir into a checkout
+
+        :param bzrdir: The bzrdir to reconfigure
+        :param bound_location: The location the checkout should be bound to.
+        :raise errors.AlreadyCheckout: if bzrdir is already a checkout
+        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
+            a branch or branch reference
+        """
         reconfiguration = Reconfigure(bzrdir, bound_location)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
                                       want_bound=True)
@@ -145,6 +167,15 @@ class Reconfigure(object):
         raise errors.NoBindLocation(self.bzrdir)
 
     def apply(self, force=False):
+        """Apply the reconfiguration
+
+        :param force: If true, the reconfiguration is applied even if it will
+            destroy local changes.
+        :raise errors.UncommittedChanges: if the local tree is to be destroyed
+            but contains uncommitted changes.
+        :raise errors.NoBindLocation: if no bind location was specified and
+            none could be autodetected.
+        """
         if not force:
             self._check()
         if self._create_repository:

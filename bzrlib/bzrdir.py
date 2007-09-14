@@ -245,6 +245,7 @@ class BzrDir(object):
         raise NotImplementedError(self.create_branch)
 
     def destroy_branch(self):
+        """Destroy the branch in this BzrDir"""
         raise NotImplementedError(self.destroy_branch)
 
     @staticmethod
@@ -898,7 +899,7 @@ class BzrDirPreSplitOut(BzrDir):
         return self.open_branch()
 
     def destroy_branch(self):
-        """See BzrDir.destroy_workingtree."""
+        """See BzrDir.destroy_branch."""
         raise errors.UnsupportedOperation(self.destroy_branch, self)
 
     def create_repository(self, shared=False):

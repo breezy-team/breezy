@@ -90,6 +90,7 @@ class RemoteBzrDir(BzrDir):
         return RemoteBranch(self, self.find_repository(), real_branch)
 
     def destroy_branch(self):
+        """See BzrDir.destroy_branch"""
         self._ensure_real()
         self._real_bzrdir.destroy_branch()
 
