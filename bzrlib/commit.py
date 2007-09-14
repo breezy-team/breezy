@@ -272,7 +272,6 @@ class Commit(object):
             old_revno, new_revno = self._check_out_of_date_tree()
 
             # Complete configuration setup
-            self.initial_commit = new_revno == 1
             if reporter is not None:
                 self.reporter = reporter
             elif self.reporter is None:
