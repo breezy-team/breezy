@@ -227,6 +227,8 @@ class KnitRepository(MetaDirRepository):
 
 class KnitRepository3(KnitRepository):
 
+    _commit_builder_class = RootCommitBuilder
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
@@ -252,26 +254,6 @@ class KnitRepository3(KnitRepository):
         assert inv.revision_id is not None
         assert inv.root.revision is not None
         return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        revision_id = osutils.safe_revision_id(revision_id)
-        result = RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
-        self.start_write_group()
-        return result
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
