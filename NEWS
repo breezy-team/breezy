@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   PERFORMANCE:
 
+   * Commit in quiet mode is now slightly faster as the information to
+     output is no longer calculated. (Ian Clatworthy)
+
   IMPROVEMENTS:
 
   BUG FIXES:
