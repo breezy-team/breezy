@@ -224,6 +224,22 @@ class KnitRepository(MetaDirRepository):
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
 
+    def _find_inconsistent_revision_parents(self):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
+        """
+        vf = self._get_revision_vf()
+        index_versions = vf.versions()
+        for index_version in index_versions:
+            parents_according_to_index = vf._index.get_parents_with_ghosts(
+                index_version)
+            revision = self._revision_store.get_revision(index_version,
+                self.get_transaction())
+            parents_according_to_revision = revision.parent_ids
+            if parents_according_to_index != parents_according_to_revision:
+                yield (index_version, parents_according_to_index,
+                    parents_according_to_revision)
+
 
 class KnitRepository3(KnitRepository):
 
