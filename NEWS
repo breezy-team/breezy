@@ -17,6 +17,8 @@ bzr-svn 0.4.3	2007-09-12
 
    * Track moving parents correctly in follow_path().
 
+   * Implement SvnWorkingTreeDir.needs_format_conversion().
+
 bzr-svn 0.4.2	2007-09-09
 
   BUG FIXES

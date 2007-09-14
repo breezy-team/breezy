@@ -20,7 +20,7 @@ from bzrlib import urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent, BzrError)
+                           NoRepositoryPresent, BzrError, UninitializableFormat)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
@@ -786,6 +786,11 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     """Working Tree implementation that uses Subversion working copies."""
     _lock_class = TransportLock
 
+    def __init__(self):
+        super(SvnWorkingTreeDirFormat, self).__init__()
+        from repository import SvnRepositoryFormat
+        self.repository_format = SvnRepositoryFormat()
+
     @classmethod
     def probe_transport(klass, transport):
         format = klass()
@@ -814,7 +819,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         return 'Subversion Local Checkout'
 
     def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.initialize_on_transport)
+        raise UninitializableFormat(self)
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""

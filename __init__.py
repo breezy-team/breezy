@@ -118,6 +118,9 @@ BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 format_registry.register("subversion", format.SvnFormat, 
                          "Subversion repository. ", 
                          native=False)
+format_registry.register("subversion-wc", workingtree.SvnWorkingTreeDirFormat, 
+                         "Subversion working copy. ", 
+                         native=False)
 
 versions_checked = False
 def lazy_check_versions():
