@@ -21,15 +21,18 @@ import bzrlib.hooks
 from bzrlib.tests import test_sftp_transport
 if test_sftp_transport.paramiko_loaded:
     from bzrlib.transport import sftp
+    _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport
     _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
 else:
     from bzrlib.transport import ftp
     from bzrlib.tests import test_ftp_transport
+    _backing_scheme = 'ftp'
     _backing_transport_class = ftp.FtpTransport
     _backing_test_class = test_ftp_transport.TestCaseWithFTPServer
 
 from bzrlib.transport import (
+    ConnectedTransport,
     register_transport,
     register_urlparse_netloc_protocol,
     unregister_transport,
@@ -49,6 +52,11 @@ class TransportHooks(bzrlib.hooks.Hooks):
 
 _hooked_scheme = 'hooked'
 
+def _change_scheme_in(url, actual, desired):
+    assert url.startswith(actual + '://')
+    return desired + url[len(actual):]
+
+
 class InstrumentedTransport(_backing_transport_class):
     """Instrumented transport class to test commands behavior"""
 
@@ -56,10 +64,19 @@ class InstrumentedTransport(_backing_transport_class):
 
     def __init__(self, base, _from_transport=None):
         assert base.startswith(_hooked_scheme + '://')
-        # Both backing transports classes will choke on our specific scheme,
-        # let's short-circuit them
-        super_self = super(_backing_transport_class, self)
-        super_self.__init__(base, _from_transport=_from_transport)
+        # We need to trick the backing transport class about the scheme used
+        # We'll do the reversee when we need to talk to the backing server
+        fake_base = _change_scheme_in(base, _hooked_scheme, _backing_scheme)
+        super(InstrumentedTransport, self).__init__(
+            fake_base, _from_transport=_from_transport)
+        # The following is needed to minimize the effects of our trick above
+        # while retaining the best compatibility.
+        self._scheme = _hooked_scheme
+        base = self._unsplit_url(self._scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 self._path)
+        super(ConnectedTransport, self).__init__(base)
 
 
 class ConnectionHookedTransport(InstrumentedTransport):
@@ -90,8 +107,9 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
     def get_url(self, relpath=None):
         super_self = super(TestCaseWithConnectionHookedTransport, self)
         url = super_self.get_url(relpath)
-        # Replace the sftp scheme by our own
-        url = _hooked_scheme + url[len('sftp'):]
+        # Replace the backing scheme by our own (see
+        # InstrumentedTransport.__init__)
+        url = _change_scheme_in(url, _backing_scheme, _hooked_scheme)
         return url
 
     def install_hooks(self):
