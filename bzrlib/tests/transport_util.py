@@ -14,38 +14,52 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.hooks import Hooks
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+import bzrlib.hooks
+
+# SFTPTransport offers better performances but relies on paramiko, if paramiko
+# is not available, we fallback to FtpTransport
+from bzrlib.tests import test_sftp_transport
+if test_sftp_transport.paramiko_loaded:
+    from bzrlib.transport import sftp
+    _backing_transport_class = sftp.SFTPTransport
+    _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
+else:
+    from bzrlib.transport import ftp
+    from bzrlib.tests import test_ftp_transport
+    _backing_transport_class = ftp.FtpTransport
+    _backing_test_class = test_ftp_transport.TestCaseWithFTPServer
+
 from bzrlib.transport import (
     register_transport,
     register_urlparse_netloc_protocol,
     unregister_transport,
     _unregister_urlparse_netloc_protocol,
     )
-from bzrlib.transport.sftp import SFTPTransport
 
 
-class TransportHooks(Hooks):
+
+class TransportHooks(bzrlib.hooks.Hooks):
     """Dict-mapping hook name to a list of callables for transport hooks"""
 
     def __init__(self):
-        Hooks.__init__(self)
+        super(TransportHooks, self).__init__()
         # Invoked when the transport has just created a new connection.
         # The api signature is (transport, connection, credentials)
         self['_set_connection'] = []
 
 _hooked_scheme = 'hooked'
 
-class InstrumentedTransport(SFTPTransport):
+class InstrumentedTransport(_backing_transport_class):
     """Instrumented transport class to test commands behavior"""
 
     hooks = TransportHooks()
 
     def __init__(self, base, _from_transport=None):
         assert base.startswith(_hooked_scheme + '://')
-        # Avoid SFTPTransport assertion since we use a dedicated scheme
-        super(SFTPTransport, self).__init__(base,
-                                            _from_transport=_from_transport)
+        # Both backing transports classes will choke on our specific scheme,
+        # let's short-circuit them
+        super_self = super(_backing_transport_class, self)
+        super_self.__init__(base, _from_transport=_from_transport)
 
 
 class ConnectionHookedTransport(InstrumentedTransport):
@@ -59,7 +73,7 @@ class ConnectionHookedTransport(InstrumentedTransport):
             hook(self, connection, credentials)
 
 
-class TestCaseWithConnectionHookedTransport(TestCaseWithSFTPServer):
+class TestCaseWithConnectionHookedTransport(_backing_test_class):
 
     def setUp(self):
         register_urlparse_netloc_protocol(_hooked_scheme)
