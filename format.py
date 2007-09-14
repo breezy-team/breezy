@@ -46,9 +46,11 @@ class SvnRemoteAccess(BzrDir):
     This is used for all non-checkout connections 
     to Subversion repositories.
     """
-    def __init__(self, _transport, _format):
+    def __init__(self, _transport, _format=None):
         """See BzrDir.__init__()."""
         _transport = get_svn_ra_transport(_transport)
+        if _format is None:
+            _format = SvnFormat()
         self._format = _format
         self.transport = None
         self.root_transport = _transport

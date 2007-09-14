@@ -34,6 +34,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from branch import SvnBranch
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
+from format import SvnRemoteAccess
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
@@ -720,10 +721,9 @@ class SvnCheckout(BzrDir):
             svn.wc.adm_close(wc)
 
         remote_transport = SvnRaTransport(svn_url)
-        self.svn_root_transport = SvnRaTransport(remote_transport.get_repos_root())
+        self.remote_bzrdir = SvnRemoteAccess(remote_transport)
+        self.svn_root_transport = remote_transport.clone_root()
         self.root_transport = self.transport = transport
-
-        self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
         
     def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
@@ -747,7 +747,7 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        return SvnRepository(self, self.svn_root_transport, self.branch_path)
+        return SvnRepository(self, self.svn_root_transport, self.remote_bzrdir.branch_path)
 
     def needs_format_conversion(self, format=None):
         if format is None:
@@ -771,14 +771,15 @@ class SvnCheckout(BzrDir):
         repos = self.find_repository()
 
         try:
-            branch = SvnBranch(self.root_transport.base, repos, 
-                               self.branch_path)
+            branch = SvnBranch(self.svn_root_transport.base, repos, 
+                               self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)
             raise
+
+        branch.bzrdir = self.remote_bzrdir
  
-        branch.bzrdir = self
         return branch
 
 
