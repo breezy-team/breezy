@@ -45,72 +45,72 @@ class Reconfigure(object):
             self.tree = bzrdir.open_workingtree()
         except errors.NoWorkingTree:
             self.tree = None
-        self.unbind = False
-        self.bind = False
-        self.destroy_reference = False
-        self.create_branch = False
-        self.destroy_tree = False
-        self.create_tree = False
-        self.create_repository = False
+        self._unbind = False
+        self._bind = False
+        self._destroy_reference = False
+        self._create_branch = False
+        self._destroy_tree = False
+        self._create_tree = False
+        self._create_repository = False
 
     @staticmethod
     def to_branch(bzrdir):
         reconfiguration = Reconfigure(bzrdir)
-        reconfiguration.select_changes(tree=False, branch=True, bound=False)
-        if not reconfiguration.planned_changes():
+        reconfiguration._plan_changes(tree=False, branch=True, bound=False)
+        if not reconfiguration.changes_planned():
             raise errors.AlreadyBranch(bzrdir)
         return reconfiguration
 
     @staticmethod
     def to_tree(bzrdir):
         reconfiguration = Reconfigure(bzrdir)
-        reconfiguration.select_changes(tree=True, branch=True, bound=False)
-        if not reconfiguration.planned_changes():
+        reconfiguration._plan_changes(tree=True, branch=True, bound=False)
+        if not reconfiguration.changes_planned():
             raise errors.AlreadyTree(bzrdir)
         return reconfiguration
 
     @staticmethod
     def to_checkout(bzrdir, bound_location=None):
         reconfiguration = Reconfigure(bzrdir, bound_location)
-        reconfiguration.select_changes(tree=True, branch=True, bound=True)
-        if not reconfiguration.planned_changes():
+        reconfiguration._plan_changes(tree=True, branch=True, bound=True)
+        if not reconfiguration.changes_planned():
             raise errors.AlreadyCheckout(bzrdir)
         return reconfiguration
 
-    def select_changes(self, tree, branch, bound):
+    def _plan_changes(self, tree, branch, bound):
         """Determine which changes are needed to assume the configuration"""
         if self.repository is None:
-            self.create_repository = True
+            self._create_repository = True
         if self.local_branch is None:
             if branch is True:
                 if self.referenced_branch is not None:
-                    self.destroy_reference = True
-                    self.create_branch = True
+                    self._destroy_reference = True
+                    self._create_branch = True
                     if bound:
-                        self.bind = True
+                        self._bind = True
                 else:
                     raise errors.ReconfigurationNotSupported(self.bzrdir)
         else:
             if bound:
                 if self.local_branch.get_bound_location() is None:
-                    self.bind = True
+                    self._bind = True
             else:
                 if self.local_branch.get_bound_location() is not None:
-                    self.unbind = True
+                    self._unbind = True
         if not tree and self.tree is not None:
-            self.destroy_tree = True
+            self._destroy_tree = True
         if tree and self.tree is None:
-            self.create_tree = True
+            self._create_tree = True
 
-    def planned_changes(self):
+    def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
-        return (self.unbind or self.bind or self.destroy_tree
-                or self.create_tree or self.destroy_reference
-                or self.create_branch or self.create_repository)
+        return (self._unbind or self._bind or self._destroy_tree
+                or self._create_tree or self._destroy_reference
+                or self._create_branch or self._create_repository)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
-        if self.destroy_tree:
+        if self._destroy_tree:
             changes = self.tree.changes_from(self.tree.basis_tree())
             if changes.has_changed():
                 raise errors.UncommittedChanges(self.tree)
@@ -144,27 +144,27 @@ class Reconfigure(object):
     def apply(self, force=False):
         if not force:
             self._check()
-        if self.create_repository:
+        if self._create_repository:
             repo = self.bzrdir.create_repository()
         else:
             repo = self.repository
-        if self.create_branch:
+        if self._create_branch:
             repo.fetch(self.referenced_branch.repository,
                        self.referenced_branch.last_revision())
-        if self.destroy_reference:
+        if self._destroy_reference:
             reference_info = self.referenced_branch.last_revision_info()
             self.bzrdir.destroy_branch()
-        if self.create_branch:
+        if self._create_branch:
             local_branch = self.bzrdir.create_branch()
             local_branch.set_last_revision_info(*reference_info)
         else:
             local_branch = self.local_branch
-        if self.destroy_tree:
+        if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
-        if self.create_tree:
+        if self._create_tree:
             self.bzrdir.create_workingtree()
-        if self.unbind:
+        if self._unbind:
             self.local_branch.unbind()
-        if self.bind:
+        if self._bind:
             bind_location = self._select_bind_location()
             local_branch.bind(branch.Branch.open(bind_location))
