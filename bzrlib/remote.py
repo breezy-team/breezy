@@ -505,8 +505,6 @@ class RemoteRepository(object):
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
             'Repository.tarball', path, compression)
-        assert response[0] in ('ok', 'failure'), \
-            'unexpected response code %s' % (response,)
         if response[0] == 'ok':
             # Extract the tarball and return it
             t = tempfile.NamedTemporaryFile()
@@ -514,13 +512,23 @@ class RemoteRepository(object):
             t.write(protocol.read_body_bytes())
             t.seek(0)
             return t
-        else:
-            raise errors.SmartServerError(error_code=response)
+        if (response == ('error', "Generic bzr smart protocol error: "
+                "bad request 'Repository.tarball'") or
+              response == ('error', "Generic bzr smart protocol error: "
+                "bad request u'Repository.tarball'")):
+            protocol.cancel_read_body()
+        raise errors.UnexpectedSmartServerResponse(response)
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
         to_repo = to_bzrdir.create_repository()
-        self._copy_repository_tarball(to_repo, revision_id)
+        try:
+            self._copy_repository_tarball(to_repo, revision_id)
+        except errors.UnexpectedSmartServerResponse:
+            to_bzrdir.get_repository_transport(None).delete_tree('.')
+            self._ensure_real()
+            return self._real_repository.sprout(
+                to_bzrdir, revision_id=revision_id)
         return to_repo
 
     ### These methods are just thin shims to the VFS object for now.
