@@ -749,6 +749,11 @@ class SvnCheckout(BzrDir):
     def find_repository(self):
         return SvnRepository(self, self.svn_root_transport, self.branch_path)
 
+    def needs_format_conversion(self, format=None):
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return not isinstance(self._format, format.__class__)
+
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().
 
