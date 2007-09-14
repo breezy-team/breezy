@@ -56,6 +56,16 @@ api-docs:
 check-api-docs:
 	PYTHONPATH=$(PWD) python tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
 
+# build tags for emacs and vim
+TAGS:
+	ctags -R -e bzrlib
+
+tags:
+	ctags -R bzrlib
+
+# these are treated as phony so they'll always be rebuilt - it's pretty quick
+.PHONY: TAGS tags
+
 # Produce HTML docs to upload on Canonical server
 HTMLDIR := html_docs
 PRETTYDIR := pretty_docs
