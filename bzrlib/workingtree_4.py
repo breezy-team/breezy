@@ -274,8 +274,7 @@ class WorkingTree4(WorkingTree3):
     def _directory_is_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then 
         # it's a tree reference, except that the root of the tree is not
-        return len(relpath) > 0 and \
-            osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
         # TODO: We could ask all the control formats whether they
         # recognize this directory, but at the moment there's no cheap api
         # to do that.  Since we probably can only nest bzr checkouts and

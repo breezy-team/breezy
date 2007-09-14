@@ -29,7 +29,7 @@ REVISION_ID = a non-empty utf8 string;
 
 dirstate format = header line, full checksum, row count, parent details,
  ghost_details, entries;
-header line = "#bazaar dirstate flat format N", NL;
+header line = "#bazaar dirstate flat format 3", NL;
 full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
 row count = "num_entries: ", WHOLE_NUMBER, NL;
 parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
