@@ -269,8 +269,8 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertIsInstance(result, PullResult)
         self.assertEqual(result.old_revno, self.olddir.open_branch().revno())
         self.assertEqual(result.master_branch, None)
-        self.assertEqual(result.target_branch.bzrdir.transport.base, self.olddir.transport.base)
-        self.assertEqual(result.source_branch.bzrdir.transport.base, self.newdir.transport.base)
+        self.assertEqual(result.source_branch.bzrdir.root_transport.base, 
+                         self.newdir.root_transport.base)
 
     def test_child(self):
         self.build_tree({'sc/foo/bar': "data"})

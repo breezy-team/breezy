@@ -826,4 +826,4 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         if format is None:
             format = get_rich_root_format()
-        return SvnConverter(format)
+        raise NotImplementedError(self.get_converter)
