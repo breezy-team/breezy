@@ -33,10 +33,10 @@ check: docs extensions
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
 
-check-msgeditor:
-	./bzr --no-plugins selftest -v msgeditor
-
 # Run Python style checker (apt-get install pyflakes)
+#
+# Note that at present this gives many false warnings, because it doesn't
+# know about identifiers loaded through lazy_import.
 pyflakes:
 	pyflakes bzrlib
 
@@ -58,11 +58,15 @@ api-docs:
 check-api-docs:
 	PYTHONPATH=$(PWD) python tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
 
-# build emacs cross-reference
-tag_files=./bzr ./bzrlib/*py ./bzrlib/selftest/*.py
-TAGS: $(tag_files)
-	ctags-exuberant -e $(tag_files)
+# build tags for emacs and vim
+TAGS:
+	ctags -R -e bzrlib
 
+tags:
+	ctags -R bzrlib
+
+# these are treated as phony so they'll always be rebuilt - it's pretty quick
+.PHONY: TAGS tags
 
 ### Documentation ###
 
