@@ -78,6 +78,7 @@ class Pack(object):
 
 
 class RepositoryPackCollection(object):
+    """Management of packs within a repository."""
 
     def __init__(self, repo, transport):
         self.repo = repo
