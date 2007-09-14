@@ -132,7 +132,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -275,7 +274,8 @@ class WorkingTree4(WorkingTree3):
     def _directory_is_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then 
         # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        return len(relpath) > 0 and \
+            osutils.isdir(self.abspath(relpath) + u"/.bzr")
         # TODO: We could ask all the control formats whether they
         # recognize this directory, but at the moment there's no cheap api
         # to do that.  Since we probably can only nest bzr checkouts and
