@@ -21,6 +21,12 @@ import sys
 import threading
 import time
 
+try:
+    import paramiko
+    paramiko_loaded = True
+except ImportError:
+    paramiko_loaded = False
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -38,18 +44,15 @@ from bzrlib.tests import (
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
-from bzrlib.transport.sftp import (
-    SFTPAbsoluteServer,
-    SFTPHomeDirServer,
-    SFTPTransport,
-    )
-from bzrlib.workingtree import WorkingTree
 
-try:
-    import paramiko
-    paramiko_loaded = True
-except ImportError:
-    paramiko_loaded = False
+if paramiko_loaded:
+    from bzrlib.transport.sftp import (
+        SFTPAbsoluteServer,
+        SFTPHomeDirServer,
+        SFTPTransport,
+        )
+
+from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):
