@@ -70,6 +70,9 @@ class CapturingReporter(NullCommitReporter):
     def renamed(self, change, old_path, new_path):
         self.calls.append(('renamed', change, old_path, new_path))
 
+    def is_verbose(self):
+        return True
+
 
 class TestCommit(TestCaseWithTransport):
 
