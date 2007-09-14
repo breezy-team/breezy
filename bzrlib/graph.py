@@ -134,7 +134,10 @@ class Graph(object):
            ancestor of all border ancestors.
         """
         border_common, common, sides = self._find_border_ancestors(revisions)
-        return self._filter_candidate_lca(border_common)
+        # We may have common ancestors that can be reached from each other.
+        # - ask for the heads of them to filter it down to only ones that
+        # cannot be reached from each other - phase 2.
+        return self.heads(border_common)
 
     def find_difference(self, left_revision, right_revision):
         """Determine the graph difference between two revisions"""
@@ -212,37 +215,45 @@ class Graph(object):
                     for searcher in searchers:
                         update_common(searcher, revision)
 
-    def _filter_candidate_lca(self, candidate_lca):
-        """Remove candidates which are ancestors of other candidates.
+    def heads(self, keys):
+        """Return the heads from amongst keys.
 
-        This is done by searching the ancestries of each border ancestor.  It
-        is perfomed on the principle that a border ancestor that is not an
-        ancestor of any other border ancestor is a lowest common ancestor.
+        This is done by searching the ancestries of each key.  Any key that is
+        reachable from another key is not returned; all the others are.
 
-        Searches are stopped when they find a node that is determined to be a
-        common ancestor of all border ancestors, because this shows that it
-        cannot be a descendant of any border ancestor.
+        This operation scales with the relative depth between any two keys. If
+        any two keys are completely disconnected all ancestry of both sides
+        will be retrieved.
 
-        This will scale with the number of candidate ancestors and the length
-        of the shortest path from a candidate to an ancestor common to all
-        candidates.
+        :param keys: An iterable of keys.
+        :return: A set of the heads. Note that as a set there is no ordering
+            information. Callers will need to filter their input to create
+            order if they need it.
         """
+        candidate_heads = set(keys)
         searchers = dict((c, self._make_breadth_first_searcher([c]))
-                          for c in candidate_lca)
+                          for c in candidate_heads)
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
             searcher.next()
         while len(active_searchers) > 0:
-            for candidate, searcher in list(active_searchers.iteritems()):
+            for candidate in active_searchers.keys():
+                try:
+                    searcher = active_searchers[candidate]
+                except KeyError:
+                    # rare case: we deleted candidate in a previous iteration
+                    # through this for loop, because it was determined to be
+                    # a descendant of another candidate.
+                    continue
                 try:
                     ancestors = searcher.next()
                 except StopIteration:
                     del active_searchers[candidate]
                     continue
                 for ancestor in ancestors:
-                    if ancestor in candidate_lca:
-                        candidate_lca.remove(ancestor)
+                    if ancestor in candidate_heads:
+                        candidate_heads.remove(ancestor)
                         del searchers[ancestor]
                         if ancestor in active_searchers:
                             del active_searchers[ancestor]
@@ -257,7 +268,7 @@ class Graph(object):
                             seen_ancestors =\
                                 searcher.find_seen_ancestors(ancestor)
                             searcher.stop_searching_any(seen_ancestors)
-        return candidate_lca
+        return candidate_heads
 
     def find_unique_lca(self, left_revision, right_revision):
         """Find a unique LCA.
@@ -276,6 +287,8 @@ class Graph(object):
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
                 return lca.pop()
+            if len(lca) == 0:
+                raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
 
     def iter_topo_order(self, revisions):
@@ -287,6 +300,73 @@ class Graph(object):
         """
         sorter = tsort.TopoSorter(zip(revisions, self.get_parents(revisions)))
         return sorter.iter_topo_order()
+
+    def is_ancestor(self, candidate_ancestor, candidate_descendant):
+        """Determine whether a revision is an ancestor of another.
+
+        There are two possible outcomes: True and False, but there are three
+        possible relationships:
+
+        a) candidate_ancestor is an ancestor of candidate_descendant
+        b) candidate_ancestor is an descendant of candidate_descendant
+        c) candidate_ancestor is an sibling of candidate_descendant
+
+        To check for a, we walk from candidate_descendant, looking for
+        candidate_ancestor.
+
+        To check for b, we walk from candidate_ancestor, looking for
+        candidate_descendant.
+
+        To make a and b more efficient, we can stop any searches that hit
+        common ancestors.
+
+        If we exhaust our searches, but neither a or b is true, then c is true.
+
+        In order to find c efficiently, we must avoid searching from
+        candidate_descendant or candidate_ancestor into common ancestors.  But
+        if we don't search common ancestors at all, we won't know if we hit
+        common ancestors.  So we have a walker for common ancestors.  Note that
+        its searches are not required to terminate in order to determine c to
+        be true.
+        """
+        ancestor_walker = self._make_breadth_first_searcher(
+            [candidate_ancestor])
+        descendant_walker = self._make_breadth_first_searcher(
+            [candidate_descendant])
+        common_walker = self._make_breadth_first_searcher([])
+        active_ancestor = True
+        active_descendant = True
+        while (active_ancestor or active_descendant):
+            new_common = set()
+            if active_descendant:
+                try:
+                    nodes = descendant_walker.next()
+                except StopIteration:
+                    active_descendant = False
+                else:
+                    if candidate_ancestor in nodes:
+                        return True
+                    new_common.update(nodes.intersection(ancestor_walker.seen))
+            if active_ancestor:
+                try:
+                    nodes = ancestor_walker.next()
+                except StopIteration:
+                    active_ancestor = False
+                else:
+                    if candidate_descendant in nodes:
+                        return False
+                    new_common.update(nodes.intersection(
+                        descendant_walker.seen))
+            try:
+                new_common.update(common_walker.next())
+            except StopIteration:
+                pass
+            for walker in (ancestor_walker, descendant_walker):
+                for node in new_common:
+                    c_ancestors = walker.find_seen_ancestors(node)
+                    walker.stop_searching_any(c_ancestors)
+                common_walker.start_searching(new_common)
+        return False
 
 
 class _BreadthFirstSearcher(object):

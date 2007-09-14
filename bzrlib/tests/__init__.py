@@ -80,6 +80,7 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_eighteen,
+    zero_ninetyone,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -106,16 +107,18 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.timestamp,
-                      bzrlib.errors,
-                      bzrlib.export,
-                      bzrlib.inventory,
-                      bzrlib.iterablefile,
-                      bzrlib.lockdir,
-                      bzrlib.merge3,
-                      bzrlib.option,
-                      bzrlib.store,
-                      ]
+        bzrlib.timestamp,
+        bzrlib.errors,
+        bzrlib.export,
+        bzrlib.inventory,
+        bzrlib.iterablefile,
+        bzrlib.lockdir,
+        bzrlib.merge3,
+        bzrlib.option,
+        bzrlib.store,
+        # quoted to avoid module-loading circularity
+        'bzrlib.tests',
+        ]
 
 
 def packages_to_test():
@@ -128,9 +131,11 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.commands
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
+    import bzrlib.tests.inventory_implementations
     import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
@@ -141,9 +146,11 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.commands,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
+            bzrlib.tests.inventory_implementations,
             bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
@@ -155,9 +162,17 @@ def packages_to_test():
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
-    Compared to this unittest version this class adds support for profiling,
-    benchmarking, stopping as soon as a test fails,  and skipping tests.
-    There are further-specialized subclasses for different types of display.
+    Compared to this unittest version this class adds support for
+    profiling, benchmarking, stopping as soon as a test fails,  and
+    skipping tests.  There are further-specialized subclasses for
+    different types of display.
+
+    When a test finishes, in whatever way, it calls one of the addSuccess,
+    addFailure or addError classes.  These in turn may redirect to a more
+    specific case for the special test results supported by our extended
+    tests.
+
+    Note that just one of these objects is fed the results from many tests.
     """
 
     stop_early = False
@@ -193,22 +208,24 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.not_applicable_count = 0
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
     
-    def extractBenchmarkTime(self, testCase):
+    def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
-        self._benchmarkTime = getattr(testCase, "_benchtime", None)
+        return getattr(testCase, "_benchtime", None)
     
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(time.time() - self._start_time)
 
-    def _testTimeString(self):
-        if self._benchmarkTime is not None:
+    def _testTimeString(self, testCase):
+        benchmark_time = self._extractBenchmarkTime(testCase)
+        if benchmark_time is not None:
             return "%s/%s" % (
-                self._formatTime(self._benchmarkTime),
+                self._formatTime(benchmark_time),
                 self._elapsedTestTimeString())
         else:
             return "           %s" % self._elapsedTestTimeString()
@@ -242,52 +259,85 @@ class ExtendedTestResult(unittest._TextTestResult):
             setKeepLogfile()
 
     def addError(self, test, err):
-        self.extractBenchmarkTime(test)
-        self._cleanupLogFile(test)
+        """Tell result that test finished with an error.
+
+        Called from the TestCase run() method when the test
+        fails with an unexpected error.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)
+            return self._addSkipped(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
-        unittest.TestResult.addError(self, test, err)
-        self.error_count += 1
-        self.report_error(test, err)
-        if self.stop_early:
-            self.stop()
+        else:
+            unittest.TestResult.addError(self, test, err)
+            self.error_count += 1
+            self.report_error(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addFailure(self, test, err):
-        self._cleanupLogFile(test)
-        self.extractBenchmarkTime(test)
+        """Tell result that test failed.
+
+        Called from the TestCase run() method when the test
+        fails because e.g. an assert() method failed.
+        """
+        self._testConcluded(test)
         if isinstance(err[1], KnownFailure):
-            return self.addKnownFailure(test, err)
-        unittest.TestResult.addFailure(self, test, err)
-        self.failure_count += 1
-        self.report_failure(test, err)
-        if self.stop_early:
-            self.stop()
-
-    def addKnownFailure(self, test, err):
-        self.known_failure_count += 1
-        self.report_known_failure(test, err)
-
-    def addNotSupported(self, test, feature):
-        self.unsupported.setdefault(str(feature), 0)
-        self.unsupported[str(feature)] += 1
-        self.report_unsupported(test, feature)
+            return self._addKnownFailure(test, err)
+        else:
+            unittest.TestResult.addFailure(self, test, err)
+            self.failure_count += 1
+            self.report_failure(test, err)
+            if self.stop_early:
+                self.stop()
 
     def addSuccess(self, test):
-        self.extractBenchmarkTime(test)
+        """Tell result that test completed successfully.
+
+        Called from the TestCase run()
+        """
+        self._testConcluded(test)
         if self._bench_history is not None:
-            if self._benchmarkTime is not None:
+            benchmark_time = self._extractBenchmarkTime(test)
+            if benchmark_time is not None:
                 self._bench_history.write("%s %s\n" % (
-                    self._formatTime(self._benchmarkTime),
+                    self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
         unittest.TestResult.addSuccess(self, test)
 
-    def addSkipped(self, test, skip_excinfo):
-        self.report_skip(test, skip_excinfo)
-        # seems best to treat this as success from point-of-view of unittest
-        # -- it actually does nothing so it barely matters :)
+    def _testConcluded(self, test):
+        """Common code when a test has finished.
+
+        Called regardless of whether it succeded, failed, etc.
+        """
+        self._cleanupLogFile(test)
+
+    def _addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        """The test will not be run because of a missing feature.
+        """
+        # this can be called in two different ways: it may be that the
+        # test started running, and then raised (through addError) 
+        # UnavailableFeature.  Alternatively this method can be called
+        # while probing for features before running the tests; in that
+        # case we will see startTest and stopTest, but the test will never
+        # actually run.
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
+
+    def _addSkipped(self, test, skip_excinfo):
+        if isinstance(skip_excinfo[1], TestNotApplicable):
+            self.not_applicable_count += 1
+            self.report_not_applicable(test, skip_excinfo)
+        else:
+            self.skip_count += 1
+            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
@@ -295,6 +345,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         except:
             self.addError(test, test.__exc_info())
         else:
+            # seems best to treat this as success from point-of-view of unittest
+            # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
@@ -320,6 +372,11 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def report_success(self, test):
         pass
+
+    def wasStrictlySuccessful(self):
+        if self.unsupported or self.known_failure_count:
+            return False
+        return self.wasSuccessful()
 
 
 class TextTestResult(ExtendedTestResult):
@@ -392,20 +449,10 @@ class TextTestResult(ExtendedTestResult):
             self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
-        if False:
-            # at the moment these are mostly not things we can fix
-            # and so they just produce stipple; use the verbose reporter
-            # to see them.
-            if False:
-                # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n', 
-                    self._shortened_test_description(test),
-                    skip_excinfo[1])
-            else:
-                # since the class name was left behind in the still-visible
-                # progress bar...
-                self.pb.note('SKIP: %s', skip_excinfo[1])
+        pass
+
+    def report_not_applicable(self, test, skip_excinfo):
+        pass
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -448,21 +495,21 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.stream.writeln('ERROR %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
         self.stream.writeln(' FAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_known_failure(self, test, err):
         self.stream.writeln('XFAIL %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_success(self, test):
-        self.stream.writeln('   OK %s' % self._testTimeString())
+        self.stream.writeln('   OK %s' % self._testTimeString(test))
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
@@ -471,16 +518,19 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(),
+                % (self._testTimeString(test),
+                   self._error_summary(skip_excinfo)))
+
+    def report_not_applicable(self, test, skip_excinfo):
+        self.stream.writeln('  N/A %s\n%s'
+                % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
         self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
-                %(self._testTimeString(), feature))
-                  
+                %(self._testTimeString(test), feature))
 
 
 class TextTestRunner(object):
@@ -579,6 +629,15 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class TestNotApplicable(TestSkipped):
+    """A test is not applicable to the situation where it was run.
+
+    This is only normally raised by parameterized tests, if they find that 
+    the instance they're constructed upon does not support one aspect 
+    of its interface.
+    """
 
 
 class KnownFailure(AssertionError):
@@ -816,6 +875,14 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
@@ -845,12 +912,9 @@ class TestCase(unittest.TestCase):
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
-        missing = []
-        for entry in sublist:
-            if entry not in superlist:
-                missing.append(entry)
+        missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError("value(s) %r not present in container %r" % 
+            raise AssertionError("value(s) %r not present in container %r" %
                                  (missing, superlist))
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
@@ -989,6 +1053,13 @@ class TestCase(unittest.TestCase):
         Note that this only captures warnings raised by symbol_versioning.warn,
         not other callers that go direct to the warning module.
 
+        To test that a deprecated method raises an error, do something like
+        this::
+
+        self.assertRaises(errors.ReservedId,
+            self.applyDeprecated, zero_ninetyone,
+                br.append_revision, 'current:')
+
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the
             parameter to deprecated_method/deprecated_function. If the
@@ -1081,6 +1152,8 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # SSH Agent
+            'SSH_AUTH_SOCK': None,
             # Proxies
             'http_proxy': None,
             'HTTP_PROXY': None,
@@ -1178,9 +1251,14 @@ class TestCase(unittest.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Return as a string the log for this test. If the file is still
-        on disk and keep_log_file=False, delete the log file and store the
-        content in self._log_contents."""
+        """Get the log from bzrlib.trace calls from this test.
+
+        :param keep_log_file: When True, if the log is still a file on disk
+            leave it as a file on disk. When False, if the log is still a file
+            on disk, the log file is deleted and the log preserved as
+            self._log_contents.
+        :return: A string containing the log.
+        """
         # flush the log file, to get all content
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
@@ -1333,6 +1411,10 @@ class TestCase(unittest.TestCase):
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
 
+        if kwargs:
+            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
+                            % kwargs.keys())
+
         if len(args) == 1:
             if isinstance(args[0], (list, basestring)):
                 args = args[0]
@@ -1374,12 +1456,12 @@ class TestCase(unittest.TestCase):
 
             # Make sure that commit is failing because there is nothing to do
             self.run_bzr_error(['no changes to commit'],
-                               'commit', '-m', 'my commit comment')
+                               ['commit', '-m', 'my commit comment'])
             # Make sure --strict is handling an unknown file, rather than
             # giving us the 'nothing to do' error
             self.build_tree(['unknown'])
             self.run_bzr_error(['Commit refused because there are unknown files'],
-                               'commit', '--strict', '-m', 'my commit comment')
+                               ['commit', --strict', '-m', 'my commit comment'])
         """
         kwargs.setdefault('retcode', 3)
         kwargs['error_regexes'] = error_regexes
@@ -1410,6 +1492,15 @@ class TestCase(unittest.TestCase):
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
+        if len(args) == 1:
+            if isinstance(args[0], list):
+                args = args[0]
+            elif isinstance(args[0], basestring):
+                args = list(shlex.split(args[0]))
+        else:
+            symbol_versioning.warn(zero_ninetyone %
+                                   "passing varargs to run_bzr_subprocess",
+                                   DeprecationWarning, stacklevel=3)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
@@ -1591,6 +1682,18 @@ class TestCase(unittest.TestCase):
         self.addCleanup(resetTimeout)
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
+    def make_utf8_encoded_stringio(self, encoding_type=None):
+        """Return a StringIOWrapper instance, that will encode Unicode
+        input to UTF-8.
+        """
+        if encoding_type is None:
+            encoding_type = 'strict'
+        sio = StringIO()
+        output_encoding = 'utf-8'
+        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio.encoding = output_encoding
+        return sio
+
 
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
@@ -1628,7 +1731,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """Return a writeable transport.
 
         This transport is for the test scratch space relative to
-        "self._test_root""
+        "self._test_root"
         
         :param relpath: a path relative to the base url.
         """
@@ -1975,7 +2078,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         else:
             self.failIf(osutils.lexists(path),path+" exists")
 
-    def assertInWorkingTree(self,path,root_path='.',tree=None):
+    def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -1986,7 +2089,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
 
-    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2156,6 +2259,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
+              strict=False,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2194,6 +2298,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
     result = runner.run(suite)
+
+    if strict:
+        return result.wasStrictlySuccessful()
+
     return result.wasSuccessful()
 
 
@@ -2205,7 +2313,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              matching_tests_first=None,
              list_only=False,
              random_seed=None,
-             exclude_pattern=None):
+             exclude_pattern=None,
+             strict=False,
+             ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2231,7 +2341,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      matching_tests_first=matching_tests_first,
                      list_only=list_only,
                      random_seed=random_seed,
-                     exclude_pattern=exclude_pattern)
+                     exclude_pattern=exclude_pattern,
+                     strict=strict)
     finally:
         default_transport = old_transport
 
@@ -2244,6 +2355,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2260,13 +2372,13 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
+                   'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
@@ -2295,6 +2407,7 @@ def test_suite():
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_lsprof',
+                   'bzrlib.tests.test_mail_client',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
@@ -2302,10 +2415,12 @@ def test_suite():
                    'bzrlib.tests.test_merge_directive',
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
+                   'bzrlib.tests.test_multiparent',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
+                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -2356,6 +2471,7 @@ def test_suite():
                    'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
+                   'bzrlib.tests.test_win32utils',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
@@ -2381,22 +2497,63 @@ def test_suite():
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' %(m,e)
             raise
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'test_suite', None) is not None:
-            default_encoding = sys.getdefaultencoding()
-            try:
-                plugin_suite = plugin.test_suite()
-            except ImportError, e:
-                bzrlib.trace.warning(
-                    'Unable to test plugin "%s": %s', name, e)
-            else:
+    default_encoding = sys.getdefaultencoding()
+    for name, plugin in bzrlib.plugin.plugins().items():
+        try:
+            plugin_suite = plugin.test_suite()
+        except ImportError, e:
+            bzrlib.trace.warning(
+                'Unable to test plugin "%s": %s', name, e)
+        else:
+            if plugin_suite is not None:
                 suite.addTest(plugin_suite)
-            if default_encoding != sys.getdefaultencoding():
-                bzrlib.trace.warning(
-                    'Plugin "%s" tried to reset default encoding to: %s', name,
-                    sys.getdefaultencoding())
-                reload(sys)
-                sys.setdefaultencoding(default_encoding)
+        if default_encoding != sys.getdefaultencoding():
+            bzrlib.trace.warning(
+                'Plugin "%s" tried to reset default encoding to: %s', name,
+                sys.getdefaultencoding())
+            reload(sys)
+            sys.setdefaultencoding(default_encoding)
+    return suite
+
+
+def multiply_tests_from_modules(module_name_list, scenario_iter):
+    """Adapt all tests in some given modules to given scenarios.
+
+    This is the recommended public interface for test parameterization.
+    Typically the test_suite() method for a per-implementation test
+    suite will call multiply_tests_from_modules and return the 
+    result.
+
+    :param module_name_list: List of fully-qualified names of test
+        modules.
+    :param scenario_iter: Iterable of pairs of (scenario_name, 
+        scenario_param_dict).
+
+    This returns a new TestSuite containing the cross product of
+    all the tests in all the modules, each repeated for each scenario.
+    Each test is adapted by adding the scenario name at the end 
+    of its name, and updating the test object's __dict__ with the
+    scenario_param_dict.
+
+    >>> r = multiply_tests_from_modules(
+    ...     ['bzrlib.tests.test_sampler'],
+    ...     [('one', dict(param=1)), 
+    ...      ('two', dict(param=2))])
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    loader = TestLoader()
+    suite = TestSuite()
+    adapter = TestScenarioApplier()
+    adapter.scenarios = list(scenario_iter)
+    adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
 
@@ -2457,6 +2614,17 @@ class Feature(object):
         return self.__class__.__name__
 
 
+class _SymlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_symlinks()
+
+    def feature_name(self):
+        return 'symlinks'
+
+SymlinkFeature = _SymlinkFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 
@@ -2484,3 +2652,21 @@ class TestScenarioApplier(object):
         new_id = "%s(%s)" % (new_test.id(), scenario[0])
         new_test.id = lambda: new_id
         return new_test
+
+
+def probe_unicode_in_user_encoding():
+    """Try to encode several unicode strings to use in unicode-aware tests.
+    Return first successfull match.
+
+    :return:  (unicode value, encoded plain string value) or (None, None)
+    """
+    possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+    for uni_val in possible_vals:
+        try:
+            str_val = uni_val.encode(bzrlib.user_encoding)
+        except UnicodeEncodeError:
+            # Try a different character
+            pass
+        else:
+            return uni_val, str_val
+    return None, None

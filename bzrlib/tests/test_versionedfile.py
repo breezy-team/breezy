@@ -34,9 +34,12 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitAnnotateFactory,
+    KnitPlainFactory,
+    )
+from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -81,18 +84,14 @@ class VersionedFileTestMixIn(object):
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}
-        parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
+        _, _, parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
         try:
-            parent_texts['r1'] = f.add_lines_with_ghosts('r1',
-                                                         ['r0', 'ghost'], 
-                                                         ['b\n', 'c\n'],
-                                                         parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines_with_ghosts('r1',
+                ['r0', 'ghost'], ['b\n', 'c\n'], parent_texts=parent_texts)
         except NotImplementedError:
             # if the format doesn't support ghosts, just add normally.
-            parent_texts['r1'] = f.add_lines('r1',
-                                             ['r0'], 
-                                             ['b\n', 'c\n'],
-                                             parent_texts=parent_texts)
+            _, _, parent_texts['r1'] = f.add_lines('r1',
+                ['r0'], ['b\n', 'c\n'], parent_texts=parent_texts)
         f.add_lines('r2', ['r1'], ['c\n', 'd\n'], parent_texts=parent_texts)
         self.assertNotEqual(None, parent_texts['r0'])
         self.assertNotEqual(None, parent_texts['r1'])
@@ -126,6 +125,23 @@ class VersionedFileTestMixIn(object):
             (errors.BzrBadParameterUnicode, NotImplementedError),
             vf.add_lines_with_ghosts, 'a', [], ['a\n', u'b\n', 'c\n'])
 
+    def test_add_follows_left_matching_blocks(self):
+        """If we change left_matching_blocks, delta changes
+
+        Note: There are multiple correct deltas in this case, because
+        we start with 1 "a" and we get 3.
+        """
+        vf = self.get_file()
+        if isinstance(vf, WeaveFile):
+            raise TestSkipped("WeaveFile ignores left_matching_blocks")
+        vf.add_lines('1', [], ['a\n'])
+        vf.add_lines('2', ['1'], ['a\n', 'a\n', 'a\n'],
+                     left_matching_blocks=[(0, 0, 1), (1, 3, 0)])
+        self.assertEqual(['a\n', 'a\n', 'a\n'], vf.get_lines('2'))
+        vf.add_lines('3', ['1'], ['a\n', 'a\n', 'a\n'],
+                     left_matching_blocks=[(0, 2, 1), (1, 3, 0)])
+        self.assertEqual(['a\n', 'a\n', 'a\n'], vf.get_lines('3'))
+
     def test_inline_newline_throws(self):
         # \r characters are not permitted in lines being added
         vf = self.get_file()
@@ -146,109 +162,91 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.ReservedId,
             vf.add_lines, 'a:', [], ['a\n', 'b\n', 'c\n'])
 
-        self.assertRaises(errors.ReservedId,
-            vf.add_delta, 'a:', [], None, 'sha1', False, ((0, 0, 0, []),))
+    def test_add_lines_nostoresha(self):
+        """When nostore_sha is supplied using old content raises."""
+        vf = self.get_file()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        shas = []
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            sha, _, _ = vf.add_lines(version, [], lines)
+            shas.append(sha)
+        # we now have a copy of all the lines in the vf.
+        for sha, (version, lines) in zip(
+            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
+            self.assertRaises(errors.ExistingContent,
+                vf.add_lines, version + "2", [], lines,
+                nostore_sha=sha)
+            # and no new version should have been added.
+            self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
+                version + "2")
+
+    def test_add_lines_with_ghosts_nostoresha(self):
+        """When nostore_sha is supplied using old content raises."""
+        vf = self.get_file()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        shas = []
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            sha, _, _ = vf.add_lines(version, [], lines)
+            shas.append(sha)
+        # we now have a copy of all the lines in the vf.
+        # is the test applicable to this vf implementation?
+        try:
+            vf.add_lines_with_ghosts('d', [], [])
+        except NotImplementedError:
+            raise TestSkipped("add_lines_with_ghosts is optional")
+        for sha, (version, lines) in zip(
+            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
+            self.assertRaises(errors.ExistingContent,
+                vf.add_lines_with_ghosts, version + "2", [], lines,
+                nostore_sha=sha)
+            # and no new version should have been added.
+            self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
+                version + "2")
+
+    def test_add_lines_return_value(self):
+        # add_lines should return the sha1 and the text size.
+        vf = self.get_file()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        # check results for the three cases:
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            # the first two elements are the same for all versioned files:
+            # - the digest and the size of the text. For some versioned files
+            #   additional data is returned in additional tuple elements.
+            result = vf.add_lines(version, [], lines)
+            self.assertEqual(3, len(result))
+            self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+                result[0:2])
+        # parents should not affect the result:
+        lines = sample_text_nl[1]
+        self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
+            vf.add_lines('d', ['b', 'c'], lines)[0:2])
 
     def test_get_reserved(self):
         vf = self.get_file()
-        self.assertRaises(errors.ReservedId, vf.get_delta, 'b:')
         self.assertRaises(errors.ReservedId, vf.get_texts, ['b:'])
         self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
         self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
 
-    def test_get_delta(self):
-        f = self.get_file()
-        sha1s = self._setup_for_deltas(f)
-        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
-                          [(0, 0, 1, [('base', 'line\n')])])
-        self.assertEqual(expected_delta, f.get_delta('base'))
-        next_parent = 'base'
-        text_name = 'chain1-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], 
-                              False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, f.get_delta(new_version))
-            next_parent = new_version
-        next_parent = 'base'
-        text_name = 'chain2-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, f.get_delta(new_version))
-            next_parent = new_version
-        # smoke test for eol support
-        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
-        self.assertEqual(['line'], f.get_lines('noeol'))
-        self.assertEqual(expected_delta, f.get_delta('noeol'))
-
-    def test_get_deltas(self):
-        f = self.get_file()
-        sha1s = self._setup_for_deltas(f)
-        deltas = f.get_deltas(f.versions())
-        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
-                          [(0, 0, 1, [('base', 'line\n')])])
-        self.assertEqual(expected_delta, deltas['base'])
-        next_parent = 'base'
-        text_name = 'chain1-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], 
-                              False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, deltas[new_version])
-            next_parent = new_version
-        next_parent = 'base'
-        text_name = 'chain2-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, deltas[new_version])
-            next_parent = new_version
-        # smoke tests for eol support
-        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
-        self.assertEqual(['line'], f.get_lines('noeol'))
-        self.assertEqual(expected_delta, deltas['noeol'])
-        # smoke tests for eol support - two noeol in a row same content
-        expected_deltas = (('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
-                          [(0, 1, 2, [('noeolsecond', 'line\n'), ('noeolsecond', 'line\n')])]),
-                          ('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
-                           [(0, 0, 1, [('noeolsecond', 'line\n')]), (1, 1, 0, [])]))
-        self.assertEqual(['line\n', 'line'], f.get_lines('noeolsecond'))
-        self.assertTrue(deltas['noeolsecond'] in expected_deltas)
-        # two no-eol in a row, different content
-        expected_delta = ('noeolsecond', '8bb553a84e019ef1149db082d65f3133b195223b', True, 
-                          [(1, 2, 1, [('noeolnotshared', 'phone\n')])])
-        self.assertEqual(['line\n', 'phone'], f.get_lines('noeolnotshared'))
-        self.assertEqual(expected_delta, deltas['noeolnotshared'])
-        # eol folling a no-eol with content change
-        expected_delta = ('noeol', 'a61f6fb6cfc4596e8d88c34a308d1e724caf8977', False, 
-                          [(0, 1, 1, [('eol', 'phone\n')])])
-        self.assertEqual(['phone\n'], f.get_lines('eol'))
-        self.assertEqual(expected_delta, deltas['eol'])
-        # eol folling a no-eol with content change
-        expected_delta = ('noeol', '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
-                          [(0, 1, 1, [('eolline', 'line\n')])])
-        self.assertEqual(['line\n'], f.get_lines('eolline'))
-        self.assertEqual(expected_delta, deltas['eolline'])
-        # eol with no parents
-        expected_delta = (None, '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, 
-                          [(0, 0, 1, [('noeolbase', 'line\n')])])
-        self.assertEqual(['line'], f.get_lines('noeolbase'))
-        self.assertEqual(expected_delta, deltas['noeolbase'])
-        # eol with two parents, in inverse insertion order
-        expected_deltas = (('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
-                            [(0, 1, 1, [('eolbeforefirstparent', 'line\n')])]),
-                           ('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
-                            [(0, 1, 1, [('eolbeforefirstparent', 'line\n')])]))
-        self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
-        #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
+    def test_make_mpdiffs(self):
+        from bzrlib import multiparent
+        vf = self.get_file('foo')
+        sha1s = self._setup_for_deltas(vf)
+        new_vf = self.get_file('bar')
+        for version in multiparent.topo_iter(vf):
+            mpdiff = vf.make_mpdiffs([version])[0]
+            new_vf.add_mpdiffs([(version, vf.get_parents(version),
+                                 vf.get_sha1(version), mpdiff)])
+            self.assertEqualDiff(vf.get_text(version),
+                                 new_vf.get_text(version))
 
     def _setup_for_deltas(self, f):
-        self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
+        self.assertFalse(f.has_version('base'))
         # add texts that should trip the knit maximum delta chain threshold
         # as well as doing parallel chains of data in knits.
         # this is done by two chains of 25 insertions
@@ -317,45 +315,6 @@ class VersionedFileTestMixIn(object):
             next_parent = new_version
         return sha1s
 
-    def test_add_delta(self):
-        # tests for the add-delta facility.
-        # at this point, optimising for speed, we assume no checks when deltas are inserted.
-        # this may need to be revisited.
-        source = self.get_file('source')
-        source.add_lines('base', [], ['line\n'])
-        next_parent = 'base'
-        text_name = 'chain1-'
-        text = ['line\n']
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            text = text + ['line\n']
-            source.add_lines(new_version, [next_parent], text)
-            next_parent = new_version
-        next_parent = 'base'
-        text_name = 'chain2-'
-        text = ['line\n']
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            text = text + ['line\n']
-            source.add_lines(new_version, [next_parent], text)
-            next_parent = new_version
-        source.add_lines('noeol', ['base'], ['line'])
-        
-        target = self.get_file('target')
-        for version in source.versions():
-            parent, sha1, noeol, delta = source.get_delta(version)
-            target.add_delta(version,
-                             source.get_parents(version),
-                             parent,
-                             sha1,
-                             noeol,
-                             delta)
-        self.assertRaises(RevisionAlreadyPresent,
-                          target.add_delta, 'base', [], None, '', False, [])
-        for version in source.versions():
-            self.assertEqual(source.get_lines(version),
-                             target.get_lines(version))
-
     def test_ancestry(self):
         f = self.get_file()
         self.assertEqual([], f.get_ancestry([]))
@@ -390,7 +349,6 @@ class VersionedFileTestMixIn(object):
     def test_mutate_after_finish(self):
         f = self.get_file()
         f.transaction_finished()
-        self.assertRaises(errors.OutSideTransaction, f.add_delta, '', [], '', '', False, [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
@@ -453,9 +411,9 @@ class VersionedFileTestMixIn(object):
     def test_get_graph(self):
         f = self.get_file()
         graph = {
-            'v1': [],
-            'v2': ['v1'],
-            'v3': ['v2']}
+            'v1': (),
+            'v2': ('v1', ),
+            'v3': ('v2', )}
         self.build_graph(f, graph)
         self.assertEqual(graph, f.get_graph())
     
@@ -463,21 +421,21 @@ class VersionedFileTestMixIn(object):
         f = self.get_file()
         complex_graph = {}
         simple_a = {
-            'c': [],
-            'b': ['c'],
-            'a': ['b'],
+            'c': (),
+            'b': ('c', ),
+            'a': ('b', ),
             }
         complex_graph.update(simple_a)
         simple_b = {
-            'c': [],
-            'b': ['c'],
+            'c': (),
+            'b': ('c', ),
             }
         complex_graph.update(simple_b)
         simple_gam = {
-            'c': [],
-            'oo': [],
-            'bar': ['oo', 'c'],
-            'gam': ['bar'],
+            'c': (),
+            'oo': (),
+            'bar': ('oo', 'c'),
+            'gam': ('bar', ),
             }
         complex_graph.update(simple_gam)
         simple_b_gam = {}
@@ -512,25 +470,6 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(RevisionNotPresent,
             f.annotate, 'foo')
 
-    def test_walk(self):
-        # tests that walk returns all the inclusions for the requested
-        # revisions as well as the revisions changes themselves.
-        f = self.get_file('1')
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
-        f.add_lines('rX', ['r1'], ['d\n', 'b\n'])
-        f.add_lines('rY', ['r1'], ['c\n', 'e\n'])
-
-        lines = {}
-        for lineno, insert, dset, text in f.walk(['rX', 'rY']):
-            lines[text] = (insert, dset)
-
-        self.assertTrue(lines['a\n'], ('r0', set(['r1'])))
-        self.assertTrue(lines['b\n'], ('r0', set(['rY'])))
-        self.assertTrue(lines['c\n'], ('r1', set(['rX'])))
-        self.assertTrue(lines['d\n'], ('rX', set([])))
-        self.assertTrue(lines['e\n'], ('rY', set([])))
-
     def test_detection(self):
         # Test weaves detect corruption.
         #
@@ -559,6 +498,37 @@ class VersionedFileTestMixIn(object):
     def reopen_file(self, name='foo'):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
+
+    def test_iter_parents(self):
+        """iter_parents returns the parents for many nodes."""
+        f = self.get_file()
+        # sample data:
+        # no parents
+        f.add_lines('r0', [], ['a\n', 'b\n'])
+        # 1 parents
+        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
+        # 2 parents
+        f.add_lines('r2', ['r1', 'r0'], ['a\n', 'b\n'])
+        # XXX TODO a ghost
+        # cases: each sample data individually:
+        self.assertEqual(set([('r0', ())]),
+            set(f.iter_parents(['r0'])))
+        self.assertEqual(set([('r1', ('r0', ))]),
+            set(f.iter_parents(['r1'])))
+        self.assertEqual(set([('r2', ('r1', 'r0'))]),
+            set(f.iter_parents(['r2'])))
+        # no nodes returned for a missing node
+        self.assertEqual(set(),
+            set(f.iter_parents(['missing'])))
+        # 1 node returned with missing nodes skipped
+        self.assertEqual(set([('r1', ('r0', ))]),
+            set(f.iter_parents(['ghost1', 'r1', 'ghost'])))
+        # 2 nodes returned
+        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
+            set(f.iter_parents(['r0', 'r1'])))
+        # 2 nodes returned, missing skipped
+        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
+            set(f.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by
@@ -690,7 +660,7 @@ class VersionedFileTestMixIn(object):
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([], vf.get_parents('notbxbfse'))
-        self.assertEqual({'notbxbfse':[]}, vf.get_graph())
+        self.assertEqual({'notbxbfse':()}, vf.get_graph())
         self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
                          vf.has_version, parent_id_unicode))
         self.assertFalse(vf.has_version(parent_id_utf8))
@@ -707,8 +677,8 @@ class VersionedFileTestMixIn(object):
                             vf.add_lines, parent_id_unicode, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
-        self.assertEqual({parent_id_utf8:[],
-                          'notbxbfse':[parent_id_utf8],
+        self.assertEqual({parent_id_utf8:(),
+                          'notbxbfse':(parent_id_utf8, ),
                           },
                          vf.get_graph())
         self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
@@ -750,7 +720,6 @@ class VersionedFileTestMixIn(object):
         factory = self.get_factory()
         vf = factory('id', transport, 0777, create=True, access_mode='w')
         vf = factory('id', transport, access_mode='r')
-        self.assertRaises(errors.ReadOnlyError, vf.add_delta, '', [], '', '', False, [])
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
                           vf.add_lines_with_ghosts,
@@ -776,9 +745,14 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
+
+        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
+                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+                          '3f786850e387550fdab836ed7e6dc881de23001b'],
+                          vf.get_sha1s(['a', 'c', 'b']))
         
 
-class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -830,11 +804,11 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         return WeaveFile
 
 
-class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return self.get_factory()(name, get_transport(self.get_url('.')),
+                                  delta=True, create=True)
 
     def get_factory(self):
         return KnitVersionedFile
@@ -846,7 +820,7 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo', create=False):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return self.get_factory()(name, get_transport(self.get_url('.')),
             delta=True,
             create=create)
 
@@ -859,6 +833,19 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
                           KnitVersionedFile,
                           'foo',
                           get_transport(self.get_url('.')))
+
+
+class TestPlaintextKnit(TestKnit):
+    """Test a knit with no cached annotations"""
+
+    def _factory(self, name, transport, file_mode=None, access_mode=None,
+                 delta=True, create=False):
+        return KnitVersionedFile(name, transport, file_mode, access_mode,
+                                 KnitPlainFactory(), delta=delta,
+                                 create=create)
+
+    def get_factory(self):
+        return self._factory
 
 
 class InterString(versionedfile.InterVersionedFile):
@@ -879,7 +866,7 @@ class InterString(versionedfile.InterVersionedFile):
 # if we make the registry a separate class though we still need to 
 # test the behaviour in the active registry to catch failure-to-handle-
 # stange-objects
-class TestInterVersionedFile(TestCaseWithTransport):
+class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
     def test_get_default_inter_versionedfile(self):
         # test that the InterVersionedFile.get(a, b) probes
@@ -1199,7 +1186,7 @@ class MergeCasesMixin(object):
         self._test_merge_from_strings(base, a, b, result)
 
 
-class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
@@ -1209,7 +1196,7 @@ class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
         pass
 
 
-class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -1222,3 +1209,23 @@ class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
+
+
+class TestFormatSignatures(TestCaseWithMemoryTransport):
+
+    def get_knit_file(self, name, annotated):
+        if annotated:
+            factory = KnitAnnotateFactory()
+        else:
+            factory = KnitPlainFactory()
+        return KnitVersionedFile(
+            name, get_transport(self.get_url('.')), create=True,
+            factory=factory)
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.get_knit_file('a', True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('p', False)
+        self.assertEqual('knit-plain', knit.get_format_signature())
+

@@ -52,6 +52,7 @@ from bzrlib.tests import (
 from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.repofmt import weaverepo
@@ -129,11 +130,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
         TestSkipped.  Returns the newly sprouted bzrdir.
         """
-        try:
-            target = from_bzrdir.sprout(to_url, revision_id=revision_id,
-                                        force_new_repo=force_new_repo)
-        except errors.NotLocalUrl:
+        to_transport = get_transport(to_url)
+        if not isinstance(to_transport, LocalTransport):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
+        target = from_bzrdir.sprout(to_url, revision_id=revision_id,
+                                    force_new_repo=force_new_repo,
+                                    possible_transports=[to_transport])
         return target
 
     def test_create_null_workingtree(self):
@@ -443,7 +445,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
 
     def test_revert_inventory(self):
         tree = self.make_branch_and_tree('source')
@@ -462,7 +464,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
                                      './.bzr/checkout/dirstate',

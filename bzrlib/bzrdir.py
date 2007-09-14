@@ -25,15 +25,17 @@ directories.
 
 from cStringIO import StringIO
 import os
-import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from stat import S_ISDIR
+import textwrap
+from warnings import warn
 
 import bzrlib
 from bzrlib import (
     errors,
+    graph,
     lockable_files,
     lockdir,
     registry,
@@ -48,7 +50,6 @@ from bzrlib import (
     workingtree_4,
     )
 from bzrlib.osutils import (
-    safe_unicode,
     sha_strings,
     sha_string,
     )
@@ -70,6 +71,11 @@ from bzrlib.trace import (
     note,
     )
 from bzrlib.transport.local import LocalTransport
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    zero_ninetyone,
+    )
 
 
 class BzrDir(object):
@@ -209,9 +215,8 @@ class BzrDir(object):
         t = get_transport(url)
         t.ensure_base()
 
-    # TODO: Should take a Transport
     @classmethod
-    def create(cls, base, format=None):
+    def create(cls, base, format=None, possible_transports=None):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
@@ -219,15 +224,17 @@ class BzrDir(object):
 
         :param format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
+        :param possible_transports: If supplied, a list of transports that 
+            can be reused to share a remote connection.
         """
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default"
                 " format, not one of %r" % cls)
-        t = get_transport(base)
+        t = get_transport(base, possible_transports)
         t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return format.initialize(safe_unicode(base))
+        return format.initialize(base, possible_transports)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -266,7 +273,8 @@ class BzrDir(object):
         
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
-                                  force_new_tree=None, format=None):
+                                  force_new_tree=None, format=None,
+                                  possible_transports=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This is a convenience function - it will use an existing repository
@@ -288,25 +296,27 @@ class BzrDir(object):
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
-        :param format: Override for the for the bzrdir format to create
+        :param format: Override for the for the bzrdir format to create.
+        :param possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
             # check for non local urls
-            t = get_transport(safe_unicode(base))
+            t = get_transport(base, possible_transports)
             if not isinstance(t, LocalTransport):
                 raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create(base, format)
+        bzrdir = BzrDir.create(base, format, possible_transports)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
-        if force_new_tree or (repo.make_working_trees() and 
+        if force_new_tree or (repo.make_working_trees() and
                               force_new_tree is None):
             try:
                 bzrdir.create_workingtree()
             except errors.NotLocalUrl:
                 pass
         return result
-        
+
     @staticmethod
+    @deprecated_function(zero_ninetyone)
     def create_repository(base, shared=False, format=None):
         """Create a new BzrDir and Repository at the url 'base'.
 
@@ -321,6 +331,9 @@ class BzrDir(object):
         This must be overridden as an instance method in child classes, where
         it should take no parameters and construct whatever repository format
         that child class desires.
+
+        This method is deprecated, please call create_repository on a bzrdir
+        instance instead.
         """
         bzrdir = BzrDir.create(base, format)
         return bzrdir.create_repository(shared)
@@ -337,10 +350,10 @@ class BzrDir(object):
 
         :return: The WorkingTree object.
         """
-        t = get_transport(safe_unicode(base))
+        t = get_transport(base)
         if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base),
+        bzrdir = BzrDir.create_branch_and_repo(base,
                                                force_new_repo=True,
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
@@ -520,12 +533,12 @@ class BzrDir(object):
         return BzrDir.open(base, _unsupported=True)
         
     @staticmethod
-    def open(base, _unsupported=False):
+    def open(base, _unsupported=False, possible_transports=None):
         """Open an existing bzrdir, rooted at 'base' (url)
         
         _unsupported is a private parameter to the BzrDir class.
         """
-        t = get_transport(base)
+        t = get_transport(base, possible_transports=possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
@@ -581,13 +594,14 @@ class BzrDir(object):
         raise NotImplementedError(self.open_branch)
 
     @staticmethod
-    def open_containing(url):
+    def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
         
         :param url: url to search from.
         See open_containing_from_transport for more detail.
         """
-        return BzrDir.open_containing_from_transport(get_transport(url))
+        transport = get_transport(url, possible_transports)
+        return BzrDir.open_containing_from_transport(transport)
     
     @staticmethod
     def open_containing_from_transport(a_transport):
@@ -743,7 +757,7 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               recurse='down'):
+               recurse='down', possible_transports=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -757,7 +771,7 @@ class BzrDir(object):
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
         """
-        target_transport = get_transport(url)
+        target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
@@ -784,21 +798,22 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            result_repo = source_repository.sprout(result, revision_id=revision_id)
+            result_repo = source_repository.sprout(result,
+                                                   revision_id=revision_id)
         else:
             # fetch needed content into target.
             if source_repository is not None:
                 # would rather do 
-                # source_repository.copy_content_into(result_repo, revision_id=revision_id)
+                # source_repository.copy_content_into(result_repo,
+                #                                     revision_id=revision_id)
                 # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        # TODO: jam 20060426 we probably need a test in here in the
-        #       case that the newly sprouted branch is a remote one
-        if result_repo is None or result_repo.make_working_trees():
+        if isinstance(target_transport, LocalTransport) and (
+            result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree()
             wt.lock_write()
             try:
@@ -958,7 +973,8 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def sprout(self, url, revision_id=None, force_new_repo=False):
+    def sprout(self, url, revision_id=None, force_new_repo=False,
+               possible_transports=None):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1068,7 +1084,7 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert([], old_tree=empty)
+        wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
@@ -1287,13 +1303,14 @@ class BzrDirFormat(object):
         """
         raise NotImplementedError(self.get_converter)
 
-    def initialize(self, url):
+    def initialize(self, url, possible_transports=None):
         """Create a bzr control dir at this url and return an opened copy.
         
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
-        return self.initialize_on_transport(get_transport(url))
+        return self.initialize_on_transport(get_transport(url,
+                                                          possible_transports))
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1788,7 +1805,7 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
                     self.branch.control_files.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
@@ -1873,10 +1890,10 @@ class ConvertBzrDir4To5(Converter):
         present_parents = [p for p in rev.parent_ids
                            if p not in self.absent_revisions]
         self._convert_revision_contents(rev, inv, present_parents)
-        self._store_new_weave(rev, inv, present_parents)
+        self._store_new_inv(rev, inv, present_parents)
         self.converted_revs.add(rev_id)
 
-    def _store_new_weave(self, rev, inv, present_parents):
+    def _store_new_inv(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
             entries = inv.iter_entries()
@@ -1887,7 +1904,7 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add_lines(rev.revision_id, 
+        self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1
@@ -1918,17 +1935,23 @@ class ConvertBzrDir4To5(Converter):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_entries = ie.find_previous_heads(parent_invs,
-                                                  None,
-                                                  None,
-                                                  entry_vf=w)
-        for old_revision in previous_entries:
-                # if this fails, its a ghost ?
-                assert old_revision in self.converted_revs, \
-                    "Revision {%s} not in converted_revs" % old_revision
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        for old_revision in parent_candiate_entries.keys():
+            # if this fails, its a ghost ?
+            assert old_revision in self.converted_revs, \
+                "Revision {%s} not in converted_revs" % old_revision
+        heads = graph.Graph(self).heads(parent_candiate_entries.keys())
+        # XXX: Note that this is unordered - and this is tolerable because 
+        # the previous code was also unordered.
+        previous_entries = dict((head, parent_candiate_entries[head]) for head
+            in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
+
+    def get_parents(self, revision_ids):
+        for revision_id in revision_ids:
+            yield self.revisions[revision_id].parent_ids
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
@@ -1944,7 +1967,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.text_store.get(ie.text_id)
+            text = self.branch.repository.weave_store.get(ie.text_id)
             file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
@@ -2217,14 +2240,15 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
-            medium = transport.get_smart_medium()
+            shared_medium = transport.get_shared_medium()
         except errors.NoSmartMedium:
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(medium)
+        client = _SmartClient(shared_medium)
         path = client.remote_path_from_transport(transport)
-        response = _SmartClient(medium).call('BzrDirFormat.initialize', path)
+        response = _SmartClient(shared_medium).call('BzrDirFormat.initialize',
+                                                    path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
@@ -2342,13 +2366,11 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def help_topic(self, topic):
         output = textwrap.dedent("""\
-            Bazaar directory formats
-            ------------------------
-
             These formats can be used for creating branches, working trees, and
             repositories.
 
             """)
+        default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
         for key in self.keys():
@@ -2363,11 +2385,12 @@ class BzrDirFormatRegistry(registry.Registry):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return '  %s:\n%s\n\n' % (key, 
+            return ':%s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped('%s/default' % default_realkey, default_help,
-                          self.get_info('default'))
+        if default_realkey is not None:
+            output += wrapped(default_realkey, '(default) %s' % default_help,
+                              self.get_info('default'))
         deprecated_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)
@@ -2378,7 +2401,7 @@ class BzrDirFormatRegistry(registry.Registry):
             else:
                 output += wrapped(key, help, info)
         if len(deprecated_pairs) > 0:
-            output += "Deprecated formats\n------------------\n\n"
+            output += "Deprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
                 output += wrapped(key, help, info)
@@ -2428,4 +2451,4 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.set_default('dirstate')
+format_registry.set_default('dirstate-tags')

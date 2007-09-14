@@ -23,6 +23,7 @@ import pprint
 
 from bzrlib import (
     osutils,
+    timestamp,
     )
 import bzrlib.errors
 from bzrlib.bundle import apply_bundle
@@ -87,12 +88,26 @@ class RevisionInfo(object):
 
         return rev
 
+    @staticmethod
+    def from_revision(revision):
+        revision_info = RevisionInfo(revision.revision_id)
+        date = timestamp.format_highres_date(revision.timestamp,
+                                             revision.timezone)
+        revision_info.date = date
+        revision_info.timezone = revision.timezone
+        revision_info.timestamp = revision.timestamp
+        revision_info.message = revision.message.split('\n')
+        revision_info.properties = [': '.join(p) for p in
+                                    revision.properties.iteritems()]
+        return revision_info
+
 
 class BundleInfo(object):
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
-    def __init__(self):
+    def __init__(self, bundle_format=None):
+        self.bundle_format = None
         self.committer = None
         self.date = None
         self.message = None
@@ -442,10 +457,21 @@ class BundleInfo(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-    def install_revisions(self, target_repo):
-        """Install revisions and return the target revision"""
+    def install_revisions(self, target_repo, stream_input=True):
+        """Install revisions and return the target revision
+
+        :param target_repo: The repository to install into
+        :param stream_input: Ignored by this implementation.
+        """
         apply_bundle.install_bundle(target_repo, self)
         return self.target
+
+    def get_merge_request(self, target_repo):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.target, 'inapplicable'
 
 
 class BundleTree(Tree):

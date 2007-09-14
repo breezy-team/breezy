@@ -50,6 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
+from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
 from bzrlib.trace import mutter
 
 
@@ -161,7 +162,42 @@ class InventoryEntry(object):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
+    
+    def parent_candidates(self, previous_inventories):
+        """Find possible per-file graph parents.
 
+        This is currently defined by:
+         - Select the last changed revision in the parent inventory.
+         - Do deal with a short lived bug in bzr 0.8's development two entries
+           that have the same last changed but different 'x' bit settings are
+           changed in-place.
+        """
+        # revision:ie mapping for each ie found in previous_inventories.
+        candidates = {}
+        # identify candidate head revision ids.
+        for inv in previous_inventories:
+            if self.file_id in inv:
+                ie = inv[self.file_id]
+                assert ie.file_id == self.file_id
+                if ie.revision in candidates:
+                    # same revision value in two different inventories:
+                    # correct possible inconsistencies:
+                    #     * there was a bug in revision updates with 'x' bit 
+                    #       support.
+                    try:
+                        if candidates[ie.revision].executable != ie.executable:
+                            candidates[ie.revision].executable = False
+                            ie.executable = False
+                    except AttributeError:
+                        pass
+                    # must now be the same.
+                    assert candidates[ie.revision] == ie
+                else:
+                    # add this revision as a candidate.
+                    candidates[ie.revision] = ie
+        return candidates
+
+    @deprecated_method(zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
@@ -180,51 +216,31 @@ class InventoryEntry(object):
                             file store should be completed under.
         :param entry_vf: The entry versioned file, if its already available.
         """
-        def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
-        # revision:ie mapping for each ie found in previous_inventories.
-        candidates = {}
+        candidates = self.parent_candidates(previous_inventories)
+
         # revision:ie mapping with one revision for each head.
         heads = {}
-        # revision: ancestor list for each head
-        head_ancestors = {}
-        # identify candidate head revision ids.
-        for inv in previous_inventories:
-            if self.file_id in inv:
-                ie = inv[self.file_id]
-                assert ie.file_id == self.file_id
-                if ie.kind != self.kind:
-                    # Can't be a candidate if the kind has changed.
-                    continue
-                if ie.revision in candidates:
-                    # same revision value in two different inventories:
-                    # correct possible inconsistencies:
-                    #     * there was a bug in revision updates with 'x' bit 
-                    #       support.
-                    try:
-                        if candidates[ie.revision].executable != ie.executable:
-                            candidates[ie.revision].executable = False
-                            ie.executable = False
-                    except AttributeError:
-                        pass
-                    # must now be the same.
-                    assert candidates[ie.revision] == ie
-                else:
-                    # add this revision as a candidate.
-                    candidates[ie.revision] = ie
-
         # common case optimisation
         if len(candidates) == 1:
             # if there is only one candidate revision found
-            # then we can opening the versioned file to access ancestry:
+            # then we can avoid opening the versioned file to access ancestry:
             # there cannot be any ancestors to eliminate when there is 
             # only one revision available.
-            heads[ie.revision] = ie
-            return heads
+            return candidates
+        
+        # --- what follows is now encapsulated in repository.get_graph.heads(), 
+        #     but that is not accessible from here as we have no repository
+        #     pointer. Note that the repository.get_graph.heads() call can return
+        #     different results *at the moment* because of the kind-changing check
+        #     we have in parent_candidates().
 
         # eliminate ancestors amongst the available candidates:
         # heads are those that are not an ancestor of any other candidate
         # - this provides convergence at a per-file level.
+        def get_ancestors(weave, entry):
+            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
+        # revision: ancestor list for each head
+        head_ancestors = {}
         for ie in candidates.values():
             # may be an ancestor of a known head:
             already_present = 0 != len(
@@ -422,40 +438,23 @@ class InventoryEntry(object):
         
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
+
+        :return: True if anything was recorded
         """
-        # mutter('new parents of %s are %r', path, previous_entries)
+        # cannot be unchanged unless there is only one parent file rev.
         self._read_tree_state(path, work_tree)
-        # TODO: Where should we determine whether to reuse a
-        # previous revision id or create a new revision? 20060606
         if len(previous_entries) == 1:
-            # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
-                # mutter("found unchanged entry")
                 self.revision = parent_ie.revision
-                return "unchanged"
-        return self._snapshot_into_revision(revision, previous_entries, 
-                                            work_tree, commit_builder)
-
-    def _snapshot_into_revision(self, revision, previous_entries, work_tree,
-                                commit_builder):
-        """Record this revision unconditionally into a store.
-
-        The entry's last-changed revision property (`revision`) is updated to 
-        that of the new revision.
-        
-        :param revision: id of the new revision that is being recorded.
-
-        :returns: String description of the commit (e.g. "merged", "modified"), etc.
-        """
-        # mutter('new revision {%s} for {%s}', revision, self.file_id)
+                return False
         self.revision = revision
-        self._snapshot_text(previous_entries, work_tree, commit_builder)
+        return self._snapshot_text(previous_entries, work_tree, commit_builder)
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder): 
         """Record the 'text' of this entry, whatever form that takes.
-        
-        This default implementation simply adds an empty text.
+
+        :return: True if anything was recorded
         """
         raise NotImplementedError(self._snapshot_text)
 
@@ -586,6 +585,7 @@ class InventoryDirectory(InventoryEntry):
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
         commit_builder.modified_directory(self.file_id, file_parents)
+        return True
 
 
 class InventoryFile(InventoryEntry):
@@ -609,14 +609,14 @@ class InventoryFile(InventoryEntry):
 
         if self.file_id not in checker.checked_weaves:
             mutter('check weave {%s}', self.file_id)
-            w = tree.get_weave(self.file_id)
+            w = tree._get_weave(self.file_id)
             # Not passing a progress bar, because it creates a new
             # progress, which overwrites the current progress,
             # and doesn't look nice
             w.check()
             checker.checked_weaves[self.file_id] = True
         else:
-            w = tree.get_weave(self.file_id)
+            w = tree._get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1
@@ -665,7 +665,8 @@ class InventoryFile(InventoryEntry):
                 label_pair = (to_label, from_label)
             else:
                 label_pair = (from_label, to_label)
-            print >> output_to, "Binary files %s and %s differ" % label_pair
+            print >> output_to, \
+                  ("Binary files %s and %s differ" % label_pair).encode('utf8')
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -715,12 +716,34 @@ class InventoryFile(InventoryEntry):
     def _forget_tree_state(self):
         self.text_sha1 = None
 
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
+    def snapshot(self, revision, path, previous_entries,
+                 work_tree, commit_builder):
+        """See InventoryEntry.snapshot."""
+        # Note: We use a custom implementation of this method for files
+        # because it's a performance critical part of commit.
+
+        # If this is the initial commit for this file, we know the sha is
+        # coming later so skip calculating it now (in _read_tree_state())
+        if len(previous_entries) == 0:
+            self.executable = work_tree.is_executable(self.file_id, path=path)
+        else:
+            self._read_tree_state(path, work_tree)
+
+        # If nothing is changed from the sole parent, there's nothing to do
+        if len(previous_entries) == 1:
+            parent_ie = previous_entries.values()[0]
+            if self._unchanged(parent_ie):
+                self.revision = parent_ie.revision
+                return False
+
+        # Add the file to the repository
+        self.revision = revision
         def get_content_byte_lines():
-            return work_tree.get_file(self.file_id).readlines()
+            return work_tree.get_file(self.file_id, path).readlines()
         self.text_sha1, self.text_size = commit_builder.modified_file_text(
-            self.file_id, file_parents, get_content_byte_lines, self.text_sha1, self.text_size)
+            self.file_id, previous_entries, get_content_byte_lines,
+            self.text_sha1, self.text_size)
+        return True
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
@@ -826,6 +849,7 @@ class InventoryLink(InventoryEntry):
         """See InventoryEntry._snapshot_text."""
         commit_builder.modified_link(
             self.file_id, file_parents, self.symlink_target)
+        return True
 
 
 class TreeReference(InventoryEntry):
@@ -844,6 +868,7 @@ class TreeReference(InventoryEntry):
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         commit_builder.modified_reference(self.file_id, file_parents)
+        return True
 
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.

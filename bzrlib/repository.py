@@ -24,6 +24,7 @@ import time
 from bzrlib import (
     bzrdir,
     check,
+    debug,
     deprecated_graph,
     errors,
     generate_ids,
@@ -40,11 +41,11 @@ from bzrlib import (
     transactions,
     ui,
     )
+from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -52,9 +53,8 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_nine,
         )
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 
 # Old formats display a warning, but only once
@@ -78,8 +78,32 @@ class Repository(object):
 
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
-        r'.*revision="(?P<revision_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
         )
+
+    def abort_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._abort_write_group()
+        self._write_group = None
+
+    def _abort_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called during abort before the write group is considered to be 
+        finished and should cleanup any internal state accrued during the write
+        group. There is no requirement that data handed to the repository be
+        *not* made available - this is not a rollback - but neither should any
+        attempt be made to ensure that data added is fully commited. Abort is
+        invoked when an error has occured so futher disk or network operations
+        may not be possible or may error and if possible should not be
+        attempted.
+        """
 
     @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
@@ -96,21 +120,20 @@ class Repository(object):
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
         assert inv.root is not None
-        inv_text = self.serialise_inventory(inv)
-        inv_sha1 = osutils.sha_string(inv_text)
-        inv_vf = self.control_weaves.get_weave('inventory',
-                                               self.get_transaction())
-        self._inventory_add_lines(inv_vf, revision_id, parents,
-                                  osutils.split_lines(inv_text))
-        return inv_sha1
+        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_vf = self.get_inventory_weave()
+        return self._inventory_add_lines(inv_vf, revision_id, parents,
+            inv_lines, check_content=False)
 
-    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines,
+        check_content=True):
+        """Store lines in inv_vf and return the sha1 of the inventory."""
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-
-        inv_vf.add_lines(revision_id, final_parents, lines)
+        return inv_vf.add_lines(revision_id, final_parents, lines,
+            check_content=check_content)[0]
 
     @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
@@ -142,6 +165,12 @@ class Repository(object):
                 # yes, this is not suitable for adding with ghosts.
                 self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
+
+    def _add_revision_text(self, revision_id, text):
+        revision = self._revision_store._serializer.read_revision_from_string(
+            text)
+        self._revision_store._add_revision(revision, StringIO(text),
+                                           self.get_transaction())
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -214,9 +243,10 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         self._revision_store = _revision_store
-        self.text_store = text_store
         # backwards compatibility
         self.weave_store = text_store
+        # for tests
+        self._reconcile_does_inventory_gc = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -224,16 +254,40 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
+        self._write_group = None
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.bzrdir.transport.base)
+
+    def has_same_location(self, other):
+        """Returns a boolean indicating if this repository is at the same
+        location as another repository.
+
+        This might return False even when two repository objects are accessing
+        the same physical repository via different URLs.
+        """
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
+
+    def is_in_write_group(self):
+        """Return True if there is an open write group.
+
+        :seealso: start_write_group.
+        """
+        return self._write_group is not None
 
     def is_locked(self):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
         """Lock this repository for writing.
+
+        This causes caching within the repository obejct to start accumlating
+        data during reads, and allows a 'write_group' to be obtained. Write
+        groups must be used for actual data insertion.
         
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
@@ -242,6 +296,7 @@ class Repository(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+        :seealso: start_write_group.
 
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
@@ -249,10 +304,13 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
-        return self.control_files.lock_write(token=token)
+        result = self.control_files.lock_write(token=token)
+        self._refresh_data()
+        return result
 
     def lock_read(self):
         self.control_files.lock_read()
+        self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -353,6 +411,26 @@ class Repository(object):
         revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id)
 
+    def commit_write_group(self):
+        """Commit the contents accrued within the current write group.
+
+        :seealso: start_write_group.
+        """
+        if self._write_group is not self.get_transaction():
+            # has an unlock or relock occured ?
+            raise errors.BzrError('mismatched lock context and write group.')
+        self._commit_write_group()
+        self._write_group = None
+
+    def _commit_write_group(self):
+        """Template method for per-repository write group cleanup.
+        
+        This is called before the write group is considered to be 
+        finished and should ensure that all data handed to the repository
+        for writing during the write group is safely committed (to the 
+        extent possible considering file system caching etc).
+        """
+
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
@@ -365,8 +443,11 @@ class Repository(object):
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
                            revision_id=None):
         """Obtain a CommitBuilder for this repository.
         
@@ -380,10 +461,17 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return _CommitBuilder(self, parents, config, timestamp, timezone,
+        result = CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
     def unlock(self):
+        if (self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'w'):
+            if self._write_group is not None:
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
         self.control_files.unlock()
 
     @needs_read_lock
@@ -400,6 +488,35 @@ class Repository(object):
         dest_repo = self._create_sprouting_repo(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(dest_repo, revision_id)
         return dest_repo
+
+    def start_write_group(self):
+        """Start a write group in the repository.
+
+        Write groups are used by repositories which do not have a 1:1 mapping
+        between file ids and backend store to manage the insertion of data from
+        both fetch and commit operations.
+
+        A write lock is required around the start_write_group/commit_write_group
+        for the support of lock-requiring repository formats.
+
+        One can only insert data into a repository inside a write group.
+
+        :return: None.
+        """
+        if not self.is_locked() or self.control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        if self._write_group:
+            raise errors.BzrError('already in a write group')
+        self._start_write_group()
+        # so we can detect unlock/relock - the write group is now entered.
+        self._write_group = self.get_transaction()
+
+    def _start_write_group(self):
+        """Template method for per-repository write group startup.
+        
+        This is called before the write group is considered to be 
+        entered.
+        """
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
@@ -427,6 +544,8 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -615,6 +734,84 @@ class Repository(object):
             pb.finished()
         return result
 
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of lines produced by
+        VersionedFile.get_lines().
+
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            triples
+        """
+        transaction = self.get_transaction()
+        for file_id, revision_id, callable_data in desired_files:
+            try:
+                weave = self.weave_store.get_weave(file_id, transaction)
+            except errors.NoSuchFile:
+                raise errors.NoSuchIdInRepository(self, file_id)
+            yield callable_data, weave.get_lines(revision_id)
+
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get an iterable listing the keys of all the data introduced by a set
+        of revision IDs.
+
+        The keys will be ordered so that the corresponding items can be safely
+        fetched and inserted in that order.
+
+        :returns: An iterable producing tuples of (knit-kind, file-id,
+            versions).  knit-kind is one of 'file', 'inventory', 'signatures',
+            'revisions'.  file-id is None unless knit-kind is 'file'.
+        """
+        # XXX: it's a bit weird to control the inventory weave caching in this
+        # generator.  Ideally the caching would be done in fetch.py I think.  Or
+        # maybe this generator should explicitly have the contract that it
+        # should not be iterated until the previously yielded item has been
+        # processed?
+        inv_w = self.get_inventory_weave()
+        inv_w.enable_cache()
+
+        # file ids that changed
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        count = 0
+        num_file_ids = len(file_ids)
+        for file_id, altered_versions in file_ids.iteritems():
+            if _files_pb is not None:
+                _files_pb.update("fetch texts", count, num_file_ids)
+            count += 1
+            yield ("file", file_id, altered_versions)
+        # We're done with the files_pb.  Note that it finished by the caller,
+        # just as it was created by the caller.
+        del _files_pb
+
+        # inventory
+        yield ("inventory", None, revision_ids)
+        inv_w.clear_cache()
+
+        # signatures
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
+
+        # revisions
+        yield ("revisions", None, revision_ids)
+
     @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',
@@ -642,6 +839,12 @@ class Repository(object):
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
+
+    def _serialise_inventory_to_lines(self, inv):
+        return self._serializer.write_inventory_to_lines(inv)
+
+    def get_serializer_format(self):
+        return self._serializer.format_num
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -671,6 +874,9 @@ class Repository(object):
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
@@ -678,7 +884,7 @@ class Repository(object):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, a_weave.get_parents(node)) for 
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
                              node in all_revisions])
         if revision_id is None:
             return entire_graph
@@ -703,6 +909,9 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
@@ -788,6 +997,16 @@ class Repository(object):
         reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
+
+    def _refresh_data(self):
+        """Helper called from lock_* to ensure coherency with disk.
+
+        The default implementation does nothing; it is however possible
+        for repositories to maintain loaded indices across multiple locks
+        by checking inside their implementation of this method to see
+        whether their indices are still valid. This depends of course on
+        the disk format being validatable in this manner.
+        """
 
     @needs_read_lock
     def revision_tree(self, revision_id):
@@ -1035,7 +1254,7 @@ def install_revision(repository, rev, revision_tree):
 
     inv = revision_tree.inventory
     entries = inv.iter_entries()
-    # backwards compatability hack: skip the root id.
+    # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():
         path, root = entries.next()
         if root.revision != rev.revision_id:
@@ -1428,8 +1647,13 @@ class InterSameDataRepository(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        """Repository format for testing with."""
-        return RepositoryFormat.get_default_format()
+        """Repository format for testing with.
+        
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod
     def is_compatible(source, target):
@@ -1856,7 +2080,9 @@ class CommitBuilder(object):
     know the internals of the format of the repository.
     """
     
-    record_root_entry = False
+    # all clients should supply tree roots.
+    record_root_entry = True
+
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -1914,9 +2140,15 @@ class CommitBuilder(object):
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
         rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev, 
+        self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self.repository.commit_write_group()
         return self._new_revision_id
+
+    def abort(self):
+        """Abort the commit that is being built.
+        """
+        self.repository.abort_write_group()
 
     def revision_tree(self):
         """Return the tree that was just committed.
@@ -1960,6 +2192,30 @@ class CommitBuilder(object):
         """
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
+            self.random_revid = True
+        else:
+            self.random_revid = False
+
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
+
+        :param ie: An entry being added.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param tree: The tree that is being committed.
+        """
+        if ie.parent_id is not None:
+            # if ie is not root, add a root automatically.
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
+                                       '', tree)
+        else:
+            # In this revision format, root entries have no knit or weave When
+            # serializing out to disk and back in root.revision is always
+            # _new_revision_id
+            ie.revision = self._new_revision_id
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -1973,12 +2229,8 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
-        if self.new_inventory.root is None and ie.parent_id is not None:
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
+        if self.new_inventory.root is None:
+            self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
@@ -1987,18 +2239,14 @@ class CommitBuilder(object):
         if ie.revision is not None:
             return
 
-        # In this revision format, root entries have no knit or weave
-        if ie is self.new_inventory.root:
-            # When serializing out to disk and back in
-            # root.revision is always _new_revision_id
-            ie.revision = self._new_revision_id
-            return
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        heads = self.repository.get_graph().heads(parent_candiate_entries.keys())
+        # XXX: Note that this is unordered - and this is tolerable because 
+        # the previous code was also unordered.
+        previous_entries = dict((head, parent_candiate_entries[head]) for head
+            in heads)
+        # we are creating a new revision for ie in the history store and
+        # inventory.
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
     def modified_directory(self, file_id, file_parents):
@@ -2037,18 +2285,15 @@ class CommitBuilder(object):
             and text_sha1 == file_parents.values()[0].text_sha1
             and text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            versionedfile = self.repository.weave_store.get_weave(file_id, 
+            versionedfile = self.repository.weave_store.get_weave(file_id,
                 self.repository.get_transaction())
-            versionedfile.clone_text(self._new_revision_id, 
+            versionedfile.clone_text(self._new_revision_id,
                 previous_ie.revision, file_parents.keys())
             return text_sha1, text_size
         else:
             new_lines = get_content_byte_lines()
-            # TODO: Rather than invoking sha_strings here, _add_text_to_weave
-            # should return the SHA1 and size
-            self._add_text_to_weave(file_id, new_lines, file_parents.keys())
-            return osutils.sha_strings(new_lines), \
-                sum(map(len, new_lines))
+            return self._add_text_to_weave(file_id, new_lines,
+                file_parents.keys())
 
     def modified_link(self, file_id, file_parents, link_target):
         """Record the presence of a symbolic link.
@@ -2062,52 +2307,34 @@ class CommitBuilder(object):
     def _add_text_to_weave(self, file_id, new_lines, parents):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
-        versionedfile.add_lines(self._new_revision_id, parents, new_lines)
+        # Don't change this to add_lines - add_lines_with_ghosts is cheaper
+        # than add_lines, and allows committing when a parent is ghosted for
+        # some reason.
+        # Note: as we read the content directly from the tree, we know its not
+        # been turned into unicode or badly split - but a broken tree
+        # implementation could give us bad output from readlines() so this is
+        # not a guarantee of safety. What would be better is always checking
+        # the content during test suite execution. RBC 20070912
+        result = versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            random_id=self.random_revid, check_content=False)[0:2]
         versionedfile.clear_cache()
-
-
-class _CommitBuilder(CommitBuilder):
-    """Temporary class so old CommitBuilders are detected properly
-    
-    Note: CommitBuilder works whether or not root entry is recorded.
-    """
-
-    record_root_entry = True
+        return result
 
 
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
-    record_root_entry = True
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
-        """Record the content of ie from tree into the commit if needed.
-
-        Side effect: sets ie.revision when unchanged
-
-        :param ie: An inventory entry present in the commit.
+        :param ie: An entry being added.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
-        :param path: The path the entry is at in the tree.
-        :param tree: The tree which contains this entry and should be used to 
-        obtain content.
+        :param tree: The tree that is being committed.
         """
-        assert self.new_inventory.root is not None or ie.parent_id is None
-        self.new_inventory.add(ie)
-
-        # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
-        if ie.revision is not None:
-            return
-
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
+        # ie must be root for this builder
+        assert ie.parent_id is None
 
 
 _unescape_map = {

@@ -29,13 +29,13 @@ from bzrlib.workingtree import WorkingTree
 class TestUpdate(ExternalBase):
 
     def test_update_standalone_trivial(self):
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr('update')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_standalone_trivial_with_alias_up(self):
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr('up')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)

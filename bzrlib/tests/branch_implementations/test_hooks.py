@@ -45,10 +45,13 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('source')
         tree.lock_write()
         tree.add('')
+        tree.commit('another commit', rev_id='f\xc2\xb5')
         tree.commit('empty commit', rev_id='foo')
         tree.unlock()
         branch = tree.branch
         Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        # some branches require that their history be set to a revision in the
+        # repository
         branch.set_revision_history(['f\xc2\xb5'])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, ['f\xc2\xb5'], True)])

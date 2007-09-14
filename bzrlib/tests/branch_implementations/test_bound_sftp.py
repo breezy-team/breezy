@@ -195,8 +195,6 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertEqual(['r@b-1'], sftp_b_newbase.revision_history())
 
     def test_bind_diverged(self):
-        from bzrlib.builtins import merge
-
         b_base, wt_child = self.create_branches()
 
         wt_child.branch.unbind()
@@ -286,8 +284,6 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertEqual(['r@b-1'], b_base.revision_history())
 
     def test_commit_after_merge(self):
-        from bzrlib.builtins import merge
-
         b_base, wt_child = self.create_branches()
 
         # We want merge to be able to be a local only

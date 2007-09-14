@@ -22,6 +22,7 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
+from bzrlib import registry
 from bzrlib.trace import mutter, warning
 
 try:
@@ -50,13 +51,13 @@ from bzrlib import errors
 
 class Serializer(object):
     """Abstract object serialize/deserialize"""
+
     def write_inventory(self, inv, f):
         """Write inventory to a file"""
-        elt = self._pack_inventory(inv)
-        self._write_element(elt, f)
+        raise NotImplementedError(self.write_inventory)
 
     def write_inventory_to_string(self, inv):
-        return tostring(self._pack_inventory(inv)) + '\n'
+        raise NotImplementedError(self.write_inventory_to_string)
 
     def read_inventory_from_string(self, xml_string):
         try:
@@ -155,3 +156,14 @@ def _escape_cdata(text, encoding=None, replace=None):
         elementtree.ElementTree._raise_serialization_error(text)
 
 elementtree.ElementTree._escape_cdata = _escape_cdata
+
+
+class SerializerRegistry(registry.Registry):
+    """Registry for serializer objects"""
+
+
+format_registry = SerializerRegistry()
+format_registry.register_lazy('4', 'bzrlib.xml4', 'serializer_v4')
+format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
+format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
+format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')

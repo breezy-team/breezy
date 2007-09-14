@@ -1,0 +1,42 @@
+Revision Properties
+===================
+
+Bazaar repositories support setting of a key/value pairs for each revision.
+Applications can use these properties to store additional information
+about the revision.
+
+Usage
+-----
+
+In general, revision properties are set by passing keyword argument
+``revprops`` to method ``MutableTree.commit``. For example::
+
+ properties = {}
+ properties['my-property'] = 'test'
+ tree.commit(message, revprops=properties)
+
+Properties can be retrieved via the attribute ``properties`` of
+instances of the class ``Revision``::
+
+ if 'my-property' in revision.properties:
+     my_property = revision.properties['my-property']
+     ...
+
+Well-known properties
+---------------------
+
+At the moment, three standardized revision properties are recognized and used
+by bzrlib:
+
+ * ``author`` - Author of the change. This value is in the same format as
+   the committer-id. This property can be set by passing keyword argument
+   ``author`` to function ``MutableTree.commit``.
+ * ``branch-nick`` - Nickname of the branch. It's either the directory name
+   or manually set by ``bzr nick``. The value is set automatically in
+   ``MutableTree.commit``.
+ * ``bugs`` - A list of bug URLs and their statuses. The list is separated
+   by the new-line character (\n) and each entry is in format
+   '<URL> <status>'. Currently, bzrlib uses only status 'fixed'. See
+   `Bug Trackers`_ for more details about using this feature.
+
+.. _Bug Trackers: ../bug_trackers.htm

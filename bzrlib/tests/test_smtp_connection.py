@@ -16,20 +16,35 @@
 
 from cStringIO import StringIO
 from email.Message import Message
+import errno
+import smtplib
+import socket
 
-from bzrlib import config
+from bzrlib import (
+    config,
+    errors,
+    )
+from bzrlib.email_message import EmailMessage
 from bzrlib.errors import NoDestinationAddress
 from bzrlib.tests import TestCase
 from bzrlib.smtp_connection import SMTPConnection
 
 
+def connection_refuser():
+    def connect(server):
+        raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
+    smtp = smtplib.SMTP()
+    smtp.connect = connect
+    return smtp
+
+
 class TestSMTPConnection(TestCase):
 
-    def get_connection(self, text):
+    def get_connection(self, text, smtp_factory=None):
         my_config = config.GlobalConfig()
         config_file = StringIO(text)
         my_config._get_parser(config_file)
-        return SMTPConnection(my_config)
+        return SMTPConnection(my_config, _smtp_factory=smtp_factory)
 
     def test_defaults(self):
         conn = self.get_connection('')
@@ -40,6 +55,13 @@ class TestSMTPConnection(TestCase):
     def test_smtp_server(self):
         conn = self.get_connection('[DEFAULT]\nsmtp_server=host:10\n')
         self.assertEqual('host:10', conn._smtp_server)
+
+    def test_missing_server(self):
+        conn = self.get_connection('', smtp_factory=connection_refuser)
+        self.assertRaises(errors.DefaultSMTPConnectionRefused, conn._connect)
+        conn = self.get_connection('[DEFAULT]\nsmtp_server=smtp.example.com\n',
+                                   smtp_factory=connection_refuser)
+        self.assertRaises(errors.SMTPConnectionRefused, conn._connect)
 
     def test_smtp_username(self):
         conn = self.get_connection('')
@@ -72,6 +94,17 @@ class TestSMTPConnection(TestCase):
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
+        # now with bzrlib's EmailMessage
+        msg = EmailMessage('"J. Random Developer" <jrandom@example.com>', [
+            'John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
+            u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
+            'subject')
+
+        from_, to = SMTPConnection.get_message_addresses(msg)
+        self.assertEqual('jrandom@example.com', from_)
+        self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
+            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+
     def test_destination_address_required(self):
         class FakeConfig:
             def get_user_option(self, option):
@@ -79,5 +112,13 @@ class TestSMTPConnection(TestCase):
 
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
+        self.assertRaises(NoDestinationAddress,
+                SMTPConnection(FakeConfig()).send_email, msg)
+
+        msg = EmailMessage('from@from.com', '', 'subject')
+        self.assertRaises(NoDestinationAddress,
+                SMTPConnection(FakeConfig()).send_email, msg)
+
+        msg = EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(NoDestinationAddress,
                 SMTPConnection(FakeConfig()).send_email, msg)

@@ -299,6 +299,53 @@ Choosing compression/delta support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+Caching and writeing of data
+============================
+
+Repositories try to provide a consistent view of the data within them
+within a 'lock context'. 
+
+Locks
+-----
+
+Locks come in two flavours - read locks and write locks. Read locks allow
+data to be read from the repository. Write locks allow data to be read and
+signal that you intend to write data at some point. The actual writing of
+data must take place within a Write Group.
+
+Write locks provide a cache of repository data during the period of the
+write lock, and allow write_groups to be acquired. For some repositories
+the presence of a write lock is exclusive to a single client, for others
+which are lock free or use server side locks (e.g.  svn), the write lock
+simply provides the cache context. 
+
+Write Groups
+------------
+
+Write groups are the only allowed means for inserting data into a
+repository.  These are created by ``start_write_group``, and concluded by
+either ``commit_write_group`` or ``abort_write_group``.  A write lock must
+be held on the repository for the entire duration.  At most one write
+group can be active on a repository at a time.
+
+Write groups signal to the repository the window during which data is
+actively being inserted. Several write groups could be committed during a
+single lock.
+
+There is no guarantee that data inserted during a write group will be
+invisible in the repository if the write group is not committed.
+Specifically repositories without atomic insertion facilities will be
+writing data as it is inserted within the write group, and may not be able
+to revert that data - e.g. in the event of a dropped SFTP connection in a
+knit repository, inserted file data will be visible in the repository. Some
+repositories have an atomic insertion facility, and for those
+all-or-nothing will apply.
+
+The precise meaning of a write group is format specific. For instance a
+knit based repository treats the write group methods as dummy calls,
+simply meeting the api that clients will use. A pack based repository will
+open a new pack container at the start of a write group, and rename it
+into place at commit time.
 
 
 ..

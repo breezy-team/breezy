@@ -53,3 +53,10 @@ Use cases
 .. include:: bundle-creation.txt
 
 .. include:: uncommit.txt
+
+.. include:: missing.txt
+
+Subsystem designs
+#################
+
+.. include:: directory-fingerprints.txt

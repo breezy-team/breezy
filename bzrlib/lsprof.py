@@ -10,6 +10,10 @@ import thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
+
+import bzrlib.osutils
+
+
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
@@ -31,8 +35,17 @@ def profile(f, *args, **kwds):
     p = Profiler()
     p.enable(subcalls=True)
     threading.setprofile(_thread_profile)
+    # Note: The except clause is needed below so that profiling data still
+    # gets dumped even when exceptions are encountered. The except clause code
+    # is taken straight from run_bzr_catch_errrors() in commands.py and ought
+    # to be kept in sync with it.
     try:
-        ret = f(*args, **kwds)
+        try:
+            ret = f(*args, **kwds)
+        except (KeyboardInterrupt, Exception), e:
+            import bzrlib.trace
+            bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+            ret = 3
     finally:
         p.disable()
         for pp in _g_threadmap.values():
@@ -113,13 +126,18 @@ class Stats(object):
         :param format: 'txt' for a text representation;
             'callgrind' for calltree format;
             otherwise a pickled Python object. A format of None indicates
-            that the format to use is to be found from the extension of
-            filename.
+            that the format to use is to be found from the filename. If
+            the name starts with callgrind.out, callgrind format is used
+            otherwise the format is given by the filename extension.
         """
         if format is None:
-            ext = os.path.splitext(filename)[1]
-            if len(ext) > 1:
-                format = ext[1:]
+            basename = bzrlib.osutils.basename(filename)
+            if basename.startswith('callgrind.out'):
+                format = "callgrind"
+            else:
+                ext = bzrlib.osutils.splitext(filename)[1]
+                if len(ext) > 1:
+                    format = ext[1:]
         outfile = open(filename, 'wb')
         try:
             if format == "callgrind":

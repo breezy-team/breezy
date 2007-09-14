@@ -99,7 +99,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotate_file(branch, rev_id, file_id):
     """Yield the origins for each line of a file.
 
-    This includes detailed information, such as the committer name, and
+    This includes detailed information, such as the author name, and
     date string for the commit, rather than just the revision id.
     """
     revision_id_to_revno = branch.get_revision_id_to_revno_map()
@@ -129,7 +129,7 @@ def _annotate_file(branch, rev_id, file_id):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.committer
+            author = rev.get_apparent_author()
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
@@ -137,20 +137,29 @@ def _annotate_file(branch, rev_id, file_id):
         yield (revno_str, author, date_str, origin, text)
 
 
-def reannotate(parents_lines, new_lines, new_revision_id):
+def reannotate(parents_lines, new_lines, new_revision_id,
+               _left_matching_blocks=None):
     """Create a new annotated version from new lines and parent annotations.
     
     :param parents_lines: List of annotated lines for all parents
     :param new_lines: The un-annotated new lines
     :param new_revision_id: The revision-id to associate with new lines
         (will often be CURRENT_REVISION)
+    :param left_matching_blocks: a hint about which areas are common
+        between the text and its left-hand-parent.  The format is
+        the SequenceMatcher.get_matching_blocks format.
     """
-    if len(parents_lines) == 1:
-        for data in _reannotate(parents_lines[0], new_lines, new_revision_id):
+    if len(parents_lines) == 0:
+        for line in new_lines:
+            yield new_revision_id, line
+    elif len(parents_lines) == 1:
+        for data in _reannotate(parents_lines[0], new_lines, new_revision_id,
+                                _left_matching_blocks):
             yield data
     else:
-        reannotations = [list(_reannotate(p, new_lines, new_revision_id)) for
-                         p in parents_lines]
+        block_list = [_left_matching_blocks] + [None] * len(parents_lines)
+        reannotations = [list(_reannotate(p, new_lines, new_revision_id, b))
+                         for p, b in zip(parents_lines, block_list)]
         for annos in zip(*reannotations):
             origins = set(a for a, l in annos)
             line = annos[0][1]
@@ -162,12 +171,15 @@ def reannotate(parents_lines, new_lines, new_revision_id):
                 yield new_revision_id, line
 
 
-def _reannotate(parent_lines, new_lines, new_revision_id):
+def _reannotate(parent_lines, new_lines, new_revision_id,
+                matching_blocks=None):
     plain_parent_lines = [l for r, l in parent_lines]
     matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines,
                                                    new_lines)
     new_cur = 0
-    for i, j, n in matcher.get_matching_blocks():
+    if matching_blocks is None:
+        matching_blocks = matcher.get_matching_blocks()
+    for i, j, n in matching_blocks:
         for line in new_lines[new_cur:j]:
             yield new_revision_id, line
         for data in parent_lines[i:i+n]:

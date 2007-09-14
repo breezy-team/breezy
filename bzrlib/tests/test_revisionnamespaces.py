@@ -24,7 +24,6 @@ from bzrlib import (
     errors,
     repository,
     )
-from bzrlib.builtins import merge
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.revisionspec import (
     RevisionSpec,
@@ -117,7 +116,7 @@ class TestRevnoFromString(TestCase):
 class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_positive_int(self):
-        self.assertInHistoryIs(0, None, '0')
+        self.assertInHistoryIs(0, 'null:', '0')
         self.assertInHistoryIs(1, 'r1', '1')
         self.assertInHistoryIs(2, 'r2', '2')
         self.assertInvalid('3')
@@ -134,7 +133,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInHistoryIs(1, 'r1', '-100')
 
     def test_positive(self):
-        self.assertInHistoryIs(0, None, 'revno:0')
+        self.assertInHistoryIs(0, 'null:', 'revno:0')
         self.assertInHistoryIs(1, 'r1', 'revno:1')
         self.assertInHistoryIs(2, 'r2', 'revno:2')
 
@@ -290,7 +289,7 @@ class TestRevisionSpec_last(TestRevisionSpec):
     def test_positive(self):
         self.assertInHistoryIs(2, 'r2', 'last:1')
         self.assertInHistoryIs(1, 'r1', 'last:2')
-        self.assertInHistoryIs(0, None, 'last:3')
+        self.assertInHistoryIs(0, 'null:', 'last:3')
 
     def test_empty(self):
         self.assertInHistoryIs(2, 'r2', 'last:')
@@ -323,7 +322,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInHistoryIs(1, 'r1', 'before:-1')
 
     def test_before_one(self):
-        self.assertInHistoryIs(0, None, 'before:1')
+        self.assertInHistoryIs(0, 'null:', 'before:1')
 
     def test_before_none(self):
         self.assertInvalid('before:0',
@@ -344,7 +343,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
         new_tree.commit('first', rev_id='new_r1')
         self.tree.branch.repository.fetch(new_tree.branch.repository,
                                           revision_id='new_r1')
-        self.assertInHistoryIs(0, None, 'before:revid:new_r1')
+        self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
 
 class TestRevisionSpec_tag(TestRevisionSpec):

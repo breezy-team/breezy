@@ -271,7 +271,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # the deepest subtree has not changed, so no commit should take place.
-        self.assertEqual(None, subsubtree.last_revision())
+        self.assertEqual('null:', subsubtree.last_revision())
         # the intermediate tree should have committed a pointer to the current
         # subtree revision.
         sub_basis = subtree.basis_tree()
@@ -354,22 +354,18 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 4 steps, the first of which is reported 5 times, once per file
-        # 2 files don't trigger an update, as 'a' and 'c' are not 
-        # committed.
+        # 5 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 1/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 2/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 3/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 4/4] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage')],
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage')],
             factory._calls
            )
 
-    def test_commit_progress_shows_hook_names(self):
+    def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is 
         # emitted
@@ -383,15 +379,38 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         branch.Branch.hooks.name_hook(a_hook, 'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 1/1] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage'),
-             ('update', 4, 4, 'Running post commit hooks [hook name] - Stage'),
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks [hook name] - Stage'),
              ],
             factory._calls
            )
 
-
-
+    def test_commit_progress_shows_pre_hook_names(self):
+        tree = self.make_branch_and_tree('.')
+        # set a progress bar that captures the calls so we can see what is 
+        # emitted
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+        factory = CapturingUIFactory()
+        ui.ui_factory = factory
+        def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
+            pass
+        branch.Branch.hooks.install_hook('pre_commit', a_hook)
+        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        tree.commit('first post')
+        self.assertEqual(
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ],
+            factory._calls
+           )

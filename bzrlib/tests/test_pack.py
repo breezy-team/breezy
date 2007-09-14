@@ -40,6 +40,13 @@ class TestContainerWriter(tests.TestCase):
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\n',
                          output.getvalue())
 
+    def test_zero_records_written_after_begin(self):
+        """After begin is written, 0 records have been written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        self.assertEqual(0, writer.records_written)
+
     def test_end(self):
         """The end() method writes an End Marker record."""
         output = StringIO()
@@ -49,12 +56,30 @@ class TestContainerWriter(tests.TestCase):
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nE',
                          output.getvalue())
 
+    def test_empty_end_does_not_add_a_record_to_records_written(self):
+        """The end() method does not count towards the records written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.end()
+        self.assertEqual(0, writer.records_written)
+
+    def test_non_empty_end_does_not_add_a_record_to_records_written(self):
+        """The end() method does not count towards the records written."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('foo', names=[])
+        writer.end()
+        self.assertEqual(1, writer.records_written)
+
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=[])
+        offset, length = writer.add_bytes_record('abc', names=[])
+        self.assertEqual((42, 7), (offset, length))
         self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc',
                          output.getvalue())
 
@@ -63,7 +88,8 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=['name1'])
+        offset, length = writer.add_bytes_record('abc', names=[('name1', )])
+        self.assertEqual((42, 13), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\n\nabc',
@@ -74,10 +100,48 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        writer.add_bytes_record('abc', names=['name1', 'name2'])
+        offset, length = writer.add_bytes_record('abc', names=[('name1', ), ('name2', )])
+        self.assertEqual((42, 19), (offset, length))
         self.assertEqual(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\nname2\n\nabc',
+            output.getvalue())
+
+    def test_add_bytes_record_two_names(self):
+        """Add a bytes record with two names."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        offset, length = writer.add_bytes_record('abc', names=[('name1', ), ('name2', )])
+        self.assertEqual((42, 19), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\nname2\n\nabc',
+            output.getvalue())
+
+    def test_add_bytes_record_two_element_name(self):
+        """Add a bytes record with a two-element name."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        offset, length = writer.add_bytes_record('abc', names=[('name1', 'name2')])
+        self.assertEqual((42, 19), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\x00name2\n\nabc',
+            output.getvalue())
+
+    def test_add_second_bytes_record_gets_higher_offset(self):
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('abc', names=[])
+        offset, length = writer.add_bytes_record('abc', names=[])
+        self.assertEqual((49, 7), (offset, length))
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\n\nabc'
+            'B3\n\nabc',
             output.getvalue())
 
     def test_add_bytes_record_invalid_name(self):
@@ -89,7 +153,17 @@ class TestContainerWriter(tests.TestCase):
         writer.begin()
         self.assertRaises(
             errors.InvalidRecordError,
-            writer.add_bytes_record, 'abc', names=['bad name'])
+            writer.add_bytes_record, 'abc', names=[('bad name', )])
+
+    def test_add_bytes_records_add_to_records_written(self):
+        """Adding a Bytes record increments the records_written counter."""
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        writer.add_bytes_record('foo', names=[])
+        self.assertEqual(1, writer.records_written)
+        writer.add_bytes_record('foo', names=[])
+        self.assertEqual(2, writer.records_written)
 
 
 class TestContainerReader(tests.TestCase):
@@ -247,7 +321,7 @@ class TestBytesRecordReader(tests.TestCase):
         """
         reader = self.get_reader_for("5\nname1\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual(['name1'], names)
+        self.assertEqual([('name1', )], names)
         self.assertEqual('aaaaa', get_bytes(None))
 
     def test_record_with_two_names(self):
@@ -255,7 +329,14 @@ class TestBytesRecordReader(tests.TestCase):
         """
         reader = self.get_reader_for("5\nname1\nname2\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual(['name1', 'name2'], names)
+        self.assertEqual([('name1', ), ('name2', )], names)
+        self.assertEqual('aaaaa', get_bytes(None))
+
+    def test_record_with_two_part_names(self):
+        """Reading a Bytes record with a two_part name reads both."""
+        reader = self.get_reader_for("5\nname1\x00name2\n\naaaaa")
+        names, get_bytes = reader.read()
+        self.assertEqual([('name1', 'name2', )], names)
         self.assertEqual('aaaaa', get_bytes(None))
 
     def test_invalid_length(self):
@@ -375,3 +456,70 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertEqual('', get_bytes(99))
 
 
+class TestMakeReadvReader(tests.TestCaseWithTransport):
+
+    def test_read_skipping_records(self):
+        pack_data = StringIO()
+        writer = pack.ContainerWriter(pack_data.write)
+        writer.begin()
+        memos = []
+        memos.append(writer.add_bytes_record('abc', names=[]))
+        memos.append(writer.add_bytes_record('def', names=[('name1', )]))
+        memos.append(writer.add_bytes_record('ghi', names=[('name2', )]))
+        memos.append(writer.add_bytes_record('jkl', names=[]))
+        writer.end()
+        transport = self.get_transport()
+        transport.put_bytes('mypack', pack_data.getvalue())
+        requested_records = [memos[0], memos[2]]
+        reader = pack.make_readv_reader(transport, 'mypack', requested_records)
+        result = []
+        for names, reader_func in reader.iter_records():
+            result.append((names, reader_func(None)))
+        self.assertEqual([([], 'abc'), ([('name2', )], 'ghi')], result)
+
+
+class TestReadvFile(tests.TestCaseWithTransport):
+    """Tests of the ReadVFile class.
+
+    Error cases are deliberately undefined: this code adapts the underlying
+    transport interface to a single 'streaming read' interface as 
+    ContainerReader needs.
+    """
+
+    def test_read_bytes(self):
+        """Test reading of both single bytes and all bytes in a hunk."""
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0123456789')
+        f = pack.ReadVFile(transport.readv('sample', [(0,1), (1,2), (4,1), (6,2)]))
+        results = []
+        results.append(f.read(1))
+        results.append(f.read(2))
+        results.append(f.read(1))
+        results.append(f.read(1))
+        results.append(f.read(1))
+        self.assertEqual(['0', '12', '4', '6', '7'], results)
+
+    def test_readline(self):
+        """Test using readline() as ContainerReader does.
+
+        This is always within a readv hunk, never across it.
+        """
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0,2), (2,4)]))
+        results = []
+        results.append(f.readline())
+        results.append(f.readline())
+        results.append(f.readline())
+        self.assertEqual(['0\n', '2\n', '4\n'], results)
+
+    def test_readline_and_read(self):
+        """Test exercising one byte reads, readline, and then read again."""
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0,6)]))
+        results = []
+        results.append(f.read(1))
+        results.append(f.readline())
+        results.append(f.read(4))
+        self.assertEqual(['0', '\n', '2\n4\n'], results)
