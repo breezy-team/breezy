@@ -500,7 +500,10 @@ class RemoteRepository(object):
         return self._real_repository.break_lock()
 
     def _get_tarball(self, compression):
-        """Return a TemporaryFile containing a repository tarball"""
+        """Return a TemporaryFile containing a repository tarball.
+        
+        Returns None if the server does not support sending tarballs.
+        """
         import tempfile
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
@@ -517,19 +520,18 @@ class RemoteRepository(object):
               response == ('error', "Generic bzr smart protocol error: "
                 "bad request u'Repository.tarball'")):
             protocol.cancel_read_body()
+            return None
         raise errors.UnexpectedSmartServerResponse(response)
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        to_repo = to_bzrdir.create_repository()
-        try:
-            self._copy_repository_tarball(to_repo, revision_id)
-        except errors.UnexpectedSmartServerResponse:
-            to_bzrdir.get_repository_transport(None).delete_tree('.')
+        to_repo = self._copy_repository_tarball(to_bzrdir, revision_id)
+        if to_repo is None:
             self._ensure_real()
             return self._real_repository.sprout(
                 to_bzrdir, revision_id=revision_id)
-        return to_repo
+        else:
+            return to_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
@@ -685,7 +687,7 @@ class RemoteRepository(object):
         return self._real_repository.copy_content_into(
             destination, revision_id=revision_id)
 
-    def _copy_repository_tarball(self, destination, revision_id=None):
+    def _copy_repository_tarball(self, to_bzrdir, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
         # destination
         from bzrlib import osutils
@@ -695,6 +697,9 @@ class RemoteRepository(object):
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
+        if tar_file is None:
+            return None
+        destination = to_bzrdir.create_repository()
         try:
             tar = tarfile.open('repository', fileobj=tar_file,
                 mode='r|bz2')
@@ -708,9 +713,7 @@ class RemoteRepository(object):
                 osutils.rmtree(tmpdir)
         finally:
             tar_file.close()
-        # TODO: if the server doesn't support this operation, maybe do it the
-        # slow way using the _real_repository?
-        #
+        return destination
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
