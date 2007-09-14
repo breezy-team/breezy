@@ -300,7 +300,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
             committer="Foo Bar <foo@example.com>",
             revision_id='ghost')
         ie = bzrlib.inventory.InventoryDirectory('TREE_ROOT', '', None)
-        builder.record_entry_contents(ie, [], '', None)
+        builder.record_entry_contents(ie, [], '', None,
+            ('directory', None, None, None))
         builder.finish_inventory()
         builder.commit("Message")
         repo.unlock()

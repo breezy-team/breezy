@@ -2385,7 +2385,7 @@ class CommitBuilder(object):
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
         try:
-            return versionedfile.add_lines(
+            return versionedfile.add_lines_with_ghosts(
                 self._new_revision_id, parents, new_lines,
                 nostore_sha=nostore_sha, random_id=self.random_revid,
                 check_content=False)[0:2]
