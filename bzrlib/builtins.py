@@ -4159,7 +4159,18 @@ class cmd_tags(Command):
 
 
 class cmd_reconfigure(Command):
-    """Reconfigure the type of a bzr directory"""
+    """Reconfigure the type of a bzr directory.
+
+    A target configuration must be specified.
+
+    For checkouts, the bind-to location will be auto-detected if not specified.
+    The order of preference is
+    1. For a lightweight checkout, the current bound location.
+    2. For branches that used to be checkouts, the previously-bound location.
+    3. The push location.
+    4. The parent location.
+    If none of these is available, --bind-to must be specified.
+    """
 
     takes_args = ['location?']
     takes_options = [RegistryOption.from_kwargs('target_type',
@@ -4178,7 +4189,9 @@ class cmd_reconfigure(Command):
 
     def run(self, location=None, target_type=None, bind_to=None, force=False):
         directory = bzrdir.BzrDir.open(location)
-        if target_type == 'branch':
+        if target_type is None:
+            raise BzrCommandError('No target configuration specified')
+        elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
         elif target_type == 'tree':
             reconfiguration = reconfigure.Reconfigure.to_tree(directory)

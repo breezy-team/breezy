@@ -23,6 +23,11 @@ from bzrlib import (
 
 class TestReconcile(tests.TestCaseWithTransport):
 
+    def test_no_type(self):
+        branch = self.make_branch('branch')
+        self.run_bzr_error(['No target configuration specified'],
+                           'reconfigure branch')
+
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
         self.run_bzr('reconfigure --tree branch')
