@@ -1,11 +1,13 @@
-bzr (0.90-2) UNRELEASED; urgency=low
+bzr (0.91~rc2-1) unstable; urgency=low
+  
+  * Second release candidate for the upcoming 0.91 release.
 
   * Give a Files line in the HTML section of bzr.doc-base, since the doc-base
     package in etch requires it.
 
   * Suggest xdg-utils for /usr/bin/xdg-email, used if present in `bzr send`.
 
- -- Adeodato Simó <dato@net.com.org.es>  Thu, 30 Aug 2007 10:12:26 +0200
+ -- Adeodato Simó <dato@net.com.org.es>  Fri, 14 Sep 2007 10:02:29 +0200
 
 bzr (0.90-1) unstable; urgency=low
 
