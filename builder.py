@@ -20,6 +20,7 @@
 
 import glob
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import os
@@ -266,13 +267,11 @@ class DebBuild(object):
 
   def build(self, builder):
     """This builds the package using the supplied command."""
-    wd = os.getcwdu()
     source_dir = self._properties.source_dir()
     info("Building the package in %s, using %s", source_dir, builder)
-    os.chdir(source_dir)
-    result = os.system(builder)
-    os.chdir(wd)
-    if result > 0:
+    proc = subprocess.Popen(builder, shell=True, cwd=source_dir)
+    proc.wait()
+    if proc.returncode != 0:
       raise BuildFailedError;
 
   def clean(self):
