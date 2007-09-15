@@ -17,8 +17,9 @@ bzr-builddeb (0.91) unstable; urgency=low
   * Add --revision option to allow building an old revision of the branch
     without doing revert or similar.
   * Add the start of a blackbox test suite.
+  * Add the ability to export an upstream branch in normal mode.
 
- -- James Westby <jw+debian@jameswestby.net>  Thu, 13 Sep 2007 22:40:40 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Sat, 15 Sep 2007 13:51:11 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

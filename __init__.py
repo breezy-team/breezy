@@ -261,7 +261,16 @@ class cmd_builddeb(Command):
     elif split:
       build = DebSplitBuild(properties, t, _is_working_tree=working_tree)
     else:
-      build = DebBuild(properties, t, _is_working_tree=working_tree)
+      if export_upstream is None:
+        build = DebBuild(properties, t, _is_working_tree=working_tree)
+      else:
+        prepull_upstream = config.prepull_upstream
+        stop_on_no_change = config.prepull_upstream_stop
+        build = DebExportUpstreamBuild(properties, t, export_upstream,
+                                       export_upstream_revision,
+                                       prepull_upstream,
+                                       stop_on_no_change,
+                                       _is_working_tree=working_tree)
 
     build.prepare(use_existing)
 

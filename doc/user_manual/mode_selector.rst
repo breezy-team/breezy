@@ -34,7 +34,8 @@ is applicable you might want to answer the following questions.
 6. Does upstream make releases as tarballs?
 
   * Yes? Go to question 4.
-  * No? You should use `Export-upstream mode`_.
+  * No? You should use `Export-upstream mode`_. Answer question 4 to see
+    if you would like to use the Normal or Merge variant of this.
 
 .. _Normal mode: normal.html
 .. _Merge mode: merge.html
