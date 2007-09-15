@@ -18,8 +18,11 @@ bzr-builddeb (0.91) unstable; urgency=low
     without doing revert or similar.
   * Add the start of a blackbox test suite.
   * Add the ability to export an upstream branch in normal mode.
+  * Add a bd-do command for running commands when in merge mode. This
+    is useful when you need the full upstream source, for instance patch
+    handling.
 
- -- James Westby <jw+debian@jameswestby.net>  Sat, 15 Sep 2007 13:51:11 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Sat, 15 Sep 2007 23:49:59 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 
