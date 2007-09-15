@@ -176,15 +176,15 @@ class build_ext_if_possible(build_ext):
             build_ext.run(self)
         except DistutilsPlatformError, e:
             log.warn(str(e))
-            log.warn("Extensions cannot be built, "
-                     "will use the Python versions instead")
+            log.warn('Extensions cannot be built, '
+                     'will use the Python versions instead')
 
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
         except CCompilerError:
-            log.warn("Building of '%s' extension failed, "
-                     "will use the Python version instead" % (ext.name,))
+            log.warn('Building of "%s" extension failed, '
+                     'will use the Python version instead' % (ext.name,))
 
 
 # Override the build_ext if we have Pyrex available
