@@ -77,13 +77,7 @@ history. In reality the tree of that commit is just the result of applying the
 Implementation
 --------------
 
-Currently there is code that implements the above strategy, but it needs some
-more testing and a cleanup. It is also not directly exposed at the UI layer,
-but that shouldn't be too hard to do.
-
-There is a tentative import-snapshot command for importing from
-snapshot.debian.net, but it is more for testing and will probably become an
-option of import-dsc.
+The imcrememtal import support is not present yet.
 
 Also left to do is implementations for other modes, especially native. Merge
 mode is complicated by the fact that the old packages may have changes outside
@@ -94,7 +88,7 @@ UI
 
 Have a command
 
-  bzr deb import-dsc
+  bzr import-dsc
 
 which imports a set of .dsc files, given on the command line. Can either be
 local or remote.
