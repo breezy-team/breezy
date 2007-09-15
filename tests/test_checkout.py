@@ -46,7 +46,7 @@ class TestCheckoutFormat(TestCase):
         self.format = SvnWorkingTreeDirFormat()
 
     def test_get_converter(self):
-        self.assertIsInstance(self.format.get_converter(), SvnConverter)
+        self.assertRaises(NotImplementedError, self.format.get_converter)
 
 
 class TestCheckout(TestCaseWithSubversionRepository):

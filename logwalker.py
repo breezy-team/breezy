@@ -231,7 +231,8 @@ class LogWalker(object):
             message = _escape_commit_message(base64.b64decode(message))
         return (author, message, date)
 
-    def find_latest_change(self, path, revnum, recurse=False):
+    def find_latest_change(self, path, revnum, include_parents=False,
+                           include_children=False):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -242,11 +243,12 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
-        if recurse:
-            extra = " or path like '%s/%%'" % path.strip("/")
-        else:
-            extra = ""
-        query = "select rev from changed_path where (path='%s' or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), path.strip("/"), extra, revnum)
+        extra = ""
+        if include_children:
+            extra += " or path like '%s/%%'" % path.strip("/")
+        if include_parents:
+            extra += " or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))" % path.strip("/")
+        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":

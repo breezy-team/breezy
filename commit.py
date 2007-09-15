@@ -108,10 +108,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         if revision_id is not None:
             self._record_revision_id(revision_id)
 
-        # At least one of the parents has to be the last revision on the 
-        # mainline in Subversion.
-        assert (self.base_revid is None or self.base_revid == parents[0])
-
         if old_inv is None:
             if self.base_revid is None:
                 self.old_inv = Inventory(root_id=None)
@@ -363,7 +359,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.editor.close_directory(child_baton, self.pool)
 
     def open_branch_batons(self, root, elements, existing_elements, 
-                           base_path, base_rev):
+                           base_path, base_rev, replace_existing):
         """Open a specified directory given a baton for the repository root.
 
         :param root: Baton for the repository root
@@ -371,6 +367,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param existing_elements: List of directory names that exist
         :param base_path: Path to base top-level branch on
         :param base_rev: Revision of path to base top-level branch on
+        :param replace_existing: Whether the current branch should be replaced
         """
         ret = [root]
 
@@ -392,12 +389,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         # This needs to also check that base_rev was the latest version of 
         # branch_path.
         if (len(existing_elements) == len(elements) and 
-            base_path.strip("/") == "/".join(elements).strip("/")):
+            not replace_existing):
             ret.append(self.editor.open_directory(
                 "/".join(elements), ret[-1], base_rev, self.pool))
         else: # Branch has to be created
             # Already exists, old copy needs to be removed
-            if len(existing_elements) == len(elements):
+            if replace_existing:
                 self.editor.delete_entry("/".join(elements), -1, ret[-1])
             if base_path is not None:
                 base_url = urlutils.join(self.repository.transport.svn_url, base_path)
@@ -425,6 +422,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.author = author
         
         bp_parts = self.branch.get_branch_path().split("/")
+        repository_latest_revnum = self.repository.transport.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
 
         try:
@@ -435,10 +433,18 @@ class SvnCommitBuilder(RootCommitBuilder):
                 message.encode("utf-8"), done, None, False)
 
             root = self.editor.open_root(self.base_revnum)
-            
+
+            replace_existing = False
+            if len(bp_parts) == len(existing_bp_parts):
+                if self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
+                    replace_existing = True
+                elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
+                    replace_existing = True
+
             # TODO: Accept create_prefix argument
             branch_batons = self.open_branch_batons(root, bp_parts,
-                existing_bp_parts, self.base_path, self.base_revnum)
+                existing_bp_parts, self.base_path, self.base_revnum,
+                replace_existing)
 
             # Make sure the root id is stored properly
             if (self.old_inv.root is None or 
@@ -645,17 +651,14 @@ def push(target, source, revision_id, validate=False):
         the source revision.
     """
     assert isinstance(source, Branch)
-    mutter('pushing %r' % (revision_id))
     rev = source.repository.get_revision(revision_id)
+    mutter('pushing %r (%r)' % (revision_id, rev.parent_ids))
 
+    # revision on top of which to commit
     if rev.parent_ids == []:
         base_revid = None
     else:
         base_revid = rev.parent_ids[0]
-
-    # revision on top of which to commit
-    assert (base_revid in rev.parent_ids or 
-            base_revid is None and rev.parent_ids == [])
 
     old_tree = source.repository.revision_tree(revision_id)
     base_tree = source.repository.revision_tree(base_revid)

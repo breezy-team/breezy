@@ -13,6 +13,9 @@ bzr-svn 0.4.3	2007-09-12
 
    * Use write groups in fetch as required by the packs branch.
 
+   * Handle pushing merges of which LHS parent is older revision of 
+     branch path.
+
   INTERNALS
 
    * Track moving parents correctly in follow_path().
