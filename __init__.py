@@ -23,6 +23,8 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import shutil
+import subprocess
 
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
@@ -84,6 +86,9 @@ builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
 global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
+
+default_build_dir = '../build-area'
+default_orig_dir = '../tarballs'
 
 
 class cmd_builddeb(Command):
@@ -240,12 +245,12 @@ class cmd_builddeb(Command):
     if build_dir is None:
       build_dir = config.build_dir
       if build_dir is None:
-        build_dir = '../build-area'
+        build_dir = default_build_dir
 
     if orig_dir is None:
       orig_dir = config.orig_dir
       if orig_dir is None:
-        orig_dir = '../tarballs'
+        orig_dir = default_orig_dir
     
     properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
 
@@ -453,6 +458,83 @@ class cmd_import_dsc(Command):
 
 
 register_command(cmd_import_dsc)
+
+
+class cmd_bd_do(Command):
+  """Run a command in an exported package, copying the result back.
+  
+  For a merge mode package the full source is not available, making some
+  operations difficult. This command allows you to run any command in an
+  exported source directory, copying the resulting debian/ directory back
+  to your branch if the command is successful.
+  """
+
+  takes_args = ['command?']
+
+  def run(self, command=None):
+
+    config = DebBuildConfig([(local_conf, True), (global_conf, True),
+                             (default_conf, False)])
+
+    if not config.merge:
+      raise BzrCommandError("This command only works for merge mode "
+                            "packages. See /usr/share/doc/bzr-builddeb"
+                            "/user_manual/merge.html for more information.")
+
+    if command is None:
+      command = os.environ['SHELL']
+    t = WorkingTree.open_containing('.')[0]
+    (changelog, larstiq) = find_changelog(t, True)
+    build_dir = config.build_dir
+    if build_dir is None:
+      build_dir = default_build_dir
+    orig_dir = config.orig_dir
+    if orig_dir is None:
+      orig_dir = default_orig_dir
+    properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
+    export_upstream = config.export_upstream
+    export_upstream_revision = config.export_upstream_revision
+
+    if export_upstream is None:
+      build = DebMergeBuild(properties, t, _is_working_tree=True)
+    else:
+      prepull_upstream = config.prepull_upstream
+      stop_on_no_change = config.prepull_upstream_stop
+      build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
+                                          export_upstream_revision,
+                                          prepull_upstream,
+                                          stop_on_no_change,
+                                          _is_working_tree=working_tree)
+
+    build.prepare()
+    try:
+      build.export()
+    except StopBuild, e:
+      warning('Stopping the build: %s.', e.reason)
+    info('Running "%s" in the exported directory.' % (command))
+    proc = subprocess.Popen(command, shell=True,
+                            cwd=properties.source_dir())
+    proc.wait()
+    if proc.returncode != 0:
+      raise BzrCommandError('Not updating the working tree as the command '
+                            'failed.')
+    info("Copying debian/ back")
+    if larstiq:
+      destination = '.'
+    else:
+      destination = 'debian/'
+    source_debian = os.path.join(properties.source_dir(), 'debian')
+    for filename in os.listdir(source_debian):
+      proc = subprocess.Popen('cp -vapf "%s" "%s"' % (
+           os.path.join(source_debian, filename), destination),
+           shell=True)
+      proc.wait()
+      if proc.returncode != 0:
+        raise BzrCommandError('Copying back debian/ failed')
+    build.clean()
+
+
+register_command(cmd_bd_do)
 
 
 def test_suite():
