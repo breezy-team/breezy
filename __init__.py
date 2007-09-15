@@ -180,10 +180,14 @@ class cmd_builddeb(Command):
     if not merge:
       merge = config.merge
 
+    if export_upstream is None:
+      export_upstream = config.export_upstream
+
+    if export_upstream_revision is None:
+      export_upstream_revision = config.export_upstream_revision
+
     if merge:
       info("Running in merge mode")
-      if export_upstream is None:
-        export_upstream = config.export_upstream
     else:
       if not native:
         native = config.native
