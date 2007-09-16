@@ -122,7 +122,7 @@ class Tree(object):
     
     def has_filename(self, filename):
         """True if the tree has given filename."""
-        raise NotImplementedError()
+        raise NotImplementedError(self.has_filename)
 
     def has_id(self, file_id):
         file_id = osutils.safe_file_id(file_id)
@@ -228,7 +228,7 @@ class Tree(object):
         raise NotImplementedError(self.get_file_mtime)
 
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path))
+        return self.get_file(self._inventory.path2id(path), path)
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
@@ -267,7 +267,7 @@ class Tree(object):
         raise NotImplementedError(self.get_symlink_target)
 
     def annotate_iter(self, file_id):
-        """Return an iterator of revision_id, line tuples
+        """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
@@ -277,7 +277,7 @@ class Tree(object):
         raise NotImplementedError(self.annotate_iter)
 
     def plan_file_merge(self, file_id, other):
-        """Generate a merge plan based on annotations
+        """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
         attributed to the 'current:' pseudo-revision.  If the file contains
@@ -323,10 +323,10 @@ class Tree(object):
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
         
-        Each path is looked up in each this tree and any extras provided in
+        Each path is looked up in this tree and any extras provided in
         trees, and this is repeated recursively: the children in an extra tree
         of a directory that has been renamed under a provided path in this tree
-        are all returned, even if none exist until a provided path in this
+        are all returned, even if none exist under a provided path in this
         tree, and vice versa.
 
         :param paths: An iterable of paths to start converting to ids from.
@@ -405,7 +405,7 @@ class Tree(object):
            versioned_kind.
          - lstat is the stat data *if* the file was statted.
          - path_from_tree_root is the path from the root of the tree.
-         - file_id is the file_id is the entry is versioned.
+         - file_id is the file_id if the entry is versioned.
          - versioned_kind is the kind of the file as last recorded in the 
            versioning system. If 'unknown' the file is not versioned.
         One of 'kind' and 'versioned_kind' must not be 'unknown'.
@@ -545,7 +545,7 @@ def _find_ids_across_trees(filenames, trees, require_versioned):
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
         at least one tree.
-    :return: a set of (path, file ids) for the specified filenames
+    :return: a set of file ids for the specified filenames
     """
     not_versioned = []
     interesting_ids = set()
@@ -564,7 +564,7 @@ def _find_ids_across_trees(filenames, trees, require_versioned):
 
 
 def _find_children_across_trees(specified_ids, trees):
-    """Return a set including specified ids and their children
+    """Return a set including specified ids and their children.
     
     All matches in all trees will be used.
 
@@ -596,7 +596,7 @@ class InterTree(InterObject):
     Its instances have methods like 'compare' and contain references to the
     source and target trees these operations are to be carried out on.
 
-    clients of bzrlib should not need to use InterTree directly, rather they
+    Clients of bzrlib should not need to use InterTree directly, rather they
     should use the convenience methods on Tree such as 'Tree.compare()' which
     will pass through to InterTree as appropriate.
     """

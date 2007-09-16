@@ -2310,16 +2310,11 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose or not is_quiet():
-            reporter = ReportCommitToLog()
-        else:
-            reporter = NullCommitReporter()
-
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties,
+                        reporter=None, verbose=verbose, revprops=properties,
                         author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -3851,9 +3846,9 @@ class cmd_send(Command):
     the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
-    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
-    "default".
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
+    specific clients are "evolution", "kmail", "mutt", and "thunderbird";
+    generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration
