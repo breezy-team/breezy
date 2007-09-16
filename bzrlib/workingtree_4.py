@@ -132,7 +132,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -1717,7 +1716,8 @@ class InterDirStateTree(InterTree):
         # TODO: handle extra trees in the dirstate.
         # TODO: handle comparisons as an empty tree as a different special
         # case? mbp 20070226
-        if extra_trees or (self.source._revision_id == NULL_REVISION):
+        if (extra_trees or (self.source._revision_id == NULL_REVISION)
+            or specific_files == []):
             # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,

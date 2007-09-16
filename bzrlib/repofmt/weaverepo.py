@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Deprecated weave-based repository formats.
 
-"""Old weave-based repository formats"""
+Weave based formats scaled linearly with history size and could not represent
+ghosts.
+"""
 
 from StringIO import StringIO
 
@@ -23,12 +26,14 @@ from bzrlib import (
     bzrdir,
     lockable_files,
     lockdir,
+    osutils,
     weave,
     weavefile,
     xml5,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
+    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     Repository,
@@ -73,8 +78,11 @@ class AllInOneRepository(Repository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return Repository.get_commit_builder(self, branch, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
+        revision_id = osutils.safe_revision_id(revision_id)
+        result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
     @needs_read_lock
     def is_shared(self):
@@ -107,8 +115,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return MetaDirRepository.get_commit_builder(self, branch, parents,
-            config, timestamp, timezone, committer, revprops, revision_id)
+        revision_id = osutils.safe_revision_id(revision_id)
+        result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
+        self.start_write_group()
+        return result
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -396,6 +407,18 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             _revision_store=_revision_store,
             control_store=control_store,
             text_store=text_store)
+
+
+class WeaveCommitBuilder(CommitBuilder):
+    """A builder for weave based repos that don't support ghosts."""
+
+    def _add_text_to_weave(self, file_id, new_lines, parents):
+        versionedfile = self.repository.weave_store.get_weave_or_empty(
+            file_id, self.repository.get_transaction())
+        result = versionedfile.add_lines(
+            self._new_revision_id, parents, new_lines)[0:2]
+        versionedfile.clear_cache()
+        return result
 
 
 _legacy_formats = [RepositoryFormat4(),
