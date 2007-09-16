@@ -68,3 +68,10 @@ class ImportError(DebianError):
     BzrError.__init__(self)
     self.reason = reason
 
+class HookFailedError(BzrError):
+  _fmt = """The %(hook_name)s hook failed."""
+
+  def __init__(self, hook_name):
+    BzrError.__init__(self)
+    self.hook_name = hook_name
+

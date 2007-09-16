@@ -127,15 +127,17 @@ class DebBuildConfig(object):
     else:
       self._branch_config = None
 
-  def _get_opt(self, config, key):
+  def _get_opt(self, config, key, section=None):
     """Returns the value for key from config, of None if it is not defined in 
     the file"""
+    if section is None:
+      section = self.section
     try:
-      return config.get_value(self.section, key)
+      return config.get_value(section, key)
     except KeyError:
       return None
 
-  def _get_best_opt(self, key, trusted=False):
+  def _get_best_opt(self, key, trusted=False, section=None):
     """Returns the value for key, obeying precedence.
     
     Returns the value for the key from the first file in which it is defined,
@@ -145,6 +147,8 @@ class DebBuildConfig(object):
     marked as trusted.
     
     """
+    if section is None:
+      section = self.section
     if self._branch_config is not None:
       if not trusted:
         value = self._branch_config.get_option(key, section=self.section)
@@ -153,12 +157,15 @@ class DebBuildConfig(object):
           return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:
-        value = self._get_opt(config_file[0], key)
+        value = self._get_opt(config_file[0], key, section=section)
         if value is not None:
           mutter("Using %s for %s, taken from %s", value, key,
                  config_file[0].filename)
           return value
     return None
+
+  def get_hook(self, hook_name):
+    return self._get_best_opt(hook_name, section='HOOKS')
 
   def _get_bool(self, config, key):
     try:
