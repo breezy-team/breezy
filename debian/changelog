@@ -21,8 +21,10 @@ bzr-builddeb (0.91) unstable; urgency=low
   * Add a bd-do command for running commands when in merge mode. This
     is useful when you need the full upstream source, for instance patch
     handling.
+  * Add hook support for running arbitrary commands at pre-defined points
+    in the build.
 
- -- James Westby <jw+debian@jameswestby.net>  Sat, 15 Sep 2007 23:49:59 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Sun, 16 Sep 2007 21:02:28 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 
