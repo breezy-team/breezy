@@ -481,8 +481,10 @@ class cmd_bd_do(Command):
                             "packages. See /usr/share/doc/bzr-builddeb"
                             "/user_manual/merge.html for more information.")
 
+    give_instruction = False
     if command is None:
       command = os.environ['SHELL']
+      give_instruction = True
     t = WorkingTree.open_containing('.')[0]
     (changelog, larstiq) = find_changelog(t, True)
     build_dir = config.build_dir
@@ -512,6 +514,9 @@ class cmd_bd_do(Command):
     except StopBuild, e:
       warning('Stopping the build: %s.', e.reason)
     info('Running "%s" in the exported directory.' % (command))
+    if give_instruction:
+      info('If you want to cancel your changes then exit with a non-zero '
+           'exit code, e.g. run "exit 1".')
     proc = subprocess.Popen(command, shell=True,
                             cwd=properties.source_dir())
     proc.wait()
@@ -532,6 +537,8 @@ class cmd_bd_do(Command):
       if proc.returncode != 0:
         raise BzrCommandError('Copying back debian/ failed')
     build.clean()
+    info('If any files were added or removed you should run "bzr add" or '
+         '"bzr rm" as appropriate.')
 
 
 register_command(cmd_bd_do)
