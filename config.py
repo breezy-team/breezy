@@ -230,7 +230,7 @@ class DebBuildConfig(object):
                          "Get the upstream source from another branch")
 
   export_upstream_revision = _opt_property('export-upstream-revision',
-                         "THe revision of the upstream branch to export.")
+                         "The revision of the upstream branch to export.")
 
   prepull_upstream = _bool_property('export-upstream-prepull',
                          "Pull the upstream branch before exporting it.")
