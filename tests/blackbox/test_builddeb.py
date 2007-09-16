@@ -74,11 +74,15 @@ class TestBuilddeb(ExternalBase):
 
   def assertInBuildDir(self, files):
     build_dir = self.build_dir()
+    if isinstance(files, basestring):
+      files = [files]
     for filename in files:
       self.failUnlessExists(os.path.join(build_dir, filename))
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
+    if isinstance(files, basestring):
+      files = [files]
     for filename in files:
       self.failIfExists(os.path.join(build_dir, filename))
 
@@ -125,4 +129,33 @@ class TestBuilddeb(ExternalBase):
                        "builddeb --native --builder true --dont-purge -r0")
     self.assertNotInBuildDir([self.commited_file, self.unadded_file,
                               self.uncommited_file])
+
+  def orig_dir(self):
+    return os.path.join('..', 'tarballs')
+
+  def make_upstream_tarball(self):
+    os.mkdir(self.orig_dir())
+    f = open(os.path.join(self.orig_dir(), self.package_name + "_" +
+                          str(self.package_version.upstream_version) +
+                          ".orig.tar.gz"), 'wb')
+    f.close()
+
+  def test_builder(self):
+    tree = self.make_unpacked_source()
+    self.run_bzr('bd --dont-purge --native --builder "touch built"')
+    self.assertInBuildDir('built')
+
+  def test_hooks(self):
+    tree = self.make_unpacked_source()
+    self.make_upstream_tarball()
+    os.mkdir('.bzr-builddeb/')
+    f = open('.bzr-builddeb/default.conf', 'wb')
+    try:
+      f.write('[HOOKS]\npre-export = touch pre-export\n')
+      f.write('pre-build = touch pre-build\npost-build = touch post-build\n')
+    finally:
+      f.close()
+    self.run_bzr('bd --dont-purge --builder true')
+    self.failUnlessExists('pre-export')
+    self.assertInBuildDir(['pre-build', 'post-build'])
 

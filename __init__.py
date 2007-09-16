@@ -43,6 +43,7 @@ from builder import (DebBuild,
 from config import DebBuildConfig
 from errors import (StopBuild,
                     )
+from hooks import run_hook
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
 
@@ -283,6 +284,8 @@ class cmd_builddeb(Command):
 
     build.prepare(use_existing)
 
+    run_hook('pre-export', config)
+
     try:
       build.export(use_existing)
     except StopBuild, e:
@@ -290,7 +293,9 @@ class cmd_builddeb(Command):
       return
 
     if not export_only:
+      run_hook('pre-build', config, wd=properties.source_dir())
       build.build(builder)
+      run_hook('post-build', config, wd=properties.source_dir())
       if not dont_purge:
         build.clean()
       if result is not None:
