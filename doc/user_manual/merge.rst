@@ -130,5 +130,25 @@ of ``debian/`` is copied back to your branch. If the command fails then
 nothing is done. If files are added or removed by the command that you run
 then you will have to ``bzr add`` or ``bzr rm`` them as necessary.
 
+For instance you can run::
+
+  bzr bd-do
+
+and have a shell in the unpacked source directory. You can then run any
+commands that you would like. If you then exit the shell normally the contents
+of ``debian/`` will be copied back, and be present in your branch. If you exit
+with a non-zero exit code, for instance by running ``exit 1`` then you will
+abort any changes, and they will not show up in your branch.
+
+You can also run any command by passing it as the first argument to the
+``bd-do`` command. For instance if you use ``dpatch`` in your package the
+following may be useful::
+
+  bzr bd-do "dpatch-edit-patch 01-fix-build"
+
+Note that only the first argument is used, so the command had to be quoted.
+The command is run through the shell, so you can execute multiple commands
+in one step by separating them with ``&&`` or ``;``.
+
 .. vim: set ft=rst tw=76 :
 

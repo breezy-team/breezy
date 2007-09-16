@@ -467,6 +467,22 @@ class cmd_bd_do(Command):
   operations difficult. This command allows you to run any command in an
   exported source directory, copying the resulting debian/ directory back
   to your branch if the command is successful.
+
+  For instance:
+
+    bzr bd-do
+
+  will run a shell in the unpacked source. Any changes you make in the
+  ``debian/`` directory will be copied back to the branch. If you exit with
+  a non-zero exit code (e.g. "exit 1"), then the changes will not be copied
+  back.
+
+  You can also specify single commands to be run, e.g.
+
+    bzr bd-do "dpatch-edit-patch 01-fix-build"
+
+  Note that only the first argument is used as the command, and so the above
+  example had to be quoted.
   """
 
   takes_args = ['command?']
