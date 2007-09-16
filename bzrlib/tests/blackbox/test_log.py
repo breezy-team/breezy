@@ -28,10 +28,7 @@ from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 class TestLog(ExternalBase):
 
     def _prepare(self, path='.', format=None):
-        if format:
-            tree = self.make_branch_and_tree(path, format=format)
-        else:
-            tree = self.make_branch_and_tree(path)
+        tree = self.make_branch_and_tree(path, format=format)
         self.build_tree(
             [path + '/hello.txt', path + '/goodbye.txt', path + '/meep.txt'])
         tree.add('hello.txt')
