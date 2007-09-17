@@ -183,6 +183,23 @@ class Evolution(ExternalMailClient):
         return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
 
 
+class Mutt(ExternalMailClient):
+    """Mutt mail client."""
+
+    _client_commands = ['mutt']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        """See ExternalMailClient._get_compose_commandline"""
+        message_options = []
+        if subject is not None:
+            message_options.extend(['-s', subject ])
+        if attach_path is not None:
+            message_options.extend(['-a', attach_path])
+        if to is not None:
+            message_options.append(to)
+        return message_options
+
+
 class Thunderbird(ExternalMailClient):
     """Mozilla Thunderbird (or Icedove)
 

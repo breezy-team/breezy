@@ -104,6 +104,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_testament',
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_uncommit',
+                     'bzrlib.tests.blackbox.test_unknowns',
                      'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_version',
