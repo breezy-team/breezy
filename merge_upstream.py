@@ -117,7 +117,7 @@ def merge_upstream(tree, source, version_number):
       current_revision = tree.last_revision()
       rev_id = lookup_tag(tree)
       if rev_id != tree.branch.last_revision():
-        tree.revert([], tree.branch.repository.revision_tree(rev_id))
+        tree.revert(None, tree.branch.repository.revision_tree(rev_id))
         if os.path.isdir(source):
           s = StringIO(source)
           s.seek(0)

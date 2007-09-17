@@ -235,7 +235,7 @@ class DscImporter(object):
         dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
         old_upstream_revid = tree.branch.tags.lookup_tag(
                                  make_upstream_tag(last_upstream))
-        tree.revert([],
+        tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
       import_tar(tree, f, file_ids_from=dangling_tree)
       if last_upstream is not None:
@@ -265,7 +265,7 @@ class DscImporter(object):
         if old_upstream_revid != tree.branch.last_revision():
           dangling_revid = tree.branch.last_revision()
           dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
-        tree.revert([],
+        tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
       import_tar(tree, f, file_ids_from=dangling_tree)
       if last_upstream is not None:
@@ -399,7 +399,7 @@ class DscImporter(object):
     else:
       current_revid = dangling_revid
     current_tree = tree.branch.repository.revision_tree(current_revid)
-    tree.revert([], tree.branch.repository.revision_tree(up_revid))
+    tree.revert(None, tree.branch.repository.revision_tree(up_revid))
     f = open_file(diffname, transport, base_dir=base_dir)[0]
     f = gzip.GzipFile(fileobj=f)
     try:

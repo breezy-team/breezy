@@ -12,8 +12,10 @@ bzr-builddeb (0.91) unstable; urgency=low
   * Add version_info attribute so that bzrlib can find out the version of
     the plugin. Please try and remember to update it when releasing (set
     the word to 'final').
+  * Use None instead of [] to revert all files as the latter is deprecated
+    in bzr 0.91. Bump the required version accordingly.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 12 Sep 2007 21:55:54 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 17 Sep 2007 18:14:21 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 
