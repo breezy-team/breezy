@@ -99,5 +99,27 @@ build the package. `bzr-builddeb` will see that there is a new version and
 export the new revision of the upstream branch to create the upstream
 tarball.
 
+In order to make this process easier in the future it is possible to use tags
+to automatically pick the correct upstream revision. To do this you (or
+upstream) need to tag the upstream releases with a consistent scheme that
+incorporates the release number in to it. For instance for the ``0.3``
+release of scruff you could run::
+
+  bzr tag scruff-0.3
+
+in the upstream branch. If you then set ``export-upstream-revision`` in the
+configuration file according to this tag scheme, using the special variable
+``$UPSTREAM_VERSION`` then the correct revision can be inferred::
+
+  export-upstream-revision = tag:scruff-$UPSTREAM_VERSION
+
+This means that when `bzr-builddeb` tries to build a package it will look for
+the tag by substituting in the upstream version it is looking for, for
+instance building version ``0.3-3`` will look for the tag ``scruff-0.3`` and
+find the tag we created previously.
+
+Note that this variable substitution only occurs from the configuration file,
+and does not work if this option is passed on the command line.
+
 .. vim: set ft=rst tw=76 :
 

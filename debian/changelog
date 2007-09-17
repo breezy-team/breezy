@@ -23,8 +23,11 @@ bzr-builddeb (0.91) unstable; urgency=low
     handling.
   * Add hook support for running arbitrary commands at pre-defined points
     in the build.
+  * Support $UPSTREAM_VERSION in the export-upstream-revision configuration
+    option. This allows builddeb to find the correct upstream revision based
+    on tags with no user intervention. Thanks to Jelmer for the idea.
 
- -- James Westby <jw+debian@jameswestby.net>  Sun, 16 Sep 2007 21:02:28 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 17 Sep 2007 21:45:10 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

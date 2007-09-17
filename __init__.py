@@ -186,12 +186,6 @@ class cmd_builddeb(Command):
     if not merge:
       merge = config.merge
 
-    if export_upstream is None:
-      export_upstream = config.export_upstream
-
-    if export_upstream_revision is None:
-      export_upstream_revision = config.export_upstream_revision
-
     if merge:
       info("Running in merge mode")
     else:
@@ -242,6 +236,14 @@ class cmd_builddeb(Command):
       working_tree = False
 
     (changelog, larstiq) = find_changelog(t, merge)
+
+    config.set_version(changelog.version)
+
+    if export_upstream is None:
+      export_upstream = config.export_upstream
+
+    if export_upstream_revision is None:
+      export_upstream_revision = config.export_upstream_revision
 
     if build_dir is None:
       build_dir = config.build_dir

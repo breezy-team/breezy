@@ -18,9 +18,11 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from config import DebBuildConfig
+from debian_bundle.changelog import Version
 
 from bzrlib.tests import TestCaseWithTransport
+
+from config import DebBuildConfig
 
 
 class DebBuildConfigTests(TestCaseWithTransport):
@@ -37,6 +39,7 @@ class DebBuildConfigTests(TestCaseWithTransport):
       f.write('build-dir = default build dir\n')
       f.write('orig-dir = default orig dir\n')
       f.write('result-dir = default result dir\n')
+      f.write('export-upstream-revision = tag:upstream-$UPSTREAM_VERSION\n')
     finally:
       f.close()
     f = open('user.conf', 'wb')
@@ -56,8 +59,10 @@ class DebBuildConfigTests(TestCaseWithTransport):
     finally:
       f.close()
     self.tree.add(['default.conf', 'user.conf'])
+    version = Version('0.1-1')
     self.config = DebBuildConfig([('user.conf', True),
-                                  ('default.conf', False)], branch=self.branch)
+                                  ('default.conf', False)], branch=self.branch,
+                                 version=version)
 
   def test_secure_not_from_untrusted(self):
     self.assertEqual(self.config.builder, 'valid builder')
@@ -76,4 +81,8 @@ class DebBuildConfigTests(TestCaseWithTransport):
     self.assertEqual(self.config.merge, False)
     self.assertEqual(self.config.source_builder, None)
 
+  def test_interpolation(self):
+    self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.1')
+    self.config.set_version(Version('0.2'))
+    self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.2')
 

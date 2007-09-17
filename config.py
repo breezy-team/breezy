@@ -18,10 +18,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from StringIO import StringIO
-
-from bzrlib.config import ConfigObj, IniBasedConfig, TreeConfig
-from bzrlib import errors
+from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
 
 
@@ -33,7 +30,7 @@ class DebBuildConfig(object):
 
   section = 'BUILDDEB'
 
-  def __init__(self, files, branch=None):
+  def __init__(self, files, branch=None, version=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
@@ -64,13 +61,19 @@ class DebBuildConfig(object):
     userbuild
     """
     self._config_files = []
+    self.version = version
     assert(len(files) > 0)
     for input in files:
-      self._config_files.append((ConfigObj(input[0]), input[1]))
+      config = ConfigObj(input[0])
+      self._config_files.append((config, input[1]))
     if branch is not None:
       self._branch_config = TreeConfig(branch)
     else:
       self._branch_config = None
+
+  def set_version(self, version):
+    """Set the version used for substitution."""
+    self.version = version
 
   def _get_opt(self, config, key, section=None):
     """Returns the value for key from config, of None if it is not defined in 
@@ -174,14 +177,22 @@ class DebBuildConfig(object):
   export_upstream = _opt_property('export-upstream',
                          "Get the upstream source from another branch")
 
-  export_upstream_revision = _opt_property('export-upstream-revision',
-                         "The revision of the upstream branch to export.")
-
   prepull_upstream = _bool_property('export-upstream-prepull',
                          "Pull the upstream branch before exporting it.")
 
   prepull_upstream_stop = _bool_property('export-upstream-stop-on-trivial-pull',
                          "Stop the build if the upstream pull does nothing.")
+
+  def _get_export_upstream_revision(self):
+    rev = self._get_best_opt('export-upstream-revision')
+    if rev is not None and self.version is not None:
+      rev = rev.replace('$UPSTREAM_VERSION',
+                        str(self.version.upstream_version))
+    return rev
+
+  export_upstream_revision = property(_get_export_upstream_revision, None,
+                         None,
+                         "The revision of the upstream branch to export.")
 
 def _test():
   import doctest

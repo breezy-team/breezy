@@ -24,33 +24,14 @@ from debian_bundle.changelog import (Changelog,
                                      Version,
                                      )
 
-from bzrlib.tests.blackbox import ExternalBase
+from tests import BuilddebTestCase
 
 
-class TestBuilddeb(ExternalBase):
-
-  package_name = 'test'
-  package_version = Version('0.1')
+class TestBuilddeb(BuilddebTestCase):
 
   commited_file = 'commited_file'
   uncommited_file = 'uncommited_file'
   unadded_file = 'unadded_file'
-
-  def make_changelog(self, version=None):
-    if version is None:
-      version = self.package_version
-    c = Changelog()
-    c.new_block()
-    c.version = Version(version)
-    c.package = self.package_name
-    c.distributions = 'unstable'
-    c.urgency = 'low'
-    c.author = 'James Westby <jw+debian@jameswestby.net>'
-    c.date = 'The,  3 Aug 2006 19:16:22 +0100'
-    c.add_change('')
-    c.add_change('  *  test build')
-    c.add_change('')
-    return c
 
   def make_unpacked_source(self):
     """Create an unpacked source tree in a branch. Return the working tree"""
@@ -59,18 +40,14 @@ class TestBuilddeb(ExternalBase):
     source_files = ['debian/'] + [cl_file]
     self.build_tree(source_files)
     c = self.make_changelog()
-    f = open(cl_file, 'wb')
-    try:
-      c.write_to_open_file(f)
-    finally:
-      f.close()
+    self.write_changelog(c, cl_file)
     tree.add(source_files)
     return tree
 
   def build_dir(self):
     return os.path.join('..', 'build-area',
                         self.package_name + '-' +
-                        str(self.package_version))
+                        str(self.upstream_version))
 
   def assertInBuildDir(self, files):
     build_dir = self.build_dir()
@@ -100,7 +77,7 @@ class TestBuilddeb(ExternalBase):
     self.build_tree([self.commited_file, self.uncommited_file,
                      self.unadded_file])
     tree.add([self.commited_file])
-    tree.commit("one")
+    tree.commit("one", rev_id='revid1')
     tree.add([self.uncommited_file])
     return tree
 
@@ -158,4 +135,26 @@ class TestBuilddeb(ExternalBase):
     self.run_bzr('bd --dont-purge --builder true')
     self.failUnlessExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
+
+  def test_export_upstream_uses_variable_upstream_version(self):
+    """Check that $UPSTREAM_VERSION is supported in export upstream."""
+    tree = self.make_unpacked_source()
+    upstream = self.make_branch_and_tree('upstream')
+    self.build_tree(['upstream/a'])
+    upstream.add(['a'])
+    upstream.commit('one')
+    upstream.branch.tags.set_tag('test-0.1', upstream.branch.last_revision())
+    self.build_tree(['upstream/b'])
+    upstream.add(['b'])
+    upstream.commit('two')
+    os.mkdir('.bzr-builddeb/')
+    f = open('.bzr-builddeb/default.conf', 'wb')
+    try:
+      f.write('[BUILDDEB]\nmerge = True\nexport-upstream = upstream\n')
+      f.write('export-upstream-revision = tag:test-$UPSTREAM_VERSION\n')
+    finally:
+      f.close()
+    self.run_bzr('bd --dont-purge --builder true')
+    self.assertInBuildDir(['a'])
+    self.assertNotInBuildDir(['b'])
 
