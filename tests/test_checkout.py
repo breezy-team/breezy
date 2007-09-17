@@ -21,8 +21,8 @@ from bzrlib.errors import NoRepositoryPresent
 from bzrlib.tests import TestCase
 
 from convert import SvnConverter
-from bzrlib.plugins.svn.workingtree import (SvnWorkingTreeFormat, 
-                                            SvnWorkingTreeDirFormat)
+from bzrlib.plugins.svn.workingtree import SvnWorkingTreeFormat
+from bzrlib.plugins.svn.format import SvnWorkingTreeDirFormat
 from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTreeFormat(TestCase):

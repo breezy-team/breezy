@@ -242,8 +242,8 @@ class SvnRepositoryFormat(RepositoryFormat):
     rich_root_data = True
 
     def __get_matchingbzrdir(self):
-        from format import SvnFormat
-        return SvnFormat()
+        from remote import SvnRemoteFormat
+        return SvnRemoteFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 

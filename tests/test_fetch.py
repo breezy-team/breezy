@@ -24,6 +24,7 @@ from bzrlib.trace import mutter
 from convert import load_dumpfile
 from fileids import generate_svn_file_id, generate_file_id
 import format
+import remote
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
@@ -1226,7 +1227,7 @@ Node-copyfrom-path: x
         self.client_copy("dc/trunk", "dc/branches/foobranch")
         self.client_commit("dc", "added branch foobranch") #3
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
+        repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
@@ -1262,7 +1263,7 @@ Node-copyfrom-path: x
         self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
         self.client_commit("dc", "foohosts") #6
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
+        repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(6, "branches/foobranch", "trunk0"))

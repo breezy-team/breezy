@@ -27,11 +27,9 @@ from bzrlib.transport import register_lazy_transport, register_transport_proto
 from bzrlib.repository import InterRepository
 
 lazy_import(globals(), """
-import branch
 import commit
 import fetch 
 import format
-import workingtree
 """)
 
 # versions ending in 'exp' mean experimental mappings
@@ -113,12 +111,12 @@ topic_registry.register_lazy('svn-branching-schemes',
                              'bzrlib.plugins.svn.scheme',
                              'help_schemes', 'Subversion branching schemes')
 
-BzrDirFormat.register_control_format(format.SvnFormat)
-BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
-format_registry.register("subversion", format.SvnFormat, 
+BzrDirFormat.register_control_format(format.SvnRemoteFormat)
+BzrDirFormat.register_control_format(format.SvnWorkingTreeDirFormat)
+format_registry.register("subversion", format.SvnRemoteFormat, 
                          "Subversion repository. ", 
                          native=False)
-format_registry.register("subversion-wc", workingtree.SvnWorkingTreeDirFormat, 
+format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat, 
                          "Subversion working copy. ", 
                          native=False)
 
