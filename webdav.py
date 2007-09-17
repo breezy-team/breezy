@@ -94,51 +94,22 @@ import sys
 import time
 import urllib2
 
-import bzrlib
-from bzrlib.errors import (
-    BzrCheckError,
-    DirectoryNotEmpty,
-    NoSuchFile,
-    FileExists,
-    TransportError,
-    InvalidHttpResponse,
+from bzrlib import (
+    errors,
+    osutils,
+    trace,
+    transport,
     )
 
-from bzrlib.osutils import (
-    dirname
-    )
-from bzrlib.trace import mutter
-from bzrlib.transport import (
-    register_urlparse_netloc_protocol,
-    Transport,
+from bzrlib.transport.http import (
+    _urllib,
+    _urllib2_wrappers,
     )
 
-from bzrlib.transport.http.response import (
-    handle_response
-    )
+transport.register_urlparse_netloc_protocol('http+webdav')
+transport.register_urlparse_netloc_protocol('https+webdav')
 
-from bzrlib.transport.http._urllib import (
-    HttpTransport_urllib,
-    )
-
-from bzrlib.transport.http._urllib2_wrappers import (
-    ConnectionHandler,
-    HTTPConnection,
-    HTTPErrorProcessor,
-    HTTPSConnection,
-    Opener,
-    Request,
-    Response,
-    )
-
-# We want https because user and passwords are required to
-# authenticate against the DAV server.  We don't want to send
-# passwords in clear text, so we need https.
-
-register_urlparse_netloc_protocol('http+webdav')
-register_urlparse_netloc_protocol('https+webdav')
-
-class PUTRequest(Request):
+class PUTRequest(_urllib2_wrappers.Request):
     def __init__(self, url, data, more_headers={}, accepted_errors=None):
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
         headers = {'Accept': '*/*',
@@ -153,10 +124,10 @@ class PUTRequest(Request):
                    #  'Transfer-Encoding': 'chunked',
                    }
         headers.update(more_headers)
-        Request.__init__(self, 'PUT', url, data, headers,
-                         accepted_errors=accepted_errors)
+        _urllib2_wrappers.Request.__init__(self, 'PUT', url, data, headers,
+                                           accepted_errors=accepted_errors)
 
-class DavResponse(Response):
+class DavResponse(_urllib2_wrappers.Response):
     """Custom HTTPResponse.
 
     DAV have some reponses for which the body is of no interest.
@@ -169,17 +140,17 @@ class DavResponse(Response):
 
 
 # Takes DavResponse into account:
-class DavHTTPConnection(HTTPConnection):
+class DavHTTPConnection(_urllib2_wrappers.HTTPConnection):
 
     response_class = DavResponse
 
 
-class DavHTTPSConnection(HTTPSConnection):
+class DavHTTPSConnection(_urllib2_wrappers.HTTPSConnection):
 
     response_class = DavResponse
 
 
-class DavConnectionHandler(ConnectionHandler):
+class DavConnectionHandler(_urllib2_wrappers.ConnectionHandler):
     """Custom connection handler.
 
     We need to use the DavConnectionHTTPxConnection class to take
@@ -194,14 +165,14 @@ class DavConnectionHandler(ConnectionHandler):
         return self.capture_connection(request, DavHTTPSConnection)
 
 
-class DavOpener(Opener):
+class DavOpener(_urllib2_wrappers.Opener):
     """Dav specific needs regarding HTTP(S)"""
 
     def __init__(self):
         super(DavOpener, self).__init__(connection=DavConnectionHandler)
 
 
-class HttpDavTransport(HttpTransport_urllib):
+class HttpDavTransport(_urllib.HttpTransport_urllib):
     """An transport able to put files using http[s] on a DAV server.
 
     We don't try to implement the whole WebDAV protocol. Just the minimum
@@ -225,12 +196,12 @@ class HttpDavTransport(HttpTransport_urllib):
             msg = ''
         else:
             msg = ': ' + info
-        raise InvalidHttpResponse(url,
-                                  'Unable to handle http code %d%s'
-                                  % (response.code, msg))
+        raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
+                                         % (response.code, msg))
+
     def _handle_common_errors(self, code, abspath):
         if code == 404:
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
@@ -315,17 +286,18 @@ class HttpDavTransport(HttpTransport_urllib):
             code = response.code
 
             if code in (403, 404, 409):
-                raise NoSuchFile(abspath) # Intermediate directories missing
+                # Intermediate directories missing
+                raise errors.NoSuchFile(abspath)
             if code not in  (200, 201, 204):
                 self._raise_curl_http_error(abspath, response,
                                             'expected 200, 201 or 204.')
 
         try:
             bare_put_file_non_atomic()
-        except NoSuchFile:
+        except errors.NoSuchFile:
             if not create_parent_dir:
                 raise
-            parent_dir = dirname(relpath)
+            parent_dir = osutils.dirname(relpath)
             if parent_dir:
                 self.mkdir(parent_dir, mode=dir_mode)
                 return bare_put_file_non_atomic()
@@ -364,7 +336,7 @@ class HttpDavTransport(HttpTransport_urllib):
         code = response.code
 
         if code in (403, 404, 409):
-            raise NoSuchFile(abspath) # Intermediate directories missing
+            raise errors.NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_http_error(abspath, response,
                                    'expected 200, 201 or 204.')
@@ -373,8 +345,9 @@ class HttpDavTransport(HttpTransport_urllib):
         """See Transport.mkdir"""
         abspath = self._remote_path(relpath)
 
-        request = Request('MKCOL', abspath,
-                          accepted_errors=[201, 403, 405, 404, 409])
+        request = _urllib2_wrappers.Request('MKCOL', abspath,
+                                            accepted_errors=[201, 403, 405,
+                                                             404, 409])
         response = self._perform(request)
 
         code = response.code
@@ -389,10 +362,10 @@ class HttpDavTransport(HttpTransport_urllib):
             raise self._raise_http_error(abspath, response, 'mkdir failed')
         elif code == 405:
             # Not allowed (generally already exists)
-            raise FileExists(abspath)
+            raise errors.FileExists(abspath)
         elif code in (404, 409):
             # Conflict (intermediate directories do not exist)
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
         elif code != 201: # Created
             raise self._raise_http_error(abspath, response, 'mkdir failed')
 
@@ -401,20 +374,21 @@ class HttpDavTransport(HttpTransport_urllib):
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
-        request = Request('MOVE', abs_from, None,
-                          {'Destination': abs_to,
-                           'Overwrite': 'F'},
-                          accepted_errors=[201, 404, 409, 412])
+        request = _urllib2_wrappers.Request('MOVE', abs_from, None,
+                                            {'Destination': abs_to,
+                                             'Overwrite': 'F'},
+                                            accepted_errors=[201, 404, 409,
+                                                             412])
         response = self._perform(request)
 
         code = response.code
         if code == 404:
-            raise NoSuchFile(abs_from)
+            raise errors.NoSuchFile(abs_from)
         if code == 412:
-            raise FileExists(abs_to)
+            raise errors.FileExists(abs_to)
         if code == 409:
             # More precisely some intermediate directories are missing
-            raise NoSuchFile(abs_to)
+            raise errors.NoSuchFile(abs_to)
         if code != 201:
             # As we don't want  to accept overwriting abs_to, 204
             # (meaning  abs_to  was   existing  (but  empty,  the
@@ -429,15 +403,17 @@ class HttpDavTransport(HttpTransport_urllib):
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
-        request = Request('MOVE', abs_from, None, {'Destination': abs_to},
-                          accepted_errors=[201, 204, 404, 409])
+        request = _urllib2_wrappers.Request('MOVE', abs_from, None,
+                                            {'Destination': abs_to},
+                                            accepted_errors=[201, 204,
+                                                             404, 409])
         response = self._perform(request)
 
         code = response.code
         if code == 404:
-            raise NoSuchFile(abs_from)
+            raise errors.NoSuchFile(abs_from)
         if code == 409:
-            raise DirectoryNotEmpty(abs_to)
+            raise errors.DirectoryNotEmpty(abs_to)
         # Overwriting  allowed, 201 means  abs_to did  not exist,
         # 204 means it did exist.
         if code not in (201, 204):
@@ -454,19 +430,20 @@ class HttpDavTransport(HttpTransport_urllib):
         """
         abs_path = self._remote_path(rel_path)
 
-        request = Request('DELETE', abs_path,
-                          accepted_errors=[200, 204, 404, 999])
+        request = _urllib2_wrappers.Request('DELETE', abs_path,
+                                            accepted_errors=[200, 204,
+                                                             404, 999])
         response = self._perform(request)
 
         code = response.code
         if code == 404:
-            raise NoSuchFile(abs_path)
+            raise errors.NoSuchFile(abs_path)
         # FIXME: This  is an  hoooooorible workaround to  pass the
         # tests,  what  we really  should  do  is  test that  the
         # directory  is not  empty *because  bzr do  not  want to
         # remove non-empty dirs*.
         if code == 999:
-            raise DirectoryNotEmpty(abs_path)
+            raise errors.DirectoryNotEmpty(abs_path)
         if code != 204:
             self._raise_curl_http_error(curl, 'unable to delete')
 
@@ -475,13 +452,14 @@ class HttpDavTransport(HttpTransport_urllib):
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
-        request = Request('COPY', abs_from, None, {'Destination': abs_to},
-                          accepted_errors=[201, 404, 409])
+        request = _urllib2_wrappers.Request('COPY', abs_from, None,
+                                            {'Destination': abs_to},
+                                            accepted_errors=[201, 404, 409])
         response = self._perform(request)
 
         code = response.code
         if code in (404, 409):
-            raise NoSuchFile(abs_from)
+            raise errors.NoSuchFile(abs_from)
         if code != 201:
             self._raise_http_error(abs_from, response,
                                    'unable to copy from %r to %r'
@@ -497,7 +475,8 @@ class HttpDavTransport(HttpTransport_urllib):
         # a put(get())
         # We only override, because the default HttpTransportBase, explicitly
         # disabled it for HTTP
-        return Transport.copy_to(self, relpaths, other, mode=mode, pb=pb)
+        return transport.Transport.copy_to(self, relpaths, other,
+                                           mode=mode, pb=pb)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive access.
@@ -560,7 +539,8 @@ class HttpDavTransport(HttpTransport_urllib):
             # then the server is buggy :-/ )
             relpath_size = int(response.headers.get('Content-Length', 0))
             if relpath_size == 0:
-                mutter('if %s is not empty, the server is buggy' % relpath)
+                trace.mutter('if %s is not empty, the server is buggy'
+                             % relpath)
         if relpath_size:
             self._put_bytes_ranged(relpath, bytes, relpath_size)
         else:
@@ -575,7 +555,7 @@ class HttpDavTransport(HttpTransport_urllib):
         try:
             data = self.get(relpath)
             full_data.write(data.read())
-        except NoSuchFile:
+        except errors.NoSuchFile:
             # Good, just do the put then
             pass
 
