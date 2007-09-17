@@ -21,7 +21,7 @@ from bzrlib import (
     )
 
 
-class TestReconcile(tests.TestCaseWithTransport):
+class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_no_type(self):
         branch = self.make_branch('branch')
