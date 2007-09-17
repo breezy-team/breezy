@@ -1,3 +1,10 @@
+bzr-svn 0.4.4	UNRELEASED
+
+  PERFORMANCE
+
+   * Improved import times, making bzr faster if bzr-svn is loaded but 
+     not used.
+
 bzr-svn 0.4.3	2007-09-15
  
   PERFORMANCE

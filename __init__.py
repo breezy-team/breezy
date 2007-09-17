@@ -21,16 +21,10 @@ import bzrlib
 from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
-from bzrlib.lazy_import import lazy_import
-from bzrlib.trace import warning, mutter
+from bzrlib.trace import warning
 from bzrlib.transport import register_lazy_transport, register_transport_proto
-from bzrlib.repository import InterRepository
 
-lazy_import(globals(), """
-import commit
-import fetch 
 import format
-""")
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -134,6 +128,9 @@ def lazy_register_optimizers():
     global optimizers_registered
     if optimizers_registered:
         return
+    from bzrlib.repository import InterRepository
+    import commit
+    import fetch
     optimizers_registered = True
     InterRepository.register_optimiser(fetch.InterFromSvnRepository)
     InterRepository.register_optimiser(commit.InterToSvnRepository)
@@ -187,7 +184,6 @@ class cmd_svn_import(Command):
             from convert import load_dumpfile
             import tempfile
             tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-            mutter('loading dumpfile %r to %r' % (from_location, tmp_repos))
             load_dumpfile(from_location, tmp_repos)
             from_location = tmp_repos
         else:

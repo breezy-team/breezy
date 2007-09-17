@@ -18,7 +18,6 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.lazy_import import lazy_import
 from bzrlib.lockable_files import TransportLock
-import svn.core
 
 lazy_import(globals(), """
 import errors
@@ -50,6 +49,7 @@ class SvnRemoteFormat(BzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         from transport import get_svn_ra_transport
+        import svn.core
         format = klass()
 
         try:
@@ -63,6 +63,7 @@ class SvnRemoteFormat(BzrDirFormat):
         return format
 
     def _open(self, transport):
+        import svn.core
         try: 
             return remote.SvnRemoteAccess(transport, self)
         except svn.core.SubversionException, (_, num):
@@ -106,6 +107,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
     @classmethod
     def probe_transport(klass, transport):
+        import svn
         from bzrlib.transport.local import LocalTransport
         format = klass()
 
@@ -116,6 +118,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         raise bzr_errors.NotBranchError(path=transport.base)
 
     def _open(self, transport):
+        import svn.core
         from workingtree import SvnCheckout
         subr_version = svn.core.svn_subr_version()
         if subr_version.major == 1 and subr_version.minor < 4:
