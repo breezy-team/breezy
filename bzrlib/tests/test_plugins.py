@@ -241,7 +241,7 @@ class TestPlugins(TestCaseInTempDir):
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         plugin_path = self.test_dir + '/plugin.py'
-        self.assertEqual(plugin_path, plugin.path())
+        self.assertIsSameRealPath(plugin_path, plugin.path())
 
     def test_no_test_suite_gives_None_for_test_suite(self):
         self.setup_plugin()
