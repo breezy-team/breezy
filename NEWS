@@ -4,6 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 0.91 series
+===============
+
+  BUG FIXES:
+
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
+
 bzr 0.91rc2 2007-09-11
 ======================
 
