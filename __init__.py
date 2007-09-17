@@ -131,8 +131,14 @@ def lazy_check_versions():
     check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
     check_bzrsvn_version()
 
-InterRepository.register_optimiser(fetch.InterFromSvnRepository)
-InterRepository.register_optimiser(commit.InterToSvnRepository)
+optimizers_registered = False
+def lazy_register_optimizers():
+    global optimizers_registered
+    if optimizers_registered:
+        return
+    optimizers_registered = True
+    InterRepository.register_optimiser(fetch.InterFromSvnRepository)
+    InterRepository.register_optimiser(commit.InterToSvnRepository)
 
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""

@@ -268,6 +268,8 @@ class SvnRepository(Repository):
     by using the RA (remote access) API from subversion
     """
     def __init__(self, bzrdir, transport, branch_path=None):
+        from bzrlib.plugins.svn import lazy_register_optimizers
+        lazy_register_optimizers()
         from fileids import SimpleFileIdMap
         _revision_store = None
 
