@@ -23,7 +23,6 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
-import shutil
 import subprocess
 
 from bzrlib.commands import Command, register_command
@@ -39,6 +38,7 @@ from builder import (DebBuild,
                      DebNativeBuild,
                      DebSplitBuild,
                      DebMergeExportUpstreamBuild,
+                     DebExportUpstreamBuild,
                      )
 from config import DebBuildConfig
 from errors import (StopBuild,
@@ -527,7 +527,7 @@ class cmd_bd_do(Command):
                                           export_upstream_revision,
                                           prepull_upstream,
                                           stop_on_no_change,
-                                          _is_working_tree=working_tree)
+                                          _is_working_tree=True)
 
     build.prepare()
     try:
