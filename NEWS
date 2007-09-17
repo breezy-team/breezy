@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
+     bazaar.conf and ``send`` will use mutt. (Keir Mierle)
+
   BUG FIXES:
 
    * The basename, not the full path, is now used when checking whether

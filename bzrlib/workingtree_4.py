@@ -132,7 +132,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
