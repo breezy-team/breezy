@@ -227,6 +227,9 @@ class KnitRepository(MetaDirRepository):
     def _find_inconsistent_revision_parents(self):
         """Find revisions with different parent lists in the revision object
         and in the index graph.
+
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
         """
         vf = self._get_revision_vf()
         index_versions = vf.versions()
@@ -239,6 +242,12 @@ class KnitRepository(MetaDirRepository):
             if parents_according_to_index != parents_according_to_revision:
                 yield (index_version, parents_according_to_index,
                     parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
 
 
 class KnitRepository3(KnitRepository):
