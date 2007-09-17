@@ -47,6 +47,7 @@ from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseWithTransport,
+                          TestNotApplicable,
                           TestSkipped,
                           )
 from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
@@ -166,6 +167,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         bzrdir.destroy_workingtree_metadata()
         self.failUnlessExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+
+    def test_destroy_branch(self):
+        branch = self.make_branch('branch')
+        bzrdir = branch.bzrdir
+        try:
+            bzrdir.destroy_branch()
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise TestNotApplicable('Format does not support destroying tree')
+        self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
+        bzrdir.create_branch()
+        bzrdir.open_branch()
 
     def test_open_workingtree_raises_no_working_tree(self):
         """BzrDir.open_workingtree() should raise NoWorkingTree (rather than

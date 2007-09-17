@@ -11,6 +11,8 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``reconfigure`` command (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
