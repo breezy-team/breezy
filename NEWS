@@ -41,6 +41,10 @@ IN DEVELOPMENT
      longer throws away the profiling data if this command is run with
      ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
 
+   * HttpServer and FtpServer need to be closed properly or a listening socket
+     will remain opened.
+     (Vincent Ladeuil, #140055)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
