@@ -365,7 +365,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        #------- copied from inventory.make_entry
+        #------- copied from inventory.ensure_normalized_name - keep synced.
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be

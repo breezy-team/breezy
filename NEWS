@@ -39,6 +39,9 @@ IN DEVELOPMENT
      longer throws away the profiling data if this command is run with
      ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
 
+   * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
+     new path causes bzr to be unable to access the file. (Robert Collins)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
