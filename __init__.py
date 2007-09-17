@@ -30,14 +30,12 @@ if major != 0 or minor < 92:
     trace.note('not installing http+webdav:// support'
                ' (only supported for bzr 0.92 and above)')
 else:
-    from bzrlib.transport import (
-        register_lazy_transport
-        )
+    from bzrlib import transport
 
-    register_lazy_transport('https+webdav://',
-                            'bzrlib.plugins.webdav.webdav',
-                            'HttpDavTransport')
-    register_lazy_transport('http+webdav://',
-                            'bzrlib.plugins.webdav.webdav',
-                            'HttpDavTransport')
+    transport.register_lazy_transport('https+webdav://',
+                                      'bzrlib.plugins.webdav.webdav',
+                                      'HttpDavTransport')
+    transport.register_lazy_transport('http+webdav://',
+                                      'bzrlib.plugins.webdav.webdav',
+                                      'HttpDavTransport')
 
