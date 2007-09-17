@@ -203,6 +203,15 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         if code == 404:
             raise errors.NoSuchFile(abspath)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # FIXME: this implementation sucks, we should really use chunk encoding
+        # and buffers.
+        self.put_bytes(relpath, "", mode)
+        result = transport.AppendBasedFileStream(self, relpath)
+        transport._file_streams[self.abspath(relpath)] = result
+        return result
+
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
         return self.put_bytes(relpath, f.read(), mode=None)
