@@ -20,7 +20,6 @@
 
 import os
 import shutil
-import stat
 import tarfile
 
 from bzrlib.config import ConfigObj

@@ -22,7 +22,6 @@ from bzrlib.plugins import builddeb
 
 import bzrlib
 from bzrlib.tests import TestCase, KnownFailure
-from bzrlib.trace import error
 
 class VersionTests(TestCase):
 
