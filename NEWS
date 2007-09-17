@@ -11,6 +11,8 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``reconfigure`` command (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
@@ -23,6 +25,9 @@ IN DEVELOPMENT
      the contents. (Robert Collins)
 
   IMPROVEMENTS:
+
+   * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
+     bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
   BUG FIXES:
 
@@ -40,6 +45,10 @@ IN DEVELOPMENT
      ``tests/commands`` so that the test suite is still usable without
      paramiko.
      (Vincent Ladeuil, #59150)
+
+   * HttpServer and FtpServer need to be closed properly or a listening socket
+     will remain opened.
+     (Vincent Ladeuil, #140055)
 
   API BREAKS:
 
