@@ -203,6 +203,15 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         if code == 404:
             raise errors.NoSuchFile(abspath)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # FIXME: this implementation sucks, we should really use chunk encoding
+        # and buffers.
+        self.put_bytes(relpath, "", mode)
+        result = transport.AppendBasedFileStream(self, relpath)
+        transport._file_streams[self.abspath(relpath)] = result
+        return result
+
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
         return self.put_bytes(relpath, f.read(), mode=None)
@@ -272,14 +281,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         request = PUTRequest(abspath, bytes,
                              accepted_errors=[200, 201, 204, 403, 404, 409])
 
-        # FIXME: We just make a mix between the sftp
-        # implementation and the Transport one so there may be
-        # something wrong with default Transport implementation
-        # :-/
-        # jam 20060908 The default Transport implementation just uses
-        # the atomic apis, since all transports already implemented that.
-        # It is better to use non-atomic ones, but old transports need
-        # to be upgraded for that.
         def bare_put_file_non_atomic():
 
             response = self._perform(request)
