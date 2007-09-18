@@ -47,6 +47,9 @@ IN DEVELOPMENT
 
    * Fix commit ordering in corner case (Aaron Bentley, #94975)
 
+   * Fix log against smart server branches that don't support tags.
+     (James Westby, #140615)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
