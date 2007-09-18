@@ -2440,6 +2440,11 @@ class NoBindLocation(BzrDirError):
     _fmt = "No location could be found to bind to at %(display_url)s."
 
 
+class RetireFailed(BzrDirError):
+
+    _fmt = "Failed to retire %(display_url)s."
+
+
 class UncommittedChanges(BzrError):
 
     _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'

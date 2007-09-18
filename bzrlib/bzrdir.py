@@ -18,10 +18,14 @@
 
 At format 7 this was split out into Branch, Repository and Checkout control
 directories.
+
+Note: This module has a lot of ``open`` functions/methods that return
+references to in-memory objects. As a rule, there are no matching ``close``
+methods. To free any associated resources, simply stop referencing the
+objects returned.
 """
 
-# TODO: Can we move specific formats into separate modules to make this file
-# smaller?
+# TODO: Move old formats into a plugin to make this file smaller.
 
 from cStringIO import StringIO
 import os
@@ -87,7 +91,8 @@ class BzrDir(object):
     transport
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
     root_transport
-        a transport connected to the directory this bzr was opened from.
+        a transport connected to the directory this bzr was opened from
+        (i.e. the parent directory holding the .bzr directory).
     """
 
     def break_lock(self):
@@ -150,7 +155,7 @@ class BzrDir(object):
     def clone(self, url, revision_id=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
 
-        If urls last component does not exist, it will be created.
+        If url's last component does not exist, it will be created.
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
@@ -219,9 +224,6 @@ class BzrDir(object):
     def create(cls, base, format=None, possible_transports=None):
         """Create a new BzrDir at the url 'base'.
         
-        This will call the current default formats initialize with base
-        as the only parameter.
-
         :param format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
         :param possible_transports: If supplied, a list of transports that 
@@ -234,12 +236,12 @@ class BzrDir(object):
         t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return format.initialize(base, possible_transports)
+        return format.initialize_on_transport(t)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
 
-        The bzrdirs format will control what branch format is created.
+        The bzrdir's format will control what branch format is created.
         For more control see BranchFormatXX.create(a_bzrdir).
         """
         raise NotImplementedError(self.create_branch)
@@ -252,7 +254,8 @@ class BzrDir(object):
     def create_branch_and_repo(base, force_new_repo=False, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
-        This will use the current default BzrDirFormat, and use whatever 
+        This will use the current default BzrDirFormat unless one is
+        specified, and use whatever 
         repository format that that uses via bzrdir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially.
@@ -261,6 +264,8 @@ class BzrDir(object):
 
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
         """
         bzrdir = BzrDir.create(base, format)
         bzrdir._find_or_create_repository(force_new_repo)
@@ -285,7 +290,8 @@ class BzrDir(object):
         if possible, can be told explicitly whether to create a working tree or
         not.
 
-        This will use the current default BzrDirFormat, and use whatever 
+        This will use the current default BzrDirFormat unless one is
+        specified, and use whatever 
         repository format that that uses via bzrdir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially. Whatever repository is used, its tree creation policy
@@ -300,7 +306,7 @@ class BzrDir(object):
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
-        :param format: Override for the for the bzrdir format to create.
+        :param format: Override for the bzrdir format to create.
         :param possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
@@ -348,10 +354,12 @@ class BzrDir(object):
 
         'base' must be a local path or a file:// url.
 
-        This will use the current default BzrDirFormat, and use whatever 
+        This will use the current default BzrDirFormat unless one is
+        specified, and use whatever 
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
+        :param format: Override for the bzrdir format to create.
         :return: The WorkingTree object.
         """
         t = get_transport(base)
@@ -384,9 +392,10 @@ class BzrDir(object):
                 self.root_transport.rename('.bzr', to_path)
                 note("renamed %s to %s"
                     % (self.root_transport.abspath('.bzr'), to_path))
-                break
+                return
             except (errors.TransportError, IOError, errors.PathError):
                 pass
+        raise errors.RetireFailed(self.root_transport.abspath('.bzr'))
 
     def destroy_workingtree(self):
         """Destroy the working tree at this BzrDir.
@@ -404,7 +413,7 @@ class BzrDir(object):
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def find_repository(self):
-        """Find the repository that should be used for a_bzrdir.
+        """Find the repository that should be used.
 
         This does not require a branch as we use it to find the repo for
         new branches as well as to hook existing branches up to their
@@ -457,7 +466,7 @@ class BzrDir(object):
         a format string, and vice versa.
 
         If branch_format is None, the transport is returned with no 
-        checking. if it is not None, then the returned transport is
+        checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_branch_transport)
@@ -470,7 +479,7 @@ class BzrDir(object):
         a format string, and vice versa.
 
         If repository_format is None, the transport is returned with no 
-        checking. if it is not None, then the returned transport is
+        checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_repository_transport)
@@ -483,7 +492,7 @@ class BzrDir(object):
         format string, and vice versa.
 
         If workingtree_format is None, the transport is returned with no 
-        checking. if it is not None, then the returned transport is
+        checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_workingtree_transport)
@@ -515,8 +524,8 @@ class BzrDir(object):
         # this might be better on the BzrDirFormat class because it refers to 
         # all the possible bzrdir disk formats. 
         # This method is tested via the workingtree is_control_filename tests- 
-        # it was extracted from WorkingTree.is_control_filename. If the methods
-        # contract is extended beyond the current trivial  implementation please
+        # it was extracted from WorkingTree.is_control_filename. If the method's
+        # contract is extended beyond the current trivial implementation, please
         # add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
 
@@ -538,9 +547,9 @@ class BzrDir(object):
         
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
-        """Open an existing bzrdir, rooted at 'base' (url)
+        """Open an existing bzrdir, rooted at 'base' (url).
         
-        _unsupported is a private parameter to the BzrDir class.
+        :param _unsupported: a private parameter to the BzrDir class.
         """
         t = get_transport(base, possible_transports=possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
@@ -569,12 +578,13 @@ class BzrDir(object):
             note('%s is%s redirected to %s',
                  transport.base, e.permanently, target)
             # Let's try with a new transport
-            qualified_target = e.get_target_url()[:-len(relpath)]
             # FIXME: If 'transport' has a qualifier, this should
             # be applied again to the new transport *iff* the
             # schemes used are the same. It's a bit tricky to
             # verify, so I'll punt for now
             # -- vila20070212
+            #qualified_target = e.get_target_url()[:-len(relpath)]
+            #return get_transport(qualified_target)
             return get_transport(target)
 
         try:
@@ -609,7 +619,7 @@ class BzrDir(object):
     
     @staticmethod
     def open_containing_from_transport(a_transport):
-        """Open an existing branch which contains a_transport.base
+        """Open an existing branch which contains a_transport.base.
 
         This probes for a branch at a_transport, and searches upwards from there.
 
@@ -663,11 +673,11 @@ class BzrDir(object):
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
 
-        This will not follow the Branch object pointer - its strictly a direct
+        This will not follow the Branch object pointer - it's strictly a direct
         open facility. Most client code should use open_branch().repository to
         get at a repository.
 
-        _unsupported is a private parameter, not part of the api.
+        :param _unsupported: a private parameter, not part of the api.
         TODO: static convenience version of this?
         """
         raise NotImplementedError(self.open_repository)
@@ -713,7 +723,7 @@ class BzrDir(object):
             return False
 
     def _cloning_metadir(self):
-        """Produce a metadir suitable for cloning with"""
+        """Produce a metadir suitable for cloning with."""
         result_format = self._format.__class__()
         try:
             try:
@@ -746,7 +756,7 @@ class BzrDir(object):
         """Produce a metadir suitable for cloning or sprouting with.
 
         These operations may produce workingtrees (yes, even though they're
-        "cloning" something that doesn't have a tree, so a viable workingtree
+        "cloning" something that doesn't have a tree), so a viable workingtree
         format must be selected.
         """
         format, repository = self._cloning_metadir()
@@ -765,7 +775,7 @@ class BzrDir(object):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
-        If urls last component does not exist, it will be created.
+        If url's last component does not exist, it will be created.
 
         Attributes related to the identity of the source branch like
         branch nickname will be cleaned, a working tree is created
@@ -1228,7 +1238,7 @@ class BzrDirFormat(object):
      * a format string,
      * an open routine.
 
-    Formats are placed in an dict by their format string for reference 
+    Formats are placed in a dict by their format string for reference 
     during bzrdir opening. These should be subclasses of BzrDirFormat
     for consistency.
 
@@ -1445,7 +1455,8 @@ class BzrDirFormat(object):
         klass._default_format = format
 
     def __str__(self):
-        return self.get_format_string()[:-1]
+        # Trim the newline
+        return self.get_format_string().rstrip()
 
     @classmethod
     def unregister_format(klass, format):
