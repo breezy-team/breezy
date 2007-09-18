@@ -4142,27 +4142,25 @@ class cmd_tags(Command):
             short_name='d',
             type=unicode,
             ),
-        Option('no-revno',
-            help=('Do not print the revno of each tag'
-                  ' (faster for remote branches).'),
-            ),
+        'show-ids',
     ]
 
     @display_command
     def run(self,
             directory='.',
-            no_revno=False,
+            show_ids=False,
             ):
         branch, relpath = Branch.open_containing(directory)
-        for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
-            if no_revno:
-                revno = ''
-            else:
-                try:
-                    revno = '%d:' % branch.revision_id_to_revno(target)
-                except errors.NoSuchRevision:
-                    revno = '?:'
-            self.outf.write('%-20s %s%s\n' % (tag_name, revno, target))
+        revno_map = branch.get_revision_id_to_revno_map()
+        tags = []
+        for tag_name, revid in branch.tags.get_tag_dict().items():
+            revno = revno_map.get(revid, ('?',))
+            tags.append(((revno, revid), tag_name))
+        for (revno, revid), tag_name in sorted(tags):
+            revno = '.'.join(str(x) for x in revno)
+            if show_ids:
+                revno += ':%s' % (revid,)
+            self.outf.write('%-20s %s\n' % (tag_name, revno))
 
 
 class cmd_reconfigure(Command):
