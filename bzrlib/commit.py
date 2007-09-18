@@ -684,7 +684,7 @@ class Commit(object):
         deleted_paths = set()
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
-        entries = work_inv.iter_entries()
+        entries = work_inv.iter_entries_by_dir()
         if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
