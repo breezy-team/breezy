@@ -1351,7 +1351,7 @@ class TestCase(unittest.TestCase):
         try:
             result = self.apply_redirected(ui.ui_factory.stdin,
                 stdout, stderr,
-                bzrlib.commands.run_bzr_catch_errors,
+                bzrlib.commands.run_bzr_catch_user_errors,
                 args)
         finally:
             logger.removeHandler(handler)

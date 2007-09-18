@@ -811,6 +811,23 @@ def run_bzr_catch_errors(argv):
         return 3
 
 
+def run_bzr_catch_user_errors(argv):
+    """Run bzr and report user errors, but let internal errors propagate.
+
+    This is used for the test suite, and might be useful for other programs
+    that want to wrap the commandline interface.
+    """
+    try:
+        return run_bzr(argv)
+    except Exception, e:
+        if (isinstance(e, (OSError, IOError))
+            or not getattr(e, 'internal_error', True)):
+            trace.report_exception(sys.exc_info(), sys.stderr)
+            return 3
+        else:
+            raise
+
+
 class HelpCommandIndex(object):
     """A index for bzr help that returns commands."""
 

@@ -65,6 +65,12 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * When running bzr commands within the test suite, internal exceptions are
+     not caught and reported in the usual way, but rather allowed to propagate
+     up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
+     makes this behavior available to other users.
+     (Martin Pool)
+
 
 bzr 0.91rc2 2007-09-11
 ======================
