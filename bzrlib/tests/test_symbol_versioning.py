@@ -1,5 +1,6 @@
 # Copyright (C) 2006, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#   and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,6 +64,9 @@ class TestDeprecationWarnings(TestCase):
         return 1
 
     def test_deprecated_static(self):
+        # XXX: The results are not quite right because the class name is not
+        # shown - however it is enough to give people a good indication of
+        # where the problem is.
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning."
             "deprecated_static "

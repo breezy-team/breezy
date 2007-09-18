@@ -628,8 +628,8 @@ Deprecation decorators
 methods, functions, and other interfaces to indicate that they should no
 longer be used.
 
-To deprecate a static method this invocation is needed, in this particular
-order::
+To deprecate a static method you must call ``deprecated_function``
+(**not** method), after the staticmethod call::
 
     @staticmethod
     @deprecated_function(zero_ninetyone)
