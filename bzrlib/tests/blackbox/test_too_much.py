@@ -47,7 +47,6 @@ from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     has_symlinks,
     pathjoin,
-    realpath,
     terminal_width,
     )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -387,8 +386,8 @@ class OldTests(ExternalBase):
         chdir('branch1')
         self.run_bzr('init')
 
-        self.assertEquals(self.run_bzr('root')[0].rstrip(),
-                          realpath(pathjoin(self.test_dir, 'branch1')))
+        self.assertIsSameRealPath(self.run_bzr('root')[0].rstrip(),
+                                  pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
 
