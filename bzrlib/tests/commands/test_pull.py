@@ -15,12 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.builtins import cmd_pull
-from bzrlib.tests import StringIOWrapper
-from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+from bzrlib import (
+    branch,
+    builtins,
+    tests,
+    )
+from bzrlib.tests import transport_util
 
 
-class TestPull(TestCaseWithConnectionHookedTransport):
+class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_pull(self):
         wt1 = self.make_branch_and_tree('branch1')
@@ -29,9 +32,27 @@ class TestPull(TestCaseWithConnectionHookedTransport):
 
         self.start_logging_connections()
 
-        cmd = cmd_pull()
+        cmd = builtins.cmd_pull()
         # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = StringIOWrapper()
+        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('branch1'), directory='branch2')
+        self.assertEquals(1, len(self.connections))
+
+    def test_pull_with_bound_branch(self):
+
+        master_wt = self.make_branch_and_tree('master')
+        local_wt = self.make_branch_and_tree('local')
+        master_branch = branch.Branch.open(self.get_url('master'))
+        local_wt.branch.bind(master_branch)
+
+        remote_wt = self.make_branch_and_tree('remote')
+        remote_wt.commit('empty commit')
+
+        self.start_logging_connections()
+
+        pull = builtins.cmd_pull()
+        # We don't care about the ouput but 'outf' should be defined
+        pull.outf = tests.StringIOWrapper()
+        pull.run(self.get_url('remote'), directory='local')
         self.assertEquals(1, len(self.connections))
 
