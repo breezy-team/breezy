@@ -42,6 +42,7 @@ from bzrlib import (
     merge as _mod_merge,
     merge_directive,
     osutils,
+    reconfigure,
     registry,
     repository,
     revision as _mod_revision,
@@ -1016,7 +1017,9 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        master = tree.branch.get_master_branch()
+        possible_transports = []
+        master = tree.branch.get_master_branch(
+            possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
         else:
@@ -1032,8 +1035,9 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(delta._ChangeReporter(
-                                        unversioned_filter=tree.is_ignored))
+            conflicts = tree.update(
+                delta._ChangeReporter(unversioned_filter=tree.is_ignored),
+                possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
@@ -2307,16 +2311,11 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose or not is_quiet():
-            reporter = ReportCommitToLog()
-        else:
-            reporter = NullCommitReporter()
-
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties,
+                        reporter=None, verbose=verbose, revprops=properties,
                         author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -2552,7 +2551,7 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
-    def run(self, testspecs_list=None, verbose=None, one=False,
+    def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
@@ -2578,14 +2577,12 @@ class cmd_selftest(Command):
             pattern = ".*"
         if benchmark:
             test_suite_factory = benchmarks.test_suite
-            if verbose is None:
-                verbose = True
+            # Unless user explicitly asks for quiet, be verbose in benchmarks
+            verbose = not is_quiet()
             # TODO: should possibly lock the history file...
             benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
-            if verbose is None:
-                verbose = False
             benchfile = None
         try:
             result = selftest(verbose=verbose,
@@ -3850,9 +3847,9 @@ class cmd_send(Command):
     the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
-    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
-    "default".
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
+    specific clients are "evolution", "kmail", "mutt", and "thunderbird";
+    generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration
@@ -3867,7 +3864,7 @@ class cmd_send(Command):
 
     encoding_type = 'exact'
 
-    _see_also = ['merge', 'doc/configuration.txt']
+    _see_also = ['merge']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
@@ -4166,6 +4163,49 @@ class cmd_tags(Command):
                 except errors.NoSuchRevision:
                     revno = '?:'
             self.outf.write('%-20s %s%s\n' % (tag_name, revno, target))
+
+
+class cmd_reconfigure(Command):
+    """Reconfigure the type of a bzr directory.
+
+    A target configuration must be specified.
+
+    For checkouts, the bind-to location will be auto-detected if not specified.
+    The order of preference is
+    1. For a lightweight checkout, the current bound location.
+    2. For branches that used to be checkouts, the previously-bound location.
+    3. The push location.
+    4. The parent location.
+    If none of these is available, --bind-to must be specified.
+    """
+
+    takes_args = ['location?']
+    takes_options = [RegistryOption.from_kwargs('target_type',
+                     title='Target type',
+                     help='The type to reconfigure the directory to.',
+                     value_switches=True, enum_switch=False,
+                     branch='Reconfigure to a branch.',
+                     tree='Reconfigure to a tree.',
+                     checkout='Reconfigure to a checkout.'),
+                     Option('bind-to', help='Branch to bind checkout to.',
+                            type=str),
+                     Option('force',
+                        help='Perform reconfiguration even if local changes'
+                        ' will be lost.')
+                     ]
+
+    def run(self, location=None, target_type=None, bind_to=None, force=False):
+        directory = bzrdir.BzrDir.open(location)
+        if target_type is None:
+            raise BzrCommandError('No target configuration specified')
+        elif target_type == 'branch':
+            reconfiguration = reconfigure.Reconfigure.to_branch(directory)
+        elif target_type == 'tree':
+            reconfiguration = reconfigure.Reconfigure.to_tree(directory)
+        elif target_type == 'checkout':
+            reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
+                                                                  bind_to)
+        reconfiguration.apply(force)
 
 
 def _create_prefix(cur_transport):

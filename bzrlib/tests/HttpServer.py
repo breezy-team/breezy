@@ -380,6 +380,7 @@ class HttpServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
+        self._httpd.server_close()
         self._http_running = False
         self._http_thread.join()
 

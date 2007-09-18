@@ -2404,3 +2404,48 @@ class SMTPConnectionRefused(SMTPError):
 class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
 
     _fmt = "Please specify smtp_server.  No server at default %(host)s."
+
+
+class BzrDirError(BzrError):
+
+    def __init__(self, bzrdir):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+                                                    'ascii')
+        BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
+
+
+class AlreadyBranch(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a branch."
+
+
+class AlreadyTree(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a tree."
+
+
+class AlreadyCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a checkout."
+
+
+class ReconfigurationNotSupported(BzrDirError):
+
+    _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
+
+
+class NoBindLocation(BzrDirError):
+
+    _fmt = "No location could be found to bind to at %(display_url)s."
+
+
+class UncommittedChanges(BzrError):
+
+    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+
+    def __init__(self, tree):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(
+            tree.bzrdir.root_transport.base, 'ascii')
+        BzrError.__init__(self, tree=tree, display_url=display_url)

@@ -244,6 +244,10 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_branch)
 
+    def destroy_branch(self):
+        """Destroy the branch in this BzrDir"""
+        raise NotImplementedError(self.destroy_branch)
+
     @staticmethod
     def create_branch_and_repo(base, force_new_repo=False, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
@@ -533,12 +537,12 @@ class BzrDir(object):
         return BzrDir.open(base, _unsupported=True)
         
     @staticmethod
-    def open(base, _unsupported=False):
+    def open(base, _unsupported=False, possible_transports=None):
         """Open an existing bzrdir, rooted at 'base' (url)
         
         _unsupported is a private parameter to the BzrDir class.
         """
-        t = get_transport(base)
+        t = get_transport(base, possible_transports=possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
@@ -894,6 +898,10 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.create_branch."""
         return self.open_branch()
 
+    def destroy_branch(self):
+        """See BzrDir.destroy_branch."""
+        raise errors.UnsupportedOperation(self.destroy_branch, self)
+
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         if shared:
@@ -1069,6 +1077,10 @@ class BzrDirMeta1(BzrDir):
     def create_branch(self):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self)
+
+    def destroy_branch(self):
+        """See BzrDir.create_branch."""
+        self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1805,7 +1817,7 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
                     self.branch.control_files.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
@@ -1890,10 +1902,10 @@ class ConvertBzrDir4To5(Converter):
         present_parents = [p for p in rev.parent_ids
                            if p not in self.absent_revisions]
         self._convert_revision_contents(rev, inv, present_parents)
-        self._store_new_weave(rev, inv, present_parents)
+        self._store_new_inv(rev, inv, present_parents)
         self.converted_revs.add(rev_id)
 
-    def _store_new_weave(self, rev, inv, present_parents):
+    def _store_new_inv(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
             entries = inv.iter_entries()
@@ -1904,7 +1916,7 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add_lines(rev.revision_id, 
+        self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1

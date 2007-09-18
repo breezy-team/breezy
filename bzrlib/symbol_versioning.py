@@ -114,6 +114,12 @@ def deprecated_function(deprecation_version):
 
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
+
+    To deprecate a static or class method, use 
+
+        @staticmethod
+        @deprecated_function
+        def ...
     
     To deprecate an entire class, decorate __init__.
     """
