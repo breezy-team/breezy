@@ -13,6 +13,8 @@ bzr 0.91 series
      process if building of a C extension is not possible.
      (Lukáš Lalinský, Alexander Belchenko)
 
+    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
 bzr 0.91rc2 2007-09-11
 ======================
 
