@@ -79,8 +79,8 @@ import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eighteen,
     zero_ninetyone,
+    zero_ninetytwo,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -1284,11 +1284,6 @@ class TestCase(unittest.TestCase):
         else:
             return "DELETED log file to reduce memory footprint"
 
-    @deprecated_method(zero_eighteen)
-    def capture(self, cmd, retcode=0):
-        """Shortcut that splits cmd into words, runs, and returns stdout"""
-        return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
-
     def requireFeature(self, feature):
         """This test requires a specific feature is available.
 
@@ -1296,25 +1291,6 @@ class TestCase(unittest.TestCase):
         """
         if not feature.available():
             raise UnavailableFeature(feature)
-
-    @deprecated_method(zero_eighteen)
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
-        """Invoke bzr and return (stdout, stderr).
-
-        Don't call this method, just use run_bzr() which is equivalent.
-
-        :param argv: Arguments to invoke bzr.  This may be either a 
-            single string, in which case it is split by shlex into words, 
-            or a list of arguments.
-        :param retcode: Expected return code, or None for don't-care.
-        :param encoding: Encoding for sys.stdout and sys.stderr
-        :param stdin: A string to be used as stdin for the command.
-        :param working_dir: Change to this directory before running
-        """
-        return self._run_bzr_autosplit(argv, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
 
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
@@ -1370,7 +1346,8 @@ class TestCase(unittest.TestCase):
                               message='Unexpected return code')
         return out, err
 
-    def run_bzr(self, *args, **kwargs):
+    def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
+                working_dir=None, error_regexes=[], output_encoding=None):
         """Invoke bzr, as if it were run from the command line.
 
         The argument list should not include the bzr program name - the
@@ -1383,9 +1360,6 @@ class TestCase(unittest.TestCase):
 
         2- A single string, eg "add a".  This is the most convenient 
         for hardcoded commands.
-
-        3- Several varargs parameters, eg run_bzr("add", "a").  
-        This is not recommended for new code.
 
         This runs bzr through the interface that catches and reports
         errors, and with logging set to something approximating the
@@ -1404,39 +1378,37 @@ class TestCase(unittest.TestCase):
         :keyword working_dir: The directory to run the command in
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
+        :keyword output_encoding: Expected encoding of output from bzr.
         """
-        retcode = kwargs.pop('retcode', 0)
-        encoding = kwargs.pop('encoding', None)
-        stdin = kwargs.pop('stdin', None)
-        working_dir = kwargs.pop('working_dir', None)
-        error_regexes = kwargs.pop('error_regexes', [])
-
-        if kwargs:
-            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
-                            % kwargs.keys())
-
-        if len(args) == 1:
-            if isinstance(args[0], (list, basestring)):
-                args = args[0]
-        else:
-            symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
-                                   DeprecationWarning, stacklevel=3)
-
-        out, err = self._run_bzr_autosplit(args=args,
+        out, err = self._run_bzr_autosplit(
+            args=args,
             retcode=retcode,
-            encoding=encoding, stdin=stdin, working_dir=working_dir,
+            encoding=encoding,
+            stdin=stdin,
+            working_dir=working_dir,
             )
-
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
+        if output_encoding:
+            out = out.decode(output_encoding)
+            err = err.decode(output_encoding)
         return out, err
 
+    @deprecated_method(zero_ninetytwo)
     def run_bzr_decode(self, *args, **kwargs):
+        """Run bzr and decode the output into a particular encoding.
+
+        Returns a string containing the stdout output from bzr.
+
+        This is deprecated in favour of passing output_encoding to run_bzr
+        instead.
+        """
         if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
-        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+        return self.run_bzr(output_encoding=encoding,
+                *args, **kwargs)[0]
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes

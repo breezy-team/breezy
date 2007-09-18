@@ -58,6 +58,14 @@ IN DEVELOPMENT
      inventories without such data, pass working=True to write_inventory.
      (Robert Collins)
 
+   * Deprecated ``run_bzr_decode``; use the new ``output_encoding`` parameter to 
+     ``TestCase.run_bzr`` instead.
+     (Martin Pool)
+
+   * Removed previously deprecated varargs interface to ``TestCase.run_bzr`` and
+     deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
+     (Martin Pool)
+
   INTERNALS:
 
    * New method on xml serialisers, write_inventory_to_lines, which matches the
