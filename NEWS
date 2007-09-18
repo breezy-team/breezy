@@ -45,6 +45,8 @@ IN DEVELOPMENT
      will remain opened.
      (Vincent Ladeuil, #140055)
 
+   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
