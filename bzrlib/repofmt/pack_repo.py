@@ -834,6 +834,50 @@ class RepositoryPackCollection(object):
         self.repo.weave_store.setup()
         self.repo._inv_thunk.setup()
 
+    def _commit_write_group(self):
+        data_inserted = (self.repo._revision_store.data_inserted() or
+            self.repo.weave_store.data_inserted() or 
+            self.repo._inv_thunk.data_inserted())
+        if data_inserted:
+            self.repo._open_pack_writer.end()
+            new_name = self.repo._open_pack_hash.hexdigest()
+            new_pack = Pack()
+            new_pack.name = new_name
+            new_pack.transport = self.repo._upload_transport.clone('../packs/')
+            # To populate:
+            # new_pack.revision_index = 
+            # new_pack.inventory_index = 
+            # new_pack.text_index = 
+            # new_pack.signature_index = 
+            self.repo.weave_store.flush(new_name, new_pack)
+            self.repo._inv_thunk.flush(new_name, new_pack)
+            self.repo._revision_store.flush(new_name, new_pack)
+            self.repo._write_stream.close()
+            self.repo._upload_transport.rename(self.repo._open_pack_tuple[1],
+                '../packs/' + new_name + '.pack')
+            # If this fails, its a hash collision. We should:
+            # - determine if its a collision or
+            # - the same content or
+            # - the existing name is not the actual hash - e.g.
+            #   its a deliberate attack or data corruption has
+            #   occuring during the write of that file.
+            self.allocate(new_name, new_pack.revision_index_length,
+                new_pack.inventory_index_length, new_pack.text_index_length,
+                new_pack.signature_index_length)
+            self.repo._open_pack_tuple = None
+            if not self.autopack():
+                self.save()
+        else:
+            # remove the pending upload
+            self.repo._upload_transport.delete(self.repo._open_pack_tuple[1])
+        self.repo._revision_store.reset()
+        self.repo.weave_store.reset()
+        self.repo._inv_thunk.reset()
+        # forget what names there are - should just refresh and deal with the
+        # delta.
+        self.reset()
+        self.repo._open_pack_hash = None
+        self.repo._write_stream = None
 
 class GraphKnitRevisionStore(KnitRevisionStore):
     """An object to adapt access from RevisionStore's to use GraphKnits.
@@ -1316,49 +1360,7 @@ class GraphKnitRepository1(KnitRepository):
         self._packs._start_write_group()
 
     def _commit_write_group(self):
-        data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted() or 
-            self._inv_thunk.data_inserted())
-        if data_inserted:
-            self._open_pack_writer.end()
-            new_name = self._open_pack_hash.hexdigest()
-            new_pack = Pack()
-            new_pack.name = new_name
-            new_pack.transport = self._upload_transport.clone('../packs/')
-            # To populate:
-            # new_pack.revision_index = 
-            # new_pack.inventory_index = 
-            # new_pack.text_index = 
-            # new_pack.signature_index = 
-            self.weave_store.flush(new_name, new_pack)
-            self._inv_thunk.flush(new_name, new_pack)
-            self._revision_store.flush(new_name, new_pack)
-            self._write_stream.close()
-            self._upload_transport.rename(self._open_pack_tuple[1],
-                '../packs/' + new_name + '.pack')
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
-            self._packs.allocate(new_name, new_pack.revision_index_length,
-                new_pack.inventory_index_length, new_pack.text_index_length,
-                new_pack.signature_index_length)
-            self._open_pack_tuple = None
-            if not self._packs.autopack():
-                self._packs.save()
-        else:
-            # remove the pending upload
-            self._upload_transport.delete(self._open_pack_tuple[1])
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are - should just refresh and deal with the
-        # delta.
-        self._packs.reset()
-        self._open_pack_hash = None
-        self._write_stream = None
+        return self._packs._commit_write_group()
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
@@ -1435,49 +1437,7 @@ class GraphKnitRepository3(KnitRepository3):
         self._packs._start_write_group()
 
     def _commit_write_group(self):
-        data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted() or 
-            self._inv_thunk.data_inserted())
-        if data_inserted:
-            self._open_pack_writer.end()
-            new_name = self._open_pack_hash.hexdigest()
-            new_pack = Pack()
-            new_pack.name = new_name
-            new_pack.transport = self._upload_transport.clone('../packs/')
-            # To populate:
-            # new_pack.revision_index = 
-            # new_pack.inventory_index = 
-            # new_pack.text_index = 
-            # new_pack.signature_index = 
-            self.weave_store.flush(new_name, new_pack)
-            self._inv_thunk.flush(new_name, new_pack)
-            self._revision_store.flush(new_name, new_pack)
-            self._write_stream.close()
-            self._upload_transport.rename(self._open_pack_tuple[1],
-                '../packs/' + new_name + '.pack')
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
-            self._packs.allocate(new_name, new_pack.revision_index_length,
-                new_pack.inventory_index_length, new_pack.text_index_length,
-                new_pack.signature_index_length)
-            self._open_pack_tuple = None
-            if not self._packs.autopack():
-                self._packs.save()
-        else:
-            # remove the pending upload
-            self._upload_transport.delete(self._open_pack_tuple[1])
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are - should just refresh and deal with the
-        # delta.
-        self._packs.reset()
-        self._open_pack_hash = None
-        self._write_stream = None
+        return self._packs._commit_write_group()
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
