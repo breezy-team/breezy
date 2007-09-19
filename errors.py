@@ -18,7 +18,7 @@
 from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset, 
                            LockError, NotBranchError, PermissionDenied, 
                            DependencyNotPresent, NoRepositoryPresent,
-                           UnexpectedEndOfContainerError)
+                           TransportError, UnexpectedEndOfContainerError)
 
 import svn.core
 
@@ -58,6 +58,8 @@ def convert_error(err):
         return PermissionDenied('.', msg)
     elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
         return UnexpectedEndOfContainerError()
+    elif num == svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA:
+        return TransportError("Malformed data", msg)
     elif num == SVN_ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
     else:

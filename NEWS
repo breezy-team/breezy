@@ -5,6 +5,10 @@ bzr-svn 0.4.4	UNRELEASED
    * Improved import times, making bzr faster if bzr-svn is loaded but 
      not used.
 
+  IMPROVEMENTS
+   
+   * Avoid tracebacks on "Malformed data" errors.
+
 bzr-svn 0.4.3	2007-09-15
  
   PERFORMANCE
