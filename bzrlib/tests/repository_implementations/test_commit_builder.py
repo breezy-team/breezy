@@ -16,24 +16,28 @@
 
 """Tests for repository commit builder."""
 
-from errno import EISDIR
+import errno
 import os
+import sys
 
-from bzrlib import inventory
-from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
-from bzrlib.repository import CommitBuilder
-from bzrlib import tests
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib import (
+    errors,
+    inventory,
+    osutils,
+    repository,
+    tests,
+    )
+from bzrlib.tests.repository_implementations import test_repository
 
 
-class TestCommitBuilder(TestCaseWithRepository):
+class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
         branch.repository.lock_write()
         builder = branch.repository.get_commit_builder(
             branch, [], branch.get_config())
-        self.assertIsInstance(builder, CommitBuilder)
+        self.assertIsInstance(builder, repository.CommitBuilder)
         self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
         branch.repository.unlock()
@@ -95,11 +99,11 @@ class TestCommitBuilder(TestCaseWithRepository):
                 try:
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-                except NonAsciiRevisionId:
+                except errors.NonAsciiRevisionId:
                     revision_id = 'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-            except CannotSetRevisionId:
+            except errors.CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
             self.assertFalse(builder.random_revid)
@@ -417,12 +421,13 @@ class TestCommitBuilder(TestCaseWithRepository):
         path = 'name'
         make_before(path)
         def change_kind():
-            try:
-                os.unlink(path)
-            except OSError, e:
-                if e.errno != EISDIR:
-                    raise
+            # Look Before You Leap (LBYL) is appropriate here because unlink
+            # will raise different exceptions on different OSes (linux: EISDIR,
+            # win32: EACCES, OSX: EPERM) when invoked on a directory.
+            if osutils.isdir(path): # Takes care of symlinks
                 os.rmdir(path)
+            else:
+                os.unlink(path)
             make_after(path)
         self._add_commit_change_check_changed(tree, path, change_kind)
 
