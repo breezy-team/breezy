@@ -27,9 +27,17 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
-from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
+from bzrlib.errors import (
+    FileExists,
+    LockError,
+    InProcessTransport,
+    NoSuchFile,
+    TransportError,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
+    AppendBasedFileStream,
+    _file_streams,
     LateReadError,
     register_transport,
     Server,
@@ -122,6 +130,12 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         del self._files[_abspath]
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # MemoryTransport's are only accessible in-process
+        # so we raise here
+        raise InProcessTransport(self)
+
     def get(self, relpath):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
@@ -152,6 +166,13 @@ class MemoryTransport(Transport):
         if _abspath in self._dirs:
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
 
     def listable(self):
         """See Transport.listable."""

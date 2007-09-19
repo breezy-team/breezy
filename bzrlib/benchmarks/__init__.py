@@ -18,8 +18,8 @@
 
 from bzrlib import (
     bzrdir,
-    plugin,
     )
+from bzrlib import plugin as _mod_plugin
 import bzrlib.branch
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
@@ -180,10 +180,12 @@ def test_suite():
                    'bzrlib.benchmarks.bench_cache_utf8',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_dirstate',
                    'bzrlib.benchmarks.bench_info',
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_knit',
                    'bzrlib.benchmarks.bench_log',
+                   'bzrlib.benchmarks.bench_pack',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',
                    'bzrlib.benchmarks.bench_startup',
@@ -196,8 +198,8 @@ def test_suite():
     suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
 
     # Load any benchmarks from plugins
-    for name, module in plugin.all_plugins().items():
-        if getattr(module, 'bench_suite', None) is not None:
-            suite.addTest(module.bench_suite())
+    for name, plugin in _mod_plugin.plugins().items():
+        if getattr(plugin.module, 'bench_suite', None) is not None:
+            suite.addTest(plugin.module.bench_suite())
 
     return suite

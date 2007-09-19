@@ -1,0 +1,45 @@
+###########
+Using hooks
+###########
+
+One way to customize Bazaar's behaviour is with *hooks*.  Hooks allow you to
+perform actions before or after certain Bazaar operations.  The operations
+include ``commit``, ``push``, ``pull``, and ``uncommit``.
+
+Using Hooks
+###########
+To use a hook, you should write a `plugin <plugins.html>`_.  Instead of
+creating a new command, this plugin will define and install the hook.  Here's
+an example::
+
+    from bzrlib import branch
+
+
+    def post_push_hook(push_result):
+        print "The new revno is %d" % push_result.new_revno
+
+
+    branch.Branch.hooks.install_hook('post_push', post_push_hook)
+    branch.Branch.hooks.name_hook(post_push_hook, 'My post_push hook')
+
+To use this example, create a file named ``push_hook.py``, and stick it in
+``plugins`` subdirectory of your configuration directory.  (If you have never
+installed any plugins, you may need to create the ``plugins`` directory).
+
+First, we define a function that will be run after ``push`` completes.  We
+could also use an instance method or a callable object.  All push hooks take a
+single argument, the ``push_result``.
+
+Next, we install the hook.  ``'post_push'`` identifies where we want to install
+the hook, and the second parameter is the hook itself.
+
+Finally, we name the hook.  This is optional, but it means the hook name can
+be used in progress messages and error messages.
+
+That's it!  The next time you push, it should show "The new revno is...".
+Of course, hooks can be much more elaborate than this, because you have the
+full power of Python at your disposal.  Now that you know how to use hooks,
+what you do with them is up to you.
+
+For a complete list of hooks and their parameters, see the `Hooks Reference
+<../user-reference/hooks.html>`_.

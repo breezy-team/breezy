@@ -39,7 +39,7 @@ warnings.filterwarnings('ignore',
         r'bzrlib\.tests\.test_revision')
 
 # XXX: Make this a method of a merge base case
-def make_branches(self):
+def make_branches(self, format=None):
     """Create two branches
 
     branch 1 has 6 commits, branch 2 has 3 commits
@@ -58,7 +58,7 @@ def make_branches(self):
     so A is missing b6 at the start
     and B is missing a3, a4, a5
     """
-    tree1 = self.make_branch_and_tree("branch1")
+    tree1 = self.make_branch_and_tree("branch1", format=format)
     br1 = tree1.branch
     
     tree1.commit("Commit one", rev_id="a@u-0-0")
@@ -309,3 +309,22 @@ class TestReservedId(TestCase):
         self.assertEqual(False, revision.is_reserved_id(
             'arch:a@example.com/c--b--v--r'))
         self.assertEqual(False, revision.is_reserved_id(None))
+
+
+class TestRevisionMethods(TestCase):
+
+    def test_get_summary(self):
+        r = revision.Revision('1')
+        r.message = 'a'
+        self.assertEqual('a', r.get_summary())
+        r.message = 'a\nb'
+        self.assertEqual('a', r.get_summary())
+        r.message = '\na\nb'
+        self.assertEqual('a', r.get_summary())
+
+    def test_get_apparent_author(self):
+        r = revision.Revision('1')
+        r.committer = 'A'
+        self.assertEqual('A', r.get_apparent_author())
+        r.properties['author'] = 'B'
+        self.assertEqual('B', r.get_apparent_author())

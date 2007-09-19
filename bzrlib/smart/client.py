@@ -22,8 +22,11 @@ from bzrlib.urlutils import unescape
 
 class _SmartClient(object):
 
-    def __init__(self, medium):
-        self._medium = medium
+    def __init__(self, shared_medium):
+        self._shared_medium = shared_medium
+
+    def get_smart_medium(self):
+        return self._shared_medium.connection
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -39,7 +42,7 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
@@ -53,7 +56,7 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self._medium.get_request()
+        request = self.get_smart_medium().get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()

@@ -27,7 +27,10 @@ from bzrlib import (
     errors,
     )
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.trace import mutter, report_exception
+from bzrlib.trace import (
+    mutter, mutter_callsite, report_exception,
+    set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
+    )
 
 
 def _format_exception():
@@ -83,7 +86,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: wibble\n')
+        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: \"wibble\".\n')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
@@ -113,6 +116,30 @@ class TestTrace(TestCase):
         else:
             self.fail("expected error not raised")
 
+    def test_mutter_callsite_1(self):
+        """mutter_callsite can capture 1 level of stack frame."""
+        mutter_callsite(1, "foo %s", "a string")
+        log = self._get_log(keep_log_file=True)
+        # begin with the message
+        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        # should show two frame: this frame and the one above
+        self.assertContainsRe(log,
+            'test_trace\.py", line \d+, in test_mutter_callsite_1\n')
+        # this frame should be the final one
+        self.assertEndsWith(log, ' "a string")\n')
+
+    def test_mutter_callsite_2(self):
+        """mutter_callsite can capture 2 levels of stack frame."""
+        mutter_callsite(2, "foo %s", "a string")
+        log = self._get_log(keep_log_file=True)
+        # begin with the message
+        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        # should show two frame: this frame and the one above
+        self.assertContainsRe(log,
+            'test_trace.py", line \d+, in test_mutter_callsite_2\n')
+        # this frame should be the final one
+        self.assertEndsWith(log, ' "a string")\n')
+
     def test_mutter_never_fails(self):
         # Even if the decode/encode stage fails, mutter should not
         # raise an exception
@@ -123,3 +150,27 @@ class TestTrace(TestCase):
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         self.assertContainsRe(log, u"ascii argument: \xb5")
+
+
+class TestVerbosityLevel(TestCase):
+
+    def test_verbosity_level(self):
+        set_verbosity_level(1)
+        self.assertEqual(1, get_verbosity_level())
+        self.assertTrue(is_verbose())
+        self.assertFalse(is_quiet())
+        set_verbosity_level(-1)
+        self.assertEqual(-1, get_verbosity_level())
+        self.assertFalse(is_verbose())
+        self.assertTrue(is_quiet())
+        set_verbosity_level(0)
+        self.assertEqual(0, get_verbosity_level())
+        self.assertFalse(is_verbose())
+        self.assertFalse(is_quiet())
+
+    def test_be_quiet(self):
+        # Confirm the old API still works
+        be_quiet(True)
+        self.assertEqual(-1, get_verbosity_level())
+        be_quiet(False)
+        self.assertEqual(0, get_verbosity_level())

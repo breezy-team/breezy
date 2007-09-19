@@ -1,0 +1,189 @@
+====================
+Bazaar Mini Tutorial
+====================
+
+.. contents::
+
+Introduction
+============
+
+This is a very brief 5-minute tutorial, covering only what a first time user
+needs to start a project or start contributing to a project using Bazaar.
+For a more detailed look, see `Learning More`_.
+
+
+Installation
+============
+
+See http://bazaar-vcs.org/Download. Bazaar is probably in your GNU/Linux
+distribution already. If not, it's trivial to install on any platform that
+runs Python 2.4, including Windows. Installation should take at most a few
+minutes.
+
+
+Introducing Yourself
+====================
+
+You want Bazaar to correctly identify you in revision logs. Using your name
+and email instead of Joe Doe's, type::
+
+  $ bzr whoami "Joe Doe <joe.doe@gmail.com>"
+
+Now try::
+
+  $ bzr whoami
+  Joe Doe <joe.doe@gmail.com>
+
+
+Putting Existing Files Under Version Control
+============================================
+
+It is very easy to put an existing set of files under version control using
+Bazaar::
+
+  $ cd my-project
+  $ bzr init .
+  $ bzr add
+  $ bzr commit -m "Initial import"
+
+You can now make changes, track them, publish your branch and so on as
+explained below.
+
+
+Creating A Personal Branch
+==========================
+
+Rather than starting a new project, you may wish to work on an existing
+project either you or someone else has published.
+
+Create a branch of an existing project::
+
+  $ bzr branch http://example.com/code/foobar.dev foobar.joe
+  Branched 1 revision(s).                                                        
+
+Note that after you create a personal branch, you don't need web access to
+commit changes.
+
+
+Making Changes
+==============
+
+Edit a file::
+
+  $ cd foobar.joe
+  $ hack...
+
+Check what have you done::
+
+  $ bzr diff
+  === modified file 'foo.c'
+  --- foo.c
+  +++ foo.c
+  @@ -30,6 +30,7 @@
+ 
+   #include "foo.h"
+ 
+  +
+   static PyObject *
+   _pyfribidi_log2vis (PyObject * self, PyObject * args, PyObject * kw)
+   {
+
+Commit your hard work::
+
+  $ bzr commit -m 'added some whitespace'
+  Committed revision 2.
+
+
+Viewing the Revision Log
+========================
+
+Browse the history of the branch::
+
+  $ bzr log
+  ------------------------------------------------------------
+  revno: 2
+  committer: Joe Doe <joe.doe@gmail.com>
+  branch nick: foobar.joe
+  timestamp: Mon 2006-02-06 01:33:35 +0200
+  message:
+    added some whitespace
+  ------------------------------------------------------------
+  revno: 1
+  committer: James Hacker <jmh@example.com>
+  branch nick: foobar.dev
+  timestamp: Mon 2006-02-06 01:06:11 +0200
+  message:
+    initial revision
+
+
+Updating Your Branch from the Main Branch
+=========================================
+
+While you work hard on your branch, others may have committed new code to the
+main branch. From time to time, you want to merge changes from the main
+branch into your branch::
+
+  $ bzr merge
+  Using saved location: http://example.com/code/foobar.dev
+  All changes applied successfully.
+            
+What was changed locally by merging the main branch?
+
+::
+
+  $ bzr diff
+  === modified file 'pyfribidi.c'
+  --- pyfribidi.c
+  +++ pyfribidi.c
+  @@ -236,6 +236,7 @@
+          PyMem_Del (logical);
+          PyMem_Del (visual);
+   
+  +    /* evil hack! */
+          return result;
+   }
+ 
+Commit the changes from the main branch::
+
+  $ bzr commit -m 'merge from main branch'
+  Committed revision 6.
+
+Note that you may occasionally need to resolve conflicts or make other minor
+changes (so tests pass say) before committing. For these reasons, merge does
+not implicitly commit.
+
+
+Publishing Your Branch
+======================
+
+You can simply use rsync to copy your branch to a web server, but using
+``bzr push`` is the easiest way. Let's assume you want to publish your
+branch in jod.example.com/foobar.joe and you have sftp access to the server::
+
+  $ bzr push sftp://jod@jod.example.com/public_html/foobar.joe/
+  2 revision(s) pushed.
+    
+Note that to use sftp, your may need to install ''paramiko'' and ''pyCrypto''.
+See http://bazaar-vcs.org/InstallationFaq for details.
+
+Now anyone can get your branch with (try it yourself!)::
+
+  bzr branch http://jod.example.com/foobar.joe/
+
+
+Learning More
+=============
+
+To learn about bzr topics::
+
+  $ bzr help
+
+To learn about bzr commands::
+
+  $ bzr help commands
+
+To learn about the ''foo'' topic or command::
+
+  $ bzr help foo
+
+Alternatively, browse the `Bazaar Documentation <../../index.html>`_.

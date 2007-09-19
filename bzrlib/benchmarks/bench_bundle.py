@@ -39,17 +39,17 @@ class BundleBenchmark(Benchmark):
         or added and one commit.
         """ 
         self.make_kernel_like_committed_tree()
-        self.time(self.run_bzr, 'bundle', '--revision', '..-1')
+        self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
 
     def test_create_bundle_many_commit_tree (self):
         """Create a bundle for a tree with many commits but no changes.""" 
         self.make_many_commit_tree()
-        self.time(self.run_bzr, 'bundle', '--revision', '..-1')
+        self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
 
     def test_create_bundle_heavily_merged_tree(self):
         """Create a bundle for a heavily merged tree.""" 
         self.make_heavily_merged_tree()
-        self.time(self.run_bzr, 'bundle', '--revision', '..-1')
+        self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
         
     def test_apply_bundle_known_kernel_like_tree(self):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
@@ -66,7 +66,7 @@ class BundleBenchmark(Benchmark):
 
         tree2 = self.make_branch_and_tree('branch_a')
         os.chdir('branch_a')
-        self.time(self.run_bzr, 'merge', '../bundle')
+        self.time(self.run_bzr, ['merge', '../bundle'])
  
 
 class BundleLibraryLevelWriteBenchmark(Benchmark):

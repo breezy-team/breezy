@@ -19,16 +19,18 @@ import smtplib
 
 from bzrlib import (
     gpg,
+    merge_directive,
     tests,
     workingtree,
     )
 
 
-EMAIL1 = """To: pqm@example.com
-From: J. Random Hacker <jrandom@example.com>
+EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: bar
+To: pqm@example.com
+User-Agent: Bazaar \(.*\)
 
-# Bazaar merge directive format 1
+# Bazaar merge directive format 2 \\(Bazaar 0.90\\)
 # revision_id: bar-id
 # target_branch: ../tree2
 # testament_sha1: .*
@@ -45,7 +47,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.tree1.branch.get_config().set_user_option('email',
             'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
-        self.tree1.commit('foo')
+        self.tree1.commit('foo', rev_id='foo-id')
         self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
         self.tree1.commit('bar', rev_id='bar-id')
@@ -58,6 +60,11 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive -r -2 ../tree2')[0]
         self.assertNotContainsRe(md_text, "\\+e")
+        md_text = self.run_bzr('merge-directive -r -1..-2 ../tree2')[0]
+        md2 = merge_directive.MergeDirective.from_lines(
+            md_text.splitlines(True))
+        self.assertEqual('foo-id', md2.revision_id)
+        self.assertEqual('bar-id', md2.base_revision_id)
 
     def test_submit_branch(self):
         self.prepare_merge_directive()
@@ -77,10 +84,10 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def test_patch_types(self):
         self.prepare_merge_directive()
         md_text = self.run_bzr('merge-directive ../tree2')[0]
-        self.assertContainsRe(md_text, "Bazaar revision bundle")
+        self.assertContainsRe(md_text, "# Begin bundle")
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive ../tree2 --diff .')[0]
-        self.assertNotContainsRe(md_text, "Bazaar revision bundle")
+        self.assertNotContainsRe(md_text, "# Begin bundle")
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive --plain')[0]
         self.assertNotContainsRe(md_text, "\\+e")

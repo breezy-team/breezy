@@ -198,6 +198,15 @@ class IncompatibleAPI(BzrError):
         self.current = current
 
 
+class InProcessTransport(BzrError):
+
+    _fmt = "The transport '%(transport)s' is only accessible within this " \
+        "process."
+
+    def __init__(self, transport):
+        self.transport = transport
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -247,12 +256,21 @@ class NoHelpTopic(BzrError):
 
 class NoSuchId(BzrError):
 
-    _fmt = "The file id %(file_id)s is not present in the tree %(tree)s."
+    _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
     
     def __init__(self, tree, file_id):
         BzrError.__init__(self)
         self.file_id = file_id
         self.tree = tree
+
+
+class NoSuchIdInRepository(NoSuchId):
+
+    _fmt = ('The file id "%(file_id)s" is not present in the repository'
+            ' %(repository)r')
+
+    def __init__(self, repository, file_id):
+        BzrError.__init__(self, repository=repository, file_id=file_id)
 
 
 class InventoryModified(BzrError):
@@ -268,7 +286,7 @@ class InventoryModified(BzrError):
 
 class NoWorkingTree(BzrError):
 
-    _fmt = "No WorkingTree exists for %(base)s."
+    _fmt = 'No WorkingTree exists for "%(base)s".'
     
     def __init__(self, base):
         BzrError.__init__(self)
@@ -290,7 +308,7 @@ class NotLocalUrl(BzrError):
 
 class WorkingTreeAlreadyPopulated(BzrError):
 
-    _fmt = """Working tree already populated in %(base)s"""
+    _fmt = 'Working tree already populated in "%(base)s"'
 
     internal_error = True
 
@@ -450,17 +468,17 @@ class RenameFailedFilesExist(BzrError):
 
 class NotADirectory(PathError):
 
-    _fmt = "%(path)r is not a directory %(extra)s"
+    _fmt = '"%(path)s" is not a directory %(extra)s'
 
 
 class NotInWorkingDirectory(PathError):
 
-    _fmt = "%(path)r is not in the working directory %(extra)s"
+    _fmt = '"%(path)s" is not in the working directory %(extra)s'
 
 
 class DirectoryNotEmpty(PathError):
 
-    _fmt = "Directory not empty: %(path)r%(extra)s"
+    _fmt = 'Directory not empty: "%(path)s"%(extra)s'
 
 
 class ReadingCompleted(BzrError):
@@ -477,22 +495,22 @@ class ReadingCompleted(BzrError):
 
 class ResourceBusy(PathError):
 
-    _fmt = "Device or resource busy: %(path)r%(extra)s"
+    _fmt = 'Device or resource busy: "%(path)s"%(extra)s'
 
 
 class PermissionDenied(PathError):
 
-    _fmt = "Permission denied: %(path)r%(extra)s"
+    _fmt = 'Permission denied: "%(path)s"%(extra)s'
 
 
 class InvalidURL(PathError):
 
-    _fmt = "Invalid url supplied to transport: %(path)r%(extra)s"
+    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
 
 
 class InvalidURLJoin(PathError):
 
-    _fmt = "Invalid URL join request: %(args)s%(extra)s"
+    _fmt = 'Invalid URL join request: "%(args)s"%(extra)s'
 
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
@@ -524,8 +542,8 @@ class ReadError(PathError):
 
 class ShortReadvError(PathError):
 
-    _fmt = ("readv() read %(actual)s bytes rather than %(length)s bytes"
-            " at %(offset)s for %(path)s%(extra)s")
+    _fmt = ('readv() read %(actual)s bytes rather than %(length)s bytes'
+            ' at %(offset)s for "%(path)s"%(extra)s')
 
     internal_error = True
 
@@ -536,9 +554,9 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(BzrError):
+class PathNotChild(PathError):
 
-    _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
+    _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
     internal_error = True
 
@@ -554,7 +572,7 @@ class PathNotChild(BzrError):
 
 class InvalidNormalization(PathError):
 
-    _fmt = "Path %(path)r is not unicode normalized"
+    _fmt = 'Path "%(path)s" is not unicode normalized'
 
 
 # TODO: This is given a URL; we try to unescape it but doing that from inside
@@ -562,7 +580,7 @@ class InvalidNormalization(PathError):
 # TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
 
-    _fmt = "Not a branch: %(path)s"
+    _fmt = 'Not a branch: "%(path)s".'
 
     def __init__(self, path):
        import bzrlib.urlutils as urlutils
@@ -580,19 +598,19 @@ class NoSubmitBranch(PathError):
 
 class AlreadyBranchError(PathError):
 
-    _fmt = "Already a branch: %(path)s."
+    _fmt = 'Already a branch: "%(path)s".'
 
 
 class BranchExistsWithoutWorkingTree(PathError):
 
-    _fmt = "Directory contains a branch, but no working tree \
-(use bzr checkout if you wish to build a working tree): %(path)s"
+    _fmt = 'Directory contains a branch, but no working tree \
+(use bzr checkout if you wish to build a working tree): "%(path)s"'
 
 
 class AtomicFileAlreadyClosed(PathError):
 
-    _fmt = ("'%(function)s' called on an AtomicFile after it was closed:"
-            " %(path)s")
+    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
+            ' "%(path)s"')
 
     def __init__(self, path, function):
         PathError.__init__(self, path=path, extra=None)
@@ -601,8 +619,8 @@ class AtomicFileAlreadyClosed(PathError):
 
 class InaccessibleParent(PathError):
 
-    _fmt = ("Parent not accessible given base %(base)s and"
-            " relative path %(path)s")
+    _fmt = ('Parent not accessible given base "%(base)s" and'
+            ' relative path "%(path)s"')
 
     def __init__(self, path, base):
         PathError.__init__(self, path)
@@ -611,7 +629,7 @@ class InaccessibleParent(PathError):
 
 class NoRepositoryPresent(BzrError):
 
-    _fmt = "No repository present: %(path)r"
+    _fmt = 'No repository present: "%(path)s"'
     def __init__(self, bzrdir):
         BzrError.__init__(self)
         self.path = bzrdir.transport.clone('..').base
@@ -619,7 +637,7 @@ class NoRepositoryPresent(BzrError):
 
 class FileInWrongBranch(BzrError):
 
-    _fmt = "File %(path)s in not in branch %(branch_base)s."
+    _fmt = 'File "%(path)s" in not in branch %(branch_base)s.'
 
     def __init__(self, branch, path):
         BzrError.__init__(self)
@@ -669,7 +687,7 @@ class IncompatibleRevision(BzrError):
 class AlreadyVersionedError(BzrError):
     """Used when a path is expected not to be versioned, but it is."""
 
-    _fmt = "%(context_info)s%(path)s is already versioned"
+    _fmt = "%(context_info)s%(path)s is already versioned."
 
     def __init__(self, path, context_info=None):
         """Construct a new AlreadyVersionedError.
@@ -690,7 +708,7 @@ class AlreadyVersionedError(BzrError):
 class NotVersionedError(BzrError):
     """Used when a path is expected to be versioned, but it is not."""
 
-    _fmt = "%(context_info)s%(path)s is not versioned"
+    _fmt = "%(context_info)s%(path)s is not versioned."
 
     def __init__(self, path, context_info=None):
         """Construct a new NotVersionedError.
@@ -749,7 +767,7 @@ class BadFileKindError(BzrError):
 
 class ForbiddenControlFileError(BzrError):
 
-    _fmt = "Cannot operate on %(filename)s because it is a control file"
+    _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
 
 
 class LockError(BzrError):
@@ -852,7 +870,7 @@ class UnlockableTransport(LockError):
 
 class LockContention(LockError):
 
-    _fmt = "Could not acquire lock %(lock)s"
+    _fmt = 'Could not acquire lock "%(lock)s"'
     # TODO: show full url for lock, combining the transport and relative
     # bits?
 
@@ -932,6 +950,12 @@ class CannotCommitSelectedFileMerge(BzrError):
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
+class BadCommitMessageEncoding(BzrError):
+
+    _fmt = 'The specified commit message contains characters unsupported by '\
+        'the current encoding.'
+
+
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."
@@ -953,14 +977,16 @@ class StrictCommitFailed(Exception):
 
 class NoSuchRevision(BzrError):
 
-    _fmt = "Branch %(branch)s has no revision %(revision)s"
+    _fmt = "%(branch)s has no revision %(revision)s"
 
     internal_error = True
 
     def __init__(self, branch, revision):
+        # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+# zero_ninetyone: this exception is no longer raised and should be removed
 class NotLeftParentDescendant(BzrError):
 
     _fmt = ("Revision %(old_revision)s is not the left parent of"
@@ -974,6 +1000,11 @@ class NotLeftParentDescendant(BzrError):
                           new_revision=new_revision)
 
 
+class RangeInChangeOption(BzrError):
+
+    _fmt = "Option --change does not accept revision ranges"
+
+
 class NoSuchRevisionSpec(BzrError):
 
     _fmt = "No namespace registered for string: %(spec)r"
@@ -985,7 +1016,7 @@ class NoSuchRevisionSpec(BzrError):
 class NoSuchRevisionInTree(NoSuchRevision):
     """When using Tree.revision_tree, and the revision is not accessible."""
     
-    _fmt = "The revision id %(revision_id)s is not present in the tree %(tree)s."
+    _fmt = "The revision id {%(revision_id)s} is not present in the tree %(tree)s."
 
     def __init__(self, tree, revision_id):
         BzrError.__init__(self)
@@ -1123,8 +1154,8 @@ class UnlistableBranch(BzrError):
 
 class BoundBranchOutOfDate(BzrError):
 
-    _fmt = ("Bound branch %(branch)s is out of date"
-            " with master branch %(master)s.")
+    _fmt = ("Bound branch %(branch)s is out of date with master branch"
+            " %(master)s.")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
@@ -1245,7 +1276,7 @@ class VersionedFileError(BzrError):
 
 class RevisionNotPresent(VersionedFileError):
     
-    _fmt = "Revision {%(revision_id)s} not present in %(file_id)s."
+    _fmt = 'Revision {%(revision_id)s} not present in "%(file_id)s".'
 
     def __init__(self, revision_id, file_id):
         VersionedFileError.__init__(self)
@@ -1255,7 +1286,7 @@ class RevisionNotPresent(VersionedFileError):
 
 class RevisionAlreadyPresent(VersionedFileError):
     
-    _fmt = "Revision {%(revision_id)s} already present in %(file_id)s."
+    _fmt = 'Revision {%(revision_id)s} already present in "%(file_id)s".'
 
     def __init__(self, revision_id, file_id):
         VersionedFileError.__init__(self)
@@ -1263,21 +1294,16 @@ class RevisionAlreadyPresent(VersionedFileError):
         self.file_id = file_id
 
 
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
+
+
 class KnitError(BzrError):
     
     _fmt = "Knit error"
 
     internal_error = True
-
-
-class KnitHeaderError(KnitError):
-
-    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
-
-    def __init__(self, badline, filename):
-        KnitError.__init__(self)
-        self.badline = badline
-        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
@@ -1289,6 +1315,24 @@ class KnitCorrupt(KnitError):
         self.filename = filename
         self.how = how
 
+
+class KnitDataStreamIncompatible(KnitError):
+
+    _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
+
+    def __init__(self, stream_format, target_format):
+        self.stream_format = stream_format
+        self.target_format = target_format
+        
+
+class KnitHeaderError(KnitError):
+
+    _fmt = 'Knit header error: %(badline)r unexpected for file "%(filename)s".'
+
+    def __init__(self, badline, filename):
+        KnitError.__init__(self)
+        self.badline = badline
+        self.filename = filename
 
 class KnitIndexUnknownMethod(KnitError):
     """Raised when we don't understand the storage method.
@@ -1502,7 +1546,7 @@ class NoEmailInUsername(BzrError):
 
 class SigningFailed(BzrError):
 
-    _fmt = "Failed to gpg sign data with command %(command_line)r"
+    _fmt = 'Failed to gpg sign data with command "%(command_line)s"'
 
     def __init__(self, command_line):
         BzrError.__init__(self, command_line=command_line)
@@ -1582,7 +1626,7 @@ class MustUseDecorated(Exception):
 
 class NoBundleFound(BzrError):
 
-    _fmt = "No bundle was found in %(filename)s"
+    _fmt = 'No bundle was found in "%(filename)s".'
 
     def __init__(self, filename):
         BzrError.__init__(self)
@@ -1610,6 +1654,7 @@ class MissingText(BzrError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
+
 
 class DuplicateFileId(BzrError):
 
@@ -1724,7 +1769,8 @@ class BzrRenameFailedError(BzrMoveFailedError):
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
 
-    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+    _fmt = ("Can't safely remove modified or unknown files:\n"
+        "%(changes_as_text)s"
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
@@ -1808,6 +1854,12 @@ class NoDiff3(BzrError):
     _fmt = "Diff3 is not installed on this machine."
 
 
+class ExistingContent(BzrError):
+    # Added in bzrlib 0.92, used by VersionedFile.add_lines.
+
+    _fmt = "The content being inserted is already present."
+
+
 class ExistingLimbo(BzrError):
 
     _fmt = """This tree contains left-over files from a failed operation.
@@ -1819,15 +1871,35 @@ class ExistingLimbo(BzrError):
        self.limbo_dir = limbo_dir
 
 
+class ExistingPendingDeletion(BzrError):
+
+    _fmt = """This tree contains left-over files from a failed operation.
+    Please examine %(pending_deletion)s to see if it contains any files you
+    wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
+
+
 class ImmortalLimbo(BzrError):
 
-    _fmt = """Unable to delete transform temporary directory $(limbo_dir)s.
+    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
        BzrError.__init__(self)
        self.limbo_dir = limbo_dir
+
+
+class ImmortalPendingDeletion(BzrError):
+
+    _fmt = """Unable to delete transform temporary directory
+    %(pending_deletion)s.  Please examine %(pending_deletions)s to see if it
+    contains any files you wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
 class OutOfDateTree(BzrError):
@@ -2114,6 +2186,22 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Preview patch does not match requested changes."
+
+
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
@@ -2134,7 +2222,7 @@ class UnsupportedInventoryKind(BzrError):
 
 class BadSubsumeSource(BzrError):
 
-    _fmt = """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+    _fmt = "Can't subsume %(other_tree)s into %(tree)s. %(reason)s"
 
     def __init__(self, tree, other_tree, reason):
         self.tree = tree
@@ -2152,7 +2240,8 @@ class SubsumeTargetNeedsUpgrade(BzrError):
 
 class BadReferenceTarget(BzrError):
 
-    _fmt = "Can't add reference to %(other_tree)s into %(tree)s.  %(reason)s"
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
+           "%(reason)s"
 
     internal_error = True
 
@@ -2259,7 +2348,7 @@ class ContainerHasExcessDataError(ContainerError):
 
 class DuplicateRecordNameError(ContainerError):
 
-    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+    _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
         self.name = name
@@ -2278,3 +2367,85 @@ class SMTPError(BzrError):
 
     def __init__(self, error):
         self.error = error
+
+
+class NoMessageSupplied(BzrError):
+
+    _fmt = "No message supplied."
+
+
+class UnknownMailClient(BzrError):
+
+    _fmt = "Unknown mail client: %(mail_client)s"
+
+    def __init__(self, mail_client):
+        BzrError.__init__(self, mail_client=mail_client)
+
+
+class MailClientNotFound(BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        BzrError.__init__(self, mail_command_list=mail_command_list,
+                          mail_command_list_string=mail_command_list_string)
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."
+
+
+class BzrDirError(BzrError):
+
+    def __init__(self, bzrdir):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+                                                    'ascii')
+        BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
+
+
+class AlreadyBranch(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a branch."
+
+
+class AlreadyTree(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a tree."
+
+
+class AlreadyCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a checkout."
+
+
+class ReconfigurationNotSupported(BzrDirError):
+
+    _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
+
+
+class NoBindLocation(BzrDirError):
+
+    _fmt = "No location could be found to bind to at %(display_url)s."
+
+
+class UncommittedChanges(BzrError):
+
+    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+
+    def __init__(self, tree):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(
+            tree.bzrdir.root_transport.base, 'ascii')
+        BzrError.__init__(self, tree=tree, display_url=display_url)

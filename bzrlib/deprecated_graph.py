@@ -125,7 +125,7 @@ class Graph(object):
 
     def add_node(self, node_id, parent_ids):
         """Add node_id to the graph with parent_ids as its parents."""
-        if parent_ids == []:
+        if len(parent_ids) == 0:
             self.roots.add(node_id)
         self._graph_ancestors[node_id] = list(parent_ids)
         self._ensure_descendant(node_id)

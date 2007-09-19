@@ -53,6 +53,12 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
+    def test_in_process_transport(self):
+        error = errors.InProcessTransport('fpp')
+        self.assertEqualDiff(
+            "The transport 'fpp' is only accessible within this process.",
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -75,10 +81,17 @@ class TestErrors(TestCaseWithTransport):
             "cannot be broken.",
             str(error))
 
+    def test_knit_data_stream_incompatible(self):
+        error = errors.KnitDataStreamIncompatible(
+            'stream format', 'target format')
+        self.assertEqual('Cannot insert knit data stream of format '
+                         '"stream format" into knit of format '
+                         '"target format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
-                         " for file path/to/file", str(error))
+                         " for file \"path/to/file\".", str(error))
 
     def test_knit_index_unknown_method(self):
         error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
@@ -112,15 +125,14 @@ class TestErrors(TestCaseWithTransport):
 
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
-        self.assertEqualDiff("The file id anid is not present in the tree "
+        self.assertEqualDiff("The file id \"anid\" is not present in the tree "
             "atree.",
             str(error))
 
     def test_no_such_revision_in_tree(self):
         error = errors.NoSuchRevisionInTree("atree", "anid")
-        self.assertEqualDiff("The revision id anid is not present in the tree "
-            "atree.",
-            str(error))
+        self.assertEqualDiff("The revision id {anid} is not present in the"
+                             " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
     def test_not_write_locked(self):
@@ -347,7 +359,7 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of DuplicateRecordNameError."""
         e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
         self.assertEqual(
-            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
+            "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
 
 

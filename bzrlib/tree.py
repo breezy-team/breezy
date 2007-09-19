@@ -25,6 +25,8 @@ import bzrlib
 from bzrlib import (
     delta,
     osutils,
+    revision as _mod_revision,
+    conflicts as _mod_conflicts,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -103,7 +105,7 @@ class Tree(object):
 
         Each conflict is an instance of bzrlib.conflicts.Conflict.
         """
-        return []
+        return _mod_conflicts.ConflictList()
 
     def extras(self):
         """For trees that can have unversioned files, return all such paths."""
@@ -120,7 +122,7 @@ class Tree(object):
     
     def has_filename(self, filename):
         """True if the tree has given filename."""
-        raise NotImplementedError()
+        raise NotImplementedError(self.has_filename)
 
     def has_id(self, file_id):
         file_id = osutils.safe_file_id(file_id)
@@ -208,8 +210,12 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
-    def get_file(self, file_id):
-        """Return a file object for the file file_id in the tree."""
+    def get_file(self, file_id, path=None):
+        """Return a file object for the file file_id in the tree.
+        
+        If both file_id and path are defined, it is implementation defined as
+        to which one is used.
+        """
         raise NotImplementedError(self.get_file)
 
     def get_file_mtime(self, file_id, path=None):
@@ -222,7 +228,33 @@ class Tree(object):
         raise NotImplementedError(self.get_file_mtime)
 
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path))
+        return self.get_file(self._inventory.path2id(path), path)
+
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file contents.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a tuple containing a single bytestring with
+        the complete text of the file.
+
+        :param desired_files: a list of (file_id, identifier) pairs
+        """
+        for file_id, identifier in desired_files:
+            # We wrap the string in a tuple so that we can return an iterable
+            # of bytestrings.  (Technically, a bytestring is also an iterable
+            # of bytestrings, but iterating through each character is not
+            # performant.)
+            cur_file = (self.get_file_text(file_id),)
+            yield identifier, cur_file
 
     def get_symlink_target(self, file_id):
         """Get the target for a given file_id.
@@ -235,7 +267,7 @@ class Tree(object):
         raise NotImplementedError(self.get_symlink_target)
 
     def annotate_iter(self, file_id):
-        """Return an iterator of revision_id, line tuples
+        """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
@@ -243,6 +275,23 @@ class Tree(object):
         :param file_id: The file to produce an annotated version from
         """
         raise NotImplementedError(self.annotate_iter)
+
+    def plan_file_merge(self, file_id, other):
+        """Generate a merge plan based on annotations.
+
+        If the file contains uncommitted changes in this tree, they will be
+        attributed to the 'current:' pseudo-revision.  If the file contains
+        uncommitted changes in the other tree, they will be assigned to the
+        'other:' pseudo-revision.
+        """
+        from bzrlib import merge
+        annotated_a = list(self.annotate_iter(file_id,
+                                              _mod_revision.CURRENT_REVISION))
+        annotated_b = list(other.annotate_iter(file_id, 'other:'))
+        ancestors_a = self._get_ancestors(_mod_revision.CURRENT_REVISION)
+        ancestors_b = other._get_ancestors('other:')
+        return merge._plan_annotate_merge(annotated_a, annotated_b,
+                                          ancestors_a, ancestors_b)
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
@@ -274,10 +323,10 @@ class Tree(object):
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
         
-        Each path is looked up in each this tree and any extras provided in
+        Each path is looked up in this tree and any extras provided in
         trees, and this is repeated recursively: the children in an extra tree
         of a directory that has been renamed under a provided path in this tree
-        are all returned, even if none exist until a provided path in this
+        are all returned, even if none exist under a provided path in this
         tree, and vice versa.
 
         :param paths: An iterable of paths to start converting to ids from.
@@ -356,7 +405,7 @@ class Tree(object):
            versioned_kind.
          - lstat is the stat data *if* the file was statted.
          - path_from_tree_root is the path from the root of the tree.
-         - file_id is the file_id is the entry is versioned.
+         - file_id is the file_id if the entry is versioned.
          - versioned_kind is the kind of the file as last recorded in the 
            versioning system. If 'unknown' the file is not versioned.
         One of 'kind' and 'versioned_kind' must not be 'unknown'.
@@ -496,7 +545,7 @@ def _find_ids_across_trees(filenames, trees, require_versioned):
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
         at least one tree.
-    :return: a set of (path, file ids) for the specified filenames
+    :return: a set of file ids for the specified filenames
     """
     not_versioned = []
     interesting_ids = set()
@@ -515,7 +564,7 @@ def _find_ids_across_trees(filenames, trees, require_versioned):
 
 
 def _find_children_across_trees(specified_ids, trees):
-    """Return a set including specified ids and their children
+    """Return a set including specified ids and their children.
     
     All matches in all trees will be used.
 
@@ -547,7 +596,7 @@ class InterTree(InterObject):
     Its instances have methods like 'compare' and contain references to the
     source and target trees these operations are to be carried out on.
 
-    clients of bzrlib should not need to use InterTree directly, rather they
+    Clients of bzrlib should not need to use InterTree directly, rather they
     should use the convenience methods on Tree such as 'Tree.compare()' which
     will pass through to InterTree as appropriate.
     """
@@ -593,6 +642,7 @@ class InterTree(InterObject):
             return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_files, include_root, extra_trees=extra_trees,
+            require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
     def _iter_changes(self, include_unchanged=False,
@@ -629,11 +679,15 @@ class InterTree(InterObject):
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
-        specific_file_ids = self.target.paths2ids(specific_files,
-            lookup_trees, require_versioned=require_versioned)
+        if specific_files == []:
+            specific_file_ids = []
+        else:
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
         if want_unversioned:
-            all_unversioned = sorted([(p.split('/'), p) for p in self.target.extras()
-                if not specific_files or
+            all_unversioned = sorted([(p.split('/'), p) for p in
+                                     self.target.extras()
+                if specific_files is None or
                     osutils.is_inside_any(specific_files, p)])
             all_unversioned = deque(all_unversioned)
         else:

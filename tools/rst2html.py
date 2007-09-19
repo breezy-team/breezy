@@ -22,4 +22,22 @@ from docutils.core import publish_cmdline, default_description
 description = ('Generates (X)HTML documents from standalone reStructuredText '
                'sources.  ' + default_description)
 
-publish_cmdline(writer_name='html', description=description)
+
+# workaround for bug with <xxx id="tags" name="tags"> in IE
+from docutils.writers import html4css1
+
+class IESafeHtmlTranslator(html4css1.HTMLTranslator):
+
+    def starttag(self, node, tagname, suffix='\n', empty=0, **attributes):
+        x = html4css1.HTMLTranslator.starttag(self, node, tagname, suffix,
+                                              empty, **attributes)
+        y = x.replace('id="tags"', 'id="tags_"')
+        y = y.replace('name="tags"', 'name="tags_"')
+        y = y.replace('href="#tags"', 'href="#tags_"')
+        return y
+
+mywriter = html4css1.Writer()
+mywriter.translator_class = IESafeHtmlTranslator
+
+
+publish_cmdline(writer=mywriter, description=description)

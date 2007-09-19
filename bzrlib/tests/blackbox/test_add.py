@@ -20,13 +20,14 @@
 import os
 
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
 class TestAdd(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
         out = self.run_bzr('add')[0]
@@ -49,7 +50,7 @@ class TestAdd(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.') 
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
@@ -61,7 +62,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add inertiatic/esp')
@@ -84,7 +85,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should do this happily.
         """
-        self.run_bzr('init')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add --no-recurse inertiatic')
@@ -192,3 +193,17 @@ class TestAdd(ExternalBase):
         self.build_tree(['.bzr/crescent'])
         err = self.run_bzr('add .bzr/crescent', retcode=3)[1]
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+
+    def test_add_with_wildcards(self):
+        self.requireFeature(NeedsGlobExpansionFeature)
+        self.make_branch_and_tree('.')
+        self.build_tree(['a1', 'a2', 'b', 'c33'])
+        self.run_bzr(['add', 'a?', 'c*'])
+        self.assertEquals(self.run_bzr('unknowns')[0], 'b\n')
+
+    def test_add_with_wildcards_unicode(self):
+        self.requireFeature(NeedsGlobExpansionFeature)
+        self.make_branch_and_tree('.')
+        self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
+        self.run_bzr(['add', u'\u1234?', u'\u1235*'])
+        self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')

@@ -16,6 +16,7 @@
 
 """Tests for Tree and InterTree."""
 
+from bzrlib import errors
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tree import InterTree
 
@@ -120,3 +121,20 @@ class TestTree(TestCaseWithTransport):
         delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
         self.assertEqual(len(delta.added), 1)
         self.assertEqual(delta.added[0][0], '')
+
+    def test_changes_from_with_require_versioned(self):
+        """Ensure the require_versioned option does what's expected."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['known_file', 'unknown_file'])
+        wt.add('known_file')
+
+        self.assertRaises(errors.PathsNotVersionedError,
+            wt.changes_from, wt.basis_tree(), wt, specific_files=['known_file',
+            'unknown_file'], require_versioned=True)
+
+        # we need to pass a known file with an unknown file to get this to
+        # fail when expected.
+        delta = wt.changes_from(wt.basis_tree(), wt, 
+            specific_files=['known_file', 'unknown_file'] ,
+            require_versioned=False)
+        self.assertEqual(len(delta.added), 1)

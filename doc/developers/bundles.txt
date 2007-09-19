@@ -41,8 +41,10 @@ to corruption by transports such as email.
 
 June 2007 Design
 ================
+`Bundle Format 4 spec`_
 
-To be documented.
+.. _Bundle Format 4 spec: bundle-format4.html
+
 
 Future Plans
 ============

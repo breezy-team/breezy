@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_nine,
     )
 from bzrlib.trace import mutter
 
@@ -568,27 +567,21 @@ def sha_file(f):
     return s.hexdigest()
 
 
-
-def sha_strings(strings):
+def sha_strings(strings, _factory=sha.new):
     """Return the sha-1 of concatenation of strings"""
-    s = sha.new()
+    s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f):
-    s = sha.new()
-    s.update(f)
-    return s.hexdigest()
+def sha_string(f, _factory=sha.new):
+    return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
-    s = sha.new()
     b = f.read()
-    s.update(b)
-    size = len(b)
-    return {'size': size,
-            'sha1': s.hexdigest()}
+    return {'size': len(b),
+            'sha1': sha.new(b).hexdigest()}
 
 
 def compare_files(a, b):
@@ -767,14 +760,6 @@ def joinpath(p):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
-
-@deprecated_function(zero_nine)
-def appendpath(p1, p2):
-    if p1 == '':
-        return p2
-    else:
-        return pathjoin(p1, p2)
-    
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
@@ -1089,7 +1074,7 @@ def walkdirs(top, prefix=""):
     
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
-    [(directory-relpath, basename, kind, lstat, path-from-top), ...]),
+    [(relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
      - directory-path-from-root is the path including top for this directory. 
@@ -1387,3 +1372,8 @@ def dereference_path(path):
     # The pathjoin for '.' is a workaround for Python bug #1213894.
     # (initial path components aren't dereferenced)
     return pathjoin(realpath(pathjoin('.', parent)), base)
+
+
+def supports_mapi():
+    """Return True if we can use MAPI to launch a mail client."""
+    return sys.platform == "win32"

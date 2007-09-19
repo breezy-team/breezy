@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,22 +18,29 @@ import os
 import re
 import sys
 
+import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    merge,
     repository,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.builtins import merge
-import bzrlib.errors
 from bzrlib.repofmt import knitrepo
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
+
+# These tests are a bit old; please instead add new tests into
+# interrepository_implementations/ so they'll run on all relevant
+# combinations.
 
 
 def has_revision(branch, revision_id):
@@ -94,18 +101,13 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
-    # InstallFailed should be raised if the branch is missing a revision
-    # from its own revision history
-    br_a2.append_revision('a-b-c')
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
+    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
 
-    # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
-    #       revisions which are not present?  In that case, this test
-    #       must be rewritten.
-    #
-    #       RBC 20060403 the way to do this is to uncommit the revision from
-    #       the repository after the commit
+    # TODO: Test trying to fetch from a branch that points to a revision not
+    # actually present in its repository.  Not every branch format allows you
+    # to directly point to such revisions, so it's a bit complicated to
+    # construct.  One way would be to uncommit and gc the revision, but not
+    # every branch supports that.  -- mbp 20070814
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
@@ -116,7 +118,7 @@ class TestFetch(TestCaseWithTransport):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches(self)
+        br_a, br_b = make_branches(self, format='dirstate-tags')
         fetch_steps(self, br_a, br_b, br_a)
 
     def test_fetch_self(self):
@@ -179,8 +181,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
         wt2.commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=['br1', 0],
-              this_dir='br2')
+        wt2.merge_from_branch(br1, from_revision='null:')
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
@@ -191,9 +192,9 @@ class TestMergeFetch(TestCaseWithTransport):
         dir_2 = br1.bzrdir.sprout('br2')
         br2 = dir_2.open_branch()
         wt1.commit(message='rev 1-2', rev_id='1-2')
-        dir_2.open_workingtree().commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        wt2 = dir_2.open_workingtree()
+        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.merge_from_branch(br1)
         self._check_revs_present(br2)
 
     def _check_revs_present(self, br2):
@@ -228,8 +229,8 @@ class TestMergeFileHistory(TestCaseWithTransport):
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
         br2 = Branch.open('br2')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        br1 = Branch.open('br1')
+        wt2 = WorkingTree.open('br2').merge_from_branch(br1)
         for rev_id, text in [('1-2', 'original from 1\n'),
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),

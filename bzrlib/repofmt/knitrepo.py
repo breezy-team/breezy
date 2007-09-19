@@ -37,6 +37,7 @@ from bzrlib.repository import (
 import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 
 
 class _KnitParentsProvider(object):
@@ -73,8 +74,9 @@ class KnitRepository(MetaDirRepository):
         # This class isn't deprecated
         pass
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
+        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)[0]
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -146,22 +148,13 @@ class KnitRepository(MetaDirRepository):
             return {}
         revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self._get_revision_vf()
-        entire_graph = a_weave.get_graph()
         if revision_id is None:
             return a_weave.get_graph()
         elif revision_id not in a_weave:
             raise errors.NoSuchRevision(self, revision_id)
         else:
             # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = a_weave.get_parents(node)
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
+            return a_weave.get_graph([revision_id])
 
     @needs_read_lock
     def get_revision_graph_with_ghosts(self, revision_ids=None):
@@ -234,6 +227,8 @@ class KnitRepository(MetaDirRepository):
 
 class KnitRepository3(KnitRepository):
 
+    _commit_builder_class = RootCommitBuilder
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
@@ -259,24 +254,6 @@ class KnitRepository3(KnitRepository):
         assert inv.revision_id is not None
         assert inv.root.revision is not None
         return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        revision_id = osutils.safe_revision_id(revision_id)
-        return RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -487,3 +464,27 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
                                      _revision_store=_revision_store,
                                      control_store=control_store,
                                      text_store=text_store)
+
+
+def _get_stream_as_bytes(knit, required_versions):
+    """Generate a serialised data stream.
+
+    The format is a bencoding of a list.  The first element of the list is a
+    string of the format signature, then each subsequent element is a list
+    corresponding to a record.  Those lists contain:
+
+      * a version id
+      * a list of options
+      * a list of parents
+      * the bytes
+
+    :returns: a bencoded list.
+    """
+    knit_stream = knit.get_data_stream(required_versions)
+    format_signature, data_list, callable = knit_stream
+    data = []
+    data.append(format_signature)
+    for version, options, length, parents in data_list:
+        data.append([version, options, parents, callable(length)])
+    return bencode.bencode(data)
+

@@ -124,7 +124,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         rev_tree = self.wt.branch.repository.revision_tree('r1')
         # Now revert back to the previous commit
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
 
         self.check_exist(self.wt)
 
@@ -155,7 +155,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         # so that the second branch can pull the changes
         # and make sure that the executable bit has been copied
         rev_tree = self.wt.branch.repository.revision_tree('r1')
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
         self.wt.commit('resurrected', rev_id='r3')
 
         self.check_exist(self.wt)
@@ -172,6 +172,6 @@ class TestExecutable(TestCaseWithWorkingTree):
         """
         self.wt.commit('adding a,b', rev_id='r1')
         rev_tree = self.wt.branch.repository.revision_tree('r1')
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
         self.check_exist(self.wt)
 

@@ -523,7 +523,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         open('b1/d', 'wb').write('d test\n')
         merge_inner(this.branch, other, base, this_tree=this)
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
-        this.revert([])
+        this.revert()
         self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
         self.assertIs(os.path.exists('b1/b.~1~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
@@ -677,7 +677,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_clear_conflicts2(self):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
-        tree.revert([])
+        tree.revert()
         self.assertEqual(len(tree.conflicts()), 0)
 
     def test_format_description(self):
@@ -836,3 +836,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('file added')
         os.unlink('file')
         self.assertIs(None, tree.get_file_sha1('file-id'))
+
+    def test_no_file_sha1(self):
+        """If a file is not present, get_file_sha1 should raise NoSuchId"""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+        self.build_tree(['file'])
+        tree.add('file', 'file-id')
+        tree.commit('foo')
+        tree.remove('file')
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')

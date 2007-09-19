@@ -20,6 +20,7 @@ from bzrlib import (
     errors, 
     inventory, 
     xml7,
+    xml_serializer,
     )
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
@@ -80,14 +81,16 @@ _revision_v5_utc = """\
 _committed_inv_v5 = """<inventory>
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" 
       name="bar" parent_id="TREE_ROOT" 
-      revision="mbp@foo-123123"/>
+      revision="mbp@foo-123123"
+      text_sha1="A" text_size="1"/>
 <directory name="subdir"
            file_id="foo-20050801201819-4139aa4a272f4250"
            parent_id="TREE_ROOT" 
            revision="mbp@foo-00"/>
 <file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" 
       name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
-      revision="mbp@foo-00"/>
+      revision="mbp@foo-00"
+      text_sha1="B" text_size="0"/>
 </inventory>
 """
 
@@ -120,25 +123,26 @@ _expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt
 
 # DO NOT REFLOW THIS. Its the exact inventory we want.
 _expected_inv_v5 = """<inventory format="5">
-<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" revision="mbp@foo-123123" />
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" revision="mbp@foo-123123" text_sha1="A" text_size="1" />
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" revision="mbp@foo-00" />
-<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" />
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
 </inventory>
 """
 
 
 _expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mother!">
-<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" parent_id="f&lt;" revision="mbp@foo-123123" />
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" parent_id="f&lt;" revision="mbp@foo-123123" text_sha1="A" text_size="1" />
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" parent_id="f&lt;" revision="mbp@foo-00" />
-<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" />
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
+<symlink file_id="link-1" name="link" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" symlink_target="a" />
 </inventory>
 """
 
 _expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
 <directory file_id="tree-root-321" name="" revision="rev_outer" />
 <directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
-<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" />
-<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" />
+<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
+<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" symlink_target="a" />
 <tree-reference file_id="nested-id" name="nested" parent_id="tree-root-321" revision="rev_outer" reference_revision="rev_inner" />
 </inventory>
 """
@@ -257,6 +261,9 @@ class TestSerializer(TestCase):
         outp = StringIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
         self.assertEqualDiff(xml_string, outp.getvalue())
+        lines = bzrlib.xml5.serializer_v5.write_inventory_to_lines(inv)
+        outp.seek(0)
+        self.assertEqual(outp.readlines(), lines)
         inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
 
@@ -313,8 +320,13 @@ class TestSerializer(TestCase):
         inv['tree-root-321'].revision = 'rev_outer'
         inv['dir-id'].revision = 'rev_outer'
         inv['file-id'].revision = 'rev_outer'
+        inv['file-id'].text_sha1 = 'A'
+        inv['file-id'].text_size = 1
         inv['link-id'].revision = 'rev_outer'
+        inv['link-id'].symlink_target = 'a'
         txt = xml7.serializer_v7.write_inventory_to_string(inv)
+        lines = xml7.serializer_v7.write_inventory_to_lines(inv)
+        self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
         self.assertEqualDiff(_expected_inv_v7, txt)
         inv2 = xml7.serializer_v7.read_inventory_from_string(txt)
         self.assertEqual(5, len(inv2))
@@ -334,14 +346,17 @@ class TestSerializer(TestCase):
         s_v5 = bzrlib.xml5.serializer_v5
         s_v6 = bzrlib.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
-        inv = Inventory('tree-root-321')
+        inv = Inventory('tree-root-321', revision_id='rev-outer')
+        inv.root.revision = 'root-rev'
         inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
                                         'rev-outer', 'rev-inner'))
-        self.assertRaises(errors.UnsupportedInventoryKind, 
+        self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v5.write_inventory_to_string, inv)
-        self.assertRaises(errors.UnsupportedInventoryKind, 
+        self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v6.write_inventory_to_string, inv)
         txt = s_v7.write_inventory_to_string(inv)
+        lines = s_v7.write_inventory_to_lines(inv)
+        self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
         inv2 = s_v7.read_inventory_from_string(txt)
         self.assertEqual('tree-root-321', inv2['nested-id'].parent_id)
         self.assertEqual('rev-outer', inv2['nested-id'].revision)
@@ -396,6 +411,16 @@ class TestSerializer(TestCase):
                 self.assertIsInstance(act_ie.revision, str)
 
         self.assertEqual(len(expected), len(actual))
+
+    def test_registry(self):
+        self.assertIs(serializer_v4,
+                      xml_serializer.format_registry.get('4'))
+        self.assertIs(bzrlib.xml5.serializer_v5,
+                      xml_serializer.format_registry.get('5'))
+        self.assertIs(bzrlib.xml6.serializer_v6,
+                      xml_serializer.format_registry.get('6'))
+        self.assertIs(bzrlib.xml7.serializer_v7,
+                      xml_serializer.format_registry.get('7'))
 
 
 class TestEncodeAndEscape(TestCase):
