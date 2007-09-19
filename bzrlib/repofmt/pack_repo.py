@@ -108,9 +108,16 @@ class Pack(object):
 class RepositoryPackCollection(object):
     """Management of packs within a repository."""
 
-    def __init__(self, repo, transport):
+    def __init__(self, repo, transport, index_transport):
+        """Create a new RepositoryPackCollection.
+
+        :param transport: Addresses the repository base directory 
+            (typically .bzr/repository/).
+        :param index_transport: Addresses the directory containing indexes.
+        """
         self.repo = repo
         self.transport = transport
+        self._index_transport = index_transport
         self.packs = []
 
     def add_pack_to_memory(self, pack):
@@ -644,6 +651,27 @@ class RepositoryPackCollection(object):
         self._names[name] = (revision_index_length, inventory_index_length,
             text_index_length, signature_index_length)
 
+    def _make_index_map(self, suffix):
+        """Return information on existing indexes.
+
+        :param suffix: Index suffix added to pack name.
+
+        :returns: (pack_map, indices) where indices is a list of GraphIndex 
+        objects, and pack_map is a mapping from those objects to the 
+        pack tuple they describe.
+        """
+        indices = []
+        pack_map = {}
+        self.ensure_loaded()
+        for name in self.names():
+            # TODO: maybe this should expose size to us  to allow
+            # sorting of the indices for better performance ?
+            index_name = name + suffix
+            new_index = GraphIndex(self._index_transport, index_name)
+            indices.append(new_index)
+            pack_map[new_index] = self.repo._pack_tuple(name)
+        return pack_map, indices
+
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
         
@@ -821,7 +849,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
         self.repo._packs.ensure_loaded()
-        pack_map, indices = self._make_rev_pack_map()
+        pack_map, indices = self.repo._packs._make_index_map('.rix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._revision_write_index)
@@ -844,17 +872,6 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=knit_access)
         return self.repo._revision_knit
-
-    def _make_rev_pack_map(self):
-        indices = []
-        pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_revision_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
-        return pack_map, indices
 
     def get_signature_file(self, transaction):
         """Get the signature versioned file object."""
@@ -910,7 +927,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # create a pack map for the autopack code - XXX finish
             # making a clear managed list of packs, indices and use
             # that in these mapping classes
-            self.repo._revision_pack_map = self._make_rev_pack_map()[0]
+            self.repo._revision_pack_map = self.repo._packs._make_index_map('.rix')[0]
         else:
             del self.repo._revision_pack_map[self.repo._revision_write_index]
             self.repo._revision_write_index = None
@@ -1247,7 +1264,9 @@ class GraphKnitRepository1(KnitRepository):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport)
+        self._index_transport = index_transport
+        self._packs = RepositoryPackCollection(self, control_files._transport,
+                index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1378,7 +1397,9 @@ class GraphKnitRepository3(KnitRepository3):
         KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport)
+        self._index_transport = index_transport
+        self._packs = RepositoryPackCollection(self, control_files._transport,
+            index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
