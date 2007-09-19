@@ -1,6 +1,6 @@
-==================================================================
-Bazaar is using a lot of memory accessing a Subversion repository!
-==================================================================
+=================================================================
+Bazaar is using a lot of memory accessing a Subversion repository
+=================================================================
 bzr-svn can use a lot of memory cloning big branches. The problem appears to be 
 caused both by a memory leak in the python-subversion bindings or Subversion
 (the svn_ra_get_log() function) and the memory overhead from Bazaar.
@@ -20,16 +20,39 @@ the password by accessing the repository using the Subversion command-line
 client. For example, try running 'svn info <url>'.
 
 ==============================================================================
-Trying to branch into repository gives prints an error about incompatibility:
-bzr: ERROR: Repository KnitRepository is not compatible with repository SvnRepository
+Trying to branch into repository gives prints an error about incompatibility.
 ==============================================================================
+
+Creating a repository and then trying to clone a Subversion branch into 
+that repository may cause the following error:
+
+::
+
+  bzr: ERROR: Repository KnitRepository is not compatible with repository SvnRepository
+
 bzr-svn requires a repository format that supports recording root file ids. To 
 upgrade the repository, run: 
 
-$ bzr upgrade --dirstate-with-subtree
+::
 
-==============================================================================
+  $ bzr upgrade --dirstate-with-subtree
+
+===========================================================================
 Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
-==============================================================================
+===========================================================================
 At the moment, only `bzr svn-push` can be used to push new branches into 
-Subversion.
+Subversion. 
+
+More information can be found in the bug report at 
+https://bugs.launchpad.net/bzr-svn/+bug/127945.
+
+==============================================
+Cloning a large Subversion branch is very slow
+==============================================
+There is no way around this at the moment, because Bazaar has to import all 
+the history from the Subversion branch as it doesn't support so-called 
+history horizons yet. 
+
+For more information about history horizons can be found at:
+http://bazaar-vcs.org/HistoryHorizon
+
