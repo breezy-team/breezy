@@ -56,3 +56,7 @@ history horizons yet.
 For more information about history horizons can be found at:
 http://bazaar-vcs.org/HistoryHorizon
 
+=====================================================
+The Bazaar revno's differ from the Subversion revno's
+=====================================================
+That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository.
