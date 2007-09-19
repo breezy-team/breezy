@@ -54,8 +54,8 @@ _hooked_scheme = 'hooked'
 
 def _change_scheme_in(url, actual, desired):
     if not url.startswith(actual + '://'):
-        raise AssertionError('url [%r] does not start with [%r]' % (url,
-                                                                     actual))
+        raise AssertionError('url "%r" does not start with "%r]"'
+                             % (url, actual))
     return desired + url[len(actual):]
 
 
