@@ -47,6 +47,11 @@ IN DEVELOPMENT
 
    * Fix commit ordering in corner case (Aaron Bentley, #94975)
 
+   * Fallback to ftp when paramiko is not installed and sftp can't be used for
+     ``tests/commands`` so that the test suite is still usable without
+     paramiko.
+     (Vincent Ladeuil, #59150)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
