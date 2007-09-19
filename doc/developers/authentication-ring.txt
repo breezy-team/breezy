@@ -40,7 +40,7 @@ Any implementation of this specification should respect that behaviour.
 
 This specification also proposes a way to describe credentials so that several
 remote branches can use the same definition. This is particularily important
-for users handling a lot of passwords and need to update them on a regular
+for users handling a lot of passwords who need to update them on a regular
 basis.
 
 Rationale
@@ -118,9 +118,9 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
 
-Also note that an optional ``self_certified`` field will be allowed to force
-the connection to ``HTTPS`` hosts that provides a self certified certificate
-(the default should be to refuse the connection and inform the user).
+Also note that an optional ``verify_certificates=no`` field will allow the
+connection to ``HTTPS`` hosts that provides a self certified certificate (the
+default should be to refuse the connection and inform the user).
 
 Multiple definitions can be provided and, for a given URL, bzr will select a
 (``user`` [, ``password``]) based on the following rules :
@@ -333,6 +333,11 @@ Implementation constraints
 * If no user can be found by the mechanism described above, bzr should still
   default to ``getpass.get_user()`` and may attempt a second matching to obtain
   a password.
+
+* As this specification proposes a matching between some credentials
+  definitions and real urls, the implementation should provide an optional UI
+  feedback about which credential definition is used. That will allow the user
+  to validate his definitions.
 
 Questions and Answers
 ---------------------
