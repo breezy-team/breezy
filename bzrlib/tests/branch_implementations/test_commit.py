@@ -21,6 +21,7 @@ from bzrlib import errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.revision import NULL_REVISION
 from bzrlib.transport import get_transport
+from bzrlib.delta import TreeDelta
 
 
 class TestCommit(TestCaseWithBranch):
@@ -58,6 +59,12 @@ class TestCommitHook(TestCaseWithBranch):
         self.hook_calls.append(
             ('post_commit', local_base, master.base, old_revno, old_revid,
              new_revno, new_revid, local_locked, master.is_locked()))
+
+    def capture_pre_commit_hook(self, local, master, old_revno, old_revid,
+                                new_revno, new_revid,
+                                tree_delta, future_tree):
+        self.hook_calls.append(('pre_commit', old_revno, old_revid,
+                                new_revno, new_revid, tree_delta))
 
     def test_post_commit_to_origin(self):
         tree = self.make_branch_and_memory_tree('branch')
@@ -112,3 +119,98 @@ class TestCommitHook(TestCaseWithBranch):
             ],
             self.hook_calls)
         tree.unlock()
+    
+    def test_pre_commit_passes(self):
+        empty_delta = TreeDelta()
+        root_delta = TreeDelta()
+        root_delta.added = [('', '', 'directory')]
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('', '')
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        revid1 = tree.commit('first revision')
+        revid2 = tree.commit('second revision')
+        self.assertEqual([
+            ('pre_commit', 0, NULL_REVISION, 1, revid1, root_delta),
+            ('pre_commit', 1, revid1, 2, revid2, empty_delta)
+            ],
+            self.hook_calls)
+        tree.unlock()
+
+    def test_pre_commit_fails(self):
+        empty_delta = TreeDelta()
+        root_delta = TreeDelta()
+        root_delta.added = [('', '', 'directory')]
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('', '')
+        class PreCommitException(Exception): pass
+        def hook_func(local, master,
+                      old_revno, old_revid, new_revno, new_revid,
+                      tree_delta, future_tree):
+            raise PreCommitException(new_revid)
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        Branch.hooks.install_hook("pre_commit", hook_func)
+        revids = [None, None, None]
+        # this commit will raise an exception
+        # so the commit is rolled back and revno unchanged
+        err = self.assertRaises(PreCommitException, tree.commit, 'message')
+        # we have to record the revid to use in assertEqual later
+        revids[0] = str(err)
+        # unregister all pre_commit hooks
+        Branch.hooks["pre_commit"] = []
+        # and re-register the capture hook
+        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        # now these commits should go through
+        for i in range(1, 3):
+            revids[i] = tree.commit('message')
+        self.assertEqual([
+            ('pre_commit', 0, NULL_REVISION, 1, revids[0], root_delta),
+            ('pre_commit', 0, NULL_REVISION, 1, revids[1], root_delta),
+            ('pre_commit', 1, revids[1], 2, revids[2], empty_delta)
+            ],
+            self.hook_calls)
+        tree.unlock()
+
+    def test_pre_commit_delta(self):
+        # This tests the TreeDelta object passed to pre_commit hook.
+        # This does not try to validate data correctness in the delta.
+        self.build_tree(['rootfile', 'dir/', 'dir/subfile'])
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        try:
+            # setting up a playground
+            tree.set_root_id('root_id')
+            tree.add('rootfile', 'rootfile_id')
+            tree.put_file_bytes_non_atomic('rootfile_id', 'abc')
+            tree.add('dir', 'dir_id')
+            tree.add('dir/subfile', 'dir_subfile_id')
+            tree.mkdir('to_be_unversioned', 'to_be_unversioned_id')
+            tree.put_file_bytes_non_atomic('dir_subfile_id', 'def')
+            revid1 = tree.commit('first revision')
+        finally:
+            tree.unlock()
+        
+        tree.lock_write()
+        try:
+            # making changes
+            tree.put_file_bytes_non_atomic('rootfile_id', 'jkl')
+            tree.rename_one('dir/subfile', 'dir/subfile_renamed')
+            tree.unversion(['to_be_unversioned_id'])
+            tree.mkdir('added_dir', 'added_dir_id')
+            # start to capture pre_commit delta
+            Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+            revid2 = tree.commit('second revision')
+        finally:
+            tree.unlock()
+        
+        expected_delta = TreeDelta()
+        expected_delta.added = [('added_dir', 'added_dir_id', 'directory')]
+        expected_delta.removed = [('to_be_unversioned',
+                                   'to_be_unversioned_id', 'directory')]
+        expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
+                                   'dir_subfile_id', 'file', False, False)]
+        expected_delta.modified=[('rootfile', 'rootfile_id', 'file', True,
+                                  False)]
+        self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
+                           expected_delta)], self.hook_calls)

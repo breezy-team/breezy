@@ -59,6 +59,8 @@ import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, mutter_callsite, note, warning
+from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 
 
 class _KnitParentsProvider(object):
@@ -95,8 +97,9 @@ class KnitRepository(MetaDirRepository):
         # This class isn't deprecated
         pass
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
+        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)[0]
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -253,6 +256,9 @@ class KnitRepository(MetaDirRepository):
 
 class KnitRepository3(KnitRepository):
 
+    # knit3 repositories need a RootCommitBuilder
+    _commit_builder_class = RootCommitBuilder
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
@@ -278,26 +284,6 @@ class KnitRepository3(KnitRepository):
         assert inv.revision_id is not None
         assert inv.root.revision is not None
         return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        revision_id = osutils.safe_revision_id(revision_id)
-        result = RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
-        self.start_write_group()
-        return result
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -483,3 +469,26 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 3"
+
+
+def _get_stream_as_bytes(knit, required_versions):
+    """Generate a serialised data stream.
+
+    The format is a bencoding of a list.  The first element of the list is a
+    string of the format signature, then each subsequent element is a list
+    corresponding to a record.  Those lists contain:
+
+      * a version id
+      * a list of options
+      * a list of parents
+      * the bytes
+
+    :returns: a bencoded list.
+    """
+    knit_stream = knit.get_data_stream(required_versions)
+    format_signature, data_list, callable = knit_stream
+    data = []
+    data.append(format_signature)
+    for version, options, length, parents in data_list:
+        data.append([version, options, parents, callable(length)])
+    return bencode.bencode(data)

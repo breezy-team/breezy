@@ -272,21 +272,6 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
 
-    def _directory_is_tree_reference(self, relpath):
-        # as a special case, if a directory contains control files then 
-        # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
-        # TODO: We could ask all the control formats whether they
-        # recognize this directory, but at the moment there's no cheap api
-        # to do that.  Since we probably can only nest bzr checkouts and
-        # they always use this name it's ok for now.  -- mbp 20060306
-        #
-        # FIXME: There is an unhandled case here of a subdirectory
-        # containing .bzr but not a branch; that will probably blow up
-        # when you try to commit it.  It might happen if there is a
-        # checkout in a subdirectory.  This can be avoided by not adding
-        # it.  mbp 20070306
-
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
 
@@ -1510,7 +1495,7 @@ class DirStateRevisionTree(Tree):
         return self._repository.weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):
@@ -1574,6 +1559,20 @@ class DirStateRevisionTree(Tree):
 
     def kind(self, file_id):
         return self.inventory[file_id].kind
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.inventory.path2id(path)
+        if id is None:
+            return ('missing', None, None, None)
+        entry = self._inventory[id]
+        kind = entry.kind
+        if kind == 'file':
+            return (kind, entry.text_size, entry.executable, entry.text_sha1)
+        elif kind == 'symlink':
+            return (kind, None, None, entry.symlink_target)
+        else:
+            return (kind, None, None, None)
 
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]
@@ -1717,7 +1716,8 @@ class InterDirStateTree(InterTree):
         # TODO: handle extra trees in the dirstate.
         # TODO: handle comparisons as an empty tree as a different special
         # case? mbp 20070226
-        if extra_trees or (self.source._revision_id == NULL_REVISION):
+        if (extra_trees or (self.source._revision_id == NULL_REVISION)
+            or specific_files == []):
             # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,

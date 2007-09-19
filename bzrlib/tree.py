@@ -26,6 +26,7 @@ from bzrlib import (
     delta,
     osutils,
     revision as _mod_revision,
+    conflicts as _mod_conflicts,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -104,7 +105,7 @@ class Tree(object):
 
         Each conflict is an instance of bzrlib.conflicts.Conflict.
         """
-        return []
+        return _mod_conflicts.ConflictList()
 
     def extras(self):
         """For trees that can have unversioned files, return all such paths."""
@@ -187,6 +188,20 @@ class Tree(object):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
+    def path_content_summary(self, path):
+        """Get a summary of the information about path.
+        
+        :param path: A relative path within the tree.
+        :return: A tuple containing kind, size, exec, sha1-or-link.
+            Kind is always present (see tree.kind()).
+            size is present if kind is file, None otherwise.
+            exec is None unless kind is file and the platform supports the 'x'
+                bit.
+            sha1-or-link is the link target if kind is symlink, or the sha1 if
+                it can be obtained without reading the file.
+        """
+        raise NotImplementedError(self.path_content_summary)
+
     def get_reference_revision(self, file_id, path=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
@@ -209,8 +224,12 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
-    def get_file(self, file_id):
-        """Return a file object for the file file_id in the tree."""
+    def get_file(self, file_id, path=None):
+        """Return a file object for the file file_id in the tree.
+        
+        If both file_id and path are defined, it is implementation defined as
+        to which one is used.
+        """
         raise NotImplementedError(self.get_file)
 
     def get_file_mtime(self, file_id, path=None):
@@ -674,11 +693,15 @@ class InterTree(InterObject):
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
-        specific_file_ids = self.target.paths2ids(specific_files,
-            lookup_trees, require_versioned=require_versioned)
+        if specific_files == []:
+            specific_file_ids = []
+        else:
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
         if want_unversioned:
-            all_unversioned = sorted([(p.split('/'), p) for p in self.target.extras()
-                if not specific_files or
+            all_unversioned = sorted([(p.split('/'), p) for p in
+                                     self.target.extras()
+                if specific_files is None or
                     osutils.is_inside_any(specific_files, p)])
             all_unversioned = deque(all_unversioned)
         else:

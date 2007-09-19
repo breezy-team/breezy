@@ -350,7 +350,7 @@ class Inter1and2Helper(object):
             if root_id not in versionedfile:
                 versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
                     self.target.get_transaction())
-            parent_texts[root_id] = versionedfile[root_id].add_lines(
+            _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
                 revision_id, parents, [], parent_texts)
 
     def regenerate_inventory(self, revs):

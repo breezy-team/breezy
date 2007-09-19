@@ -35,6 +35,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     errors,
+    graph,
     lockable_files,
     lockdir,
     registry,
@@ -532,12 +533,12 @@ class BzrDir(object):
         return BzrDir.open(base, _unsupported=True)
         
     @staticmethod
-    def open(base, _unsupported=False):
+    def open(base, _unsupported=False, possible_transports=None):
         """Open an existing bzrdir, rooted at 'base' (url)
         
         _unsupported is a private parameter to the BzrDir class.
         """
-        t = get_transport(base)
+        t = get_transport(base, possible_transports=possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
@@ -1083,7 +1084,7 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert([], old_tree=empty)
+        wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
@@ -1804,7 +1805,7 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
                     self.branch.control_files.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
@@ -1889,10 +1890,10 @@ class ConvertBzrDir4To5(Converter):
         present_parents = [p for p in rev.parent_ids
                            if p not in self.absent_revisions]
         self._convert_revision_contents(rev, inv, present_parents)
-        self._store_new_weave(rev, inv, present_parents)
+        self._store_new_inv(rev, inv, present_parents)
         self.converted_revs.add(rev_id)
 
-    def _store_new_weave(self, rev, inv, present_parents):
+    def _store_new_inv(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
             entries = inv.iter_entries()
@@ -1903,7 +1904,7 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add_lines(rev.revision_id, 
+        self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1
@@ -1934,17 +1935,23 @@ class ConvertBzrDir4To5(Converter):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_entries = ie.find_previous_heads(parent_invs,
-                                                  None,
-                                                  None,
-                                                  entry_vf=w)
-        for old_revision in previous_entries:
-                # if this fails, its a ghost ?
-                assert old_revision in self.converted_revs, \
-                    "Revision {%s} not in converted_revs" % old_revision
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        for old_revision in parent_candiate_entries.keys():
+            # if this fails, its a ghost ?
+            assert old_revision in self.converted_revs, \
+                "Revision {%s} not in converted_revs" % old_revision
+        heads = graph.Graph(self).heads(parent_candiate_entries.keys())
+        # XXX: Note that this is unordered - and this is tolerable because 
+        # the previous code was also unordered.
+        previous_entries = dict((head, parent_candiate_entries[head]) for head
+            in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
+
+    def get_parents(self, revision_ids):
+        for revision_id in revision_ids:
+            yield self.revisions[revision_id].parent_ids
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to

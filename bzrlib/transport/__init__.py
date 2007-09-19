@@ -369,10 +369,10 @@ class Transport(object):
         """
         # The default implementation just uses "Easier to ask for forgiveness
         # than permission". We attempt to create the directory, and just
-        # suppress a FileExists exception.
+        # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
             self.mkdir('.')
-        except errors.FileExists:
+        except (errors.FileExists, errors.PermissionDenied):
             return False
         else:
             return True

@@ -61,6 +61,342 @@ from bzrlib.trace import mutter, mutter_callsite, note, warning
 _deprecation_warning_done = False
 
 
+class CommitBuilder(object):
+    """Provides an interface to build up a commit.
+
+    This allows describing a tree to be committed without needing to 
+    know the internals of the format of the repository.
+    """
+    
+    # all clients should supply tree roots.
+    record_root_entry = True
+
+    def __init__(self, repository, parents, config, timestamp=None, 
+                 timezone=None, committer=None, revprops=None, 
+                 revision_id=None):
+        """Initiate a CommitBuilder.
+
+        :param repository: Repository to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        self._config = config
+
+        if committer is None:
+            self._committer = self._config.username()
+        else:
+            assert isinstance(committer, basestring), type(committer)
+            self._committer = committer
+
+        self.new_inventory = Inventory(None)
+        self._new_revision_id = osutils.safe_revision_id(revision_id)
+        self.parents = parents
+        self.repository = repository
+
+        self._revprops = {}
+        if revprops is not None:
+            self._revprops.update(revprops)
+
+        if timestamp is None:
+            timestamp = time.time()
+        # Restrict resolution to 1ms
+        self._timestamp = round(timestamp, 3)
+
+        if timezone is None:
+            self._timezone = osutils.local_time_offset()
+        else:
+            self._timezone = int(timezone)
+
+        self._generate_revision_if_needed()
+
+    def commit(self, message):
+        """Make the actual commit.
+
+        :return: The revision id of the recorded revision.
+        """
+        rev = _mod_revision.Revision(
+                       timestamp=self._timestamp,
+                       timezone=self._timezone,
+                       committer=self._committer,
+                       message=message,
+                       inventory_sha1=self.inv_sha1,
+                       revision_id=self._new_revision_id,
+                       properties=self._revprops)
+        rev.parent_ids = self.parents
+        self.repository.add_revision(self._new_revision_id, rev,
+            self.new_inventory, self._config)
+        self.repository.commit_write_group()
+        return self._new_revision_id
+
+    def abort(self):
+        """Abort the commit that is being built.
+        """
+        self.repository.abort_write_group()
+
+    def revision_tree(self):
+        """Return the tree that was just committed.
+
+        After calling commit() this can be called to get a RevisionTree
+        representing the newly committed tree. This is preferred to
+        calling Repository.revision_tree() because that may require
+        deserializing the inventory, while we already have a copy in
+        memory.
+        """
+        return RevisionTree(self.repository, self.new_inventory,
+                            self._new_revision_id)
+
+    def finish_inventory(self):
+        """Tell the builder that the inventory is finished."""
+        if self.new_inventory.root is None:
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
+        self.new_inventory.revision_id = self._new_revision_id
+        self.inv_sha1 = self.repository.add_inventory(
+            self._new_revision_id,
+            self.new_inventory,
+            self.parents
+            )
+
+    def _gen_revision_id(self):
+        """Return new revision-id."""
+        return generate_ids.gen_revision_id(self._config.username(),
+                                            self._timestamp)
+
+    def _generate_revision_if_needed(self):
+        """Create a revision id if None was supplied.
+        
+        If the repository can not support user-specified revision ids
+        they should override this function and raise CannotSetRevisionId
+        if _new_revision_id is not None.
+
+        :raises: CannotSetRevisionId
+        """
+        if self._new_revision_id is None:
+            self._new_revision_id = self._gen_revision_id()
+            self.random_revid = True
+        else:
+            self.random_revid = False
+
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
+
+        :param ie: An entry being added.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param tree: The tree that is being committed.
+        """
+        if ie.parent_id is not None:
+            # if ie is not root, add a root automatically.
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
+                                       '', tree, tree.path_content_summary(''))
+        else:
+            # In this revision format, root entries have no knit or weave When
+            # serializing out to disk and back in root.revision is always
+            # _new_revision_id
+            ie.revision = self._new_revision_id
+
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+        content_summary):
+        """Record the content of ie from tree into the commit if needed.
+
+        Side effect: sets ie.revision when unchanged
+
+        :param ie: An inventory entry present in the commit.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param path: The path the entry is at in the tree.
+        :param tree: The tree which contains this entry and should be used to 
+            obtain content.
+        :param content_summary: Summary data from the tree about the paths
+            content - stat, length, exec, sha/link target. This is only
+            accessed when the entry has a revision of None - that is when it is
+            a candidate to commit.
+        """
+        if self.new_inventory.root is None:
+            self._check_root(ie, parent_invs, tree)
+        if ie.revision is None:
+            kind = content_summary[0]
+        else:
+            # ie is carried over from a prior commit
+            kind = ie.kind
+        # XXX: repository specific check for nested tree support goes here - if
+        # the repo doesn't want nested trees we skip it ?
+        if (kind == 'tree-reference' and
+            not self.repository._format.supports_tree_reference):
+            # mismatch between commit builder logic and repository:
+            # this needs the entry creation pushed down into the builder.
+            raise NotImplementedError
+        # transitional assert only, will remove before release.
+        assert ie.kind == kind
+        self.new_inventory.add(ie)
+
+        # ie.revision is always None if the InventoryEntry is considered
+        # for committing. ie.snapshot will record the correct revision 
+        # which may be the sole parent if it is untouched.
+        if ie.revision is not None:
+            return
+
+        # XXX: Friction: parent_candidates should return a list not a dict
+        #      so that we don't have to walk the inventories again.
+        parent_candiate_entries = ie.parent_candidates(parent_invs)
+        head_set = self.repository.get_graph().heads(parent_candiate_entries.keys())
+        heads = []
+        for inv in parent_invs:
+            if ie.file_id in inv:
+                old_rev = inv[ie.file_id].revision
+                if old_rev in head_set:
+                    heads.append(inv[ie.file_id].revision)
+                    head_set.remove(inv[ie.file_id].revision)
+
+        store = False
+        # now we check to see if we need to write a new record to the
+        # file-graph.
+        # We write a new entry unless there is one head to the ancestors, and
+        # the kind-derived content is unchanged.
+
+        # Cheapest check first: no ancestors, or more the one head in the
+        # ancestors, we write a new node.
+        if len(heads) != 1:
+            store = True
+        if not store:
+            # There is a single head, look it up for comparison
+            parent_entry = parent_candiate_entries[heads[0]]
+            # if the non-content specific data has changed, we'll be writing a
+            # node:
+            if (parent_entry.parent_id != ie.parent_id or
+                parent_entry.name != ie.name):
+                store = True
+        # now we need to do content specific checks:
+        if not store:
+            # if the kind changed the content obviously has
+            if kind != parent_entry.kind:
+                store = True
+        if kind == 'file':
+            if not store:
+                if (# if the file length changed we have to store:
+                    parent_entry.text_size != content_summary[1] or
+                    # if the exec bit has changed we have to store:
+                    parent_entry.executable != content_summary[2]):
+                    store = True
+                elif parent_entry.text_sha1 == content_summary[3]:
+                    # all meta and content is unchanged (using a hash cache
+                    # hit to check the sha)
+                    ie.revision = parent_entry.revision
+                    ie.text_size = parent_entry.text_size
+                    ie.text_sha1 = parent_entry.text_sha1
+                    ie.executable = parent_entry.executable
+                    return
+                else:
+                    # Either there is only a hash change(no hash cache entry,
+                    # or same size content change), or there is no change on
+                    # this file at all.
+                    # There is a race condition when inserting content into the
+                    # knit though that can result in different content being
+                    # inserted so even though we may have had a hash cache hit
+                    # here we still tell the store the hash we would *not*
+                    # store a new text on, which means that it can avoid for us
+                    # without a race condition and without double-shaing the
+                    # lines.
+                    nostore_sha = parent_entry.text_sha1
+            if store:
+                nostore_sha = None
+            try:
+                ie.executable = content_summary[2]
+                lines = tree.get_file(ie.file_id, path).readlines()
+                ie.text_sha1, ie.text_size = self._add_text_to_weave(
+                    ie.file_id, lines, heads, nostore_sha)
+            except errors.ExistingContent:
+                # we are not going to store a new file graph node as it turns
+                # out to be unchanged.
+                ie.revision = parent_entry.revision
+                ie.text_size = parent_entry.text_size
+                ie.text_sha1 = parent_entry.text_sha1
+                ie.executable = parent_entry.executable
+                return
+        elif kind == 'directory':
+            if not store:
+                # all data is meta here, nothing specific to directory, so
+                # carry over:
+                ie.revision = parent_entry.revision
+                return
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
+        elif kind == 'symlink':
+            current_link_target = content_summary[3]
+            if not store:
+                # symmlink target is not generic metadata, check if it has
+                # changed.
+                if current_link_target != parent_entry.symlink_target:
+                    store = True
+            if not store:
+                # unchanged, carry over.
+                ie.revision = parent_entry.revision
+                ie.symlink_target = parent_entry.symlink_target
+                return
+            ie.symlink_target = current_link_target
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
+        elif kind == 'tree-reference':
+            if not store:
+                if content_summary[3] != parent_entry.reference_revision:
+                    store = True
+            if not store:
+                # unchanged, carry over.
+                ie.reference_revision = parent_entry.reference_revision
+                ie.revision = parent_entry.revision
+                return
+            ie.reference_revision = content_summary[3]
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
+        else:
+            raise NotImplementedError('unknown kind')
+        ie.revision = self._new_revision_id
+
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
+        versionedfile = self.repository.weave_store.get_weave_or_empty(
+            file_id, self.repository.get_transaction())
+        # Don't change this to add_lines - add_lines_with_ghosts is cheaper
+        # than add_lines, and allows committing when a parent is ghosted for
+        # some reason.
+        # Note: as we read the content directly from the tree, we know its not
+        # been turned into unicode or badly split - but a broken tree
+        # implementation could give us bad output from readlines() so this is
+        # not a guarantee of safety. What would be better is always checking
+        # the content during test suite execution. RBC 20070912
+        try:
+            return versionedfile.add_lines_with_ghosts(
+                self._new_revision_id, parents, new_lines,
+                nostore_sha=nostore_sha, random_id=self.random_revid,
+                check_content=False)[0:2]
+        finally:
+            versionedfile.clear_cache()
+
+
+class RootCommitBuilder(CommitBuilder):
+    """This commitbuilder actually records the root id"""
+    
+    def _check_root(self, ie, parent_invs, tree):
+        """Helper for record_entry_contents.
+
+        :param ie: An entry being added.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param tree: The tree that is being committed.
+        """
+        # ie must be root for this builder
+        assert ie.parent_id is None
+
+
 ######################################################################
 # Repositories
 
@@ -76,9 +412,15 @@ class Repository(object):
     remote) disk.
     """
 
+    # What class to use for a CommitBuilder. Often its simpler to change this
+    # in a Repository class subclass rather than to override
+    # get_commit_builder.
+    _commit_builder_class = CommitBuilder
+    # The search regex used by xml based repositories to determine what things
+    # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
-        r'.*revision="(?P<revision_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def abort_write_group(self):
@@ -121,20 +463,20 @@ class Repository(object):
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
         assert inv.root is not None
-        inv_text = self.serialise_inventory(inv)
-        inv_sha1 = osutils.sha_string(inv_text)
+        inv_lines = self._serialise_inventory_to_lines(inv)
         inv_vf = self.get_inventory_weave()
-        self._inventory_add_lines(inv_vf, revision_id, parents,
-                                  osutils.split_lines(inv_text))
-        return inv_sha1
+        return self._inventory_add_lines(inv_vf, revision_id, parents,
+            inv_lines, check_content=False)
 
-    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines,
+        check_content=True):
+        """Store lines in inv_vf and return the sha1 of the inventory."""
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-
-        inv_vf.add_lines(revision_id, final_parents, lines)
+        return inv_vf.add_lines(revision_id, final_parents, lines,
+            check_content=check_content)[0]
 
     @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
@@ -461,8 +803,8 @@ class Repository(object):
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
                            revision_id=None):
         """Obtain a CommitBuilder for this repository.
         
@@ -476,8 +818,8 @@ class Repository(object):
         :param revision_id: Optional revision id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        result =_CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+        result = self.__class__._commit_builder_class(self, parents, config,
+            timestamp, timezone, committer, revprops, revision_id)
         self.start_write_group()
         return result
 
@@ -891,6 +1233,9 @@ class Repository(object):
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
+
+    def _serialise_inventory_to_lines(self, inv):
+        return self._serializer.write_inventory_to_lines(inv)
 
     def get_serializer_format(self):
         return self._serializer.format_num
@@ -1731,8 +2076,13 @@ class InterSameDataRepository(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        """Repository format for testing with."""
-        return RepositoryFormat.get_default_format()
+        """Repository format for testing with.
+        
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod
     def is_compatible(source, target):
@@ -2252,268 +2602,6 @@ class CopyConverter(object):
         """Update the pb by a step."""
         self.count +=1
         self.pb.update(message, self.count, self.total)
-
-
-class CommitBuilder(object):
-    """Provides an interface to build up a commit.
-
-    This allows describing a tree to be committed without needing to 
-    know the internals of the format of the repository.
-    """
-    
-    record_root_entry = False
-    def __init__(self, repository, parents, config, timestamp=None, 
-                 timezone=None, committer=None, revprops=None, 
-                 revision_id=None):
-        """Initiate a CommitBuilder.
-
-        :param repository: Repository to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        self._config = config
-
-        if committer is None:
-            self._committer = self._config.username()
-        else:
-            assert isinstance(committer, basestring), type(committer)
-            self._committer = committer
-
-        self.new_inventory = Inventory(None)
-        self._new_revision_id = osutils.safe_revision_id(revision_id)
-        self.parents = parents
-        self.repository = repository
-
-        self._revprops = {}
-        if revprops is not None:
-            self._revprops.update(revprops)
-
-        if timestamp is None:
-            timestamp = time.time()
-        # Restrict resolution to 1ms
-        self._timestamp = round(timestamp, 3)
-
-        if timezone is None:
-            self._timezone = osutils.local_time_offset()
-        else:
-            self._timezone = int(timezone)
-
-        self._generate_revision_if_needed()
-
-    def commit(self, message):
-        """Make the actual commit.
-
-        :return: The revision id of the recorded revision.
-        """
-        rev = _mod_revision.Revision(
-                       timestamp=self._timestamp,
-                       timezone=self._timezone,
-                       committer=self._committer,
-                       message=message,
-                       inventory_sha1=self.inv_sha1,
-                       revision_id=self._new_revision_id,
-                       properties=self._revprops)
-        rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev,
-            self.new_inventory, self._config)
-        self.repository.commit_write_group()
-        return self._new_revision_id
-
-    def revision_tree(self):
-        """Return the tree that was just committed.
-
-        After calling commit() this can be called to get a RevisionTree
-        representing the newly committed tree. This is preferred to
-        calling Repository.revision_tree() because that may require
-        deserializing the inventory, while we already have a copy in
-        memory.
-        """
-        return RevisionTree(self.repository, self.new_inventory,
-                            self._new_revision_id)
-
-    def finish_inventory(self):
-        """Tell the builder that the inventory is finished."""
-        if self.new_inventory.root is None:
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
-        self.new_inventory.revision_id = self._new_revision_id
-        self.inv_sha1 = self.repository.add_inventory(
-            self._new_revision_id,
-            self.new_inventory,
-            self.parents
-            )
-
-    def _gen_revision_id(self):
-        """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._config.username(),
-                                            self._timestamp)
-
-    def _generate_revision_if_needed(self):
-        """Create a revision id if None was supplied.
-        
-        If the repository can not support user-specified revision ids
-        they should override this function and raise CannotSetRevisionId
-        if _new_revision_id is not None.
-
-        :raises: CannotSetRevisionId
-        """
-        if self._new_revision_id is None:
-            self._new_revision_id = self._gen_revision_id()
-
-    def record_entry_contents(self, ie, parent_invs, path, tree):
-        """Record the content of ie from tree into the commit if needed.
-
-        Side effect: sets ie.revision when unchanged
-
-        :param ie: An inventory entry present in the commit.
-        :param parent_invs: The inventories of the parent revisions of the
-            commit.
-        :param path: The path the entry is at in the tree.
-        :param tree: The tree which contains this entry and should be used to 
-        obtain content.
-        """
-        if self.new_inventory.root is None and ie.parent_id is not None:
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
-        self.new_inventory.add(ie)
-
-        # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
-        if ie.revision is not None:
-            return
-
-        # In this revision format, root entries have no knit or weave
-        if ie is self.new_inventory.root:
-            # When serializing out to disk and back in
-            # root.revision is always _new_revision_id
-            ie.revision = self._new_revision_id
-            return
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
-
-    def modified_directory(self, file_id, file_parents):
-        """Record the presence of a symbolic link.
-
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-
-    def modified_reference(self, file_id, file_parents):
-        """Record the modification of a reference.
-
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-    
-    def modified_file_text(self, file_id, file_parents,
-                           get_content_byte_lines, text_sha1=None,
-                           text_size=None):
-        """Record the text of file file_id
-
-        :param file_id: The file_id of the file to record the text of.
-        :param file_parents: The per-file parent revision ids.
-        :param get_content_byte_lines: A callable which will return the byte
-            lines for the file.
-        :param text_sha1: Optional SHA1 of the file contents.
-        :param text_size: Optional size of the file contents.
-        """
-        # mutter('storing text of file {%s} in revision {%s} into %r',
-        #        file_id, self._new_revision_id, self.repository.weave_store)
-        # special case to avoid diffing on renames or 
-        # reparenting
-        if (len(file_parents) == 1
-            and text_sha1 == file_parents.values()[0].text_sha1
-            and text_size == file_parents.values()[0].text_size):
-            previous_ie = file_parents.values()[0]
-            versionedfile = self.repository.weave_store.get_weave(file_id, 
-                self.repository.get_transaction())
-            versionedfile.clone_text(self._new_revision_id, 
-                previous_ie.revision, file_parents.keys())
-            return text_sha1, text_size
-        else:
-            new_lines = get_content_byte_lines()
-            # TODO: Rather than invoking sha_strings here, _add_text_to_weave
-            # should return the SHA1 and size
-            self._add_text_to_weave(file_id, new_lines, file_parents.keys())
-            return osutils.sha_strings(new_lines), \
-                sum(map(len, new_lines))
-
-    def modified_link(self, file_id, file_parents, link_target):
-        """Record the presence of a symbolic link.
-
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        :param link_target: Target location of this link.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-
-    def _add_text_to_weave(self, file_id, new_lines, parents):
-        versionedfile = self.repository.weave_store.get_weave_or_empty(
-            file_id, self.repository.get_transaction())
-        versionedfile.add_lines(self._new_revision_id, parents, new_lines)
-        versionedfile.clear_cache()
-
-
-class _CommitBuilder(CommitBuilder):
-    """Temporary class so old CommitBuilders are detected properly
-    
-    Note: CommitBuilder works whether or not root entry is recorded.
-    """
-
-    record_root_entry = True
-
-
-class RootCommitBuilder(CommitBuilder):
-    """This commitbuilder actually records the root id"""
-    
-    record_root_entry = True
-
-    def record_entry_contents(self, ie, parent_invs, path, tree):
-        """Record the content of ie from tree into the commit if needed.
-
-        Side effect: sets ie.revision when unchanged
-
-        :param ie: An inventory entry present in the commit.
-        :param parent_invs: The inventories of the parent revisions of the
-            commit.
-        :param path: The path the entry is at in the tree.
-        :param tree: The tree which contains this entry and should be used to 
-        obtain content.
-        """
-        assert self.new_inventory.root is not None or ie.parent_id is None
-        self.new_inventory.add(ie)
-
-        # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
-        if ie.revision is not None:
-            return
-
-        previous_entries = ie.find_previous_heads(
-            parent_invs,
-            self.repository.weave_store,
-            self.repository.get_transaction())
-        # we are creating a new revision for ie in the history store
-        # and inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
 _unescape_map = {
