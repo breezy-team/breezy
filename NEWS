@@ -52,6 +52,9 @@ IN DEVELOPMENT
      paramiko.
      (Vincent Ladeuil, #59150)
 
+   * Fix selftest semi-random noise during http related tests.
+     (Vincent Ladeuil, #140614)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
