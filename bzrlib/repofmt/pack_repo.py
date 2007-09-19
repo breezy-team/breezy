@@ -817,6 +817,23 @@ class RepositoryPackCollection(object):
         if self.repo.control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
 
+    def _start_write_group(self):
+        random_name = self.repo.control_files._lock.nonce
+        self.repo._open_pack_tuple = (self.repo._upload_transport, random_name + '.pack')
+        write_stream = self.repo._upload_transport.open_write_stream(random_name + '.pack')
+        self.repo._write_stream = write_stream
+        self.repo._open_pack_hash = md5.new()
+        def write_data(bytes, write=write_stream.write,
+                       update=self.repo._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
+        self.repo._open_pack_writer = pack.ContainerWriter(write_data)
+        self.repo._open_pack_writer.begin()
+        self.setup()
+        self.repo._revision_store.setup()
+        self.repo.weave_store.setup()
+        self.repo._inv_thunk.setup()
+
 
 class GraphKnitRevisionStore(KnitRevisionStore):
     """An object to adapt access from RevisionStore's to use GraphKnits.
@@ -1264,7 +1281,6 @@ class GraphKnitRepository1(KnitRepository):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._index_transport = index_transport
         self._packs = RepositoryPackCollection(self, control_files._transport,
                 index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
@@ -1297,20 +1313,7 @@ class GraphKnitRepository1(KnitRepository):
             self._packs.reset()
 
     def _start_write_group(self):
-        random_name = self.control_files._lock.nonce
-        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
-        self._write_stream = write_stream
-        self._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self._open_pack_writer = pack.ContainerWriter(write_data)
-        self._open_pack_writer.begin()
-        self._packs.setup()
-        self._revision_store.setup()
-        self.weave_store.setup()
-        self._inv_thunk.setup()
+        self._packs._start_write_group()
 
     def _commit_write_group(self):
         data_inserted = (self._revision_store.data_inserted() or
@@ -1397,7 +1400,6 @@ class GraphKnitRepository3(KnitRepository3):
         KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._index_transport = index_transport
         self._packs = RepositoryPackCollection(self, control_files._transport,
             index_transport)
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
@@ -1430,20 +1432,7 @@ class GraphKnitRepository3(KnitRepository3):
             self._packs.reset()
 
     def _start_write_group(self):
-        random_name = self.control_files._lock.nonce
-        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
-        self._write_stream = write_stream
-        self._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self._open_pack_writer = pack.ContainerWriter(write_data)
-        self._open_pack_writer.begin()
-        self._packs.setup()
-        self._revision_store.setup()
-        self.weave_store.setup()
-        self._inv_thunk.setup()
+        self._packs._start_write_group()
 
     def _commit_write_group(self):
         data_inserted = (self._revision_store.data_inserted() or
