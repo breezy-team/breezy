@@ -261,7 +261,7 @@ class Weave(VersionedFile):
         return idx
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-       left_matching_blocks, nostore_sha):
+       left_matching_blocks, nostore_sha, random_id, check_content):
         """See VersionedFile.add_lines."""
         idx = self._add(version_id, lines, map(self._lookup, parents),
             nostore_sha=nostore_sha)
@@ -870,11 +870,12 @@ class WeaveFile(Weave):
             self._save()
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id, check_content):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
-            parent_texts, left_matching_blocks, nostore_sha)
+            parent_texts, left_matching_blocks, nostore_sha, random_id,
+            check_content)
         self._save()
         return result
 
@@ -1201,10 +1202,7 @@ class InterWeave(InterVersionedFile):
         if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
-        try:
-            self.target._join(self.source, pb, msg, version_ids, ignore_missing)
-        except errors.WeaveParentMismatch:
-            self.target._reweave(self.source, pb, msg)
+        self.target._join(self.source, pb, msg, version_ids, ignore_missing)
 
 
 InterVersionedFile.register_optimiser(InterWeave)

@@ -621,15 +621,117 @@ not required. Minimally though, please try to rename things so that
 callers will at least get an AttributeError rather than weird results.
 
 
+Deprecation decorators
+----------------------
+
+``bzrlib.symbol_versioning`` provides decorators that can be attached to
+methods, functions, and other interfaces to indicate that they should no
+longer be used.
+
+To deprecate a static method you must call ``deprecated_function``
+(**not** method), after the staticmethod call::
+
+    @staticmethod
+    @deprecated_function(zero_ninetyone)
+    def create_repository(base, shared=False, format=None):
+
+When you deprecate an API, you should not just delete its tests, because
+then we might introduce bugs in them.  If the API is still present at all,
+it should still work.  The basic approach is to use
+``TestCase.applyDeprecated`` which in one step checks that the API gives
+the expected deprecation message, and also returns the real result from
+the method, so that tests can keep running.
+
 Coding Style Guidelines
 =======================
 
+Code layout
+-----------
+
 Please write PEP-8__ compliant code.  
+
+__ http://www.python.org/peps/pep-0008.html
 
 One often-missed requirement is that the first line of docstrings
 should be a self-contained one-sentence summary.
 
-__ http://www.python.org/peps/pep-0008.html
+We use 4 space indents for blocks, and never use tab characters.  (In vim,
+``set expandtab``.)
+
+Lines should be no more than 79 characters if at all possible.
+Lines that continue a long statement may be indented in either of 
+two ways:
+
+within the parenthesis or other character that opens the block, e.g.::
+
+    my_long_method(arg1,
+                   arg2,
+                   arg3)
+
+or indented by four spaces::
+
+    my_long_method(arg1,
+        arg2,
+        arg3)
+
+The first is considered clearer by some people; however it can be a bit
+harder to maintain (e.g. when the method name changes), and it does not
+work well if the relevant parenthesis is already far to the right.  Avoid
+this::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(one,
+                                                     two,
+                                                     three)
+
+but rather ::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(one,
+         two,
+         three)
+
+or ::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(
+         one, two, three)
+
+For long lists, we like to add a trailing comma and put the closing
+character on the following line.  This makes it easier to add new items in
+future::
+
+    from bzrlib.goo import (
+        jam,
+        jelly,
+        marmalade,
+        )
+
+There should be spaces between function paramaters, but not between the
+keyword name and the value::
+
+    call(1, 3, cheese=quark)
+
+In emacs::
+
+    ;(defface my-invalid-face
+    ;  '((t (:background "Red" :underline t)))
+    ;  "Face used to highlight invalid constructs or other uglyties"
+    ;  )
+
+    (defun my-python-mode-hook ()
+     ;; setup preferred indentation style.
+     (setq fill-column 79)
+     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
+    ;  (font-lock-add-keywords 'python-mode
+    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
+    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
+    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
+    ;                          )
+     )
+
+    (add-hook 'python-mode-hook 'my-python-mode-hook)
+
+The lines beginning with ';' are comments. They can be activated
+if one want to have a strong notice of some tab/space usage
+violations.
 
 
 Module Imports

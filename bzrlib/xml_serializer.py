@@ -51,13 +51,13 @@ from bzrlib import errors
 
 class Serializer(object):
     """Abstract object serialize/deserialize"""
+
     def write_inventory(self, inv, f):
         """Write inventory to a file"""
-        elt = self._pack_inventory(inv)
-        self._write_element(elt, f)
+        raise NotImplementedError(self.write_inventory)
 
     def write_inventory_to_string(self, inv):
-        return tostring(self._pack_inventory(inv)) + '\n'
+        raise NotImplementedError(self.write_inventory_to_string)
 
     def read_inventory_from_string(self, xml_string):
         try:
