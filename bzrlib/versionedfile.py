@@ -426,16 +426,6 @@ class VersionedFile(object):
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
 
-    @staticmethod
-    def _apply_delta(lines, delta):
-        """Apply delta to lines."""
-        lines = list(lines)
-        offset = 0
-        for start, end, count, delta_lines in delta:
-            lines[offset+start:offset+end] = delta_lines
-            offset = offset + (start - end) + count
-        return lines
-
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Integrate versions from other into this versioned file.
