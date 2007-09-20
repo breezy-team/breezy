@@ -1417,7 +1417,6 @@ class Repository(object):
         """
         if parents_provider is None:
             parents_provider = _RevisionParentsProvider(self)
-        result = {}
 
         graph = self.get_graph()
         return versionedfile.find_bad_ancestors(
