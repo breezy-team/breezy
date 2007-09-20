@@ -60,10 +60,30 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     def handle_one_request(self):
         """Handle a single HTTP request.
 
+        We catch all socket errors occurring when the client close the
+        connection early to avoid polluting the test results.
+        """
+        try:
+            self._handle_one_request()
+        except socket.error, e:
+            if (len(e.args) > 0
+                and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
+                                  errno.ECONNABORTED,)):
+                self.close_connection = 1
+                pass
+            else:
+                raise
+
+    def _handle_one_request(self):
+        """
+        Request handling as defined in the base class.
+
         You normally don't need to override this method; see the class
         __doc__ string for information on how to handle specific HTTP
         commands such as GET and POST.
 
+        On some platforms, notably OS X, a lot of EAGAIN (resource temporary
+        unavailable) occur. We retry silently at most 10 times.
         """
         for i in xrange(1,11): # Don't try more than 10 times
             try:
