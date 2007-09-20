@@ -4157,10 +4157,11 @@ class cmd_tags(Command):
             revno = revno_map.get(revid, ('?',))
             tags.append(((revno, revid), tag_name))
         for (revno, revid), tag_name in sorted(tags):
-            revno = '.'.join(str(x) for x in revno)
             if show_ids:
-                revno += ':%s' % (revid,)
-            self.outf.write('%-20s %s\n' % (tag_name, revno))
+                revspec = revid
+            else:
+                revspec = '.'.join(str(x) for x in revno)
+            self.outf.write('%-20s %s\n' % (tag_name, revspec))
 
 
 class cmd_reconfigure(Command):

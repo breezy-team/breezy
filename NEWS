@@ -30,8 +30,8 @@ IN DEVELOPMENT
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
    * ``bzr tags`` now prints the revision number for each tag, instead
-     of the revision id. With --show-ids, both are shown. In addition,
-     tags are sorted by revision number, and not by name. (Adeodato Simó)
+     of the revision id, unless --show-ids is passed. In addition, tags
+     are sorted by revision number, and not by name. (Adeodato Simó)
 
   BUG FIXES:
 

@@ -120,7 +120,7 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tags --show-ids -d branch1', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out,
-            u'^\u30d0zaar  *1:revid-1\ntag2  *\\?:revid-2\n'.encode('utf-8'))
+            u'^\u30d0zaar  *revid-1\ntag2  *revid-2\n'.encode('utf-8'))
 
         # now test dotted revnos
         tree2 = tree1.bzrdir.sprout('branch2').open_workingtree()
