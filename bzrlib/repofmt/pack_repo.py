@@ -817,6 +817,23 @@ class RepositoryPackCollection(object):
         if self.repo.control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
 
+    def _start_write_group(self):
+        random_name = self.repo.control_files._lock.nonce
+        self.repo._open_pack_tuple = (self.repo._upload_transport, random_name + '.pack')
+        write_stream = self.repo._upload_transport.open_write_stream(random_name + '.pack')
+        self._write_stream = write_stream
+        self._open_pack_hash = md5.new()
+        def write_data(bytes, write=write_stream.write,
+                       update=self._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
+        self._open_pack_writer = pack.ContainerWriter(write_data)
+        self._open_pack_writer.begin()
+        self.setup()
+        self.repo._revision_store.setup()
+        self.repo.weave_store.setup()
+        self.repo._inv_thunk.setup()
+
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         self.repo._revision_store.reset()
@@ -824,15 +841,15 @@ class RepositoryPackCollection(object):
         self.repo._inv_thunk.reset()
         # forget what names there are
         self.reset()
-        self.repo._open_pack_hash = None
+        self._open_pack_hash = None
 
     def _commit_write_group(self):
         data_inserted = (self.repo._revision_store.data_inserted() or
             self.repo.weave_store.data_inserted() or 
             self.repo._inv_thunk.data_inserted())
         if data_inserted:
-            self.repo._open_pack_writer.end()
-            new_name = self.repo._open_pack_hash.hexdigest()
+            self._open_pack_writer.end()
+            new_name = self._open_pack_hash.hexdigest()
             new_pack = Pack()
             new_pack.name = new_name
             new_pack.transport = self.repo._upload_transport.clone('../packs/')
@@ -844,7 +861,7 @@ class RepositoryPackCollection(object):
             self.repo.weave_store.flush(new_name, new_pack)
             self.repo._inv_thunk.flush(new_name, new_pack)
             self.repo._revision_store.flush(new_name, new_pack)
-            self.repo._write_stream.close()
+            self._write_stream.close()
             self.repo._upload_transport.rename(self.repo._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
             # If this fails, its a hash collision. We should:
@@ -868,25 +885,8 @@ class RepositoryPackCollection(object):
         # forget what names there are - should just refresh and deal with the
         # delta.
         self.reset()
-        self.repo._open_pack_hash = None
-        self.repo._write_stream = None
-
-    def _start_write_group(self):
-        random_name = self.repo.control_files._lock.nonce
-        self.repo._open_pack_tuple = (self.repo._upload_transport, random_name + '.pack')
-        write_stream = self.repo._upload_transport.open_write_stream(random_name + '.pack')
-        self.repo._write_stream = write_stream
-        self.repo._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write,
-                       update=self.repo._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self.repo._open_pack_writer = pack.ContainerWriter(write_data)
-        self.repo._open_pack_writer.begin()
-        self.setup()
-        self.repo._revision_store.setup()
-        self.repo.weave_store.setup()
-        self.repo._inv_thunk.setup()
+        self._open_pack_hash = None
+        self._write_stream = None
 
 
 class GraphKnitRevisionStore(KnitRevisionStore):
@@ -925,7 +925,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._revision_write_index)
             pack_map[self.repo._revision_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._revision_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._revision_write_index
             add_callback = self.repo._revision_write_index.add_nodes
         else:
             writer = None
@@ -961,7 +961,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._signature_write_index)
             pack_map[self.repo._signature_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._signature_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._signature_write_index
             add_callback = self.repo._signature_write_index.add_nodes
         else:
             writer = None
@@ -1057,12 +1057,14 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if self.repo._revision_knit is not None:
             self.repo._revision_all_indices.insert_index(0, self.repo._revision_write_index)
             self.repo._revision_knit._index._add_callback = self.repo._revision_write_index.add_nodes
-            self.repo._revision_knit_access.set_writer(self.repo._open_pack_writer,
+            self.repo._revision_knit_access.set_writer(
+                self.repo._packs._open_pack_writer,
                 self.repo._revision_write_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
             self.repo._signature_all_indices.insert_index(0, self.repo._signature_write_index)
             self.repo._signature_knit._index._add_callback = self.repo._signature_write_index.add_nodes
-            self.repo._signature_knit_access.set_writer(self.repo._open_pack_writer,
+            self.repo._signature_knit_access.set_writer(
+                self.repo._packs._open_pack_writer,
                 self.repo._signature_write_index, self.repo._open_pack_tuple)
 
 
@@ -1204,7 +1206,7 @@ class GraphKnitTextStore(VersionedFileStore):
     
     def _setup_knit(self, for_write):
         if for_write:
-            writer = (self.repo._open_pack_writer, self.repo._text_write_index)
+            writer = (self.repo._packs._open_pack_writer, self.repo._text_write_index)
         else:
             writer = None
         self.repo._text_knit_access = _PackAccess(
@@ -1281,7 +1283,7 @@ class InventoryKnitThunk(object):
         if self.repo.is_in_write_group():
             add_callback = self.repo._inv_write_index.add_nodes
             self.repo._inv_pack_map[self.repo._inv_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._inv_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._inv_write_index
         else:
             add_callback = None # no data-adding permitted.
             writer = None
