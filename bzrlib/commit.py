@@ -650,7 +650,7 @@ class Commit(object):
                     self.basis_tree):
                     self.entries_changed = True
 
-        # note that deletes have occured
+        # note that deletes have occurred
         if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
             self.entries_deleted = True
         # Report what was deleted.
@@ -738,8 +738,6 @@ class Commit(object):
                 local=self.local, reporter=self.reporter)
         except errors.PointlessCommit:
             pass
-        else:
-            self.entries_changed = True
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
             parent_id, definitely_changed, existing_ie=None,

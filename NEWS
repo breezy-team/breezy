@@ -18,7 +18,7 @@ IN DEVELOPMENT
 
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
-     changed to determine if a the tree is unchanged rather than recalculating
+     changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
 
    * Inventory serialisation no longer double-sha's the content.

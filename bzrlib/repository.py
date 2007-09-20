@@ -70,6 +70,8 @@ class CommitBuilder(object):
     
     # all clients should supply tree roots.
     record_root_entry = True
+    # the default CommitBuilder does not manage trees whose root is versioned.
+    _versioned_root = False
 
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
@@ -191,7 +193,6 @@ class CommitBuilder(object):
         :param parent_invs: The inventories of the parent revisions of the
             commit.
         :param tree: The tree that is being committed.
-        :return: True if the root entry is versioned properly.
         """
         if ie.parent_id is not None:
             # if ie is not root, add a root automatically.
@@ -205,7 +206,6 @@ class CommitBuilder(object):
             # serializing out to disk and back in root.revision is always
             # _new_revision_id
             ie.revision = self._new_revision_id
-        return False
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -223,7 +223,7 @@ class CommitBuilder(object):
             will not return True.)
         """
         if self.new_inventory.root is None:
-            self._versioned_root = self._check_root(ie, parent_invs, tree)
+            self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
@@ -321,6 +321,9 @@ class CommitBuilder(object):
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
+    # the root entry gets versioned properly by this builder.
+    _versioned_root = False
+
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
@@ -328,11 +331,9 @@ class RootCommitBuilder(CommitBuilder):
         :param parent_invs: The inventories of the parent revisions of the
             commit.
         :param tree: The tree that is being committed.
-        :return: True if the root entry is versioned properly.
         """
         # ie must be root for this builder
         assert ie.parent_id is None
-        return True
 
 
 ######################################################################
