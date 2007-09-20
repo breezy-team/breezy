@@ -817,22 +817,14 @@ class RepositoryPackCollection(object):
         if self.repo.control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
 
-    def _start_write_group(self):
-        random_name = self.repo.control_files._lock.nonce
-        self.repo._open_pack_tuple = (self.repo._upload_transport, random_name + '.pack')
-        write_stream = self.repo._upload_transport.open_write_stream(random_name + '.pack')
-        self.repo._write_stream = write_stream
-        self.repo._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write,
-                       update=self.repo._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self.repo._open_pack_writer = pack.ContainerWriter(write_data)
-        self.repo._open_pack_writer.begin()
-        self.setup()
-        self.repo._revision_store.setup()
-        self.repo.weave_store.setup()
-        self.repo._inv_thunk.setup()
+    def _abort_write_group(self):
+        # FIXME: just drop the transient index.
+        self.repo._revision_store.reset()
+        self.repo.weave_store.reset()
+        self.repo._inv_thunk.reset()
+        # forget what names there are
+        self.reset()
+        self.repo._open_pack_hash = None
 
     def _commit_write_group(self):
         data_inserted = (self.repo._revision_store.data_inserted() or
@@ -878,6 +870,24 @@ class RepositoryPackCollection(object):
         self.reset()
         self.repo._open_pack_hash = None
         self.repo._write_stream = None
+
+    def _start_write_group(self):
+        random_name = self.repo.control_files._lock.nonce
+        self.repo._open_pack_tuple = (self.repo._upload_transport, random_name + '.pack')
+        write_stream = self.repo._upload_transport.open_write_stream(random_name + '.pack')
+        self.repo._write_stream = write_stream
+        self.repo._open_pack_hash = md5.new()
+        def write_data(bytes, write=write_stream.write,
+                       update=self.repo._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
+        self.repo._open_pack_writer = pack.ContainerWriter(write_data)
+        self.repo._open_pack_writer.begin()
+        self.setup()
+        self.repo._revision_store.setup()
+        self.repo.weave_store.setup()
+        self.repo._inv_thunk.setup()
+
 
 class GraphKnitRevisionStore(KnitRevisionStore):
     """An object to adapt access from RevisionStore's to use GraphKnits.
@@ -1336,13 +1346,7 @@ class GraphKnitRepository1(KnitRepository):
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
-        # FIXME: just drop the transient index.
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are
-        self._packs.reset()
-        self._open_pack_hash = None
+        self._packs._abort_write_group()
 
     def _pack_tuple(self, name):
         """Return a tuple with the transport and file name for a pack name."""
@@ -1413,13 +1417,7 @@ class GraphKnitRepository3(KnitRepository3):
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
-        # FIXME: just drop the transient index.
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are
-        self._packs.reset()
-        self._open_pack_hash = None
+        return self._packs._abort_write_group()
 
     def _pack_tuple(self, name):
         """Return a tuple with the transport and file name for a pack name."""
