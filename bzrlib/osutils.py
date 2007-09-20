@@ -786,15 +786,18 @@ def link_or_copy(src, dest):
             raise
         shutil.copyfile(src, dest)
 
-def delete_any(full_path):
+
+# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+# Forgiveness than Permission (EAFP) because:
+# - root can damage a solaris file system by using unlink,
+# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+#   EACCES, OSX: EPERM) when invoked on a directory.
+def delete_any(path):
     """Delete a file or directory."""
-    try:
-        os.unlink(full_path)
-    except OSError, e:
-    # We may be renaming a dangling inventory id
-        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
-            raise
-        os.rmdir(full_path)
+    if isdir(path): # Takes care of symlinks
+        os.rmdir(path)
+    else:
+        os.unlink(path)
 
 
 def has_symlinks():
@@ -802,7 +805,7 @@ def has_symlinks():
         return True
     else:
         return False
-        
+
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
