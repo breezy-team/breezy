@@ -9,6 +9,20 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+   * ``pull``, ``merge`` and ``push`` will no longer silently correct some
+     repository index errors that occured as a result of the Weave disk format.
+     Instead the ``reconcile`` command needs to be run to correct those
+     problems if they exist (and it has been able to fix most such problems
+     since bzr 0.8). Some new problems have been identified during this release
+     and you should run ``bzr check`` once on every repository to see if you
+     need to reconcile. If you cannot ``pull`` or ``merge`` from a remote
+     repository due to mismatched parent errors - a symptom of index errors -
+     you should simply take a full copy of that remote repository to a clean
+     directory outside any local repositories, then run reconcile on it, and
+     finally pull from it locally. (And naturally email the repositories owner
+     to ask them to upgrade and run reconcile).
+     (Robert Collins)
+
   FEATURES:
 
    * New ``reconfigure`` command (Aaron Bentley)
@@ -64,6 +78,12 @@ IN DEVELOPMENT
    * Tree's with bad state such as files with no length or sha will no longer
      be silently accepted by the repository XML serialiser. To serialise
      inventories without such data, pass working=True to write_inventory.
+     (Robert Collins)
+
+   * ``VersionedFile.fix_parents`` has been removed as a harmful API.
+     ``VersionedFile.join`` will no longer accept different parents on either
+     side of a join - it will either ignore them, or error, depending on the
+     implementation. See notes when upgrading for more information.
      (Robert Collins)
 
   INTERNALS:

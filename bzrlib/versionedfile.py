@@ -209,23 +209,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version_id, new_parents):
-        """Fix the parents list for version.
-        
-        This is done by appending a new version to the index
-        with identical data except for the parents list.
-        the parents list must be a superset of the current
-        list.
-        """
-        version_id = osutils.safe_revision_id(version_id)
-        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
-        self._check_write_ok()
-        return self._fix_parents(version_id, new_parents)
-
-    def _fix_parents(self, version_id, new_parents):
-        """Helper for fix_parents."""
-        raise NotImplementedError(self.fix_parents)
-
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
         
