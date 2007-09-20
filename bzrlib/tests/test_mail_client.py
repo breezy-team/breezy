@@ -20,6 +20,17 @@ from bzrlib import (
     urlutils,
     )
 
+class TestMutt(tests.TestCase):
+
+    def test_commandline(self):
+        mutt = mail_client.Mutt(None)
+        commandline = mutt._get_compose_commandline(None, None, 'file%')
+        self.assertEqual(['-a', 'file%'], commandline)
+        commandline = mutt._get_compose_commandline('jrandom@example.org',
+                                                     'Hi there!', None)
+        self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
+                         commandline)
+
 
 class TestThunderbird(tests.TestCase):
 

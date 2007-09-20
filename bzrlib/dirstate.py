@@ -29,9 +29,9 @@ REVISION_ID = a non-empty utf8 string;
 
 dirstate format = header line, full checksum, row count, parent details,
  ghost_details, entries;
-header line = "#bazaar dirstate flat format 2", NL;
+header line = "#bazaar dirstate flat format 3", NL;
 full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
-row count = "num_entries: ", digit, NL;
+row count = "num_entries: ", WHOLE_NUMBER, NL;
 parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
 ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
 entries = {entry};
@@ -118,7 +118,7 @@ I'm strongly tempted to add a id->path index as well, but I think that
 where we need id->path mapping; we also usually read the whole file, so
 I'm going to skip that for the moment, as we have the ability to locate
 via bisect any path in any tree, and if we lookup things by path, we can
-accumulate a id->path mapping as we go, which will tend to match what we
+accumulate an id->path mapping as we go, which will tend to match what we
 looked for.
 
 I plan to implement this asap, so please speak up now to alter/tweak the
@@ -143,7 +143,7 @@ Design priorities:
 Locking:
  Eventually reuse dirstate objects across locks IFF the dirstate file has not
  been modified, but will require that we flush/ignore cached stat-hit data
- because we wont want to restat all files on disk just because a lock was
+ because we won't want to restat all files on disk just because a lock was
  acquired, yet we cannot trust the data after the previous lock was released.
 
 Memory representation:
@@ -162,13 +162,14 @@ Memory representation:
       manageable number. Will scale badly on trees with 10K entries in a 
       single directory. compare with Inventory.InventoryDirectory which has
       a dictionary for the children. No bisect capability, can only probe for
-      exact matches, or grab all elements and sorta.
-    - Whats the risk of error here? Once we have the base format being processed
+      exact matches, or grab all elements and sort.
+    - What's the risk of error here? Once we have the base format being processed
       we should have a net win regardless of optimality. So we are going to 
-      go with what seems reasonably.
+      go with what seems reasonable.
 open questions:
 
-maybe we should do a test profile of these core structure - 10K simulated searches/lookups/etc?
+Maybe we should do a test profile of the core structure - 10K simulated
+searches/lookups/etc?
 
 Objects for each row?
 The lifetime of Dirstate objects is current per lock, but see above for
@@ -224,7 +225,7 @@ def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
     # jam 20060614 it isn't really worth removing more entries if we
     # are going to leave it in packed form.
     # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
-    # With all entries filesize is 5.9M and read time is mabye 280ms
+    # With all entries, filesize is 5.9M and read time is maybe 280ms
     # well within the noise margin
 
     # base64 encoding always adds a final newline, so strip it off
@@ -364,7 +365,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        #------- copied from inventory.make_entry
+        #------- copied from inventory.ensure_normalized_name - keep synced.
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be
@@ -651,7 +652,7 @@ class DirState(object):
         _bisect_dirblocks is meant to find the contents of directories, which
         differs from _bisect, which only finds individual entries.
 
-        :param dir_list: An sorted list of directory names ['', 'dir', 'foo'].
+        :param dir_list: A sorted list of directory names ['', 'dir', 'foo'].
         :return: A map from dir => entries_for_dir
         """
         # TODO: jam 20070223 A lot of the bisecting logic could be shared
@@ -1330,8 +1331,8 @@ class DirState(object):
             be attempted.
         :return: A tuple describing where the path is located, or should be
             inserted. The tuple contains four fields: the block index, the row
-            index, anda two booleans are True when the directory is present, and
-            when the entire path is present.  There is no guarantee that either
+            index, the directory is present (boolean), the entire path is
+            present (boolean).  There is no guarantee that either
             coordinate is currently reachable unless the found field for it is
             True. For instance, a directory not present in the searched tree
             may be returned with a value one greater than the current highest
@@ -1359,7 +1360,7 @@ class DirState(object):
         return block_index, entry_index, True, False
 
     def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None):
-        """Get the dirstate entry for path in tree tree_index
+        """Get the dirstate entry for path in tree tree_index.
 
         If either file_id or path is supplied, it is used as the key to lookup.
         If both are supplied, the fastest lookup is used, and an error is
@@ -1404,7 +1405,7 @@ class DirState(object):
                     continue
                 # WARNING: DO not change this code to use _get_block_entry_index
                 # as that function is not suitable: it does not use the key
-                # to lookup, and thus the wront coordinates are returned.
+                # to lookup, and thus the wrong coordinates are returned.
                 block = self._dirblocks[block_index][1]
                 entry_index, present = self._find_entry_index(key, block)
                 if present:
@@ -1511,9 +1512,9 @@ class DirState(object):
         return self._id_index
 
     def _get_output_lines(self, lines):
-        """format lines for final output.
+        """Format lines for final output.
 
-        :param lines: A sequece of lines containing the parents list and the
+        :param lines: A sequence of lines containing the parents list and the
             path lines.
         """
         output_lines = [DirState.HEADER_FORMAT_3]
@@ -1527,7 +1528,7 @@ class DirState(object):
         return output_lines
 
     def _make_deleted_row(self, fileid_utf8, parents):
-        """Return a deleted for for fileid_utf8."""
+        """Return a deleted row for fileid_utf8."""
         return ('/', 'RECYCLED.BIN', 'file', fileid_utf8, 0, DirState.NULLSTAT,
             ''), parents
 
@@ -1587,7 +1588,7 @@ class DirState(object):
             self._read_header()
 
     def _read_prelude(self):
-        """Read in the prelude header of the dirstate file
+        """Read in the prelude header of the dirstate file.
 
         This only reads in the stuff that is not connected to the crc
         checksum. The position will be correct to read in the rest of
@@ -1610,9 +1611,9 @@ class DirState(object):
 
         We reuse the existing file, because that prevents race conditions with
         file creation, and use oslocks on it to prevent concurrent modification
-        and reads - because dirstates incremental data aggretation is not
+        and reads - because dirstate's incremental data aggregation is not
         compatible with reading a modified file, and replacing a file in use by
-        another process is impossible on windows.
+        another process is impossible on Windows.
 
         A dirstate in read only mode should be smart enough though to validate
         that the file has not changed, and otherwise discard its cache and
@@ -1679,7 +1680,7 @@ class DirState(object):
             "path_id %r is not a plain string" % (new_id,)
         self._read_dirblocks_if_needed()
         if len(path):
-            # logic not written
+            # TODO: logic not written
             raise NotImplementedError(self.set_path_id)
         # TODO: check new id is unique
         entry = self._get_entry(0, path_utf8=path)
@@ -1787,7 +1788,7 @@ class DirState(object):
                         # this file id is at a different path in one of the
                         # other trees, so put absent pointers there
                         # This is the vertical axis in the matrix, all pointing
-                        # tot he real path.
+                        # to the real path.
                         by_path[entry_key][tree_index] = ('r', path_utf8, 0, False, '')
                 # by path consistency: Insert into an existing path record (trivial), or 
                 # add a new one with relocation pointers for the other tree indexes.
@@ -1862,7 +1863,7 @@ class DirState(object):
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
-        # list - which is a shallow copy, so each 
+        # list - which is a shallow copy.
         old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
@@ -1936,14 +1937,14 @@ class DirState(object):
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
 
-        :return: True if this was the last details entry for they entry key:
+        :return: True if this was the last details entry for the entry key:
             that is, if the underlying block has had the entry removed, thus
             shrinking in length.
         """
         # build up paths that this id will be left at after the change is made,
         # so we can update their cross references in tree 0
         all_remaining_keys = set()
-        # Dont check the working tree, because its going.
+        # Dont check the working tree, because it's going.
         for details in current_old[1][1:]:
             if details[0] not in ('a', 'r'): # absent, relocated
                 all_remaining_keys.add(current_old[0])
@@ -2238,7 +2239,7 @@ class DirState(object):
         self._split_path_cache = {}
 
     def lock_read(self):
-        """Acquire a read lock on the dirstate"""
+        """Acquire a read lock on the dirstate."""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
@@ -2251,7 +2252,7 @@ class DirState(object):
         self._wipe_state()
 
     def lock_write(self):
-        """Acquire a write lock on the dirstate"""
+        """Acquire a write lock on the dirstate."""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
@@ -2264,7 +2265,7 @@ class DirState(object):
         self._wipe_state()
 
     def unlock(self):
-        """Drop any locks held on the dirstate"""
+        """Drop any locks held on the dirstate."""
         if self._lock_token is None:
             raise errors.LockNotHeld(self)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
@@ -2278,7 +2279,7 @@ class DirState(object):
         self._split_path_cache = {}
 
     def _requires_lock(self):
-        """Checks that a lock is currently held by someone on the dirstate"""
+        """Check that a lock is currently held by someone on the dirstate."""
         if not self._lock_token:
             raise errors.ObjectNotLocked(self)
 

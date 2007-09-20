@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
+     bazaar.conf and ``send`` will use mutt. (Keir Mierle)
+
   BUG FIXES:
 
    * The basename, not the full path, is now used when checking whether
@@ -35,6 +38,9 @@ IN DEVELOPMENT
      no changes still reports the operation as pointless but doing so no
      longer throws away the profiling data if this command is run with
      ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
+
+   * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
+     new path causes bzr to be unable to access the file. (Robert Collins)
 
   API BREAKS:
 
@@ -48,6 +54,10 @@ IN DEVELOPMENT
      (Robert Collins)
 
   INTERNALS:
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
@@ -334,10 +344,6 @@ bzr 0.91rc1 2007-09-11
    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
-
-   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
-     tuple containing the key information about a path for commit processing
-     to complete. (Robert Collins)
 
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and

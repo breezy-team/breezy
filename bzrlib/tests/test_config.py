@@ -1011,18 +1011,7 @@ class TestBranchConfigItems(TestCaseInTempDir):
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.DefaultMail)
 
-        config.set_user_option('mail_client', 'default')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        config.set_user_option('mail_client', 'editor')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
-
-        config.set_user_option('mail_client', 'thunderbird')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Thunderbird)
-
+        # Specific clients
         config.set_user_option('mail_client', 'evolution')
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.Evolution)
@@ -1031,13 +1020,30 @@ class TestBranchConfigItems(TestCaseInTempDir):
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.KMail)
 
-        config.set_user_option('mail_client', 'xdg-email')
+        config.set_user_option('mail_client', 'mutt')
         client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.XDGEmail)
+        self.assertIsInstance(client, mail_client.Mutt)
+
+        config.set_user_option('mail_client', 'thunderbird')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Thunderbird)
+
+        # Generic options
+        config.set_user_option('mail_client', 'default')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        config.set_user_option('mail_client', 'editor')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Editor)
 
         config.set_user_option('mail_client', 'mapi')
         client = config.get_mail_client()
         self.assertIsInstance(client, mail_client.MAPIClient)
+
+        config.set_user_option('mail_client', 'xdg-email')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.XDGEmail)
 
         config.set_user_option('mail_client', 'firebird')
         self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
