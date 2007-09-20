@@ -53,7 +53,9 @@ class TransportHooks(bzrlib.hooks.Hooks):
 _hooked_scheme = 'hooked'
 
 def _change_scheme_in(url, actual, desired):
-    assert url.startswith(actual + '://')
+    if not url.startswith(actual + '://'):
+        raise AssertionError('url "%r" does not start with "%r]"'
+                             % (url, actual))
     return desired + url[len(actual):]
 
 
@@ -65,7 +67,7 @@ class InstrumentedTransport(_backing_transport_class):
     def __init__(self, base, _from_transport=None):
         assert base.startswith(_hooked_scheme + '://')
         # We need to trick the backing transport class about the scheme used
-        # We'll do the reversee when we need to talk to the backing server
+        # We'll do the reverse when we need to talk to the backing server
         fake_base = _change_scheme_in(base, _hooked_scheme, _backing_scheme)
         super(InstrumentedTransport, self).__init__(
             fake_base, _from_transport=_from_transport)

@@ -326,8 +326,8 @@ class HttpServer(Server):
         self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
                                                self.host,
                                                self.port)
-        self._http_starting.release()
         httpd.socket.settimeout(0.1)
+        self._http_starting.release()
 
         while self._http_running:
             try:
