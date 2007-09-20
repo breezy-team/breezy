@@ -100,7 +100,7 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -1968,22 +1968,15 @@ class _KnitData(object):
         
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        sio = StringIO()
-        data_file = GzipFile(None, mode='wb', fileobj=sio,
-            compresslevel=Z_DEFAULT_COMPRESSION)
-
-        assert isinstance(version_id, str)
-        data_file.writelines(chain(
+        bytes = (''.join(chain(
             ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id]))
-        data_file.close()
-        length= sio.tell()
-
-        sio.seek(0)
-        return length, sio
+            ["end %s\n" % version_id])))
+        assert bytes.__class__ == str
+        compressed_bytes = bytes_to_gzip(bytes)
+        return len(compressed_bytes), compressed_bytes
 
     def add_raw_records(self, sizes, raw_data):
         """Append a prepared record to the data file.
@@ -2001,10 +1994,10 @@ class _KnitData(object):
         
         Returns index data for retrieving it later, as per add_raw_records.
         """
-        size, sio = self._record_to_data(version_id, digest, lines)
-        result = self.add_raw_records([size], sio.getvalue())
+        size, bytes = self._record_to_data(version_id, digest, lines)
+        result = self.add_raw_records([size], bytes)
         if self._do_cache:
-            self._cache[version_id] = sio.getvalue()
+            self._cache[version_id] = bytes
         return result[0]
 
     def _parse_record_header(self, version_id, raw_data):
