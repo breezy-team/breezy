@@ -469,6 +469,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
             entry.revision = inv_revision
         else:
             entry.revision = revision
+        entry.text_size = 0
         inv.add(entry)
         vf = repo.weave_store.get_weave_or_empty(file_id,
                                                  repo.get_transaction())

@@ -519,6 +519,31 @@ class VersionedFile(object):
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
+    def find_bad_ancestors(self, revision_ids, get_text_version, weave_id,
+            parents_provider, repo_graph):
+        result = {}
+        for num, revision_id in enumerate(revision_ids):
+            text_revision = get_text_version(weave_id, revision_id)
+            if text_revision is None:
+                continue
+            parents = parents_provider.get_parents([text_revision])[0]
+            revision_parents = set()
+            for parent_id in parents:
+                try:
+                    revision_parents.add(get_text_version(weave_id, parent_id))
+                # Skip ghosts (this means they can't provide texts...)
+                except errors.RevisionNotPresent:
+                    continue
+            knit_parents = set(self.get_parents(text_revision))
+            unreferenced = knit_parents.difference(revision_parents)
+            for unreferenced_id in unreferenced:
+                result.setdefault(unreferenced_id, set()).add(text_revision)
+            correct_parents = tuple(repo_graph.heads(knit_parents))
+            spurious_parents = knit_parents.difference(correct_parents)
+            for spurious_parent in spurious_parents:
+                result.setdefault(spurious_parent, set()).add(text_revision)
+        return result
+
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.

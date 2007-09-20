@@ -178,9 +178,12 @@ class Check(object):
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
-            result = self.repository.find_bad_ancestors(
-                self.planned_revisions, weave_id, w, self.revision_versions,
-                revision_parents)
+            result = w.find_bad_ancestors(
+                self.planned_revisions,
+                self.revision_versions.get_text_version,
+                weave_id,
+                revision_parents,
+                self.repository.get_graph())
             for revision_id in result.iterkeys():
                 self.unreferenced_ancestors.add((weave_id, revision_id))
             self.checked_weaves[weave_id] = True

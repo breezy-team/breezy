@@ -20,8 +20,11 @@
 
 from bzrlib import (
     inventory,
+    repository,
     revision as _mod_revision,
+    tests,
     )
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 
@@ -90,6 +93,7 @@ class TestFindBadAncestors(TestCaseWithRepository):
         file_id = filename + '-id'
         entry = inventory.InventoryFile(file_id, filename, 'TREE_ROOT')
         entry.revision = revision
+        entry.text_size = 0
         inv.add(entry)
         vf = repo.weave_store.get_weave_or_empty(file_id,
                                                  repo.get_transaction())
@@ -130,3 +134,87 @@ class TestFindBadAncestors(TestCaseWithRepository):
     def test_ghost(self):
         result = self.find_bad_ancestors('file2-id', ['rev3'])
         self.assertEqual({'rev1c': set(['rev3'])}, result)
+
+    def make_vf(self, revisions_to_add):
+        repo = self.make_repository('test-repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.commit_write_group)
+
+        for revision_id, parents in revisions_to_add:
+            self.add_simple_revision(repo, revision_id, parents)
+
+        return repo.weave_store.get_weave('file-id', repo.get_transaction())
+
+
+    def add_simple_revision(self, repo, revision_id, parents,
+                            file_id='file'):
+        inv = inventory.Inventory(revision_id=revision_id)
+        inv.root.revision = revision_id
+        self.add_file(repo, inv, file_id, revision_id, parents)
+        repo.add_inventory(revision_id, inv, [])
+        revision = _mod_revision.Revision(revision_id,
+            committer='jrandom@example.com', timestamp=0,
+            inventory_sha1='', timezone=0, message='foo', parent_ids=parents)
+        repo.add_revision(revision_id, revision, inv)
+
+    def make_parents_provider(self, graph_description):
+        class FakeParentsProvider(object):
+            def get_parents(self, revision_ids):
+                return [list(graph_description.get(r)) for r in revision_ids]
+        return FakeParentsProvider()
+
+    def make_revision_graph(self, graph_description):
+        class FakeRevisionGraph(object):
+            def __init__(self):
+                self.calls = []
+            def heads(self, revision_ids):
+                self.calls.append(('heads', revision_ids))
+                return ['good-parent']
+        return FakeRevisionGraph()
+
+    def corrupt_knit_index(self, knit, revision_id, new_parent_ids):
+        index_cache = knit._index._cache
+        cached_index_entry = list(index_cache[revision_id])
+        cached_index_entry[4] = new_parent_ids
+        index_cache[revision_id] = tuple(cached_index_entry)
+
+    def test_spurious_parents(self):
+        """find_bad_ancestors detects file versions where the per-file graph
+        claims more parents than the revision graph does.
+        """
+        if not isinstance(self.repository_format, RepositoryFormatKnit):
+            # XXX: This could happen to weaves too, but they're pretty
+            # deprecated.
+            raise tests.TestNotApplicable(
+                "%s isn't a knit format" % self.repository_format)
+
+        # make a VF where:
+        #  - the knit index for 'broken-revision' claims parents
+        #    ['good-parent', 'bad-parent']
+        #  - no unreferenced parents; we don't want to trip that case
+        #    accidentally.
+        correct_graph = [
+            ('bad-parent', []),
+            ('good-parent', ['bad-parent']),
+            ('broken-revision', ['good-parent'])]
+        vf = self.make_vf(correct_graph)
+        self.corrupt_knit_index(
+            vf, 'broken-revision', ['good-parent', 'bad-parent'])
+        
+        # Invoke find_bad_ancestors
+        repo_graph = self.make_revision_graph(dict(correct_graph))
+        parents_provider = self.make_parents_provider(dict(correct_graph))
+        def fake_text_version_getter(ignored, revision_id):
+            return revision_id
+        bad_ancestors = vf.find_bad_ancestors(['broken-revision'],
+                fake_text_version_getter, 'ignored',
+                parents_provider, repo_graph)
+
+        self.assertEqual(
+            {'bad-parent': set(['broken-revision'])}, bad_ancestors)
+        self.assertEqual(
+            [('heads', set(['good-parent', 'bad-parent']))], repo_graph.calls)
+
+

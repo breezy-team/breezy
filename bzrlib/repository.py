@@ -1420,30 +1420,13 @@ class Repository(object):
         result = {}
 
         graph = self.get_graph()
-        for num, revision_id in enumerate(revision_ids):
-            text_revision = revision_versions.get_text_version(file_id,
-                                                               revision_id)
-            if text_revision is None:
-                continue
-            parents = parents_provider.get_parents([text_revision])[0]
-            revision_parents = set()
-            for parent_id in parents:
-                try:
-                    revision_parents.add(revision_versions.get_text_version(
-                                         file_id, parent_id))
-                # Skip ghosts (this means they can't provide texts...)
-                except errors.RevisionNotPresent:
-                    continue
-            knit_parents = set(versionedfile.get_parents(text_revision))
-            unreferenced = knit_parents.difference(revision_parents)
-            for unreferenced_id in unreferenced:
-                result.setdefault(unreferenced_id, set()).add(text_revision)
-            correct_parents = graph.heads(knit_parents)
-            spurious_parents = knit_parents.difference(correct_parents)
-            for spurious_parent in spurious_parents:
-                result.setdefault(spurious_parent, set()).add(text_revision)
-        return result
-
+        return versionedfile.find_bad_ancestors(
+            revision_ids,
+            revision_versions.get_text_version,
+            file_id,
+            parents_provider,
+            graph)
+        
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
