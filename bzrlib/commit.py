@@ -68,8 +68,9 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
+from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
+                            minimum_path_selection,
                             quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
@@ -245,7 +246,9 @@ class Commit(object):
         self.master_branch = None
         self.master_locked = False
         self.rev_id = None
-        self.specific_files = specific_files
+        self.specific_files = sorted(
+            minimum_path_selection(specific_files or ()))
+        self.specific_file_ids = None
         self.allow_pointless = allow_pointless
         self.recursive = recursive
         self.revprops = revprops
@@ -280,14 +283,17 @@ class Commit(object):
                 self.config = self.branch.get_config()
 
             # If provided, ensure the specified files are versioned
-            if specific_files is not None:
-                # Note: We don't actually need the IDs here. This routine
+            if self.specific_files:
+                # Note: This routine
                 # is being called because it raises PathNotVerisonedError
-                # as a side effect of finding the IDs.
+                # as a side effect of finding the IDs. We later use the ids we
+                # found as input to the workng tree inventory iterator, so we
+                # only consider those ids rather than examining the whole tree
+                # again.
                 # XXX: Dont we have filter_unversioned to do this more
                 # cheaply?
-                tree.find_ids_across_trees(specific_files,
-                                           [self.basis_tree, self.work_tree])
+                self.specific_file_ids = tree.find_ids_across_trees(
+                    specific_files, [self.basis_tree, self.work_tree])
 
             # Setup the progress bar. As the number of files that need to be
             # committed in unknown, progress is reported as stages.
@@ -671,13 +677,14 @@ class Commit(object):
         # recorded in their previous state. For more details, see
         # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
         if specific_files:
-            for path, new_ie in self.basis_inv.iter_entries():
-                if new_ie.file_id in self.builder.new_inventory:
+            for path, old_ie in self.basis_inv.iter_entries():
+                if old_ie.file_id in self.builder.new_inventory:
                     continue
                 if is_inside_any(specific_files, path):
                     continue
-                ie = new_ie.copy()
-                ie.revision = None
+                if old_ie.kind == 'directory':
+                    self._next_progress_entry()
+                ie = old_ie.copy()
                 self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                    self.basis_tree)
 
@@ -699,7 +706,8 @@ class Commit(object):
         deleted_paths = set()
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
-        entries = work_inv.iter_entries()
+        entries = work_inv.iter_entries_by_dir(
+            specific_file_ids=self.specific_file_ids, yield_parents=True)
         if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
@@ -709,7 +717,6 @@ class Commit(object):
             kind = existing_ie.kind
             if kind == 'directory':
                 self._next_progress_entry()
-
             # Skip files that have been deleted from the working tree.
             # The deleted files/directories are also recorded so they
             # can be explicitly unversioned later. Note that when a
@@ -717,12 +724,11 @@ class Commit(object):
             # deleted files matching that filter.
             if is_inside_any(deleted_paths, path):
                 continue
-            if not specific_files or is_inside_any(specific_files, path):
-                if not self.work_tree.has_filename(path):
-                    deleted_paths.add(path)
-                    self.reporter.missing(path)
-                    deleted_ids.append(file_id)
-                    continue
+            if not self.work_tree.has_filename(path):
+                deleted_paths.add(path)
+                self.reporter.missing(path)
+                deleted_ids.append(file_id)
+                continue
             try:
                 kind = self.work_tree.kind(file_id)
                 # TODO: specific_files filtering before nested tree processing
@@ -772,26 +778,16 @@ class Commit(object):
             report_changes=True):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
-        if (not specific_files or 
-            is_inside_or_parent_of_any(specific_files, path)):
-                # mutter('%s selected for commit', path)
-                if definitely_changed or existing_ie is None:
-                    ie = inventory.make_entry(kind, name, parent_id, file_id)
-                else:
-                    ie = existing_ie.copy()
-                    ie.revision = None
+        # mutter('%s selected for commit', path)
+        if definitely_changed or existing_ie is None:
+            ie = inventory.make_entry(kind, name, parent_id, file_id)
         else:
-            # mutter('%s not selected for commit', path)
-            if self.basis_inv.has_id(file_id):
-                ie = self.basis_inv[file_id].copy()
-            else:
-                # this entry is new and not being committed
-                ie = None
-        if ie is not None:
-            self.builder.record_entry_contents(ie, self.parent_invs, 
-                path, self.work_tree)
-            if report_changes:
-                self._report_change(ie, path)
+            ie = existing_ie.copy()
+            ie.revision = None
+        self.builder.record_entry_contents(ie, self.parent_invs, 
+            path, self.work_tree)
+        if report_changes:
+            self._report_change(ie, path)
         return ie
 
     def _report_change(self, ie, path):

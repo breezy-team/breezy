@@ -1004,7 +1004,8 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
+        yield_parents=False):
         """Iterate over the entries in a directory first order.
 
         This returns all entries for a directory before returning
@@ -1012,6 +1013,9 @@ class Inventory(object):
         lexicographically sorted order, and is a hybrid between
         depth-first and breadth-first.
 
+        :param yield_parents: If True, yield the parents from the root leading
+            down to specific_file_ids that have been requested. This has no
+            impact if specific_file_ids is None.
         :return: This yields (path, entry) pairs
         """
         if specific_file_ids:
@@ -1023,13 +1027,14 @@ class Inventory(object):
             if self.root is None:
                 return
             # Optimize a common case
-            if specific_file_ids is not None and len(specific_file_ids) == 1:
+            if (not yield_parents and specific_file_ids is not None and
+                len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
                 if file_id in self:
                     yield self.id2path(file_id), self[file_id]
                 return 
             from_dir = self.root
-            if (specific_file_ids is None or 
+            if (specific_file_ids is None or yield_parents or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
         elif isinstance(from_dir, basestring):
@@ -1064,7 +1069,8 @@ class Inventory(object):
                 child_relpath = cur_relpath + child_name
 
                 if (specific_file_ids is None or 
-                    child_ie.file_id in specific_file_ids):
+                    child_ie.file_id in specific_file_ids or
+                    (yield_parents and child_ie.file_id in parents)):
                     yield child_relpath, child_ie
 
                 if child_ie.kind == 'directory':
