@@ -82,7 +82,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         __doc__ string for information on how to handle specific HTTP
         commands such as GET and POST.
 
-        On some platforms, notably OS X, a lot of EAGAIN (ressource temporary
+        On some platforms, notably OS X, a lot of EAGAIN (resource temporary
         unavailable) occur. We retry silently at most 10 times.
         """
         for i in xrange(1,11): # Don't try more than 10 times
