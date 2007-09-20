@@ -72,7 +72,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
                             quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib import symbol_versioning
@@ -80,11 +80,15 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+from bzrlib.urlutils import unescape_for_display
 import bzrlib.ui
 
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
+
+    def started(self, revno, revid, location=None):
+        pass
 
     def snapshot_change(self, change, path):
         pass
@@ -103,6 +107,9 @@ class NullCommitReporter(object):
 
     def renamed(self, change, old_path, new_path):
         pass
+
+    def is_verbose(self):
+        return False
 
 
 class ReportCommitToLog(NullCommitReporter):
@@ -121,9 +128,16 @@ class ReportCommitToLog(NullCommitReporter):
             return
         self._note("%s %s", change, path)
 
+    def started(self, revno, rev_id, location=None):
+        if location is not None:
+            location = ' to "' + unescape_for_display(location, 'utf-8') + '"'
+        else:
+            location = ''
+        self._note('Committing revision %d%s.', revno, location)
+
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
-    
+
     def deleted(self, file_id):
         self._note('deleted %s', file_id)
 
@@ -135,6 +149,9 @@ class ReportCommitToLog(NullCommitReporter):
 
     def renamed(self, change, old_path, new_path):
         self._note('%s %s => %s', change, old_path, new_path)
+
+    def is_verbose(self):
+        return True
 
 
 class Commit(object):
@@ -152,12 +169,13 @@ class Commit(object):
     def __init__(self,
                  reporter=None,
                  config=None):
-        if reporter is not None:
-            self.reporter = reporter
-        else:
-            self.reporter = NullCommitReporter()
+        """Create a Commit object.
+
+        :param reporter: the default reporter to use or None to decide later
+        """
+        self.reporter = reporter
         self.config = config
-        
+
     def commit(self,
                message=None,
                timestamp=None,
@@ -198,6 +216,8 @@ class Commit(object):
 
         :param revprops: Properties for new revision
         :param local: Perform a local only commit.
+        :param reporter: the reporter to use or None for the default
+        :param verbose: if True and the reporter is not None, report everything
         :param recursive: If set to 'down', commit in any subtrees that have
             pending changes of any sort during this commit.
         """
@@ -236,11 +256,6 @@ class Commit(object):
         self.strict = strict
         self.verbose = verbose
 
-        if reporter is None and self.reporter is None:
-            self.reporter = NullCommitReporter()
-        elif reporter is not None:
-            self.reporter = reporter
-
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         self.basis_tree = self.work_tree.basis_tree()
@@ -254,8 +269,13 @@ class Commit(object):
             self._check_bound_branch()
 
             # Check that the working tree is up to date
-            old_revno,new_revno = self._check_out_of_date_tree()
+            old_revno, new_revno = self._check_out_of_date_tree()
 
+            # Complete configuration setup
+            if reporter is not None:
+                self.reporter = reporter
+            elif self.reporter is None:
+                self.reporter = self._select_reporter()
             if self.config is None:
                 self.config = self.branch.get_config()
 
@@ -275,7 +295,7 @@ class Commit(object):
             # information in the progress bar during the relevant stages.
             self.pb_stage_name = ""
             self.pb_stage_count = 0
-            self.pb_stage_total = 4
+            self.pb_stage_total = 5
             if self.bound_branch:
                 self.pb_stage_total += 1
             self.pb.show_pct = False
@@ -290,13 +310,23 @@ class Commit(object):
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
-            
+
             # Collect the changes
             self._set_progress_stage("Collecting changes",
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
+            
             try:
+                # find the location being committed to
+                if self.bound_branch:
+                    master_location = self.master_branch.base
+                else:
+                    master_location = self.branch.base
+
+                # report the start of the commit
+                self.reporter.started(new_revno, self.rev_id, master_location)
+
                 self._update_builder_with_changes()
                 self._check_pointless()
 
@@ -315,9 +345,12 @@ class Commit(object):
 
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
+
             except:
                 self.builder.abort()
                 raise
+
+            self._process_pre_hooks(old_revno, new_revno)
 
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
@@ -339,10 +372,16 @@ class Commit(object):
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
-            self._process_hooks(old_revno, new_revno)
+            self._process_post_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
         return self.rev_id
+
+    def _select_reporter(self):
+        """Select the CommitReporter to use."""
+        if is_quiet():
+            return NullCommitReporter()
+        return ReportCommitToLog()
 
     def _any_real_changes(self):
         """Are there real changes between new_inventory and basis?
@@ -465,10 +504,15 @@ class Commit(object):
             new_revno = 1
         return old_revno,new_revno
 
-    def _process_hooks(self, old_revno, new_revno):
-        """Process any registered commit hooks."""
+    def _process_pre_hooks(self, old_revno, new_revno):
+        """Process any registered pre commit hooks."""
+        self._set_progress_stage("Running pre_commit hooks")
+        self._process_hooks("pre_commit", old_revno, new_revno)
+
+    def _process_post_hooks(self, old_revno, new_revno):
+        """Process any registered post commit hooks."""
         # Process the post commit hooks, if any
-        self._set_progress_stage("Running post commit hooks")
+        self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15)
         if self.config.post_commit() is not None:
@@ -479,6 +523,13 @@ class Commit(object):
                               {'branch':self.branch,
                                'bzrlib':bzrlib,
                                'rev_id':self.rev_id})
+        # process new style post commit hooks
+        self._process_hooks("post_commit", old_revno, new_revno)
+
+    def _process_hooks(self, hook_name, old_revno, new_revno):
+        if not Branch.hooks[hook_name]:
+            return
+        
         # new style commit hooks:
         if not self.bound_branch:
             hook_master = self.branch
@@ -493,19 +544,30 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
-        for hook in Branch.hooks['post_commit']:
+        
+        if hook_name == "pre_commit":
+            future_tree = self.builder.revision_tree()
+            tree_delta = future_tree.changes_from(self.basis_tree,
+                                             include_root=True)
+        
+        for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running post commit hooks [%s]" % \
-                Branch.hooks.get_hook_name(hook)
+            self.pb_stage_name = "Running %s hooks [%s]" % \
+                (hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
             if 'hooks' in debug.debug_flags:
                 mutter("Invoking commit hook: %r", hook)
-            hook(hook_local, hook_master, old_revno, old_revid, new_revno,
-                self.rev_id)
+            if hook_name == "post_commit":
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                     self.rev_id)
+            elif hook_name == "pre_commit":
+                hook(hook_local, hook_master,
+                     old_revno, old_revid, new_revno, self.rev_id,
+                     tree_delta, future_tree)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -619,12 +681,11 @@ class Commit(object):
                 self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                    self.basis_tree)
 
-        # Report what was deleted. We could skip this when no deletes are
-        # detected to gain a performance win, but it arguably serves as a
-        # 'safety check' by informing the user whenever anything disappears.
-        for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.builder.new_inventory:
-                self.reporter.deleted(path)
+        # Report what was deleted.
+        if self.reporter.is_verbose():
+            for path, ie in self.basis_inv.iter_entries():
+                if ie.file_id not in self.builder.new_inventory:
+                    self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -633,11 +694,12 @@ class Commit(object):
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
                
+        report_changes = self.reporter.is_verbose()
         deleted_ids = []
         deleted_paths = set()
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
-        entries = work_inv.iter_entries()
+        entries = work_inv.iter_entries_by_dir()
         if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
@@ -675,7 +737,7 @@ class Commit(object):
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind 
             self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie)
+                parent_id, definitely_changed, existing_ie, report_changes)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -706,7 +768,8 @@ class Commit(object):
             pass
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-                      parent_id, definitely_changed, existing_ie=None):
+            parent_id, definitely_changed, existing_ie=None,
+            report_changes=True):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         if (not specific_files or 
@@ -727,7 +790,8 @@ class Commit(object):
         if ie is not None:
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-            self._report_change(ie, path)
+            if report_changes:
+                self._report_change(ie, path)
         return ie
 
     def _report_change(self, ie, path):

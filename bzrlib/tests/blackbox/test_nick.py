@@ -26,9 +26,8 @@ class TestNick(ExternalBase):
 
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""
-        os.mkdir('me.dev')
+        self.make_branch_and_tree('me.dev')
         os.chdir('me.dev')
-        self.run_bzr('init')
         nick = self.run_bzr('nick')[0]
         self.assertEqual(nick, 'me.dev\n')
         # set the nickname
@@ -39,8 +38,7 @@ class TestNick(ExternalBase):
     def test_autonick_urlencoded(self):
         # https://bugs.launchpad.net/bzr/+bug/66857 -- nick was printed
         # urlencoded but shouldn't be
-        os.mkdir('!repo')
+        self.make_branch_and_tree('!repo')
         os.chdir('!repo')
-        self.run_bzr('init')
         nick = self.run_bzr('nick')[0]
         self.assertEqual(nick, '!repo\n')

@@ -19,6 +19,7 @@ build
 [#]*#
 .#*
 ./tags
+./TAGS
 # The shelf plugin uses this dir
 ./.shelf
 # Mac droppings

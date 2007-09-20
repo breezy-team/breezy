@@ -483,7 +483,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(os.path.lexists('b/file.BASE'))
         self.assert_(os.path.lexists('b/file.OTHER'))
-        wtb.revert([])
+        wtb.revert()
         self.assertEqual(1, wtb.merge_from_branch(wta.branch,
                                                   merge_type=WeaveMerger))
         self.assert_(os.path.lexists('b/file'))

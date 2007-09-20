@@ -117,13 +117,14 @@ class Branch(object):
             master.break_lock()
 
     @staticmethod
-    def open(base, _unsupported=False):
+    def open(base, _unsupported=False, possible_transports=None):
         """Open the branch rooted at base.
 
         For instance, if the branch is at URL/.bzr/branch,
         Branch.open(URL) -> a Branch instance.
         """
-        control = bzrdir.BzrDir.open(base, _unsupported)
+        control = bzrdir.BzrDir.open(base, _unsupported,
+                                     possible_transports=possible_transports)
         return control.open_branch(_unsupported)
 
     @staticmethod
@@ -320,7 +321,7 @@ class Branch(object):
         return self.repository.get_commit_builder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
 
-    def get_master_branch(self):
+    def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
         
         :return: Either a Branch, or None
@@ -999,6 +1000,16 @@ class BranchHooks(Hooks):
         # is read locked and the target branches write locked. The local
         # branch is the low-latency branch.
         self['post_pull'] = []
+        # invoked before a commit operation takes place.
+        # the api signature is
+        # (local, master, old_revno, old_revid, future_revno, future_revid,
+        #  tree_delta, future_tree).
+        # old_revid is NULL_REVISION for the first commit to a branch
+        # tree_delta is a TreeDelta object describing changes from the basis
+        # revision, hooks MUST NOT modify this delta
+        # future_tree is an in-memory tree obtained from
+        # CommitBuilder.revision_tree() and hooks MUST NOT modify this tree
+        self['pre_commit'] = []
         # invoked after a commit operation completes.
         # the api signature is 
         # (local, master, old_revno, old_revid, new_revno, new_revid)
@@ -1475,7 +1486,7 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     stop_revision = source.last_revision()
                 self.generate_revision_history(stop_revision)
-            result.tag_conflicts = source.tags.merge_to(self.tags)
+            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
@@ -1584,7 +1595,7 @@ class BzrBranch(Branch):
                 raise
         if overwrite:
             target.set_revision_history(self.revision_history())
-        result.tag_conflicts = self.tags.merge_to(target.tags)
+        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
@@ -1638,7 +1649,7 @@ class BzrBranch(Branch):
 
 
 class BzrBranch5(BzrBranch):
-    """A format 5 branch. This supports new features over plan branches.
+    """A format 5 branch. This supports new features over plain branches.
 
     It has support for a master_branch which is the data for bound branches.
     """
@@ -1687,7 +1698,7 @@ class BzrBranch5(BzrBranch):
             return None
 
     @needs_read_lock
-    def get_master_branch(self):
+    def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
         
         :return: Either a Branch, or None
@@ -1701,7 +1712,8 @@ class BzrBranch5(BzrBranch):
         if not bound_loc:
             return None
         try:
-            return Branch.open(bound_loc)
+            return Branch.open(bound_loc,
+                               possible_transports=possible_transports)
         except (errors.NotBranchError, errors.ConnectionError), e:
             raise errors.BoundBranchConnectionFailure(
                     self, bound_loc, e)
@@ -1769,13 +1781,13 @@ class BzrBranch5(BzrBranch):
         return self.set_bound_location(None)
 
     @needs_write_lock
-    def update(self):
+    def update(self, possible_transports=None):
         """Synchronise this branch with the master branch if any. 
 
         :return: None or the last_revision that was pivoted out during the
                  update.
         """
-        master = self.get_master_branch()
+        master = self.get_master_branch(possible_transports)
         if master is not None:
             old_tip = _mod_revision.ensure_null(self.last_revision())
             self.pull(master, overwrite=True)

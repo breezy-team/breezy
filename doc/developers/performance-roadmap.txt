@@ -54,6 +54,8 @@ Use cases
 
 .. include:: uncommit.txt
 
+.. include:: missing.txt
+
 Subsystem designs
 #################
 

@@ -225,3 +225,13 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(None, md.message)
         md = self.send_directive(['--from', 'branch', '-m', 'my message'])
         self.assertEqual('my message', md.message)
+
+    def test_omitted_revision(self):
+        self.make_trees()
+        md = self.send_directive(['-r-2..', '--from', 'branch'])
+        self.assertEqual('revision2', md.base_revision_id)
+        self.assertEqual('revision3', md.revision_id)
+        md = self.send_directive(['-r..3', '--from', 'branch',
+                                 'grandparent'])
+        self.assertEqual('revision1', md.base_revision_id)
+        self.assertEqual('revision3', md.revision_id)

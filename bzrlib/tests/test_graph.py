@@ -373,4 +373,83 @@ class TestGraph(TestCaseWithMemoryTransport):
         #      c
         graph = self.make_graph({'c': ['b', 'd'], 'd': ['e'], 'b': ['a'],
                                  'a': [NULL_REVISION], 'e': [NULL_REVISION]})
-        self.assertEqual(['c'], graph._filter_candidate_lca(['a', 'c', 'e']))
+        self.assertEqual(set(['c']), graph.heads(['a', 'c', 'e']))
+
+    def test_heads_null(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(set(['null:']), graph.heads(['null:']))
+        self.assertEqual(set(['rev1']), graph.heads(['null:', 'rev1']))
+        self.assertEqual(set(['rev1']), graph.heads(['rev1', 'null:']))
+        self.assertEqual(set(['rev1']), graph.heads(set(['rev1', 'null:'])))
+        self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
+
+    def test_heads_one(self):
+        # A single node will alwaya be a head
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(set(['null:']), graph.heads(['null:']))
+        self.assertEqual(set(['rev1']), graph.heads(['rev1']))
+        self.assertEqual(set(['rev2a']), graph.heads(['rev2a']))
+        self.assertEqual(set(['rev2b']), graph.heads(['rev2b']))
+        self.assertEqual(set(['rev3']), graph.heads(['rev3']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev4']))
+
+    def test_heads_single(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(set(['rev4']), graph.heads(['null:', 'rev4']))
+        self.assertEqual(set(['rev2a']), graph.heads(['rev1', 'rev2a']))
+        self.assertEqual(set(['rev2b']), graph.heads(['rev1', 'rev2b']))
+        self.assertEqual(set(['rev3']), graph.heads(['rev1', 'rev3']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev1', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev2a', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev2b', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev3', 'rev4']))
+
+    def test_heads_two_heads(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph.heads(['rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3', 'rev2b']),
+                         graph.heads(['rev3', 'rev2b']))
+
+    def test_heads_criss_cross(self):
+        graph = self.make_graph(criss_cross)
+        self.assertEqual(set(['rev2a']),
+                         graph.heads(['rev2a', 'rev1']))
+        self.assertEqual(set(['rev2b']),
+                         graph.heads(['rev2b', 'rev1']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev1']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev1']))
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph.heads(['rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2a']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2b']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2a']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2b']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b', 'rev2a', 'rev2b']))
+
+    def test_heads_shortcut(self):
+        graph = self.make_graph(history_shortcut)
+
+        self.assertEqual(set(['rev2a', 'rev2b', 'rev2c']),
+                         graph.heads(['rev2a', 'rev2b', 'rev2c']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev2a', 'rev3a', 'rev3b']))
+        self.assertEqual(set(['rev2a', 'rev3b']),
+                         graph.heads(['rev2a', 'rev3b']))
+        self.assertEqual(set(['rev2c', 'rev3a']),
+                         graph.heads(['rev2c', 'rev3a']))

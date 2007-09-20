@@ -89,6 +89,11 @@ class RemoteBzrDir(BzrDir):
         real_branch = self._real_bzrdir.create_branch()
         return RemoteBranch(self, self.find_repository(), real_branch)
 
+    def destroy_branch(self):
+        """See BzrDir.destroy_branch"""
+        self._ensure_real()
+        self._real_bzrdir.destroy_branch()
+
     def create_workingtree(self, revision_id=None):
         raise errors.NotLocalUrl(self.transport.base)
 

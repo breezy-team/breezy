@@ -950,6 +950,12 @@ class CannotCommitSelectedFileMerge(BzrError):
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
+class BadCommitMessageEncoding(BzrError):
+
+    _fmt = 'The specified commit message contains characters unsupported by '\
+        'the current encoding.'
+
+
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."
@@ -992,6 +998,11 @@ class NotLeftParentDescendant(BzrError):
         BzrError.__init__(self, branch_location=branch.base,
                           old_revision=old_revision,
                           new_revision=new_revision)
+
+
+class RangeInChangeOption(BzrError):
+
+    _fmt = "Option --change does not accept revision ranges"
 
 
 class NoSuchRevisionSpec(BzrError):
@@ -1295,16 +1306,6 @@ class KnitError(BzrError):
     internal_error = True
 
 
-class KnitHeaderError(KnitError):
-
-    _fmt = 'Knit header error: %(badline)r unexpected for file "%(filename)s".'
-
-    def __init__(self, badline, filename):
-        KnitError.__init__(self)
-        self.badline = badline
-        self.filename = filename
-
-
 class KnitCorrupt(KnitError):
 
     _fmt = "Knit %(filename)s corrupt: %(how)s"
@@ -1314,6 +1315,24 @@ class KnitCorrupt(KnitError):
         self.filename = filename
         self.how = how
 
+
+class KnitDataStreamIncompatible(KnitError):
+
+    _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
+
+    def __init__(self, stream_format, target_format):
+        self.stream_format = stream_format
+        self.target_format = target_format
+        
+
+class KnitHeaderError(KnitError):
+
+    _fmt = 'Knit header error: %(badline)r unexpected for file "%(filename)s".'
+
+    def __init__(self, badline, filename):
+        KnitError.__init__(self)
+        self.badline = badline
+        self.filename = filename
 
 class KnitIndexUnknownMethod(KnitError):
     """Raised when we don't understand the storage method.
@@ -1750,7 +1769,8 @@ class BzrRenameFailedError(BzrMoveFailedError):
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
 
-    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+    _fmt = ("Can't safely remove modified or unknown files:\n"
+        "%(changes_as_text)s"
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
@@ -1834,6 +1854,12 @@ class NoDiff3(BzrError):
     _fmt = "Diff3 is not installed on this machine."
 
 
+class ExistingContent(BzrError):
+    # Added in bzrlib 0.92, used by VersionedFile.add_lines.
+
+    _fmt = "The content being inserted is already present."
+
+
 class ExistingLimbo(BzrError):
 
     _fmt = """This tree contains left-over files from a failed operation.
@@ -1845,15 +1871,35 @@ class ExistingLimbo(BzrError):
        self.limbo_dir = limbo_dir
 
 
+class ExistingPendingDeletion(BzrError):
+
+    _fmt = """This tree contains left-over files from a failed operation.
+    Please examine %(pending_deletion)s to see if it contains any files you
+    wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
+
+
 class ImmortalLimbo(BzrError):
 
-    _fmt = """Unable to delete transform temporary directory $(limbo_dir)s.
+    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
        BzrError.__init__(self)
        self.limbo_dir = limbo_dir
+
+
+class ImmortalPendingDeletion(BzrError):
+
+    _fmt = """Unable to delete transform temporary directory
+    %(pending_deletion)s.  Please examine %(pending_deletions)s to see if it
+    contains any files you wish to keep, and delete it when you are done."""
+
+    def __init__(self, pending_deletion):
+       BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
 class OutOfDateTree(BzrError):
@@ -2358,3 +2404,48 @@ class SMTPConnectionRefused(SMTPError):
 class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
 
     _fmt = "Please specify smtp_server.  No server at default %(host)s."
+
+
+class BzrDirError(BzrError):
+
+    def __init__(self, bzrdir):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+                                                    'ascii')
+        BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
+
+
+class AlreadyBranch(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a branch."
+
+
+class AlreadyTree(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a tree."
+
+
+class AlreadyCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a checkout."
+
+
+class ReconfigurationNotSupported(BzrDirError):
+
+    _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
+
+
+class NoBindLocation(BzrDirError):
+
+    _fmt = "No location could be found to bind to at %(display_url)s."
+
+
+class UncommittedChanges(BzrError):
+
+    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+
+    def __init__(self, tree):
+        import bzrlib.urlutils as urlutils
+        display_url = urlutils.unescape_for_display(
+            tree.bzrdir.root_transport.base, 'ascii')
+        BzrError.__init__(self, tree=tree, display_url=display_url)
