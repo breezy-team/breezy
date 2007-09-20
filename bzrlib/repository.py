@@ -191,6 +191,7 @@ class CommitBuilder(object):
         :param parent_invs: The inventories of the parent revisions of the
             commit.
         :param tree: The tree that is being committed.
+        :return: True if the root entry is versioned properly.
         """
         if ie.parent_id is not None:
             # if ie is not root, add a root automatically.
@@ -204,6 +205,7 @@ class CommitBuilder(object):
             # serializing out to disk and back in root.revision is always
             # _new_revision_id
             ie.revision = self._new_revision_id
+        return False
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -216,16 +218,20 @@ class CommitBuilder(object):
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
+        :return: True if a new version of the entry has been recorded.
+            (Committing a merge where a file was only changed on the other side
+            will not return True.)
         """
         if self.new_inventory.root is None:
-            self._check_root(ie, parent_invs, tree)
+            self._versioned_root = self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
-            return
+            return ie.revision == self._new_revision_id and (path != '' or
+                self._versioned_root)
 
         parent_candiate_entries = ie.parent_candidates(parent_invs)
         heads = self.repository.get_graph().heads(parent_candiate_entries.keys())
@@ -236,6 +242,8 @@ class CommitBuilder(object):
         # we are creating a new revision for ie in the history store and
         # inventory.
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
+        return ie.revision == self._new_revision_id and (path != '' or
+            self._versioned_root)
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
@@ -320,9 +328,11 @@ class RootCommitBuilder(CommitBuilder):
         :param parent_invs: The inventories of the parent revisions of the
             commit.
         :param tree: The tree that is being committed.
+        :return: True if the root entry is versioned properly.
         """
         # ie must be root for this builder
         assert ie.parent_id is None
+        return True
 
 
 ######################################################################

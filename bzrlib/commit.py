@@ -241,6 +241,8 @@ class Commit(object):
                                " parameter is required for commit().")
 
         self.bound_branch = None
+        self.entries_changed = False
+        self.entries_deleted = False
         self.local = local
         self.master_branch = None
         self.master_locked = False
@@ -383,41 +385,6 @@ class Commit(object):
             return NullCommitReporter()
         return ReportCommitToLog()
 
-    def _any_real_changes(self):
-        """Are there real changes between new_inventory and basis?
-
-        For trees without rich roots, inv.root.revision changes every commit.
-        But if that is the only change, we want to treat it as though there
-        are *no* changes.
-        """
-        new_entries = self.builder.new_inventory.iter_entries()
-        basis_entries = self.basis_inv.iter_entries()
-        new_path, new_root_ie = new_entries.next()
-        basis_path, basis_root_ie = basis_entries.next()
-
-        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
-        def ie_equal_no_revision(this, other):
-            return ((this.file_id == other.file_id)
-                    and (this.name == other.name)
-                    and (this.symlink_target == other.symlink_target)
-                    and (this.text_sha1 == other.text_sha1)
-                    and (this.text_size == other.text_size)
-                    and (this.text_id == other.text_id)
-                    and (this.parent_id == other.parent_id)
-                    and (this.kind == other.kind)
-                    and (this.executable == other.executable)
-                    and (this.reference_revision == other.reference_revision)
-                    )
-        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
-            return True
-
-        for new_ie, basis_ie in zip(new_entries, basis_entries):
-            if new_ie != basis_ie:
-                return True
-
-        # No actual changes present
-        return False
-
     def _check_pointless(self):
         if self.allow_pointless:
             return
@@ -434,7 +401,8 @@ class Commit(object):
             return
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
-        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
+        if len(self.builder.new_inventory) != 1 and (self.entries_changed or
+            self.entries_deleted):
             return
         raise PointlessCommit()
 
@@ -678,11 +646,15 @@ class Commit(object):
                     continue
                 ie = new_ie.copy()
                 ie.revision = None
-                self.builder.record_entry_contents(ie, self.parent_invs, path,
-                                                   self.basis_tree)
+                if self.builder.record_entry_contents(ie, self.parent_invs, path,
+                    self.basis_tree):
+                    self.entries_changed = True
 
+        # note that deletes have occured
+        if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
+            self.entries_deleted = True
         # Report what was deleted.
-        if self.reporter.is_verbose():
+        if self.entries_deleted and self.reporter.is_verbose():
             for path, ie in self.basis_inv.iter_entries():
                 if ie.file_id not in self.builder.new_inventory:
                     self.reporter.deleted(path)
@@ -735,7 +707,7 @@ class Commit(object):
             # Note: I don't particularly want to have the existing_ie
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
-            definitely_changed = kind != existing_ie.kind 
+            definitely_changed = kind != existing_ie.kind
             self._record_entry(path, file_id, specific_files, kind, name,
                 parent_id, definitely_changed, existing_ie, report_changes)
 
@@ -766,6 +738,8 @@ class Commit(object):
                 local=self.local, reporter=self.reporter)
         except errors.PointlessCommit:
             pass
+        else:
+            self.entries_changed = True
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
             parent_id, definitely_changed, existing_ie=None,
@@ -788,8 +762,9 @@ class Commit(object):
                 # this entry is new and not being committed
                 ie = None
         if ie is not None:
-            self.builder.record_entry_contents(ie, self.parent_invs, 
-                path, self.work_tree)
+            if self.builder.record_entry_contents(ie, self.parent_invs,
+                path, self.work_tree):
+                self.entries_changed = True
             if report_changes:
                 self._report_change(ie, path)
         return ie

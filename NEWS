@@ -16,6 +16,11 @@ IN DEVELOPMENT
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
 
+   * Committing a change which is not a merge and does not change the number of
+     files in the tree is faster by utilising the data about whether files are
+     changed to determine if a the tree is unchanged rather than recalculating
+     it at the end of the commit process. (Robert Collins)
+
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 

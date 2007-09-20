@@ -134,6 +134,27 @@ class TestCommitBuilder(TestCaseWithRepository):
             rev_id = builder.commit('foo bar')
         finally:
             tree.unlock()
+    
+    def test_commit_unchanged_root(self):
+        tree = self.make_branch_and_tree(".")
+        tree.commit('')
+        tree.lock_write()
+        parent_tree = tree.basis_tree()
+        parent_tree.lock_read()
+        self.addCleanup(parent_tree.unlock)
+        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        try:
+            ie = inventory.make_entry('directory', '', None,
+                    tree.inventory.root.file_id)
+            self.assertFalse(builder.record_entry_contents(
+                ie, [parent_tree.inventory], '', tree))
+            builder.abort()
+        except:
+            builder.abort()
+            tree.unlock()
+            raise
+        else:
+            tree.unlock()
 
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
@@ -295,7 +316,42 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree.add([name], [name + 'id'])
         rev1 = tree.commit('')
         changer()
-        rev2 = tree.commit('')
+        tree.lock_write()
+        try:
+            # mini manual commit here so we can check the return of
+            # record_entry_contents.
+            builder = tree.branch.get_commit_builder([tree.last_revision()])
+            parent_tree = tree.basis_tree()
+            parent_tree.lock_read()
+            self.addCleanup(parent_tree.unlock)
+            parent_invs = [parent_tree.inventory]
+            # root
+            builder.record_entry_contents(
+                inventory.make_entry('directory', '', None,
+                    tree.inventory.root.file_id), parent_invs, '', tree)
+            def commit_id(file_id):
+                old_ie = tree.inventory[file_id]
+                path = tree.id2path(file_id)
+                ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
+                    old_ie.parent_id, file_id)
+                return builder.record_entry_contents(ie, parent_invs, path, tree)
+
+            file_id = name + 'id'
+            parent_id = tree.inventory[file_id].parent_id
+            if parent_id != tree.inventory.root.file_id:
+                commit_id(parent_id)
+            # because a change of some sort is meant to have occurred,
+            # recording the entry must return True.
+            self.assertTrue(commit_id(file_id))
+            builder.finish_inventory()
+            rev2 = builder.commit('')
+            tree.set_parent_ids([rev2])
+        except:
+            builder.abort()
+            tree.unlock()
+            raise
+        else:
+            tree.unlock()
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
