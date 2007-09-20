@@ -1419,7 +1419,8 @@ class Repository(object):
             parents_provider = _RevisionParentsProvider(self)
         result = {}
 
-        for revision_id in revision_ids:
+        graph = self.get_graph()
+        for num, revision_id in enumerate(revision_ids):
             text_revision = revision_versions.get_text_version(file_id,
                                                                revision_id)
             if text_revision is None:
@@ -1437,6 +1438,10 @@ class Repository(object):
             unreferenced = knit_parents.difference(revision_parents)
             for unreferenced_id in unreferenced:
                 result.setdefault(unreferenced_id, set()).add(text_revision)
+            correct_parents = graph.heads(knit_parents)
+            spurious_parents = knit_parents.difference(correct_parents)
+            for spurious_parent in spurious_parents:
+                result.setdefault(spurious_parent, set()).add(text_revision)
         return result
 
     @needs_write_lock
