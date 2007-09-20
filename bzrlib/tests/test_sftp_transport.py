@@ -109,8 +109,9 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
 
     def test__remote_path(self):
         if sys.platform == 'darwin':
-            self.knownFailure("Mac OSX use /private/tmp instead of /tmp,"
-                              " testing self.test_dir is not pertinent")
+            self.knownFailure('Mac OSX symlinks /tmp to /private/tmp,'
+                              ' testing against self.test_dir'
+                              ' is not appropriate')
         t = self.get_transport()
         # This test require unix-like absolute path
         test_dir = self.test_dir
