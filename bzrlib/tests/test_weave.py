@@ -707,16 +707,6 @@ class JoinWeavesTests(TestBase):
         eq(wa.get_lines('b1'),
            ['hello\n', 'pale blue\n', 'world\n'])
 
-    def test_join_parent_disagreement(self):
-        #join reconciles differening parents into a union.
-        wa = Weave()
-        wb = Weave()
-        wa.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v0', [], [])
-        wb.add_lines('v1', ['v0'], ['hello\n'])
-        wa.join(wb)
-        self.assertEqual(['v0'], wa.get_parents('v1'))
-
     def test_join_text_disagreement(self):
         """Cannot join weaves with different texts for a version."""
         wa = Weave()
