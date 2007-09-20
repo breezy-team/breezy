@@ -420,15 +420,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         path = 'name'
         make_before(path)
+
         def change_kind():
-            # Look Before You Leap (LBYL) is appropriate here because unlink
-            # will raise different exceptions on different OSes (linux: EISDIR,
-            # win32: EACCES, OSX: EPERM) when invoked on a directory.
-            if osutils.isdir(path): # Takes care of symlinks
-                os.rmdir(path)
-            else:
-                os.unlink(path)
+            osutils.delete_any(path)
             make_after(path)
+
         self._add_commit_change_check_changed(tree, path, change_kind)
 
     def test_last_modified_dir_file(self):
