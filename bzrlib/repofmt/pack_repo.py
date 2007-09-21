@@ -374,7 +374,7 @@ class RepositoryPackCollection(object):
         result.name = new_name
         result.transport = self._upload_transport.clone('../packs/')
         # write indices
-        index_transport = self._upload_transport.clone('../indices')
+        index_transport = self._index_transport
         rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
         revision_index_length = index_transport.put_file(rev_index_name,
             revision_index.finish())
@@ -713,9 +713,11 @@ class RepositoryPackCollection(object):
             pack_detail[0].rename(pack_detail[1],
                 '../obsolete_packs/' + pack_detail[1])
             basename = pack_detail[1][:-4]
-            index_transport = pack_detail[0].clone('../indices')
+            # TODO: Probably needs to know all possible indexes for this pack
+            # - or maybe list the directory and move all indexes matching this
+            # name whether we recognize it or not?
             for suffix in ('iix', 'six', 'tix', 'rix'):
-                index_transport.rename(basename + suffix,
+                self._index_transport.rename(basename + suffix,
                     '../obsolete_packs/' + basename + suffix)
 
     def pack_distribution(self, total_revisions):
