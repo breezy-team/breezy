@@ -365,7 +365,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        #------- copied from inventory.make_entry
+        #------- copied from inventory.ensure_normalized_name - keep synced.
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be
@@ -1470,7 +1470,8 @@ class DirState(object):
         kind = inv_entry.kind
         minikind = DirState._kind_to_minikind[kind]
         tree_data = inv_entry.revision
-        assert len(tree_data) > 0, 'empty revision for the inv_entry.'
+        assert tree_data, 'empty revision for the inv_entry %s.' % \
+            inv_entry.file_id
         if kind == 'directory':
             fingerprint = ''
             size = 0
