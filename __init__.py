@@ -44,17 +44,7 @@ from errors import (ChangedError,
                     )
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
-
-
-# same format as sys.version_info: "A tuple containing the five components of
-# the version number: major, minor, micro, releaselevel, and serial. All
-# values except releaselevel are integers; the release level is 'alpha',
-# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
-# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
-# releaselevel of 'dev' for unreleased under-development code.
-#
-# Please set this to 'final' before upload.
-version_info = (0, 91, 0, 'dev', 0)
+from version import version_info
 
 
 dont_purge_opt = Option('dont-purge',

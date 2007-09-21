@@ -1,4 +1,4 @@
-#    test_version.py -- Testsuite for builddeb version
+#    version.py -- Defines the version of builddeb.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
@@ -18,16 +18,12 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import version
-
-import bzrlib
-from bzrlib.tests import TestCase, KnownFailure
-from bzrlib.trace import error
-
-class VersionTests(TestCase):
-
-  def test_version_matches(self):
-    """An abused test case to warn when the version doesn't match bzrlib."""
-    if version.version_info != bzrlib.version_info:
-      raise KnownFailure("builddeb version doesn't match bzrlib version")
-
+# same format as sys.version_info: "A tuple containing the five components of
+# the version number: major, minor, micro, releaselevel, and serial. All
+# values except releaselevel are integers; the release level is 'alpha',
+# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
+# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+# releaselevel of 'dev' for unreleased under-development code.
+#
+# Please set this to 'final' before upload.
+version_info = (0, 91, 0, 'dev', 0)
