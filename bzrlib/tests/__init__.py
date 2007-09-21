@@ -1378,7 +1378,6 @@ class TestCase(unittest.TestCase):
         :keyword working_dir: The directory to run the command in
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
-        :keyword output_encoding: Expected encoding of output from bzr.
         """
         out, err = self._run_bzr_autosplit(
             args=args,
@@ -1389,26 +1388,7 @@ class TestCase(unittest.TestCase):
             )
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
-        if output_encoding:
-            out = out.decode(output_encoding)
-            err = err.decode(output_encoding)
         return out, err
-
-    @deprecated_method(zero_ninetytwo)
-    def run_bzr_decode(self, *args, **kwargs):
-        """Run bzr and decode the output into a particular encoding.
-
-        Returns a string containing the stdout output from bzr.
-
-        This is deprecated in favour of passing output_encoding to run_bzr
-        instead.
-        """
-        if 'encoding' in kwargs:
-            encoding = kwargs['encoding']
-        else:
-            encoding = bzrlib.user_encoding
-        return self.run_bzr(output_encoding=encoding,
-                *args, **kwargs)[0]
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes
