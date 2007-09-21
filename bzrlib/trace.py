@@ -360,9 +360,10 @@ def report_bug(exc_info, err_file):
         'encoding: %r, fsenc: %r, lang: %r\n' % (
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
-    err_file.write(
-        "plugins: %r\n" % (
-            sorted(plugin.plugins().keys())))
+    err_file.write("plugins:\n")
+    for name, a_plugin in sorted(plugin.plugins().items()):
+        err_file.write("  %-20s %s [%s]\n" %
+            (name, a_plugin.path(), a_plugin.__version__))
     err_file.write(
         "\n"
         "** Please send this report to bazaar@lists.ubuntu.com\n"

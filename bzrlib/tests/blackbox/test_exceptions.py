@@ -35,7 +35,7 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
             '(?m)^encoding: .*, fsenc: .*, lang: .*')
         self.assertContainsRe(err,
-            '(?m)^plugins: \[.*\]')
+            '(?m)^plugins:$')
 
     # TODO: assert-fail doesn't need to always be present; we could just
     # register (and unregister) it from tests that want to touch it.
