@@ -477,6 +477,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         #       osutils.getcwd() renormalize the path.
         self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
 
+    def test_minimum_path_selection(self):
+        self.assertEqual(set(),
+            osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a', 'b']),
+            osutils.minimum_path_selection(['a', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
+
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
         self.assertFalse('\\' in tmpdir)
