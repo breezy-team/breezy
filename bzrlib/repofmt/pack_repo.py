@@ -748,61 +748,34 @@ class RepositoryPackCollection(object):
         self._names = None
         self.packs = []
 
-    def _inv_index_map(self, pack_details):
-        """Get a map of inv index -> packs for pack_details."""
+    def _make_index_to_pack_map(self, pack_details, index_suffix):
+        """Given a list (transport,name), return a map of (index)->(transport, name)."""
         # the simplest thing for now is to create new index objects.
         # this should really reuse the existing index objects for these 
         # packs - this means making the way they are managed in the repo be 
         # more sane.
         indices = {}
         for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._inv_thunk.name_to_inv_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
+            index_name = name[:-5] + index_suffix
+            indices[GraphIndex(self._index_transport, index_name)] = \
                 (transport, name)
         return indices
+
+    def _inv_index_map(self, pack_details):
+        """Get a map of inv index -> packs for pack_details."""
+        return self._make_index_to_pack_map(pack_details, '.iix')
 
     def _revision_index_map(self, pack_details):
         """Get a map of revision index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._revision_store.name_to_revision_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.rix')
 
     def _signature_index_map(self, pack_details):
         """Get a map of signature index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._revision_store.name_to_signature_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.six')
 
     def _text_index_map(self, pack_details):
         """Get a map of text index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo.weave_store.name_to_text_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.tix')
 
     def _index_contents(self, pack_map, key_filter=None):
         """Get an iterable of the index contents from a pack_map.
