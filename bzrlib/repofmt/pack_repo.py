@@ -441,7 +441,7 @@ class RepositoryPackCollection(object):
                 self._remove_pack_by_name(pack_detail[1])
         # record the newly available packs and stop advertising the old
         # packs
-        self.save()
+        self._save_pack_names()
         # move the old packs out of the way
         for revision_count, pack_details in pack_operations:
             self._obsolete_packs(pack_details)
@@ -806,7 +806,7 @@ class RepositoryPackCollection(object):
         else:
             return all_index.iter_entries(key_filter)
 
-    def save(self):
+    def _save_pack_names(self):
         builder = GraphIndexBuilder()
         for name, sizes in self._names.iteritems():
             builder.add_node((name, ), ' '.join(str(size) for size in sizes))
@@ -875,7 +875,7 @@ class RepositoryPackCollection(object):
                 new_pack.signature_index_length)
             self.repo._open_pack_tuple = None
             if not self.autopack():
-                self.save()
+                self._save_pack_names()
         else:
             # remove the pending upload
             self.repo._upload_transport.delete(self.repo._open_pack_tuple[1])
