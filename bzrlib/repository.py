@@ -70,6 +70,8 @@ class CommitBuilder(object):
     
     # all clients should supply tree roots.
     record_root_entry = True
+    # the default CommitBuilder does not manage trees whose root is versioned.
+    _versioned_root = False
 
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
@@ -216,6 +218,9 @@ class CommitBuilder(object):
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
+        :return: True if a new version of the entry has been recorded.
+            (Committing a merge where a file was only changed on the other side
+            will not return True.)
         """
         if self.new_inventory.root is None:
             self._check_root(ie, parent_invs, tree)
@@ -225,7 +230,8 @@ class CommitBuilder(object):
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
-            return
+            return ie.revision == self._new_revision_id and (path != '' or
+                self._versioned_root)
 
         parent_candiate_entries = ie.parent_candidates(parent_invs)
         heads = self.repository.get_graph().heads(parent_candiate_entries.keys())
@@ -236,6 +242,8 @@ class CommitBuilder(object):
         # we are creating a new revision for ie in the history store and
         # inventory.
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
+        return ie.revision == self._new_revision_id and (path != '' or
+            self._versioned_root)
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
@@ -313,6 +321,9 @@ class CommitBuilder(object):
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
+    # the root entry gets versioned properly by this builder.
+    _versioned_root = True
+
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
