@@ -18,11 +18,17 @@
 """Tests for the commit CLI of bzr."""
 
 import os
+import sys
 
 from bzrlib import (
     ignores,
+    osutils,
     )
 from bzrlib.bzrdir import BzrDir
+from bzrlib.tests import (
+    probe_bad_non_ascii_in_user_encoding,
+    TestSkipped,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -237,8 +243,17 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        out,err = self.run_bzr_subprocess('commit -m "\xff"', retcode=1,
-                                                    env_changes={'LANG': 'C'})
+        # LANG env variable has no effect on Windows
+        # but some characters anyway cannot be represented
+        # in default user encoding
+        char = '\xff'
+        if sys.platform == 'win32':
+            char = probe_bad_non_ascii_in_user_encoding()
+            if char is None:
+                raise TestSkipped('cannot find suitable character')
+        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
+                                          retcode=1,
+                                          env_changes={'LANG': 'C'})
         self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
                                     'unsupported by the current encoding.')
 

@@ -1148,6 +1148,7 @@ class TestCase(unittest.TestCase):
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            'BZR_EDITOR': None, # test_msgeditor manipulate with this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -2671,3 +2672,18 @@ def probe_unicode_in_user_encoding():
         else:
             return uni_val, str_val
     return None, None
+
+
+def probe_bad_non_ascii_in_user_encoding():
+    """Try to find [bad] character with code [128..255]
+    that cannot be decoded to unicode in user_encoding.
+    Return None if all non-ascii characters is valid
+    for current user_encoding.
+    """
+    for i in xrange(128, 256):
+        char = chr(i)
+        try:
+            char.decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            return char
+    return None
