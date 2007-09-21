@@ -32,6 +32,9 @@ IN DEVELOPMENT
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
 
+   * Commit no longer checks for new text keys during insertion when the
+     revision id was deterministically unique. (Robert Collins)
+
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
      changed to determine if the tree is unchanged rather than recalculating
