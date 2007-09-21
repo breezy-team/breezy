@@ -108,7 +108,8 @@ class Pack(object):
 class RepositoryPackCollection(object):
     """Management of packs within a repository."""
 
-    def __init__(self, repo, transport, index_transport, upload_transport):
+    def __init__(self, repo, transport, index_transport, upload_transport,
+                 pack_transport):
         """Create a new RepositoryPackCollection.
 
         :param transport: Addresses the repository base directory 
@@ -116,11 +117,13 @@ class RepositoryPackCollection(object):
         :param index_transport: Addresses the directory containing indexes.
         :param upload_transport: Addresses the directory into which packs are written
             while they're being created.
+        :param pack_transport: Addresses the directory of existing complete packs.
         """
         self.repo = repo
         self.transport = transport
         self._index_transport = index_transport
         self._upload_transport = upload_transport
+        self._pack_transport = pack_transport
         self.packs = []
 
     def add_pack_to_memory(self, pack):
@@ -672,7 +675,7 @@ class RepositoryPackCollection(object):
             index_name = name + suffix
             new_index = GraphIndex(self._index_transport, index_name)
             indices.append(new_index)
-            pack_map[new_index] = self.repo._pack_tuple(name)
+            pack_map[new_index] = self._pack_tuple(name)
         return pack_map, indices
 
     def _max_pack_count(self, total_revisions):
@@ -730,6 +733,10 @@ class RepositoryPackCollection(object):
             for pos in range(int(count)):
                 result.append(size)
         return list(reversed(result))
+
+    def _pack_tuple(self, name):
+        """Return a tuple with the transport and file name for a pack name."""
+        return self._pack_transport, name + '.pack'
 
     def _remove_pack_by_name(self, name):
         # strip .pack
@@ -959,7 +966,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # sorting of the indices for better performance ?
             index_name = self.name_to_signature_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+            pack_map[indices[-1]] = (self.repo._packs._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._signature_write_index)
@@ -1006,7 +1013,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             del self.repo._revision_pack_map[self.repo._revision_write_index]
             self.repo._revision_write_index = None
             new_index = GraphIndex(self.transport, new_index_name)
-            self.repo._revision_pack_map[new_index] = (self.repo._pack_tuple(new_name))
+            self.repo._revision_pack_map[new_index] = (self.repo._packs._pack_tuple(new_name))
             # revisions 'knit' accessed : update it.
             self.repo._revision_all_indices.insert_index(0, new_index)
             # remove the write buffering index. XXX: API break
@@ -1121,7 +1128,7 @@ class GraphKnitTextStore(VersionedFileStore):
             # sorting of the indices for better performance ?
             index_name = self.name_to_text_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
-            self.repo._text_pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+            self.repo._text_pack_map[indices[-1]] = (self.repo._packs._pack_tuple(name))
         if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._text_write_index)
@@ -1253,7 +1260,7 @@ class InventoryKnitThunk(object):
             # sorting of the indices for better performance ?
             index_name = self.name_to_inv_index_name(name)
             indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+            pack_map[indices[-1]] = (self.repo._packs._pack_tuple(name))
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._inv_write_index)
@@ -1342,20 +1349,16 @@ class GraphKnitRepository1(KnitRepository):
         index_transport = control_files._transport.clone('indices')
         self._packs = RepositoryPackCollection(self, control_files._transport,
             index_transport,
-            control_files._transport.clone('upload'))
+            control_files._transport.clone('upload'),
+            control_files._transport.clone('packs'))
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
-        self._pack_transport = control_files._transport.clone('packs')
         # for tests
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
         self._packs._abort_write_group()
-
-    def _pack_tuple(self, name):
-        """Return a tuple with the transport and file name for a pack name."""
-        return self._pack_transport, name + '.pack'
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
@@ -1413,20 +1416,16 @@ class GraphKnitRepository3(KnitRepository3):
         index_transport = control_files._transport.clone('indices')
         self._packs = RepositoryPackCollection(self, control_files._transport,
             index_transport,
-            control_files._transport.clone('upload'))
+            control_files._transport.clone('upload'),
+            control_files._transport.clone('packs'))
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
-        self._pack_transport = control_files._transport.clone('packs')
         # for tests
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
         return self._packs._abort_write_group()
-
-    def _pack_tuple(self, name):
-        """Return a tuple with the transport and file name for a pack name."""
-        return self._pack_transport, name + '.pack'
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
