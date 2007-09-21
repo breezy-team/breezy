@@ -70,6 +70,8 @@ class CommitBuilder(object):
     
     # all clients should supply tree roots.
     record_root_entry = True
+    # the default CommitBuilder does not manage trees whose root is versioned.
+    _versioned_root = False
 
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
@@ -221,6 +223,9 @@ class CommitBuilder(object):
             content - stat, length, exec, sha/link target. This is only
             accessed when the entry has a revision of None - that is when it is
             a candidate to commit.
+        :return: True if a new version of the entry has been recorded.
+            (Committing a merge where a file was only changed on the other side
+            will not return True.)
         """
         if self.new_inventory.root is None:
             self._check_root(ie, parent_invs, tree)
@@ -241,10 +246,11 @@ class CommitBuilder(object):
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
+        # for committing. We may record the previous parents revision if the
+        # content is actually unchanged against a sole head.
         if ie.revision is not None:
-            return
+            return ie.revision == self._new_revision_id and (path != '' or
+                self._versioned_root)
 
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
@@ -361,6 +367,7 @@ class CommitBuilder(object):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
+        return True
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
@@ -385,6 +392,9 @@ class CommitBuilder(object):
 class RootCommitBuilder(CommitBuilder):
     """This commitbuilder actually records the root id"""
     
+    # the root entry gets versioned properly by this builder.
+    _versioned_root = True
+
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
