@@ -1470,7 +1470,8 @@ class DirState(object):
         kind = inv_entry.kind
         minikind = DirState._kind_to_minikind[kind]
         tree_data = inv_entry.revision
-        assert len(tree_data) > 0, 'empty revision for the inv_entry.'
+        assert tree_data, 'empty revision for the inv_entry %s.' % \
+            inv_entry.file_id
         if kind == 'directory':
             fingerprint = ''
             size = 0

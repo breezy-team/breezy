@@ -32,8 +32,16 @@ IN DEVELOPMENT
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
 
+   * Committing a change which is not a merge and does not change the number of
+     files in the tree is faster by utilising the data about whether files are
+     changed to determine if the tree is unchanged rather than recalculating
+     it at the end of the commit process. (Robert Collins)
+
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
+
+   * Partial commits are now approximately 40% faster by walking over the
+     unselected current tree more efficiently. (Robert Collins)
 
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
@@ -91,6 +99,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+   * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
+     duplication from user input, when a user mentions both a path and an item
+     contained within that path. (Robert Collins)
+
    * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
      tuple containing the key information about a path for commit processing
      to complete. (Robert Collins)
@@ -101,6 +113,11 @@ IN DEVELOPMENT
    * New helper ``bzrlib.tuned_gzip.bytes_to_gzip`` which takes a byte string
      and returns a gzipped version of the same. This is used to avoid a bunch
      of api friction during adding of knit hunks. (Robert Collins)
+
+   * New parameter yield_parents on ``Inventory.iter_entries_by_dir`` which
+     causes the parents of a selected id to be returned recursively, so all the
+     paths from the root down to each element of selected_file_ids are
+     returned. (Robert Collins)
 
   TESTING:
 
