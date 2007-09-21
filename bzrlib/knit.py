@@ -1014,6 +1014,16 @@ class KnitVersionedFile(VersionedFile):
             text_map[version_id] = text
         return text_map, final_content
 
+    @staticmethod
+    def _apply_delta(lines, delta):
+        """Apply delta to lines."""
+        lines = list(lines)
+        offset = 0
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        return lines
+
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""

@@ -98,6 +98,10 @@ IN DEVELOPMENT
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
 
+   * New helper ``bzrlib.tuned_gzip.bytes_to_gzip`` which takes a byte string
+     and returns a gzipped version of the same. This is used to avoid a bunch
+     of api friction during adding of knit hunks. (Robert Collins)
+
   TESTING:
 
 
