@@ -48,6 +48,9 @@ IN DEVELOPMENT
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
+   * Show encodings, locale and list of plugins in the traceback message.
+     (Martin Pool, #63894)
+
   BUG FIXES:
 
    * The basename, not the full path, is now used when checking whether
