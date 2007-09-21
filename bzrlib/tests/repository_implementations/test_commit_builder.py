@@ -16,24 +16,28 @@
 
 """Tests for repository commit builder."""
 
-from errno import EISDIR
+import errno
 import os
+import sys
 
-from bzrlib import inventory
-from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
-from bzrlib.repository import CommitBuilder
-from bzrlib import tests
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib import (
+    errors,
+    inventory,
+    osutils,
+    repository,
+    tests,
+    )
+from bzrlib.tests.repository_implementations import test_repository
 
 
-class TestCommitBuilder(TestCaseWithRepository):
+class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
         branch.repository.lock_write()
         builder = branch.repository.get_commit_builder(
             branch, [], branch.get_config())
-        self.assertIsInstance(builder, CommitBuilder)
+        self.assertIsInstance(builder, repository.CommitBuilder)
         self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
         branch.repository.unlock()
@@ -96,11 +100,11 @@ class TestCommitBuilder(TestCaseWithRepository):
                 try:
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-                except NonAsciiRevisionId:
+                except errors.NonAsciiRevisionId:
                     revision_id = 'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-            except CannotSetRevisionId:
+            except errors.CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
             self.assertFalse(builder.random_revid)
@@ -420,14 +424,11 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         path = 'name'
         make_before(path)
+
         def change_kind():
-            try:
-                os.unlink(path)
-            except OSError, e:
-                if e.errno != EISDIR:
-                    raise
-                os.rmdir(path)
+            osutils.delete_any(path)
             make_after(path)
+
         self._add_commit_change_check_changed(tree, path, change_kind)
 
     def test_last_modified_dir_file(self):

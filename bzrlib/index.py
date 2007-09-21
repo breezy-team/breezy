@@ -317,7 +317,7 @@ class GraphIndex(object):
     def iter_all_entries(self):
         """Iterate over all keys within the index.
 
-        :return: An iterable of (key, value) or (key, value, reference_lists).
+        :return: An iterable of (index, key, value) or (index, key, value, reference_lists).
             The former tuple is used when there are no reference lists in the
             index, making the API compatible with simple key:value index types.
             There is no defined order for the result iteration - it will be in
@@ -510,9 +510,9 @@ class CombinedGraphIndex(object):
         Duplicate keys across child indices are presumed to have the same
         value and are only reported once.
 
-        :return: An iterable of (key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
-            efficient order for the index.
+        :return: An iterable of (index, key, reference_lists, value).
+            There is no defined order for the result iteration - it will be in
+            the most efficient order for the index.
         """
         seen_keys = set()
         for index in self._indices:
@@ -528,7 +528,7 @@ class CombinedGraphIndex(object):
         value and are only reported once.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index.
         """
@@ -610,7 +610,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     def iter_all_entries(self):
         """Iterate over all keys within the index
 
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
@@ -630,7 +630,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
@@ -804,7 +804,7 @@ class GraphIndexPrefixAdapter(object):
         iter_all_entries is implemented against the adapted index using
         iter_entries_prefix.
 
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """

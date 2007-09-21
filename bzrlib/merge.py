@@ -209,7 +209,7 @@ class Merger(object):
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
-                raise BzrCommandError("Working tree has uncommitted changes.")
+                raise errors.UncommittedChanges(self.this_tree)
 
     def compare_basis(self):
         try:
