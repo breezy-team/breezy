@@ -904,7 +904,6 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the revision versioned file object."""
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
-        self.repo._packs.ensure_loaded()
         pack_map, indices = self.repo._packs._make_index_map('.rix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
@@ -933,15 +932,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the signature versioned file object."""
         if getattr(self.repo, '_signature_knit', None) is not None:
             return self.repo._signature_knit
-        indices = []
-        self.repo._packs.ensure_loaded()
-        pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_signature_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._packs._pack_tuple(name))
+        pack_map, indices = self.repo._packs._make_index_map('.six')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._signature_write_index)
@@ -1095,15 +1086,8 @@ class GraphKnitTextStore(VersionedFileStore):
         """Create the combined index for all texts."""
         if getattr(self.repo, '_text_all_indices', None) is not None:
             return
-        indices = []
-        self.repo._packs.ensure_loaded()
-        self.repo._text_pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_text_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            self.repo._text_pack_map[indices[-1]] = (self.repo._packs._pack_tuple(name))
+        pack_map, indices = self.repo._packs._make_index_map('.tix')
+        self.repo._text_pack_map = pack_map
         if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._text_write_index)
