@@ -879,6 +879,13 @@ class TreeReference(InventoryEntry):
     def _forget_tree_state(self):
         self.reference_revision = None 
 
+    def _unchanged(self, previous_ie):
+        """See InventoryEntry._unchanged."""
+        compatible = super(TreeReference, self)._unchanged(previous_ie)
+        if self.reference_revision != previous_ie.reference_revision:
+            compatible = False
+        return compatible
+
 
 class Inventory(object):
     """Inventory of versioned files in a tree.
