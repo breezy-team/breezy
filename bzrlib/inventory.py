@@ -1378,6 +1378,7 @@ class Inventory(object):
         This does not move the working file.
         """
         file_id = osutils.safe_file_id(file_id)
+        new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
             raise BzrError("not an acceptable filename: %r" % new_name)
 
@@ -1425,7 +1426,21 @@ def make_entry(kind, name, parent_id, file_id=None):
         file_id = generate_ids.gen_file_id(name)
     else:
         file_id = osutils.safe_file_id(file_id)
+    name = ensure_normalized_name(name)
+    try:
+        factory = entry_factory[kind]
+    except KeyError:
+        raise BzrError("unknown kind %r" % kind)
+    return factory(file_id, name, parent_id)
 
+
+def ensure_normalized_name(name):
+    """Normalize name.
+
+    :raises InvalidNormalization: When name is not normalized, and cannot be
+        accessed on this platform by the normalized path.
+    :return: The NFC/NFKC normalised version of name.
+    """
     #------- This has been copied to bzrlib.dirstate.DirState.add, please
     # keep them synchronised.
     # we dont import normalized_filename directly because we want to be
@@ -1433,17 +1448,12 @@ def make_entry(kind, name, parent_id, file_id=None):
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:
         if can_access:
-            name = norm_name
+            return norm_name
         else:
             # TODO: jam 20060701 This would probably be more useful
             #       if the error was raised with the full path
             raise errors.InvalidNormalization(name)
-
-    try:
-        factory = entry_factory[kind]
-    except KeyError:
-        raise BzrError("unknown kind %r" % kind)
-    return factory(file_id, name, parent_id)
+    return name
 
 
 _NAME_RE = None

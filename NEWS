@@ -74,6 +74,9 @@ IN DEVELOPMENT
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
 
+   * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
+     new path causes bzr to be unable to access the file. (Robert Collins)
+
   API BREAKS:
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
