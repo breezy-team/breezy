@@ -123,20 +123,32 @@ The last step is to update the packaging. The first part of this is changing
 any files to reflect changes in the upstream build, for instance updating
 ``debian/rules``, or ``debian/install``. The last part is updating any
 patches that have against the upstream code to work against the latest
-version. This is currently quite troublesome, as you need an unpacked source
-to apply them against. The easiest way to do this is to use the ``--export``
-option of ``builddeb`` to get the unpacked source::
+version. To make this easier you can use the ``bd-do`` command. This runs
+the specified command in an exported directory (so you have the full source
+of the package available). If the command is successful then the contents
+of ``debian/`` is copied back to your branch. If the command fails then
+nothing is done. If files are added or removed by the command that you run
+then you will have to ``bzr add`` or ``bzr rm`` them as necessary.
 
-  $ bzr builddeb --export
+For instance you can run::
 
-(the ``-w`` option might also be useful here, see the `Building the
-package`_ section for more details on this option).
+  bzr bd-do
 
-Then you can ``cd`` to the exported directory, refresh the patches, and copy
-them back in to the branch.
+and have a shell in the unpacked source directory. You can then run any
+commands that you would like. If you then exit the shell normally the contents
+of ``debian/`` will be copied back, and be present in your branch. If you exit
+with a non-zero exit code, for instance by running ``exit 1`` then you will
+abort any changes, and they will not show up in your branch.
 
-This is a tedious operation, and one that I hope to make easier with support
-in the plugin in a later version.
+You can also run any command by passing it as the first argument to the
+``bd-do`` command. For instance if you use ``dpatch`` in your package the
+following may be useful::
+
+  bzr bd-do "dpatch-edit-patch 01-fix-build"
+
+Note that only the first argument is used, so the command had to be quoted.
+The command is run through the shell, so you can execute multiple commands
+in one step by separating them with ``&&`` or ``;``.
 
 .. vim: set ft=rst tw=76 :
 

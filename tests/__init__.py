@@ -27,7 +27,12 @@ import doctest
 import os
 from unittest import TestSuite
 
-from bzrlib.tests import TestUtil, adapt_modules
+from debian_bundle.changelog import Version, Changelog
+
+from bzrlib.tests import TestUtil, adapt_modules, TestCaseWithTransport
+
+import blackbox
+
 
 def make_new_upstream_dir(dir):
   def _make_upstream_dir():
@@ -133,6 +138,7 @@ def test_suite():
     testmod_names = [
             'test_builder',
             'test_config',
+            'test_hooks',
             'test_import_dsc',
             'test_repack_tarball_extra',
             'test_util',
@@ -153,5 +159,77 @@ def test_suite():
     adapt_modules(['%s.test_repack_tarball' % __name__],
                   RepackTarballAdaptor(), loader, suite)
 
+    packages_to_test = [
+             blackbox,
+             ]
+
+    for package in packages_to_test:
+      suite.addTest(package.test_suite())
+
     return suite
+
+class BuilddebTestCase(TestCaseWithTransport):
+
+  package_name = 'test'
+  package_version = Version('0.1-1')
+  upstream_version = property(lambda self: \
+                              self.package_version.upstream_version)
+
+  def make_changelog(self, version=None):
+    if version is None:
+      version = self.package_version
+    c = Changelog()
+    c.new_block()
+    c.version = Version(version)
+    c.package = self.package_name
+    c.distributions = 'unstable'
+    c.urgency = 'low'
+    c.author = 'James Westby <jw+debian@jameswestby.net>'
+    c.date = 'The,  3 Aug 2006 19:16:22 +0100'
+    c.add_change('')
+    c.add_change('  *  test build')
+    c.add_change('')
+    return c
+
+  def write_changelog(self, changelog, filename):
+    f = open(filename, 'w')
+    changelog.write_to_open_file(f)
+    f.close()
+
+  def check_tarball_contents(self, tarball, expected, basedir=None,
+                             skip_basedir=False, mode=None):
+    """Test that the tarball has certain contents.
+
+    Test that the tarball has exactly expected contents. The basedir
+    is checked for and prepended if it is not None. The mode is the mode
+    used in tarfile.open defaults to r:gz. If skip_basedir is True and
+    basedir is not None then the basedir wont be tested for itself.
+    """
+    if basedir is None:
+      real_expected = expected[:]
+    else:
+      if skip_basedir:
+        real_expected = []
+      else:
+        real_expected = [basedir]
+      for item in expected:
+        real_expected.append(os.path.join(basedir, item))
+    extras = []
+    tar = tarfile.open(tarball, 'r:gz')
+    try:
+      for tarinfo in tar:
+        if tarinfo.name in real_expected:
+          index = real_expected.index(tarinfo.name)
+          del real_expected[index:index+1]
+        else:
+            extras.append(tarinfo.name)
+
+      if len(real_expected) > 0:
+        self.fail("Files not found in %s: %s" % (tarball,
+                                                 ", ".join(real_expected)))
+      if len(extras) > 0:
+        self.fail("Files not expected to be found in %s: %s" % (tarball,
+                                                 ", ".join(extras)))
+    finally:
+      tar.close()
 

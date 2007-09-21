@@ -1,5 +1,5 @@
-#    test_version.py -- Testsuite for builddeb version
-#    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
+#    hooks.py -- Hook support for builddeb.
+#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -18,15 +18,23 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import version
+import subprocess
 
-import bzrlib
-from bzrlib.tests import TestCase, KnownFailure
+from bzrlib.trace import info
 
-class VersionTests(TestCase):
+from errors import HookFailedError
 
-  def test_version_matches(self):
-    """An abused test case to warn when the version doesn't match bzrlib."""
-    if version.version_info != bzrlib.version_info:
-      raise KnownFailure("builddeb version doesn't match bzrlib version")
+
+def run_hook(hook_name, config, wd=None):
+  hook = config.get_hook(hook_name)
+  if hook is None:
+    return
+  info("Running %s as %s hook" % (hook, hook_name))
+  kwargs = {}
+  if wd is not None:
+    kwargs['cwd'] = wd
+  proc = subprocess.Popen(hook, shell=True, **kwargs)
+  proc.wait()
+  if proc.returncode != 0:
+    raise HookFailedError(hook_name)
 

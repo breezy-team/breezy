@@ -28,18 +28,6 @@ class DebianError(BzrError):
     BzrError.__init__(self)
     self.message = message
 
-class ChangedError(DebianError):
-  _fmt = ("There are modified files in the working tree. Either commit the "
-         "changes, use --working to build the working tree, or "
-         "--ignore-changes to override this and build the branch without "
-         "the changes in the working tree. Use bzr status to see the changes. "
-         "To disable this check and always build the working tree see the "
-         "documentation of the working-tree configuration option in the README. "
-         )
-
-  def __init__(self):
-    DebianError.__init__(self, None)
-
 class NoSourceDirError(DebianError):
   _fmt = """There is no existing source directory to use. Use --export-only or 
   --dont-purge to get one that can be used"""
@@ -79,4 +67,11 @@ class ImportError(DebianError):
   def __init__(self, reason):
     BzrError.__init__(self)
     self.reason = reason
+
+class HookFailedError(BzrError):
+  _fmt = """The %(hook_name)s hook failed."""
+
+  def __init__(self, hook_name):
+    BzrError.__init__(self)
+    self.hook_name = hook_name
 

@@ -59,10 +59,12 @@ These sections are
   * `Configuration Files`_
   * `Building a package`_
   * `Upstream tarballs`_
+  * `Using hooks`_
 
 .. _Configuration Files: configuration.html
 .. _Building a package: building.html 
 .. _Upstream tarballs: upstream_tarballs.html
+.. _Using hooks: hooks.html
 
 Appendices
 

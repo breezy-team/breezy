@@ -23,6 +23,7 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import subprocess
 
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
@@ -37,11 +38,12 @@ from builder import (DebBuild,
                      DebNativeBuild,
                      DebSplitBuild,
                      DebMergeExportUpstreamBuild,
+                     DebExportUpstreamBuild,
                      )
 from config import DebBuildConfig
-from errors import (ChangedError,
-                    StopBuild,
+from errors import (StopBuild,
                     )
+from hooks import run_hook
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
 from version import version_info
@@ -76,6 +78,9 @@ default_conf = os.path.join(builddeb_dir, 'default.conf')
 global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 
+default_build_dir = '../build-area'
+default_orig_dir = '../tarballs'
+
 
 class cmd_builddeb(Command):
   """Builds a Debian package from a branch.
@@ -83,9 +88,9 @@ class cmd_builddeb(Command):
   If BRANCH is specified it is assumed that the branch you wish to build is
   located there. If it is not specified then the current directory is used.
 
-  By default the commited modifications of the branch are used to build
-  the package. If you wish to use the woking tree to build the package use
-  --working-tree.
+  By default the working tree is used to build. If you wish to build the
+  last committed revision use --revision -1. You can specify any other
+  revision using the --revision option.
 
   If you only wish to export the package, and not build it (especially useful
   for merge mode), use --export-only.
@@ -102,10 +107,6 @@ class cmd_builddeb(Command):
   used for the build directory. --result-dir will have problems if you use a
   build command that places the results in a different directory.
 
-  When not using --working-tree and there uncommited changes or unknown files 
-  in the working tree the build will not proceed. Use --ignore-changes to 
-  override this and build ignoring all changes in the working tree.
-  
   The --reuse option will be useful if you are in merge mode, and the upstream
   tarball is very large. It attempts to reuse a build directory from an earlier
   build. It will fail if one doesn't exist, but you can create one by using 
@@ -114,8 +115,7 @@ class cmd_builddeb(Command):
   --quick allows you to define a quick-builder in your configuration files, 
   which will be used when this option is passed. It defaults to 'fakeroot 
   debian/rules binary'. It is overriden if --builder is passed. Using this
-  and --reuse allows for fast rebuilds. If --working-tree is used as well 
-  then changes do not need to be commited. 
+  and --reuse allows for fast rebuilds. 
 
   --source allows you to build a source package without having to
   specify a builder to do so with --builder. It uses the source-builder
@@ -124,16 +124,14 @@ class cmd_builddeb(Command):
   used.
 
   """
-  working_tree_opt = Option('working-tree', help="Use the working tree",
+  working_tree_opt = Option('working-tree', help="This option has no effect",
                             short_name='w')
   export_only_opt = Option('export-only', help="Export only, don't build",
                            short_name='e')
   use_existing_opt = Option('use-existing',
                             help="Use an existing build directory")
   ignore_changes_opt = Option('ignore-changes',
-      help="Ignore any changes that are in the working tree when building the"
-         +" branch. You may also want --working to use these uncommited "
-         + "changes")
+      help="This option has no effect")
   ignore_unknowns_opt = Option('ignore-unknowns',
       help="Ignore any unknown files, but still fail if there are any changes"
          +", the default is to fail if there are unknowns as well.")
@@ -153,7 +151,7 @@ class cmd_builddeb(Command):
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt, source_opt]
+      export_upstream_revision_opt, source_opt, 'revision']
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
@@ -161,7 +159,7 @@ class cmd_builddeb(Command):
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
           export_upstream=None, export_upstream_revision=None,
-          source=False):
+          source=False, revision=None):
 
     goto_branch(branch)
 
@@ -180,8 +178,6 @@ class cmd_builddeb(Command):
 
     if merge:
       info("Running in merge mode")
-      if export_upstream is None:
-        export_upstream = config.export_upstream
     else:
       if not native:
         native = config.native
@@ -215,33 +211,39 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
-    if not working_tree:
-      working_tree = config.working_tree
-
-    if not working_tree:
-      b = tree.branch
-      rev_id = b.last_revision()
-      info("Building branch from revision %s", rev_id)
-      t = b.repository.revision_tree(rev_id)
-      if not ignore_changes:
-        changes = tree.changes_from(t)
-        if changes.has_changed():
-          raise ChangedError
-    else:
+    if revision is None:
       info("Building using working tree")
       t = tree
+      working_tree = True
+    else:
+      if len(revision) != 1:
+        raise BzrCommandError('bzr builddeb --revision takes exactly one '
+                              'revision specifier.')
+      b = tree.branch
+      rev = revision[0].in_history(b)
+      info("Building branch from revision %s", rev.rev_id)
+      t = b.repository.revision_tree(rev.rev_id)
+      working_tree = False
 
     (changelog, larstiq) = find_changelog(t, merge)
+
+    config.set_version(changelog.version)
+
+    if export_upstream is None:
+      export_upstream = config.export_upstream
+
+    if export_upstream_revision is None:
+      export_upstream_revision = config.export_upstream_revision
 
     if build_dir is None:
       build_dir = config.build_dir
       if build_dir is None:
-        build_dir = '../build-area'
+        build_dir = default_build_dir
 
     if orig_dir is None:
       orig_dir = config.orig_dir
       if orig_dir is None:
-        orig_dir = '../tarballs'
+        orig_dir = default_orig_dir
     
     properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
 
@@ -261,9 +263,20 @@ class cmd_builddeb(Command):
     elif split:
       build = DebSplitBuild(properties, t, _is_working_tree=working_tree)
     else:
-      build = DebBuild(properties, t, _is_working_tree=working_tree)
+      if export_upstream is None:
+        build = DebBuild(properties, t, _is_working_tree=working_tree)
+      else:
+        prepull_upstream = config.prepull_upstream
+        stop_on_no_change = config.prepull_upstream_stop
+        build = DebExportUpstreamBuild(properties, t, export_upstream,
+                                       export_upstream_revision,
+                                       prepull_upstream,
+                                       stop_on_no_change,
+                                       _is_working_tree=working_tree)
 
     build.prepare(use_existing)
+
+    run_hook('pre-export', config)
 
     try:
       build.export(use_existing)
@@ -272,7 +285,9 @@ class cmd_builddeb(Command):
       return
 
     if not export_only:
+      run_hook('pre-build', config, wd=properties.source_dir())
       build.build(builder)
+      run_hook('post-build', config, wd=properties.source_dir())
       if not dont_purge:
         build.clean()
       if result is not None:
@@ -440,6 +455,106 @@ class cmd_import_dsc(Command):
 
 
 register_command(cmd_import_dsc)
+
+
+class cmd_bd_do(Command):
+  """Run a command in an exported package, copying the result back.
+  
+  For a merge mode package the full source is not available, making some
+  operations difficult. This command allows you to run any command in an
+  exported source directory, copying the resulting debian/ directory back
+  to your branch if the command is successful.
+
+  For instance:
+
+    bzr bd-do
+
+  will run a shell in the unpacked source. Any changes you make in the
+  ``debian/`` directory will be copied back to the branch. If you exit with
+  a non-zero exit code (e.g. "exit 1"), then the changes will not be copied
+  back.
+
+  You can also specify single commands to be run, e.g.
+
+    bzr bd-do "dpatch-edit-patch 01-fix-build"
+
+  Note that only the first argument is used as the command, and so the above
+  example had to be quoted.
+  """
+
+  takes_args = ['command?']
+
+  def run(self, command=None):
+
+    config = DebBuildConfig([(local_conf, True), (global_conf, True),
+                             (default_conf, False)])
+
+    if not config.merge:
+      raise BzrCommandError("This command only works for merge mode "
+                            "packages. See /usr/share/doc/bzr-builddeb"
+                            "/user_manual/merge.html for more information.")
+
+    give_instruction = False
+    if command is None:
+      command = os.environ['SHELL']
+      give_instruction = True
+    t = WorkingTree.open_containing('.')[0]
+    (changelog, larstiq) = find_changelog(t, True)
+    build_dir = config.build_dir
+    if build_dir is None:
+      build_dir = default_build_dir
+    orig_dir = config.orig_dir
+    if orig_dir is None:
+      orig_dir = default_orig_dir
+    properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
+    export_upstream = config.export_upstream
+    export_upstream_revision = config.export_upstream_revision
+
+    if export_upstream is None:
+      build = DebMergeBuild(properties, t, _is_working_tree=True)
+    else:
+      prepull_upstream = config.prepull_upstream
+      stop_on_no_change = config.prepull_upstream_stop
+      build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
+                                          export_upstream_revision,
+                                          prepull_upstream,
+                                          stop_on_no_change,
+                                          _is_working_tree=True)
+
+    build.prepare()
+    try:
+      build.export()
+    except StopBuild, e:
+      warning('Stopping the build: %s.', e.reason)
+    info('Running "%s" in the exported directory.' % (command))
+    if give_instruction:
+      info('If you want to cancel your changes then exit with a non-zero '
+           'exit code, e.g. run "exit 1".')
+    proc = subprocess.Popen(command, shell=True,
+                            cwd=properties.source_dir())
+    proc.wait()
+    if proc.returncode != 0:
+      raise BzrCommandError('Not updating the working tree as the command '
+                            'failed.')
+    info("Copying debian/ back")
+    if larstiq:
+      destination = '.'
+    else:
+      destination = 'debian/'
+    source_debian = os.path.join(properties.source_dir(), 'debian')
+    for filename in os.listdir(source_debian):
+      proc = subprocess.Popen('cp -vapf "%s" "%s"' % (
+           os.path.join(source_debian, filename), destination),
+           shell=True)
+      proc.wait()
+      if proc.returncode != 0:
+        raise BzrCommandError('Copying back debian/ failed')
+    build.clean()
+    info('If any files were added or removed you should run "bzr add" or '
+         '"bzr rm" as appropriate.')
+
+
+register_command(cmd_bd_do)
 
 
 def test_suite():

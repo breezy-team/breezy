@@ -20,11 +20,10 @@
 
 import gzip
 import os
-import shutil
 import tarfile
 import bz2
 
-from bzrlib.errors import (NoSuchFile,
+from bzrlib.errors import (
                            FileExists,
                            BzrCommandError,
                            NotADirectory,

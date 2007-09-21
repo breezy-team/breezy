@@ -85,20 +85,20 @@ on the type of package you are building.
     the second for when you don't need an ``orig.tar.gz`` so they make no sense
     to be used together.
 
+Interaction with an upstream branch
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When the upstream source is in ``bazaar`` it is possible to have the
+``.orig.tar.gz`` created by exporting the upstream branch. To do this set
+the ``export-upstream`` option. This only works for normal and merge modes.
+
   * ``export-upstream = path``
 
     This option takes a path (remote or local) to a bzr branch that contains
     the upstream code. If this is set then the plugin will export the code
-    from that branch to create the ``.orig.tar.gz``. This option only has any
-    effect if ``merge`` is set, and causes any ``orig-dir`` setting to be
-    ignored.
-
-Interaction with an upstream branch
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-When the upstream source is in ``bazaar`` and you use the ``export-upstream``
-mode then these options control how the plugin interacts with the upstream
-branch.
+    from that branch to create the ``.orig.tar.gz``. This option only has no
+    effect if ``native`` of ``split`` is set, and causes any ``orig-dir``
+    setting to be ignored.
 
   * ``export-upstream-revision = revision``
 
@@ -151,14 +151,6 @@ situations.
     options are used. Overriden if ``--builder`` or ``--quick`` are given on
     the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
     -S``). Will only be read from the file in your home directory.
-
-Others
-^^^^^^
-
-  * ``working-tree = True``
-
-    Always build the working tree, rather than the last revision committed
-    to the branch.
 
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 

@@ -18,66 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from StringIO import StringIO
-
-from bzrlib.config import ConfigObj, IniBasedConfig #, TreeConfig
-from bzrlib import errors
+from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
-
-
-# Temporarily stolen from bzrlib until a bug gets fixed there in 0.18
-class TreeConfig(IniBasedConfig):
-    """Branch configuration data associated with its contents, not location"""
-    def __init__(self, branch):
-        self.branch = branch
-
-    def _get_parser(self, file=None):
-        if file is not None:
-            return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
-
-    def get_option(self, name, section=None, default=None):
-        self.branch.lock_read()
-        try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj = obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
-        finally:
-            self.branch.unlock()
-        return result
-
-    def set_option(self, value, name, section=None):
-        """Set a per-branch configuration option"""
-        self.branch.lock_write()
-        try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
-        finally:
-            self.branch.unlock()
 
 
 class DebBuildConfig(object):
@@ -88,7 +30,7 @@ class DebBuildConfig(object):
 
   section = 'BUILDDEB'
 
-  def __init__(self, files, branch=None):
+  def __init__(self, files, branch=None, version=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
@@ -119,23 +61,31 @@ class DebBuildConfig(object):
     userbuild
     """
     self._config_files = []
+    self.version = version
     assert(len(files) > 0)
     for input in files:
-      self._config_files.append((ConfigObj(input[0]), input[1]))
+      config = ConfigObj(input[0])
+      self._config_files.append((config, input[1]))
     if branch is not None:
       self._branch_config = TreeConfig(branch)
     else:
       self._branch_config = None
 
-  def _get_opt(self, config, key):
+  def set_version(self, version):
+    """Set the version used for substitution."""
+    self.version = version
+
+  def _get_opt(self, config, key, section=None):
     """Returns the value for key from config, of None if it is not defined in 
     the file"""
+    if section is None:
+      section = self.section
     try:
-      return config.get_value(self.section, key)
+      return config.get_value(section, key)
     except KeyError:
       return None
 
-  def _get_best_opt(self, key, trusted=False):
+  def _get_best_opt(self, key, trusted=False, section=None):
     """Returns the value for key, obeying precedence.
     
     Returns the value for the key from the first file in which it is defined,
@@ -145,6 +95,8 @@ class DebBuildConfig(object):
     marked as trusted.
     
     """
+    if section is None:
+      section = self.section
     if self._branch_config is not None:
       if not trusted:
         value = self._branch_config.get_option(key, section=self.section)
@@ -153,12 +105,15 @@ class DebBuildConfig(object):
           return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:
-        value = self._get_opt(config_file[0], key)
+        value = self._get_opt(config_file[0], key, section=section)
         if value is not None:
           mutter("Using %s for %s, taken from %s", value, key,
                  config_file[0].filename)
           return value
     return None
+
+  def get_hook(self, hook_name):
+    return self._get_best_opt(hook_name, section='HOOKS')
 
   def _get_bool(self, config, key):
     try:
@@ -215,9 +170,6 @@ class DebBuildConfig(object):
   source_builder = _opt_property('source-builder',
                           "The command to build source packages with", True)
 
-  working_tree = _bool_property('working-tree',
-                         "Always build the working tree.")
-
   native = _bool_property('native', "Build a native package")
 
   split = _bool_property('split', "Split a full source package")
@@ -230,6 +182,17 @@ class DebBuildConfig(object):
 
   prepull_upstream_stop = _bool_property('export-upstream-stop-on-trivial-pull',
                          "Stop the build if the upstream pull does nothing.")
+
+  def _get_export_upstream_revision(self):
+    rev = self._get_best_opt('export-upstream-revision')
+    if rev is not None and self.version is not None:
+      rev = rev.replace('$UPSTREAM_VERSION',
+                        str(self.version.upstream_version))
+    return rev
+
+  export_upstream_revision = property(_get_export_upstream_revision, None,
+                         None,
+                         "The revision of the upstream branch to export.")
 
 def _test():
   import doctest

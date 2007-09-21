@@ -1,4 +1,4 @@
-#    test_version.py -- Testsuite for builddeb version
+#    __init__.py -- blackbox test suite for builddeb.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
@@ -18,15 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import version
+from bzrlib.tests import TestUtil
 
-import bzrlib
-from bzrlib.tests import TestCase, KnownFailure
 
-class VersionTests(TestCase):
-
-  def test_version_matches(self):
-    """An abused test case to warn when the version doesn't match bzrlib."""
-    if version.version_info != bzrlib.version_info:
-      raise KnownFailure("builddeb version doesn't match bzrlib version")
+def test_suite():
+  testmod_names = [
+          'test_builddeb',
+          'test_do',
+          ]
+  loader = TestUtil.TestLoader()
+  suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
+                                       for i in testmod_names])
+  return suite
 
