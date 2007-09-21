@@ -377,7 +377,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_workingtree)
 
-    def retire_bzrdir(self):
+    def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
 
         This is done by renaming it to give the user some ability to recover
@@ -385,8 +385,10 @@ class BzrDir(object):
 
         This will have horrible consequences if anyone has anything locked or
         in use.
+        :param limit: number of times to retry
         """
-        for i in xrange(10000):
+        i  = 0
+        while True:
             try:
                 to_path = '.bzr.retired.%d' % i
                 self.root_transport.rename('.bzr', to_path)
@@ -394,8 +396,11 @@ class BzrDir(object):
                     % (self.root_transport.abspath('.bzr'), to_path))
                 return
             except (errors.TransportError, IOError, errors.PathError):
-                pass
-        raise errors.RetireFailed(self.root_transport.abspath('.bzr'))
+                i += 1
+                if i > limit:
+                    raise
+                else:
+                    pass
 
     def destroy_workingtree(self):
         """Destroy the working tree at this BzrDir.
@@ -580,11 +585,10 @@ class BzrDir(object):
             # Let's try with a new transport
             # FIXME: If 'transport' has a qualifier, this should
             # be applied again to the new transport *iff* the
-            # schemes used are the same. It's a bit tricky to
-            # verify, so I'll punt for now
+            # schemes used are the same. Uncomment this code
+            # once the function (and tests) exist.
             # -- vila20070212
-            #qualified_target = e.get_target_url()[:-len(relpath)]
-            #return get_transport(qualified_target)
+            #target = urlutils.copy_url_qualifiers(original, target)
             return get_transport(target)
 
         try:
