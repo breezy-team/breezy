@@ -522,7 +522,7 @@ class TestCommit(ExternalBase):
         self.assertEqual('John Doe', properties['author'])
 
     def test_partial_commit_with_renames_in_tree(self):
-        # this test illustrate bug #140419
+        # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/a', 'test'])
         t.add(['dir/', 'dir/a', 'test'])
@@ -533,8 +533,7 @@ class TestCommit(ExternalBase):
         # parent_id {dir-XXX} not in inventory
         t.rename_one('dir/a', 'a')
         self.build_tree_contents([('test', 'changes in test')])
-        # check for error
-        self.run_bzr_error(['bzr: ERROR: parent_id .+ not in inventory'],
-                           'commit test -m "partial commit"')
-        self.expectFailure('Bug #140419',
-                           self.run_bzr, 'commit test -m "partial commit"')
+        # partial commit
+        out, err = self.run_bzr('commit test -m "partial commit"')
+        self.assertEquals('', out)
+        self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
