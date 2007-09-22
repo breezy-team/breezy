@@ -59,4 +59,5 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_no_args(self):
         branch = self.make_branch('branch')
-        self.run_bzr('reconfigure', working_dir='branch')
+        self.run_bzr_error(['No target configuration specified'],
+                           'reconfigure', working_dir='branch')
