@@ -83,6 +83,9 @@ IN DEVELOPMENT
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
 
+   * Trivial fix for invoking command ``reconfigure`` without arguments.
+     (Rob Weir, #141629)
+
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
