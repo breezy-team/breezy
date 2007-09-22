@@ -2701,6 +2701,7 @@ class cmd_merge(Command):
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
+        'change',
         'revision',
         Option('force',
                help='Merge even if the destination tree has uncommitted changes.'),

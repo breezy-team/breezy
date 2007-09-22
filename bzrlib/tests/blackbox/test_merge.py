@@ -344,3 +344,39 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge -d target -r revid:rev2a branch_b')
         self.failUnlessExists('target/file1')
         self.failIfExists('target/file2')
+
+    def assertDirectoryContent(self, directory, entries, message=''):
+        """Assert whether entries (files or directories) are exist
+        in some directory. It's also check that there is no extra
+        entries.
+        """
+        ondisk = sorted(os.listdir(directory))
+        if set(ondisk) == set(entries):
+            return
+        if message:
+            message += '\n'
+        raise AssertionError(
+            '%s"%s" directory content is different:\na = %s\nb = %s\n'
+            % (message, directory, entries, ondisk))
+
+    def test_cherrypicking_merge(self):
+        # make source branch
+        source = self.make_branch_and_tree('source')
+        for f in ('a', 'b', 'c', 'd'):
+            self.build_tree(['source/'+f])
+            source.add(f)
+            source.commit('added '+f, rev_id='rev_'+f)
+        # target branch
+        target = source.bzrdir.sprout('target', 'rev_a').open_workingtree()
+        self.assertDirectoryContent('target', ['.bzr', 'a'])
+        # pick 1 revision
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_c source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c'])
+        target.revert()
+        # pick 2 revisions
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c', 'd'])
+        target.revert()
+        # pick 1 revision with option --changes
+        self.run_bzr('merge -d target -c revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])
