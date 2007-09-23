@@ -178,7 +178,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
     
-        # start by adding a file so the data for hte file exists.
+        # start by adding a file so the data knit for the file exists in
+        # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')

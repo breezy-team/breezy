@@ -298,7 +298,10 @@ class RepositoryPackCollection(object):
                 revision_index.key_count(),
                 time.time() - start_time)
         # select inventory keys
-        inv_keys = revision_keys # currently the same keyspace
+        inv_keys = revision_keys # currently the same keyspace, and note that
+        # querying for keys here could introduce a bug where an inventory item
+        # is missed, so do not change it to query separately without cross
+        # checking like the text key check below.
         inv_nodes = self._index_contents(inventory_index_map, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
@@ -313,6 +316,7 @@ class RepositoryPackCollection(object):
                 text_filter.extend(
                     [(fileid, file_revid) for file_revid in file_revids])
         else:
+            # eat the iterator to cause it to execute.
             list(inv_lines)
             text_filter = None
         if 'fetch' in debug.debug_flags:
@@ -322,6 +326,17 @@ class RepositoryPackCollection(object):
                 time.time() - start_time)
         # select text keys
         text_nodes = self._index_contents(text_index_map, text_filter)
+        # We could return the keys copied as part of the return value from
+        # _copy_nodes_graph but this doesn't work all that well with the need
+        # to get line output too, so we check separately, and as we're going to
+        # buffer everything anyway, we check beforehand, which saves reading
+        # knit data over the wire when we know there are mising records.
+        text_nodes = set(text_nodes)
+        missing_text_keys = set(text_filter) - text_nodes
+        if missing_text_keys:
+            # TODO: raise a specific error that can handle many missing keys.
+            a_missing_key = missing_text_keys.pop()
+            raise errors.RevisionNotPresent(a_missing_key[1], a_missing_key[0])
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
             text_index))
