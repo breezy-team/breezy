@@ -263,7 +263,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
     def test_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
         # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
+        # as some formats keyed off inventory data in the past.)
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.bzrdir.open_repository()
