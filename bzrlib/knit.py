@@ -100,7 +100,7 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -820,7 +820,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
-            parent_texts, None, nostore_sha)
+            parent_texts, None, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
         left_matching_blocks, nostore_sha, random_id, check_content):
@@ -828,7 +828,7 @@ class KnitVersionedFile(VersionedFile):
         self._check_add(version_id, lines, random_id, check_content)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
-            parent_texts, left_matching_blocks, nostore_sha)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
     def _check_add(self, version_id, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -846,7 +846,7 @@ class KnitVersionedFile(VersionedFile):
             self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
-             left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -913,7 +913,8 @@ class KnitVersionedFile(VersionedFile):
             store_lines = self.factory.lower_fulltext(content)
 
         access_memo = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, access_memo, parents)
+        self._index.add_versions(
+            ((version_id, options, access_memo, parents),), random_id=random_id)
         return digest, text_length, content
 
     def check(self, progress_bar=None):
@@ -1021,6 +1022,16 @@ class KnitVersionedFile(VersionedFile):
 
             text_map[version_id] = text
         return text_map, final_content
+
+    @staticmethod
+    def _apply_delta(lines, delta):
+        """Apply delta to lines."""
+        lines = list(lines)
+        offset = 0
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        return lines
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
@@ -1359,11 +1370,13 @@ class _KnitIndex(_KnitComponentFile):
         """Add a version record to the index."""
         self.add_versions(((version_id, options, index_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         lines = []
         orig_history = self._history[:]
@@ -1699,7 +1712,7 @@ class KnitGraphIndex(object):
         """Add a version record to the index."""
         return self.add_versions(((version_id, options, access_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         This function does not insert data into the Immutable GraphIndex
@@ -1709,6 +1722,8 @@ class KnitGraphIndex(object):
 
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         if not self._add_callback:
             raise errors.ReadOnlyError(self)
@@ -1743,12 +1758,13 @@ class KnitGraphIndex(object):
                         "in parentless index.")
                 node_refs = ()
             keys[key] = (value, node_refs)
-        present_nodes = self._get_entries(keys)
-        for (index, key, value, node_refs) in present_nodes:
-            if (value, node_refs) != keys[key]:
-                raise KnitCorrupt(self, "inconsistent details in add_versions"
-                    ": %s %s" % ((value, node_refs), keys[key]))
-            del keys[key]
+        if not random_id:
+            present_nodes = self._get_entries(keys)
+            for (index, key, value, node_refs) in present_nodes:
+                if (value, node_refs) != keys[key]:
+                    raise KnitCorrupt(self, "inconsistent details in add_versions"
+                        ": %s %s" % ((value, node_refs), keys[key]))
+                del keys[key]
         result = []
         if self._parents:
             for key, (value, node_refs) in keys.iteritems():
@@ -1968,22 +1984,15 @@ class _KnitData(object):
         
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        sio = StringIO()
-        data_file = GzipFile(None, mode='wb', fileobj=sio,
-            compresslevel=Z_DEFAULT_COMPRESSION)
-
-        assert isinstance(version_id, str)
-        data_file.writelines(chain(
+        bytes = (''.join(chain(
             ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id]))
-        data_file.close()
-        length= sio.tell()
-
-        sio.seek(0)
-        return length, sio
+            ["end %s\n" % version_id])))
+        assert bytes.__class__ == str
+        compressed_bytes = bytes_to_gzip(bytes)
+        return len(compressed_bytes), compressed_bytes
 
     def add_raw_records(self, sizes, raw_data):
         """Append a prepared record to the data file.
@@ -2001,10 +2010,10 @@ class _KnitData(object):
         
         Returns index data for retrieving it later, as per add_raw_records.
         """
-        size, sio = self._record_to_data(version_id, digest, lines)
-        result = self.add_raw_records([size], sio.getvalue())
+        size, bytes = self._record_to_data(version_id, digest, lines)
+        result = self.add_raw_records([size], bytes)
         if self._do_cache:
-            self._cache[version_id] = sio.getvalue()
+            self._cache[version_id] = bytes
         return result[0]
 
     def _parse_record_header(self, version_id, raw_data):

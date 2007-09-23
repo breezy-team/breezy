@@ -879,6 +879,13 @@ class TreeReference(InventoryEntry):
     def _forget_tree_state(self):
         self.reference_revision = None 
 
+    def _unchanged(self, previous_ie):
+        """See InventoryEntry._unchanged."""
+        compatible = super(TreeReference, self)._unchanged(previous_ie)
+        if self.reference_revision != previous_ie.reference_revision:
+            compatible = False
+        return compatible
+
 
 class Inventory(object):
     """Inventory of versioned files in a tree.
@@ -1004,7 +1011,8 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
+        yield_parents=False):
         """Iterate over the entries in a directory first order.
 
         This returns all entries for a directory before returning
@@ -1012,6 +1020,9 @@ class Inventory(object):
         lexicographically sorted order, and is a hybrid between
         depth-first and breadth-first.
 
+        :param yield_parents: If True, yield the parents from the root leading
+            down to specific_file_ids that have been requested. This has no
+            impact if specific_file_ids is None.
         :return: This yields (path, entry) pairs
         """
         if specific_file_ids:
@@ -1023,13 +1034,14 @@ class Inventory(object):
             if self.root is None:
                 return
             # Optimize a common case
-            if specific_file_ids is not None and len(specific_file_ids) == 1:
+            if (not yield_parents and specific_file_ids is not None and
+                len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
                 if file_id in self:
                     yield self.id2path(file_id), self[file_id]
                 return 
             from_dir = self.root
-            if (specific_file_ids is None or 
+            if (specific_file_ids is None or yield_parents or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
         elif isinstance(from_dir, basestring):
@@ -1064,7 +1076,8 @@ class Inventory(object):
                 child_relpath = cur_relpath + child_name
 
                 if (specific_file_ids is None or 
-                    child_ie.file_id in specific_file_ids):
+                    child_ie.file_id in specific_file_ids or
+                    (yield_parents and child_ie.file_id in parents)):
                     yield child_relpath, child_ie
 
                 if child_ie.kind == 'directory':
@@ -1371,6 +1384,7 @@ class Inventory(object):
         This does not move the working file.
         """
         file_id = osutils.safe_file_id(file_id)
+        new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
             raise BzrError("not an acceptable filename: %r" % new_name)
 
@@ -1418,7 +1432,21 @@ def make_entry(kind, name, parent_id, file_id=None):
         file_id = generate_ids.gen_file_id(name)
     else:
         file_id = osutils.safe_file_id(file_id)
+    name = ensure_normalized_name(name)
+    try:
+        factory = entry_factory[kind]
+    except KeyError:
+        raise BzrError("unknown kind %r" % kind)
+    return factory(file_id, name, parent_id)
 
+
+def ensure_normalized_name(name):
+    """Normalize name.
+
+    :raises InvalidNormalization: When name is not normalized, and cannot be
+        accessed on this platform by the normalized path.
+    :return: The NFC/NFKC normalised version of name.
+    """
     #------- This has been copied to bzrlib.dirstate.DirState.add, please
     # keep them synchronised.
     # we dont import normalized_filename directly because we want to be
@@ -1426,17 +1454,12 @@ def make_entry(kind, name, parent_id, file_id=None):
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:
         if can_access:
-            name = norm_name
+            return norm_name
         else:
             # TODO: jam 20060701 This would probably be more useful
             #       if the error was raised with the full path
             raise errors.InvalidNormalization(name)
-
-    try:
-        factory = entry_factory[kind]
-    except KeyError:
-        raise BzrError("unknown kind %r" % kind)
-    return factory(file_id, name, parent_id)
+    return name
 
 
 _NAME_RE = None
