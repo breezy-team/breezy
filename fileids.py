@@ -39,7 +39,7 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     if len(ret) > 150:
         ret = "%d@%s:%s;%s" % (revnum, uuid, 
                             escape_svn_path(branch),
-                            sha.new(path).hexdigest())
+                            sha.new(path.encode('utf-8')).hexdigest())
     assert isinstance(ret, str)
     return osutils.safe_file_id(ret)
 
