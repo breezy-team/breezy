@@ -411,6 +411,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         rev4 = tree1.commit('')
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
+        # TODO: change this to an assertFileGraph call to check the
+        # parent order of rev4: it should be rev2, rev3
         self.assertFileAncestry([rev1, rev2, rev3, rev4], tree1, name,
             [rev1, rev3, rev2, rev4])
 
