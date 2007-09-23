@@ -326,17 +326,22 @@ class RepositoryPackCollection(object):
                 time.time() - start_time)
         # select text keys
         text_nodes = self._index_contents(text_index_map, text_filter)
-        # We could return the keys copied as part of the return value from
-        # _copy_nodes_graph but this doesn't work all that well with the need
-        # to get line output too, so we check separately, and as we're going to
-        # buffer everything anyway, we check beforehand, which saves reading
-        # knit data over the wire when we know there are mising records.
-        text_nodes = set(text_nodes)
-        missing_text_keys = set(text_filter) - text_nodes
-        if missing_text_keys:
-            # TODO: raise a specific error that can handle many missing keys.
-            a_missing_key = missing_text_keys.pop()
-            raise errors.RevisionNotPresent(a_missing_key[1], a_missing_key[0])
+        if text_filter is not None:
+            # We could return the keys copied as part of the return value from
+            # _copy_nodes_graph but this doesn't work all that well with the
+            # need to get line output too, so we check separately, and as we're
+            # going to buffer everything anyway, we check beforehand, which
+            # saves reading knit data over the wire when we know there are
+            # mising records.
+            text_nodes = set(text_nodes)
+            present_text_keys = set(_node[1] for _node in text_nodes)
+            missing_text_keys = set(text_filter) - present_text_keys
+            if missing_text_keys:
+                # TODO: raise a specific error that can handle many missing
+                # keys.
+                a_missing_key = missing_text_keys.pop()
+                raise errors.RevisionNotPresent(a_missing_key[1],
+                    a_missing_key[0])
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
             text_index))
