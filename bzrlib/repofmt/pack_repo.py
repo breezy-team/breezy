@@ -124,7 +124,7 @@ class RepositoryPackCollection(object):
             pass
         else:
             self.repo._revision_pack_map[pack.revision_index] = (
-                pack.transport, pack.name)
+                pack.transport, pack.name + '.pack')
             self.repo._revision_all_indices.insert_index(0, pack.revision_index)
         if self.repo._inv_all_indices is not None:
             # inv 'knit' has been used : update it.
