@@ -26,7 +26,8 @@ from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile,
                            UnrelatedBranches)
 from bzrlib.trace import info
 
-__version__ = '0.1'
+version_info = (0, 1, 0)
+__version__ = '%d.%d.%d' % version_info
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
 def find_last_common_revid(revhistory1, revhistory2):
