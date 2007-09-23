@@ -19,6 +19,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from convert import load_dumpfile
@@ -57,6 +58,14 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_null(self):
+        repos_url = self.make_client('d', 'dc')
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos, NULL_REVISION)
 
     def test_fetch_complex_ids_dirs(self):
         repos_url = self.make_client('d', 'dc')

@@ -9,6 +9,11 @@ bzr-svn 0.4.4	UNRELEASED
    
    * Avoid tracebacks on "Malformed data" errors.
 
+  INTERNALS
+
+   * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
+     with bzr merge-into.
+
 bzr-svn 0.4.3	2007-09-15
  
   PERFORMANCE

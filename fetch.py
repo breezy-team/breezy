@@ -18,7 +18,7 @@
 import bzrlib
 from bzrlib import osutils, ui, urlutils
 from bzrlib.inventory import Inventory
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
 
@@ -408,6 +408,8 @@ class InterFromSvnRepository(InterRepository):
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
+        if revision_id == NULL_REVISION:
+            return
         # Dictionary with paths as keys, revnums as values
 
         # Loop over all the revnums until revision_id
