@@ -32,6 +32,9 @@ IN DEVELOPMENT
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
 
+   * Commit no longer checks for new text keys during insertion when the
+     revision id was deterministically unique. (Robert Collins)
+
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
      changed to determine if the tree is unchanged rather than recalculating
@@ -50,6 +53,9 @@ IN DEVELOPMENT
 
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
+
+   * Show encodings, locale and list of plugins in the traceback message.
+     (Martin Pool, #63894)
 
   BUG FIXES:
 
@@ -76,6 +82,9 @@ IN DEVELOPMENT
 
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
+
+   * Trivial fix for invoking command ``reconfigure`` without arguments.
+     (Rob Weir, #141629)
 
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)

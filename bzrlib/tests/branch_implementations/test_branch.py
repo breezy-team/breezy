@@ -278,7 +278,7 @@ class TestBranch(TestCaseWithBranch):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         #FIXME: clone should work to urls,

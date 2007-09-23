@@ -815,7 +815,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
-            parent_texts, None, nostore_sha)
+            parent_texts, None, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
         left_matching_blocks, nostore_sha, random_id, check_content):
@@ -823,7 +823,7 @@ class KnitVersionedFile(VersionedFile):
         self._check_add(version_id, lines, random_id, check_content)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
-            parent_texts, left_matching_blocks, nostore_sha)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
     def _check_add(self, version_id, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -841,7 +841,7 @@ class KnitVersionedFile(VersionedFile):
             self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
-             left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -908,7 +908,8 @@ class KnitVersionedFile(VersionedFile):
             store_lines = self.factory.lower_fulltext(content)
 
         access_memo = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, access_memo, parents)
+        self._index.add_versions(
+            ((version_id, options, access_memo, parents),), random_id=random_id)
         return digest, text_length, content
 
     def check(self, progress_bar=None):
@@ -1361,11 +1362,13 @@ class _KnitIndex(_KnitComponentFile):
         """Add a version record to the index."""
         self.add_versions(((version_id, options, index_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         lines = []
         orig_history = self._history[:]
@@ -1707,7 +1710,7 @@ class KnitGraphIndex(object):
         """Add a version record to the index."""
         return self.add_versions(((version_id, options, access_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         This function does not insert data into the Immutable GraphIndex
@@ -1717,6 +1720,8 @@ class KnitGraphIndex(object):
 
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         if not self._add_callback:
             raise errors.ReadOnlyError(self)
@@ -1751,12 +1756,13 @@ class KnitGraphIndex(object):
                         "in parentless index.")
                 node_refs = ()
             keys[key] = (value, node_refs)
-        present_nodes = self._get_entries(keys)
-        for (index, key, value, node_refs) in present_nodes:
-            if (value, node_refs) != keys[key]:
-                raise KnitCorrupt(self, "inconsistent details in add_versions"
-                    ": %s %s" % ((value, node_refs), keys[key]))
-            del keys[key]
+        if not random_id:
+            present_nodes = self._get_entries(keys)
+            for (index, key, value, node_refs) in present_nodes:
+                if (value, node_refs) != keys[key]:
+                    raise KnitCorrupt(self, "inconsistent details in add_versions"
+                        ": %s %s" % ((value, node_refs), keys[key]))
+                del keys[key]
         result = []
         if self._parents:
             for key, (value, node_refs) in keys.iteritems():

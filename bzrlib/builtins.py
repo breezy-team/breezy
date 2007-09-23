@@ -4185,7 +4185,7 @@ class cmd_reconfigure(Command):
     def run(self, location=None, target_type=None, bind_to=None, force=False):
         directory = bzrdir.BzrDir.open(location)
         if target_type is None:
-            raise BzrCommandError('No target configuration specified')
+            raise errors.BzrCommandError('No target configuration specified')
         elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
         elif target_type == 'tree':
