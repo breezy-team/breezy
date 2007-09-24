@@ -104,6 +104,7 @@ from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
+    sha_string,
     sha_strings,
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
@@ -849,17 +850,12 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
-        #  461    0   6546.0390     43.9100   bzrlib.knit:489(_add)
-        # +400    0    889.4890    418.9790   +bzrlib.knit:192(lower_fulltext)
-        # +461    0   1364.8070    108.8030   +bzrlib.knit:996(add_record)
-        # +461    0    193.3940     41.5720   +bzrlib.knit:898(add_version)
-        # +461    0    134.0590     18.3810   +bzrlib.osutils:361(sha_strings)
-        # +461    0     36.3420     15.4540   +bzrlib.knit:146(make)
-        # +1383   0      8.0370      8.0370   +<len>
-        # +61     0     13.5770      7.9190   +bzrlib.knit:199(lower_line_delta)
-        # +61     0    963.3470      7.8740   +bzrlib.knit:427(_get_content)
-        # +61     0    973.9950      5.2950   +bzrlib.knit:136(line_delta)
-        # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
+        # first thing, if the content is something we don't need to store, find
+        # that out.
+        line_bytes = ''.join(lines)
+        digest = sha_string(line_bytes)
+        if nostore_sha == digest:
+            raise errors.ExistingContent
 
         present_parents = []
         if parent_texts is None:
@@ -874,10 +870,7 @@ class KnitVersionedFile(VersionedFile):
              present_parents[0] != parents[0])):
             delta = False
 
-        digest = sha_strings(lines)
-        if nostore_sha == digest:
-            raise errors.ExistingContent
-        text_length = sum(map(len, lines))
+        text_length = len(line_bytes)
         options = []
         if lines:
             if lines[-1][-1] != '\n':
@@ -903,13 +896,20 @@ class KnitVersionedFile(VersionedFile):
         if delta:
             options.append('line-delta')
             store_lines = self.factory.lower_line_delta(delta_hunks)
+            size, bytes = self._data._record_to_data(version_id, digest,
+                store_lines)
         else:
             options.append('fulltext')
+            # get mixed annotation + content and feed it into the
+            # serialiser.
             store_lines = self.factory.lower_fulltext(content)
+            size, bytes = self._data._record_to_data(version_id, digest,
+                store_lines)
 
-        access_memo = self._data.add_record(version_id, digest, store_lines)
+        access_memo = self._data.add_raw_records([size], bytes)[0]
         self._index.add_versions(
-            ((version_id, options, access_memo, parents),), random_id=random_id)
+            ((version_id, options, access_memo, parents),),
+            random_id=random_id)
         return digest, text_length, content
 
     def check(self, progress_bar=None):
@@ -2003,17 +2003,6 @@ class _KnitData(object):
         """
         return self._access.add_raw_records(sizes, raw_data)
         
-    def add_record(self, version_id, digest, lines):
-        """Write new text record to disk. 
-        
-        Returns index data for retrieving it later, as per add_raw_records.
-        """
-        size, bytes = self._record_to_data(version_id, digest, lines)
-        result = self.add_raw_records([size], bytes)
-        if self._do_cache:
-            self._cache[version_id] = bytes
-        return result[0]
-
     def _parse_record_header(self, version_id, raw_data):
         """Parse a record header for consistency.
 
