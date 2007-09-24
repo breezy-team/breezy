@@ -1430,7 +1430,7 @@ class cmd_diff(Command):
                help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
-               help='Set prefixes to added to old and new filenames, as '
+               help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
         'change',
