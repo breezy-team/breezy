@@ -91,6 +91,10 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+   * ``KnitVersionedFile.add*`` will no longer cache added records even when
+     enable_cache() has been called - the caching feature is now exclusively for
+     reading existing data. (Robert Collins)
+
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
