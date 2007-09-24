@@ -43,7 +43,7 @@ Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
 At the moment, only `bzr svn-push` can be used to push new branches into 
 Subversion. 
 
-More information can be found in the bug report at 
+More information can be found in the bug report at:
 https://bugs.launchpad.net/bzr-svn/+bug/127945.
 
 ==============================================
@@ -53,7 +53,7 @@ There is no way around this at the moment, because Bazaar has to import all
 the history from the Subversion branch as it doesn't support so-called 
 history horizons yet. 
 
-For more information about history horizons can be found at:
+More information about history horizons can be found at:
 http://bazaar-vcs.org/HistoryHorizon
 
 =====================================================

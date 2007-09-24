@@ -172,6 +172,18 @@ class ListScheme(TestCase):
         self.assertFalse(scheme.is_branch("blie/trunk/bloe/bla"))
         self.assertFalse(scheme.is_branch("bla"))
 
+    def test_is_branch_parent_root_root(self):
+        self.assertFalse(ListBranchingScheme([""]).is_branch_parent(""))
+
+    def test_is_branch_parent_root(self):
+        self.assertTrue(ListBranchingScheme(["trunk/*"]).is_branch_parent("trunk"))
+
+    def test_is_branch_parent_other(self):
+        self.assertFalse(ListBranchingScheme(["trunk/*"]).is_branch_parent("trunk/foo"))
+
+    def test_is_tag_parent_other(self):
+        self.assertFalse(ListBranchingScheme(["trunk"]).is_tag_parent("trunk/foo"))
+
     def test_is_branch_slashsub(self):
         self.assertTrue(self.scheme.is_branch("/foo"))
 
