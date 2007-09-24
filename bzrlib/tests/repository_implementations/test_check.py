@@ -43,7 +43,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithRepository):
         
         It will contain one revision, 'revision-id'.  The knit index will claim
         that it has one parent, 'incorrect-parent', but the revision text will
-        claim it has no parents.`
+        claim it has no parents.
 
         Note: only the *cache* of the knit index is corrupted.  Thus the
         corruption will only last while the repository is locked.  For this
@@ -95,4 +95,20 @@ class TestFindInconsistentRevisionParents(TestCaseWithRepository):
         """
         repo = self.make_repository('empty-repo')
         repo._check_for_inconsistent_revision_parents()  # nothing happens
+
+    def test_check_reports_bad_ancestor(self):
+        repo = self.make_repo_with_extra_ghost_index()
+        # XXX: check requires a non-empty revision IDs list, but it ignores the
+        # contents of it!
+        check_object = repo.check(['ignored'])
+        check_object.report_results(verbose=False)
+        log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(
+            log, '1 revisions have incorrect parents in the revision index')
+        check_object.report_results(verbose=True)
+        log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(
+            log,
+            "revision-id has wrong parents in index: "
+            r"\['incorrect-parent'\] should be \[\]")
 

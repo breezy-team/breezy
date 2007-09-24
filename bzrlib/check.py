@@ -58,10 +58,12 @@ class Check(object):
         self.repository.lock_read()
         self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            self.progress.update('retrieving inventory', 0, 0)
+            self.progress.update('retrieving inventory', 0, 2)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
             self.inventory_weave = self.repository.get_inventory_weave()
+            self.progress.update('checking revision graph', 1)
+            self.check_revision_graph()
             self.plan_revisions()
             revno = 0
             self.check_weaves()
@@ -74,6 +76,14 @@ class Check(object):
         finally:
             self.progress.finished()
             self.repository.unlock()
+
+    def check_revision_graph(self):
+        if getattr(self.repository, '_find_inconsistent_revision_parents',
+                None) is None:
+            self.revs_with_bad_parents_in_index = None
+            return
+        bad_revisions = self.repository._find_inconsistent_revision_parents()
+        self.revs_with_bad_parents_in_index = list(bad_revisions)
 
     def plan_revisions(self):
         repository = self.repository
@@ -113,6 +123,16 @@ class Check(object):
                     note('      %s should be in the ancestry for:', link)
                     for linker in linkers:
                         note('       * %s', linker)
+        if self.revs_with_bad_parents_in_index:
+            note('%6d revisions have incorrect parents in the revision index',
+                 len(self.revs_with_bad_parents_in_index))
+            if verbose:
+                for item in self.revs_with_bad_parents_in_index:
+                    revision_id, index_parents, actual_parents = item
+                    note(
+                        '       %s has wrong parents in index: '
+                        '%r should be %r',
+                        revision_id, index_parents, actual_parents)
 
     def check_one_rev(self, rev_id):
         """Check one revision.
