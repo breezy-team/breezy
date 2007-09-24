@@ -9,6 +9,11 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+  CHANGES:
+  
+    * ``bzr`` now returns exit code 4 if an internal error occurred, and 
+      3 if a normal error occurred.  (Martin Pool)
+
   FEATURES:
 
    * New ``reconfigure`` command (Aaron Bentley)

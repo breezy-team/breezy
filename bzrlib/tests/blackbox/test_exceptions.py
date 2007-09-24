@@ -22,6 +22,7 @@ import sys
 
 from bzrlib import (
     bzrdir,
+    errors,
     repository,
     trace,
     )
@@ -44,6 +45,16 @@ class TestExceptionReporting(TestCase):
             r'bzr: ERROR: exceptions\.AssertionError: failed\n')
         self.assertContainsRe(err,
             r'please send this report to')
+
+    def test_exception_exitcode(self):
+        # we must use a subprocess, because the normal in-memory mechanism
+        # allows errors to propagate up through the test suite
+        self.run_bzr_subprocess(['assert-fail'],
+            retcode=errors.EXIT_INTERNAL_ERROR)
+
+
+    # TODO: assert-fail doesn't need to always be present; we could just
+    # register (and unregister) it from tests that want to touch it.
     
 
 class TestDeprecationWarning(TestCaseInTempDir):
