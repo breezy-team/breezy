@@ -14,7 +14,7 @@ bzr-svn 0.4.4	UNRELEASED
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
      with bzr merge-into.
 
-   * Implement ListBranchingScheme.is_branch_parent().
+   * Implement ListBranchingScheme.is_branch_parent(). (#144357)
 
   BUG FIXES
 
