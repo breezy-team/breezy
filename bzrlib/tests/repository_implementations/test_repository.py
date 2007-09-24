@@ -407,7 +407,14 @@ class TestRepository(TestCaseWithRepository):
         """
         repo = self.make_repository('.')
         # This should work, not raise NotImplementedError:
-        repo.revision_graph_can_have_wrong_parents()
+        result = repo.revision_graph_can_have_wrong_parents()
+        if result:
+            # If true, then this repo must also implement
+            # _find_inconsistent_revision_parents and
+            # _check_for_inconsistent_revision_parents.  So calling these
+            # should also not raise NotImplementedError.
+            list(repo._find_inconsistent_revision_parents())
+            repo._check_for_inconsistent_revision_parents()
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
