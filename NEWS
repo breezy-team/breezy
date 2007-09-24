@@ -25,7 +25,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * New ``reconfigure`` command (Aaron Bentley)
+   * New ``reconfigure`` command. (Aaron Bentley)
+
+   * New ``revert --forget-merges`` command, which removes the record of a pending 
+     merge without affecting the working tree contents.  (Martin Pool)
 
   PERFORMANCE:
 

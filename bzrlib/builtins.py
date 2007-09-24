@@ -3048,19 +3048,24 @@ class cmd_revert(Command):
 
     _see_also = ['cat', 'export']
     takes_options = [
-            'revision',
-            Option('no-backup', "Do not save backups of reverted files."),
-            ]
+        'revision',
+        Option('no-backup', "Do not save backups of reverted files."),
+        Option('forget-merges',
+               'Remove pending merge marker, without changing any files.'),
+        ]
     takes_args = ['file*']
 
-    def run(self, revision=None, no_backup=False, file_list=None):
-        if file_list is not None:
-            if len(file_list) == 0:
-                raise errors.BzrCommandError("No files specified")
-        
+    def run(self, revision=None, no_backup=False, file_list=None,
+            forget_merges=None):
         tree, file_list = tree_files(file_list)
+        if forget_merges:
+            tree.set_parent_ids(tree.get_parent_ids()[:1])
+        else:
+            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+
+    @staticmethod
+    def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         if revision is None:
-            # FIXME should be tree.last_revision
             rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
@@ -3068,7 +3073,7 @@ class cmd_revert(Command):
             rev_id = revision[0].in_history(tree.branch).rev_id
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            tree.revert(file_list, 
+            tree.revert(file_list,
                         tree.branch.repository.revision_tree(rev_id),
                         not no_backup, pb, report_changes=True)
         finally:
