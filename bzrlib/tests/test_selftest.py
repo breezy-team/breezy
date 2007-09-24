@@ -564,8 +564,8 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
@@ -579,14 +579,15 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         few tests should need to do that), and having a missing dir as home is
         an effective way to ensure that this is the case.
         """
-        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+        self.assertIsSameRealPath(
+            self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
             self.test_home_dir)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
         
     def test_cwd_is_TEST_ROOT(self):
-        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_dir, cwd)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
