@@ -231,6 +231,8 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if len(candidate_heads) < 2:
+            return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
                           for c in candidate_heads)
         active_searchers = dict(searchers)
