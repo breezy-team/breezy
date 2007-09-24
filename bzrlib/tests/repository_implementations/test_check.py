@@ -136,8 +136,15 @@ class TestFindBadAncestors(TestCaseWithRepository):
         self.assertEqual({'rev1c': set(['rev3'])}, result)
 
     def make_vf(self, revisions_to_add):
+        """Make a versioned file with the specified revision graph.
+
+        :param revisions_to_add: a list of (revision_id, parents) tuples.
+        """
         repo = self.make_repository('test-repo')
         repo.lock_write()
+        # Leave the repo locked until the test is over, so that changes to the
+        # cached state aren't accidentally discarded.  This is useful for
+        # intentionally corrupting a knit index.
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         self.addCleanup(repo.commit_write_group)
@@ -150,6 +157,7 @@ class TestFindBadAncestors(TestCaseWithRepository):
 
     def add_simple_revision(self, repo, revision_id, parents,
                             file_id='file'):
+        """Add a simple revision, consisting of just one file."""
         inv = inventory.Inventory(revision_id=revision_id)
         inv.root.revision = revision_id
         self.add_file(repo, inv, file_id, revision_id, parents)
@@ -190,7 +198,7 @@ class TestFindBadAncestors(TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "%s isn't a knit format" % self.repository_format)
 
-        # make a VF where:
+        # make a versioned file where:
         #  - the knit index for 'broken-revision' claims parents
         #    ['good-parent', 'bad-parent']
         #  - no unreferenced parents; we don't want to trip that case
