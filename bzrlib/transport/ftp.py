@@ -586,8 +586,7 @@ class FtpServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        # have asyncore release the channel
-        self._ftp_server.del_channel()
+        self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()
 

@@ -100,10 +100,11 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
+    sha_string,
     sha_strings,
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
@@ -534,21 +535,6 @@ class KnitVersionedFile(VersionedFile):
         return KnitVersionedFile(name, transport, factory=self.factory,
                                  delta=self.delta, create=True)
     
-    def _fix_parents(self, version_id, new_parents):
-        """Fix the parents list for version.
-        
-        This is done by appending a new version to the index
-        with identical data except for the parents list.
-        the parents list must be a superset of the current
-        list.
-        """
-        current_values = self._index._cache[version_id]
-        assert set(current_values[4]).difference(set(new_parents)) == set()
-        self._index.add_version(version_id,
-                                current_values[1],
-                                (None, current_values[2], current_values[3]),
-                                new_parents)
-
     def get_data_stream(self, required_versions):
         """Get a data stream for the specified versions.
 
@@ -835,7 +821,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
-            parent_texts, None, nostore_sha)
+            parent_texts, None, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
         left_matching_blocks, nostore_sha, random_id, check_content):
@@ -843,7 +829,7 @@ class KnitVersionedFile(VersionedFile):
         self._check_add(version_id, lines, random_id, check_content)
         self._check_versions_present(parents)
         return self._add(version_id, lines[:], parents, self.delta,
-            parent_texts, left_matching_blocks, nostore_sha)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
     def _check_add(self, version_id, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -861,7 +847,7 @@ class KnitVersionedFile(VersionedFile):
             self._check_lines_are_lines(lines)
 
     def _add(self, version_id, lines, parents, delta, parent_texts,
-             left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -869,17 +855,12 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
-        #  461    0   6546.0390     43.9100   bzrlib.knit:489(_add)
-        # +400    0    889.4890    418.9790   +bzrlib.knit:192(lower_fulltext)
-        # +461    0   1364.8070    108.8030   +bzrlib.knit:996(add_record)
-        # +461    0    193.3940     41.5720   +bzrlib.knit:898(add_version)
-        # +461    0    134.0590     18.3810   +bzrlib.osutils:361(sha_strings)
-        # +461    0     36.3420     15.4540   +bzrlib.knit:146(make)
-        # +1383   0      8.0370      8.0370   +<len>
-        # +61     0     13.5770      7.9190   +bzrlib.knit:199(lower_line_delta)
-        # +61     0    963.3470      7.8740   +bzrlib.knit:427(_get_content)
-        # +61     0    973.9950      5.2950   +bzrlib.knit:136(line_delta)
-        # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
+        # first thing, if the content is something we don't need to store, find
+        # that out.
+        line_bytes = ''.join(lines)
+        digest = sha_string(line_bytes)
+        if nostore_sha == digest:
+            raise errors.ExistingContent
 
         present_parents = []
         if parent_texts is None:
@@ -894,10 +875,7 @@ class KnitVersionedFile(VersionedFile):
              present_parents[0] != parents[0])):
             delta = False
 
-        digest = sha_strings(lines)
-        if nostore_sha == digest:
-            raise errors.ExistingContent
-        text_length = sum(map(len, lines))
+        text_length = len(line_bytes)
         options = []
         if lines:
             if lines[-1][-1] != '\n':
@@ -923,12 +901,20 @@ class KnitVersionedFile(VersionedFile):
         if delta:
             options.append('line-delta')
             store_lines = self.factory.lower_line_delta(delta_hunks)
+            size, bytes = self._data._record_to_data(version_id, digest,
+                store_lines)
         else:
             options.append('fulltext')
+            # get mixed annotation + content and feed it into the
+            # serialiser.
             store_lines = self.factory.lower_fulltext(content)
+            size, bytes = self._data._record_to_data(version_id, digest,
+                store_lines)
 
-        access_memo = self._data.add_record(version_id, digest, store_lines)
-        self._index.add_version(version_id, options, access_memo, parents)
+        access_memo = self._data.add_raw_records([size], bytes)[0]
+        self._index.add_versions(
+            ((version_id, options, access_memo, parents),),
+            random_id=random_id)
         return digest, text_length, content
 
     def check(self, progress_bar=None):
@@ -1036,6 +1022,16 @@ class KnitVersionedFile(VersionedFile):
 
             text_map[version_id] = text
         return text_map, final_content
+
+    @staticmethod
+    def _apply_delta(lines, delta):
+        """Apply delta to lines."""
+        lines = list(lines)
+        offset = 0
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        return lines
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
@@ -1374,11 +1370,13 @@ class _KnitIndex(_KnitComponentFile):
         """Add a version record to the index."""
         self.add_versions(((version_id, options, index_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         lines = []
         orig_history = self._history[:]
@@ -1714,7 +1712,7 @@ class KnitGraphIndex(object):
         """Add a version record to the index."""
         return self.add_versions(((version_id, options, access_memo, parents),))
 
-    def add_versions(self, versions):
+    def add_versions(self, versions, random_id=False):
         """Add multiple versions to the index.
         
         This function does not insert data into the Immutable GraphIndex
@@ -1724,6 +1722,8 @@ class KnitGraphIndex(object):
 
         :param versions: a list of tuples:
                          (version_id, options, pos, size, parents).
+        :param random_id: If True the ids being added were randomly generated
+            and no check for existence will be performed.
         """
         if not self._add_callback:
             raise errors.ReadOnlyError(self)
@@ -1758,12 +1758,13 @@ class KnitGraphIndex(object):
                         "in parentless index.")
                 node_refs = ()
             keys[key] = (value, node_refs)
-        present_nodes = self._get_entries(keys)
-        for (index, key, value, node_refs) in present_nodes:
-            if (value, node_refs) != keys[key]:
-                raise KnitCorrupt(self, "inconsistent details in add_versions"
-                    ": %s %s" % ((value, node_refs), keys[key]))
-            del keys[key]
+        if not random_id:
+            present_nodes = self._get_entries(keys)
+            for (index, key, value, node_refs) in present_nodes:
+                if (value, node_refs) != keys[key]:
+                    raise KnitCorrupt(self, "inconsistent details in add_versions"
+                        ": %s %s" % ((value, node_refs), keys[key]))
+                del keys[key]
         result = []
         if self._parents:
             for key, (value, node_refs) in keys.iteritems():
@@ -1983,22 +1984,15 @@ class _KnitData(object):
         
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        sio = StringIO()
-        data_file = GzipFile(None, mode='wb', fileobj=sio,
-            compresslevel=Z_DEFAULT_COMPRESSION)
-
-        assert isinstance(version_id, str)
-        data_file.writelines(chain(
+        bytes = (''.join(chain(
             ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id]))
-        data_file.close()
-        length= sio.tell()
-
-        sio.seek(0)
-        return length, sio
+            ["end %s\n" % version_id])))
+        assert bytes.__class__ == str
+        compressed_bytes = bytes_to_gzip(bytes)
+        return len(compressed_bytes), compressed_bytes
 
     def add_raw_records(self, sizes, raw_data):
         """Append a prepared record to the data file.
@@ -2011,17 +2005,6 @@ class _KnitData(object):
         """
         return self._access.add_raw_records(sizes, raw_data)
         
-    def add_record(self, version_id, digest, lines):
-        """Write new text record to disk. 
-        
-        Returns index data for retrieving it later, as per add_raw_records.
-        """
-        size, sio = self._record_to_data(version_id, digest, lines)
-        result = self.add_raw_records([size], sio.getvalue())
-        if self._do_cache:
-            self._cache[version_id] = sio.getvalue()
-        return result[0]
-
     def _parse_record_header(self, version_id, raw_data):
         """Parse a record header for consistency.
 
@@ -2201,31 +2184,13 @@ class InterKnit(InterVersionedFile):
     
             self.source_ancestry = set(self.source.get_ancestry(version_ids))
             this_versions = set(self.target._index.get_versions())
+            # XXX: For efficiency we should not look at the whole index,
+            #      we only need to consider the referenced revisions - they
+            #      must all be present, or the method must be full-text.
+            #      TODO, RBC 20070919
             needed_versions = self.source_ancestry - this_versions
-            cross_check_versions = self.source_ancestry.intersection(this_versions)
-            mismatched_versions = set()
-            for version in cross_check_versions:
-                # scan to include needed parents.
-                n1 = set(self.target.get_parents_with_ghosts(version))
-                n2 = set(self.source.get_parents_with_ghosts(version))
-                if n1 != n2:
-                    # FIXME TEST this check for cycles being introduced works
-                    # the logic is we have a cycle if in our graph we are an
-                    # ancestor of any of the n2 revisions.
-                    for parent in n2:
-                        if parent in n1:
-                            # safe
-                            continue
-                        else:
-                            parent_ancestors = self.source.get_ancestry(parent)
-                            if version in parent_ancestors:
-                                raise errors.GraphCycleError([parent, version])
-                    # ensure this parent will be available later.
-                    new_parents = n2.difference(n1)
-                    needed_versions.update(new_parents.difference(this_versions))
-                    mismatched_versions.add(version)
     
-            if not needed_versions and not mismatched_versions:
+            if not needed_versions:
                 return 0
             full_list = topo_sort(self.source.get_graph())
     
@@ -2268,15 +2233,6 @@ class InterKnit(InterVersionedFile):
                 raw_records.append((version_id, options, parents, len(raw_data)))
                 raw_datum.append(raw_data)
             self.target._add_raw_records(raw_records, ''.join(raw_datum))
-
-            for version in mismatched_versions:
-                # FIXME RBC 20060309 is this needed?
-                n1 = set(self.target.get_parents_with_ghosts(version))
-                n2 = set(self.source.get_parents_with_ghosts(version))
-                # write a combined record to our history preserving the current 
-                # parents as first in the list
-                new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
-                self.target.fix_parents(version, new_parents)
             return count
         finally:
             pb.finished()
@@ -2317,31 +2273,8 @@ class WeaveToKnit(InterVersionedFile):
             self.source_ancestry = set(self.source.get_ancestry(version_ids))
             this_versions = set(self.target._index.get_versions())
             needed_versions = self.source_ancestry - this_versions
-            cross_check_versions = self.source_ancestry.intersection(this_versions)
-            mismatched_versions = set()
-            for version in cross_check_versions:
-                # scan to include needed parents.
-                n1 = set(self.target.get_parents_with_ghosts(version))
-                n2 = set(self.source.get_parents(version))
-                # if all of n2's parents are in n1, then its fine.
-                if n2.difference(n1):
-                    # FIXME TEST this check for cycles being introduced works
-                    # the logic is we have a cycle if in our graph we are an
-                    # ancestor of any of the n2 revisions.
-                    for parent in n2:
-                        if parent in n1:
-                            # safe
-                            continue
-                        else:
-                            parent_ancestors = self.source.get_ancestry(parent)
-                            if version in parent_ancestors:
-                                raise errors.GraphCycleError([parent, version])
-                    # ensure this parent will be available later.
-                    new_parents = n2.difference(n1)
-                    needed_versions.update(new_parents.difference(this_versions))
-                    mismatched_versions.add(version)
     
-            if not needed_versions and not mismatched_versions:
+            if not needed_versions:
                 return 0
             full_list = topo_sort(self.source.get_graph())
     
@@ -2361,15 +2294,6 @@ class WeaveToKnit(InterVersionedFile):
                 self.target.add_lines(
                     version_id, parents, self.source.get_lines(version_id))
                 count = count + 1
-
-            for version in mismatched_versions:
-                # FIXME RBC 20060309 is this needed?
-                n1 = set(self.target.get_parents_with_ghosts(version))
-                n2 = set(self.source.get_parents(version))
-                # write a combined record to our history preserving the current 
-                # parents as first in the list
-                new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
-                self.target.fix_parents(version, new_parents)
             return count
         finally:
             pb.finished()

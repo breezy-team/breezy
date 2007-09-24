@@ -164,9 +164,8 @@ class TestMerge(ExternalBase):
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
-        out = self.run_bzr('merge ../branch_a', retcode=3)
-        self.assertEquals(out,
-                ('','bzr: ERROR: Working tree has uncommitted changes.\n'))
+        self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
+                           'merge ../branch_a')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')

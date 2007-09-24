@@ -132,7 +132,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -947,12 +946,7 @@ class WorkingTree4(WorkingTree3):
             if not all_versioned:
                 raise errors.PathsNotVersionedError(paths)
         # -- remove redundancy in supplied paths to prevent over-scanning --
-        search_paths = set()
-        for path in paths:
-            other_paths = paths.difference(set([path]))
-            if not osutils.is_inside_any(other_paths, path):
-                # this is a top level path, we must check it.
-                search_paths.add(path)
+        search_paths = osutils.minimum_path_selection(paths)
         # sketch: 
         # for all search_indexs in each path at or under each element of
         # search_paths, if the detail is relocated: add the id, and add the
