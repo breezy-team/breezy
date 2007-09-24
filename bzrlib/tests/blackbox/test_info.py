@@ -1131,7 +1131,7 @@ Repository:
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
             try:
-                return osutils.relpath(os.getcwd(), path)
+                return osutils.relpath(osutils.getcwd(), path)
             except errors.PathNotChild:
                 return path
 

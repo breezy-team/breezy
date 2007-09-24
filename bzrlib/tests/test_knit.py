@@ -816,6 +816,18 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(["c"], index.get_parents_with_ghosts("a"))
         self.assertEqual(["a"], index.get_parents_with_ghosts("b"))
 
+    def test_add_versions_random_id_is_accepted(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+
+        index.add_versions([
+            ("a", ["option"], (None, 0, 1), ["b"]),
+            ("a", ["opt"], (None, 1, 2), ["c"]),
+            ("b", ["option"], (None, 2, 3), ["a"])
+            ], random_id=True)
+
     def test_delay_create_and_add_versions(self):
         transport = MockTransport()
 
@@ -2307,6 +2319,10 @@ class TestGraphIndexKnit(KnitTests):
             [('new', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
+    def test_add_versions_random_id_accepted(self):
+        index = self.two_graph_index(catch_adds=True)
+        index.add_versions([], random_id=True)
+
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
@@ -2569,6 +2585,10 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
             [('new', 'no-eol,fulltext', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
+
+    def test_add_versions_random_id_accepted(self):
+        index = self.two_graph_index(catch_adds=True)
+        index.add_versions([], random_id=True)
 
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)

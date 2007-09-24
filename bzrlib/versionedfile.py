@@ -193,6 +193,7 @@ class VersionedFile(object):
         already present in file history."""
         new_version_id = osutils.safe_revision_id(new_version_id)
         old_version_id = osutils.safe_revision_id(old_version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -209,32 +210,15 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version_id, new_parents):
-        """Fix the parents list for version.
-        
-        This is done by appending a new version to the index
-        with identical data except for the parents list.
-        the parents list must be a superset of the current
-        list.
-        """
-        version_id = osutils.safe_revision_id(version_id)
-        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
-        self._check_write_ok()
-        return self._fix_parents(version_id, new_parents)
-
-    def _fix_parents(self, version_id, new_parents):
-        """Helper for fix_parents."""
-        raise NotImplementedError(self.fix_parents)
-
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
         
-        :since: 0.19
+        :since: 0.90
         """
         raise NotImplementedError(self.get_format_signature)
 
     def make_mpdiffs(self, version_ids):
-        """Create multiparent diffs for specified versions"""
+        """Create multiparent diffs for specified versions."""
         knit_versions = set()
         for version_id in version_ids:
             knit_versions.add(version_id)
@@ -258,11 +242,12 @@ class VersionedFile(object):
         return None
 
     def add_mpdiffs(self, records):
-        """Add mpdiffs to this versionedfile
+        """Add mpdiffs to this VersionedFile.
 
         Records should be iterables of version, parents, expected_sha1,
-        mpdiff.  mpdiff should be a MultiParent instance.
+        mpdiff. mpdiff should be a MultiParent instance.
         """
+        # Does this need to call self._check_write_ok()? (IanC 20070919)
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
@@ -294,7 +279,7 @@ class VersionedFile(object):
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
-        :param name: The name of the version to lookup
+        :param version_id: The name of the version to lookup
         """
         raise NotImplementedError(self.get_sha1)
 
@@ -304,7 +289,7 @@ class VersionedFile(object):
         :param version_ids: The names of the versions to lookup
         :return: a list of sha1s in order according to the version_ids
         """
-        raise NotImplementedError(self.get_sha1)
+        raise NotImplementedError(self.get_sha1s)
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
@@ -416,22 +401,13 @@ class VersionedFile(object):
         """Yield list of (version-id, line) pairs for the specified
         version.
 
-        Must raise RevisionNotPresent if any of the given versions are
+        Must raise RevisionNotPresent if the given version is
         not present in file history.
         """
         raise NotImplementedError(self.annotate_iter)
 
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
-
-    def _apply_delta(self, lines, delta):
-        """Apply delta to lines."""
-        lines = list(lines)
-        offset = 0
-        for start, end, count, delta_lines in delta:
-            lines[offset+start:offset+end] = delta_lines
-            offset = offset + (start - end) + count
-        return lines
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -441,8 +417,8 @@ class VersionedFile(object):
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history unless ignore_missing
-        is supplied when they are silently skipped.
+        are not present in the other file's history unless ignore_missing
+        is supplied in which case they are silently skipped.
         """
         self._check_write_ok()
         return InterVersionedFile.get(other, self).join(
@@ -631,7 +607,7 @@ class PlanWeaveMerge(TextMerge):
 
 
 class WeaveMerge(PlanWeaveMerge):
-    """Weave merge that takes a VersionedFile and two versions as its input"""
+    """Weave merge that takes a VersionedFile and two versions as its input."""
 
     def __init__(self, versionedfile, ver_a, ver_b, 
         a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
@@ -640,7 +616,7 @@ class WeaveMerge(PlanWeaveMerge):
 
 
 class InterVersionedFile(InterObject):
-    """This class represents operations taking place between two versionedfiles..
+    """This class represents operations taking place between two VersionedFiles.
 
     Its instances have methods like join, and contain
     references to the source and target versionedfiles these operations can be 
@@ -661,8 +637,8 @@ class InterVersionedFile(InterObject):
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history unless ignore_missing is 
-        supplied when they are silently skipped.
+        are not present in the other file's history unless ignore_missing is 
+        supplied in which case they are silently skipped.
         """
         # the default join: 
         # - if the target is empty, just add all the versions from 
