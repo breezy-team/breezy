@@ -75,6 +75,10 @@ IN DEVELOPMENT
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
 
+   * Fix failing test by comparing real paths to cover the case where the TMPDIR
+     contains a symbolic link.
+     (Vincent Ladeuil, #141382).
+
    * HttpServer and FtpServer need to be closed properly or a listening socket
      will remain opened.
      (Vincent Ladeuil, #140055)

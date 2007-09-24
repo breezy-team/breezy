@@ -128,12 +128,14 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
             test_dir = '/' + test_dir
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(test_dir + '/relative', t._remote_path('relative'))
+        self.assertIsSameRealPath(test_dir + '/relative',
+                                  t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
         root_segments = test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
-        self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
+        self.assertIsSameRealPath(root_parent + '/sibling',
+                                  t._remote_path('../sibling'))
         # /  should be illegal ?
         ### FIXME decide and then test for all transports. RBC20051208
 
