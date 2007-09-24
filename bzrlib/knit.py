@@ -2218,6 +2218,12 @@ class InterKnit(InterVersionedFile):
                 copy_queue.append((version_id, options, parents))
                 copy_set.add(version_id)
 
+            # If the source and target are mismatched w.r.t. annotations or
+            # otherwise, the data needs to be converted accordingly
+            lines_converter = self._get_lines_converter(
+                self.source.factory.annotated,
+                self.target.factory.annotated)
+
             # data suck the join:
             count = 0
             total = len(version_list)
@@ -2230,12 +2236,48 @@ class InterKnit(InterVersionedFile):
                 assert version_id == version_id2, 'logic error, inconsistent results'
                 count = count + 1
                 pb.update("Joining knit", count, total)
-                raw_records.append((version_id, options, parents, len(raw_data)))
+                if lines_converter:
+                    old_lines, digest = self.source._data._parse_record(
+                        version_id, raw_data)
+                    new_lines = lines_converter(old_lines, version_id, options)
+                    #print "knit lines: %r -> %r" % (old_lines,new_lines)
+                    size, raw_data = self.target._data._record_to_data(
+                        version_id, digest, new_lines)
+                else:
+                    size = len(raw_data)
+                raw_records.append((version_id, options, parents, size))
                 raw_datum.append(raw_data)
             self.target._add_raw_records(raw_records, ''.join(raw_datum))
             return count
         finally:
             pb.finished()
+
+    @staticmethod
+    def _get_lines_converter(source_annotated,  target_annotated):
+        if source_annotated == target_annotated:
+            return None
+        elif source_annotated:
+            return _anno_to_plain_converter
+        else:
+            return _plain_to_anno_converter
+
+
+def _anno_to_plain_converter(lines, version_id, options):
+    """Convert annotated lines to plain lines."""
+    if 'fulltext' in options:
+        return [line.split(' ', 1)[1] for line in lines]
+    else:
+        # line delta - leave 1st line alone
+        return [lines[0]] + [line.split(' ', 1)[1] for line in lines[1:]]
+
+
+def _plain_to_anno_converter(lines, version_id, options):
+    """Convert plain lines to annotated lines."""
+    if 'fulltext' in options:
+        return ['%s %s' % (version_id,line) for line in lines]
+    else:
+        # line delta - leave 1st line alone
+        return [lines[0]] + ['%s %s' % (version_id,line) for line in lines[1:]]
 
 
 InterVersionedFile.register_optimiser(InterKnit)
