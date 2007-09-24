@@ -78,8 +78,8 @@ class Check(object):
             self.repository.unlock()
 
     def check_revision_graph(self):
-        if getattr(self.repository, '_find_inconsistent_revision_parents',
-                None) is None:
+        if not self.repository.revision_graph_can_have_wrong_parents():
+            # This check is not necessary.
             self.revs_with_bad_parents_in_index = None
             return
         bad_revisions = self.repository._find_inconsistent_revision_parents()

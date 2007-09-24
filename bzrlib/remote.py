@@ -750,6 +750,11 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
+    def revision_graph_can_have_wrong_parents(self):
+        # The answer depends on the remote repo format.
+        self._ensure_real()
+        return self._real_repository.revision_graph_can_have_wrong_parents()
+
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.

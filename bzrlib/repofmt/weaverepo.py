@@ -105,6 +105,11 @@ class AllInOneRepository(Repository):
         """Returns the policy for making working trees on new branches."""
         return True
 
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
+
 
 class WeaveMetaDirRepository(MetaDirRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
@@ -120,6 +125,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
                               committer, revprops, revision_id)
         self.start_write_group()
         return result
+
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -313,7 +323,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
         return self._get_versioned_file_store('weaves', transport, control_files)
-
 
 class RepositoryFormat7(MetaDirRepositoryFormat):
     """Bzr repository 7.

@@ -400,6 +400,15 @@ class TestRepository(TestCaseWithRepository):
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
 
+    def test_implements_revision_graph_can_have_wrong_parents(self):
+        """All repositories should implement
+        revision_graph_can_have_wrong_parents, so that check and reconcile can
+        work correctly.
+        """
+        repo = self.make_repository('.')
+        # This should work, not raise NotImplementedError:
+        repo.revision_graph_can_have_wrong_parents()
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

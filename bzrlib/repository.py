@@ -1203,7 +1203,18 @@ class Repository(object):
                     revision_id.decode('ascii')
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
+    
+    def revision_graph_can_have_wrong_parents(self):
+        """Is it possible for this repository to have a revision graph with
+        incorrect parents?
 
+        If True, then this repository must also implement
+        _find_inconsistent_revision_parents so that check and reconcile can
+        check for inconsistencies before proceeding with other checks that may
+        depend on the revision index being consistent.
+        """
+        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
+        
 
 
 # remove these delegates a while after bzr 0.15

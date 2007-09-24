@@ -249,6 +249,11 @@ class KnitRepository(MetaDirRepository):
             raise errors.BzrCheckError(
                 "Revision knit has inconsistent parents.")
 
+    def revision_graph_can_have_wrong_parents(self):
+        # The revision.kndx could potentially claim a revision has a different
+        # parent to the revision text.
+        return True
+
 
 class KnitRepository3(KnitRepository):
 
