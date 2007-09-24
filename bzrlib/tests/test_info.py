@@ -97,8 +97,11 @@ class TestInfo(tests.TestCaseWithTransport):
                 bzrdir.format_registry.make_bzrdir(format).workingtree_format
             control.create_workingtree()
             tree = workingtree.WorkingTree.open('%s_co' % format)
-            self.assertEqual(expected, info.describe_format(tree.bzrdir,
-                tree.branch.repository, tree.branch, tree))
+            format_description = info.describe_format(tree.bzrdir,
+                    tree.branch.repository, tree.branch, tree)
+            self.assertEqual(expected, format_description,
+                "checkout of format called %r was described as %r" %
+                (expected, format_description))
         finally:
             control._format.workingtree_format = old_format
 
@@ -128,7 +131,10 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_describe_checkout_format(self):
         for key in bzrdir.format_registry.keys():
-            if key in ('default', 'weave'):
+            if key in ('default', 'weave', 'experimental'):
+                continue
+            if key.startswith('experimental-'):
+                # these are typically hidden or aliases for other formats
                 continue
             expected = None
             if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
