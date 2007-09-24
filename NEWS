@@ -18,6 +18,10 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Handle long file names with unicode characters correctly on python2.4 (#129334)
 
+  DOCUMENTATION
+
+   * Add simple FAQ file. (#144388)
+
 bzr-svn 0.4.3	2007-09-15
  
   PERFORMANCE
