@@ -393,6 +393,11 @@ class TestRepository(TestCaseWithRepository):
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
 
+    def test_get_graph(self):
+        """Bare-bones smoketest that all repositories implement get_graph."""
+        repo = self.make_repository('repo')
+        repo.get_graph()
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

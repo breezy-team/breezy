@@ -338,6 +338,7 @@ class RemoteRepository(object):
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
+        self._ensure_real()
         return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
