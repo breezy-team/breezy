@@ -796,10 +796,7 @@ class BundleTester(object):
         if sys.platform == 'darwin':
             from bzrlib.workingtree import WorkingTree3
             if type(self.tree1) is WorkingTree3:
-                self.knownFailure("Mac OSX doesn't preserve unicode"
-                                  " combining characters"
-                                  " and WorkingTree3 failed to detect"
-                                  " removed files")
+                self.knownFailure("Bug #141438: fails for WorkingTree3 on OSX")
 
             # On Mac the '\xe9' gets changed to 'e\u0301'
             self.assertEqual([u'.bzr', u'with Dode\u0301'],

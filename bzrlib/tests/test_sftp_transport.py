@@ -109,6 +109,12 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
 
     def test__remote_path(self):
         if sys.platform == 'darwin':
+            # This test is about sftp absolute path handling. There is already
+            # (in this test) a TODO about windows needing an absolute path
+            # without drive letter. To me, using self.test_dir is a trick to
+            # get an absolute path for comparison purposes.  That fails for OSX
+            # because the sftp server doesn't resolve the links (and it doesn't
+            # have to). --vila 20070924
             self.knownFailure('Mac OSX symlinks /tmp to /private/tmp,'
                               ' testing against self.test_dir'
                               ' is not appropriate')
