@@ -2257,7 +2257,7 @@ class cmd_commit(Command):
         return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=[],
+            unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False):
         from bzrlib.commit import (
             NullCommitReporter,
@@ -2288,6 +2288,8 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
+        if fixes is None:
+            fixes = []
         bug_property = self._get_bug_fix_properties(fixes, tree.branch)
         if bug_property:
             properties['bugs'] = bug_property
