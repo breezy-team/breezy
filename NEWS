@@ -139,6 +139,9 @@ IN DEVELOPMENT
      paths from the root down to each element of selected_file_ids are
      returned. (Robert Collins)
 
+   * Knit joining has been enhanced to support plain to annotated conversion
+     and annotated to plain conversion. (Ian Clatworthy)
+
   TESTING:
 
 
