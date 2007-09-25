@@ -88,6 +88,9 @@ IN DEVELOPMENT
      contains a symbolic link.
      (Vincent Ladeuil, #141382).
 
+   * Fix log against smart server branches that don't support tags.
+     (James Westby, #140615)
+
    * HttpServer and FtpServer need to be closed properly or a listening socket
      will remain opened.
      (Vincent Ladeuil, #140055)
