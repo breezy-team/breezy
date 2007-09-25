@@ -76,7 +76,10 @@ IN DEVELOPMENT
      paramiko.
      (Vincent Ladeuil, #59150)
 
-   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+   * Fix commit ordering in corner case. (Aaron Bentley, #94975)
+
+   * Fix long standing bug in partial commit when there are renames 
+     left in tree. (Robert Collins, #140419)
 
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
