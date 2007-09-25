@@ -472,14 +472,14 @@ class RevisionInstaller(object):
         """
         self._repository.start_write_group()
         try:
-            result = self._install_in_group()
+            result = self._install_in_write_group()
         except:
             self._repository.abort_write_group()
             raise
         self._repository.commit_write_group()
         return result
 
-    def _install_in_group(self):
+    def _install_in_write_group(self):
         current_file = None
         current_versionedfile = None
         pending_file_records = []

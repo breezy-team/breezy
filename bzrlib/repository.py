@@ -525,13 +525,6 @@ class Repository(object):
         self._revision_store._add_revision(revision, StringIO(text),
                                            self.get_transaction())
 
-    @needs_read_lock
-    def _all_possible_ids(self):
-        """Return all the possible revisions that we could find."""
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "_all_possible_ids scales with size of history.")
-        return self.get_inventory_weave().versions()
-
     def all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
@@ -543,21 +536,13 @@ class Repository(object):
             mutter_callsite(2, "all_revision_ids scales with size of history.")
         return self._all_revision_ids()
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
         These are in as much topological order as the underlying store can 
-        present: for weaves ghosts may lead to a lack of correctness until
-        the reweave updates the parents list.
+        present.
         """
-        if self._revision_store.text_store.listable():
-            return self._revision_store.all_revision_ids(self.get_transaction())
-        result = self._all_possible_ids()
-        # TODO: jam 20070210 Ensure that _all_possible_ids returns non-unicode
-        #       ids. (It should, since _revision_store's API should change to
-        #       return utf8 revision_ids)
-        return self._eliminate_revisions_not_present(result)
+        raise NotImplementedError(self._all_revision_ids)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -918,6 +903,11 @@ class Repository(object):
                                                     self.get_transaction())
 
     @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision."""
+        return self.get_revisions([revision_id])[0]
+
+    @needs_read_lock
     def get_revision_reconcile(self, revision_id):
         """'reconcile' helper routine that allows access to a revision always.
         
@@ -926,14 +916,20 @@ class Repository(object):
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
         """
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise errors.InvalidRevisionId(revision_id=revision_id,
-                                           branch=self)
-        return self.get_revisions([revision_id])[0]
+        return self._get_revisions([revision_id])[0]
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
+        """Get many revisions at once."""
+        return self._get_revisions(revision_ids)
+
+    @needs_read_lock
+    def _get_revisions(self, revision_ids):
+        """Core work logic to get many revisions without sanity checks."""
         revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
+        for rev_id in revision_ids:
+            if not rev_id or not isinstance(rev_id, basestring):
+                raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         revs = self._revision_store.get_revisions(revision_ids,
                                                   self.get_transaction())
         for rev in revs:
@@ -954,23 +950,6 @@ class Repository(object):
         self._revision_store._serializer.write_revision(rev, rev_tmp)
         rev_tmp.seek(0)
         return rev_tmp.getvalue()
-
-    @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        # TODO: jam 20070210 get_revision_reconcile should do this for us
-        revision_id = osutils.safe_revision_id(revision_id)
-        r = self.get_revision_reconcile(revision_id)
-        # weave corruption can lead to absent revision markers that should be
-        # present.
-        # the following test is reasonably cheap (it needs a single weave read)
-        # and the weave is cached in read transactions. In write transactions
-        # it is not cached but typically we only read a small number of
-        # revisions. For knits when they are introduced we will probably want
-        # to ensure that caching write transactions are in use.
-        inv = self.get_inventory_weave()
-        self._check_revision_parents(r, inv)
-        return r
 
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions):
@@ -1002,22 +981,6 @@ class Repository(object):
         """
         r = self.get_revision(revision_id)
         return list(self.get_deltas_for_revisions([r]))[0]
-
-    def _check_revision_parents(self, revision, inventory):
-        """Private to Repository and Fetch.
-        
-        This checks the parentage of revision in an inventory weave for 
-        consistency and is only applicable to inventory-weave-for-ancestry
-        using repository formats & fetchers.
-        """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
-        for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
-                # this parent must not be a ghost.
-                if not parent_id in weave_parents:
-                    # but it is a ghost
-                    raise errors.CorruptRepository(self)
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
@@ -1251,39 +1214,16 @@ class Repository(object):
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
-        
+
+        NB: This method should not be used as it accesses the entire graph all
+        at once, which is much more data than most operations should require.
+
         :param revision_id: The revision_id to get a graph from. If None, then
         the entire revision graph is returned. This is a deprecated mode of
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        revision_id = osutils.safe_revision_id(revision_id)
-        a_weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(
-                                a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
-        if revision_id is None:
-            return entire_graph
-        elif revision_id not in entire_graph:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = entire_graph[node]
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
+        raise NotImplementedError(self.get_revision_graph)
 
     @needs_read_lock
     def get_revision_graph_with_ghosts(self, revision_ids=None):
@@ -2120,7 +2060,11 @@ class InterSameDataRepository(InterRepository):
 
 
 class InterWeaveRepo(InterSameDataRepository):
-    """Optimised code paths between Weave based repositories."""
+    """Optimised code paths between Weave based repositories.
+    
+    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
+    implemented lazy inter-object optimisation.
+    """
 
     @classmethod
     def _get_repo_format_to_test(self):
@@ -2284,13 +2228,13 @@ class InterKnitRepo(InterSameDataRepository):
             assert source_ids[0] is None
             source_ids.pop(0)
         else:
-            source_ids = self.source._all_possible_ids()
+            source_ids = self.source.all_revision_ids()
         source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
-        target_ids = set(self.target._all_possible_ids())
+        target_ids = set(self.target.all_revision_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
         actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)

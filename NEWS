@@ -25,7 +25,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * New ``reconfigure`` command (Aaron Bentley)
+   * New ``reconfigure`` command. (Aaron Bentley)
+
+   * New ``revert --forget-merges`` command, which removes the record of a pending 
+     merge without affecting the working tree contents.  (Martin Pool)
 
   PERFORMANCE:
 
@@ -54,6 +57,9 @@ IN DEVELOPMENT
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
+   * New option ``-c``/``--change`` for ``merge`` command for cherrypicking 
+     changes from one revision. (Alexander Belchenko, #141368)
+
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
@@ -70,7 +76,10 @@ IN DEVELOPMENT
      paramiko.
      (Vincent Ladeuil, #59150)
 
-   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+   * Fix commit ordering in corner case. (Aaron Bentley, #94975)
+
+   * Fix long standing bug in partial commit when there are renames 
+     left in tree. (Robert Collins, #140419)
 
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
@@ -139,6 +148,9 @@ IN DEVELOPMENT
      causes the parents of a selected id to be returned recursively, so all the
      paths from the root down to each element of selected_file_ids are
      returned. (Robert Collins)
+
+   * Knit joining has been enhanced to support plain to annotated conversion
+     and annotated to plain conversion. (Ian Clatworthy)
 
   TESTING:
 
@@ -418,6 +430,10 @@ bzr 0.91rc1 2007-09-11
    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
