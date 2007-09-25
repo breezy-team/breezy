@@ -2375,7 +2375,7 @@ class InterPackRepo(InterSameDataRepository):
             revision_ids,
             )
         if pack is not None:
-            self.target._packs.save()
+            self.target._packs._save_pack_names()
             self.target._packs.add_pack_to_memory(pack)
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as

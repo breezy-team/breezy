@@ -106,10 +106,24 @@ class Pack(object):
 
 
 class RepositoryPackCollection(object):
+    """Management of packs within a repository."""
 
-    def __init__(self, repo, transport):
+    def __init__(self, repo, transport, index_transport, upload_transport,
+                 pack_transport):
+        """Create a new RepositoryPackCollection.
+
+        :param transport: Addresses the repository base directory 
+            (typically .bzr/repository/).
+        :param index_transport: Addresses the directory containing indexes.
+        :param upload_transport: Addresses the directory into which packs are written
+            while they're being created.
+        :param pack_transport: Addresses the directory of existing complete packs.
+        """
         self.repo = repo
         self.transport = transport
+        self._index_transport = index_transport
+        self._upload_transport = upload_transport
+        self._pack_transport = pack_transport
         self.packs = []
 
     def add_pack_to_memory(self, pack):
@@ -259,13 +273,13 @@ class RepositoryPackCollection(object):
                 rev_count = 'all'
             mutter('%s: create_pack: creating pack from source packs: '
                 '%s%s %s revisions wanted %s t=0',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 plain_pack_list, rev_count)
             start_time = time.time()
-        write_stream = self.repo._upload_transport.open_write_stream(random_name)
+        write_stream = self._upload_transport.open_write_stream(random_name)
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         pack_hash = md5.new()
         buffer = []
@@ -294,7 +308,7 @@ class RepositoryPackCollection(object):
             revision_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 revision_index.key_count(),
                 time.time() - start_time)
         # select inventory keys
@@ -321,7 +335,7 @@ class RepositoryPackCollection(object):
             text_filter = None
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 inv_index.key_count(),
                 time.time() - start_time)
         # select text keys
@@ -347,7 +361,7 @@ class RepositoryPackCollection(object):
             text_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 text_index.key_count(),
                 time.time() - start_time)
         # select signature keys
@@ -358,7 +372,7 @@ class RepositoryPackCollection(object):
         self._copy_nodes(signature_nodes, signature_index_map, writer, signature_index)
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 signature_index.key_count(),
                 time.time() - start_time)
         # finish the pack
@@ -374,20 +388,20 @@ class RepositoryPackCollection(object):
             text_index.key_count(),
             signature_index.key_count(),
             )):
-            self.repo._upload_transport.delete(random_name)
+            self._upload_transport.delete(random_name)
             return None
         result = Pack()
         result.name = new_name
-        result.transport = self.repo._upload_transport.clone('../packs/')
+        result.transport = self._upload_transport.clone('../packs/')
         # write indices
-        index_transport = self.repo._upload_transport.clone('../indices')
+        index_transport = self._index_transport
         rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
         revision_index_length = index_transport.put_file(rev_index_name,
             revision_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
         inventory_index_length = index_transport.put_file(inv_index_name,
@@ -395,7 +409,7 @@ class RepositoryPackCollection(object):
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
         text_index_length = index_transport.put_file(text_index_name,
@@ -403,7 +417,7 @@ class RepositoryPackCollection(object):
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote file texts index: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
         signature_index_length = index_transport.put_file(signature_index_name,
@@ -411,7 +425,7 @@ class RepositoryPackCollection(object):
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote revision signatures index: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         # add to name
         self.allocate(new_name, revision_index_length, inventory_index_length,
@@ -419,11 +433,11 @@ class RepositoryPackCollection(object):
         # rename into place. XXX: should rename each index too rather than just
         # uploading blind under the chosen name.
         write_stream.close()
-        self.repo._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
+        self._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 result.transport, result.name,
                 time.time() - start_time)
         result.revision_index = revision_index
@@ -433,7 +447,7 @@ class RepositoryPackCollection(object):
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: finished: %s%s t+%6.3fs',
-                time.ctime(), self.repo._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
         return result
 
@@ -453,7 +467,7 @@ class RepositoryPackCollection(object):
                 self._remove_pack_by_name(pack_detail[1])
         # record the newly available packs and stop advertising the old
         # packs
-        self.save()
+        self._save_pack_names()
         # move the old packs out of the way
         for revision_count, pack_details in pack_operations:
             self._obsolete_packs(pack_details)
@@ -663,6 +677,27 @@ class RepositoryPackCollection(object):
         self._names[name] = (revision_index_length, inventory_index_length,
             text_index_length, signature_index_length)
 
+    def _make_index_map(self, suffix):
+        """Return information on existing indexes.
+
+        :param suffix: Index suffix added to pack name.
+
+        :returns: (pack_map, indices) where indices is a list of GraphIndex 
+        objects, and pack_map is a mapping from those objects to the 
+        pack tuple they describe.
+        """
+        indices = []
+        pack_map = {}
+        self.ensure_loaded()
+        for name in self.names():
+            # TODO: maybe this should expose size to us  to allow
+            # sorting of the indices for better performance ?
+            index_name = name + suffix
+            new_index = GraphIndex(self._index_transport, index_name)
+            indices.append(new_index)
+            pack_map[new_index] = self._pack_tuple(name)
+        return pack_map, indices
+
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
         
@@ -698,9 +733,11 @@ class RepositoryPackCollection(object):
             pack_detail[0].rename(pack_detail[1],
                 '../obsolete_packs/' + pack_detail[1])
             basename = pack_detail[1][:-4]
-            index_transport = pack_detail[0].clone('../indices')
+            # TODO: Probably needs to know all possible indexes for this pack
+            # - or maybe list the directory and move all indexes matching this
+            # name whether we recognize it or not?
             for suffix in ('iix', 'six', 'tix', 'rix'):
-                index_transport.rename(basename + suffix,
+                self._index_transport.rename(basename + suffix,
                     '../obsolete_packs/' + basename + suffix)
 
     def pack_distribution(self, total_revisions):
@@ -719,6 +756,10 @@ class RepositoryPackCollection(object):
                 result.append(size)
         return list(reversed(result))
 
+    def _pack_tuple(self, name):
+        """Return a tuple with the transport and file name for a pack name."""
+        return self._pack_transport, name + '.pack'
+
     def _remove_pack_by_name(self, name):
         # strip .pack
         self._names.pop(name[:-5])
@@ -727,61 +768,34 @@ class RepositoryPackCollection(object):
         self._names = None
         self.packs = []
 
-    def _inv_index_map(self, pack_details):
-        """Get a map of inv index -> packs for pack_details."""
+    def _make_index_to_pack_map(self, pack_details, index_suffix):
+        """Given a list (transport,name), return a map of (index)->(transport, name)."""
         # the simplest thing for now is to create new index objects.
         # this should really reuse the existing index objects for these 
         # packs - this means making the way they are managed in the repo be 
         # more sane.
         indices = {}
         for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._inv_thunk.name_to_inv_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
+            index_name = name[:-5] + index_suffix
+            indices[GraphIndex(self._index_transport, index_name)] = \
                 (transport, name)
         return indices
+
+    def _inv_index_map(self, pack_details):
+        """Get a map of inv index -> packs for pack_details."""
+        return self._make_index_to_pack_map(pack_details, '.iix')
 
     def _revision_index_map(self, pack_details):
         """Get a map of revision index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._revision_store.name_to_revision_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.rix')
 
     def _signature_index_map(self, pack_details):
         """Get a map of signature index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo._revision_store.name_to_signature_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.six')
 
     def _text_index_map(self, pack_details):
         """Get a map of text index -> packs for pack_details."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = {}
-        for transport, name in pack_details:
-            index_name = name[:-5]
-            index_name = self.repo.weave_store.name_to_text_index_name(index_name)
-            indices[GraphIndex(transport.clone('../indices'), index_name)] = \
-                (transport, name)
-        return indices
+        return self._make_index_to_pack_map(pack_details, '.tix')
 
     def _index_contents(self, pack_map, key_filter=None):
         """Get an iterable of the index contents from a pack_map.
@@ -797,7 +811,7 @@ class RepositoryPackCollection(object):
         else:
             return all_index.iter_entries(key_filter)
 
-    def save(self):
+    def _save_pack_names(self):
         builder = GraphIndexBuilder()
         for name, sizes in self._names.iteritems():
             builder.add_node((name, ), ' '.join(str(size) for size in sizes))
@@ -807,6 +821,77 @@ class RepositoryPackCollection(object):
         # cannot add names if we're not in a 'write lock'.
         if self.repo.control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
+
+    def _start_write_group(self):
+        random_name = self.repo.control_files._lock.nonce
+        self.repo._open_pack_tuple = (self._upload_transport, random_name + '.pack')
+        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
+        self._write_stream = write_stream
+        self._open_pack_hash = md5.new()
+        def write_data(bytes, write=write_stream.write,
+                       update=self._open_pack_hash.update):
+            write(bytes)
+            update(bytes)
+        self._open_pack_writer = pack.ContainerWriter(write_data)
+        self._open_pack_writer.begin()
+        self.setup()
+        self.repo._revision_store.setup()
+        self.repo.weave_store.setup()
+        self.repo._inv_thunk.setup()
+
+    def _abort_write_group(self):
+        # FIXME: just drop the transient index.
+        self.repo._revision_store.reset()
+        self.repo.weave_store.reset()
+        self.repo._inv_thunk.reset()
+        # forget what names there are
+        self.reset()
+        self._open_pack_hash = None
+
+    def _commit_write_group(self):
+        data_inserted = (self.repo._revision_store.data_inserted() or
+            self.repo.weave_store.data_inserted() or 
+            self.repo._inv_thunk.data_inserted())
+        if data_inserted:
+            self._open_pack_writer.end()
+            new_name = self._open_pack_hash.hexdigest()
+            new_pack = Pack()
+            new_pack.name = new_name
+            new_pack.transport = self._upload_transport.clone('../packs/')
+            # To populate:
+            # new_pack.revision_index = 
+            # new_pack.inventory_index = 
+            # new_pack.text_index = 
+            # new_pack.signature_index = 
+            self.repo.weave_store.flush(new_name, new_pack)
+            self.repo._inv_thunk.flush(new_name, new_pack)
+            self.repo._revision_store.flush(new_name, new_pack)
+            self._write_stream.close()
+            self._upload_transport.rename(self.repo._open_pack_tuple[1],
+                '../packs/' + new_name + '.pack')
+            # If this fails, its a hash collision. We should:
+            # - determine if its a collision or
+            # - the same content or
+            # - the existing name is not the actual hash - e.g.
+            #   its a deliberate attack or data corruption has
+            #   occuring during the write of that file.
+            self.allocate(new_name, new_pack.revision_index_length,
+                new_pack.inventory_index_length, new_pack.text_index_length,
+                new_pack.signature_index_length)
+            self.repo._open_pack_tuple = None
+            if not self.autopack():
+                self._save_pack_names()
+        else:
+            # remove the pending upload
+            self._upload_transport.delete(self.repo._open_pack_tuple[1])
+        self.repo._revision_store.reset()
+        self.repo.weave_store.reset()
+        self.repo._inv_thunk.reset()
+        # forget what names there are - should just refresh and deal with the
+        # delta.
+        self.reset()
+        self._open_pack_hash = None
+        self._write_stream = None
 
 
 class GraphKnitRevisionStore(KnitRevisionStore):
@@ -839,13 +924,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the revision versioned file object."""
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
-        self.repo._packs.ensure_loaded()
-        pack_map, indices = self._make_rev_pack_map()
+        pack_map, indices = self.repo._packs._make_index_map('.rix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._revision_write_index)
             pack_map[self.repo._revision_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._revision_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._revision_write_index
             add_callback = self.repo._revision_write_index.add_nodes
         else:
             writer = None
@@ -864,35 +948,16 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             access_method=knit_access)
         return self.repo._revision_knit
 
-    def _make_rev_pack_map(self):
-        indices = []
-        pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_revision_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
-        return pack_map, indices
-
     def get_signature_file(self, transaction):
         """Get the signature versioned file object."""
         if getattr(self.repo, '_signature_knit', None) is not None:
             return self.repo._signature_knit
-        indices = []
-        self.repo._packs.ensure_loaded()
-        pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_signature_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+        pack_map, indices = self.repo._packs._make_index_map('.six')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._signature_write_index)
             pack_map[self.repo._signature_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._signature_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._signature_write_index
             add_callback = self.repo._signature_write_index.add_nodes
         else:
             writer = None
@@ -929,12 +994,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # create a pack map for the autopack code - XXX finish
             # making a clear managed list of packs, indices and use
             # that in these mapping classes
-            self.repo._revision_pack_map = self._make_rev_pack_map()[0]
+            self.repo._revision_pack_map = self.repo._packs._make_index_map('.rix')[0]
         else:
             del self.repo._revision_pack_map[self.repo._revision_write_index]
             self.repo._revision_write_index = None
             new_index = GraphIndex(self.transport, new_index_name)
-            self.repo._revision_pack_map[new_index] = (self.repo._pack_tuple(new_name))
+            self.repo._revision_pack_map[new_index] = (self.repo._packs._pack_tuple(new_name))
             # revisions 'knit' accessed : update it.
             self.repo._revision_all_indices.insert_index(0, new_index)
             # remove the write buffering index. XXX: API break
@@ -988,12 +1053,14 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if self.repo._revision_knit is not None:
             self.repo._revision_all_indices.insert_index(0, self.repo._revision_write_index)
             self.repo._revision_knit._index._add_callback = self.repo._revision_write_index.add_nodes
-            self.repo._revision_knit_access.set_writer(self.repo._open_pack_writer,
+            self.repo._revision_knit_access.set_writer(
+                self.repo._packs._open_pack_writer,
                 self.repo._revision_write_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
             self.repo._signature_all_indices.insert_index(0, self.repo._signature_write_index)
             self.repo._signature_knit._index._add_callback = self.repo._signature_write_index.add_nodes
-            self.repo._signature_knit_access.set_writer(self.repo._open_pack_writer,
+            self.repo._signature_knit_access.set_writer(
+                self.repo._packs._open_pack_writer,
                 self.repo._signature_write_index, self.repo._open_pack_tuple)
 
 
@@ -1039,15 +1106,8 @@ class GraphKnitTextStore(VersionedFileStore):
         """Create the combined index for all texts."""
         if getattr(self.repo, '_text_all_indices', None) is not None:
             return
-        indices = []
-        self.repo._packs.ensure_loaded()
-        self.repo._text_pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_text_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            self.repo._text_pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+        pack_map, indices = self.repo._packs._make_index_map('.tix')
+        self.repo._text_pack_map = pack_map
         if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._text_write_index)
@@ -1135,7 +1195,7 @@ class GraphKnitTextStore(VersionedFileStore):
     
     def _setup_knit(self, for_write):
         if for_write:
-            writer = (self.repo._open_pack_writer, self.repo._text_write_index)
+            writer = (self.repo._packs._open_pack_writer, self.repo._text_write_index)
         else:
             writer = None
         self.repo._text_knit_access = _PackAccess(
@@ -1171,15 +1231,7 @@ class InventoryKnitThunk(object):
         """Create the combined index for all inventories."""
         if getattr(self.repo, '_inv_all_indices', None) is not None:
             return
-        indices = []
-        self.repo._packs.ensure_loaded()
-        pack_map = {}
-        for name in self.repo._packs.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            index_name = self.name_to_inv_index_name(name)
-            indices.append(GraphIndex(self.transport, index_name))
-            pack_map[indices[-1]] = (self.repo._pack_tuple(name))
+        pack_map, indices = self.repo._packs._make_index_map('.iix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
             indices.append(self.repo._inv_write_index)
@@ -1212,7 +1264,7 @@ class InventoryKnitThunk(object):
         if self.repo.is_in_write_group():
             add_callback = self.repo._inv_write_index.add_nodes
             self.repo._inv_pack_map[self.repo._inv_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._open_pack_writer, self.repo._inv_write_index
+            writer = self.repo._packs._open_pack_writer, self.repo._inv_write_index
         else:
             add_callback = None # no data-adding permitted.
             writer = None
@@ -1266,27 +1318,18 @@ class GraphKnitRepository1(KnitRepository):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport)
+        self._packs = RepositoryPackCollection(self, control_files._transport,
+            index_transport,
+            control_files._transport.clone('upload'),
+            control_files._transport.clone('packs'))
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
-        self._upload_transport = control_files._transport.clone('upload')
-        self._pack_transport = control_files._transport.clone('packs')
         # for tests
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
-        # FIXME: just drop the transient index.
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are
-        self._packs.reset()
-        self._open_pack_hash = None
-
-    def _pack_tuple(self, name):
-        """Return a tuple with the transport and file name for a pack name."""
-        return self._pack_transport, name + '.pack'
+        self._packs._abort_write_group()
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
@@ -1297,65 +1340,10 @@ class GraphKnitRepository1(KnitRepository):
             self._packs.reset()
 
     def _start_write_group(self):
-        random_name = self.control_files._lock.nonce
-        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
-        self._write_stream = write_stream
-        self._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self._open_pack_writer = pack.ContainerWriter(write_data)
-        self._open_pack_writer.begin()
-        self._packs.setup()
-        self._revision_store.setup()
-        self.weave_store.setup()
-        self._inv_thunk.setup()
+        self._packs._start_write_group()
 
     def _commit_write_group(self):
-        data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted() or 
-            self._inv_thunk.data_inserted())
-        if data_inserted:
-            self._open_pack_writer.end()
-            new_name = self._open_pack_hash.hexdigest()
-            new_pack = Pack()
-            new_pack.name = new_name
-            new_pack.transport = self._upload_transport.clone('../packs/')
-            # To populate:
-            # new_pack.revision_index = 
-            # new_pack.inventory_index = 
-            # new_pack.text_index = 
-            # new_pack.signature_index = 
-            self.weave_store.flush(new_name, new_pack)
-            self._inv_thunk.flush(new_name, new_pack)
-            self._revision_store.flush(new_name, new_pack)
-            self._write_stream.close()
-            self._upload_transport.rename(self._open_pack_tuple[1],
-                '../packs/' + new_name + '.pack')
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
-            self._packs.allocate(new_name, new_pack.revision_index_length,
-                new_pack.inventory_index_length, new_pack.text_index_length,
-                new_pack.signature_index_length)
-            self._open_pack_tuple = None
-            if not self._packs.autopack():
-                self._packs.save()
-        else:
-            # remove the pending upload
-            self._upload_transport.delete(self._open_pack_tuple[1])
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are - should just refresh and deal with the
-        # delta.
-        self._packs.reset()
-        self._open_pack_hash = None
-        self._write_stream = None
+        return self._packs._commit_write_group()
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
@@ -1397,27 +1385,18 @@ class GraphKnitRepository3(KnitRepository3):
         KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport)
+        self._packs = RepositoryPackCollection(self, control_files._transport,
+            index_transport,
+            control_files._transport.clone('upload'),
+            control_files._transport.clone('packs'))
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
-        self._upload_transport = control_files._transport.clone('upload')
-        self._pack_transport = control_files._transport.clone('packs')
         # for tests
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
-        # FIXME: just drop the transient index.
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are
-        self._packs.reset()
-        self._open_pack_hash = None
-
-    def _pack_tuple(self, name):
-        """Return a tuple with the transport and file name for a pack name."""
-        return self._pack_transport, name + '.pack'
+        return self._packs._abort_write_group()
 
     def _refresh_data(self):
         if self.control_files._lock_count==1:
@@ -1428,65 +1407,10 @@ class GraphKnitRepository3(KnitRepository3):
             self._packs.reset()
 
     def _start_write_group(self):
-        random_name = self.control_files._lock.nonce
-        self._open_pack_tuple = (self._upload_transport, random_name + '.pack')
-        write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
-        self._write_stream = write_stream
-        self._open_pack_hash = md5.new()
-        def write_data(bytes, write=write_stream.write, update=self._open_pack_hash.update):
-            write(bytes)
-            update(bytes)
-        self._open_pack_writer = pack.ContainerWriter(write_data)
-        self._open_pack_writer.begin()
-        self._packs.setup()
-        self._revision_store.setup()
-        self.weave_store.setup()
-        self._inv_thunk.setup()
+        self._packs._start_write_group()
 
     def _commit_write_group(self):
-        data_inserted = (self._revision_store.data_inserted() or
-            self.weave_store.data_inserted() or 
-            self._inv_thunk.data_inserted())
-        if data_inserted:
-            self._open_pack_writer.end()
-            new_name = self._open_pack_hash.hexdigest()
-            new_pack = Pack()
-            new_pack.name = new_name
-            new_pack.transport = self._upload_transport.clone('../packs/')
-            # To populate:
-            # new_pack.revision_index = 
-            # new_pack.inventory_index = 
-            # new_pack.text_index = 
-            # new_pack.signature_index = 
-            self.weave_store.flush(new_name, new_pack)
-            self._inv_thunk.flush(new_name, new_pack)
-            self._revision_store.flush(new_name, new_pack)
-            self._write_stream.close()
-            self._upload_transport.rename(self._open_pack_tuple[1],
-                '../packs/' + new_name + '.pack')
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
-            self._packs.allocate(new_name, new_pack.revision_index_length,
-                new_pack.inventory_index_length, new_pack.text_index_length,
-                new_pack.signature_index_length)
-            self._open_pack_tuple = None
-            if not self._packs.autopack():
-                self._packs.save()
-        else:
-            # remove the pending upload
-            self._upload_transport.delete(self._open_pack_tuple[1])
-        self._revision_store.reset()
-        self.weave_store.reset()
-        self._inv_thunk.reset()
-        # forget what names there are - should just refresh and deal with the
-        # delta.
-        self._packs.reset()
-        self._open_pack_hash = None
-        self._write_stream = None
+        return self._packs._commit_write_group()
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
