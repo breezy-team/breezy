@@ -1114,6 +1114,20 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+
+        NB: This method should not be used as it accesses the entire graph all
+        at once, which is much more data than most operations should require.
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        raise NotImplementedError(self.get_revision_graph)
+
+    @needs_read_lock
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
