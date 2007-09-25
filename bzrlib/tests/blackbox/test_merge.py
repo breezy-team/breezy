@@ -346,18 +346,18 @@ class TestMerge(ExternalBase):
         self.failIfExists('target/file2')
 
     def assertDirectoryContent(self, directory, entries, message=''):
-        """Assert whether entries (files or directories) are exist
-        in some directory. It's also check that there is no extra
-        entries.
+        """Assert whether entries (file or directories) exist in a directory.
+        
+        It also checks that there are no extra entries.
         """
-        ondisk = sorted(os.listdir(directory))
+        ondisk = os.listdir(directory)
         if set(ondisk) == set(entries):
             return
         if message:
             message += '\n'
         raise AssertionError(
             '%s"%s" directory content is different:\na = %s\nb = %s\n'
-            % (message, directory, entries, ondisk))
+            % (message, directory, sorted(entries), sorted(ondisk)))
 
     def test_cherrypicking_merge(self):
         # make source branch
