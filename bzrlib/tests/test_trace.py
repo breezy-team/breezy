@@ -30,6 +30,7 @@ from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
+    _rollover_trace_maybe,
     )
 
 
@@ -174,3 +175,15 @@ class TestVerbosityLevel(TestCase):
         self.assertEqual(-1, get_verbosity_level())
         be_quiet(False)
         self.assertEqual(0, get_verbosity_level())
+
+
+class TestBzrLog(TestCaseInTempDir):
+
+    def test_log_rollover(self):
+        temp_log_name = 'test-log'
+        trace_file = open(temp_log_name, 'at')
+        trace_file.write('test_log_rollover padding\n' * 1000000)
+        trace_file.close()
+        _rollover_trace_maybe(temp_log_name)
+        # should have been rolled over
+        self.assertFalse(os.access(temp_log_name, os.R_OK))
