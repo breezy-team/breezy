@@ -215,7 +215,9 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
         # FIXME: We read the whole file in memory, using chunked encoding and
-        # counting bytes while sending them will be far better.
+        # counting bytes while sending them will be far better. Look at reusing
+        # osutils.pumpfile ?
+        #
         bytes = f.read()
         self.put_bytes(relpath, bytes, mode=None)
         return len(bytes)
