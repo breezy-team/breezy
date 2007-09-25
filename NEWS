@@ -116,6 +116,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
+      put by the method call, to allow avoiding stat-after-write or
+      housekeeping in callers. (Robert Collins)
+
    * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
      duplication from user input, when a user mentions both a path and an item
      contained within that path. (Robert Collins)
