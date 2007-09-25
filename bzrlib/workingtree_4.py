@@ -469,7 +469,6 @@ class WorkingTree4(WorkingTree3):
 
     def has_id(self, file_id):
         state = self.current_dirstate()
-        file_id = osutils.safe_file_id(file_id)
         row, parents = self._get_entry(file_id=file_id)
         if row is None:
             return False
@@ -479,7 +478,6 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
-        file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
         if entry == (None, None):
@@ -493,7 +491,6 @@ class WorkingTree4(WorkingTree3):
 
             Note: The caller is expected to take a read-lock before calling this.
             """
-            file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
@@ -505,7 +502,6 @@ class WorkingTree4(WorkingTree3):
             Note: The caller is expected to take a read-lock before calling this.
             """
             if not path:
-                file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -1020,7 +1016,6 @@ class WorkingTree4(WorkingTree3):
 
         WorkingTree4 supplies revision_trees for any basis tree.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         dirstate = self.current_dirstate()
         parent_ids = dirstate.get_parent_ids()
         if revision_id not in parent_ids:
@@ -1033,7 +1028,6 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
-        new_revision = osutils.safe_revision_id(new_revision)
         parents = self.get_parent_ids()
         if new_revision in (NULL_REVISION, None):
             assert len(parents) < 2, (
@@ -1057,7 +1051,6 @@ class WorkingTree4(WorkingTree3):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         trees = []
         for revision_id in revision_ids:
             try:
@@ -1089,7 +1082,6 @@ class WorkingTree4(WorkingTree3):
         # convert absent trees to the null tree, which we convert back to
         # missing on access.
         for rev_id, tree in parents_list:
-            rev_id = osutils.safe_revision_id(rev_id)
             _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
@@ -1152,9 +1144,7 @@ class WorkingTree4(WorkingTree3):
             return
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
-        ids_to_unversion = set()
-        for file_id in file_ids:
-            ids_to_unversion.add(osutils.safe_file_id(file_id))
+        ids_to_unversion = set(file_ids)
         paths_to_unversion = set()
         # sketch:
         # check if the root is to be unversioned, if so, assert for now.
@@ -1267,7 +1257,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
@@ -1339,7 +1328,7 @@ class DirStateRevisionTree(Tree):
 
     def __init__(self, dirstate, revision_id, repository):
         self._dirstate = dirstate
-        self._revision_id = osutils.safe_revision_id(revision_id)
+        self._revision_id = revision_id
         self._repository = repository
         self._inventory = None
         self._locked = 0
@@ -1397,7 +1386,6 @@ class DirStateRevisionTree(Tree):
         """
         if file_id is None and path is None:
             raise errors.BzrError('must supply file_id or path')
-        file_id = osutils.safe_file_id(file_id)
         if path is not None:
             path = path.encode('utf8')
         parent_index = self._get_parent_index()

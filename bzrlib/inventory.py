@@ -1025,9 +1025,8 @@ class Inventory(object):
             impact if specific_file_ids is None.
         :return: This yields (path, entry) pairs
         """
-        if specific_file_ids:
-            safe = osutils.safe_file_id
-            specific_file_ids = set(safe(fid) for fid in specific_file_ids)
+        if specific_file_ids and not isinstance(specific_file_ids, set):
+            specific_file_ids = set(specific_file_ids)
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
         if from_dir is None:
@@ -1134,7 +1133,6 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
-        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def __getitem__(self, file_id):
@@ -1146,7 +1144,6 @@ class Inventory(object):
         >>> inv['123123'].name
         'hello.c'
         """
-        file_id = osutils.safe_file_id(file_id)
         try:
             return self._byid[file_id]
         except KeyError:
@@ -1154,11 +1151,9 @@ class Inventory(object):
             raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
-        parent_id = osutils.safe_file_id(parent_id)
         return self[parent_id].children.get(filename)
 
     def _add_child(self, entry):
@@ -1212,8 +1207,6 @@ class Inventory(object):
         if len(parts) == 0:
             if file_id is None:
                 file_id = generate_ids.gen_root_id()
-            else:
-                file_id = osutils.safe_file_id(file_id)
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return self.root
@@ -1237,7 +1230,6 @@ class Inventory(object):
         >>> '123' in inv
         False
         """
-        file_id = osutils.safe_file_id(file_id)
         ie = self[file_id]
 
         assert ie.parent_id is None or \
@@ -1276,7 +1268,6 @@ class Inventory(object):
 
     def _iter_file_id_parents(self, file_id):
         """Yield the parents of file_id up to the root."""
-        file_id = osutils.safe_file_id(file_id)
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
@@ -1293,7 +1284,6 @@ class Inventory(object):
         is equal to the depth of the file in the tree, counting the
         root directory as depth 1.
         """
-        file_id = osutils.safe_file_id(file_id)
         p = []
         for parent in self._iter_file_id_parents(file_id):
             p.insert(0, parent.file_id)
@@ -1308,7 +1298,6 @@ class Inventory(object):
         >>> print i.id2path('foo-id')
         src/foo.c
         """
-        file_id = osutils.safe_file_id(file_id)
         # get all names, skipping root
         return '/'.join(reversed(
             [parent.name for parent in 
@@ -1352,7 +1341,6 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def remove_recursive_id(self, file_id):
@@ -1360,7 +1348,6 @@ class Inventory(object):
         
         :param file_id: A file_id to remove.
         """
-        file_id = osutils.safe_file_id(file_id)
         to_find_delete = [self._byid[file_id]]
         to_delete = []
         while to_find_delete:
@@ -1383,7 +1370,6 @@ class Inventory(object):
 
         This does not move the working file.
         """
-        file_id = osutils.safe_file_id(file_id)
         new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
             raise BzrError("not an acceptable filename: %r" % new_name)
@@ -1409,7 +1395,6 @@ class Inventory(object):
         file_ie.parent_id = new_parent_id
 
     def is_root(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self.root is not None and file_id == self.root.file_id
 
 
@@ -1430,8 +1415,6 @@ def make_entry(kind, name, parent_id, file_id=None):
     """
     if file_id is None:
         file_id = generate_ids.gen_file_id(name)
-    else:
-        file_id = osutils.safe_file_id(file_id)
     name = ensure_normalized_name(name)
     try:
         factory = entry_factory[kind]

@@ -41,7 +41,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        self._revision_id = osutils.safe_revision_id(revision_id)
+        self._revision_id = revision_id
 
     def supports_tree_reference(self):
         return True
@@ -67,22 +67,18 @@ class RevisionTree(Tree):
         return self._get_weave(file_id)
 
     def _get_weave(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
     def get_file_lines(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         weave = self._get_weave(file_id)
         return weave.get_lines(ie.revision)
 
     def get_file_text(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return ''.join(self.get_file_lines(file_id))
 
     def get_file(self, file_id, path=None):
-        file_id = osutils.safe_file_id(file_id)
         return StringIO(self.get_file_text(file_id))
 
     def iter_files_bytes(self, desired_files):
@@ -96,29 +92,24 @@ class RevisionTree(Tree):
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        file_id = osutils.safe_file_id(file_id)
         w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].text_size
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_mtime(self, file_id, path=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         revision = self._repository.get_revision(ie.revision)
         return revision.timestamp
 
     def is_executable(self, file_id, path=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         if ie.kind != "file":
             return None
@@ -138,7 +129,6 @@ class RevisionTree(Tree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
@@ -150,7 +140,6 @@ class RevisionTree(Tree):
             return self.inventory.root.file_id
 
     def kind(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].kind
 
     def _comparison_data(self, entry, path):

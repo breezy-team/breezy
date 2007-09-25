@@ -125,13 +125,11 @@ class Tree(object):
         raise NotImplementedError(self.has_filename)
 
     def has_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self.inventory.has_id(file_id)
 
     __contains__ = has_id
 
     def has_or_had_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
@@ -152,7 +150,6 @@ class Tree(object):
 
         :raises NoSuchId:
         """
-        file_id = osutils.safe_file_id(file_id)
         return self.inventory.id2path(file_id)
 
     def is_control_filename(self, filename):
@@ -341,7 +338,6 @@ class Tree(object):
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
-        file_id = osutils.safe_file_id(file_id)
         import sys
         sys.stdout.write(self.get_file_text(file_id))
 
@@ -436,7 +432,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
@@ -444,7 +439,6 @@ class EmptyTree(Tree):
         return iter([])
     
     def __contains__(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):

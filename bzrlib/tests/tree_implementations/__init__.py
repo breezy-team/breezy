@@ -279,8 +279,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        self.callDeprecated([osutils._file_id_warning],
-                            tree2.add, [u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'.encode('utf-8')])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
