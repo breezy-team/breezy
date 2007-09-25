@@ -1405,7 +1405,7 @@ class Repository(object):
         return graph.Graph(parents_provider)
 
     def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
-                           revision_versions, parents_provider=None):
+                           revision_versions):
         """Search the versionedfile for ancestors that are not referenced.
 
         The graph of a given versionedfile should be a subset of the graph
@@ -1426,15 +1426,12 @@ class Repository(object):
             determining the revision graph's ancestry.
             _RevisionParentsProvider is recommended for this purpose.
         """
-        if parents_provider is None:
-            parents_provider = _RevisionParentsProvider(self)
-
         graph = self.get_graph()
         return versionedfile.find_bad_ancestors(
             revision_ids,
             revision_versions.get_text_version,
             file_id,
-            parents_provider,
+            graph,
             graph)
         
     @needs_write_lock
