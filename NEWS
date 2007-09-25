@@ -25,7 +25,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * New ``reconfigure`` command (Aaron Bentley)
+   * New ``reconfigure`` command. (Aaron Bentley)
+
+   * New ``revert --forget-merges`` command, which removes the record of a pending 
+     merge without affecting the working tree contents.  (Martin Pool)
 
   PERFORMANCE:
 
@@ -59,26 +62,18 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-   * The basename, not the full path, is now used when checking whether
-     the profiling dump file begins with ``callgrind.out`` or not. This
-     fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
-
    * Commands reporting exceptions can now be profiled and still have their
      data correctly dumped to a file. For example, a ``bzr commit`` with
      no changes still reports the operation as pointless but doing so no
      longer throws away the profiling data if this command is run with
      ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
 
-   * HttpServer and FtpServer need to be closed properly or a listening socket
-     will remain opened.
-     (Vincent Ladeuil, #140055)
-
    * Fallback to ftp when paramiko is not installed and sftp can't be used for
      ``tests/commands`` so that the test suite is still usable without
      paramiko.
      (Vincent Ladeuil, #59150)
 
-   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+   * Fix commit ordering in corner case. (Aaron Bentley, #94975)
 
    * Fix long standing bug in partial commit when there are renames 
      left in tree. (Robert Collins, #140419)
@@ -86,10 +81,29 @@ IN DEVELOPMENT
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
 
+   * Fix failing test by comparing real paths to cover the case where the TMPDIR
+     contains a symbolic link.
+     (Vincent Ladeuil, #141382).
+
+   * HttpServer and FtpServer need to be closed properly or a listening socket
+     will remain opened.
+     (Vincent Ladeuil, #140055)
+
+   * The basename, not the full path, is now used when checking whether
+     the profiling dump file begins with ``callgrind.out`` or not. This
+     fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
+
+   * Trivial fix for invoking command ``reconfigure`` without arguments.
+     (Rob Weir, #141629)
+
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
   API BREAKS:
+
+   * ``KnitVersionedFile.add*`` will no longer cache added records even when
+     enable_cache() has been called - the caching feature is now exclusively for
+     reading existing data. (Robert Collins)
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
@@ -108,6 +122,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
+      put by the method call, to allow avoiding stat-after-write or
+      housekeeping in callers. (Robert Collins)
+
    * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
      duplication from user input, when a user mentions both a path and an item
      contained within that path. (Robert Collins)
@@ -123,6 +141,9 @@ IN DEVELOPMENT
      causes the parents of a selected id to be returned recursively, so all the
      paths from the root down to each element of selected_file_ids are
      returned. (Robert Collins)
+
+   * Knit joining has been enhanced to support plain to annotated conversion
+     and annotated to plain conversion. (Ian Clatworthy)
 
   TESTING:
 
@@ -402,6 +423,10 @@ bzr 0.91rc1 2007-09-11
    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
