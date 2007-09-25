@@ -42,6 +42,7 @@ from bzrlib import (
     merge as _mod_merge,
     merge_directive,
     osutils,
+    reconfigure,
     registry,
     repository,
     revision as _mod_revision,
@@ -1429,7 +1430,7 @@ class cmd_diff(Command):
                help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
-               help='Set prefixes to added to old and new filenames, as '
+               help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
         'change',
@@ -2310,16 +2311,11 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
-        if verbose or not is_quiet():
-            reporter = ReportCommitToLog()
-        else:
-            reporter = NullCommitReporter()
-
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter, revprops=properties,
+                        reporter=None, verbose=verbose, revprops=properties,
                         author=author)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -3052,19 +3048,24 @@ class cmd_revert(Command):
 
     _see_also = ['cat', 'export']
     takes_options = [
-            'revision',
-            Option('no-backup', "Do not save backups of reverted files."),
-            ]
+        'revision',
+        Option('no-backup', "Do not save backups of reverted files."),
+        Option('forget-merges',
+               'Remove pending merge marker, without changing any files.'),
+        ]
     takes_args = ['file*']
 
-    def run(self, revision=None, no_backup=False, file_list=None):
-        if file_list is not None:
-            if len(file_list) == 0:
-                raise errors.BzrCommandError("No files specified")
-        
+    def run(self, revision=None, no_backup=False, file_list=None,
+            forget_merges=None):
         tree, file_list = tree_files(file_list)
+        if forget_merges:
+            tree.set_parent_ids(tree.get_parent_ids()[:1])
+        else:
+            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+
+    @staticmethod
+    def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         if revision is None:
-            # FIXME should be tree.last_revision
             rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
@@ -3072,7 +3073,7 @@ class cmd_revert(Command):
             rev_id = revision[0].in_history(tree.branch).rev_id
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            tree.revert(file_list, 
+            tree.revert(file_list,
                         tree.branch.repository.revision_tree(rev_id),
                         not no_backup, pb, report_changes=True)
         finally:
@@ -3851,9 +3852,9 @@ class cmd_send(Command):
     the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values are
-    "thunderbird", "evolution", "editor", "xdg-email", "mapi", "kmail" and
-    "default".
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
+    specific clients are "evolution", "kmail", "mutt", and "thunderbird";
+    generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, or by setting the submit_to configuration
@@ -4155,6 +4156,49 @@ class cmd_tags(Command):
         branch, relpath = Branch.open_containing(directory)
         for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
             self.outf.write('%-20s %s\n' % (tag_name, target))
+
+
+class cmd_reconfigure(Command):
+    """Reconfigure the type of a bzr directory.
+
+    A target configuration must be specified.
+
+    For checkouts, the bind-to location will be auto-detected if not specified.
+    The order of preference is
+    1. For a lightweight checkout, the current bound location.
+    2. For branches that used to be checkouts, the previously-bound location.
+    3. The push location.
+    4. The parent location.
+    If none of these is available, --bind-to must be specified.
+    """
+
+    takes_args = ['location?']
+    takes_options = [RegistryOption.from_kwargs('target_type',
+                     title='Target type',
+                     help='The type to reconfigure the directory to.',
+                     value_switches=True, enum_switch=False,
+                     branch='Reconfigure to a branch.',
+                     tree='Reconfigure to a tree.',
+                     checkout='Reconfigure to a checkout.'),
+                     Option('bind-to', help='Branch to bind checkout to.',
+                            type=str),
+                     Option('force',
+                        help='Perform reconfiguration even if local changes'
+                        ' will be lost.')
+                     ]
+
+    def run(self, location=None, target_type=None, bind_to=None, force=False):
+        directory = bzrdir.BzrDir.open(location)
+        if target_type is None:
+            raise errors.BzrCommandError('No target configuration specified')
+        elif target_type == 'branch':
+            reconfiguration = reconfigure.Reconfigure.to_branch(directory)
+        elif target_type == 'tree':
+            reconfiguration = reconfigure.Reconfigure.to_tree(directory)
+        elif target_type == 'checkout':
+            reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
+                                                                  bind_to)
+        reconfiguration.apply(force)
 
 
 def _create_prefix(cur_transport):

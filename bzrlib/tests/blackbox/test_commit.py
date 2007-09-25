@@ -20,6 +20,7 @@
 import os
 
 from bzrlib import (
+    osutils,
     ignores,
     )
 from bzrlib.bzrdir import BzrDir
@@ -154,7 +155,7 @@ class TestCommit(ExternalBase):
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = "%s/" % (os.path.abspath('a'), )
+        expected = "%s/" % (osutils.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
         self.assertEqual(err, 'Committing revision 2 to "%s".\n'
                          'Committed revision 2.\n' % expected)
@@ -212,16 +213,16 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (os.getcwd(), )
+        expected = '%s/' % (osutils.getcwd(), )
         self.assertEqualDiff(
             'Committing revision 2 to "%s".\n'
             'modified filetomodify\n'
             'added newdir\n'
             'added newfile\n'
             'renamed dirtorename => renameddir\n'
+            'renamed filetorename => renamedfile\n'
             'renamed dirtoreparent => renameddir/reparenteddir\n'
             'renamed filetoreparent => renameddir/reparentedfile\n'
-            'renamed filetorename => renamedfile\n'
             'deleted dirtoremove\n'
             'deleted filetoremove\n'
             'Committed revision 2.\n' % (expected, ),

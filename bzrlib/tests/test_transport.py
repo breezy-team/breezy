@@ -23,6 +23,7 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
@@ -572,26 +573,26 @@ class TestTransportImplementation(TestCaseInTempDir):
 class TestLocalTransports(TestCase):
 
     def test_get_transport_from_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport('.')
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
 
     def test_get_transport_from_local_url(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         here_url = urlutils.local_path_to_url(here) + '/'
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
 
     def test_local_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertEquals(t.local_abspath(''), here)
 

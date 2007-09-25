@@ -74,8 +74,9 @@ class KnitRepository(MetaDirRepository):
         # This class isn't deprecated
         pass
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
+        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)[0]
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -126,12 +127,6 @@ class KnitRepository(MetaDirRepository):
             return [None] + vf.get_ancestry(revision_id, topo_sorted)
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
-
-    @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        revision_id = osutils.safe_revision_id(revision_id)
-        return self.get_revision_reconcile(revision_id)
 
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
@@ -226,6 +221,8 @@ class KnitRepository(MetaDirRepository):
 
 class KnitRepository3(KnitRepository):
 
+    _commit_builder_class = RootCommitBuilder
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
@@ -251,26 +248,6 @@ class KnitRepository3(KnitRepository):
         assert inv.revision_id is not None
         assert inv.root.revision is not None
         return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        revision_id = osutils.safe_revision_id(revision_id)
-        result = RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
-        self.start_write_group()
-        return result
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
