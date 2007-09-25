@@ -20,15 +20,8 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-# TODO: Implement the  testing of the range header  for both GET
-# and PUT requests. The server should be able to refuse the Range
-# headers optionally (or two servers should be available).
-
-# TODO: Apache ignores bad formatted Content-Range headers. So we
-# don't receive a  501 response if he don't  handle them but just
-# trash the  files instead. May  be a small  test can be  done in
-# __init__ to recognize bogus servers:
-# put(tmp,'good');append(tmp,'bad'),get(tmp).startswith('good').
+# TODO: Implement the testing of the range header for PUT requests (GET request
+# are already heavily tested in bzr). Test servers are available there too.
 
 import errno
 import os
@@ -59,7 +52,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
     _RANGE_HEADER_RE = re.compile(
         r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
 
-    # On Mac OS X >= 10.3 we get EAGAIN (ressource temporary unavailable)...
+    # On Mac OS X >= 10.3 we get EAGAIN (resource temporary unavailable)...
     # permanently :) when reading the client socket.  The following helps, but
     # still, some tests fail with a "Broken pipe".  I guess it may be a problem
     # in the test framework, but more investigations are still neeeded.

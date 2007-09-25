@@ -214,7 +214,11 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
-        return self.put_bytes(relpath, f.read(), mode=None)
+        # FIXME: We read the whole file in memory, using chunked encoding and
+        # counting bytes while sending them will be far better.
+        bytes = f.read()
+        self.put_bytes(relpath, bytes, mode=None)
+        return len(bytes)
 
     def put_bytes(self, relpath, bytes, mode=None):
         """Copy the bytes object into the location.
