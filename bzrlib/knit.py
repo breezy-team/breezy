@@ -462,7 +462,7 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(_access)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, 
+        return '%s(%s)' % (self.__class__.__name__,
                            self.transport.abspath(self.filename))
     
     def _check_should_delta(self, first_parents):

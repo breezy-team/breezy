@@ -1149,7 +1149,8 @@ class GraphKnitTextStore(VersionedFileStore):
         knit_index = KnitGraphIndex(file_id_index,
             add_callback=file_id_index.add_nodes,
             deltas=True, parents=True)
-        return knit.KnitVersionedFile('text:' + file_id, None,
+        return knit.KnitVersionedFile('text:' + file_id,
+            self.transport.clone('..'),
             None,
             index=knit_index,
             access_method=self.repo._text_knit_access)
