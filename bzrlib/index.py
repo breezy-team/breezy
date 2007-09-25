@@ -496,6 +496,11 @@ class CombinedGraphIndex(object):
         """
         self._indices = indices
 
+    def __repr__(self):
+        return "%s(%s)" % (
+                self.__class__.__name__,
+                ', '.join(map(repr, self._indices)))
+
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
 
