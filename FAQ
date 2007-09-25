@@ -5,6 +5,9 @@ bzr-svn can use a lot of memory cloning big branches. The problem appears to be
 caused both by a memory leak in the python-subversion bindings or Subversion
 (the svn_ra_get_log() function) and the memory overhead from Bazaar.
 
+Newer versions of Subversion (1.5 especially) use significantly less memory 
+than older versions (though they still seem to leak).
+
 The easiest way to work around this problem is to Ctrl+C the branch operation 
 and restart it.
 
