@@ -49,7 +49,6 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
-    hashcache,
     ignores,
     merge,
     osutils,
@@ -1097,6 +1096,24 @@ class WorkingTree4(WorkingTree3):
         state.set_path_id('', file_id)
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
+
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        state = self.current_dirstate()
+        # XXX: should we make the path be passed in as utf8 ?
+        entry = state._get_entry(0, path_utf8=cache_utf8.encode(path))
+        tree_details = entry[1][0]
+        packed_stat = dirstate.pack_stat(stat_result)
+        if tree_details[4] == packed_stat:
+            return tree_details[1]
+        else:
+            return None
 
     @needs_read_lock
     def supports_tree_reference(self):
