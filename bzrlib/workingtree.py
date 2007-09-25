@@ -702,7 +702,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=os.lstat,
+    def path_content_summary(self, path, _lstat=osutils.lstat,
         _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
         abspath = self.abspath(path)
@@ -712,7 +712,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if getattr(e, 'errno', None) == errno.ENOENT:
                 # no file.
                 return ('missing', None, None, None)
-            # propogate other errors
+            # propagate other errors
             raise
         kind = _mapper(stat_result.st_mode)
         if kind == 'file':
