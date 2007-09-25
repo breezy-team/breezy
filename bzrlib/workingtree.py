@@ -723,8 +723,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 mode = stat_result.st_mode
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
-            sha1 = None # 'stat-hit-check' here
-            return (kind, size, executable, sha1)
+            return (kind, size, executable, self._sha_from_stat(
+                path, stat_result))
         elif kind == 'directory':
             # perhaps it looks like a plain directory, but it's really a
             # reference.
@@ -832,6 +832,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for file_id, hash in modified_hashes.iteritems():
                 yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        return None
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
