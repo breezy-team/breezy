@@ -16,24 +16,11 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import izip
-import math
-import md5
-
 from bzrlib import (
     debug,
-    pack,
     )
-from bzrlib.index import (
-    GraphIndex,
-    GraphIndexBuilder,
-    InMemoryGraphIndex,
-    CombinedGraphIndex,
-    GraphIndexPrefixAdapter,
-    )
-from bzrlib.knit import KnitGraphIndex, _PackAccess
-from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
+from bzrlib.store.revision.knit import KnitRevisionStore
 """)
 from bzrlib import (
     bzrdir,
@@ -56,10 +43,8 @@ from bzrlib.repository import (
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
-from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, mutter_callsite, note, warning
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite
 from bzrlib.util import bencode
 
 

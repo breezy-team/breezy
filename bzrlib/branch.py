@@ -2055,18 +2055,14 @@ class BzrBranch6(BzrBranch5):
             # we know the revno without needing to walk all of history
             revno = source_revno
         else:
-            # usually when revision_id is supplied it is the tip - try 
-            # for the fast_path
-            revno, tip_revision_id = self.last_revision_info()
-            if tip_revision_id != revision_id:
-                # To figure out the revno for a random revision, we need to
-                # build the revision history, and count its length.  We don't
-                # care about the order, just how long it is.  Alternatively, we
-                # could start at the current location, and count backwards. But
-                # there is no guarantee that we will find it since it may be a
-                # merged revision.
-                revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                    revision_id)))
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
         destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):

@@ -430,10 +430,6 @@ bzr 0.91rc1 2007-09-11
      requested data to inserted return larger ranges and in forward read order
      to reduce the effect of network latency. (Robert Collins)
 
-   * New public method ``heads`` on the ``bzrlib.graph.Graph`` class. This is
-     a simple rename of a previously internal method which implements the same
-     semantics as heads(). (Robert Collins, John A Meinel)
-
    * Knits with no annotation cache still produce correct annotations.
      (Aaron Bentley)
 
