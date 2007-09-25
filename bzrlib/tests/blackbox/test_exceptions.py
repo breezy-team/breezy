@@ -31,7 +31,11 @@ class TestExceptionReporting(TestCase):
         out, err = self.run_bzr("assert-fail", retcode=3)
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
-        self.assertContainsRe(err, r'please send this report to')
+        self.assertContainsRe(err, r'Please send this report to')
+        self.assertContainsRe(err,
+            '(?m)^encoding: .*, fsenc: .*, lang: .*')
+        self.assertContainsRe(err,
+            '(?m)^plugins:$')
 
     # TODO: assert-fail doesn't need to always be present; we could just
     # register (and unregister) it from tests that want to touch it.
