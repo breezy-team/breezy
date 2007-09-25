@@ -57,6 +57,9 @@ IN DEVELOPMENT
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
+   * New option ``-c``/``--change`` for ``merge`` command for cherrypicking 
+     changes from one revision. (Alexander Belchenko, #141368)
+
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
