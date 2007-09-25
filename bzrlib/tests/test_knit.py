@@ -1371,10 +1371,7 @@ class BasicKnitTests(KnitTests):
         origins = k2.annotate('text-m')
         self.assertEquals(origins[0], ('text-a', 'a1\n'))
         self.assertEquals(origins[1], ('text-b', 'b2\n'))
-        # This fails and I assume that's a bad thing ...
-        #self.assertEquals(origins[2], ('text-d', 'd3\n'))
-        # This succeeds and I assume that's a bad thing ...
-        self.assertEquals(origins[2], ('text-m', 'd3\n'))
+        self.assertEquals(origins[2], ('text-d', 'd3\n'))
 
     def test_reannotate(self):
         k1 = KnitVersionedFile('knit1', get_transport('.'),

@@ -2183,8 +2183,20 @@ class InterKnit(InterVersionedFile):
         assert isinstance(self.source, KnitVersionedFile)
         assert isinstance(self.target, KnitVersionedFile)
 
-        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        # If the source and target are mismatched w.r.t. annotations vs
+        # plain, the data needs to be converted accordingly
+        if self.source.factory.annotated == self.target.factory.annotated:
+            converter = None
+        elif self.source.factory.annotated:
+            converter = self._anno_to_plain_converter
+        else:
+            # We're converting from a plain to an annotated knit. This requires
+            # building the annotations from scratch. The generic join code
+            # handles this implicitly so we delegate to it.
+            return super(InterKnit, self).join(pb, msg, version_ids,
+                ignore_missing)
 
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:
             return 0
 
@@ -2230,12 +2242,6 @@ class InterKnit(InterVersionedFile):
                 copy_queue.append((version_id, options, parents))
                 copy_set.add(version_id)
 
-            # If the source and target are mismatched w.r.t. annotations or
-            # otherwise, the data needs to be converted accordingly
-            converter = self._get_converter(
-                self.source.factory.annotated,
-                self.target.factory.annotated)
-
             # data suck the join:
             count = 0
             total = len(version_list)
@@ -2260,14 +2266,6 @@ class InterKnit(InterVersionedFile):
         finally:
             pb.finished()
 
-    def _get_converter(self, source_annotated,  target_annotated):
-        if source_annotated == target_annotated:
-            return None
-        elif source_annotated:
-            return self._anno_to_plain_converter
-        else:
-            return self._plain_to_anno_converter
-
     def _anno_to_plain_converter(self, raw_data, version_id, options,
                                  parents):
         """Convert annotated content to plain content."""
@@ -2279,20 +2277,7 @@ class InterKnit(InterVersionedFile):
             delta = self.source.factory.parse_line_delta(data, version_id,
                 plain=True)
             lines = self.target.factory.lower_line_delta(delta)
-        print "version_id: %r\ndigest: %r\nlines: %r" % (version_id, digest, lines)
         return self.target._data._record_to_data(version_id, digest, lines)
-
-    def _plain_to_anno_converter(self, raw_data, version_id, options,
-                                 parents):
-        """Convert plain content to annotated content."""
-        lines, digest = self.source._data._parse_record(
-            version_id, raw_data)
-        if 'fulltext' in options:
-            new_lines = ['%s %s' % (version_id,line) for line in lines]
-        else:
-            # line delta - leave 1st line alone
-            new_lines = [lines[0]] + ['%s %s' % (version_id,line) for line in lines[1:]]
-        return self.target._data._record_to_data(version_id, digest, new_lines)
 
 
 InterVersionedFile.register_optimiser(InterKnit)
