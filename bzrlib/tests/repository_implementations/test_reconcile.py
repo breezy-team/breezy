@@ -377,20 +377,24 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.checkUnreconciled(d, repo.reconcile())
         self.checkUnreconciled(d, repo.reconcile(thorough=True))
 
-    def make_repository_using_factory(self, factory):
-        repo = self.make_repository('broken-repo')
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                factory(repo)
-                repo.commit_write_group()
-                return repo
-            except:
-                repo.abort_write_group()
-                raise
-        finally:
-            repo.unlock()
+
+class TestReconcileFileVersionParents(TestCaseWithRepository):
+    """Tests for how reconcile corrects errors in parents of file versions."""
+
+    def test_reconcile_file_parent_is_not_in_revision_ancestry(self):
+        """Reconcile removes file version parents that are not in the revision
+        ancestry.
+        """
+        self.run_test(
+            self.file_parent_is_not_in_revision_ancestry_factory,
+            'file1-id',
+            ['rev1a', 'rev1b', 'rev2'],
+            [([], 'rev1a'),
+             ([], 'rev1b'),
+             (['rev1a', 'rev1b'], 'rev2')],
+            [([], 'rev1a'),
+             ([], 'rev1b'),
+             (['rev1a'], 'rev2')])
 
     def file_parent_is_not_in_revision_ancestry_factory(self, repo):
         """Return a repository where a revision rev2 has file1 with a parent
@@ -419,7 +423,22 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
-    def vf2_factory(self, repo):
+    def test_reconcile_file_parent_inventory_inaccessible(self):
+        """Reconcile removes file version parents whose inventory is
+        inaccessible (i.e. the parent revision is a ghost).
+        """
+        self.run_test(
+            self.file_parent_has_inaccessible_inventory_factory,
+            'file2-id',
+            ['rev2', 'rev3'],
+            [
+             ([], 'rev2'),
+             (['rev1c'], 'rev3')],
+            [
+             ([], 'rev2'),
+             ([], 'rev3')])
+
+    def file_parent_has_inaccessible_inventory_factory(self, repo):
         """Return a repository with revision rev3 containing file2 modified in
         rev3 but with a parent which is in the revision ancestory, but whose
         inventory cannot be accessed at all.
@@ -450,7 +469,37 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
         self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
 
-    def vf3_factory(self, repo):
+    def test_reconcile_file_parents_not_referenced_by_any_inventory(self):
+        """Reconcile removes file parents that are not referenced by any
+        inventory.
+        """
+        all_versions = [
+            'rev1a', 'rev2', 'rev4', 'rev2b', 'rev4', 'rev2c', 'rev5']
+        file3_parents_before_reconcile = [
+             (['rev2'], 'rev3'),
+             (['rev2'], 'rev4'),
+             (['rev2', 'rev2c'], 'rev5'),
+             ]
+        file3_parents_after_reconcile = [
+            # rev3's accessible parent inventories all have rev1a as the last
+            # modifier.
+            (['rev1a'], 'rev3'),
+            # rev1a features in both rev4's parents but should only appear once
+            # in the result
+            (['rev1a'], 'rev4'),
+            # rev2c is the head of rev1a and rev2c, the inventory provided
+            # per-file last-modified revisions/.
+            (['rev2c'], 'rev5'),
+            ]
+        self.run_test(
+            self.file_parents_not_referenced_by_any_inventory_factory,
+            'file3-id',
+            all_versions,
+            file3_parents_before_reconcile,
+            file3_parents_after_reconcile
+            )
+            
+    def file_parents_not_referenced_by_any_inventory_factory(self, repo):
         """Return a repository with a file3 which has extra per-file versions
         that are not referenced by any inventory (even though they have the
         same ID as actual revisions).  rev2's inventory references rev1a of
@@ -520,6 +569,22 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.add_file(repo, inv, 'file3', 'rev5', ['rev2', 'rev2c'])
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
 
+    def make_repository_using_factory(self, factory):
+        """Create a new repository populated by the given factory."""
+        repo = self.make_repository('broken-repo')
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                factory(repo)
+                repo.commit_write_group()
+                return repo
+            except:
+                repo.abort_write_group()
+                raise
+        finally:
+            repo.unlock()
+
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
         inv.root.revision = revision_id
@@ -547,42 +612,6 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         if not repo._reconcile_fixes_text_parents:
             raise TestNotApplicable(
                     "Format does not support text parent reconciliation")
-
-    def test_reconcile_text_parents_vf1(self):
-        factory = self.file_parent_is_not_in_revision_ancestry_factory
-        repo = self.make_repository_using_factory(factory)
-        self.require_text_parent_corruption(repo)
-        self.assertEqual(['rev1a', 'rev1b'],
-            self.file_parents(repo, 'file1-id', 'rev2'))
-        vf1 = repo.weave_store.get_weave('file1-id', repo.get_transaction())
-        self.assertEqual({'rev1b': set(['rev2'])},
-            repo.find_bad_ancestors(['rev1a', 'rev2'],
-                'file1-id', vf1, _RevisionTextVersionCache(repo)))
-        vf1_shas = dict((v, vf1.get_sha1(v)) for v in vf1.versions())
-        repo.reconcile(thorough=True)
-        self.assertEqual(['rev1a'],
-            self.file_parents(repo, 'file1-id', 'rev2'))
-        vf1 = repo.weave_store.get_weave('file1-id', repo.get_transaction())
-        revision_versions = _RevisionTextVersionCache(repo)
-        self.assertEqual({},
-            repo.find_bad_ancestors(['rev1a', 'rev2'],
-                'file1-id', vf1, revision_versions))
-        # The content of the versionedfile should be the same after the
-        # reconcile.
-        self.assertEqual(
-            vf1_shas, dict((v, vf1.get_sha1(v)) for v in vf1.versions()))
-
-    def test_reconcile_text_parents_vf2(self):
-        self.run_test(
-            self.vf2_factory,
-            'file2-id',
-            ['rev2', 'rev3'],
-            [
-             ([], 'rev2'),
-             (['rev1c'], 'rev3')],
-            [
-             ([], 'rev2'),
-             ([], 'rev3')])
 
     def file_parents(self, repo, file_id, revision_id):
         return repo.weave_store.get_weave(file_id,
@@ -613,31 +642,3 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.assertEqual(
             vf_shas, dict((v, vf.get_sha1(v)) for v in all_versions))
 
-    def test_reconcile_text_parents_vf3(self):
-        """"""
-        all_versions = ['rev1a', 'rev2', 'rev4', 'rev2b', 'rev4', 'rev2c',
-                        'rev5']
-        file3_parents_before_reconcile = [
-             (['rev2'], 'rev3'),
-             (['rev2'], 'rev4'),
-             (['rev2', 'rev2c'], 'rev5'),
-             ]
-        file3_parents_after_reconcile = [
-            # rev3's accessible parent inventories all have rev1a as the last
-            # modifier.
-            (['rev1a'], 'rev3'),
-            # rev1a features in both rev4's parents but should only appear once
-            # in the result
-            (['rev1a'], 'rev4'),
-            # rev2c is the head of rev1a and rev2c, the inventory provided
-            # per-file last-modified revisions/.
-            (['rev2c'], 'rev5'),
-            ]
-        self.run_test(
-            self.vf3_factory,
-            'file3-id',
-            all_versions,
-            file3_parents_before_reconcile,
-            file3_parents_after_reconcile
-            )
-            
