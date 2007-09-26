@@ -615,6 +615,23 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
 
     def run_test(self, factory, all_versions, affected_before,
             affected_after):
+        """Construct a repository and reconcile it, verifying the state before
+        and after.
+
+        :param factory: a method to use to populate a repository with sample
+            revisions, inventories and file versions.
+        :param all_versions: all the versions in repository.  run_test verifies
+            that the text of each of these versions of the file is unchanged
+            by the reconcile.
+        :param affected_before: a list of (parents list, revision).  Each
+            version of the file is verified to have the given parents before
+            running the reconcile.  i.e. this is used to assert that the repo
+            from the factory is what we expect.
+        :param affected_after: a list of (parents list, revision).  Each
+            version of the file is verified to have the given parents after the
+            reconcile.  i.e. this is used to assert that reconcile made the
+            changes we expect it to make.
+        """
         repo = self.make_repository_using_factory(factory)
         self.require_text_parent_corruption(repo)
         for bad_parents, version in affected_before:
