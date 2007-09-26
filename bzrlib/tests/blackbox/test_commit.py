@@ -521,3 +521,20 @@ class TestCommit(ExternalBase):
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual('John Doe', properties['author'])
+
+    def test_partial_commit_with_renames_in_tree(self):
+        # this test illustrates bug #140419
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/a', 'test'])
+        t.add(['dir/', 'dir/a', 'test'])
+        t.commit('initial commit')
+        # important part: file dir/a should change parent
+        # and should appear before old parent
+        # then during partial commit we have error
+        # parent_id {dir-XXX} not in inventory
+        t.rename_one('dir/a', 'a')
+        self.build_tree_contents([('test', 'changes in test')])
+        # partial commit
+        out, err = self.run_bzr('commit test -m "partial commit"')
+        self.assertEquals('', out)
+        self.assertContainsRe(err, r'modified test\nCommitted revision 2.')

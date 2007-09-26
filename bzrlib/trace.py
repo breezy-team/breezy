@@ -151,7 +151,7 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-        rename(trace_fname, old_fname)
+        osutils.rename(trace_fname, old_fname)
     except OSError:
         return
 
