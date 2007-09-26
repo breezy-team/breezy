@@ -167,9 +167,10 @@ class cmd_svn_import(Command):
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
             standalone=False, scheme=None, all=False, prefix=None):
-        from bzrlib.errors import NoRepositoryPresent
+        from bzrlib.errors import BzrCommandError, NoRepositoryPresent
         from bzrlib.bzrdir import BzrDir
         from convert import convert_repository
+        from repository import SvnRepository
         import os
 
         if to_location is None:
@@ -193,9 +194,12 @@ class cmd_svn_import(Command):
         try:
             from_repos = from_dir.open_repository()
         except NoRepositoryPresent, e:
-            from bzrlib.errors import BzrCommandError
             raise BzrCommandError("No Repository found at %s. "
                 "For individual branches, use 'bzr branch'." % from_location)
+
+        if not isinstance(from_repos, SvnRepository):
+            raise BzrCommandError(
+                    "Not a Subversion repository: %s" % from_location)
 
         def filter_branch((branch_path, revnum, exists)):
             if prefix is not None and not branch_path.startswith(prefix):

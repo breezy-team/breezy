@@ -23,6 +23,9 @@ bzr-svn 0.4.4	UNRELEASED
    * Give proper warning message when running 'bzr svn-branching-scheme' on 
      something that is not a Subversion repository. (#145159)
 
+   * Give proper warning message when running 'bzr svn-import' on 
+     something that is not a Subversion repository. 
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)
