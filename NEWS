@@ -91,6 +91,10 @@ IN DEVELOPMENT
    * Fix log against smart server branches that don't support tags.
      (James Westby, #140615)
 
+   * Fix 'unprintable error' message when displaying BzrCheckError and 
+     some other exceptions on Python 2.5.
+     (Martin Pool, #144633)
+
    * HttpServer and FtpServer need to be closed properly or a listening socket
      will remain opened.
      (Vincent Ladeuil, #140055)
