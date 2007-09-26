@@ -309,15 +309,19 @@ class cmd_svn_branching_scheme(Command):
         ]
 
     def run(self, location=".", set=False, repository_wide=False):
+        from bzrlib.errors import BzrCommandError
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.repository import Repository
         from bzrlib.trace import info
+        from repository import SvnRepository
         from scheme import scheme_from_branch_list
         def scheme_str(scheme):
             if scheme is None:
                 return ""
             return "".join(map(lambda x: x+"\n", scheme.to_lines()))
         repos = Repository.open(location)
+        if not isinstance(repos, SvnRepository):
+            raise BzrCommandError("Not a Subversion repository: %s" % location)
         if repository_wide:
             scheme = repos._get_property_scheme()
         else:
