@@ -13,7 +13,16 @@ bzr 0.91 series
      process if building of a C extension is not possible.
      (Lukáš Lalinský, Alexander Belchenko)
 
-    * Fix commit ordering in corner case (Aaron Bentley, #94975)
+   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+   * Fix ''bzr info bzr://host/'' and other operations on ''bzr://' URLs with
+     an implicit port.  We were incorrectly raising PathNotChild due to
+     inconsistent treatment of the ''_port'' attribute on the Transport object.
+     (Andrew Bennetts, #133965)
+
+   * Make RemoteRepository.sprout cope gracefully with servers that don't
+     support the ``Repository.tarball`` request.
+     (Andrew Bennetts)
 
 bzr 0.91rc2 2007-09-11
 ======================
@@ -158,11 +167,6 @@ bzr 0.91rc1 2007-09-11
    * In checkouts, tags are copied into the master branch when created,
      changed or deleted, and are copied into the checkout when it is 
      updated.  (Martin Pool, #93856, #93860)
-
-   * Fix ''bzr info bzr://host/'' and other operations on ''bzr://' URLs with
-     an implicit port.  We were incorrectly raising PathNotChild due to
-     inconsistent treatment of the ''_port'' attribute on the Transport object.
-     (Andrew Bennetts, #133965)
 
   IMPROVEMENTS:
 
