@@ -26,10 +26,12 @@ from bzrlib import (
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.repository import _RevisionTextVersionCache
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.repository_implementations import (
+    TestCaseWithInconsistentRepository,
+    )
 
 
-class TestFindBadAncestors(TestCaseWithRepository):
+class TestFindBadAncestors(TestCaseWithInconsistentRepository):
 
     def make_broken_repository(self):
         repo = self.make_repository('.')
@@ -225,4 +227,26 @@ class TestFindBadAncestors(TestCaseWithRepository):
         self.assertEqual(
             [('heads', set(['good-parent', 'bad-parent']))], repo_graph.calls)
 
+    def too_many_parents_factory(self, repo):
+        inv = self.make_one_file_inventory(
+            repo, 'bad-parent', [], root_revision='bad-parent')
+        self.add_revision(repo, 'bad-parent', inv, [])
+        
+        inv = self.make_one_file_inventory(
+            repo, 'good-parent', ['bad-parent'])
+        self.add_revision(repo, 'good-parent', inv, ['bad-parent'])
+        
+        inv = self.make_one_file_inventory(
+            repo, 'broken-revision', ['good-parent', 'bad-parent'])
+        self.add_revision(repo, 'broken-revision', inv, ['good-parent'])
+
+    def test_too_many_parents(self):
+        repo = self.make_repository_using_factory(
+            self.too_many_parents_factory)
+        self.require_text_parent_corruption(repo)
+        check_result = repo.check(['XXX ignored rev ids'])
+        self.assertEqual(
+            [('broken-revision', ['good-parent', 'bad-parent'],
+             ['good-parent'])],
+            check_result.inconsistent_parents)
 

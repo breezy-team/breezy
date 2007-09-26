@@ -519,7 +519,12 @@ class VersionedFile(object):
             in.
         """
         result = {}
+        from bzrlib.trace import mutter
         for num, revision_id in enumerate(revision_ids):
+            #if revision_id == 'broken-revision-1-2': import pdb; pdb.set_trace()
+            #if revision_id == 'broken-revision-1-2':
+            #    result.setdefault('parent-1',set()).add('broken-revision-1-2')
+            #    result.setdefault('parent-2',set()).add('broken-revision-1-2')
             text_revision = get_text_version(file_id, revision_id)
             if text_revision is None:
                 continue
@@ -531,14 +536,22 @@ class VersionedFile(object):
                 # Skip ghosts (this means they can't provide texts...)
                 except errors.RevisionNotPresent:
                     continue
+            # XXX:
             knit_parents = set(self.get_parents(text_revision))
             unreferenced = knit_parents.difference(revision_parents)
             for unreferenced_id in unreferenced:
                 result.setdefault(unreferenced_id, set()).add(text_revision)
+
             correct_parents = tuple(repo_graph.heads(knit_parents))
             spurious_parents = knit_parents.difference(correct_parents)
             for spurious_parent in spurious_parents:
                 result.setdefault(spurious_parent, set()).add(text_revision)
+            # XXX: false positives
+            #text_parents = self.get_parents(text_revision)
+            #if text_parents != parents:
+            #    for text_parent in text_parents:
+            #        result.setdefault(text_parent, set()).add(text_revision)
+        mutter('find_bad_ancestors: %r', result)
         return result
 
 

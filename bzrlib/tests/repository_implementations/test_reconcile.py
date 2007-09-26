@@ -25,7 +25,12 @@ from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.revision import Revision
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.tests import TestNotApplicable, TestSkipped
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.repository_implementations import (
+    TestCaseWithInconsistentRepository,
+    )
+from bzrlib.tests.repository_implementations.test_repository import (
+    TestCaseWithRepository,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
@@ -378,14 +383,14 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.checkUnreconciled(d, repo.reconcile(thorough=True))
 
 
-class TestReconcileFileVersionParents(TestCaseWithRepository):
+class TestReconcileFileVersionParents(TestCaseWithInconsistentRepository):
     """Tests for how reconcile corrects errors in parents of file versions."""
 
     def test_reconcile_file_parent_is_not_in_revision_ancestry(self):
         """Reconcile removes file version parents that are not in the revision
         ancestry.
         """
-        self.run_test(
+        self.assertReconcileResults(
             self.file_parent_is_not_in_revision_ancestry_factory,
             ['rev1a', 'rev1b', 'rev2'],
             [([], 'rev1a'),
@@ -423,7 +428,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         """Reconcile removes file version parents whose inventory is
         inaccessible (i.e. the parent revision is a ghost).
         """
-        self.run_test(
+        self.assertReconcileResults(
             self.file_parent_has_inaccessible_inventory_factory,
             ['rev2', 'rev3'],
             [
@@ -483,7 +488,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
             # per-file last-modified revisions/.
             (['rev2c'], 'rev5'),
             ]
-        self.run_test(
+        self.assertReconcileResults(
             self.file_parents_not_referenced_by_any_inventory_factory,
             all_versions,
             file_parents_before_reconcile,
@@ -555,7 +560,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
 
     def test_too_many_parents(self):
-        self.run_test(
+        self.assertReconcileResults(
             self.too_many_parents_factory,
             ['bad-parent', 'good-parent', 'broken-revision'],
             [([], 'bad-parent'),
@@ -578,113 +583,82 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
             repo, 'broken-revision', ['good-parent', 'bad-parent'])
         self.add_revision(repo, 'broken-revision', inv, ['good-parent'])
 
-    #def test_incorrectly_ordered_parents(self):
+    def test_incorrectly_ordered_parents(self):
+        self.assertReconcileResults(
+            self.incorrectly_ordered_parents_factory,
+            ['parent-1', 'parent-2', 'broken-revision-1-2',
+             'broken-revision-2-1'],
+            [([], 'parent-1'),
+             ([], 'parent-2'),
+             (['parent-2', 'parent-1'], 'broken-revision-1-2'),
+             (['parent-1', 'parent-2'], 'broken-revision-2-1')],
+            [([], 'parent-1'),
+             ([], 'parent-2'),
+             (['parent-1', 'parent-2'], 'broken-revision-1-2'),
+             (['parent-2', 'parent-1'], 'broken-revision-2-1')])
 
 
-    def make_repository_using_factory(self, factory):
-        """Create a new repository populated by the given factory."""
-        repo = self.make_repository('broken-repo')
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                factory(repo)
-                repo.commit_write_group()
-                return repo
-            except:
-                repo.abort_write_group()
-                raise
-        finally:
-            repo.unlock()
+#commiting rev X, row 0 local change, row 1 no local change against at least one parent
+#rev parents  X.revision inv.revision foreach parent     knit parents   label
+#revA          X         revA                            revA            parent-changed
+#revA          A         revA                            NO ENTRY
+#revA          X         revB                            revB            parent-changed
+#revA          A         revB                            NO ENTRY
+#revA  revB    X         revC  revC                      revC            parent changed (C in ancestory of A,B)
+#revA  revB    C         revC  revC                      NO ENTRY
+#revA  revB    X         revA  revC                      revA            left-side change (C in ancestry of A)
+#revA  revB    A         revA  revC                      NO ENTRY
+#revA  revB    X         revC  revB                      revB            right-side change (C in ancestry of B)
+#revA  revB    B         revC  revB                      NO ENTRY
+#revA  revB    X         revA  revB                      revA revB       both-side change no prior join
+#revA  revB    X         revA  revB                      revA revB       both-side change no prior join (that is, we
+#        always record a change  in this case)
+#revA  revB    X         revA  revB                      revA            both-side change, one side pre-merged (A merged B)
+#revA  revB    A         revA  revB                      NO ENTRY       
+#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join
+#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join (that is
+#        we always record a change in this case)
+#revA  revB    X         revC  revD                      revC            both sides parent change, C merged D
+#revA  revB    C         revC  revD                      NO ENTRY
 
-    def add_revision(self, repo, revision_id, inv, parent_ids):
-        inv.revision_id = revision_id
-        inv.root.revision = revision_id
-        repo.add_inventory(revision_id, inv, parent_ids)
-        revision = Revision(revision_id, committer='jrandom@example.com',
-            timestamp=0, inventory_sha1='', timezone=0, message='foo',
-            parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
 
-    def make_one_file_inventory(self, repo, revision, parents,
-                                inv_revision=None, root_revision=None):
-        """Make an inventory containing a version of a file with ID 'a-file'.
 
-        The file's ID will be 'a-file', and its filename will be 'a file name',
-        stored at the tree root.
+    def incorrectly_ordered_parents_factory(self, repo):
+        inv = self.make_one_file_inventory(repo, 'parent-1', [])
+        self.add_revision(repo, 'parent-1', inv, [])
 
-        :param repo: a repository to add the new file version to.
-        :param revision: the revision ID of the new inventory.
-        :param parents: the parents for this revision of 'a-file'.
-        :param inv_revision: if not None, the revision ID to store in the
-            inventory entry.  Otherwise, this defaults to revision.
-        :param root_revision: if not None, the inventory's root.revision will
-            be set to this.
-        """
-        inv = Inventory(revision_id=revision)
-        if root_revision is not None:
-            inv.root.revision = root_revision
-        file_id = 'a-file-id'
-        entry = InventoryFile(file_id, 'a file name', 'TREE_ROOT')
-        if inv_revision is not None:
-            entry.revision = inv_revision
-        else:
-            entry.revision = revision
-        entry.text_size = 0
-        inv.add(entry)
-        vf = repo.weave_store.get_weave_or_empty(file_id,
-                                                 repo.get_transaction())
-        vf.add_lines(revision, parents, ['%sline\n' % revision])
-        return inv
+        inv = self.make_one_file_inventory(repo, 'parent-2', [])
+        self.add_revision(repo, 'parent-2', inv, [])
 
-    def require_text_parent_corruption(self, repo):
-        if not repo._reconcile_fixes_text_parents:
-            raise TestNotApplicable(
-                    "Format does not support text parent reconciliation")
+        inv = self.make_one_file_inventory(
+            repo, 'broken-revision-1-2', ['parent-2', 'parent-1'])
+        self.add_revision(
+            repo, 'broken-revision-1-2', inv, ['parent-1', 'parent-2'])
 
-    def file_parents(self, repo, revision_id):
-        return repo.weave_store.get_weave('a-file-id',
-            repo.get_transaction()).get_parents(revision_id)
+        inv = self.make_one_file_inventory(
+            repo, 'broken-revision-2-1', ['parent-1', 'parent-2'])
+        self.add_revision(
+            repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
 
-    def run_test(self, factory, all_versions, affected_before,
-            affected_after):
-        """Construct a repository and reconcile it, verifying the state before
-        and after.
+    def test_foo(self):
+        self.assertReconcileResults(
+            self.foo_factory,
+            ['basis', 'modified-something-else', 'current'],
+            [([], 'basis'),
+             (['basis'], 'modified-something-else'),
+             (['modified-something-else'], 'current')],
+            [([], 'basis'),
+             (['basis'], 'modified-something-else'),
+             (['basis'], 'current')])
+        self.fail('boom')
 
-        :param factory: a method to use to populate a repository with sample
-            revisions, inventories and file versions.
-        :param all_versions: all the versions in repository.  run_test verifies
-            that the text of each of these versions of the file is unchanged
-            by the reconcile.
-        :param affected_before: a list of (parents list, revision).  Each
-            version of the file is verified to have the given parents before
-            running the reconcile.  i.e. this is used to assert that the repo
-            from the factory is what we expect.
-        :param affected_after: a list of (parents list, revision).  Each
-            version of the file is verified to have the given parents after the
-            reconcile.  i.e. this is used to assert that reconcile made the
-            changes we expect it to make.
-        """
-        repo = self.make_repository_using_factory(factory)
-        self.require_text_parent_corruption(repo)
-        for bad_parents, version in affected_before:
-            file_parents = self.file_parents(repo, version)
-            self.assertEqual(bad_parents, file_parents,
-                "Expected version %s of a-file-id to have parents %s before "
-                "reconcile, but it has %s instead."
-                % (version, bad_parents, file_parents))
-        vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        vf_shas = dict((v, vf.get_sha1(v)) for v in all_versions)
-        repo.reconcile(thorough=True)
-        for good_parents, version in affected_after:
-            file_parents = self.file_parents(repo, version)
-            self.assertEqual(good_parents, file_parents,
-                "Expected version %s of a-file-id to have parents %s after "
-                "reconcile, but it has %s instead."
-                % (version, good_parents, file_parents))
-        # The content of the versionedfile should be the same after the
-        # reconcile.
-        vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        self.assertEqual(
-            vf_shas, dict((v, vf.get_sha1(v)) for v in all_versions))
+    def foo_factory(self, repo):
 
+        inv = self.make_one_file_inventory(repo, 'basis', [])
+        self.add_revision(repo, 'basis', inv, [])
+
+        inv = self.make_one_file_inventory(repo, 'modified-something-else', ['basis'], inv_revision='basis')
+        self.add_revision(repo, 'modified-something-else', inv, ['basis'])
+
+        inv = self.make_one_file_inventory(repo, 'current', ['modified-something-else'])
+        self.add_revision(repo, 'current', inv, ['modified-something-else'])
