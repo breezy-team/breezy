@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -186,3 +186,24 @@ class TestRevert(ExternalBase):
         out, err = self.run_bzr('revert -r -2')
         self.assertEqual('', out)
         self.assertEqual('-D  file\n', err)
+
+    def test_revert_forget_merges(self):
+        # revert --forget-merges removes any pending merges into the tree, but
+        # leaves the files unchanged
+        tree = self.make_branch_and_tree('.')
+        # forget-merges before first commit, though pointless, does not fail
+        self.run_bzr(['revert', '--forget-merges'])
+        self.build_tree(['file'])
+        first_rev_id = tree.commit('initial commit')
+        self.build_tree_contents([('file', 'new content')])
+        existing_parents = tree.get_parent_ids()
+        self.assertEquals([first_rev_id], existing_parents)
+        merged_parents = existing_parents + ['merged-in-rev']
+        tree.set_parent_ids(merged_parents)
+        self.assertEquals(merged_parents, tree.get_parent_ids())
+        self.run_bzr(['revert', '--forget-merges'])
+        self.assertEquals([first_rev_id], tree.get_parent_ids())
+        # changed files are not reverted
+        self.assertFileEqual('new content', 'file')
+        # you can give it the path of a tree
+        self.run_bzr(['revert', '--forget-merges', tree.abspath('.')])

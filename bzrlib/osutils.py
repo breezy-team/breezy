@@ -554,13 +554,19 @@ def is_inside_or_parent_of_any(dir_list, fname):
 
 
 def pumpfile(fromfile, tofile):
-    """Copy contents of one file to another."""
+    """Copy contents of one file to another.
+    
+    :return: The number of bytes copied.
+    """
     BUFSIZE = 32768
+    length = 0
     while True:
         b = fromfile.read(BUFSIZE)
         if not b:
             break
         tofile.write(b)
+        length += len(b)
+    return length
 
 
 def file_iterator(input_file, readsize=32768):

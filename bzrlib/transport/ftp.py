@@ -271,14 +271,33 @@ class FtpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
+        bytes = None
         if getattr(fp, 'read', None) is None:
-            fp = StringIO(fp)
+            # hand in a string IO
+            bytes = fp
+            fp = StringIO(bytes)
+        else:
+            # capture the byte count; .read() may be read only so
+            # decorate it.
+            class byte_counter(object):
+                def __init__(self, fp):
+                    self.fp = fp
+                    self.counted_bytes = 0
+                def read(self, count):
+                    result = self.fp.read(count)
+                    self.counted_bytes += len(result)
+                    return result
+            fp = byte_counter(fp)
         try:
             mutter("FTP put: %s", abspath)
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
                 self._rename_and_overwrite(tmp_abspath, abspath, f)
+                if bytes is not None:
+                    return len(bytes)
+                else:
+                    return fp.counted_bytes
             except (ftplib.error_temp,EOFError), e:
                 warning("Failure during ftp PUT. Deleting temporary file.")
                 try:

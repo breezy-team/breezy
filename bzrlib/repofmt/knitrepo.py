@@ -134,12 +134,6 @@ class KnitRepository(MetaDirRepository):
             raise errors.NoSuchRevision(self, revision_id)
 
     @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        revision_id = osutils.safe_revision_id(revision_id)
-        return self.get_revision_reconcile(revision_id)
-
-    @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 

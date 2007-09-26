@@ -374,11 +374,14 @@ class TransportTests(TestTransportImplementation):
                     t.put_file, 'a', StringIO('some text for a\n'))
             return
 
-        t.put_file('a', StringIO('some text for a\n'))
+        result = t.put_file('a', StringIO('some text for a\n'))
+        # put_file returns the length of the data written
+        self.assertEqual(16, result)
         self.failUnless(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
-        t.put_file('a', StringIO('new\ncontents for\na\n'))
+        result = t.put_file('a', StringIO('new\ncontents for\na\n'))
+        self.assertEqual(19, result)
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
                           t.put_file, 'path/doesnt/exist/c',

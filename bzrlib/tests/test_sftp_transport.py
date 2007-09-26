@@ -108,6 +108,16 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
     """Test the SFTP transport with homedir based relative paths."""
 
     def test__remote_path(self):
+        if sys.platform == 'darwin':
+            # This test is about sftp absolute path handling. There is already
+            # (in this test) a TODO about windows needing an absolute path
+            # without drive letter. To me, using self.test_dir is a trick to
+            # get an absolute path for comparison purposes.  That fails for OSX
+            # because the sftp server doesn't resolve the links (and it doesn't
+            # have to). --vila 20070924
+            self.knownFailure('Mac OSX symlinks /tmp to /private/tmp,'
+                              ' testing against self.test_dir'
+                              ' is not appropriate')
         t = self.get_transport()
         # This test require unix-like absolute path
         test_dir = self.test_dir
@@ -118,12 +128,14 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
             test_dir = '/' + test_dir
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(test_dir + '/relative', t._remote_path('relative'))
+        self.assertIsSameRealPath(test_dir + '/relative',
+                                  t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
         root_segments = test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
-        self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
+        self.assertIsSameRealPath(root_parent + '/sibling',
+                                  t._remote_path('../sibling'))
         # /  should be illegal ?
         ### FIXME decide and then test for all transports. RBC20051208
 

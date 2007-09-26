@@ -982,6 +982,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsSameRealPath(self, path1, path2):
+        """Fail if path1 and path2 points to different files"""
+        self.assertEqual(osutils.realpath(path1),
+                         osutils.realpath(path2),
+                         "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
+
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
