@@ -63,3 +63,12 @@ http://bazaar-vcs.org/HistoryHorizon
 The Bazaar revno's differ from the Subversion revno's
 =====================================================
 That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository.
+
+=========================================================================
+Bazaar reports branches have diverged while pulling, when they haven't
+=========================================================================
+As of version 0.4, bzr-svn creates revisions with different revision ids than 
+previous versions. In other words, existing bzr-svn branches created with 
+0.3.x can not be used directly with 0.4.0 but will have to be upgraded to 
+work with 0.4.0 using the "bzr svn-upgrade" command. The bzr-rebase package 
+has to be installed for this command to work correctly.
