@@ -1377,13 +1377,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
             transport=transport)
         self.failUnless(transport.has('.bzr'))
-        try:
-            bd.retire_bzrdir(limit=0)
-        except Exception, ex:
-            self.assertSubset([ex.__class__],
-                [errors.FileExists, errors.DirectoryNotEmpty])
-        else:
-            self.fail("exception expected but not thrown")
+        self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
+            bd.retire_bzrdir, limit=0) 
 
 
 class TestBreakLock(TestCaseWithBzrDir):
