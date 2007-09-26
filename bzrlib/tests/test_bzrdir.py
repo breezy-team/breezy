@@ -201,9 +201,8 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Sample .bzr dir format."
 
-    def initialize(self, url, possible_transports=None):
+    def initialize_on_transport(self, t):
         """Create a bzr dir."""
-        t = get_transport(url, possible_transports)
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
