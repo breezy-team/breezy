@@ -95,7 +95,11 @@ class BzrError(StandardError):
         try:
             fmt = self._get_format_string()
             if fmt:
-                s = fmt % self.__dict__
+                d = (self.__dict__)
+                # special case: python2.5 puts the 'message' attribute in a
+                # slot, so it isn't seen in __dict__
+                d['message'] = getattr(self, 'message', 'dummy message')
+                s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
                 if isinstance(s, unicode):
@@ -783,8 +787,8 @@ class LockError(BzrError):
     # New code should prefer to raise specific subclasses
     def __init__(self, message):
         # Python 2.5 uses a slot for StandardError.message,
-        # so use a different variable name
-        # so it is exposed in self.__dict__
+        # so use a different variable name.  We now work around this in
+        # BzrError.__str__, but this member name is kept for compatability.
         self.msg = message
 
 
