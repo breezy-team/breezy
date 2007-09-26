@@ -1,3 +1,9 @@
+bzr (0.91-1) unstable; urgency=low
+
+  * Final 0.91 release.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Wed, 26 Sep 2007 22:16:47 +0200
+
 bzr (0.91~rc2-1) unstable; urgency=low
   
   * Second release candidate for the upcoming 0.91 release.
