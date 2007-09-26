@@ -387,7 +387,6 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         """
         self.run_test(
             self.file_parent_is_not_in_revision_ancestry_factory,
-            'file1-id',
             ['rev1a', 'rev1b', 'rev2'],
             [([], 'rev1a'),
              ([], 'rev1b'),
@@ -405,14 +404,14 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         # make rev1a: A well-formed revision, containing 'file1'
         inv = Inventory(revision_id='rev1a')
         inv.root.revision = 'rev1a'
-        self.add_file(repo, inv, 'file1', 'rev1a', [])
+        self.add_file(repo, inv, 'rev1a', [])
         self.add_revision(repo, 'rev1a', inv, [''])
 
         # make rev1b, which has no Revision, but has an Inventory, and
         # file1
         inv = Inventory(revision_id='rev1b')
         inv.root.revision = 'rev1b'
-        self.add_file(repo, inv, 'file1', 'rev1b', [])
+        self.add_file(repo, inv, 'rev1b', [])
         repo.add_inventory('rev1b', inv, [])
 
         # make rev2, with file1 and file2
@@ -420,7 +419,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         # file1 has 'rev1b' as an ancestor, even though this is not
         # mentioned by 'rev1a', making it an unreferenced ancestor
         inv = Inventory()
-        self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
+        self.add_file(repo, inv, 'rev2', ['rev1a', 'rev1b'])
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
     def test_reconcile_file_parent_inventory_inaccessible(self):
@@ -429,7 +428,6 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         """
         self.run_test(
             self.file_parent_has_inaccessible_inventory_factory,
-            'file2-id',
             ['rev2', 'rev3'],
             [
              ([], 'rev2'),
@@ -439,34 +437,34 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
              ([], 'rev3')])
 
     def file_parent_has_inaccessible_inventory_factory(self, repo):
-        """Return a repository with revision rev3 containing file2 modified in
+        """Return a repository with revision rev3 containing file1 modified in
         rev3 but with a parent which is in the revision ancestory, but whose
         inventory cannot be accessed at all.
         """
-        # make rev2, with file2
-        # file2 is sane
+        # make rev2, with file1
+        # file1 is sane
         inv = Inventory()
-        self.add_file(repo, inv, 'file2', 'rev2', [])
+        self.add_file(repo, inv, 'rev2', [])
         self.add_revision(repo, 'rev2', inv, [])
 
-        # make ghost revision rev1c, with a version of file2 present so
+        # make ghost revision rev1c, with a version of file1 present so
         # that we generate a knit delta against this version.  In real life
         # the ghost might never have been present or rev3 might have been
         # generated against a revision that was present at the time.  So
-        # currently we have the full history of file2 present even though
+        # currently we have the full history of file1 present even though
         # the inventory and revision objects are not.
         inv = Inventory()
-        self.add_file(repo, inv, 'file2', 'rev1c', [])
+        self.add_file(repo, inv, 'rev1c', [])
 
-        # make rev3 with file2
-        # file2 refers to 'rev1c', which is a ghost in this repository, so
-        # file2 cannot have rev1c as its ancestor.
+        # make rev3 with file1
+        # file1 refers to 'rev1c', which is a ghost in this repository, so
+        # file1 cannot have rev1c as its ancestor.
         # XXX: send a mail to the list.  It's not necessarily right that it
         # cannot have rev1c as its ancestor, though it is correct that it
         # should not be a delta against rev1c because we cannot verify that
-        # the inventory of rev1c includes file2 as modified in rev1c.
+        # the inventory of rev1c includes file1 as modified in rev1c.
         inv = Inventory()
-        self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
+        self.add_file(repo, inv, 'rev3', ['rev1c'])
         self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
 
     def test_reconcile_file_parents_not_referenced_by_any_inventory(self):
@@ -475,12 +473,12 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         """
         all_versions = [
             'rev1a', 'rev2', 'rev4', 'rev2b', 'rev4', 'rev2c', 'rev5']
-        file3_parents_before_reconcile = [
+        file_parents_before_reconcile = [
              (['rev2'], 'rev3'),
              (['rev2'], 'rev4'),
              (['rev2', 'rev2c'], 'rev5'),
              ]
-        file3_parents_after_reconcile = [
+        file_parents_after_reconcile = [
             # rev3's accessible parent inventories all have rev1a as the last
             # modifier.
             (['rev1a'], 'rev3'),
@@ -493,29 +491,28 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
             ]
         self.run_test(
             self.file_parents_not_referenced_by_any_inventory_factory,
-            'file3-id',
             all_versions,
-            file3_parents_before_reconcile,
-            file3_parents_after_reconcile
+            file_parents_before_reconcile,
+            file_parents_after_reconcile
             )
             
     def file_parents_not_referenced_by_any_inventory_factory(self, repo):
-        """Return a repository with a file3 which has extra per-file versions
+        """Return a repository with a file1 which has extra per-file versions
         that are not referenced by any inventory (even though they have the
         same ID as actual revisions).  rev2's inventory references rev1a of
-        file3, but there is a rev2 of file3 stored and erroneously referenced
+        file1, but there is a rev2 of file1 stored and erroneously referenced
         by later per-file versions (revisions rev4 and rev5).
         """
         # make rev1a: A well-formed revision, containing 'file3'
         inv = Inventory(revision_id='rev1a')
         inv.root.revision = 'rev1a'
-        self.add_file(repo, inv, 'file3', 'rev1a', [])
+        self.add_file(repo, inv, 'rev1a', [])
         self.add_revision(repo, 'rev1a', inv, [''])
 
         # make rev2, with file3
         # file3 is unmodified from rev1a.
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev2', ['rev1a'],
+        self.add_file(repo, inv, 'rev2', ['rev1a'],
                       inv_revision='rev1a')
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
@@ -527,7 +524,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         # determining whether a delta is acceptable, or a full is needed,
         # and what the correct parents are. ### same problem as the vf2 # # ghost case has in this respect
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev3', ['rev2'])
+        self.add_file(repo, inv, 'rev3', ['rev2'])
         self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a']) # XXX: extra parent irrevelvant?
 
         # In rev2b, the true last-modifying-revision of file3 is rev1a,
@@ -537,7 +534,7 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         # file3-rev2b.
         # ??? This is to test deduplication in fixing rev4
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev2b', ['rev1a'],
+        self.add_file(repo, inv, 'rev2b', ['rev1a'],
             inv_revision='rev1a')
         self.add_revision(repo, 'rev2b', inv, ['rev1a'])
 
@@ -550,23 +547,23 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
         # a parent of just rev1a - the starting file parents list is simply
         # completely wrong.
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev4', ['rev2'])
+        self.add_file(repo, inv, 'rev4', ['rev2'])
         self.add_revision(repo, 'rev4', inv, ['rev2', 'rev2b'])
 
         # rev2c changes file3 from rev1a, so the version it of file3 it
         # introduces is a head revision when rev5 is checked.
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev2c', ['rev1a'])
+        self.add_file(repo, inv, 'rev2c', ['rev1a'])
         self.add_revision(repo, 'rev2c', inv, ['rev1a'])
 
-        # rev5 descends from rev2 and rev2c; as rev2 does not alter file3,
+        # rev5 descends from rev2 and rev2c; as rev2 does not alter file1,
         # but rev2c does, this should use rev2c as the parent for the per
         # file history, even though more than one per-file parent is
         # available, because we use the heads of the revision parents for
         # the inventory modification revisions of the file to determine the
         # parents for the per file graph.
         inv = Inventory()
-        self.add_file(repo, inv, 'file3', 'rev5', ['rev2', 'rev2c'])
+        self.add_file(repo, inv, 'rev5', ['rev2', 'rev2c'])
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
 
     def make_repository_using_factory(self, factory):
@@ -594,10 +591,9 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
             parent_ids=parent_ids)
         repo.add_revision(revision_id,revision, inv)
 
-    def add_file(self, repo, inv, filename, revision, parents,
-                 inv_revision=None):
-        file_id = filename + '-id'
-        entry = InventoryFile(file_id, filename, 'TREE_ROOT')
+    def add_file(self, repo, inv, revision, parents, inv_revision=None):
+        file_id = 'file1-id'
+        entry = InventoryFile(file_id, 'a file name', 'TREE_ROOT')
         if inv_revision is not None:
             entry.revision = inv_revision
         else:
@@ -613,32 +609,32 @@ class TestReconcileFileVersionParents(TestCaseWithRepository):
             raise TestNotApplicable(
                     "Format does not support text parent reconciliation")
 
-    def file_parents(self, repo, file_id, revision_id):
-        return repo.weave_store.get_weave(file_id,
+    def file_parents(self, repo, revision_id):
+        return repo.weave_store.get_weave('file1-id',
             repo.get_transaction()).get_parents(revision_id)
 
-    def run_test(self, factory, fileid, all_versions, affected_before,
+    def run_test(self, factory, all_versions, affected_before,
             affected_after):
         repo = self.make_repository_using_factory(factory)
         self.require_text_parent_corruption(repo)
         for bad_parents, version in affected_before:
-            file_parents = self.file_parents(repo, fileid, version)
+            file_parents = self.file_parents(repo, version)
             self.assertEqual(bad_parents, file_parents,
-                "Expected version %s of %s to have parents %s before "
+                "Expected version %s of file1-id to have parents %s before "
                 "reconcile, but it has %s instead."
-                % (version, fileid, bad_parents, file_parents))
-        vf = repo.weave_store.get_weave(fileid, repo.get_transaction())
+                % (version, bad_parents, file_parents))
+        vf = repo.weave_store.get_weave('file1-id', repo.get_transaction())
         vf_shas = dict((v, vf.get_sha1(v)) for v in all_versions)
         repo.reconcile(thorough=True)
         for good_parents, version in affected_after:
-            file_parents = self.file_parents(repo, fileid, version)
+            file_parents = self.file_parents(repo, version)
             self.assertEqual(good_parents, file_parents,
-                "Expected version %s of %s to have parents %s after "
+                "Expected version %s of file1-id to have parents %s after "
                 "reconcile, but it has %s instead."
-                % (version, fileid, good_parents, file_parents))
+                % (version, good_parents, file_parents))
         # The content of the versionedfile should be the same after the
         # reconcile.
-        vf = repo.weave_store.get_weave(fileid, repo.get_transaction())
+        vf = repo.weave_store.get_weave('file1-id', repo.get_transaction())
         self.assertEqual(
             vf_shas, dict((v, vf.get_sha1(v)) for v in all_versions))
 
