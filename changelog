@@ -1,3 +1,17 @@
+bzr (0.91-2) unstable; urgency=low
+
+  * remove python-celementree and python-paramiko from build-depends.
+    rationale:
+      - python-celementree is purely an optimisation for python2.4,
+        and is already included in python2.5
+      - python-paramiko is not used during build at all. However, the
+        testsuite currently fails when paramiko is not installed
+        (see also #59150 in launchpad.net for details). Since we
+        currently don't run the testsuite by default on the buildds,
+        it is safe to remove that dependency, at least for now.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 27 Sep 2007 12:25:43 +0200
+
 bzr (0.91-1) unstable; urgency=low
 
   * Final 0.91 release.
