@@ -154,10 +154,36 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
                                   ('foo/bar', None, 'bar-id', None)])
         self.assertIs(None, wt.path2id('foo'))
 
-    def test_rename_file(self):
+    def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'],
+               ['foo-id', 'bar-id'])
+        wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
+            inventory.InventoryDirectory('foo-id', 'baz', root_id))])
+        # foo/bar should have been followed the rename of its parent to baz/bar
+        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+
+    def test_rename_dir_with_children_with_children(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar/', 'foo/bar/baz'])
+        wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
+               ['foo-id', 'bar-id', 'baz-id'])
+        wt.apply_inventory_delta([('foo', 'quux', 'foo-id',
+            inventory.InventoryDirectory('foo-id', 'quux', root_id))])
+        # foo/bar/baz should have been followed the rename of its parent's
+        # parent to quux/bar/baz
+        self.assertEqual('quux/bar/baz', wt.id2path('baz-id'))
+
+    def test_rename_file(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/'])
         wt.add(['foo', 'foo/bar', 'baz'],
@@ -197,6 +223,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
                ['dir-id', 'child-id', 'other-id'])
+        # this delta moves dir-id to dir2 and reparents 
+        # child-id wto a parent of other-id
         wt.apply_inventory_delta([('dir', 'dir2', 'dir-id',
             inventory.InventoryDirectory('dir-id', 'dir2', root_id)),
             ('dir/child', 'other/child', 'child-id',
