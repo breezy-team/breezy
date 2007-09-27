@@ -25,12 +25,18 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * New ``reconfigure`` command (Aaron Bentley)
+   * New ``reconfigure`` command. (Aaron Bentley)
+
+   * New ``revert --forget-merges`` command, which removes the record of a pending 
+     merge without affecting the working tree contents.  (Martin Pool)
 
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
+
+   * Commit no longer checks for new text keys during insertion when the
+     revision id was deterministically unique. (Robert Collins)
 
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
@@ -51,11 +57,13 @@ IN DEVELOPMENT
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
-  BUG FIXES:
+   * New option ``-c``/``--change`` for ``merge`` command for cherrypicking 
+     changes from one revision. (Alexander Belchenko, #141368)
 
-   * The basename, not the full path, is now used when checking whether
-     the profiling dump file begins with ``callgrind.out`` or not. This
-     fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
+   * Show encodings, locale and list of plugins in the traceback message.
+     (Martin Pool, #63894)
+
+  BUG FIXES:
 
    * Commands reporting exceptions can now be profiled and still have their
      data correctly dumped to a file. For example, a ``bzr commit`` with
@@ -63,24 +71,49 @@ IN DEVELOPMENT
      longer throws away the profiling data if this command is run with
      ``--lsprof-file callgrind.out.ci`` say. (Ian Clatworthy)
 
-   * HttpServer and FtpServer need to be closed properly or a listening socket
-     will remain opened.
-     (Vincent Ladeuil, #140055)
-
-   * Fix commit ordering in corner case (Aaron Bentley, #94975)
-
    * Fallback to ftp when paramiko is not installed and sftp can't be used for
      ``tests/commands`` so that the test suite is still usable without
      paramiko.
      (Vincent Ladeuil, #59150)
 
+   * Fix commit ordering in corner case. (Aaron Bentley, #94975)
+
+   * Fix long standing bug in partial commit when there are renames 
+     left in tree. (Robert Collins, #140419)
+
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
+
+   * Fix failing test by comparing real paths to cover the case where the TMPDIR
+     contains a symbolic link.
+     (Vincent Ladeuil, #141382).
+
+   * Fix log against smart server branches that don't support tags.
+     (James Westby, #140615)
+
+   * Fix 'unprintable error' message when displaying BzrCheckError and 
+     some other exceptions on Python 2.5.
+     (Martin Pool, #144633)
+
+   * HttpServer and FtpServer need to be closed properly or a listening socket
+     will remain opened.
+     (Vincent Ladeuil, #140055)
+
+   * The basename, not the full path, is now used when checking whether
+     the profiling dump file begins with ``callgrind.out`` or not. This
+     fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
+
+   * Trivial fix for invoking command ``reconfigure`` without arguments.
+     (Rob Weir, #141629)
 
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
   API BREAKS:
+
+   * ``KnitVersionedFile.add*`` will no longer cache added records even when
+     enable_cache() has been called - the caching feature is now exclusively for
+     reading existing data. (Robert Collins)
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
@@ -98,6 +131,10 @@ IN DEVELOPMENT
      (Robert Collins)
 
   INTERNALS:
+
+    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
+      put by the method call, to allow avoiding stat-after-write or
+      housekeeping in callers. (Robert Collins)
 
    * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
      duplication from user input, when a user mentions both a path and an item
@@ -118,6 +155,9 @@ IN DEVELOPMENT
      causes the parents of a selected id to be returned recursively, so all the
      paths from the root down to each element of selected_file_ids are
      returned. (Robert Collins)
+
+   * Knit joining has been enhanced to support plain to annotated conversion
+     and annotated to plain conversion. (Ian Clatworthy)
 
   TESTING:
 
@@ -265,6 +305,10 @@ bzr 0.91rc1 2007-09-11
     * In checkouts, tags are copied into the master branch when created,
       changed or deleted, and are copied into the checkout when it is 
       updated.  (Martin Pool, #93856, #93860)
+
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
 
   IMPROVEMENTS:
 

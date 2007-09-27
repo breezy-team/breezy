@@ -248,7 +248,11 @@ class TestBranch(TestCaseWithBranch):
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         strategy = gpg.LoopbackGPGStrategy(None)
+        branch.repository.lock_write()
+        branch.repository.start_write_group()
         branch.repository.sign_revision('A', strategy)
+        branch.repository.commit_write_group()
+        branch.repository.unlock()
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
                          Testament.from_revision(branch.repository,
                          'A').as_short_text() +
@@ -272,7 +276,11 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])

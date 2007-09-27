@@ -289,7 +289,7 @@ class Commit(object):
             # If provided, ensure the specified files are versioned
             if self.specific_files is not None:
                 # Note: This routine is being called because it raises
-                # PathNotVerisonedError as a side effect of finding the IDs. We
+                # PathNotVersionedError as a side effect of finding the IDs. We
                 # later use the ids we found as input to the working tree
                 # inventory iterator, so we only consider those ids rather than
                 # examining the whole tree again.

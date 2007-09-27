@@ -32,7 +32,7 @@ import bzrlib.commands
 import bzrlib.help
 from bzrlib.symbol_versioning import zero_ninetyone
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.osutils import pathjoin, abspath
+from bzrlib.osutils import pathjoin, abspath, normpath
 
 
 PLUGIN_TEXT = """\
@@ -241,7 +241,7 @@ class TestPlugins(TestCaseInTempDir):
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         plugin_path = self.test_dir + '/plugin.py'
-        self.assertEqual(plugin_path, plugin.path())
+        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
 
     def test_no_test_suite_gives_None_for_test_suite(self):
         self.setup_plugin()

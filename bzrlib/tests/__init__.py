@@ -72,7 +72,6 @@ except ImportError:
     pass
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
-import bzrlib.osutils
 import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
@@ -983,6 +982,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsSameRealPath(self, path1, path2):
+        """Fail if path1 and path2 points to different files"""
+        self.assertEqual(osutils.realpath(path1),
+                         osutils.realpath(path2),
+                         "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
+
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
@@ -1878,7 +1883,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
-        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+        root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
         TestCaseWithMemoryTransport.TEST_ROOT = root
         
         # make a fake bzr directory there to prevent any tests propagating
@@ -1994,7 +1999,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         name and then create two subdirs - test and home under it.
         """
         # create a directory within the top level test directory
-        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
+        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
         self.test_home_dir = self.test_base_dir + '/home'
