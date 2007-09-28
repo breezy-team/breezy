@@ -273,7 +273,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('initial empty commit', rev_id='a-rev',
                     allow_pointless=True)
-        result = tree.branch.repository.check(['a-rev'])
+        result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
         result.report_results(verbose=False)

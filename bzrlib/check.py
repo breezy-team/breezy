@@ -125,6 +125,15 @@ class Check(object):
                 for file_id, revision_id in self.unreferenced_ancestors:
                     note('unreferenced ancestor: {%s} in %s', revision_id,
                         file_id)
+        if len(self.inconsistent_parents):
+            note('%6d inconsistent parents', len(self.inconsistent_parents))
+            if verbose:
+                for info in self.inconsistent_parents:
+                    revision_id, file_id, found_parents, correct_parents = info
+                    note('      * %s version %s has parents %r '
+                         'but should have %r'
+                         % (file_id, revision_id, found_parents,
+                             correct_parents))
 
     def check_one_rev(self, rev_id):
         """Check one revision.

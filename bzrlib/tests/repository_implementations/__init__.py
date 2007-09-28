@@ -201,7 +201,7 @@ class TestCaseWithInconsistentRepository(TestCaseWithRepository):
 class Scenario(object):
     """A scenario for testing check and reconcile.
 
-    A scenario need to define the following methods:
+    A scenario needs to define the following methods:
         :populate_repository: a method to use to populate a repository with
             sample revisions, inventories and file versions.
         :all_versions: all the versions in repository.  run_test verifies
@@ -412,6 +412,11 @@ class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
 
 
 class TooManyParentsScenario(Scenario):
+    """A scenario where 'broken-revision' of 'a-file' claims to have parents
+    ['good-parent', 'bad-parent'].  However 'bad-parent' is in the ancestry of
+    'good-parent', so the correct parent list for that file version are is just
+    ['good-parent'].
+    """
 
     def all_versions(self):
         return ['bad-parent', 'good-parent', 'broken-revision']
@@ -427,6 +432,13 @@ class TooManyParentsScenario(Scenario):
             ([], 'bad-parent'),
             (['bad-parent'], 'good-parent'),
             (['good-parent'], 'broken-revision')]
+
+    def check_regexes(self):
+        return [
+            '     1 inconsistent parents',
+            (r"      \* a-file-id version broken-revision has parents "
+             r"\['good-parent', 'bad-parent'\] but "
+             r"should have \['good-parent'\]")]
 
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(

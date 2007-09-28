@@ -28,6 +28,7 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.tests.repository_implementations import (
     TestCaseWithInconsistentRepository,
+    TooManyParentsScenario,
     )
 
 
@@ -137,56 +138,14 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
         result = self.find_bad_ancestors('file2-id', ['rev3'])
         self.assertEqual({'rev1c': set(['rev3'])}, result)
 
-    def too_many_parents_factory(self, repo):
-        """Build a repository where 'broken-revision' of 'a-file' claims to
-        have parents ['good-parent', 'bad-parent'].  However 'bad-parent' is in
-        the ancestry of 'good-parent', so the correct parent list for that file
-        version are is just ['good-parent'].
-        """
-        inv = self.make_one_file_inventory(
-            repo, 'bad-parent', [], root_revision='bad-parent')
-        self.add_revision(repo, 'bad-parent', inv, [])
-        
-        inv = self.make_one_file_inventory(
-            repo, 'good-parent', ['bad-parent'])
-        self.add_revision(repo, 'good-parent', inv, ['bad-parent'])
-        
-        inv = self.make_one_file_inventory(
-            repo, 'broken-revision', ['good-parent', 'bad-parent'])
-        self.add_revision(repo, 'broken-revision', inv, ['good-parent'])
-
     def test_too_many_parents(self):
-        repo = self.make_repository_using_factory(
-            self.too_many_parents_factory)
+        scenario = TooManyParentsScenario(self)
+        repo = self.make_repository_using_factory(scenario.populate_repository)
         self.require_text_parent_corruption(repo)
         check_result = repo.check()
-        self.assertEqual(
-            [('broken-revision', 'a-file-id',
-              ['good-parent', 'bad-parent'], ['good-parent']),
-            ],
-            check_result.inconsistent_parents)
-
-    def single_parent_changed_in_revision_factory(self, repo):
-        inv = self.make_one_file_inventory(repo, 'parent', [])
-        self.add_revision(repo, 'parent', inv, [])
-
-        inv = self.make_one_file_inventory(repo, 'new-revision', ['parent'])
-        self.add_revision(repo, 'new-revision', inv, ['parent'])
-        
-    def test_single_parent_changed_in_revision(self):
-        repo = self.make_repository_using_factory(
-            self.single_parent_changed_in_revision_factory)
-        self.require_text_parent_corruption(repo)
-        weave = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        revision_parents = repository._RevisionParentsProvider(repo)
-        revision_versions = repository._RevisionTextVersionCache(repo)
-        self.assertEqual(
-            weave.calculate_parents(
-                'new-revision',
-                revision_versions.get_text_version,
-                'a-file-id',
-                revision_parents,
-                repo.get_graph(),
-                repo.get_inventory),
-            ['parent'])
+        check_result.report_results(verbose=True)
+        for pattern in scenario.check_regexes():
+            self.assertContainsRe(
+                self._get_log(keep_log_file=True),
+                pattern)
 
