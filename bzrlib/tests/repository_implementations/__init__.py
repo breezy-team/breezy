@@ -94,10 +94,10 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
                 relpath, format=format)
 
 
-class Scenario(object):
-    """A scenario for testing check and reconcile.
+class BrokenRepoScenario(object):
+    """Base class for defining scenarios for testing check and reconcile.
 
-    A scenario needs to define the following methods:
+    A subclass needs to define the following methods:
         :populate_repository: a method to use to populate a repository with
             sample revisions, inventories and file versions.
         :all_versions: all the versions in repository.  run_test verifies
@@ -126,7 +126,7 @@ class Scenario(object):
         return self.test_case.add_revision(repo, revision_id, inv, parent_ids)
 
 
-class FileParentIsNotInRevisionAncestryScenario(Scenario):
+class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev2' has 'a-file' with a
     parent 'rev1b' that is not in the revision ancestry.
     
@@ -150,7 +150,8 @@ class FileParentIsNotInRevisionAncestryScenario(Scenario):
             (['rev1a'], 'rev2')]
 
     def check_regexes(self):
-        return [r"\* a-file-id version rev2 has parents \['rev1a', 'rev1b'\] but should have \['rev1a'\]"]
+        return [r"\* a-file-id version rev2 has parents \['rev1a', 'rev1b'\] "
+                r"but should have \['rev1a'\]"]
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
@@ -172,7 +173,7 @@ class FileParentIsNotInRevisionAncestryScenario(Scenario):
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
 
 
-class FileParentHasInaccessibleInventoryScenario(Scenario):
+class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev3' containing 'a-file' modified in
     'rev3', and with a parent which is in the revision ancestory, but whose
     inventory cannot be accessed at all.
@@ -195,7 +196,8 @@ class FileParentHasInaccessibleInventoryScenario(Scenario):
             ([], 'rev3')]
 
     def check_regexes(self):
-        return ["\* a-file-id version rev3 has parents \['rev1c'\] but should have \[\]"]
+        return [r"\* a-file-id version rev3 has parents "
+                r"\['rev1c'\] but should have \[\]"]
 
     def populate_repository(self, repo):
         # make rev2, with a-file
@@ -214,15 +216,11 @@ class FileParentHasInaccessibleInventoryScenario(Scenario):
         # make rev3 with a-file
         # a-file refers to 'rev1c', which is a ghost in this repository, so
         # a-file cannot have rev1c as its ancestor.
-        # XXX: I've sent a mail to the list about this.  It's not necessarily
-        # right that it cannot have rev1c as its ancestor, though it is correct
-        # that it should not be a delta against rev1c because we cannot verify
-        # that the inventory of rev1c includes a-file as modified in rev1c.
         inv = self.make_one_file_inventory(repo, 'rev3', ['rev1c'])
         self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
 
 
-class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
+class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     """A scenario where a repository with file 'a-file' which has extra
     per-file versions that are not referenced by any inventory (even though
     they have the same ID as actual revisions).  The inventory of 'rev2'
@@ -258,11 +256,13 @@ class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
     def check_regexes(self):
         return [
             "3 inconsistent parents",
-            "a-file-id version rev3 has parents \['rev2'\] but should have \['rev1a'\]",
-            "a-file-id version rev5 has parents \['rev2', 'rev2c'\] but should have \['rev2c'\]",
-            "a-file-id version rev4 has parents \['rev2'\] but should have \['rev1a'\]",
+            r"a-file-id version rev3 has parents \['rev2'\] "
+            r"but should have \['rev1a'\]",
+            r"a-file-id version rev5 has parents \['rev2', 'rev2c'\] "
+            r"but should have \['rev2c'\]",
+            r"a-file-id version rev4 has parents \['rev2'\] "
+            r"but should have \['rev1a'\]",
             ]
-
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
@@ -282,9 +282,9 @@ class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
         # be rev1a, and at the revision level 1c is not present - it is a
         # ghost, so only the details from rev1a are available for
         # determining whether a delta is acceptable, or a full is needed,
-        # and what the correct parents are. ### same problem as the vf2 # # ghost case has in this respect
+        # and what the correct parents are.
         inv = self.make_one_file_inventory(repo, 'rev3', ['rev2'])
-        self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a']) # XXX: extra parent irrevelvant?
+        self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
 
         # In rev2b, the true last-modifying-revision of a-file is rev1a,
         # inherited from rev2, but there is a version rev2b of the file, which
@@ -322,7 +322,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
 
 
-class TooManyParentsScenario(Scenario):
+class TooManyParentsScenario(BrokenRepoScenario):
     """A scenario where 'broken-revision' of 'a-file' claims to have parents
     ['good-parent', 'bad-parent'].  However 'bad-parent' is in the ancestry of
     'good-parent', so the correct parent list for that file version are is just
@@ -365,7 +365,15 @@ class TooManyParentsScenario(Scenario):
         self.add_revision(repo, 'broken-revision', inv, ['good-parent'])
 
 
-class FooScenario(Scenario):
+class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
+    """A scenario where the file parent is the same as the revision parent, but
+    should not be because that revision did not modify the file.
+
+    Specifically, the parent revision of 'current' is
+    'modified-something-else', which does not modify 'a-file', but the
+    'current' version of 'a-file' erroneously claims that
+    'modified-something-else' is the parent file version.
+    """
 
     def all_versions(self):
         return ['basis', 'modified-something-else', 'current']
@@ -392,16 +400,32 @@ class FooScenario(Scenario):
         inv = self.make_one_file_inventory(repo, 'basis', [])
         self.add_revision(repo, 'basis', inv, [])
 
+        # 'modified-something-else' is a correctly recorded revision, but it
+        # does not modify the file we are looking at, so the inventory for that
+        # file in this revision points to 'basis'.
         inv = self.make_one_file_inventory(
             repo, 'modified-something-else', ['basis'], inv_revision='basis')
         self.add_revision(repo, 'modified-something-else', inv, ['basis'])
 
+        # The 'current' revision has 'modified-something-else' as its parent,
+        # but the 'current' version of 'a-file' should have 'basis' as its
+        # parent.
         inv = self.make_one_file_inventory(
             repo, 'current', ['modified-something-else'])
         self.add_revision(repo, 'current', inv, ['modified-something-else'])
 
 
-class IncorrectlyOrderedParentsScenario(Scenario):
+class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
+    """A scenario where the set parents of a version of a file are correct, but
+    the order of those parents is incorrect.
+
+    This defines a 'broken-revision-1-2' and a 'broken-revision-2-1' which both
+    have their file version parents reversed compared to the revision parents,
+    which is invalid.  (We use two revisions with opposite orderings of the
+    same parents to make sure that accidentally relying on dictionary/set
+    ordering cannot make the test pass; the assumption is that while dict/set
+    iteration order is arbitrary, it is also consistent within a single test).
+    """
 
     def all_versions(self):
         return ['parent-1', 'parent-2', 'broken-revision-1-2',
@@ -430,7 +454,6 @@ class IncorrectlyOrderedParentsScenario(Scenario):
             r"\* a-file-id version broken-revision-2-1 has parents "
             r"\['parent-1', 'parent-2'\] but should have "
             r"\['parent-2', 'parent-1'\]"]
-            
 
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(repo, 'parent-1', [])
@@ -450,27 +473,29 @@ class IncorrectlyOrderedParentsScenario(Scenario):
             repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
 
 
-all_scenarios = [
-    FileParentIsNotInRevisionAncestryScenario,
-    FileParentHasInaccessibleInventoryScenario,
-    FileParentsNotReferencedByAnyInventoryScenario,
-    TooManyParentsScenario,
-    FooScenario,
-    IncorrectlyOrderedParentsScenario,
-    ]
-
-
 class BrokenRepositoryTestProviderAdapter(TestScenarioApplier):
+
+    scenario_classes = [
+        FileParentIsNotInRevisionAncestryScenario,
+        FileParentHasInaccessibleInventoryScenario,
+        FileParentsNotReferencedByAnyInventoryScenario,
+        TooManyParentsScenario,
+        ClaimedFileParentDidNotModifyFileScenario,
+        IncorrectlyOrderedParentsScenario,
+        ]
 
     def __init__(self):
         TestScenarioApplier.__init__(self)
         self.scenarios = [
-            (s.__name__, {'scenario_class': s}) for s in all_scenarios]
+            (s.__name__, {'scenario_class': s}) for s in self.scenario_classes]
 
 
 def test_suite():
     result = TestSuite()
     test_repository_implementations = [
+        'bzrlib.tests.repository_implementations.test_break_lock',
+        # note that test_broken is intentionally excluded from this list; it is
+        # handled further down.
         'bzrlib.tests.repository_implementations.test_break_lock',
         'bzrlib.tests.repository_implementations.test_check',
         'bzrlib.tests.repository_implementations.test_commit_builder',
@@ -516,18 +541,20 @@ def test_suite():
                   loader,
                   result)
 
+    # Parameterise test_broken by both repository format *and* by
+    # broken-repository scenario.
     from bzrlib.tests import iter_suite_tests
     scenario_suite = TestSuite()
     scenario_adapter = BrokenRepositoryTestProviderAdapter()
-    modules_for_broken_scenario = [
+    modules_for_broken_repo_scenario = [
         'bzrlib.tests.repository_implementations.test_broken']
     adapt_modules(
-        modules_for_broken_scenario,
+        modules_for_broken_repo_scenario,
         format_adapter,
         loader,
         scenario_suite)
     adapt_modules(
-        modules_for_broken_scenario,
+        modules_for_broken_repo_scenario,
         adapt_to_smart_server,
         loader,
         scenario_suite)

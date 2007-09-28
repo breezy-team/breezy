@@ -19,18 +19,15 @@
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.inventory import Inventory, InventoryFile
+from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
-from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.revision import Revision
-from bzrlib.repofmt.knitrepo import KnitRepository
-from bzrlib.tests import TestNotApplicable, TestSkipped
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import (
     TestCaseWithRepository,
     )
 from bzrlib.transport import get_transport
 from bzrlib.uncommit import uncommit
-from bzrlib.workingtree import WorkingTree
 
 
 class TestReconcile(TestCaseWithRepository):
