@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests that use BrokenRepoScenario objects.
+
+That is, tests for reconcile and check.
+"""
+
 
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.revision import Revision
@@ -130,7 +135,8 @@ class TestReconcile(TestCaseWithRepository):
         # reconcile.
         vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
         self.assertEqual(
-            vf_shas, dict((v, vf.get_sha1(v)) for v in scenario.all_versions()))
+            vf_shas,
+            dict((v, vf.get_sha1(v)) for v in scenario.all_versions()))
 
     def test_reconcile(self):
         self.assertReconcileResults(self.scenario_class(self))
