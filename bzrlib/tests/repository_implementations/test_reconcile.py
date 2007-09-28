@@ -611,13 +611,11 @@ class TestReconcileFileVersionParents(TestCaseWithInconsistentRepository):
 #revA  revB    X         revC  revB                      revB            right-side change (C in ancestry of B)
 #revA  revB    B         revC  revB                      NO ENTRY
 #revA  revB    X         revA  revB                      revA revB       both-side change no prior join
-#revA  revB    X         revA  revB                      revA revB       both-side change no prior join (that is, we
-#        always record a change  in this case)
+#revA  revB    X         revA  revB                      revA revB       both-side change no prior join (that is, we always record a change in this case)
 #revA  revB    X         revA  revB                      revA            both-side change, one side pre-merged (A merged B)
 #revA  revB    A         revA  revB                      NO ENTRY       
 #revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join
-#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join (that is
-#        we always record a change in this case)
+#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join (that is we always record a change in this case)
 #revA  revB    X         revC  revD                      revC            both sides parent change, C merged D
 #revA  revB    C         revC  revD                      NO ENTRY
 
@@ -650,7 +648,6 @@ class TestReconcileFileVersionParents(TestCaseWithInconsistentRepository):
             [([], 'basis'),
              (['basis'], 'modified-something-else'),
              (['basis'], 'current')])
-        self.fail('boom')
 
     def foo_factory(self, repo):
 

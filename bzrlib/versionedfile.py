@@ -495,6 +495,44 @@ class VersionedFile(object):
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
+    def check_parents(self, revision_ids, get_text_version, file_id,
+            parents_provider, repo_graph, get_inventory):
+        result = {}
+        from bzrlib.trace import mutter
+        for num, revision_id in enumerate(revision_ids):
+            text_revision = get_text_version(file_id, revision_id)
+            if text_revision is None:
+                continue
+            # calculate the right parents for this version of this file
+            parents_of_text_revision = parents_provider.get_parents(
+                [text_revision])[0]
+            parents_from_inventories = []
+            for parent in parents_of_text_revision:
+                if parent == 'null:':
+                    continue
+                try:
+                    inventory = get_inventory(parent)
+                except errors.RevisionNotPresent:
+                    pass
+                else:
+                    introduced_in = inventory[file_id].revision
+                    parents_from_inventories.append(introduced_in)
+            del parent
+            mutter('%r:%r introduced in: %r',
+                   file_id, revision_id, parents_from_inventories)
+            heads = set(repo_graph.heads(l))
+            mutter('    heads: %r', heads)
+            new_parents = []
+            for parent in parents_of_text_revision:
+                if parent in heads:
+                    new_parents.append(parent)
+            mutter('    calculated parents: %r', new_parents)
+            knit_parents = self.get_parents(text_revision)
+            if new_parents != knit_parents:
+                result[revision_id] = (knit_parents, new_parents)
+                mutter('    RESULT: %r', result)
+        return result
+
     def find_bad_ancestors(self, revision_ids, get_text_version, file_id,
             parents_provider, repo_graph):
         """Search this versionedfile for ancestors that are not referenced.
@@ -521,6 +559,7 @@ class VersionedFile(object):
         result = {}
         from bzrlib.trace import mutter
         for num, revision_id in enumerate(revision_ids):
+
             #if revision_id == 'broken-revision-1-2': import pdb; pdb.set_trace()
             #if revision_id == 'broken-revision-1-2':
             #    result.setdefault('parent-1',set()).add('broken-revision-1-2')
@@ -528,9 +567,10 @@ class VersionedFile(object):
             text_revision = get_text_version(file_id, revision_id)
             if text_revision is None:
                 continue
-            parents = parents_provider.get_parents([text_revision])[0]
+
+            file_parents = parents_provider.get_parents([text_revision])[0]
             revision_parents = set()
-            for parent_id in parents:
+            for parent_id in file_parents:
                 try:
                     revision_parents.add(get_text_version(file_id, parent_id))
                 # Skip ghosts (this means they can't provide texts...)
@@ -548,7 +588,7 @@ class VersionedFile(object):
                 result.setdefault(spurious_parent, set()).add(text_revision)
             # XXX: false positives
             #text_parents = self.get_parents(text_revision)
-            #if text_parents != parents:
+            #if text_parents != file_parents:
             #    for text_parent in text_parents:
             #        result.setdefault(text_parent, set()).add(text_revision)
         mutter('find_bad_ancestors: %r', result)

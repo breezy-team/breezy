@@ -57,6 +57,7 @@ class Check(object):
         self.revision_versions = _mod_repository._RevisionTextVersionCache(
             self.repository)
         self.unreferenced_ancestors = set()
+        self.inconsistent_parents = []
 
     def check(self):
         self.repository.lock_read()
@@ -172,12 +173,24 @@ class Check(object):
         self.inventory_weave.check(progress_bar=self.progress)
         revision_parents = _mod_repository._RevisionParentsProvider(
             self.repository)
+        files_in_revisions = {}
+        revisions_of_files = {}
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
+            result = w.check_parents(
+                self.planned_revisions,
+                self.revision_versions.get_text_version,
+                weave_id,
+                revision_parents,
+                self.repository.get_graph(),
+                self.repository.get_inventory)
+            for revision_id, (weave_parents,correct_parents) in result.items():
+                self.inconsistent_parents.append(
+                    (revision_id, weave_id, weave_parents, correct_parents))
             result = w.find_bad_ancestors(
                 self.planned_revisions,
                 self.revision_versions.get_text_version,

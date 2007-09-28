@@ -360,14 +360,23 @@ class KnitReconciler(RepoReconciler):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
-            bad_ancestors = vf.find_bad_ancestors(
+#            bad_ancestors = vf.find_bad_ancestors(
+#                self.revisions.versions(),
+#                revision_versions.get_text_version,
+#                file_id,
+#                revision_parents,
+#                self.repo.get_graph())
+            bad_ancestors = []
+            bad_parents = vf.check_parents(
                 self.revisions.versions(),
                 revision_versions.get_text_version,
                 file_id,
                 revision_parents,
-                self.repo.get_graph())
-            if len(bad_ancestors) == 0:
+                self.repo.get_graph(),
+                self.repo.get_inventory)
+            if len(bad_ancestors) == 0 and len(bad_parents) == 0:
                 continue
+            #mutter('bad_parents: %r', bad_parents)
             new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
                 self.transaction)
             new_parents = {}
@@ -375,7 +384,8 @@ class KnitReconciler(RepoReconciler):
                 parents = vf.get_parents(version)
                 for parent_id in parents:
                     if (parent_id in bad_ancestors and
-                        version in bad_ancestors[parent_id]):
+                        version in bad_ancestors[parent_id]
+                        ) or (version in bad_parents):
                         parents = self._find_correct_parents(version,
                             file_id, revision_versions, revision_graph)
                         break
