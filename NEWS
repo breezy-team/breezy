@@ -163,6 +163,12 @@ IN DEVELOPMENT
    * Knit joining has been enhanced to support plain to annotated conversion
      and annotated to plain conversion. (Ian Clatworthy)
 
+   * The CommitBuilder method ``record_entry_contents`` now returns summary
+     information about the effect of the commit on the repository. This tuple
+     contains an inventory delta item if the entry changed from the basis, and a
+     boolean indicating whether a new file graph node was recorded.
+     (Robert Collins)
+
   TESTING:
 
 

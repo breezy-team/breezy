@@ -210,9 +210,12 @@ class CommitBuilder(object):
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
-        :return: True if a new version of the entry has been recorded.
-            (Committing a merge where a file was only changed on the other side
-            will not return True.)
+        :return: A tuple (change_delta, version_recorded). change_delta is 
+            an inventory_delta change for this entry against the basis tree of
+            the commit, or None if no change occured against the basis tree.
+            version_recorded is True if a new version of the entry has been
+            recorded. For instance, committing a merge where a file was only
+            changed on the other side will return (delta, False).
         """
         if self.new_inventory.root is None:
             if ie.parent_id is not None:
@@ -220,11 +223,38 @@ class CommitBuilder(object):
             self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
+        # TODO: slow, take it out of the inner loop.
+        try:
+            basis_inv = parent_invs[0]
+        except IndexError:
+            basis_inv = Inventory(root_id=None)
+
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
-            return ie.revision == self._new_revision_id and (path != '' or
+            if self._versioned_root or path != '':
+                # not considered for commit
+                delta = None
+            else:
+                # repositories that do not version the root set the root's
+                # revision to the new commit even when no change occurs, and
+                # this masks when a change may have occurred against the basis,
+                # so calculate if one happened.
+                if ie.file_id not in basis_inv:
+                    # add
+                    delta = (None, path, ie.file_id, ie)
+                else:
+                    basis_id = basis_inv[ie.file_id]
+                    if basis_id.name != '':
+                        # not the root
+                        delta = (basis_inv.id2path(ie.file_id), path,
+                            ie.file_id, ie)
+                    else:
+                        # common, unaltered
+                        delta = None
+            # not considered for commit, OR, for non-rich-root 
+            return delta, ie.revision == self._new_revision_id and (path != '' or
                 self._versioned_root)
 
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -236,7 +266,17 @@ class CommitBuilder(object):
         # we are creating a new revision for ie in the history store and
         # inventory.
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
-        return ie.revision == self._new_revision_id and (path != '' or
+        if ie.file_id not in basis_inv:
+            # add
+            delta = (None, path, ie.file_id, ie)
+        elif ie != basis_inv[ie.file_id]:
+            # common but altered
+            delta = (basis_inv.id2path(ie.file_id), path, ie.file_id,
+                ie)
+        else:
+            # common, unaltered
+            delta = None
+        return delta, ie.revision == self._new_revision_id and (path != '' or
             self._versioned_root)
 
     def modified_directory(self, file_id, file_parents):
