@@ -360,35 +360,22 @@ class KnitReconciler(RepoReconciler):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
-#            bad_ancestors = vf.find_bad_ancestors(
-#                self.revisions.versions(),
-#                revision_versions.get_text_version,
-#                file_id,
-#                revision_parents,
-#                self.repo.get_graph())
-            bad_ancestors = []
-            bad_parents = vf.check_parents(
+            versions_with_bad_parents = vf.check_parents(
                 self.revisions.versions(),
                 revision_versions.get_text_version,
                 file_id,
                 revision_parents,
                 self.repo.get_graph(),
                 self.repo.get_inventory)
-            if len(bad_ancestors) == 0 and len(bad_parents) == 0:
+            if len(versions_with_bad_parents) == 0:
                 continue
-            #mutter('bad_parents: %r', bad_parents)
             new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
                 self.transaction)
             new_parents = {}
             for version in vf.versions():
                 parents = vf.get_parents(version)
-                for parent_id in parents:
-                    if (parent_id in bad_ancestors and
-                        version in bad_ancestors[parent_id]
-                        ) or (version in bad_parents):
-                        parents = self._find_correct_parents(version,
-                            file_id, revision_versions, revision_graph)
-                        break
+                if version in versions_with_bad_parents:
+                    parents = versions_with_bad_parents[version][1]
                 new_parents[version] = parents
             for version in topo_sort(new_parents.items()):
                 new_vf.add_lines(version, new_parents[version],
@@ -396,25 +383,3 @@ class KnitReconciler(RepoReconciler):
             self.repo.weave_store.copy(new_vf, file_id, self.transaction)
             self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 
-    def _find_correct_parents(self, revision_id, file_id, revision_versions,
-                              revision_graph):
-        parents = []
-        rev_parents = revision_graph.get_parents([revision_id])[0]
-        if rev_parents is None:
-            return []
-        for parent_id in rev_parents:
-            try:
-                parent_id = revision_versions.get_text_version(file_id,
-                                                               parent_id)
-            except errors.RevisionNotPresent:
-                continue
-            if parent_id is not None and parent_id not in parents:
-                parents.append(parent_id)
-        non_heads = set()
-        for num, parent in enumerate(parents):
-            for other_parent in parents[num+1:]:
-                if revision_graph.is_ancestor(parent, other_parent):
-                    non_heads.add(parent)
-                if revision_graph.is_ancestor(other_parent, parent):
-                    non_heads.add(other_parent)
-        return [p for p in parents if p not in non_heads]

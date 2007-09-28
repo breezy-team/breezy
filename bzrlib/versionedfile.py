@@ -520,17 +520,18 @@ class VersionedFile(object):
             del parent
             mutter('%r:%r introduced in: %r',
                    file_id, revision_id, parents_from_inventories)
-            heads = set(repo_graph.heads(l))
+            heads = set(repo_graph.heads(parents_from_inventories))
             mutter('    heads: %r', heads)
             new_parents = []
-            for parent in parents_of_text_revision:
-                if parent in heads:
+            for parent in parents_from_inventories:
+                if parent in heads and parent not in new_parents:
                     new_parents.append(parent)
             mutter('    calculated parents: %r', new_parents)
             knit_parents = self.get_parents(text_revision)
+            mutter('    knit parents: %r', knit_parents)
             if new_parents != knit_parents:
                 result[revision_id] = (knit_parents, new_parents)
-                mutter('    RESULT: %r', result)
+        mutter('    RESULT: %r', result)
         return result
 
     def find_bad_ancestors(self, revision_ids, get_text_version, file_id,

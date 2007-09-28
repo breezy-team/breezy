@@ -251,10 +251,3 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
             ],
             check_result.inconsistent_parents)
 
-#    def test_too_many_parents_XXX_weave(self):
-#        # XXX: single weave variant of test_too_many_parents
-#        repo = self.make_repository_using_factory(
-#            self.too_many_parents_factory)
-#        self.require_text_parent_corruption(repo)
-#        weave = repo.
-#
