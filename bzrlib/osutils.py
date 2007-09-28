@@ -592,11 +592,16 @@ def sha_file(f):
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    f = file(fname, 'rb', buffering=65000)
+    s = sha.new()
+    f = os.open(fname, os.O_RDONLY)
     try:
-        return sha_file(f)
+        while True:
+            b = os.read(f, 1<<16)
+            if not b:
+                return s.hexdigest()
+            s.update(b)
     finally:
-        f.close()
+        os.close(f)
 
 
 def sha_strings(strings, _factory=sha.new):
