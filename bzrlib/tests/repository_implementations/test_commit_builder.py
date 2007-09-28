@@ -120,22 +120,17 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
-    def test_commit_without_root(self):
-        """This should cause a deprecation warning, not an assertion failure"""
+    def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
-            if tree.branch.repository.supports_rich_root():
-                raise tests.TestSkipped('Format requires root')
             self.build_tree(['foo'])
             tree.add('foo', 'foo-id')
             entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
-            self.callDeprecated(['Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.'],
+            self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree)
-            builder.finish_inventory()
-            rev_id = builder.commit('foo bar')
+            builder.abort()
         finally:
             tree.unlock()
     

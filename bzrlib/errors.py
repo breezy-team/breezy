@@ -254,6 +254,12 @@ class ReservedId(BzrError):
         self.revision_id = revision_id
 
 
+class RootMissing(InternalBzrError):
+
+    _fmt = ("The root entry of a tree must be the first entry supplied to "
+        "record_entry_contents.")
+
+
 class NoHelpTopic(BzrError):
 
     _fmt = ("No help could be found for '%(topic)s'. "

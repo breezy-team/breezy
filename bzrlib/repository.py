@@ -194,18 +194,10 @@ class CommitBuilder(object):
             commit.
         :param tree: The tree that is being committed.
         """
-        if ie.parent_id is not None:
-            # if ie is not root, add a root automatically.
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
-        else:
-            # In this revision format, root entries have no knit or weave When
-            # serializing out to disk and back in root.revision is always
-            # _new_revision_id
-            ie.revision = self._new_revision_id
+        # In this revision format, root entries have no knit or weave When
+        # serializing out to disk and back in root.revision is always
+        # _new_revision_id
+        ie.revision = self._new_revision_id
 
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -223,6 +215,8 @@ class CommitBuilder(object):
             will not return True.)
         """
         if self.new_inventory.root is None:
+            if ie.parent_id is not None:
+                raise errors.RootMissing()
             self._check_root(ie, parent_invs, tree)
         self.new_inventory.add(ie)
 
@@ -332,8 +326,6 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
-        # ie must be root for this builder
-        assert ie.parent_id is None
 
 
 ######################################################################
