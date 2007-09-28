@@ -1,72 +1,88 @@
-====================
-Bazaar Mini Tutorial
-====================
+===================
+Bazaar in 5 minutes
+===================
 
 .. contents::
 
 Introduction
 ============
 
-This is a very brief 5-minute tutorial, covering only what a first time user
-needs to start a project or start contributing to a project using Bazaar.
-For a more detailed look, see `Learning More`_.
+Bazaar is a distributed version control system that makes it easier for
+people to work together on software projects. 
+
+Over the next five minutes, you'll learn how to XXX, XXX and XXX.
+
+If you'd prefer a more detailed intrdouced, take a look at our guide
+`Learning More`_.
 
 
 Installation
 ============
 
-See http://bazaar-vcs.org/Download. Bazaar is probably in your GNU/Linux
-distribution already. If not, it's trivial to install on any platform that
-runs Python 2.4, including Windows. Installation should take at most a few
-minutes.
+For this guide, we'll assume you Bazaar is already on your system. If not,
+it's trivial to install on any platform that runs Python 2.4:
+
+- *GNU/Linux:* Bazaar is probably in your GNU/Linux distribution already.
+- *Windows:* `installation instructions`_.
+- *Mac OS X:* `install using MacPorts`_.
+
+For other platforms and how to install from source code, see the Downloads_
+page.
+
+.. _installation instructions: http://bazaar-vcs.org/WindowsDownloads
+.. _install using MacPorts: http://bazaar-vcs.org/MacPorts
+.. _Downloads: http://bazaar-vcs.org/Download
 
 
-Introducing Yourself
+Introducing yourself
 ====================
 
-You want Bazaar to correctly identify you in revision logs. Using your name
-and email instead of Joe Doe's, type::
+Hello, meet bzr. bzr is the command you'll use to invoke Bazaar.
+
+Now it's your turn tell Bazaar who you are. This allows Bazaar to correctly
+identify your work in revision logs.
+
+Using your name and email address, instead of Joe Doe's, type::
 
   $ bzr whoami "Joe Doe <joe.doe@gmail.com>"
 
-Now try::
+Now, check that your name and email address are correctly registered::
 
   $ bzr whoami
   Joe Doe <joe.doe@gmail.com>
 
 
-Putting Existing Files Under Version Control
+Putting existing files under version control
 ============================================
 
-It is very easy to put an existing set of files under version control using
-Bazaar::
+Okay, it's time to put Bazaar to work.
 
-  $ cd my-project
+The first step is to tell Bazaar that you want it to track the files in a
+particular directory.
+
+Switch to a directory where you've already got some files, then type::
+
   $ bzr init .
+  
+If it looks like nothing happened, don't worry. You now have an empty 
+Bazaar branch. Let's tell Bazaar which files your want to work with.
+
   $ bzr add
+
+Your files aren't in your branch just yet; you need to commit them first,
+along with a quick message to explain the purpose of that commit::
+
   $ bzr commit -m "Initial import"
 
-You can now make changes, track them, publish your branch and so on as
-explained below.
+Bazaar has just taken a snapshot of everything in that directory. Even if
+you make changes to those files, you can always go back to the state they
+were in when you committed them to the branch.
 
 
-Creating A Personal Branch
-==========================
+Making changes to your files
+============================
 
-Rather than starting a new project, you may wish to work on an existing
-project either you or someone else has published.
-
-Create a branch of an existing project::
-
-  $ bzr branch http://example.com/code/foobar.dev foobar.joe
-  Branched 1 revision(s).                                                        
-
-Note that after you create a personal branch, you don't need web access to
-commit changes.
-
-
-Making Changes
-==============
+Now, let's change a file and commit those changes to your branch.
 
 Edit a file::
 
@@ -88,40 +104,87 @@ Check what have you done::
    _pyfribidi_log2vis (PyObject * self, PyObject * args, PyObject * kw)
    {
 
-Commit your hard work::
+Commit your work to your Bazaar branch::
 
   $ bzr commit -m 'added some whitespace'
   Committed revision 2.
 
+Bazaar has taken another snapshot of your files.
 
-Viewing the Revision Log
+
+Viewing the revision log
 ========================
 
-Browse the history of the branch::
+You can see the history of your branch by browsing its log::
 
   $ bzr log
   ------------------------------------------------------------
   revno: 2
   committer: Joe Doe <joe.doe@gmail.com>
   branch nick: foobar.joe
-  timestamp: Mon 2006-02-06 01:33:35 +0200
+  timestamp: Mon 2007-09-28 01:33:35 +0200
   message:
     added some whitespace
   ------------------------------------------------------------
   revno: 1
-  committer: James Hacker <jmh@example.com>
+  committer: Joe Doe <joe.doe@gmail.com>
   branch nick: foobar.dev
-  timestamp: Mon 2006-02-06 01:06:11 +0200
+  timestamp: Mon 2006-09-28 01:06:11 +0200
   message:
     initial revision
 
 
-Updating Your Branch from the Main Branch
+Publishing Your Branch
+======================
+
+There are a couple of ways to publish your branch but the easiest way is to
+push it to a web server.
+
+Let's assume you want to publish your branch at jod.example.com/foobar.joe
+and you have sftp access to the server::
+
+  $ bzr push sftp://jod@jod.example.com/public_html/foobar.joe/
+  2 revision(s) pushed.
+    
+Note that to use sftp, your may need to install ''paramiko'' and
+''pyCrypto''. See http://bazaar-vcs.org/InstallationFaq for details.
+
+Now anyone can get their own copy of your branch by typing::
+
+  bzr branch http://jod.example.com/foobar.joe/
+
+Their branch will have all the same files, with the same revision history
+as yours but any changes they make will stay in their own branch. If you
+like, you can merge your branches at any time.
+
+
+Creating your own branch Personal Branch
+========================================
+
+Of course, you can also make your own branch of someone else's work. Let's
+say you're interested interested in the Foo project::
+
+  $ bzr branch http://example.com/code/foobar.dev foobar.joe
+  Branched 1 revision(s).                                                        
+
+Bazaar will download all the files and complete revision history from the
+Foo project's development branch. Just as you created your own branch from 
+scratch, you now have your own copy of the Foo dev branch.
+
+Now, any changes you commit will stay in your new personal copy of that
+branch. So, you don't need internet access to make commits but it also
+means that your changes won't appear automatically in the Foo project's
+dev branch.
+
+
+Updating your branch from the main branch
 =========================================
 
-While you work hard on your branch, others may have committed new code to the
-main branch. From time to time, you want to merge changes from the main
-branch into your branch::
+While you work hard on your branch, it's likely that other people will
+continue to commit code to the main branch.
+
+To make sure your branch stays up to date, you should merge changes from
+the main branch into your personal branch::
 
   $ bzr merge
   Using saved location: http://example.com/code/foobar.dev
@@ -143,35 +206,16 @@ What was changed locally by merging the main branch?
           return result;
    }
  
-Commit the changes from the main branch::
+You still need to commit those changes into your personal branch::
 
   $ bzr commit -m 'merge from main branch'
   Committed revision 6.
 
-Note that you may occasionally need to resolve conflicts or make other minor
-changes (so tests pass say) before committing. For these reasons, merge does
-not implicitly commit.
+Bazaar won't automatically commit changes from a merge. Although Bazaar
+excels at handling complex merges, from time to time you may need to 
+resolve conflicts or make other minor changes before committing. 
 
-
-Publishing Your Branch
-======================
-
-You can simply use rsync to copy your branch to a web server, but using
-``bzr push`` is the easiest way. Let's assume you want to publish your
-branch in jod.example.com/foobar.joe and you have sftp access to the server::
-
-  $ bzr push sftp://jod@jod.example.com/public_html/foobar.joe/
-  2 revision(s) pushed.
-    
-Note that to use sftp, your may need to install ''paramiko'' and ''pyCrypto''.
-See http://bazaar-vcs.org/InstallationFaq for details.
-
-Now anyone can get your branch with (try it yourself!)::
-
-  bzr branch http://jod.example.com/foobar.joe/
-
-
-Learning More
+Learning more
 =============
 
 To learn about bzr topics::
