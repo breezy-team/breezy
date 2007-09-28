@@ -166,3 +166,27 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
             ],
             check_result.inconsistent_parents)
 
+    def single_parent_changed_in_revision_factory(self, repo):
+        inv = self.make_one_file_inventory(repo, 'parent', [])
+        self.add_revision(repo, 'parent', inv, [])
+
+        inv = self.make_one_file_inventory(repo, 'new-revision', ['parent'])
+        self.add_revision(repo, 'new-revision', inv, ['parent'])
+        
+    def test_single_parent_changed_in_revision(self):
+        repo = self.make_repository_using_factory(
+            self.single_parent_changed_in_revision_factory)
+        self.require_text_parent_corruption(repo)
+        weave = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
+        revision_parents = repository._RevisionParentsProvider(repo)
+        revision_versions = repository._RevisionTextVersionCache(repo)
+        self.assertEqual(
+            weave.calculate_parents(
+                'new-revision',
+                revision_versions.get_text_version,
+                'a-file-id',
+                revision_parents,
+                repo.get_graph(),
+                repo.get_inventory),
+            ['parent'])
+
