@@ -20,21 +20,13 @@
 
 from bzrlib import (
     inventory,
-    repository,
     revision as _mod_revision,
-    tests,
     )
-from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.repository import _RevisionTextVersionCache
-from bzrlib.tests.repository_implementations import (
-    all_scenarios,
-    TestCaseWithInconsistentRepository,
-    TooManyParentsScenario,
-    )
-from bzrlib.trace import mutter
+from bzrlib.tests.repository_implementations import TestCaseWithRepository
 
 
-class TestFindBadAncestors(TestCaseWithInconsistentRepository):
+class TestFindBadAncestors(TestCaseWithRepository):
 
     def make_broken_repository(self):
         repo = self.make_repository('.')
@@ -140,41 +132,4 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
         result = self.find_bad_ancestors('file2-id', ['rev3'])
         self.assertEqual({'rev1c': set(['rev3'])}, result)
 
-    def test_too_many_parents(self):
-        scenario = TooManyParentsScenario(self)
-        repo = self.make_repository_using_factory(scenario.populate_repository)
-        self.require_text_parent_corruption(repo)
-        check_result = repo.check()
-        check_result.report_results(verbose=True)
-        for pattern in scenario.check_regexes():
-            self.assertContainsRe(
-                self._get_log(keep_log_file=True),
-                pattern)
-
-
-class TestCheckScenarios(TestCaseWithInconsistentRepository):
-
-    def assertCheckScenario(self, scenario):
-        repo = self.make_repository_using_factory(scenario.populate_repository)
-        self.require_text_parent_corruption(repo)
-        check_result = repo.check()
-        check_result.report_results(verbose=True)
-        for pattern in scenario.check_regexes():
-            self.assertContainsRe(
-                self._get_log(keep_log_file=True),
-                pattern)
-
-    def test_check_all_scenarios(self):
-        # XXX: ideally we'd use test case parameterisation so each scenario
-        # would be run as a distinct test case.
-        for scenario_class in all_scenarios:
-            mutter(scenario_class.__name__)
-            scenario = scenario_class(self)
-            self.assertCheckScenario(scenario)
-            from bzrlib.transport import get_transport
-            get_transport(self.get_vfs_only_url('.')).delete_tree('broken-repo')
-            self._finishLogFile()
-            self._cleanups.remove(self._finishLogFile)
-            self._log_contents = ''
-            self._startLogFile()
 

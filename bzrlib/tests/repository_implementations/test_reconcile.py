@@ -25,10 +25,6 @@ from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.revision import Revision
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.tests import TestNotApplicable, TestSkipped
-from bzrlib.tests.repository_implementations import (
-    TestCaseWithInconsistentRepository,
-    all_scenarios,
-    )
 from bzrlib.tests.repository_implementations.test_repository import (
     TestCaseWithRepository,
     )
@@ -382,23 +378,6 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = d.open_repository()
         self.checkUnreconciled(d, repo.reconcile())
         self.checkUnreconciled(d, repo.reconcile(thorough=True))
-
-
-class TestReconcileFileVersionParents(TestCaseWithInconsistentRepository):
-    """Tests for how reconcile corrects errors in parents of file versions."""
-
-    def test_reconcile_all_scenarios(self):
-        # XXX: ideally we'd use test case parameterisation so each scenario
-        # would be run as a distinct test case.
-        for scenario_class in all_scenarios:
-            scenario = scenario_class(self)
-            self.assertReconcileResults(scenario)
-            from bzrlib.transport import get_transport
-            get_transport(self.get_vfs_only_url('.')).delete_tree('broken-repo')
-            self._finishLogFile()
-            self._cleanups.remove(self._finishLogFile)
-            self._log_contents = ''
-            self._startLogFile()
 
 
 
