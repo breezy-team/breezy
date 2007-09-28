@@ -590,6 +590,15 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def sha_file_by_name(fname):
+    """Calculate the SHA1 of a file by reading the full text"""
+    f = file(fname, 'rb', buffering=65000)
+    try:
+        return sha_file(f)
+    finally:
+        f.close()
+
+
 def sha_strings(strings, _factory=sha.new):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()

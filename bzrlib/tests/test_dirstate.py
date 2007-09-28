@@ -1404,9 +1404,9 @@ class InstrumentedDirState(dirstate.DirState):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _sha1_file(self, abspath, entry):
+    def _sha1_file(self, abspath):
         self._log.append(('sha1', abspath))
-        return super(InstrumentedDirState, self)._sha1_file(abspath, entry)
+        return osutils.sha_file_by_name(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
