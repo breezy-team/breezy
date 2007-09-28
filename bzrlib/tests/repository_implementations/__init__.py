@@ -151,7 +151,7 @@ class TestCaseWithInconsistentRepository(TestCaseWithRepository):
         else:
             entry.revision = revision
         entry.text_size = 0
-        file_contents = '%sline\n' % revision
+        file_contents = '%sline\n' % entry.revision
         entry.text_sha1 = sha.sha(file_contents).hexdigest()
         inv.add(entry)
         vf = repo.weave_store.get_weave_or_empty(file_id,
@@ -253,6 +253,9 @@ class FileParentIsNotInRevisionAncestryScenario(Scenario):
             ([], 'rev1b'),
             (['rev1a'], 'rev2')]
 
+    def check_regexes(self):
+        return [r"\* a-file-id version rev2 has parents \['rev1a', 'rev1b'\] but should have \['rev1a'\]"]
+
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv = self.make_one_file_inventory(
@@ -294,6 +297,9 @@ class FileParentHasInaccessibleInventoryScenario(Scenario):
         return [
             ([], 'rev2'),
             ([], 'rev3')]
+
+    def check_regexes(self):
+        return ["\* a-file-id version rev3 has parents \['rev1c'\] but should have \[\]"]
 
     def populate_repository(self, repo):
         # make rev2, with a-file
@@ -352,6 +358,15 @@ class FileParentsNotReferencedByAnyInventoryScenario(Scenario):
             # rev2c is the head of rev1a and rev2c, the inventory provided
             # per-file last-modified revisions.
             (['rev2c'], 'rev5')]
+
+    def check_regexes(self):
+        return [
+            "3 inconsistent parents",
+            "a-file-id version rev3 has parents \['rev2'\] but should have \['rev1a'\]",
+            "a-file-id version rev5 has parents \['rev2', 'rev2c'\] but should have \['rev2c'\]",
+            "a-file-id version rev4 has parents \['rev2'\] but should have \['rev1a'\]",
+            ]
+
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
@@ -471,6 +486,12 @@ class FooScenario(Scenario):
             (['basis'], 'modified-something-else'),
             (['basis'], 'current')]
 
+    def check_regexes(self):
+        return [
+            '1 inconsistent parents',
+            r"\* a-file-id version current has parents "
+            r"\['modified-something-else'\] but should have \['basis'\]"]
+
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(repo, 'basis', [])
         self.add_revision(repo, 'basis', inv, [])
@@ -503,6 +524,17 @@ class IncorrectlyOrderedParentsScenario(Scenario):
             ([], 'parent-2'),
             (['parent-1', 'parent-2'], 'broken-revision-1-2'),
             (['parent-2', 'parent-1'], 'broken-revision-2-1')]
+
+    def check_regexes(self):
+        return [
+            "2 inconsistent parents",
+            r"\* a-file-id version broken-revision-1-2 has parents "
+            r"\['parent-2', 'parent-1'\] but should have "
+            r"\['parent-1', 'parent-2'\]",
+            r"\* a-file-id version broken-revision-2-1 has parents "
+            r"\['parent-1', 'parent-2'\] but should have "
+            r"\['parent-2', 'parent-1'\]"]
+            
 
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(repo, 'parent-1', [])
