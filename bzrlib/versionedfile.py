@@ -517,7 +517,6 @@ class VersionedFile(object):
                 else:
                     introduced_in = inventory[file_id].revision
                     parents_from_inventories.append(introduced_in)
-            del parent
             mutter('%r:%r introduced in: %r',
                    file_id, revision_id, parents_from_inventories)
             heads = set(repo_graph.heads(parents_from_inventories))
