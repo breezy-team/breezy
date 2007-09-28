@@ -522,6 +522,16 @@ class IncorrectlyOrderedParentsScenario(Scenario):
             repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
 
 
+all_scenarios = [
+    FileParentIsNotInRevisionAncestryScenario,
+    FileParentHasInaccessibleInventoryScenario,
+    FileParentsNotReferencedByAnyInventoryScenario,
+    TooManyParentsScenario,
+    FooScenario,
+    IncorrectlyOrderedParentsScenario,
+    ]
+
+
 def test_suite():
     result = TestSuite()
     test_repository_implementations = [

@@ -33,6 +33,7 @@ from bzrlib.tests.repository_implementations import (
     TooManyParentsScenario,
     FooScenario,
     IncorrectlyOrderedParentsScenario,
+    all_scenarios,
     )
 from bzrlib.tests.repository_implementations.test_repository import (
     TestCaseWithRepository,
@@ -392,35 +393,14 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 class TestReconcileFileVersionParents(TestCaseWithInconsistentRepository):
     """Tests for how reconcile corrects errors in parents of file versions."""
 
-    def test_reconcile_file_parent_is_not_in_revision_ancestry(self):
-        """Reconcile removes file version parents that are not in the revision
-        ancestry.
-        """
-        self.assertReconcileResults(
-            FileParentIsNotInRevisionAncestryScenario(self))
+    def test_reconcile_all_scenarios(self):
+        # XXX: ideally we'd use test case parameterisation so each scenario
+        # would be run as a distinct test case.
+        for scenario_class in all_scenarios:
+            scenario = scenario_class(self)
+            self.assertReconcileResults(scenario)
+            self.get_transport('.').delete_tree('broken-repo')
 
-    def test_reconcile_file_parent_inventory_inaccessible(self):
-        """Reconcile removes file version parents whose inventory is
-        inaccessible (i.e. the parent revision is a ghost).
-        """
-        self.assertReconcileResults(
-            FileParentHasInaccessibleInventoryScenario(self))
-
-    def test_reconcile_file_parents_not_referenced_by_any_inventory(self):
-        """Reconcile removes file parents that are not referenced by any
-        inventory.
-        """
-        self.assertReconcileResults(
-            FileParentsNotReferencedByAnyInventoryScenario(self))
-            
-    def test_too_many_parents(self):
-        self.assertReconcileResults(TooManyParentsScenario(self))
-
-    def test_incorrectly_ordered_parents(self):
-        self.assertReconcileResults(IncorrectlyOrderedParentsScenario(self))
-
-    def test_foo(self):
-        self.assertReconcileResults(FooScenario(self))
 
 
 #commiting rev X, row 0 local change, row 1 no local change against at least one parent
