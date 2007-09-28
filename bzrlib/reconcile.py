@@ -373,9 +373,10 @@ class KnitReconciler(RepoReconciler):
                 self.transaction)
             new_parents = {}
             for version in vf.versions():
-                parents = vf.get_parents(version)
                 if version in versions_with_bad_parents:
                     parents = versions_with_bad_parents[version][1]
+                else:
+                    parents = vf.get_parents(version)
                 new_parents[version] = parents
             for version in topo_sort(new_parents.items()):
                 new_vf.add_lines(version, new_parents[version],

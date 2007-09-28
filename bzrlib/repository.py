@@ -1415,7 +1415,7 @@ class Repository(object):
                                                        self.get_transaction())
 
     @needs_read_lock
-    def check(self, revision_ids):
+    def check(self, revision_ids=None):
         """Check consistency of all history of given revision_ids.
 
         Different repository implementations should override _check().
@@ -1423,10 +1423,10 @@ class Repository(object):
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
         """
-        if not revision_ids:
-            raise ValueError("revision_ids must be non-empty in %s.check" 
-                    % (self,))
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
+        if revision_ids is not None:
+            symbol_versioning.warn('revision_ids should not be supplied to'
+                ' Repostiory.check, as of bzr 0.92.',
+                 DeprecationWarning, stacklevel=2)
         return self._check(revision_ids)
 
     def _check(self, revision_ids):

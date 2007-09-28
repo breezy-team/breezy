@@ -138,6 +138,11 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
         self.assertEqual({'rev1c': set(['rev3'])}, result)
 
     def too_many_parents_factory(self, repo):
+        """Build a repository where 'broken-revision' of 'a-file' claims to
+        have parents ['good-parent', 'bad-parent'].  However 'bad-parent' is in
+        the ancestry of 'good-parent', so the correct parent list for that file
+        version are is just ['good-parent'].
+        """
         inv = self.make_one_file_inventory(
             repo, 'bad-parent', [], root_revision='bad-parent')
         self.add_revision(repo, 'bad-parent', inv, [])
@@ -154,7 +159,7 @@ class TestFindBadAncestors(TestCaseWithInconsistentRepository):
         repo = self.make_repository_using_factory(
             self.too_many_parents_factory)
         self.require_text_parent_corruption(repo)
-        check_result = repo.check(['XXX ignored rev ids'])
+        check_result = repo.check()
         self.assertEqual(
             [('broken-revision', 'a-file-id',
               ['good-parent', 'bad-parent'], ['good-parent']),
