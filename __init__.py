@@ -46,17 +46,7 @@ from errors import (StopBuild,
 from hooks import run_hook
 from properties import BuildProperties
 from util import goto_branch, find_changelog, tarball_name
-
-
-# same format as sys.version_info: "A tuple containing the five components of
-# the version number: major, minor, micro, releaselevel, and serial. All
-# values except releaselevel are integers; the release level is 'alpha',
-# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
-# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
-# releaselevel of 'dev' for unreleased under-development code.
-#
-# Please set this to 'final' before upload.
-version_info = (0, 91, 0, 'dev', 0)
+from version import version_info
 
 
 dont_purge_opt = Option('dont-purge',
@@ -328,7 +318,7 @@ class cmd_merge_upstream(Command):
   package_opt = Option('package', help="The name of the source package.",
                        type=str)
   version_opt = Option('version', help="The version number of the new "
-                       "upstream release. (Required).", type=str, short_name='v')
+                       "upstream release. (Required).", type=str)
   takes_options = [package_opt, version_opt]
 
   def run(self, path, version=None, package=None):

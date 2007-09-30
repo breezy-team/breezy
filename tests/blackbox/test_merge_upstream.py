@@ -1,4 +1,4 @@
-#    test_version.py -- Testsuite for builddeb version
+#    test_merge_upstream.py -- Blackbox tests for merge-upstream.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
@@ -18,15 +18,11 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import version
+from tests import BuilddebTestCase
 
-import bzrlib
-from bzrlib.tests import TestCase, KnownFailure
 
-class VersionTests(TestCase):
+class TestMergeUpstream(BuilddebTestCase):
 
-  def test_version_matches(self):
-    """An abused test case to warn when the version doesn't match bzrlib."""
-    if version.version_info != bzrlib.version_info:
-      raise KnownFailure("builddeb version doesn't match bzrlib version")
+  def test_merge_upstream_available(self):
+    self.run_bzr('merge-upstream --help')
 

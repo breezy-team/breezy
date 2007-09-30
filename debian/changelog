@@ -12,6 +12,8 @@ bzr-builddeb (0.91) unstable; urgency=low
   * Add version_info attribute so that bzrlib can find out the version of
     the plugin. Please try and remember to update it when releasing (set
     the word to 'final').
+  * Use None instead of [] to revert all files as the latter is deprecated
+    in bzr 0.91. Bump the required version accordingly.
   * Build the working tree by default (so --working-tree now has no effect,
     along with --ignore-changes).
   * Add --revision option to allow building an old revision of the branch
@@ -25,9 +27,8 @@ bzr-builddeb (0.91) unstable; urgency=low
     in the build.
   * Support $UPSTREAM_VERSION in the export-upstream-revision configuration
     option. This allows builddeb to find the correct upstream revision based
-    on tags with no user intervention. Thanks to Jelmer for the idea.
 
- -- James Westby <jw+debian@jameswestby.net>  Mon, 17 Sep 2007 21:45:10 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Fri, 21 Sep 2007 18:41:34 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

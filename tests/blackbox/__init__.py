@@ -26,6 +26,7 @@ def test_suite():
           'test_builddeb',
           'test_do',
           'test_import_dsc',
+          'test_merge_upstream',
           ]
   loader = TestUtil.TestLoader()
   suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
