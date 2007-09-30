@@ -1,4 +1,4 @@
-#    __init__.py -- blackbox test suite for builddeb.
+#    test_merge_upstream.py -- Blackbox tests for merge-upstream.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
@@ -18,17 +18,11 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.tests import TestUtil
+from tests import BuilddebTestCase
 
 
-def test_suite():
-  testmod_names = [
-          'test_builddeb',
-          'test_do',
-          'test_merge_upstream',
-          ]
-  loader = TestUtil.TestLoader()
-  suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
-                                       for i in testmod_names])
-  return suite
+class TestMergeUpstream(BuilddebTestCase):
+
+  def test_merge_upstream_available(self):
+    self.run_bzr('merge-upstream --help')
 

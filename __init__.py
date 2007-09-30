@@ -318,7 +318,7 @@ class cmd_merge_upstream(Command):
   package_opt = Option('package', help="The name of the source package.",
                        type=str)
   version_opt = Option('version', help="The version number of the new "
-                       "upstream release. (Required).", type=str, short_name='v')
+                       "upstream release. (Required).", type=str)
   takes_options = [package_opt, version_opt]
 
   def run(self, path, version=None, package=None):
