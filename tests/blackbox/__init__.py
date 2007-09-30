@@ -25,6 +25,7 @@ def test_suite():
   testmod_names = [
           'test_builddeb',
           'test_do',
+          'test_import_dsc',
           ]
   loader = TestUtil.TestLoader()
   suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
