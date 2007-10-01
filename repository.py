@@ -242,8 +242,8 @@ class SvnRepositoryFormat(RepositoryFormat):
     rich_root_data = True
 
     def __get_matchingbzrdir(self):
-        from format import SvnFormat
-        return SvnFormat()
+        from remote import SvnRemoteFormat
+        return SvnRemoteFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
@@ -268,6 +268,8 @@ class SvnRepository(Repository):
     by using the RA (remote access) API from subversion
     """
     def __init__(self, bzrdir, transport, branch_path=None):
+        from bzrlib.plugins.svn import lazy_register_optimizers
+        lazy_register_optimizers()
         from fileids import SimpleFileIdMap
         _revision_store = None
 
@@ -1024,7 +1026,7 @@ class SvnRepository(Repository):
                         if paths[p][0] in ('R', 'D'):
                             del created_branches[p]
                             j = self._log.find_latest_change(p, i-1, 
-                                recurse=True)
+                                include_parents=True, include_children=True)
                             ret.append((p, j, False))
 
                         if paths[p][0] in ('A', 'R'): 
@@ -1037,7 +1039,8 @@ class SvnRepository(Repository):
                                 if c.startswith(p+"/"):
                                     del created_branches[c] 
                                     j = self._log.find_latest_change(c, i-1, 
-                                            recurse=True)
+                                            include_parents=True, 
+                                            include_children=True)
                                     ret.append((c, j, False))
                         if paths[p][0] in ('A', 'R'):
                             parents = [p]
@@ -1054,7 +1057,9 @@ class SvnRepository(Repository):
             pb.finished()
 
         for p in created_branches:
-            j = self._log.find_latest_change(p, revnum, recurse=True)
+            j = self._log.find_latest_change(p, revnum, 
+                                             include_parents=True,
+                                             include_children=True)
             if j is None:
                 j = created_branches[p]
             ret.append((p, j, True))

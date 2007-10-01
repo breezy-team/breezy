@@ -24,7 +24,7 @@ from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
 
 import svn
 
-from format import SvnFormat
+from format import SvnRemoteFormat
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
@@ -141,7 +141,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_needs_format_upgrade_self(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
-        self.assertTrue(x.needs_format_conversion(SvnFormat()))
+        self.assertTrue(x.needs_format_conversion(SvnRemoteFormat()))
 
     def test_find_repository_not_found(self):
         repos_url = self.make_client('d', 'dc')

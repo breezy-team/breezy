@@ -20,7 +20,7 @@ from bzrlib import urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent, BzrError)
+                           NoRepositoryPresent, BzrError, UninitializableFormat)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
@@ -34,6 +34,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from branch import SvnBranch
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
+from remote import SvnRemoteAccess
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
@@ -720,10 +721,9 @@ class SvnCheckout(BzrDir):
             svn.wc.adm_close(wc)
 
         remote_transport = SvnRaTransport(svn_url)
-        self.svn_root_transport = SvnRaTransport(remote_transport.get_repos_root())
+        self.remote_bzrdir = SvnRemoteAccess(remote_transport)
+        self.svn_root_transport = remote_transport.clone_root()
         self.root_transport = self.transport = transport
-
-        self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
         
     def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
@@ -747,7 +747,12 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        return SvnRepository(self, self.svn_root_transport, self.branch_path)
+        return SvnRepository(self, self.svn_root_transport, self.remote_bzrdir.branch_path)
+
+    def needs_format_conversion(self, format=None):
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return not isinstance(self._format, format.__class__)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().
@@ -766,53 +771,16 @@ class SvnCheckout(BzrDir):
         repos = self.find_repository()
 
         try:
-            branch = SvnBranch(self.root_transport.base, repos, 
-                               self.branch_path)
+            branch = SvnBranch(self.svn_root_transport.base, repos, 
+                               self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)
             raise
+
+        branch.bzrdir = self.remote_bzrdir
  
-        branch.bzrdir = self
         return branch
 
 
-class SvnWorkingTreeDirFormat(BzrDirFormat):
-    """Working Tree implementation that uses Subversion working copies."""
-    _lock_class = TransportLock
 
-    @classmethod
-    def probe_transport(klass, transport):
-        format = klass()
-
-        if isinstance(transport, LocalTransport) and \
-            transport.has(svn.wc.get_adm_dir()):
-            return format
-
-        raise NotBranchError(path=transport.base)
-
-    def _open(self, transport):
-        subr_version = svn.core.svn_subr_version()
-        if subr_version.major == 1 and subr_version.minor < 4:
-            raise NoCheckoutSupport()
-        try:
-            return SvnCheckout(transport, self)
-        except SubversionException, (_, num):
-            if num in (svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED,):
-                raise NoSvnRepositoryPresent(transport.base)
-            raise
-
-    def get_format_string(self):
-        return 'Subversion Local Checkout'
-
-    def get_format_description(self):
-        return 'Subversion Local Checkout'
-
-    def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.initialize_on_transport)
-
-    def get_converter(self, format=None):
-        """See BzrDirFormat.get_converter()."""
-        if format is None:
-            format = get_rich_root_format()
-        return SvnConverter(format)

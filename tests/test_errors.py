@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import (ConnectionError, ConnectionReset, LockError, 
-                           PermissionDenied, UnexpectedEndOfContainerError)
+                           PermissionDenied, TransportError,
+                           UnexpectedEndOfContainerError)
 from bzrlib.tests import TestCase
 
 from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
@@ -40,8 +41,11 @@ class TestConvertError(TestCase):
         self.assertRaises(ConnectionReset, test_throws_svn)
 
     def test_convert_error_unknown(self):
-        self.assertIsInstance(convert_error(SubversionException(100, "foo")),
+        self.assertIsInstance(convert_error(SubversionException("foo", -4)),
                 SubversionException)
+
+    def test_convert_malformed(self):
+        self.assertIsInstance(convert_error(SubversionException("foo", svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA)), TransportError)
 
     def test_convert_error_reset(self):
         self.assertIsInstance(convert_error(SubversionException("Connection closed", svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED)), ConnectionReset)

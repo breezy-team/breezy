@@ -419,8 +419,8 @@ class SvnBranchFormat(BranchFormat):
 
     def __get_matchingbzrdir(self):
         """See BranchFormat.__get_matchingbzrdir()."""
-        from format import SvnFormat
-        return SvnFormat()
+        from remote import SvnRemoteFormat
+        return SvnRemoteFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 

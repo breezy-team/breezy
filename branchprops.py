@@ -68,7 +68,8 @@ class BranchPropertyList:
         assert path is not None
         assert isinstance(path, str)
         assert isinstance(origrevnum, int) and origrevnum >= 0
-        revnum = self.log.find_latest_change(path, origrevnum)
+        revnum = self.log.find_latest_change(path, origrevnum, 
+                                             include_parents=True)
         assert revnum is not None, \
                 "can't find latest change for %r:%r" % (path, origrevnum)
 

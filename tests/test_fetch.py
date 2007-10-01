@@ -19,11 +19,13 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from convert import load_dumpfile
 from fileids import generate_svn_file_id, generate_file_id
 import format
+import remote
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
@@ -56,6 +58,14 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_null(self):
+        repos_url = self.make_client('d', 'dc')
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos, NULL_REVISION)
 
     def test_fetch_complex_ids_dirs(self):
         repos_url = self.make_client('d', 'dc')
@@ -1226,7 +1236,7 @@ Node-copyfrom-path: x
         self.client_copy("dc/trunk", "dc/branches/foobranch")
         self.client_commit("dc", "added branch foobranch") #3
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
+        repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
@@ -1262,7 +1272,7 @@ Node-copyfrom-path: x
         self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
         self.client_commit("dc", "foohosts") #6
 
-        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat()).find_repository()
+        repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
         tree = repos.revision_tree(
              repos.generate_revision_id(6, "branches/foobranch", "trunk0"))

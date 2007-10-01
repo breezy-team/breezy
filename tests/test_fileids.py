@@ -178,6 +178,11 @@ class TestFileIdGenerator(TestCase):
         self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
                 generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), dir+"filename"))
 
+    def test_generate_file_id_long_nordic(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("2@uuid:bp;" + sha1((dir+u"filename\x2c\x8a").encode('utf-8')), 
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), dir+u"filename\x2c\x8a"))
+
     def test_generate_revid_special_char_ascii(self):
         self.assertEqual("2@uuid:bp:mypath%2C%8A", 
                 generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), "mypath\x2c\x8a"))

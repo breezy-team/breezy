@@ -603,9 +603,11 @@ foohosts""")
                          'dc/trunk/hosts': 'hej1'})
         self.client_add("dc/trunk")
         self.client_commit("dc", "created trunk and added hosts") #1
+        self.client_update("dc")
         
         self.build_tree({'dc/trunk/hosts': 'bloe'})
         self.client_commit("dc", "added another revision")
+        self.client_update("dc")
 
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)

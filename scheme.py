@@ -173,6 +173,19 @@ class ListBranchingScheme(BranchingScheme):
     def to_lines(self):
         return self.branch_list
 
+    def is_tag_parent(self, path):
+        # ListBranchingScheme doesn't have tags
+        return False
+
+    def is_branch_parent(self, path):
+        parts = path.strip("/").split("/")
+        for pattern in self.split_branch_list:
+            if len(parts) == len(pattern):
+                continue
+            if self._pattern_cmp(parts, pattern[0:len(parts)]):
+                return True
+        return False
+
 
 class NoBranchingScheme(ListBranchingScheme):
     """Describes a scheme where there is just one branch, the 

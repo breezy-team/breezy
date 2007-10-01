@@ -452,3 +452,44 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         os.mkdir("n")
         BzrDir.open(repos_url+"/trunk").sprout("n")
+
+    def test_push_unnecessary_merge(self):        
+        from bzrlib import debug
+        debug.debug_flags.add('transport')
+        debug.debug_flags.add('commit')
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/registry/generic.c': "Tour"})
+        bzrwt.add("registry")
+        bzrwt.add("registry/generic.c")
+        revid1 = bzrwt.commit("Add initial directory + file", 
+                              rev_id="initialrevid")
+
+        # Push first branch into Subversion
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+
+        # Should create dc/trunk
+        self.client_update("dc")
+
+        self.build_tree({'dc/trunk/registry/generic.c': "DE"})
+        self.client_commit("dc", "Change copied branch")[0]
+        self.client_update("dc")
+        merge_revid = newdir.find_repository().generate_revision_id(2, "trunk", "trunk0")
+
+        # Merge 
+        self.build_tree({'c/registry/generic.c': "DE"})
+        bzrwt.add_pending_merge(merge_revid)
+        revid2 = bzrwt.commit("Merge something", rev_id="mergerevid")
+
+        trunk = Branch.open(repos_url + "/trunk")
+        trunk.pull(bzrwt.branch)
+
+        self.assertEquals([revid1, revid2], trunk.revision_history())
+        self.client_update("dc")
+        self.assertEquals(
+                '1 initialrevid\n2 mergerevid\n',
+                self.client_get_prop("dc/trunk", SVN_PROP_BZR_REVISION_ID+"trunk0"))
+
+

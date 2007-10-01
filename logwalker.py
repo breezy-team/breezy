@@ -28,6 +28,8 @@ import base64
 
 from cache import sqlite3
 
+LOG_CHUNK_LIMIT = 1000
+
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
     if message is None:
@@ -51,7 +53,7 @@ def _escape_commit_message(message):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, transport, cache_db=None):
+    def __init__(self, transport, cache_db=None, limit=None):
         """Create a new instance.
 
         :param transport:   SvnRaTransport to use to access the repository.
@@ -62,6 +64,11 @@ class LogWalker(object):
 
         self.url = transport.base
         self._transport = None
+
+        if limit is not None:
+            self._limit = limit
+        else:
+            self._limit = LOG_CHUNK_LIMIT
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -119,12 +126,14 @@ class LogWalker(object):
             if self.saved_revnum % 1000 == 0:
                 self.db.commit()
 
-        pool = Pool()
         try:
             try:
-                self._get_transport().get_log("/", self.saved_revnum, 
-                                             to_revnum, 0, True, True, rcvr, 
-                                             pool)
+                while self.saved_revnum < to_revnum:
+                    pool = Pool()
+                    self._get_transport().get_log("/", self.saved_revnum, 
+                                             to_revnum, self._limit, True, 
+                                             True, rcvr, pool)
+                    pool.destroy()
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -133,7 +142,6 @@ class LogWalker(object):
                     revision="Revision number %d" % to_revnum)
             raise
         self.db.commit()
-        pool.destroy()
 
     def follow_path(self, path, revnum):
         """Return iterator over all the revisions between revnum and 
@@ -231,7 +239,8 @@ class LogWalker(object):
             message = _escape_commit_message(base64.b64decode(message))
         return (author, message, date)
 
-    def find_latest_change(self, path, revnum, recurse=False):
+    def find_latest_change(self, path, revnum, include_parents=False,
+                           include_children=False):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -242,11 +251,12 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
-        if recurse:
-            extra = " or path like '%s/%%'" % path.strip("/")
-        else:
-            extra = ""
-        query = "select rev from changed_path where (path='%s' or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), path.strip("/"), extra, revnum)
+        extra = ""
+        if include_children:
+            extra += " or path like '%s/%%'" % path.strip("/")
+        if include_parents:
+            extra += " or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))" % path.strip("/")
+        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":

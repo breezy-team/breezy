@@ -21,7 +21,8 @@ from bzrlib.errors import NoRepositoryPresent
 from bzrlib.tests import TestCase
 
 from convert import SvnConverter
-from workingtree import SvnWorkingTreeFormat, SvnWorkingTreeDirFormat
+from bzrlib.plugins.svn.workingtree import SvnWorkingTreeFormat
+from bzrlib.plugins.svn.format import SvnWorkingTreeDirFormat
 from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTreeFormat(TestCase):
@@ -45,7 +46,7 @@ class TestCheckoutFormat(TestCase):
         self.format = SvnWorkingTreeDirFormat()
 
     def test_get_converter(self):
-        self.assertIsInstance(self.format.get_converter(), SvnConverter)
+        self.assertRaises(NotImplementedError, self.format.get_converter)
 
 
 class TestCheckout(TestCaseWithSubversionRepository):
@@ -64,3 +65,13 @@ class TestCheckout(TestCaseWithSubversionRepository):
         x = self.open_checkout_bzrdir("dc")
         self.assertTrue(hasattr(x.find_repository(), "uuid"))
 
+    def test_needs_format_conversion_default(self):
+        self.make_client("d", "dc")
+        x = self.open_checkout_bzrdir("dc")
+        self.assertTrue(x.needs_format_conversion())
+
+    def test_needs_format_conversion_self(self):
+        self.make_client("d", "dc")
+        x = self.open_checkout_bzrdir("dc")
+        self.assertFalse(x.needs_format_conversion(SvnWorkingTreeDirFormat()))
+        

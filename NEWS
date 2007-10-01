@@ -1,4 +1,36 @@
-bzr-svn 0.4.3	2007-09-12
+bzr-svn 0.4.4	UNRELEASED
+
+  PERFORMANCE
+
+   * Improved import times, making bzr faster if bzr-svn is loaded but 
+     not used.
+
+  IMPROVEMENTS
+   
+   * Avoid tracebacks on "Malformed data" errors.
+
+  INTERNALS
+
+   * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
+     with bzr merge-into.
+
+   * Implement ListBranchingScheme.is_branch_parent(). (#144357)
+
+  BUG FIXES
+
+   * Handle long file names with unicode characters correctly on python2.4 (#129334)
+
+   * Give proper warning message when running 'bzr svn-branching-scheme' on 
+     something that is not a Subversion repository. (#145159)
+
+   * Give proper warning message when running 'bzr svn-import' on 
+     something that is not a Subversion repository. 
+
+  DOCUMENTATION
+
+   * Add simple FAQ file. (#144388)
+
+bzr-svn 0.4.3	2007-09-15
  
   PERFORMANCE
 
@@ -13,9 +45,14 @@ bzr-svn 0.4.3	2007-09-12
 
    * Use write groups in fetch as required by the packs branch.
 
+   * Handle pushing merges of which LHS parent is older revision of 
+     branch path.
+
   INTERNALS
 
    * Track moving parents correctly in follow_path().
+
+   * Implement SvnWorkingTreeDir.needs_format_conversion().
 
 bzr-svn 0.4.2	2007-09-09
 
