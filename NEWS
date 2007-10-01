@@ -91,6 +91,10 @@ IN DEVELOPMENT
    * Fix log against smart server branches that don't support tags.
      (James Westby, #140615)
 
+   * Fix pycurl http implementation by defining error codes from
+     pycurl instead of relying on an old curl definition.
+     (Vincent Ladeuil, #147530)
+
    * Fix 'unprintable error' message when displaying BzrCheckError and 
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
