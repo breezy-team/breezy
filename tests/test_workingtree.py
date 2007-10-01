@@ -19,6 +19,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import Inventory
+from bzrlib.tests import KnownFailure
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -247,7 +248,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(tree.is_control_filename(".svn"))
         self.assertFalse(tree.is_control_filename(".bzr"))
 
-    def notest_revert(self):
+    def test_revert(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
@@ -255,6 +256,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_update("dc")
         tree = WorkingTree.open("dc")
         os.remove("dc/bl")
+        raise KnownFailure("revert not supported yet")
         tree.revert(["bl"])
         self.assertEqual("data", open('dc/bl').read())
 
