@@ -617,7 +617,7 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         """No test should modify the safety .bzr directory.
 
         We just test that the _check_safety_net private method raises
-        AssertionError. I's eaiser than building a test suite with the same
+        AssertionError, it's easier than building a test suite with the same
         test.
         """
         # Oops, a commit in the current directory (i.e. without local .bzr
