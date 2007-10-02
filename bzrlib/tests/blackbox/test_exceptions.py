@@ -44,20 +44,21 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
             r'bzr: ERROR: exceptions\.AssertionError: failed\n')
         self.assertContainsRe(err,
-            r'please send this report to')
-
-    def test_exception_reporting(self):
-        # we must use a subprocess, because the normal in-memory mechanism
-        # allows errors to propagate up through the test suite
-        out, err = self.run_bzr_subprocess(['assert-fail'],
-            retcode=errors.EXIT_INTERNAL_ERROR)
-        self.assertContainsRe(err,
-                r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
-        self.assertContainsRe(err, r'Please send this report to')
+            r'Please send this report to')
         self.assertContainsRe(err,
             '(?m)^encoding: .*, fsenc: .*, lang: .*')
         self.assertContainsRe(err,
             '(?m)^plugins:$')
+
+    def test_exception_exitcode(self):
+        # we must use a subprocess, because the normal in-memory mechanism
+        # allows errors to propagate up through the test suite
+        out, err = self.run_bzr_subprocess(['assert-fail'],
+            retcode=errors.EXIT_INTERNAL_ERROR)
+        self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
+        self.assertContainsRe(err,
+                r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
+        self.assertContainsRe(err, r'Please send this report to')
     
 
 class TestDeprecationWarning(TestCaseInTempDir):
