@@ -45,6 +45,7 @@ from bzrlib.patches import (
 
 
 # return codes from the bzr program
+EXIT_OK = 0
 EXIT_ERROR = 3
 EXIT_INTERNAL_ERROR = 4
 
