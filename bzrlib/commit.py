@@ -726,8 +726,6 @@ class Commit(object):
                     content_summary = ('directory',) + content_summary[1:]
             kind = content_summary[0]
             # TODO: specific_files filtering before nested tree processing
-            # TODO: push this down into record_entry so the new ie can be set
-            # directly.
             if kind == 'tree-reference':
                 if self.recursive == 'down':
                     nested_revision_id = self._commit_nested_tree(
