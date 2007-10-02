@@ -58,6 +58,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
+import locale
 import logging
 import traceback
 """)
@@ -68,6 +69,8 @@ lazy_import(globals(), """
 from bzrlib import (
     debug,
     errors,
+    osutils,
+    plugin,
     )
 """)
 
@@ -149,8 +152,7 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-        from osutils import rename
-        rename(trace_fname, old_fname)
+        osutils.rename(trace_fname, old_fname)
     except OSError:
         return
 
@@ -366,5 +368,17 @@ def report_bug(exc_info, err_file):
                         '.'.join(map(str, sys.version_info)),
                         sys.platform)
     print >>err_file, 'arguments: %r' % sys.argv
-    print >>err_file
-    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"
+    err_file.write(
+        'encoding: %r, fsenc: %r, lang: %r\n' % (
+            osutils.get_user_encoding(), sys.getfilesystemencoding(),
+            os.environ.get('LANG')))
+    err_file.write("plugins:\n")
+    for name, a_plugin in sorted(plugin.plugins().items()):
+        err_file.write("  %-20s %s [%s]\n" %
+            (name, a_plugin.path(), a_plugin.__version__))
+    err_file.write(
+        "\n"
+        "** Please send this report to bazaar@lists.ubuntu.com\n"
+        "   with a description of what you were doing when the\n"
+        "   error occurred.\n"
+        )

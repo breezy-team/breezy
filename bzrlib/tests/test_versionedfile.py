@@ -351,7 +351,6 @@ class VersionedFileTestMixIn(object):
         f.transaction_finished()
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
-        self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
         self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
@@ -598,43 +597,6 @@ class VersionedFileTestMixIn(object):
         self.assertTrue(lines['child\n'] > 0)
         self.assertTrue(lines['otherchild\n'] > 0)
 
-    def test_fix_parents(self):
-        # some versioned files allow incorrect parents to be corrected after
-        # insertion - this may not fix ancestry..
-        # if they do not supported, they just do not implement it.
-        # we test this as an interface test to ensure that those that *do*
-        # implementent it get it right.
-        vf = self.get_file()
-        vf.add_lines('notbase', [], [])
-        vf.add_lines('base', [], [])
-        try:
-            vf.fix_parents('notbase', ['base'])
-        except NotImplementedError:
-            return
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # open again, check it stuck.
-        vf = self.get_file()
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-
-    def test_fix_parents_with_ghosts(self):
-        # when fixing parents, ghosts that are listed should not be ghosts
-        # anymore.
-        vf = self.get_file()
-
-        try:
-            vf.add_lines_with_ghosts('notbase', ['base', 'stillghost'], [])
-        except NotImplementedError:
-            return
-        vf.add_lines('base', [], [])
-        vf.fix_parents('notbase', ['base', 'stillghost'])
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # open again, check it stuck.
-        vf = self.get_file()
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # and check the ghosts
-        self.assertEqual(['base', 'stillghost'],
-                         vf.get_parents_with_ghosts('notbase'))
-
     def test_add_lines_with_ghosts(self):
         # some versioned file formats allow lines to be added with parent
         # information that is > than that in the format. Formats that do
@@ -726,7 +688,6 @@ class VersionedFileTestMixIn(object):
                           'base',
                           [],
                           [])
-        self.assertRaises(errors.ReadOnlyError, vf.fix_parents, 'base', [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
         self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
     

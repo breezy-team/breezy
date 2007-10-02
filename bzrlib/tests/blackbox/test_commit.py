@@ -20,6 +20,7 @@
 import os
 
 from bzrlib import (
+    osutils,
     ignores,
     )
 from bzrlib.bzrdir import BzrDir
@@ -154,7 +155,7 @@ class TestCommit(ExternalBase):
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = "%s/" % (os.path.abspath('a'), )
+        expected = "%s/" % (osutils.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
         self.assertEqual(err, 'Committing revision 2 to "%s".\n'
                          'Committed revision 2.\n' % expected)
@@ -212,7 +213,7 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (os.getcwd(), )
+        expected = '%s/' % (osutils.getcwd(), )
         self.assertEqualDiff(
             'Committing revision 2 to "%s".\n'
             'modified filetomodify\n'
@@ -520,3 +521,20 @@ class TestCommit(ExternalBase):
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual('John Doe', properties['author'])
+
+    def test_partial_commit_with_renames_in_tree(self):
+        # this test illustrates bug #140419
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/a', 'test'])
+        t.add(['dir/', 'dir/a', 'test'])
+        t.commit('initial commit')
+        # important part: file dir/a should change parent
+        # and should appear before old parent
+        # then during partial commit we have error
+        # parent_id {dir-XXX} not in inventory
+        t.rename_one('dir/a', 'a')
+        self.build_tree_contents([('test', 'changes in test')])
+        # partial commit
+        out, err = self.run_bzr('commit test -m "partial commit"')
+        self.assertEquals('', out)
+        self.assertContainsRe(err, r'modified test\nCommitted revision 2.')

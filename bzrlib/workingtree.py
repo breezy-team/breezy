@@ -702,6 +702,40 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    def path_content_summary(self, path, _lstat=osutils.lstat,
+        _mapper=osutils.file_kind_from_stat_mode):
+        """See Tree.path_content_summary."""
+        abspath = self.abspath(path)
+        try:
+            stat_result = _lstat(abspath)
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = _mapper(stat_result.st_mode)
+        if kind == 'file':
+            size = stat_result.st_size
+            # try for a stat cache lookup
+            if not supports_executable():
+                executable = None # caller can decide policy.
+            else:
+                mode = stat_result.st_mode
+                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            return (kind, size, executable, self._sha_from_stat(
+                path, stat_result))
+        elif kind == 'directory':
+            # perhaps it looks like a plain directory, but it's really a
+            # reference.
+            if self._directory_is_tree_reference(path):
+                kind = 'tree-reference'
+            return kind, None, None, None
+        elif kind == 'symlink':
+            return ('symlink', None, None, os.readlink(abspath))
+        else:
+            return (kind, None, None, None)
+
     @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
@@ -798,6 +832,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for file_id, hash in modified_hashes.iteritems():
                 yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        return None
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
@@ -942,6 +986,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         finally:
             other_tree.unlock()
         other_tree.bzrdir.retire_bzrdir()
+
+    def _directory_is_tree_reference(self, relpath):
+        # as a special case, if a directory contains control files then 
+        # it's a tree reference, except that the root of the tree is not
+        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        # TODO: We could ask all the control formats whether they
+        # recognize this directory, but at the moment there's no cheap api
+        # to do that.  Since we probably can only nest bzr checkouts and
+        # they always use this name it's ok for now.  -- mbp 20060306
+        #
+        # FIXME: There is an unhandled case here of a subdirectory
+        # containing .bzr but not a branch; that will probably blow up
+        # when you try to commit it.  It might happen if there is a
+        # checkout in a subdirectory.  This can be avoided by not adding
+        # it.  mbp 20070306
 
     @needs_tree_write_lock
     def extract(self, file_id, format=None):

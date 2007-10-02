@@ -160,6 +160,15 @@ class TestFormat6(TestCaseWithTransport):
                           control.transport.get,
                           'ancestry.weave')
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction,
+            inv.add_lines, 'foo', [], [])
+
 
 class TestFormat7(TestCaseWithTransport):
     
@@ -264,6 +273,15 @@ class TestFormat7(TestCaseWithTransport):
                              'W\n',
                              t.get('inventory.weave').read())
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction,
+            inv.add_lines, 'foo', [], [])
+
 
 class TestFormatKnit1(TestCaseWithTransport):
     
@@ -342,6 +360,16 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
+        repo = self.make_repository('.', format=format)
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction,
+            inv.add_lines, 'foo', [], [])
+
 
 class KnitRepositoryStreamTests(test_knit.KnitTests):
     """Tests for knitrepo._get_stream_as_bytes."""
@@ -417,7 +445,7 @@ class InterDummy(repository.InterRepository):
 
     This is for use during testing where we use DummyRepository as repositories
     so that none of the default regsitered inter-repository classes will
-    match.
+    MATCH.
     """
 
     @staticmethod
@@ -559,3 +587,12 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree('dull2')
         self.assertEqual('dull', revision_tree.inventory.root.revision)
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
+        repo = self.make_repository('.', format=format)
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction,
+            inv.add_lines, 'foo', [], [])

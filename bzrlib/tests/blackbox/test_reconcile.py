@@ -54,7 +54,11 @@ class TrivialTest(TestCaseWithTransport):
         repo = t.branch.repository
         inv = Inventory(revision_id='missing')
         inv.root.revision='missing'
+        repo.lock_write()
+        repo.start_write_group()
         repo.add_inventory('missing', inv, [])
+        repo.commit_write_group()
+        repo.unlock()
         (out, err) = self.run_bzr('reconcile')
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Backup Inventory created.\n"
