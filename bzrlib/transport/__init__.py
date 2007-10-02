@@ -99,7 +99,7 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is not handler registered for it.
+    # Add chroot directly, because there is no handler registered for it.
     modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
@@ -125,7 +125,7 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
-        self.get(key).insert(0, 
+        self.get(key).insert(0,
                 registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None, info=None):
@@ -136,7 +136,7 @@ class TransportListRegistry(registry.Registry):
         self._default_key = key
 
 
-transport_list_registry = TransportListRegistry( )
+transport_list_registry = TransportListRegistry()
 
 
 def register_transport_proto(prefix, help=None, info=None):
@@ -635,7 +635,8 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
-    def readv(self, relpath, offsets, adjust_for_latency=False):
+    def readv(self, relpath, offsets, adjust_for_latency=False,
+        upper_limit=None):
         """Get parts of the file at the given relative path.
 
         :param relpath: The path to read data from.
@@ -644,6 +645,13 @@ class Transport(object):
             transport latency. This may re-order the offsets, expand them to
             grab adjacent data when there is likely a high cost to requesting
             data relative to delivering it.
+        :param upper_limit: When adjust_for_latency is True setting upper_limit
+            allows the caller to tell the transport about the length of the
+            file, so that requests are not issued for ranges beyond the end of
+            the file. This matters because some servers and/or transports error
+            in such a case rather than just satisfying the available ranges.
+            upper_limit should always be provided when adjust_for_latency is
+            True, and should be the size of the file in bytes.
         :return: A list or generator of (offset, data) tuples
         """
         if adjust_for_latency:
@@ -658,15 +666,19 @@ class Transport(object):
                         yield None
                 return empty_yielder()
             # expand by page size at either end
-            expansion = self.recommended_page_size() / 2
+            expansion = self.recommended_page_size()
+            reduction = expansion / 2
             new_offsets = []
             for offset, length in offsets:
-                new_offset = offset - expansion
+                new_offset = offset - reduction
                 new_length = length + expansion
                 if new_offset < 0:
                     # don't ask for anything < 0
                     new_length -= new_offset
                     new_offset = 0
+                if (upper_limit is not None and
+                    new_offset + new_length > upper_limit):
+                    new_length = upper_limit - new_offset
                 new_offsets.append((new_offset, new_length))
             # combine the expanded offsets
             offsets = []
@@ -687,7 +699,8 @@ class Transport(object):
     def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
-        :offsets: A list of (offset, size) tuples.
+        :param relpath: The path to read.
+        :param offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
         if not offsets:
@@ -1644,30 +1657,6 @@ class Server(object):
         raise NotImplementedError
 
 
-class TransportLogger(object):
-    """Adapt a transport to get clear logging data on api calls.
-    
-    Feel free to extend to log whatever calls are of interest.
-    """
-
-    def __init__(self, adapted):
-        self._adapted = adapted
-        self._calls = []
-
-    def get(self, name):
-        self._calls.append((name,))
-        return self._adapted.get(name)
-
-    def __getattr__(self, name):
-        """Thunk all undefined access through to self._adapted."""
-        # raise AttributeError, name 
-        return getattr(self._adapted, name)
-
-    def readv(self, name, offsets):
-        self._calls.append((name, offsets))
-        return self._adapted.readv(name, offsets)
-
-
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
@@ -1719,6 +1708,8 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+
+# chroots cannot be implicitly accessed, they must be explicitly created:
 register_transport_proto('chroot+')
 
 register_transport_proto('readonly+',
@@ -1728,6 +1719,9 @@ register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTrans
 
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+
+register_transport_proto('trace+')
+register_lazy_transport('trace+', 'bzrlib.transport.trace', 'TransportTraceDecorator')
 
 register_transport_proto('unlistable+')
 register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')

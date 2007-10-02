@@ -38,7 +38,8 @@ from bzrlib.errors import (ConnectionError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_CoalescedOffset,
+from bzrlib.transport import (_clear_protocol_handlers,
+                              _CoalescedOffset,
                               ConnectedTransport,
                               _get_protocol_handlers,
                               _set_protocol_handlers,
@@ -73,6 +74,8 @@ class TestTransport(TestCase):
 
     def test_get_transport_modules(self):
         handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         try:
@@ -89,6 +92,8 @@ class TestTransport(TestCase):
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         try:
             register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
@@ -712,11 +717,44 @@ class TestReusedTransports(TestCase):
         self.assertIsNot(t1, t2)
 
 
-def get_test_permutations():
-    """Return transport permutations to be used in testing.
+class TestTransportTrace(TestCase):
 
-    This module registers some transports, but they're only for testing
-    registration.  We don't really want to run all the transport tests against
-    them.
-    """
-    return []
+    def test_get(self):
+        transport = get_transport('trace+memory://')
+        self.assertIsInstance(
+            transport, bzrlib.transport.trace.TransportTraceDecorator)
+
+    def test_clone_preserves_activity(self):
+        transport = get_transport('trace+memory://')
+        transport2 = transport.clone('.')
+        self.assertTrue(transport is not transport2)
+        self.assertTrue(transport._activity is transport2._activity)
+
+    # the following specific tests are for the operations that have made use of
+    # logging in tests; we could test every single operation but doing that
+    # still won't cause a test failure when the top level Transport API
+    # changes; so there is little return doing that.
+    def test_get(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        transport.get('foo')
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # get records the file name only.
+        expected_result.append(('get', 'foo'))
+        self.assertEqual(expected_result, transport._activity)
+
+    def test_readv(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        list(transport.readv('foo', [(0, 1), (3, 2)], adjust_for_latency=True,
+            upper_limit=6))
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # readv records the supplied offset request
+        expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
+        self.assertEqual(expected_result, transport._activity)

@@ -1498,6 +1498,7 @@ class TransportTests(TestTransportImplementation):
         # multiple large random byte look ups we do several tests on the same
         # backing data.
         content = osutils.rand_bytes(200*1024)
+        content_size = len(content)
         if transport.is_readonly():
             file('a', 'w').write(content)
         else:
@@ -1509,7 +1510,7 @@ class TransportTests(TestTransportImplementation):
 
         # start corner case
         result = list(transport.readv('a', ((0, 30),),
-            adjust_for_latency=True))
+            adjust_for_latency=True, upper_limit=content_size))
         # we expect 1 result, from 0, to something > 30
         self.assertEqual(1, len(result))
         self.assertEqual(0, result[0][0])
@@ -1517,7 +1518,7 @@ class TransportTests(TestTransportImplementation):
         check_result_data(result)
         # end of file corner case
         result = list(transport.readv('a', ((204700, 100),),
-            adjust_for_latency=True))
+            adjust_for_latency=True, upper_limit=content_size))
         # we expect 1 result, from 204800- its length, to the end
         self.assertEqual(1, len(result))
         data_len = len(result[0][1])
@@ -1526,7 +1527,7 @@ class TransportTests(TestTransportImplementation):
         check_result_data(result)
         # out of order ranges are made in order
         result = list(transport.readv('a', ((204700, 100), (0, 50)),
-            adjust_for_latency=True))
+            adjust_for_latency=True, upper_limit=content_size))
         # we expect 2 results, in order, start and end.
         self.assertEqual(2, len(result))
         # start
@@ -1541,7 +1542,7 @@ class TransportTests(TestTransportImplementation):
         # close ranges get combined (even if out of order)
         for request_vector in [((400,50), (800, 234)), ((800, 234), (400,50))]:
             result = list(transport.readv('a', request_vector,
-                adjust_for_latency=True))
+                adjust_for_latency=True, upper_limit=content_size))
             self.assertEqual(1, len(result))
             data_len = len(result[0][1])
             # minimmum length is from 400 to 1034 - 634
