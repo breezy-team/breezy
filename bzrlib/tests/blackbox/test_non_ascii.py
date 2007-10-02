@@ -112,7 +112,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr_decode('status')
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
-        txt = self.run_bzr_decodE('status', encoding='ascii')
+        txt = self.run_bzr_decode('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
                     self.info['filename'].encode('ascii', 'replace'),)
         self.assertEqual(expected, txt)
