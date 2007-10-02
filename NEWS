@@ -16,6 +16,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Implement ListBranchingScheme.is_branch_parent(). (#144357)
 
+   * Use revprop lists rather than just commit message when committing.
+
   BUG FIXES
 
    * Handle long file names with unicode characters correctly on python2.4 (#129334)

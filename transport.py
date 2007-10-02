@@ -438,11 +438,21 @@ class SvnRaTransport(Transport):
         return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
                              *args, **kwargs))
 
+    def supports_custom_revprops(self):
+        return has_attr(svn.ra, 'get_commit_editor3')
+
     @convert_svn_error
-    def get_commit_editor(self, *args, **kwargs):
+    def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         self._open_real_transport()
         self._mark_busy()
-        return Editor(self, svn.ra.get_commit_editor(self._ra, *args, **kwargs))
+        if revprops.keys() == [svn.core.SVN_PROP_REVISION_LOG]:
+            editor = svn.ra.get_commit_editor(self._ra, 
+                        revprops[svn.core.SVN_PROP_REVISION_LOG],
+                        done_cb, lock_token, keep_locks)
+        else:
+            editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
+                                              lock_token, keep_locks)
+        return Editor(self, editor)
 
     def listable(self):
         """See Transport.listable().
