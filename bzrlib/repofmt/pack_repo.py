@@ -1153,7 +1153,8 @@ class GraphKnitTextStore(VersionedFileStore):
             self.transport.clone('..'),
             None,
             index=knit_index,
-            access_method=self.repo._text_knit_access)
+            access_method=self.repo._text_knit_access,
+            factory=knit.KnitPlainFactory())
 
     get_weave = get_weave_or_empty
 
