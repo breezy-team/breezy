@@ -73,8 +73,6 @@ class TestNonAscii(TestCaseWithTransport):
                 self.fail("Expected UnicodeError not raised")
 
     def create_base(self):
-        bzr = self.run_bzr
-
         fs_enc = sys.getfilesystemencoding()
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
@@ -110,13 +108,11 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt = wt
 
     def test_status(self):
-        bzr = self.run_bzr_decode
-
         open(self.info['filename'], 'ab').write('added something\n')
         txt = self.run_bzr_decode('status')
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
-        txt = bzr('status', encoding='ascii')
+        txt = self.run_bzr_decodE('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
                     self.info['filename'].encode('ascii', 'replace'),)
         self.assertEqual(expected, txt)
