@@ -9,6 +9,11 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+  CHANGES:
+  
+   * ``bzr`` now returns exit code 4 if an internal error occurred, and 
+     3 if a normal error occurred.  (Martin Pool)
+
    * ``pull``, ``merge`` and ``push`` will no longer silently correct some
      repository index errors that occured as a result of the Weave disk format.
      Instead the ``reconcile`` command needs to be run to correct those
@@ -115,6 +120,14 @@ IN DEVELOPMENT
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
 
+   * Removed previously deprecated varargs interface to ``TestCase.run_bzr`` and
+     deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
+     (Martin Pool)
+
+   * Special purpose method ``TestCase.run_bzr_decode`` is moved to the test_non_ascii 
+     class that needs it.
+     (Martin Pool)
+
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
@@ -160,6 +173,12 @@ IN DEVELOPMENT
      and annotated to plain conversion. (Ian Clatworthy)
 
   TESTING:
+
+   * When running bzr commands within the test suite, internal exceptions are
+     not caught and reported in the usual way, but rather allowed to propagate
+     up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
+     makes this behavior available to other users.
+     (Martin Pool)
 
 
 bzr 0.91rc2 2007-09-11
