@@ -240,7 +240,7 @@ class CommitBuilder(object):
             not self.repository._format.supports_tree_reference):
             # mismatch between commit builder logic and repository:
             # this needs the entry creation pushed down into the builder.
-            raise NotImplementedError
+            raise NotImplementedError('Missing repository subtree support.')
         # transitional assert only, will remove before release.
         assert ie.kind == kind
         self.new_inventory.add(ie)
@@ -315,15 +315,18 @@ class CommitBuilder(object):
                     # lines.
                     nostore_sha = parent_entry.text_sha1
             if store:
+                # We want to record a new node regardless of the presence or
+                # absence of a content change in the file.
                 nostore_sha = None
+            ie.executable = content_summary[2]
+            lines = tree.get_file(ie.file_id, path).readlines()
             try:
-                ie.executable = content_summary[2]
-                lines = tree.get_file(ie.file_id, path).readlines()
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
             except errors.ExistingContent:
-                # we are not going to store a new file graph node as it turns
-                # out to be unchanged.
+                # Turns out that the file content was unchanged, and we were
+                # only going to store a new node if it was changed. Carry over
+                # the entry.
                 ie.revision = parent_entry.revision
                 ie.text_size = parent_entry.text_size
                 ie.text_sha1 = parent_entry.text_sha1
@@ -340,7 +343,7 @@ class CommitBuilder(object):
         elif kind == 'symlink':
             current_link_target = content_summary[3]
             if not store:
-                # symmlink target is not generic metadata, check if it has
+                # symlink target is not generic metadata, check if it has
                 # changed.
                 if current_link_target != parent_entry.symlink_target:
                     store = True
