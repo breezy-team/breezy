@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -538,3 +538,16 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr('commit test -m "partial commit"')
         self.assertEquals('', out)
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
+
+    def test_commit_readonly_checkout(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # "UnlockableTransport error trying to commit in checkout of readonly
+        # branch"
+        self.make_branch('master')
+        master = BzrDir.open_from_transport(
+            self.get_readonly_transport('master')).open_branch()
+        master.create_checkout('checkout')
+        out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
+            retcode=3)
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: Cannot lock.*readonly transport\n$')

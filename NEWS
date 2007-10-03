@@ -115,6 +115,9 @@ IN DEVELOPMENT
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
 
+   * ``ReadOnlyLockError`` is deprecated; ``LockFailed`` is usually more 
+     appropriate.  (Martin Pool)
+
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
