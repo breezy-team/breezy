@@ -440,7 +440,7 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         right_shape = Inventory(root_id=None)
         self.add_dir(right_shape, left_revid, 'root-id', None, '')
         self.add_link(right_shape, right_revid, 'link-id', 'root-id', 'link',
-            'left-target')
+            'some-target')
         self.add_dir(right_shape, right_revid, 'subdir-id', 'root-id', 'dir')
         self.add_file(right_shape, right_revid, 'file-id', 'subdir-id', 'file',
             '2' * 32, 24)
@@ -453,7 +453,7 @@ class UpdateToOneParentViaDeltaTests(TestParents):
             new_shape, new_revid, right_revid)
 
     def test_parent_id_changed(self):
-        # test that when the only change to a entry is its parent id changing
+        # test that when the only change to an entry is its parent id changing
         # that it is handled correctly (that is it keeps the same path)
         old_revid = 'old-parent'
         basis_shape = Inventory(root_id=None)
@@ -469,8 +469,8 @@ class UpdateToOneParentViaDeltaTests(TestParents):
             new_shape, new_revid)
 
     def test_name_changed(self):
-        # test that when the only change to a entry is its name changing
-        # that it is handled correctly (that is it keeps the same parent id)
+        # test that when the only change to an entry is its name changing that
+        # it is handled correctly (that is it keeps the same parent id)
         old_revid = 'old-parent'
         basis_shape = Inventory(root_id=None)
         self.add_dir(basis_shape, old_revid, 'root-id', None, '')

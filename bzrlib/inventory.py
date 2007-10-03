@@ -976,12 +976,12 @@ class Inventory(object):
             etc. 
 
             The children attribute of new_entry is ignored. This is because
-            apply_inventory_delta preserves children automatically across
-            alterations to the parent of the children, and cases where the
-            parent id of a child is changing require the child to be passed in
-            as a separate change regardless. E.g. in the recursive deletion of
-            a directory - the directories children must be included in the
-            delta, or the final inventory will be invalid.
+            this method preserves children automatically across alterations to
+            the parent of the children, and cases where the parent id of a
+            child is changing require the child to be passed in as a separate
+            change regardless. E.g. in the recursive deletion of a directory -
+            the directory's children must be included in the delta, or the
+            final inventory will be invalid.
         """
         children = {}
         # Remove all affected items which were in the original inventory,
