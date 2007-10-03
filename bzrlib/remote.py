@@ -259,6 +259,12 @@ class RemoteRepository(object):
         self._leave_lock = False
         # for tests
         self._reconcile_does_inventory_gc = True
+        self.base = self.bzrdir.transport.base
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
 
     def abort_write_group(self):
         """Complete a write group on the decorated repository.

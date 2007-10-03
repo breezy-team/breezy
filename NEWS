@@ -9,6 +9,11 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+  CHANGES:
+  
+   * ``bzr`` now returns exit code 4 if an internal error occurred, and 
+     3 if a normal error occurred.  (Martin Pool)
+
    * ``pull``, ``merge`` and ``push`` will no longer silently correct some
      repository index errors that occured as a result of the Weave disk format.
      Instead the ``reconcile`` command needs to be run to correct those
@@ -53,6 +58,9 @@ IN DEVELOPMENT
      the contents. (Robert Collins)
 
   IMPROVEMENTS:
+
+   * ``bzr+https://`` smart server across https now supported. 
+     (John Ferlito, Martin Pool, #128456)
 
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
@@ -119,6 +127,14 @@ IN DEVELOPMENT
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
 
+   * Removed previously deprecated varargs interface to ``TestCase.run_bzr`` and
+     deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
+     (Martin Pool)
+
+   * Special purpose method ``TestCase.run_bzr_decode`` is moved to the test_non_ascii 
+     class that needs it.
+     (Martin Pool)
+
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
@@ -144,9 +160,17 @@ IN DEVELOPMENT
      shorthand for deriving from BzrError and setting internal_error = True.
      (Robert Collins)
 
+   * New method ``bzrlib.mutabletree.update_to_one_parent_via_delta`` for
+     moving the state of a parent tree to a new version via a delta rather than
+     a complete replacement tree. (Robert Collins)
+
    * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
      duplication from user input, when a user mentions both a path and an item
      contained within that path. (Robert Collins)
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
@@ -170,6 +194,12 @@ IN DEVELOPMENT
      (Robert Collins)
 
   TESTING:
+
+   * When running bzr commands within the test suite, internal exceptions are
+     not caught and reported in the usual way, but rather allowed to propagate
+     up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
+     makes this behavior available to other users.
+     (Martin Pool)
 
 
 bzr 0.91rc2 2007-09-11
@@ -451,10 +481,6 @@ bzr 0.91rc1 2007-09-11
    * New method on ``bzrlib.transport.Transport`` ``open_write_stream`` allows
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
-
-   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
-     tuple containing the key information about a path for commit processing
-     to complete. (Robert Collins)
 
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and

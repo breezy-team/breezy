@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +34,7 @@ class cmd_echo_exact(Command):
 
 
 class cmd_echo_strict(cmd_echo_exact):
-    """Replace bogus unicode characters."""
+    """Raise a UnicodeError for unrepresentable characters."""
 
     encoding_type = 'strict'
 
@@ -59,7 +58,9 @@ class TestCommandEncoding(TestCase):
             # get past main()
             self.assertEqual('foo\xb5', bzr('echo-exact foo\xb5'))
             # Exact should fail to decode the string
-            bzr(['echo-exact', u'foo\xb5'], retcode=3)
+            self.assertRaises(UnicodeEncodeError,
+                bzr,
+                ['echo-exact', u'foo\xb5'])
         finally:
             plugin_cmds.pop('echo-exact')
 
@@ -85,7 +86,9 @@ class TestCommandEncoding(TestCase):
         try:
             self.assertEqual('foo', bzr('echo-strict foo'))
             # ascii can't encode \xb5
-            bzr(['echo-strict', u'foo\xb5'], retcode=3)
+            self.assertRaises(UnicodeEncodeError,
+                bzr,
+                ['echo-strict', u'foo\xb5'])
         finally:
             plugin_cmds.pop('echo-strict')
 

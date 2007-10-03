@@ -52,7 +52,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 tree.unlock()
             parent_tree = tree.branch.repository.revision_tree(None)
             parent_invs = []
-            builder.record_entry_contents(ie, parent_invs, '', tree)
+            builder.record_entry_contents(ie, parent_invs, '', tree,
+                tree.path_content_summary(''))
 
     def test_finish_inventory(self):
         tree = self.make_branch_and_tree(".")
@@ -130,7 +131,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
             self.assertRaises(errors.RootMissing,
-                builder.record_entry_contents, entry, [], 'foo', tree)
+                builder.record_entry_contents, entry, [], 'foo', tree,
+                    tree.path_content_summary('foo'))
             builder.abort()
         finally:
             tree.unlock()
@@ -147,7 +149,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             ie = inventory.make_entry('directory', '', None,
                     tree.inventory.root.file_id)
             delta, version_recorded = builder.record_entry_contents(
-                ie, [parent_tree.inventory], '', tree)
+                ie, [parent_tree.inventory], '', tree,
+                tree.path_content_summary(''))
             self.assertFalse(version_recorded)
             self.assertEqual(None, delta)
             builder.abort()
@@ -352,13 +355,15 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             # root
             builder.record_entry_contents(
                 inventory.make_entry('directory', '', None,
-                    tree.inventory.root.file_id), parent_invs, '', tree)
+                    tree.inventory.root.file_id), parent_invs, '', tree,
+                    tree.path_content_summary(''))
             def commit_id(file_id):
                 old_ie = tree.inventory[file_id]
                 path = tree.id2path(file_id)
                 ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
                     old_ie.parent_id, file_id)
-                return builder.record_entry_contents(ie, parent_invs, path, tree)
+                return builder.record_entry_contents(ie, parent_invs, path,
+                    tree, tree.path_content_summary(path))
 
             file_id = tree.path2id(new_name)
             parent_id = tree.inventory[file_id].parent_id

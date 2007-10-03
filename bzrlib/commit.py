@@ -247,6 +247,7 @@ class Commit(object):
         self.local = local
         self.master_branch = None
         self.master_locked = False
+        self.recursive = recursive
         self.rev_id = None
         if specific_files is not None:
             self.specific_files = sorted(
@@ -255,7 +256,6 @@ class Commit(object):
             self.specific_files = None
         self.specific_file_ids = None
         self.allow_pointless = allow_pointless
-        self.recursive = recursive
         self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -289,12 +289,11 @@ class Commit(object):
 
             # If provided, ensure the specified files are versioned
             if self.specific_files is not None:
-                # Note: This routine
-                # is being called because it raises PathNotVerisonedError
-                # as a side effect of finding the IDs. We later use the ids we
-                # found as input to the working tree inventory iterator, so we
-                # only consider those ids rather than examining the whole tree
-                # again.
+                # Note: This routine is being called because it raises
+                # PathNotVersionedError as a side effect of finding the IDs. We
+                # later use the ids we found as input to the working tree
+                # inventory iterator, so we only consider those ids rather than
+                # examining the whole tree again.
                 # XXX: Dont we have filter_unversioned to do this more
                 # cheaply?
                 self.specific_file_ids = tree.find_ids_across_trees(
@@ -650,11 +649,16 @@ class Commit(object):
         if specific_files:
             for path, old_ie in self.basis_inv.iter_entries():
                 if old_ie.file_id in self.builder.new_inventory:
+                    # already added - skip.
                     continue
                 if is_inside_any(specific_files, path):
+                    # was inside the selected path, if not present it has been
+                    # deleted so skip.
                     continue
                 if old_ie.kind == 'directory':
                     self._next_progress_entry()
+                # not in final inv yet, was not in the selected files, so is an
+                # entry to be preserved unaltered.
                 ie = old_ie.copy()
                 # Note: specific file commits after a merge are currently
                 # prohibited. This test is for sanity/safety in case it's
@@ -662,7 +666,7 @@ class Commit(object):
                 if len(self.parents) > 1:
                     ie.revision = None
                 delta, version_recorded = self.builder.record_entry_contents(
-                    ie, self.parent_invs, path, self.basis_tree)
+                    ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
 
@@ -687,6 +691,7 @@ class Commit(object):
         deleted_paths = set()
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
+        # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         if not self.builder.record_root_entry:
@@ -705,18 +710,32 @@ class Commit(object):
             # deleted files matching that filter.
             if is_inside_any(deleted_paths, path):
                 continue
-            if not self.work_tree.has_filename(path):
-                deleted_paths.add(path)
-                self.reporter.missing(path)
-                deleted_ids.append(file_id)
-                continue
-            try:
-                kind = self.work_tree.kind(file_id)
-                # TODO: specific_files filtering before nested tree processing
-                if kind == 'tree-reference' and self.recursive == 'down':
-                    self._commit_nested_tree(file_id, path)
-            except errors.NoSuchFile:
-                pass
+            content_summary = self.work_tree.path_content_summary(path)
+            if not specific_files or is_inside_any(specific_files, path):
+                if content_summary[0] == 'missing':
+                    deleted_paths.add(path)
+                    self.reporter.missing(path)
+                    deleted_ids.append(file_id)
+                    continue
+            # TODO: have the builder do the nested commit just-in-time IF and
+            # only if needed.
+            if content_summary[0] == 'tree-reference':
+                # enforce repository nested tree policy.
+                if (not self.work_tree.supports_tree_reference() or
+                    # repository does not support it either.
+                    not self.branch.repository._format.supports_tree_reference):
+                    content_summary = ('directory',) + content_summary[1:]
+            kind = content_summary[0]
+            # TODO: specific_files filtering before nested tree processing
+            if kind == 'tree-reference':
+                if self.recursive == 'down':
+                    nested_revision_id = self._commit_nested_tree(
+                        file_id, path)
+                    content_summary = content_summary[:3] + (
+                        nested_revision_id,)
+                else:
+                    content_summary = content_summary[:3] + (
+                        self.work_tree.get_reference_revision(file_id),)
 
             # Record an entry for this item
             # Note: I don't particularly want to have the existing_ie
@@ -724,7 +743,8 @@ class Commit(object):
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind
             self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie, report_changes)
+                parent_id, definitely_changed, existing_ie, report_changes,
+                content_summary)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -743,7 +763,7 @@ class Commit(object):
             sub_tree.branch.repository = \
                 self.work_tree.branch.repository
         try:
-            sub_tree.commit(message=None, revprops=self.revprops,
+            return sub_tree.commit(message=None, revprops=self.revprops,
                 recursive=self.recursive,
                 message_callback=self.message_callback,
                 timestamp=self.timestamp, timezone=self.timezone,
@@ -752,11 +772,11 @@ class Commit(object):
                 strict=self.strict, verbose=self.verbose,
                 local=self.local, reporter=self.reporter)
         except errors.PointlessCommit:
-            pass
+            return self.work_tree.get_reference_revision(file_id)
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-            parent_id, definitely_changed, existing_ie=None,
-            report_changes=True):
+        parent_id, definitely_changed, existing_ie, report_changes,
+        content_summary):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         # mutter('%s selected for commit', path)
@@ -766,7 +786,7 @@ class Commit(object):
             ie = existing_ie.copy()
             ie.revision = None
         delta, version_recorded = self.builder.record_entry_contents(ie,
-            self.parent_invs, path, self.work_tree)
+            self.parent_invs, path, self.work_tree, content_summary)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:
