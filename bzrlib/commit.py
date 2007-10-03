@@ -665,8 +665,9 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                if self.builder.record_entry_contents(ie, self.parent_invs, path,
-                    self.basis_tree, None):
+                delta, version_recorded = self.builder.record_entry_contents(
+                    ie, self.parent_invs, path, self.basis_tree, None)
+                if version_recorded:
                     self.any_entries_changed = True
 
         # note that deletes have occurred
@@ -784,8 +785,9 @@ class Commit(object):
         else:
             ie = existing_ie.copy()
             ie.revision = None
-        if self.builder.record_entry_contents(ie, self.parent_invs,
-            path, self.work_tree, content_summary):
+        delta, version_recorded = self.builder.record_entry_contents(ie,
+            self.parent_invs, path, self.work_tree, content_summary)
+        if version_recorded:
             self.any_entries_changed = True
         if report_changes:
             self._report_change(ie, path)
