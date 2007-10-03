@@ -10,17 +10,18 @@ Introduction
 Bazaar is a distributed version control system that makes it easier for
 people to work together on software projects. 
 
-Over the next five minutes, you'll learn how to XXX, XXX and XXX.
+Over the next five minutes, you'll learn how to put your files under
+version control, how to create your own 
 
-If you'd prefer a more detailed intrdouced, take a look at our guide
+If you'd prefer a more detailed introduction, take a look at our guide
 `Learning More`_.
 
 
 Installation
 ============
 
-For this guide, we'll assume you Bazaar is already on your system. If not,
-it's trivial to install on any platform that runs Python 2.4:
+For this guide, we'll assume Bazaar is already on your system. If not, it's
+trivial to install on any platform that runs Python 2.4:
 
 - *GNU/Linux:* Bazaar is probably in your GNU/Linux distribution already.
 - *Windows:* `installation instructions`_.
@@ -37,56 +38,60 @@ page.
 Introducing yourself
 ====================
 
-Hello, meet bzr. bzr is the command you'll use to invoke Bazaar.
+Before you start work, you need to tell Bazaar your name and email address.
+This lets Bazaar identify your work in revision logs.
 
-Now it's your turn tell Bazaar who you are. This allows Bazaar to correctly
-identify your work in revision logs.
+Using your name and email address, instead of John Doe's, type::
 
-Using your name and email address, instead of Joe Doe's, type::
-
-  $ bzr whoami "Joe Doe <joe.doe@gmail.com>"
+  $ bzr whoami "John Doe <john.doe@gmail.com>"
+  
+Bazaar will now create or modify a configuration file, including your name
+and email address, at ~/.bazaar/bazaar.conf
 
 Now, check that your name and email address are correctly registered::
 
   $ bzr whoami
-  Joe Doe <joe.doe@gmail.com>
+  John Doe <john.doe@gmail.com>
 
 
 Putting existing files under version control
 ============================================
 
-Okay, it's time to put Bazaar to work.
-
-The first step is to tell Bazaar that you want it to track the files in a
-particular directory.
-
 Switch to a directory where you've already got some files, then type::
 
-  $ bzr init .
+  $ bzr init
   
-If it looks like nothing happened, don't worry. You now have an empty 
-Bazaar branch. Let's tell Bazaar which files your want to work with.
+If it looks like nothing happened, don't worry. Bazaar has created a
+_branch where it will store your files and their revision history.
+
+.. _branch: http://bazaar-vcs.org/Branch
+
+The next step is to tell Bazaar which files you want to track.
 
   $ bzr add
 
-Your files aren't in your branch just yet; you need to commit them first,
-along with a quick message to explain the purpose of that commit::
+Bazaar will now recursively put everything in that directory under version
+control.
+
+Next, take a snapshot of your files by committing them to your branch. Add 
+a commit message to explain why you made the commit::
 
   $ bzr commit -m "Initial import"
-
-Bazaar has just taken a snapshot of everything in that directory. Even if
-you make changes to those files, you can always go back to the state they
-were in when you committed them to the branch.
+  
+As Bazaar is a distributed version control system, it doesn't need to 
+connect to a central server to make the commit. Instead, Bazaar stores your 
+branch and all its commits inside the directory you're working with - look
+for the ```.bzr``` sub-directory.
 
 
 Making changes to your files
 ============================
 
-Now, let's change a file and commit those changes to your branch.
+Let's change a file and commit those changes to your branch.
 
 Edit a file::
 
-  $ cd foobar.joe
+  $ cd foobar.john
   $ hack...
 
 Check what have you done::
@@ -109,8 +114,6 @@ Commit your work to your Bazaar branch::
   $ bzr commit -m 'added some whitespace'
   Committed revision 2.
 
-Bazaar has taken another snapshot of your files.
-
 
 Viewing the revision log
 ========================
@@ -120,15 +123,15 @@ You can see the history of your branch by browsing its log::
   $ bzr log
   ------------------------------------------------------------
   revno: 2
-  committer: Joe Doe <joe.doe@gmail.com>
-  branch nick: foobar.joe
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: foobar.john
   timestamp: Mon 2007-09-28 01:33:35 +0200
   message:
     added some whitespace
   ------------------------------------------------------------
   revno: 1
-  committer: Joe Doe <joe.doe@gmail.com>
-  branch nick: foobar.dev
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: foobar.john
   timestamp: Mon 2006-09-28 01:06:11 +0200
   message:
     initial revision
@@ -140,10 +143,10 @@ Publishing Your Branch
 There are a couple of ways to publish your branch but the easiest way is to
 push it to a web server.
 
-Let's assume you want to publish your branch at jod.example.com/foobar.joe
+Let's assume you want to publish your branch at jod.example.com/foobar.john
 and you have sftp access to the server::
 
-  $ bzr push sftp://jod@jod.example.com/public_html/foobar.joe/
+  $ bzr push sftp://jod@jod.example.com/public_html/foobar.john/
   2 revision(s) pushed.
     
 Note that to use sftp, your may need to install ''paramiko'' and
@@ -151,65 +154,53 @@ Note that to use sftp, your may need to install ''paramiko'' and
 
 Now anyone can get their own copy of your branch by typing::
 
-  bzr branch http://jod.example.com/foobar.joe/
+  bzr branch http://jod.example.com/foobar.john/
 
 Their branch will have all the same files, with the same revision history
 as yours but any changes they make will stay in their own branch. If you
 like, you can merge your branches at any time.
 
 
-Creating your own branch Personal Branch
-========================================
+Creating and working with your own copy of someone else's branch
+================================================================
 
-Of course, you can also make your own branch of someone else's work. Let's
-say you're interested interested in the Foo project::
+You can also make your own branch of someone else's work. Let's take a
+real-world example, Bazaar's GTK interface::
 
-  $ bzr branch http://example.com/code/foobar.dev foobar.joe
-  Branched 1 revision(s).                                                        
+  $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
+  Branched 292 revision(s).                                                        
 
 Bazaar will download all the files and complete revision history from the
-Foo project's development branch. Just as you created your own branch from 
-scratch, you now have your own copy of the Foo dev branch.
+bzr-gtk project's trunk branch and create a copy called bzr-gtk.john.
 
-Now, any changes you commit will stay in your new personal copy of that
-branch. So, you don't need internet access to make commits but it also
-means that your changes won't appear automatically in the Foo project's
-dev branch.
+Now, you have your own copy of the branch you can make any changes you want
+without a net connection. You can share your branch at any time by 
+publishing it. If the  bzr-gtk team want to use your work, Bazaar makes it 
+easy for them to merge your branch back into their trunk branch.
 
 
 Updating your branch from the main branch
 =========================================
 
-While you work hard on your branch, it's likely that other people will
-continue to commit code to the main branch.
+While you commit changes to your branch, it's likely that other people will
+also continue to commit code to the main branch.
 
 To make sure your branch stays up to date, you should merge changes from
 the main branch into your personal branch::
 
   $ bzr merge
-  Using saved location: http://example.com/code/foobar.dev
+  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
             
-What was changed locally by merging the main branch?
-
-::
+Check what has changed::
 
   $ bzr diff
-  === modified file 'pyfribidi.c'
-  --- pyfribidi.c
-  +++ pyfribidi.c
-  @@ -236,6 +236,7 @@
-          PyMem_Del (logical);
-          PyMem_Del (visual);
-   
-  +    /* evil hack! */
-          return result;
-   }
  
-You still need to commit those changes into your personal branch::
+If you're happy with the changes, you can commit them to your personal
+branch::
 
   $ bzr commit -m 'merge from main branch'
-  Committed revision 6.
+  Committed revision 295.
 
 Bazaar won't automatically commit changes from a merge. Although Bazaar
 excels at handling complex merges, from time to time you may need to 
@@ -218,11 +209,11 @@ resolve conflicts or make other minor changes before committing.
 Learning more
 =============
 
-To learn about bzr topics::
+To learn about Bazaar::
 
   $ bzr help
 
-To learn about bzr commands::
+To learn about Bazaar commands::
 
   $ bzr help commands
 
