@@ -1659,3 +1659,29 @@ class TestCheckInventoryShape(TestCaseWithTransport):
             self.check_inventory_shape(tree.inventory, files)
         finally:
             tree.unlock()
+
+
+class TestBlackboxSupport(TestCase):
+    """Tests for testsuite blackbox features."""
+
+    def test_run_bzr_failure_not_caught(self):
+        # When we run bzr in blackbox mode, we want any unexpected errors to
+        # propagate up to the test suite so that it can show the error in the
+        # usual way, and we won't get a double traceback.
+        e = self.assertRaises(
+            AssertionError,
+            self.run_bzr, ['assert-fail'])
+        # make sure we got the real thing, not an error from somewhere else in
+        # the test framework
+        self.assertEquals('always fails', str(e))
+        # check that there's no traceback in the test log
+        self.assertNotContainsRe(self._get_log(keep_log_file=True),
+            r'Traceback')
+
+    def test_run_bzr_user_error_caught(self):
+        # Running bzr in blackbox mode, normal/expected/user errors should be
+        # caught in the regular way and turned into an error message plus exit
+        # code.
+        out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
