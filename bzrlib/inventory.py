@@ -946,6 +946,69 @@ class Inventory(object):
             self._byid = {}
         self.revision_id = revision_id
 
+    def __repr__(self):
+        return "<Inventory object at %x, contents=%r>" % (id(self), self._byid)
+
+    def apply_delta(self, delta):
+        """Apply a delta to this inventory.
+
+        :param delta: A list of changes to apply. After all the changes are
+            applied the final inventory must be internally consistent, but it
+            is ok to supply changes which, if only half-applied would have an
+            invalid result - such as supplying two changes which rename two
+            files, 'A' and 'B' with each other : [('A', 'B', 'A-id', a_entry),
+            ('B', 'A', 'B-id', b_entry)].
+
+            Each change is a tuple, of the form (old_path, new_path, file_id,
+            new_entry).
+            
+            When new_path is None, the change indicates the removal of an entry
+            from the inventory and new_entry will be ignored (using None is
+            appropriate). If new_path is not None, then new_entry must be an
+            InventoryEntry instance, which will be incorporated into the
+            inventory (and replace any existing entry with the same file id).
+            
+            When old_path is None, the change indicates the addition of
+            a new entry to the inventory.
+            
+            When neither new_path nor old_path are None, the change is a
+            modification to an entry, such as a rename, reparent, kind change
+            etc. 
+
+            The children attribute of new_entry is ignored. This is because
+            this method preserves children automatically across alterations to
+            the parent of the children, and cases where the parent id of a
+            child is changing require the child to be passed in as a separate
+            change regardless. E.g. in the recursive deletion of a directory -
+            the directory's children must be included in the delta, or the
+            final inventory will be invalid.
+        """
+        children = {}
+        # Remove all affected items which were in the original inventory,
+        # starting with the longest paths, thus ensuring parents are examined
+        # after their children, which means that everything we examine has no
+        # modified children remaining by the time we examine it.
+        for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
+                                        if op is not None), reverse=True):
+            if file_id not in self:
+                # adds come later
+                continue
+            # Preserve unaltered children of file_id for later reinsertion.
+            children[file_id] = getattr(self[file_id], 'children', {})
+            # Remove file_id and the unaltered children. If file_id is not
+            # being deleted it will be reinserted back later.
+            self.remove_recursive_id(file_id)
+        # Insert all affected which should be in the new inventory, reattaching
+        # their children if they had any. This is done from shortest path to
+        # longest, ensuring that items which were modified and whose parents in
+        # the resulting inventory were also modified, are inserted after their
+        # parents.
+        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+                                          delta if np is not None):
+            if new_entry.kind == 'directory':
+                new_entry.children = children.get(new_entry.file_id, {})
+            self.add(new_entry)
+
     def _set_root(self, ie):
         self.root = ie
         self._byid = {self.root.file_id: self.root}
