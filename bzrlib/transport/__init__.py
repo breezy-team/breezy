@@ -406,7 +406,7 @@ class Transport(object):
         """
         assert not isinstance(from_file, basestring), \
             '_pump should only be called on files not %s' % (type(from_file,))
-        osutils.pumpfile(from_file, to_file)
+        return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -794,6 +794,7 @@ class Transport(object):
         :param f:       File-like object.
         :param mode: The mode for the newly created file,
                      None means just use the default.
+        :return: The length of the file that was written.
         """
         # We would like to mark this as NotImplemented, but most likely
         # transports have defined it in terms of the old api.

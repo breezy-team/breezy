@@ -66,6 +66,10 @@ class DisabledTags(_Tags):
         # we never have anything to copy
         pass
 
+    def get_reverse_tag_dict(self):
+        # There aren't any tags, so the reverse mapping is empty.
+        return {}
+
 
 class BasicTags(_Tags):
     """Tag storage in an unversioned branch control file.

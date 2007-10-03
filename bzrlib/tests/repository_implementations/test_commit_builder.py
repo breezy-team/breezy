@@ -16,24 +16,29 @@
 
 """Tests for repository commit builder."""
 
-from errno import EISDIR
+import errno
 import os
+import sys
 
-from bzrlib import inventory
-from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
-from bzrlib.repository import CommitBuilder
-from bzrlib import tests
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib import (
+    errors,
+    inventory,
+    osutils,
+    repository,
+    tests,
+    )
+from bzrlib.tests.repository_implementations import test_repository
 
 
-class TestCommitBuilder(TestCaseWithRepository):
+class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
         branch.repository.lock_write()
         builder = branch.repository.get_commit_builder(
             branch, [], branch.get_config())
-        self.assertIsInstance(builder, CommitBuilder)
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
         branch.repository.unlock()
 
@@ -94,13 +99,14 @@ class TestCommitBuilder(TestCaseWithRepository):
                 try:
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-                except NonAsciiRevisionId:
+                except errors.NonAsciiRevisionId:
                     revision_id = 'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-            except CannotSetRevisionId:
+            except errors.CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
+            self.assertFalse(builder.random_revid)
             self.record_root(builder, tree)
             builder.finish_inventory()
             self.assertEqual(revision_id, builder.commit('foo bar'))
@@ -131,6 +137,27 @@ class TestCommitBuilder(TestCaseWithRepository):
             builder.finish_inventory()
             rev_id = builder.commit('foo bar')
         finally:
+            tree.unlock()
+    
+    def test_commit_unchanged_root(self):
+        tree = self.make_branch_and_tree(".")
+        tree.commit('')
+        tree.lock_write()
+        parent_tree = tree.basis_tree()
+        parent_tree.lock_read()
+        self.addCleanup(parent_tree.unlock)
+        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        try:
+            ie = inventory.make_entry('directory', '', None,
+                    tree.inventory.root.file_id)
+            self.assertFalse(builder.record_entry_contents(
+                ie, [parent_tree.inventory], '', tree))
+            builder.abort()
+        except:
+            builder.abort()
+            tree.unlock()
+            raise
+        else:
             tree.unlock()
 
     def test_commit(self):
@@ -293,7 +320,42 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree.add([name], [name + 'id'])
         rev1 = tree.commit('')
         changer()
-        rev2 = tree.commit('')
+        tree.lock_write()
+        try:
+            # mini manual commit here so we can check the return of
+            # record_entry_contents.
+            builder = tree.branch.get_commit_builder([tree.last_revision()])
+            parent_tree = tree.basis_tree()
+            parent_tree.lock_read()
+            self.addCleanup(parent_tree.unlock)
+            parent_invs = [parent_tree.inventory]
+            # root
+            builder.record_entry_contents(
+                inventory.make_entry('directory', '', None,
+                    tree.inventory.root.file_id), parent_invs, '', tree)
+            def commit_id(file_id):
+                old_ie = tree.inventory[file_id]
+                path = tree.id2path(file_id)
+                ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
+                    old_ie.parent_id, file_id)
+                return builder.record_entry_contents(ie, parent_invs, path, tree)
+
+            file_id = name + 'id'
+            parent_id = tree.inventory[file_id].parent_id
+            if parent_id != tree.inventory.root.file_id:
+                commit_id(parent_id)
+            # because a change of some sort is meant to have occurred,
+            # recording the entry must return True.
+            self.assertTrue(commit_id(file_id))
+            builder.finish_inventory()
+            rev2 = builder.commit('')
+            tree.set_parent_ids([rev2])
+        except:
+            builder.abort()
+            tree.unlock()
+            raise
+        else:
+            tree.unlock()
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
@@ -349,6 +411,8 @@ class TestCommitBuilder(TestCaseWithRepository):
         rev4 = tree1.commit('')
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
+        # TODO: change this to an assertFileGraph call to check the
+        # parent order of rev4: it should be rev2, rev3
         self.assertFileAncestry([rev1, rev2, rev3, rev4], tree1, name,
             [rev1, rev3, rev2, rev4])
 
@@ -414,14 +478,11 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         path = 'name'
         make_before(path)
+
         def change_kind():
-            try:
-                os.unlink(path)
-            except OSError, e:
-                if e.errno != EISDIR:
-                    raise
-                os.rmdir(path)
+            osutils.delete_any(path)
             make_after(path)
+
         self._add_commit_change_check_changed(tree, path, change_kind)
 
     def test_last_modified_dir_file(self):

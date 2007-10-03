@@ -164,9 +164,8 @@ class TestMerge(ExternalBase):
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
-        out = self.run_bzr('merge ../branch_a', retcode=3)
-        self.assertEquals(out,
-                ('','bzr: ERROR: Working tree has uncommitted changes.\n'))
+        self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
+                           'merge ../branch_a')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
@@ -345,3 +344,39 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge -d target -r revid:rev2a branch_b')
         self.failUnlessExists('target/file1')
         self.failIfExists('target/file2')
+
+    def assertDirectoryContent(self, directory, entries, message=''):
+        """Assert whether entries (file or directories) exist in a directory.
+        
+        It also checks that there are no extra entries.
+        """
+        ondisk = os.listdir(directory)
+        if set(ondisk) == set(entries):
+            return
+        if message:
+            message += '\n'
+        raise AssertionError(
+            '%s"%s" directory content is different:\na = %s\nb = %s\n'
+            % (message, directory, sorted(entries), sorted(ondisk)))
+
+    def test_cherrypicking_merge(self):
+        # make source branch
+        source = self.make_branch_and_tree('source')
+        for f in ('a', 'b', 'c', 'd'):
+            self.build_tree(['source/'+f])
+            source.add(f)
+            source.commit('added '+f, rev_id='rev_'+f)
+        # target branch
+        target = source.bzrdir.sprout('target', 'rev_a').open_workingtree()
+        self.assertDirectoryContent('target', ['.bzr', 'a'])
+        # pick 1 revision
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_c source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c'])
+        target.revert()
+        # pick 2 revisions
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c', 'd'])
+        target.revert()
+        # pick 1 revision with option --changes
+        self.run_bzr('merge -d target -c revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])

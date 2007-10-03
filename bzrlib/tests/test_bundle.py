@@ -44,7 +44,6 @@ from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
                           TestCase, TestSkipped, test_commit)
 from bzrlib.transform import TreeTransform
-from bzrlib.workingtree import WorkingTree
 
 
 class MockTree(object):
@@ -795,6 +794,10 @@ class BundleTester(object):
                           rev_id='i18n-1', committer=u'William Dod\xe9')
 
         if sys.platform == 'darwin':
+            from bzrlib.workingtree import WorkingTree3
+            if type(self.tree1) is WorkingTree3:
+                self.knownFailure("Bug #141438: fails for WorkingTree3 on OSX")
+
             # On Mac the '\xe9' gets changed to 'e\u0301'
             self.assertEqual([u'.bzr', u'with Dode\u0301'],
                              sorted(os.listdir(u'b1')))

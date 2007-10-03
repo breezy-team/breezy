@@ -68,11 +68,12 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
+from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
+                            minimum_path_selection,
                             quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib import symbol_versioning
@@ -108,6 +109,9 @@ class NullCommitReporter(object):
     def renamed(self, change, old_path, new_path):
         pass
 
+    def is_verbose(self):
+        return False
+
 
 class ReportCommitToLog(NullCommitReporter):
 
@@ -134,7 +138,7 @@ class ReportCommitToLog(NullCommitReporter):
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
-    
+
     def deleted(self, file_id):
         self._note('deleted %s', file_id)
 
@@ -146,6 +150,9 @@ class ReportCommitToLog(NullCommitReporter):
 
     def renamed(self, change, old_path, new_path):
         self._note('%s %s => %s', change, old_path, new_path)
+
+    def is_verbose(self):
+        return True
 
 
 class Commit(object):
@@ -163,12 +170,13 @@ class Commit(object):
     def __init__(self,
                  reporter=None,
                  config=None):
-        if reporter is not None:
-            self.reporter = reporter
-        else:
-            self.reporter = NullCommitReporter()
+        """Create a Commit object.
+
+        :param reporter: the default reporter to use or None to decide later
+        """
+        self.reporter = reporter
         self.config = config
-        
+
     def commit(self,
                message=None,
                timestamp=None,
@@ -209,6 +217,8 @@ class Commit(object):
 
         :param revprops: Properties for new revision
         :param local: Perform a local only commit.
+        :param reporter: the reporter to use or None for the default
+        :param verbose: if True and the reporter is not None, report everything
         :param recursive: If set to 'down', commit in any subtrees that have
             pending changes of any sort during this commit.
         """
@@ -232,11 +242,18 @@ class Commit(object):
                                " parameter is required for commit().")
 
         self.bound_branch = None
+        self.any_entries_changed = False
+        self.any_entries_deleted = False
         self.local = local
         self.master_branch = None
         self.master_locked = False
         self.rev_id = None
-        self.specific_files = specific_files
+        if specific_files is not None:
+            self.specific_files = sorted(
+                minimum_path_selection(specific_files))
+        else:
+            self.specific_files = None
+        self.specific_file_ids = None
         self.allow_pointless = allow_pointless
         self.recursive = recursive
         self.revprops = revprops
@@ -246,11 +263,6 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
-
-        if reporter is None and self.reporter is None:
-            self.reporter = NullCommitReporter()
-        elif reporter is not None:
-            self.reporter = reporter
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -267,18 +279,26 @@ class Commit(object):
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
 
+            # Complete configuration setup
+            if reporter is not None:
+                self.reporter = reporter
+            elif self.reporter is None:
+                self.reporter = self._select_reporter()
             if self.config is None:
                 self.config = self.branch.get_config()
 
             # If provided, ensure the specified files are versioned
-            if specific_files is not None:
-                # Note: We don't actually need the IDs here. This routine
+            if self.specific_files is not None:
+                # Note: This routine
                 # is being called because it raises PathNotVerisonedError
-                # as a side effect of finding the IDs.
+                # as a side effect of finding the IDs. We later use the ids we
+                # found as input to the working tree inventory iterator, so we
+                # only consider those ids rather than examining the whole tree
+                # again.
                 # XXX: Dont we have filter_unversioned to do this more
                 # cheaply?
-                tree.find_ids_across_trees(specific_files,
-                                           [self.basis_tree, self.work_tree])
+                self.specific_file_ids = tree.find_ids_across_trees(
+                    specific_files, [self.basis_tree, self.work_tree])
 
             # Setup the progress bar. As the number of files that need to be
             # committed in unknown, progress is reported as stages.
@@ -368,40 +388,11 @@ class Commit(object):
             self._cleanup()
         return self.rev_id
 
-    def _any_real_changes(self):
-        """Are there real changes between new_inventory and basis?
-
-        For trees without rich roots, inv.root.revision changes every commit.
-        But if that is the only change, we want to treat it as though there
-        are *no* changes.
-        """
-        new_entries = self.builder.new_inventory.iter_entries()
-        basis_entries = self.basis_inv.iter_entries()
-        new_path, new_root_ie = new_entries.next()
-        basis_path, basis_root_ie = basis_entries.next()
-
-        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
-        def ie_equal_no_revision(this, other):
-            return ((this.file_id == other.file_id)
-                    and (this.name == other.name)
-                    and (this.symlink_target == other.symlink_target)
-                    and (this.text_sha1 == other.text_sha1)
-                    and (this.text_size == other.text_size)
-                    and (this.text_id == other.text_id)
-                    and (this.parent_id == other.parent_id)
-                    and (this.kind == other.kind)
-                    and (this.executable == other.executable)
-                    and (this.reference_revision == other.reference_revision)
-                    )
-        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
-            return True
-
-        for new_ie, basis_ie in zip(new_entries, basis_entries):
-            if new_ie != basis_ie:
-                return True
-
-        # No actual changes present
-        return False
+    def _select_reporter(self):
+        """Select the CommitReporter to use."""
+        if is_quiet():
+            return NullCommitReporter()
+        return ReportCommitToLog()
 
     def _check_pointless(self):
         if self.allow_pointless:
@@ -419,7 +410,8 @@ class Commit(object):
             return
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
-        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
+        if len(self.builder.new_inventory) != 1 and (self.any_entries_changed
+            or self.any_entries_deleted):
             return
         raise PointlessCommit()
 
@@ -656,22 +648,31 @@ class Commit(object):
         # recorded in their previous state. For more details, see
         # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
         if specific_files:
-            for path, new_ie in self.basis_inv.iter_entries():
-                if new_ie.file_id in self.builder.new_inventory:
+            for path, old_ie in self.basis_inv.iter_entries():
+                if old_ie.file_id in self.builder.new_inventory:
                     continue
                 if is_inside_any(specific_files, path):
                     continue
-                ie = new_ie.copy()
-                ie.revision = None
-                self.builder.record_entry_contents(ie, self.parent_invs, path,
-                                                   self.basis_tree)
+                if old_ie.kind == 'directory':
+                    self._next_progress_entry()
+                ie = old_ie.copy()
+                # Note: specific file commits after a merge are currently
+                # prohibited. This test is for sanity/safety in case it's
+                # required after that changes.
+                if len(self.parents) > 1:
+                    ie.revision = None
+                if self.builder.record_entry_contents(ie, self.parent_invs, path,
+                    self.basis_tree):
+                    self.any_entries_changed = True
 
-        # Report what was deleted. We could skip this when no deletes are
-        # detected to gain a performance win, but it arguably serves as a
-        # 'safety check' by informing the user whenever anything disappears.
-        for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.builder.new_inventory:
-                self.reporter.deleted(path)
+        # note that deletes have occurred
+        if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
+            self.any_entries_deleted = True
+        # Report what was deleted.
+        if self.any_entries_deleted and self.reporter.is_verbose():
+            for path, ie in self.basis_inv.iter_entries():
+                if ie.file_id not in self.builder.new_inventory:
+                    self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -680,11 +681,13 @@ class Commit(object):
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
                
+        report_changes = self.reporter.is_verbose()
         deleted_ids = []
         deleted_paths = set()
         work_inv = self.work_tree.inventory
         assert work_inv.root is not None
-        entries = work_inv.iter_entries()
+        entries = work_inv.iter_entries_by_dir(
+            specific_file_ids=self.specific_file_ids, yield_parents=True)
         if not self.builder.record_root_entry:
             entries.next()
         for path, existing_ie in entries:
@@ -694,7 +697,6 @@ class Commit(object):
             kind = existing_ie.kind
             if kind == 'directory':
                 self._next_progress_entry()
-
             # Skip files that have been deleted from the working tree.
             # The deleted files/directories are also recorded so they
             # can be explicitly unversioned later. Note that when a
@@ -702,12 +704,11 @@ class Commit(object):
             # deleted files matching that filter.
             if is_inside_any(deleted_paths, path):
                 continue
-            if not specific_files or is_inside_any(specific_files, path):
-                if not self.work_tree.has_filename(path):
-                    deleted_paths.add(path)
-                    self.reporter.missing(path)
-                    deleted_ids.append(file_id)
-                    continue
+            if not self.work_tree.has_filename(path):
+                deleted_paths.add(path)
+                self.reporter.missing(path)
+                deleted_ids.append(file_id)
+                continue
             try:
                 kind = self.work_tree.kind(file_id)
                 # TODO: specific_files filtering before nested tree processing
@@ -720,9 +721,9 @@ class Commit(object):
             # Note: I don't particularly want to have the existing_ie
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
-            definitely_changed = kind != existing_ie.kind 
+            definitely_changed = kind != existing_ie.kind
             self._record_entry(path, file_id, specific_files, kind, name,
-                parent_id, definitely_changed, existing_ie)
+                parent_id, definitely_changed, existing_ie, report_changes)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
@@ -753,27 +754,20 @@ class Commit(object):
             pass
 
     def _record_entry(self, path, file_id, specific_files, kind, name,
-                      parent_id, definitely_changed, existing_ie=None):
+            parent_id, definitely_changed, existing_ie=None,
+            report_changes=True):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
-        if (not specific_files or 
-            is_inside_or_parent_of_any(specific_files, path)):
-                # mutter('%s selected for commit', path)
-                if definitely_changed or existing_ie is None:
-                    ie = inventory.make_entry(kind, name, parent_id, file_id)
-                else:
-                    ie = existing_ie.copy()
-                    ie.revision = None
+        # mutter('%s selected for commit', path)
+        if definitely_changed or existing_ie is None:
+            ie = inventory.make_entry(kind, name, parent_id, file_id)
         else:
-            # mutter('%s not selected for commit', path)
-            if self.basis_inv.has_id(file_id):
-                ie = self.basis_inv[file_id].copy()
-            else:
-                # this entry is new and not being committed
-                ie = None
-        if ie is not None:
-            self.builder.record_entry_contents(ie, self.parent_invs, 
-                path, self.work_tree)
+            ie = existing_ie.copy()
+            ie.revision = None
+        if self.builder.record_entry_contents(ie, self.parent_invs, 
+            path, self.work_tree):
+            self.any_entries_changed = True
+        if report_changes:
             self._report_change(ie, path)
         return ie
 

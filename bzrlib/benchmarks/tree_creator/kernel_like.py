@@ -210,7 +210,12 @@ class KernelLikeInventoryCreator(TreeCreator):
                                                  link_bzr=True,
                                                  hot_cache=False)
         tree = creator.create('.')
-        return tree.basis_tree().inventory
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            return basis.inventory
+        finally:
+            basis.unlock()
 
     def _open_cached(self, cache_dir):
         f = open(cache_dir + '/inventory', 'rb')

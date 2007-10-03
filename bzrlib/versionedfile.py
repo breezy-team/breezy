@@ -78,7 +78,8 @@ class VersionedFile(object):
         raise NotImplementedError(self.has_version)
 
     def add_lines(self, version_id, parents, lines, parent_texts=None,
-                  left_matching_blocks=None, nostore_sha=None):
+        left_matching_blocks=None, nostore_sha=None, random_id=False,
+        check_content=True):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -86,16 +87,32 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
+
+        :param lines: A list of lines. Each line must be a bytestring. And all
+            of them except the last must be terminated with \n and contain no
+            other \n's. The last line may either contain no \n's or a single
+            terminated \n. If the lines list does meet this constraint the add
+            routine may error or may succeed - but you will be unable to read
+            the data back accurately. (Checking the lines have been split
+            correctly is expensive and extremely unlikely to catch bugs so it
+            is not done at runtime unless check_content is True.)
         :param parent_texts: An optional dictionary containing the opaque 
-             representations of some or all of the parents of 
-             version_id to allow delta optimisations. 
-             VERY IMPORTANT: the texts must be those returned
-             by add_lines or data corruption can be caused.
+            representations of some or all of the parents of version_id to
+            allow delta optimisations.  VERY IMPORTANT: the texts must be those
+            returned by add_lines or data corruption can be caused.
         :param left_matching_blocks: a hint about which areas are common
             between the text and its left-hand-parent.  The format is
             the SequenceMatcher.get_matching_blocks format.
         :param nostore_sha: Raise ExistingContent and do not add the lines to
             the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
         :return: The text sha1, the number of bytes in the text, and an opaque
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
@@ -104,15 +121,16 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha)
+            left_matching_blocks, nostore_sha, random_id, check_content)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks, nostore_sha):
+        left_matching_blocks, nostore_sha, random_id, check_content):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
-                              parent_texts=None, nostore_sha=None):
+        parent_texts=None, nostore_sha=None, random_id=False,
+        check_content=True):
         """Add lines to the versioned file, allowing ghosts to be present.
         
         This takes the same parameters as add_lines and returns the same.
@@ -121,10 +139,10 @@ class VersionedFile(object):
         parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-            parent_texts, nostore_sha)
+            parent_texts, nostore_sha, random_id, check_content)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha):
+        nostore_sha, random_id, check_content):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -175,6 +193,7 @@ class VersionedFile(object):
         already present in file history."""
         new_version_id = osutils.safe_revision_id(new_version_id)
         old_version_id = osutils.safe_revision_id(old_version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -191,32 +210,15 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version_id, new_parents):
-        """Fix the parents list for version.
-        
-        This is done by appending a new version to the index
-        with identical data except for the parents list.
-        the parents list must be a superset of the current
-        list.
-        """
-        version_id = osutils.safe_revision_id(version_id)
-        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
-        self._check_write_ok()
-        return self._fix_parents(version_id, new_parents)
-
-    def _fix_parents(self, version_id, new_parents):
-        """Helper for fix_parents."""
-        raise NotImplementedError(self.fix_parents)
-
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
         
-        :since: 0.19
+        :since: 0.90
         """
         raise NotImplementedError(self.get_format_signature)
 
     def make_mpdiffs(self, version_ids):
-        """Create multiparent diffs for specified versions"""
+        """Create multiparent diffs for specified versions."""
         knit_versions = set()
         for version_id in version_ids:
             knit_versions.add(version_id)
@@ -240,11 +242,12 @@ class VersionedFile(object):
         return None
 
     def add_mpdiffs(self, records):
-        """Add mpdiffs to this versionedfile
+        """Add mpdiffs to this VersionedFile.
 
         Records should be iterables of version, parents, expected_sha1,
-        mpdiff.  mpdiff should be a MultiParent instance.
+        mpdiff. mpdiff should be a MultiParent instance.
         """
+        # Does this need to call self._check_write_ok()? (IanC 20070919)
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
@@ -276,7 +279,7 @@ class VersionedFile(object):
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
-        :param name: The name of the version to lookup
+        :param version_id: The name of the version to lookup
         """
         raise NotImplementedError(self.get_sha1)
 
@@ -286,7 +289,7 @@ class VersionedFile(object):
         :param version_ids: The names of the versions to lookup
         :return: a list of sha1s in order according to the version_ids
         """
-        raise NotImplementedError(self.get_sha1)
+        raise NotImplementedError(self.get_sha1s)
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
@@ -398,22 +401,13 @@ class VersionedFile(object):
         """Yield list of (version-id, line) pairs for the specified
         version.
 
-        Must raise RevisionNotPresent if any of the given versions are
+        Must raise RevisionNotPresent if the given version is
         not present in file history.
         """
         raise NotImplementedError(self.annotate_iter)
 
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
-
-    def _apply_delta(self, lines, delta):
-        """Apply delta to lines."""
-        lines = list(lines)
-        offset = 0
-        for start, end, count, delta_lines in delta:
-            lines[offset+start:offset+end] = delta_lines
-            offset = offset + (start - end) + count
-        return lines
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -423,8 +417,8 @@ class VersionedFile(object):
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history unless ignore_missing
-        is supplied when they are silently skipped.
+        are not present in the other file's history unless ignore_missing
+        is supplied in which case they are silently skipped.
         """
         self._check_write_ok()
         return InterVersionedFile.get(other, self).join(
@@ -567,7 +561,7 @@ class PlanWeaveMerge(TextMerge):
 
 
 class WeaveMerge(PlanWeaveMerge):
-    """Weave merge that takes a VersionedFile and two versions as its input"""
+    """Weave merge that takes a VersionedFile and two versions as its input."""
 
     def __init__(self, versionedfile, ver_a, ver_b, 
         a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
@@ -576,7 +570,7 @@ class WeaveMerge(PlanWeaveMerge):
 
 
 class InterVersionedFile(InterObject):
-    """This class represents operations taking place between two versionedfiles..
+    """This class represents operations taking place between two VersionedFiles.
 
     Its instances have methods like join, and contain
     references to the source and target versionedfiles these operations can be 
@@ -597,8 +591,8 @@ class InterVersionedFile(InterObject):
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history unless ignore_missing is 
-        supplied when they are silently skipped.
+        are not present in the other file's history unless ignore_missing is 
+        supplied in which case they are silently skipped.
         """
         # the default join: 
         # - if the target is empty, just add all the versions from 
@@ -631,8 +625,9 @@ class InterVersionedFile(InterObject):
             # TODO: remove parent texts when they are not relevant any more for 
             # memory pressure reduction. RBC 20060313
             # pb.update('Converting versioned data', 0, len(order))
+            total = len(order)
             for index, version in enumerate(order):
-                pb.update('Converting versioned data', index, len(order))
+                pb.update('Converting versioned data', index, total)
                 _, _, parent_text = target.add_lines(version,
                                                self.source.get_parents(version),
                                                self.source.get_lines(version),
@@ -646,6 +641,8 @@ class InterVersionedFile(InterObject):
                                         msg,
                                         version_ids,
                                         ignore_missing)
+            else:
+                return total
         finally:
             pb.finished()
 

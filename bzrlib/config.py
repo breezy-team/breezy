@@ -150,13 +150,16 @@ class Config(object):
         try:
             mail_client_class = {
                 None: mail_client.DefaultMail,
+                # Specific clients
+                'evolution': mail_client.Evolution,
+                'kmail': mail_client.KMail,
+                'mutt': mail_client.Mutt,
+                'thunderbird': mail_client.Thunderbird,
+                # Generic options
                 'default': mail_client.DefaultMail,
                 'editor': mail_client.Editor,
-                'thunderbird': mail_client.Thunderbird,
-                'evolution': mail_client.Evolution,
                 'mapi': mail_client.MAPIClient,
                 'xdg-email': mail_client.XDGEmail,
-                'kmail': mail_client.KMail,
             }[selected_client]
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
