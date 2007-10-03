@@ -482,20 +482,11 @@ bzr 0.91rc1 2007-09-11
      incremental addition of data to a file without requiring that all the
      data be buffered in memory. (Robert Collins)
 
-   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
-     tuple containing the key information about a path for commit processing
-     to complete. (Robert Collins)
-
    * New methods on ``bzrlib.knit.KnitVersionedFile``:
      ``get_data_stream(versions)``, ``insert_data_stream(stream)`` and
      ``get_format_signature()``.  These provide some infrastructure for
      efficiently streaming the knit data for a set of versions over the smart
      protocol.
-
-   * New parameter on ``bzrlib.transport.Transport.readv``
-     ``adjust_for_latency`` which changes readv from returning strictly the
-     requested data to inserted return larger ranges and in forward read order
-     to reduce the effect of network latency. (Robert Collins)
 
    * Knits with no annotation cache still produce correct annotations.
      (Aaron Bentley)

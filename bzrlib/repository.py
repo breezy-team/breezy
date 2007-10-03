@@ -643,9 +643,10 @@ class Repository(object):
         This might return False even when two repository objects are accessing
         the same physical repository via different URLs.
         """
-        ## if self.__class__ is not other.__class__:
-        ##     return False
-        return (self.base == other.base)
+        if self.__class__ is not other.__class__:
+            return False
+        return (self.control_files._transport.base ==
+                other.control_files._transport.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.

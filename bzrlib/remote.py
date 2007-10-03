@@ -339,7 +339,8 @@ class RemoteRepository(object):
         return response[0] == 'yes'
 
     def has_same_location(self, other):
-        return (self.base == other.base)
+        return (self.__class__ == other.__class__ and
+                self.bzrdir.transport.base == other.bzrdir.transport.base)
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""

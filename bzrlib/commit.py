@@ -326,8 +326,6 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            # tell the builder about the chosen recursive behaviour
-            self.builder.recursive = recursive
             
             try:
                 # find the location being committed to

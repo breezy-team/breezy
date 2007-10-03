@@ -40,8 +40,6 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
-    registry,
-    repository,
     revision as _mod_revision,
     symbol_versioning,
     transport,
