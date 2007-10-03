@@ -59,6 +59,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr+https://`` smart server across https now supported. 
+     (John Ferlito, Martin Pool, #128456)
+
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
 
