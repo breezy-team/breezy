@@ -247,6 +247,7 @@ class Commit(object):
         self.local = local
         self.master_branch = None
         self.master_locked = False
+        self.recursive = recursive
         self.rev_id = None
         if specific_files is not None:
             self.specific_files = sorted(
@@ -289,7 +290,7 @@ class Commit(object):
             # If provided, ensure the specified files are versioned
             if self.specific_files is not None:
                 # Note: This routine is being called because it raises
-                # PathNotVerisonedError as a side effect of finding the IDs. We
+                # PathNotVersionedError as a side effect of finding the IDs. We
                 # later use the ids we found as input to the working tree
                 # inventory iterator, so we only consider those ids rather than
                 # examining the whole tree again.
@@ -666,8 +667,9 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                if self.builder.record_entry_contents(ie, self.parent_invs, path,
-                    self.basis_tree, None):
+                delta, version_recorded = self.builder.record_entry_contents(
+                    ie, self.parent_invs, path, self.basis_tree, None)
+                if version_recorded:
                     self.any_entries_changed = True
 
         # note that deletes have occurred
@@ -727,10 +729,8 @@ class Commit(object):
                     content_summary = ('directory',) + content_summary[1:]
             kind = content_summary[0]
             # TODO: specific_files filtering before nested tree processing
-            # TODO: push this down into record_entry so the new ie can be set
-            # directly.
             if kind == 'tree-reference':
-                if self.builder.recursive == 'down':
+                if self.recursive == 'down':
                     nested_revision_id = self._commit_nested_tree(
                         file_id, path)
                     content_summary = content_summary[:3] + (
@@ -766,7 +766,7 @@ class Commit(object):
                 self.work_tree.branch.repository
         try:
             return sub_tree.commit(message=None, revprops=self.revprops,
-                recursive=self.builder.recursive,
+                recursive=self.recursive,
                 message_callback=self.message_callback,
                 timestamp=self.timestamp, timezone=self.timezone,
                 committer=self.committer,
@@ -787,8 +787,9 @@ class Commit(object):
         else:
             ie = existing_ie.copy()
             ie.revision = None
-        if self.builder.record_entry_contents(ie, self.parent_invs,
-            path, self.work_tree, content_summary):
+        delta, version_recorded = self.builder.record_entry_contents(ie,
+            self.parent_invs, path, self.work_tree, content_summary)
+        if version_recorded:
             self.any_entries_changed = True
         if report_changes:
             self._report_change(ie, path)

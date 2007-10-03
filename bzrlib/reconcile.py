@@ -83,7 +83,7 @@ class Reconciler(object):
 class RepoReconciler(object):
     """Reconciler that reconciles a repository.
 
-    The goal of repository reconciliation is to make any derived daata
+    The goal of repository reconciliation is to make any derived data
     consistent with the core data committed by a user. This can involve 
     reindexing, or removing unreferenced data if that can interfere with
     queries in a given repository.

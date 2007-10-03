@@ -194,18 +194,23 @@ class CommitBuilder(object):
             commit.
         :param tree: The tree that is being committed.
         """
-        if ie.parent_id is not None:
-            # if ie is not root, add a root automatically.
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree, tree.path_content_summary(''))
+        # In this revision format, root entries have no knit or weave When
+        # serializing out to disk and back in root.revision is always
+        # _new_revision_id
+        ie.revision = self._new_revision_id
+
+    def _get_delta(self, ie, basis_inv, path):
+        """Get a delta against the basis inventory for ie."""
+        if ie.file_id not in basis_inv:
+            # add
+            return (None, path, ie.file_id, ie)
+        elif ie != basis_inv[ie.file_id]:
+            # common but altered
+            # TODO: avoid tis id2path call.
+            return (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
         else:
-            # In this revision format, root entries have no knit or weave When
-            # serializing out to disk and back in root.revision is always
-            # _new_revision_id
-            ie.revision = self._new_revision_id
+            # common, unaltered
+            return None
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -223,11 +228,16 @@ class CommitBuilder(object):
             content - stat, length, exec, sha/link target. This is only
             accessed when the entry has a revision of None - that is when it is
             a candidate to commit.
-        :return: True if a new version of the entry has been recorded.
-            (Committing a merge where a file was only changed on the other side
-            will not return True.)
+        :return: A tuple (change_delta, version_recorded). change_delta is 
+            an inventory_delta change for this entry against the basis tree of
+            the commit, or None if no change occured against the basis tree.
+            version_recorded is True if a new version of the entry has been
+            recorded. For instance, committing a merge where a file was only
+            changed on the other side will return (delta, False).
         """
         if self.new_inventory.root is None:
+            if ie.parent_id is not None:
+                raise errors.RootMissing()
             self._check_root(ie, parent_invs, tree)
         if ie.revision is None:
             kind = content_summary[0]
@@ -240,16 +250,43 @@ class CommitBuilder(object):
             not self.repository._format.supports_tree_reference):
             # mismatch between commit builder logic and repository:
             # this needs the entry creation pushed down into the builder.
-            raise NotImplementedError
+            raise NotImplementedError('Missing repository subtree support.')
         # transitional assert only, will remove before release.
         assert ie.kind == kind
         self.new_inventory.add(ie)
+
+        # TODO: slow, take it out of the inner loop.
+        try:
+            basis_inv = parent_invs[0]
+        except IndexError:
+            basis_inv = Inventory(root_id=None)
 
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. We may record the previous parents revision if the
         # content is actually unchanged against a sole head.
         if ie.revision is not None:
-            return ie.revision == self._new_revision_id and (path != '' or
+            if self._versioned_root or path != '':
+                # not considered for commit
+                delta = None
+            else:
+                # repositories that do not version the root set the root's
+                # revision to the new commit even when no change occurs, and
+                # this masks when a change may have occurred against the basis,
+                # so calculate if one happened.
+                if ie.file_id not in basis_inv:
+                    # add
+                    delta = (None, path, ie.file_id, ie)
+                else:
+                    basis_id = basis_inv[ie.file_id]
+                    if basis_id.name != '':
+                        # not the root
+                        delta = (basis_inv.id2path(ie.file_id), path,
+                            ie.file_id, ie)
+                    else:
+                        # common, unaltered
+                        delta = None
+            # not considered for commit, OR, for non-rich-root 
+            return delta, ie.revision == self._new_revision_id and (path != '' or
                 self._versioned_root)
 
         # XXX: Friction: parent_candidates should return a list not a dict
@@ -301,46 +338,44 @@ class CommitBuilder(object):
                     ie.text_size = parent_entry.text_size
                     ie.text_sha1 = parent_entry.text_sha1
                     ie.executable = parent_entry.executable
-                    return
+                    return self._get_delta(ie, basis_inv, path), False
                 else:
                     # Either there is only a hash change(no hash cache entry,
                     # or same size content change), or there is no change on
                     # this file at all.
-                    # There is a race condition when inserting content into the
-                    # knit though that can result in different content being
-                    # inserted so even though we may have had a hash cache hit
-                    # here we still tell the store the hash we would *not*
-                    # store a new text on, which means that it can avoid for us
-                    # without a race condition and without double-shaing the
-                    # lines.
+                    # Provide the parent's hash to the store layer, so that the
+                    # content is unchanged we will not store a new node.
                     nostore_sha = parent_entry.text_sha1
             if store:
+                # We want to record a new node regardless of the presence or
+                # absence of a content change in the file.
                 nostore_sha = None
+            ie.executable = content_summary[2]
+            lines = tree.get_file(ie.file_id, path).readlines()
             try:
-                ie.executable = content_summary[2]
-                lines = tree.get_file(ie.file_id, path).readlines()
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
             except errors.ExistingContent:
-                # we are not going to store a new file graph node as it turns
-                # out to be unchanged.
+                # Turns out that the file content was unchanged, and we were
+                # only going to store a new node if it was changed. Carry over
+                # the entry.
                 ie.revision = parent_entry.revision
                 ie.text_size = parent_entry.text_size
                 ie.text_sha1 = parent_entry.text_sha1
                 ie.executable = parent_entry.executable
-                return
+                return self._get_delta(ie, basis_inv, path), False
         elif kind == 'directory':
             if not store:
                 # all data is meta here, nothing specific to directory, so
                 # carry over:
                 ie.revision = parent_entry.revision
-                return
+                return self._get_delta(ie, basis_inv, path), False
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         elif kind == 'symlink':
             current_link_target = content_summary[3]
             if not store:
-                # symmlink target is not generic metadata, check if it has
+                # symlink target is not generic metadata, check if it has
                 # changed.
                 if current_link_target != parent_entry.symlink_target:
                     store = True
@@ -348,7 +383,7 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.revision = parent_entry.revision
                 ie.symlink_target = parent_entry.symlink_target
-                return
+                return self._get_delta(ie, basis_inv, path), False
             ie.symlink_target = current_link_target
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
@@ -360,14 +395,14 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.reference_revision = parent_entry.reference_revision
                 ie.revision = parent_entry.revision
-                return
+                return self._get_delta(ie, basis_inv, path), False
             ie.reference_revision = content_summary[3]
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        return True
+        return self._get_delta(ie, basis_inv, path), True
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
@@ -403,8 +438,6 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
-        # ie must be root for this builder
-        assert ie.parent_id is None
 
 
 ######################################################################
@@ -533,7 +566,7 @@ class Repository(object):
         that might be present.  There is no direct replacement method.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "all_revision_ids scales with size of history.")
+            mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 
     def _all_revision_ids(self):

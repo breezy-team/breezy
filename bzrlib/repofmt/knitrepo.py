@@ -279,6 +279,10 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
      - a LockDir lock
     """
 
+    # Set this attribute in derived classes to control the repository class
+    # created by open and initialize.
+    repository_class = None
+
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
         return VersionedFileStore(

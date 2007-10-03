@@ -16,6 +16,7 @@
 
 """Tests for repository commit builder."""
 
+from copy import copy
 import errno
 import os
 import sys
@@ -121,23 +122,18 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
-    def test_commit_without_root(self):
-        """This should cause a deprecation warning, not an assertion failure"""
+    def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
-            if tree.branch.repository.supports_rich_root():
-                raise tests.TestSkipped('Format requires root')
             self.build_tree(['foo'])
             tree.add('foo', 'foo-id')
             entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
-            self.callDeprecated(['Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.'],
+            self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree,
                     tree.path_content_summary('foo'))
-            builder.finish_inventory()
-            rev_id = builder.commit('foo bar')
+            builder.abort()
         finally:
             tree.unlock()
     
@@ -152,9 +148,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             ie = inventory.make_entry('directory', '', None,
                     tree.inventory.root.file_id)
-            self.assertFalse(builder.record_entry_contents(
+            delta, version_recorded = builder.record_entry_contents(
                 ie, [parent_tree.inventory], '', tree,
-                tree.path_content_summary('')))
+                tree.path_content_summary(''))
+            self.assertFalse(version_recorded)
+            self.assertEqual(None, delta)
             builder.abort()
         except:
             builder.abort()
@@ -229,7 +227,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     def _add_commit_check_unchanged(self, tree, name):
         tree.add([name], [name + 'id'])
         rev1 = tree.commit('')
-        rev2 = tree.commit('')
+        rev2 = self.mini_commit(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev1, tree2.inventory[name + 'id'].revision)
@@ -323,15 +321,37 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree.add([name], [name + 'id'])
         rev1 = tree.commit('')
         changer()
+        rev2 = self.mini_commit(tree, name, tree.id2path(name + 'id'))
+        tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
+        self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
+        self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
+        self.assertFileAncestry([rev1, rev2], tree, name)
+
+    def mini_commit(self, tree, name, new_name, records_version=True,
+        delta_against_basis=True):
+        """Perform a miniature commit looking for record entry results.
+        
+        :param tree: The tree to commit.
+        :param name: The path in the basis tree of the tree being committed.
+        :param new_name: The path in the tree being committed.
+        :param records_version: True if the commit of new_name is expected to
+            record a new version.
+        :param delta_against_basis: True of the commit of new_name is expected
+            to have a delta against the basis.
+        """
         tree.lock_write()
         try:
             # mini manual commit here so we can check the return of
             # record_entry_contents.
-            builder = tree.branch.get_commit_builder([tree.last_revision()])
+            parent_ids = tree.get_parent_ids()
+            builder = tree.branch.get_commit_builder(parent_ids)
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
             parent_invs = [parent_tree.inventory]
+            for parent_id in parent_ids[1:]:
+                parent_invs.append(tree.branch.repository.revision_tree(
+                    parent_id).inventory)
             # root
             builder.record_entry_contents(
                 inventory.make_entry('directory', '', None,
@@ -345,13 +365,25 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 return builder.record_entry_contents(ie, parent_invs, path,
                     tree, tree.path_content_summary(path))
 
-            file_id = name + 'id'
+            file_id = tree.path2id(new_name)
             parent_id = tree.inventory[file_id].parent_id
             if parent_id != tree.inventory.root.file_id:
                 commit_id(parent_id)
             # because a change of some sort is meant to have occurred,
             # recording the entry must return True.
-            self.assertTrue(commit_id(file_id))
+            delta, version_recorded = commit_id(file_id)
+            if records_version:
+                self.assertTrue(version_recorded)
+            else:
+                self.assertFalse(version_recorded)
+            new_entry = builder.new_inventory[file_id]
+            if delta_against_basis:
+                expected_delta = (name, new_name, file_id, new_entry)
+            else:
+                expected_delta = None
+            if expected_delta != delta:
+                import pdb;pdb.set_trace()
+            self.assertEqual(expected_delta, delta)
             builder.finish_inventory()
             rev2 = builder.commit('')
             tree.set_parent_ids([rev2])
@@ -361,10 +393,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             raise
         else:
             tree.unlock()
-        tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
-        self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
-        self.assertFileAncestry([rev1, rev2], tree, name)
+        return rev2
 
     def assertFileAncestry(self, ancestry, tree, name, alt_ancestry=None):
         # all the changes that have occured should be in the ancestry
@@ -413,7 +442,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        rev4 = tree1.commit('')
+        rev4 = self.mini_commit(tree1, 'new_' + name, 'new_' + name)
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
         # TODO: change this to an assertFileGraph call to check the
@@ -445,7 +474,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        rev3 = tree1.commit('')
+        rev3 = self.mini_commit(tree1, name, 'new_' + name, False)
         tree3, = self._get_revtrees(tree1, [rev2])
         self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
         self.assertFileAncestry([rev1, rev2], tree1, name)
