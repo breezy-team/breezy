@@ -494,8 +494,8 @@ def test_suite():
     result = TestSuite()
     test_repository_implementations = [
         'bzrlib.tests.repository_implementations.test_break_lock',
-        # note that test_broken is intentionally excluded from this list; it is
-        # handled further down.
+        # note that test_check_reconcile is intentionally excluded from this
+        # list; it is handled further down.
         'bzrlib.tests.repository_implementations.test_break_lock',
         'bzrlib.tests.repository_implementations.test_check',
         'bzrlib.tests.repository_implementations.test_commit_builder',
@@ -541,13 +541,13 @@ def test_suite():
                   loader,
                   result)
 
-    # Parameterise test_broken by both repository format *and* by
+    # Parameterise test_check_reconcile by both repository format *and* by
     # broken-repository scenario.
     from bzrlib.tests import iter_suite_tests
     scenario_suite = TestSuite()
     scenario_adapter = BrokenRepositoryTestProviderAdapter()
     modules_for_broken_repo_scenario = [
-        'bzrlib.tests.repository_implementations.test_broken']
+        'bzrlib.tests.repository_implementations.test_check_reconcile']
     adapt_modules(
         modules_for_broken_repo_scenario,
         format_adapter,
