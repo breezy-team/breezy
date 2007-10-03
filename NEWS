@@ -15,6 +15,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr+https://`` smart server across https now supported. 
+     (John Ferlito, #128456)
+
   BUG FIXES:
 
   API BREAKS:
