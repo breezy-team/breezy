@@ -1315,22 +1315,38 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[1], ('text-1', 'b\n'))
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
-    def test_knit_join(self):
-        """Store in knit with parents"""
-        k1 = KnitVersionedFile('test1', get_transport('.'), factory=KnitPlainFactory(), create=True)
-        k1.add_lines('text-a', [], split_lines(TEXT_1))
-        k1.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
-
-        k1.add_lines('text-c', [], split_lines(TEXT_1))
-        k1.add_lines('text-d', ['text-c'], split_lines(TEXT_1))
-
-        k1.add_lines('text-m', ['text-b', 'text-d'], split_lines(TEXT_1))
-
-        k2 = KnitVersionedFile('test2', get_transport('.'), factory=KnitPlainFactory(), create=True)
+    def _test_join_with_factories(self, k1_factory, k2_factory):
+        k1 = KnitVersionedFile('test1', get_transport('.'), factory=k1_factory, create=True)
+        k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
+        k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
+        k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
+        k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
+        k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
+        k2 = KnitVersionedFile('test2', get_transport('.'), factory=k2_factory, create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
         self.assertTrue(k2.has_version('text-c'))
+        origins = k2.annotate('text-m')
+        self.assertEquals(origins[0], ('text-a', 'a1\n'))
+        self.assertEquals(origins[1], ('text-b', 'b2\n'))
+        self.assertEquals(origins[2], ('text-d', 'd3\n'))
+
+    def test_knit_join_plain_to_plain(self):
+        """Test joining a plain knit with a plain knit."""
+        self._test_join_with_factories(KnitPlainFactory(), KnitPlainFactory())
+
+    def test_knit_join_anno_to_anno(self):
+        """Test joining an annotated knit with an annotated knit."""
+        self._test_join_with_factories(None, None)
+
+    def test_knit_join_anno_to_plain(self):
+        """Test joining an annotated knit with a plain knit."""
+        self._test_join_with_factories(None, KnitPlainFactory())
+
+    def test_knit_join_plain_to_anno(self):
+        """Test joining a plain knit with an annotated knit."""
+        self._test_join_with_factories(KnitPlainFactory(), None)
 
     def test_reannotate(self):
         k1 = KnitVersionedFile('knit1', get_transport('.'),

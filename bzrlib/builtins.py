@@ -22,14 +22,11 @@ from StringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
-import errno
 import sys
-import tempfile
 import time
 
 import bzrlib
 from bzrlib import (
-    branch,
     bugtracker,
     bundle,
     bzrdir,
@@ -43,10 +40,7 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
-    registry,
-    repository,
     revision as _mod_revision,
-    revisionspec,
     symbol_versioning,
     transport,
     tree as _mod_tree,
@@ -62,8 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet, info
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -2254,10 +2247,6 @@ class cmd_commit(Command):
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False):
-        from bzrlib.commit import (
-            NullCommitReporter,
-            ReportCommitToLog
-        )
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2653,7 +2642,7 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import ensure_null, MultipleRevisionSources
+        from bzrlib.revision import ensure_null
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
@@ -2716,6 +2705,7 @@ class cmd_merge(Command):
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
+        'change',
         'revision',
         Option('force',
                help='Merge even if the destination tree has uncommitted changes.'),
@@ -2743,7 +2733,6 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             ):
-        from bzrlib.tag import _merge_tags_if_possible
         # This is actually a branch (or merge-directive) *location*.
         location = branch
         del branch
@@ -2804,7 +2793,7 @@ class cmd_merge(Command):
                 return 0
             if pull:
                 if merger.interesting_files is not None:
-                    raise BzrCommandError('Cannot pull individual files')
+                    raise errors.BzrCommandError('Cannot pull individual files')
                 if (merger.base_rev_id == tree.last_revision()):
                     result = tree.pull(merger.other_branch, False,
                                        merger.other_rev_id)
@@ -3180,7 +3169,6 @@ class cmd_missing(Command):
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False, this=False, other=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
-        from bzrlib.log import log_formatter
 
         if this:
           mine_only = this
@@ -3495,7 +3483,6 @@ class cmd_uncommit(Command):
             dry_run=False, verbose=False,
             revision=None, force=False):
         from bzrlib.log import log_formatter, show_log
-        import sys
         from bzrlib.uncommit import uncommit
 
         if location is None:
@@ -3921,7 +3908,7 @@ class cmd_send(Command):
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message):
-        from bzrlib.revision import ensure_null, NULL_REVISION
+        from bzrlib.revision import NULL_REVISION
         if output is None:
             outfile = StringIO()
         elif output == '-':

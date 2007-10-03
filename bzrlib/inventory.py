@@ -432,32 +432,6 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
-    def snapshot(self, revision, path, previous_entries,
-                 work_tree, commit_builder):
-        """Make a snapshot of this entry which may or may not have changed.
-        
-        This means that all its fields are populated, that it has its
-        text stored in the text store or weave.
-
-        :return: True if anything was recorded
-        """
-        # cannot be unchanged unless there is only one parent file rev.
-        self._read_tree_state(path, work_tree)
-        if len(previous_entries) == 1:
-            parent_ie = previous_entries.values()[0]
-            if self._unchanged(parent_ie):
-                self.revision = parent_ie.revision
-                return False
-        self.revision = revision
-        return self._snapshot_text(previous_entries, work_tree, commit_builder)
-
-    def _snapshot_text(self, file_parents, work_tree, commit_builder): 
-        """Record the 'text' of this entry, whatever form that takes.
-
-        :return: True if anything was recorded
-        """
-        raise NotImplementedError(self._snapshot_text)
-
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
@@ -581,11 +555,6 @@ class InventoryDirectory(InventoryEntry):
     def _put_on_disk(self, fullpath, tree):
         """See InventoryEntry._put_on_disk."""
         os.mkdir(fullpath)
-
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
-        commit_builder.modified_directory(self.file_id, file_parents)
-        return True
 
 
 class InventoryFile(InventoryEntry):
@@ -718,35 +687,6 @@ class InventoryFile(InventoryEntry):
     def _forget_tree_state(self):
         self.text_sha1 = None
 
-    def snapshot(self, revision, path, previous_entries,
-                 work_tree, commit_builder):
-        """See InventoryEntry.snapshot."""
-        # Note: We use a custom implementation of this method for files
-        # because it's a performance critical part of commit.
-
-        # If this is the initial commit for this file, we know the sha is
-        # coming later so skip calculating it now (in _read_tree_state())
-        if len(previous_entries) == 0:
-            self.executable = work_tree.is_executable(self.file_id, path=path)
-        else:
-            self._read_tree_state(path, work_tree)
-
-        # If nothing is changed from the sole parent, there's nothing to do
-        if len(previous_entries) == 1:
-            parent_ie = previous_entries.values()[0]
-            if self._unchanged(parent_ie):
-                self.revision = parent_ie.revision
-                return False
-
-        # Add the file to the repository
-        self.revision = revision
-        def get_content_byte_lines():
-            return work_tree.get_file(self.file_id, path).readlines()
-        self.text_sha1, self.text_size = commit_builder.modified_file_text(
-            self.file_id, previous_entries, get_content_byte_lines,
-            self.text_sha1, self.text_size)
-        return True
-
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
         compatible = super(InventoryFile, self)._unchanged(previous_ie)
@@ -847,12 +787,6 @@ class InventoryLink(InventoryEntry):
             compatible = False
         return compatible
 
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        """See InventoryEntry._snapshot_text."""
-        commit_builder.modified_link(
-            self.file_id, file_parents, self.symlink_target)
-        return True
-
 
 class TreeReference(InventoryEntry):
     
@@ -867,10 +801,6 @@ class TreeReference(InventoryEntry):
     def copy(self):
         return TreeReference(self.file_id, self.name, self.parent_id,
                              self.revision, self.reference_revision)
-
-    def _snapshot_text(self, file_parents, work_tree, commit_builder):
-        commit_builder.modified_reference(self.file_id, file_parents)
-        return True
 
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.
@@ -947,6 +877,69 @@ class Inventory(object):
             self.root = None
             self._byid = {}
         self.revision_id = revision_id
+
+    def __repr__(self):
+        return "<Inventory object at %x, contents=%r>" % (id(self), self._byid)
+
+    def apply_delta(self, delta):
+        """Apply a delta to this inventory.
+
+        :param delta: A list of changes to apply. After all the changes are
+            applied the final inventory must be internally consistent, but it
+            is ok to supply changes which, if only half-applied would have an
+            invalid result - such as supplying two changes which rename two
+            files, 'A' and 'B' with each other : [('A', 'B', 'A-id', a_entry),
+            ('B', 'A', 'B-id', b_entry)].
+
+            Each change is a tuple, of the form (old_path, new_path, file_id,
+            new_entry).
+            
+            When new_path is None, the change indicates the removal of an entry
+            from the inventory and new_entry will be ignored (using None is
+            appropriate). If new_path is not None, then new_entry must be an
+            InventoryEntry instance, which will be incorporated into the
+            inventory (and replace any existing entry with the same file id).
+            
+            When old_path is None, the change indicates the addition of
+            a new entry to the inventory.
+            
+            When neither new_path nor old_path are None, the change is a
+            modification to an entry, such as a rename, reparent, kind change
+            etc. 
+
+            The children attribute of new_entry is ignored. This is because
+            this method preserves children automatically across alterations to
+            the parent of the children, and cases where the parent id of a
+            child is changing require the child to be passed in as a separate
+            change regardless. E.g. in the recursive deletion of a directory -
+            the directory's children must be included in the delta, or the
+            final inventory will be invalid.
+        """
+        children = {}
+        # Remove all affected items which were in the original inventory,
+        # starting with the longest paths, thus ensuring parents are examined
+        # after their children, which means that everything we examine has no
+        # modified children remaining by the time we examine it.
+        for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
+                                        if op is not None), reverse=True):
+            if file_id not in self:
+                # adds come later
+                continue
+            # Preserve unaltered children of file_id for later reinsertion.
+            children[file_id] = getattr(self[file_id], 'children', {})
+            # Remove file_id and the unaltered children. If file_id is not
+            # being deleted it will be reinserted back later.
+            self.remove_recursive_id(file_id)
+        # Insert all affected which should be in the new inventory, reattaching
+        # their children if they had any. This is done from shortest path to
+        # longest, ensuring that items which were modified and whose parents in
+        # the resulting inventory were also modified, are inserted after their
+        # parents.
+        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+                                          delta if np is not None):
+            if new_entry.kind == 'directory':
+                new_entry.children = children.get(new_entry.file_id, {})
+            self.add(new_entry)
 
     def _set_root(self, ie):
         self.root = ie
