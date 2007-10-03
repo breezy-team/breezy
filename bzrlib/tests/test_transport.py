@@ -55,6 +55,10 @@ from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
+from bzrlib.transport.remote import (
+    BZR_DEFAULT_PORT,
+    RemoteTCPTransport
+    )
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -618,7 +622,7 @@ class TestConnectedTransport(TestCase):
     def test_parse_url(self):
         t = ConnectedTransport('sftp://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, None)
+        self.assertEquals(t._port, 22)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
@@ -711,6 +715,50 @@ class TestReusedTransports(TestCase):
         t1 = get_transport('http://foo/path')
         t2 = get_transport('http://bar/path', possible_transports=[t1])
         self.assertIsNot(t1, t2)
+
+
+class TestRemoteTCPTransport(TestCase):
+    """Tests for bzr:// transport (RemoteTCPTransport)."""
+
+    def test_relpath_with_implicit_port(self):
+        """Connected transports with the same URL are the same, even if the
+        port is implicit.
+
+        So t.relpath(url) should always be '' if t.base is the same as url, or
+        if the only difference is that one explicitly specifies the default
+        port and the other doesn't specify a port.
+        """
+        t_implicit_port = RemoteTCPTransport('bzr://host.com/')
+        self.assertEquals('', t_implicit_port.relpath('bzr://host.com/'))
+        self.assertEquals('', t_implicit_port.relpath('bzr://host.com:4155/'))
+        t_explicit_port = RemoteTCPTransport('bzr://host.com:4155/')
+        self.assertEquals('', t_explicit_port.relpath('bzr://host.com/'))
+        self.assertEquals('', t_explicit_port.relpath('bzr://host.com:4155/'))
+
+    def test_construct_uses_default_port(self):
+        """If no port is specified, then RemoteTCPTransport uses
+        BZR_DEFAULT_PORT.
+        """
+        t = get_transport('bzr://host.com/')
+        self.assertEquals(BZR_DEFAULT_PORT, t._port)
+
+    def test_url_omits_default_port(self):
+        """If a RemoteTCPTransport uses the default port, then its base URL
+        will omit the port.
+
+        This is like how ":80" is omitted from "http://example.com/".
+        """
+        t = get_transport('bzr://host.com:4155/')
+        self.assertEquals('bzr://host.com/', t.base)
+
+    def test_url_includes_non_default_port(self):
+        """Non-default ports are included in the transport's URL.
+
+        Contrast this to `test_url_omits_default_port`.
+        """
+        t = get_transport('bzr://host.com:666/')
+        self.assertEquals('bzr://host.com:666/', t.base)
+
 
 
 def get_test_permutations():
