@@ -306,13 +306,8 @@ class CommitBuilder(object):
                     # Either there is only a hash change(no hash cache entry,
                     # or same size content change), or there is no change on
                     # this file at all.
-                    # There is a race condition when inserting content into the
-                    # knit though that can result in different content being
-                    # inserted so even though we may have had a hash cache hit
-                    # here we still tell the store the hash we would *not*
-                    # store a new text on, which means that it can avoid for us
-                    # without a race condition and without double-shaing the
-                    # lines.
+                    # Provide the parent's hash to the store layer, so that the
+                    # content is unchanged we will not store a new node.
                     nostore_sha = parent_entry.text_sha1
             if store:
                 # We want to record a new node regardless of the presence or
