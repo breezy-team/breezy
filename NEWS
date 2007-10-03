@@ -202,11 +202,33 @@ IN DEVELOPMENT
      (Martin Pool)
 
 
+bzr 0.91 2007-09-26
+===================
+
+  BUG FIXES:
+
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
+
+   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+   * Fix ''bzr info bzr://host/'' and other operations on ''bzr://' URLs with
+     an implicit port.  We were incorrectly raising PathNotChild due to
+     inconsistent treatment of the ''_port'' attribute on the Transport object.
+     (Andrew Bennetts, #133965)
+
+   * Make RemoteRepository.sprout cope gracefully with servers that don't
+     support the ``Repository.tarball`` request.
+     (Andrew Bennetts)
+
+
 bzr 0.91rc2 2007-09-11
 ======================
 
    * Replaced incorrect tarball for previous release; a debug statement was left 
      in bzrlib/remote.py.
+
 
 bzr 0.91rc1 2007-09-11
 ======================
@@ -342,9 +364,9 @@ bzr 0.91rc1 2007-09-11
    * Overwrite conflicting tags by ``push`` and ``pull`` if the
      ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
 
-    * In checkouts, tags are copied into the master branch when created,
-      changed or deleted, and are copied into the checkout when it is 
-      updated.  (Martin Pool, #93856, #93860)
+   * In checkouts, tags are copied into the master branch when created,
+     changed or deleted, and are copied into the checkout when it is 
+     updated.  (Martin Pool, #93856, #93860)
 
    * Print a warning instead of aborting the ``python setup.py install``
      process if building of a C extension is not possible.
