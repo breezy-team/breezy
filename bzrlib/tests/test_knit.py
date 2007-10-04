@@ -1313,6 +1313,8 @@ class BasicKnitTests(KnitTests):
         k1.add_lines('base', [], ['text\n'])
         k1.add_lines('base2', [], ['text2\n'])
         k1.clear_cache()
+        # clear the logged activity, but preserve the list instance in case of
+        # clones pointing at it.
         del instrumented_t._activity[:]
         # request a last-first iteration
         results = list(k1.iter_lines_added_or_present_in_versions(

@@ -57,6 +57,9 @@ IN DEVELOPMENT
    * NULL_REVISION is returned to indicate the null revision, not None.
      (Aaron Bentley)
 
+   * Removed ``bzrlib.transport.TransportLogger`` - please see the new
+     ``trace+`` transport instead. (Robert Collins)
+
   INTERNALS:
 
    * New trace function ``mutter_callsite`` will print out a subset of the
@@ -85,6 +88,9 @@ IN DEVELOPMENT
     * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
       put by the method call, to allow avoiding stat-after write or
       housekeeping in callers. (Robert Collins)
+
+    * New transport implementation ``trace+`` which is useful for testing,
+      logging activity taken to its _activity attribute. (Robert Collins)
 
 
 bzr 0.90 2007-08-??

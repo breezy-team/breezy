@@ -16,7 +16,7 @@
 
 """Implementation of Transport that traces transport operations.
 
-This does not change the transport behaviour at allmerely records every call
+This does not change the transport behaviour at all, merely records every call
 and then delegates it.
 """
 
@@ -29,6 +29,14 @@ class TransportTraceDecorator(TransportDecorator):
     Calls that potentially perform IO are logged to self._activity. The
     _activity attribute is shared as the transport is cloned, but not if a new
     transport is created without cloning.
+
+    Not all operations are logged at this point, if you need an unlogged
+    operation please add a test to the tests of this transport, for the logging
+    of the operation you want logged.
+
+    Another future enhancement would be to log to bzrlib.trace.mutter when
+    trace+ is used from the command line (or perhaps as well/instead use
+    -Dtransport), to make tracing operations of the entire program easily.
     """
 
     def __init__(self, url, _decorated=None, _from_transport=None):
@@ -150,9 +158,5 @@ class TraceServer(DecoratorServer):
 
 
 def get_test_permutations():
-    """Return the permutations to be used in testing.
-    
-    The Decorator class is not directly usable, and testing it would not have
-    any benefit - its the concrete classes which need to be tested.
-    """
+    """Return the permutations to be used in testing."""
     return [(TransportTraceDecorator, TraceServer)]
