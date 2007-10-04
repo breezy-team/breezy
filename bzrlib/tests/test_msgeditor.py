@@ -20,6 +20,7 @@
 import os
 import sys
 
+import bzrlib
 from bzrlib import (
     errors,
     msgeditor,
@@ -31,7 +32,11 @@ from bzrlib.msgeditor import (
     make_commit_message_template_encoded,
     edit_commit_message_encoded
 )
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    probe_bad_non_ascii,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.trace import mutter
 
 class MsgEditorTest(TestCaseWithTransport):
@@ -89,18 +94,6 @@ added:
 added:
   hell\u00d8
 """.encode('utf8') in template)
-
-    def setUp(self):
-        super(MsgEditorTest, self).setUp()
-        self._bzr_editor = os.environ.get('BZR_EDITOR', None)
-
-    def tearDown(self):
-        if self._bzr_editor is not None:
-            os.environ['BZR_EDITOR'] = self._bzr_editor
-        else:
-            if os.environ.get('BZR_EDITOR', None) is not None:
-                del os.environ['BZR_EDITOR']
-        super(MsgEditorTest, self).tearDown()
 
     def test_run_editor(self):
         if sys.platform == "win32":
@@ -161,6 +154,10 @@ if len(sys.argv) == 2:
         mutter('edit_commit_message without infotext')
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(''))
+
+        mutter('edit_commit_message with ascii string infotext')
+        self.assertEqual('test message from fed\n',
+                         msgeditor.edit_commit_message('spam'))
 
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
@@ -256,7 +253,15 @@ if len(sys.argv) == 2:
     def test_unsupported_encoding_commit_message(self):
         old_env = osutils.set_or_unset_env('LANG', 'C')
         try:
-            self.make_fake_editor(message='\xff')
+            # LANG env variable has no effect on Windows
+            # but some characters anyway cannot be represented
+            # in default user encoding
+            char = probe_bad_non_ascii(bzrlib.user_encoding)
+            if char is None:
+                raise TestSkipped('Cannot find suitable non-ascii character '
+                    'for user_encoding (%s)' % bzrlib.user_encoding)
+
+            self.make_fake_editor(message=char)
 
             working_tree = self.make_uncommitted_tree()
             self.assertRaises(errors.BadCommitMessageEncoding,

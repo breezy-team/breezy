@@ -508,7 +508,8 @@ class Branch(object):
             raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             possible_transports=None):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -1471,7 +1472,7 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             _hook_master=None, run_hooks=True):
+             _hook_master=None, run_hooks=True, possible_transports=None):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
@@ -1675,7 +1676,7 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             run_hooks=True):
+             run_hooks=True, possible_transports=None):
         """Pull from source into self, updating my master if any.
         
         :param run_hooks: Private parameter - if false, this branch
@@ -1686,7 +1687,7 @@ class BzrBranch5(BzrBranch):
         master_branch = None
         if bound_location and source.base != bound_location:
             # not pulling from master, so we need to update master.
-            master_branch = self.get_master_branch()
+            master_branch = self.get_master_branch(possible_transports)
             master_branch.lock_write()
         try:
             if master_branch:
