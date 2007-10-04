@@ -107,10 +107,20 @@ class TestBranchFormat5(TestCaseWithTransport):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
+        # write correct newlines to locations.conf
+        # by default ConfigObj uses native line-endings for new files
+        # but uses already existing line-endings if file is not empty
+        f = open(fn, 'wb')
+        try:
+            f.write('# comment\n')
+        finally:
+            f.close()
+
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("[%s]\n"
+        self.assertFileEqual("# comment\n"
+                             "[%s]\n"
                              "push_location = foo\n"
                              "push_location:policy = norecurse" % local_path,
                              fn)
@@ -321,6 +331,7 @@ class TestHooks(TestCase):
         self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
 

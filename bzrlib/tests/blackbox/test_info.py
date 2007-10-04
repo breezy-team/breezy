@@ -41,7 +41,7 @@ class TestInfo(ExternalBase):
             location = "/i/do/not/exist/"
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: %s\n' % location)
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -1131,7 +1131,7 @@ Repository:
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
             try:
-                return osutils.relpath(os.getcwd(), path)
+                return osutils.relpath(osutils.getcwd(), path)
             except errors.PathNotChild:
                 return path
 

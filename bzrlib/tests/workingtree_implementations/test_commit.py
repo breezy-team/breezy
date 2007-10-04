@@ -90,14 +90,14 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo')
         self.assertEqual(['foo'], tree.get_parent_ids())
         # the commit should have returned the same id we asked for.
         self.assertEqual('foo', committed_id)
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
-        committed_id = tree.commit('message', allow_pointless=True)
+        committed_id = tree.commit('message')
         self.assertTrue(tree.branch.repository.has_revision(committed_id))
         self.assertNotEqual(None, committed_id)
 
@@ -323,6 +323,22 @@ class TestCommit(TestCaseWithWorkingTree):
             basis.get_reference_revision(basis.path2id('subtree')))
         self.assertNotEqual(rev_id, rev_id2)
 
+    def test_nested_pointless_commits_are_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'])
+        # record the reference.
+        rev_id = tree.commit('added reference')
+        child_revid = subtree.last_revision()
+        # now do a no-op commit with allow_pointless=False
+        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+            allow_pointless=False)
+        self.assertEqual(child_revid, subtree.last_revision())
+        self.assertEqual(rev_id, tree.last_revision())
+
 
 class TestCommitProgress(TestCaseWithWorkingTree):
     
@@ -354,17 +370,18 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 4 steps, the first of which is reported 2 times, once per dir
+        # 5 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage')],
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage')],
             factory._calls
            )
 
-    def test_commit_progress_shows_hook_names(self):
+    def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is 
         # emitted
@@ -378,15 +395,38 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         branch.Branch.hooks.name_hook(a_hook, 'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage'),
-             ('update', 4, 4, 'Running post commit hooks [hook name] - Stage'),
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks [hook name] - Stage'),
              ],
             factory._calls
            )
 
-
-
+    def test_commit_progress_shows_pre_hook_names(self):
+        tree = self.make_branch_and_tree('.')
+        # set a progress bar that captures the calls so we can see what is 
+        # emitted
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+        factory = CapturingUIFactory()
+        ui.ui_factory = factory
+        def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
+            pass
+        branch.Branch.hooks.install_hook('pre_commit', a_hook)
+        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        tree.commit('first post')
+        self.assertEqual(
+            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ],
+            factory._calls
+           )

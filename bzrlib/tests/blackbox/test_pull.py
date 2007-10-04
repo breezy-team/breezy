@@ -21,28 +21,30 @@ import os
 import sys
 
 from bzrlib.branch import Branch
+from bzrlib.osutils import pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
+from bzrlib.workingtree import WorkingTree
 from bzrlib import urlutils
 
 
 class TestPull(ExternalBase):
 
-    def example_branch(test):
-        test.run_bzr('init')
-        file('hello', 'wt').write('foo')
-        test.run_bzr('add hello')
-        test.run_bzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.run_bzr('add goodbye')
-        test.run_bzr('commit -m setup goodbye')
+    def example_branch(self, path='.'):
+        tree = self.make_branch_and_tree(path)
+        self.build_tree_contents([
+            (pathjoin(path, 'hello'),   'foo'),
+            (pathjoin(path, 'goodbye'), 'baz')])
+        tree.add('hello')
+        tree.commit(message='setup')
+        tree.add('goodbye')
+        tree.commit(message='setup')
+        return tree
 
     def test_pull(self):
         """Pull changes from one branch to another."""
-        os.mkdir('a')
+        a_tree = self.example_branch('a')
         os.chdir('a')
-
-        self.example_branch()
         self.run_bzr('pull', retcode=3)
         self.run_bzr('missing', retcode=3)
         self.run_bzr('missing .')
@@ -55,178 +57,153 @@ class TestPull(ExternalBase):
             self.run_bzr('pull')
 
         os.chdir('..')
-        self.run_bzr('branch a b')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         os.chdir('b')
         self.run_bzr('pull')
         os.mkdir('subdir')
-        self.run_bzr('add subdir')
-        self.run_bzr('commit -m blah --unchanged')
-        os.chdir('../a')
-        a = Branch.open('.')
-        b = Branch.open('../b')
-        self.assertEquals(a.revision_history(), b.revision_history()[:-1])
+        b_tree.add('subdir')
+        b_tree.commit(message='blah', allow_pointless=True)
+
+        os.chdir('..')
+        a = Branch.open('a')
+        b = Branch.open('b')
+        self.assertEqual(a.revision_history(), b.revision_history()[:-1])
+
+        os.chdir('a')
         self.run_bzr('pull ../b')
-        self.assertEquals(a.revision_history(), b.revision_history())
-        self.run_bzr('commit -m blah2 --unchanged')
-        os.chdir('../b')
-        self.run_bzr('commit -m blah3 --unchanged')
+        self.assertEqual(a.revision_history(), b.revision_history())
+        a_tree.commit(message='blah2', allow_pointless=True)
+        b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite
+        os.chdir('../b')
         self.run_bzr('pull ../a', retcode=3)
         os.chdir('..')
-        self.run_bzr('branch b overwriteme')
+        b_tree.bzrdir.sprout('overwriteme')
         os.chdir('overwriteme')
         self.run_bzr('pull --overwrite ../a')
         overwritten = Branch.open('.')
         self.assertEqual(overwritten.revision_history(),
                          a.revision_history())
-        os.chdir('../a')
-        self.run_bzr('merge ../b')
-        self.run_bzr('commit -m blah4 --unchanged')
+        a_tree.merge_from_branch(b_tree.branch)
+        a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
         self.run_bzr('pull ../../a')
-        self.assertEquals(a.revision_history()[-1], b.revision_history()[-1])
-        self.run_bzr('commit -m blah5 --unchanged')
-        self.run_bzr('commit -m blah6 --unchanged')
+        self.assertEqual(a.revision_history()[-1], b.revision_history()[-1])
+        sub_tree = WorkingTree.open_containing('.')[0]
+        sub_tree.commit(message="blah5", allow_pointless=True)
+        sub_tree.commit(message="blah6", allow_pointless=True)
         os.chdir('..')
         self.run_bzr('pull ../a')
         os.chdir('../a')
-        self.run_bzr('commit -m blah7 --unchanged')
-        self.run_bzr('merge ../b')
-        self.run_bzr('commit -m blah8 --unchanged')
+        a_tree.commit(message="blah7", allow_pointless=True)
+        a_tree.merge_from_branch(b_tree.branch)
+        a_tree.commit(message="blah8", allow_pointless=True)
         self.run_bzr('pull ../b')
         self.run_bzr('pull ../b')
 
     def test_pull_dash_d(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        self.run_bzr('init ../b')
-        self.run_bzr('init ../c')
+        self.example_branch('a')
+        self.make_branch_and_tree('b')
+        self.make_branch_and_tree('c')
         # pull into that branch
-        self.run_bzr('pull -d ../b .')
+        self.run_bzr('pull -d b a')
         # pull into a branch specified by a url
-        c_url = urlutils.local_path_to_url('../c')
+        c_url = urlutils.local_path_to_url('c')
         self.assertStartsWith(c_url, 'file://')
-        self.run_bzr('pull -d %s .' % c_url)
+        self.run_bzr(['pull', '-d', c_url, 'a'])
 
     def test_pull_revision(self):
         """Pull some changes from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
+        a_tree = self.example_branch('a')
+        self.build_tree_contents([
+            ('a/hello2',   'foo'),
+            ('a/goodbye2', 'baz')])
+        a_tree.add('hello2')
+        a_tree.commit(message="setup")
+        a_tree.add('goodbye2')
+        a_tree.commit(message="setup")
 
-        self.example_branch()
-        file('hello2', 'wt').write('foo')
-        self.run_bzr('add hello2')
-        self.run_bzr('commit -m setup hello2')
-        file('goodbye2', 'wt').write('baz')
-        self.run_bzr('add goodbye2')
-        self.run_bzr('commit -m setup goodbye2')
-
-        os.chdir('..')
-        self.run_bzr('branch -r 1 a b')
+        b_tree = a_tree.bzrdir.sprout('b',
+                   revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
         os.chdir('b')
         self.run_bzr('pull -r 2')
         a = Branch.open('../a')
         b = Branch.open('.')
-        self.assertEquals(a.revno(),4)
-        self.assertEquals(b.revno(),2)
+        self.assertEqual(a.revno(),4)
+        self.assertEqual(b.revno(),2)
         self.run_bzr('pull -r 3')
-        self.assertEquals(b.revno(),3)
+        self.assertEqual(b.revno(),3)
         self.run_bzr('pull -r 4')
-        self.assertEquals(a.revision_history(), b.revision_history())
+        self.assertEqual(a.revision_history(), b.revision_history())
 
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
         # even if the target branch has merged
         # everything already.
-        bzr = self.run_bzr
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/foo', 'original\n')])
+        a_tree.add('foo')
+        a_tree.commit(message='initial commit')
 
-        def get_rh(expected_len):
-            rh = self.run_bzr('revision-history')[0]
-            # Make sure we don't have trailing empty revisions
-            rh = rh.strip().split('\n')
-            self.assertEqual(len(rh), expected_len)
-            return rh
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
 
-        os.mkdir('a')
-        os.chdir('a')
-        bzr('init')
-        open('foo', 'wb').write('original\n')
-        bzr('add foo')
-        bzr(['commit', '-m', 'initial commit'])
+        self.build_tree_contents([('a/foo', 'changed\n')])
+        a_tree.commit(message='later change')
 
-        os.chdir('..')
-        bzr('branch a b')
+        self.build_tree_contents([('a/foo', 'a third change')])
+        a_tree.commit(message='a third change')
 
-        os.chdir('a')
-        open('foo', 'wb').write('changed\n')
-        bzr(['commit', '-m', 'later change'])
+        rev_history_a = a_tree.branch.revision_history()
+        self.assertEqual(len(rev_history_a), 3)
 
-        open('foo', 'wb').write('another\n')
-        bzr(['commit', '-m', 'a third change'])
+        b_tree.merge_from_branch(a_tree.branch)
+        b_tree.commit(message='merge')
 
-        rev_history_a = get_rh(3)
+        self.assertEqual(len(b_tree.branch.revision_history()), 2)
 
-        os.chdir('../b')
-        bzr('merge ../a')
-        bzr('commit -m merge')
-
-        rev_history_b = get_rh(2)
-
-        bzr('pull --overwrite ../a')
-        rev_history_b = get_rh(3)
+        os.chdir('b')
+        self.run_bzr('pull --overwrite ../a')
+        rev_history_b = b_tree.branch.revision_history()
+        self.assertEqual(len(rev_history_b), 3)
 
         self.assertEqual(rev_history_b, rev_history_a)
 
     def test_overwrite_children(self):
         # Make sure pull --overwrite sets the revision-history
         # to be identical to the pull source, even if we have convergence
-        bzr = self.run_bzr
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/foo', 'original\n')])
+        a_tree.add('foo')
+        a_tree.commit(message='initial commit')
 
-        def get_rh(expected_len):
-            rh = self.run_bzr('revision-history')[0]
-            # Make sure we don't have trailing empty revisions
-            rh = rh.strip().split('\n')
-            self.assertEqual(len(rh), expected_len)
-            return rh
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
 
-        os.mkdir('a')
-        os.chdir('a')
-        bzr('init')
-        open('foo', 'wb').write('original\n')
-        bzr('add foo')
-        bzr(['commit', '-m', 'initial commit'])
+        self.build_tree_contents([('a/foo', 'changed\n')])
+        a_tree.commit(message='later change')
 
-        os.chdir('..')
-        bzr('branch a b')
+        self.build_tree_contents([('a/foo', 'a third change')])
+        a_tree.commit(message='a third change')
 
-        os.chdir('a')
-        open('foo', 'wb').write('changed\n')
-        bzr(['commit', '-m', 'later change'])
+        self.assertEqual(len(a_tree.branch.revision_history()), 3)
 
-        open('foo', 'wb').write('another\n')
-        bzr(['commit', '-m', 'a third change'])
+        b_tree.merge_from_branch(a_tree.branch)
+        b_tree.commit(message='merge')
 
-        rev_history_a = get_rh(3)
+        self.assertEqual(len(b_tree.branch.revision_history()), 2)
 
-        os.chdir('../b')
-        bzr('merge ../a')
-        bzr('commit -m merge')
+        self.build_tree_contents([('a/foo', 'a fourth change\n')])
+        a_tree.commit(message='a fourth change')
 
-        rev_history_b = get_rh(2)
-
-        os.chdir('../a')
-        open('foo', 'wb').write('a fourth change\n')
-        bzr(['commit', '-m', 'a fourth change'])
-
-        rev_history_a = get_rh(4)
+        rev_history_a = a_tree.branch.revision_history()
+        self.assertEqual(len(rev_history_a), 4)
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history
-        os.chdir('../b')
-        bzr('pull --overwrite ../a')
-        rev_history_b = get_rh(4)
+        os.chdir('b')
+        self.run_bzr('pull --overwrite ../a')
+        rev_history_b = b_tree.branch.revision_history()
+        self.assertEqual(len(rev_history_b), 4)
 
         self.assertEqual(rev_history_b, rev_history_a)
 
@@ -252,25 +229,25 @@ class TestPull(ExternalBase):
         # test pull for failure without parent set
         os.chdir('branch_b')
         out = self.run_bzr('pull', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
         self.build_tree(['d'])
         tree_b.add('d')
         tree_b.commit('commit d')
         out = self.run_bzr('pull ../branch_a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the merge command to reconcile them.\n'))
-        self.assertEquals(branch_b.get_parent(), parent)
+        self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/d')
         self.run_bzr('pull')
-        self.assertEquals(branch_b.get_parent(), parent)
+        self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember')
-        self.assertEquals(branch_b.get_parent(),
+        self.assertEqual(branch_b.get_parent(),
                           branch_c.bzrdir.root_transport.base)
 
     def test_pull_bundle(self):

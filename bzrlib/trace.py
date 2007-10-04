@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
+import locale
 import logging
 import traceback
 """)
@@ -65,12 +66,17 @@ import traceback
 import bzrlib
 
 lazy_import(globals(), """
-from bzrlib import debug
+from bzrlib import (
+    debug,
+    errors,
+    osutils,
+    plugin,
+    )
 """)
 
 _file_handler = None
 _stderr_handler = None
-_stderr_quiet = False
+_verbosity_level = 0
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
@@ -146,8 +152,7 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-        from osutils import rename
-        rename(trace_fname, old_fname)
+        osutils.rename(trace_fname, old_fname)
     except OSError:
         return
 
@@ -218,10 +223,34 @@ def enable_default_logging():
     _bzr_logger.setLevel(logging.DEBUG)
 
 
+def set_verbosity_level(level):
+    """Set the verbosity level.
+
+    :param level: -ve for quiet, 0 for normal, +ve for verbose
+    """
+    global _verbosity_level
+    _verbosity_level = level
+    _update_logging_level(level < 0)
+
+
+def get_verbosity_level():
+    """Get the verbosity level.
+
+    See set_verbosity_level() for values.
+    """
+    return _verbosity_level
+
+
 def be_quiet(quiet=True):
-    global _stderr_handler, _stderr_quiet
-    
-    _stderr_quiet = quiet
+    # Perhaps this could be deprecated now ...
+    if quiet:
+        set_verbosity_level(-1)
+    else:
+        set_verbosity_level(0)
+
+
+def _update_logging_level(quiet=True):
+    """Hide INFO messages if quiet."""
     if quiet:
         _stderr_handler.setLevel(logging.WARNING)
     else:
@@ -229,8 +258,13 @@ def be_quiet(quiet=True):
 
 
 def is_quiet():
-    global _stderr_quiet
-    return _stderr_quiet
+    """Is the verbosity level negative?"""
+    return _verbosity_level < 0
+
+
+def is_verbose():
+    """Is the verbosity level positive?"""
+    return _verbosity_level > 0
 
 
 def disable_default_logging():
@@ -279,22 +313,33 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
 
 
 def report_exception(exc_info, err_file):
+    """Report an exception to err_file (typically stderr) and to .bzr.log.
+
+    This will show either a full traceback or a short message as appropriate.
+
+    :return: The appropriate exit code for this error.
+    """
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         print >>err_file, "bzr: broken pipe"
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
+        return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     else:
         report_bug(exc_info, err_file)
+        return errors.EXIT_INTERNAL_ERROR
 
 
 # TODO: Should these be specially encoding the output?
@@ -323,5 +368,17 @@ def report_bug(exc_info, err_file):
                         '.'.join(map(str, sys.version_info)),
                         sys.platform)
     print >>err_file, 'arguments: %r' % sys.argv
-    print >>err_file
-    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"
+    err_file.write(
+        'encoding: %r, fsenc: %r, lang: %r\n' % (
+            osutils.get_user_encoding(), sys.getfilesystemencoding(),
+            os.environ.get('LANG')))
+    err_file.write("plugins:\n")
+    for name, a_plugin in sorted(plugin.plugins().items()):
+        err_file.write("  %-20s %s [%s]\n" %
+            (name, a_plugin.path(), a_plugin.__version__))
+    err_file.write(
+        "\n"
+        "** Please send this report to bazaar@lists.ubuntu.com\n"
+        "   with a description of what you were doing when the\n"
+        "   error occurred.\n"
+        )

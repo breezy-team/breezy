@@ -48,6 +48,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
+                          TestNotApplicable,
                           TestSkipped,
                           TestSuite,
                           TestUtil,
@@ -563,8 +564,8 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
@@ -578,14 +579,15 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         few tests should need to do that), and having a missing dir as home is
         an effective way to ensure that this is the case.
         """
-        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+        self.assertIsSameRealPath(
+            self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
             self.test_home_dir)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
         
     def test_cwd_is_TEST_ROOT(self):
-        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_dir, cwd)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
@@ -1135,6 +1137,27 @@ class TestRunner(TestCase):
         # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
 
+    def test_not_applicable(self):
+        # run a test that is skipped because it's not applicable
+        def not_applicable_test():
+            from bzrlib.tests import TestNotApplicable
+            raise TestNotApplicable('this test never runs')
+        out = StringIO()
+        runner = TextTestRunner(stream=out, verbosity=2)
+        test = unittest.FunctionTestCase(not_applicable_test)
+        result = self.run_test_runner(runner, test)
+        self._log_file.write(out.getvalue())
+        self.assertTrue(result.wasSuccessful())
+        self.assertTrue(result.wasStrictlySuccessful())
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)not_applicable_test   * N/A')
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)^    this test never runs')
+
+    def test_not_applicable_demo(self):
+        # just so you can see it in the test output
+        raise TestNotApplicable('this test is just a demonstation')
+
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
         class Feature1(Feature):
@@ -1636,3 +1659,29 @@ class TestCheckInventoryShape(TestCaseWithTransport):
             self.check_inventory_shape(tree.inventory, files)
         finally:
             tree.unlock()
+
+
+class TestBlackboxSupport(TestCase):
+    """Tests for testsuite blackbox features."""
+
+    def test_run_bzr_failure_not_caught(self):
+        # When we run bzr in blackbox mode, we want any unexpected errors to
+        # propagate up to the test suite so that it can show the error in the
+        # usual way, and we won't get a double traceback.
+        e = self.assertRaises(
+            AssertionError,
+            self.run_bzr, ['assert-fail'])
+        # make sure we got the real thing, not an error from somewhere else in
+        # the test framework
+        self.assertEquals('always fails', str(e))
+        # check that there's no traceback in the test log
+        self.assertNotContainsRe(self._get_log(keep_log_file=True),
+            r'Traceback')
+
+    def test_run_bzr_user_error_caught(self):
+        # Running bzr in blackbox mode, normal/expected/user errors should be
+        # caught in the regular way and turned into an error message plus exit
+        # code.
+        out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')

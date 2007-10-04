@@ -29,6 +29,7 @@ from bzrlib import (
     bzrdir,
     )
 from bzrlib.osutils import dirname
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.trace import mutter, warning
 """)
 
@@ -159,37 +160,14 @@ class MutableTree(tree.Tree):
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
-        The argument is a set of changes to apply.  It must describe a
-        valid result, but the order is not important.  Specifically,
-        intermediate stages *may* be invalid, such as when two files
-        swap names.
-
-        The changes should be structured as a list of tuples, of the form
-        (old_path, new_path, file_id, new_entry).  For creation, old_path
-        must be None.  For deletion, new_path and new_entry must be None.
-        file_id is always non-None.  For renames and other mutations, all
-        values must be non-None.
-
-        If the new_entry is a directory, its children should be an empty
-        dict.  Children are handled by apply_inventory_delta itself.
-
-        :param changes: A list of tuples for the change to apply:
-            [(old_path, new_path, file_id, new_inventory_entry), ...]
+        :param changes: An inventory delta to apply to the working tree's
+            inventory.
+        :return None:
+        :seealso Inventory.apply_delta: For details on the changes parameter.
         """
         self.flush()
         inv = self.inventory
-        children = {}
-        for old_path, file_id in sorted(((op, f) for op, np, f, e in changes
-                                        if op is not None), reverse=True):
-            if file_id not in inv:
-                continue
-            children[file_id] = getattr(inv[file_id], 'children', {})
-            inv.remove_recursive_id(file_id)
-        for new_path, new_entry in sorted((np, e) for op, np, f, e in
-                                          changes if np is not None):
-            if getattr(new_entry, 'children', None) is not None:
-                new_entry.children = children.get(new_entry.file_id, {})
-            inv.add(new_entry)
+        inv.apply_delta(changes)
         self._write_inventory(inv)
 
     @needs_write_lock
@@ -452,6 +430,35 @@ class MutableTree(tree.Tree):
             else:
                 self.read_working_inventory()
         return added, ignored
+
+    def update_to_one_parent_via_delta(self, new_revid, delta):
+        """Update the parents of this tree after a commit.
+
+        This gives the tree one parent, with revision id new_revid. The
+        inventory delta is applied ot the current basis tree to generate the
+        inventory for the parent new_revid, and all other parent trees are
+        discarded.
+
+        :param new_revid: The new revision id for the trees parent.
+        :param delta: An inventory delta (see apply_inventory_delta) describing
+            the changes from the current left most parent revision to new_revid.
+        """
+        # if the tree is updated by a pull to the branch, as happens in
+        # WorkingTree2, when there was no separation between branch and tree,
+        # then just clear merges, efficiency is not a concern for now as this
+        # is legacy environments only, and they are slow regardless.
+        if self.last_revision() == new_revid:
+            self.set_parent_ids([new_revid])
+            return
+        # generic implementation based on Inventory manipulation. See
+        # WorkingTree classes for optimised versions for specific format trees.
+        basis = self.basis_tree()
+        basis.lock_read()
+        inventory = basis.inventory
+        basis.unlock()
+        inventory.apply_delta(delta)
+        rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
+        self.set_parent_trees([(new_revid, rev_tree)])
 
 
 class _FastPath(object):

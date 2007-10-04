@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,10 +29,16 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
+from bzrlib.osutils import (
+        is_inside_any,
+        is_inside_or_parent_of_any,
+        pathjoin,
+        )
 from bzrlib.tests import (
+        probe_unicode_in_user_encoding,
         StringIOWrapper,
-        TestCase, 
-        TestCaseInTempDir, 
+        TestCase,
+        TestCaseInTempDir,
         TestSkipped,
         )
 
@@ -104,6 +110,31 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertTrue(is_inside('foo.c', 'foo.c'))
         self.assertFalse(is_inside('foo.c', ''))
         self.assertTrue(is_inside('', 'foo.c'))
+
+    def test_is_inside_any(self):
+        SRC_FOO_C = pathjoin('src', 'foo.c')
+        for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
+                         (['src'], SRC_FOO_C),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_any(dirs, fn))
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_any(dirs, fn))
+
+    def test_is_inside_or_parent_of_any(self):
+        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
+                         (['src'], 'src/foo.c'),
+                         (['src/bar.c'], 'src'),
+                         (['src/bar.c', 'bla/foo.c'], 'src'),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_or_parent_of_any(dirs, fn))
+            
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['srccontrol/foo.c'], 'src'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -445,6 +476,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
         self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
+
+    def test_minimum_path_selection(self):
+        self.assertEqual(set(),
+            osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a', 'b']),
+            osutils.minimum_path_selection(['a', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -971,18 +1012,8 @@ class TestSetUnsetEnv(TestCase):
         
         So Unicode strings must be encoded.
         """
-        # Try a few different characters, to see if we can get
-        # one that will be valid in the user_encoding
-        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
-        for uni_val in possible_vals:
-            try:
-                env_val = uni_val.encode(bzrlib.user_encoding)
-            except UnicodeEncodeError:
-                # Try a different character
-                pass
-            else:
-                break
-        else:
+        uni_val, env_val = probe_unicode_in_user_encoding()
+        if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (bzrlib.user_encoding,))
 

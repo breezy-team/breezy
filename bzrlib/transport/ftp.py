@@ -130,7 +130,7 @@ class FtpTransport(ConnectedTransport):
             connection = ftplib.FTP()
             connection.connect(host=self._host, port=self._port)
             if self._user and self._user != 'anonymous' and \
-                    password is not None: # '' is a valid password
+                    password is None: # '' is a valid password
                 get_password = bzrlib.ui.ui_factory.get_password
                 password = get_password(prompt='FTP %(user)s@%(host)s password',
                                         user=self._user, host=self._host)
@@ -605,8 +605,7 @@ class FtpServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        # have asyncore release the channel
-        self._ftp_server.del_channel()
+        self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()
 
@@ -654,6 +653,9 @@ def _setup_medusa():
 
         def __init__(self, root):
             self.root = root
+            # If secured_user is set secured_password will be checked
+            self.secured_user = None
+            self.secured_password = None
 
         def authorize(self, channel, username, password):
             """Return (success, reply_string, filesystem)"""
@@ -666,7 +668,13 @@ def _setup_medusa():
             else:
                 channel.read_only = 0
 
-            return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
+            # Check secured_user if set
+            if (self.secured_user is not None
+                and username == self.secured_user
+                and password != self.secured_password):
+                return 0, 'Password invalid.', None
+            else:
+                return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
 
 
     class ftp_channel(medusa.ftp_server.ftp_channel):

@@ -72,15 +72,14 @@ except ImportError:
     pass
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
-import bzrlib.osutils
 import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eighteen,
     zero_ninetyone,
+    zero_ninetytwo,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -107,16 +106,18 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.timestamp,
-                      bzrlib.errors,
-                      bzrlib.export,
-                      bzrlib.inventory,
-                      bzrlib.iterablefile,
-                      bzrlib.lockdir,
-                      bzrlib.merge3,
-                      bzrlib.option,
-                      bzrlib.store,
-                      ]
+        bzrlib.timestamp,
+        bzrlib.errors,
+        bzrlib.export,
+        bzrlib.inventory,
+        bzrlib.iterablefile,
+        bzrlib.lockdir,
+        bzrlib.merge3,
+        bzrlib.option,
+        bzrlib.store,
+        # quoted to avoid module-loading circularity
+        'bzrlib.tests',
+        ]
 
 
 def packages_to_test():
@@ -133,6 +134,7 @@ def packages_to_test():
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
+    import bzrlib.tests.inventory_implementations
     import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
@@ -147,6 +149,7 @@ def packages_to_test():
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
+            bzrlib.tests.inventory_implementations,
             bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
@@ -204,6 +207,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.not_applicable_count = 0
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
@@ -327,9 +331,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_unsupported(test, feature)
 
     def _addSkipped(self, test, skip_excinfo):
-        self.report_skip(test, skip_excinfo)
-        # seems best to treat this as success from point-of-view of
-        # unittest -- it actually does nothing so it barely matters :)
+        if isinstance(skip_excinfo[1], TestNotApplicable):
+            self.not_applicable_count += 1
+            self.report_not_applicable(test, skip_excinfo)
+        else:
+            self.skip_count += 1
+            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
@@ -337,6 +344,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         except:
             self.addError(test, test.__exc_info())
         else:
+            # seems best to treat this as success from point-of-view of unittest
+            # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
@@ -366,9 +375,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def wasStrictlySuccessful(self):
         if self.unsupported or self.known_failure_count:
             return False
-
         return self.wasSuccessful()
-
 
 
 class TextTestResult(ExtendedTestResult):
@@ -441,20 +448,10 @@ class TextTestResult(ExtendedTestResult):
             self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
-        if False:
-            # at the moment these are mostly not things we can fix
-            # and so they just produce stipple; use the verbose reporter
-            # to see them.
-            if False:
-                # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n', 
-                    self._shortened_test_description(test),
-                    skip_excinfo[1])
-            else:
-                # since the class name was left behind in the still-visible
-                # progress bar...
-                self.pb.note('SKIP: %s', skip_excinfo[1])
+        pass
+
+    def report_not_applicable(self, test, skip_excinfo):
+        pass
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -520,8 +517,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        self.skip_count += 1
         self.stream.writeln(' SKIP %s\n%s'
+                % (self._testTimeString(test),
+                   self._error_summary(skip_excinfo)))
+
+    def report_not_applicable(self, test, skip_excinfo):
+        self.stream.writeln('  N/A %s\n%s'
                 % (self._testTimeString(test),
                    self._error_summary(skip_excinfo)))
 
@@ -627,6 +628,15 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class TestNotApplicable(TestSkipped):
+    """A test is not applicable to the situation where it was run.
+
+    This is only normally raised by parameterized tests, if they find that 
+    the instance they're constructed upon does not support one aspect 
+    of its interface.
+    """
 
 
 class KnownFailure(AssertionError):
@@ -972,6 +982,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsSameRealPath(self, path1, path2):
+        """Fail if path1 and path2 points to different files"""
+        self.assertEqual(osutils.realpath(path1),
+                         osutils.realpath(path2),
+                         "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
+
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
@@ -1273,11 +1289,6 @@ class TestCase(unittest.TestCase):
         else:
             return "DELETED log file to reduce memory footprint"
 
-    @deprecated_method(zero_eighteen)
-    def capture(self, cmd, retcode=0):
-        """Shortcut that splits cmd into words, runs, and returns stdout"""
-        return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
-
     def requireFeature(self, feature):
         """This test requires a specific feature is available.
 
@@ -1285,25 +1296,6 @@ class TestCase(unittest.TestCase):
         """
         if not feature.available():
             raise UnavailableFeature(feature)
-
-    @deprecated_method(zero_eighteen)
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
-        """Invoke bzr and return (stdout, stderr).
-
-        Don't call this method, just use run_bzr() which is equivalent.
-
-        :param argv: Arguments to invoke bzr.  This may be either a 
-            single string, in which case it is split by shlex into words, 
-            or a list of arguments.
-        :param retcode: Expected return code, or None for don't-care.
-        :param encoding: Encoding for sys.stdout and sys.stderr
-        :param stdin: A string to be used as stdin for the command.
-        :param working_dir: Change to this directory before running
-        """
-        return self._run_bzr_autosplit(argv, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
 
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
@@ -1340,7 +1332,7 @@ class TestCase(unittest.TestCase):
         try:
             result = self.apply_redirected(ui.ui_factory.stdin,
                 stdout, stderr,
-                bzrlib.commands.run_bzr_catch_errors,
+                bzrlib.commands.run_bzr_catch_user_errors,
                 args)
         finally:
             logger.removeHandler(handler)
@@ -1359,7 +1351,8 @@ class TestCase(unittest.TestCase):
                               message='Unexpected return code')
         return out, err
 
-    def run_bzr(self, *args, **kwargs):
+    def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
+                working_dir=None, error_regexes=[], output_encoding=None):
         """Invoke bzr, as if it were run from the command line.
 
         The argument list should not include the bzr program name - the
@@ -1372,9 +1365,6 @@ class TestCase(unittest.TestCase):
 
         2- A single string, eg "add a".  This is the most convenient 
         for hardcoded commands.
-
-        3- Several varargs parameters, eg run_bzr("add", "a").  
-        This is not recommended for new code.
 
         This runs bzr through the interface that catches and reports
         errors, and with logging set to something approximating the
@@ -1394,38 +1384,16 @@ class TestCase(unittest.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        retcode = kwargs.pop('retcode', 0)
-        encoding = kwargs.pop('encoding', None)
-        stdin = kwargs.pop('stdin', None)
-        working_dir = kwargs.pop('working_dir', None)
-        error_regexes = kwargs.pop('error_regexes', [])
-
-        if kwargs:
-            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
-                            % kwargs.keys())
-
-        if len(args) == 1:
-            if isinstance(args[0], (list, basestring)):
-                args = args[0]
-        else:
-            symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
-                                   DeprecationWarning, stacklevel=3)
-
-        out, err = self._run_bzr_autosplit(args=args,
+        out, err = self._run_bzr_autosplit(
+            args=args,
             retcode=retcode,
-            encoding=encoding, stdin=stdin, working_dir=working_dir,
+            encoding=encoding,
+            stdin=stdin,
+            working_dir=working_dir,
             )
-
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
-
-    def run_bzr_decode(self, *args, **kwargs):
-        if 'encoding' in kwargs:
-            encoding = kwargs['encoding']
-        else:
-            encoding = bzrlib.user_encoding
-        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes
@@ -1671,6 +1639,18 @@ class TestCase(unittest.TestCase):
         self.addCleanup(resetTimeout)
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
+    def make_utf8_encoded_stringio(self, encoding_type=None):
+        """Return a StringIOWrapper instance, that will encode Unicode
+        input to UTF-8.
+        """
+        if encoding_type is None:
+            encoding_type = 'strict'
+        sio = StringIO()
+        output_encoding = 'utf-8'
+        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio.encoding = output_encoding
+        return sio
+
 
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
@@ -1855,7 +1835,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
-        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+        root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
         TestCaseWithMemoryTransport.TEST_ROOT = root
         
         # make a fake bzr directory there to prevent any tests propagating
@@ -1971,7 +1951,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         name and then create two subdirs - test and home under it.
         """
         # create a directory within the top level test directory
-        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
+        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
         self.test_home_dir = self.test_base_dir + '/home'
@@ -2055,7 +2035,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         else:
             self.failIf(osutils.lexists(path),path+" exists")
 
-    def assertInWorkingTree(self,path,root_path='.',tree=None):
+    def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2066,7 +2046,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
 
-    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2403,6 +2383,7 @@ def test_suite():
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
+                   'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
@@ -2474,22 +2455,63 @@ def test_suite():
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' %(m,e)
             raise
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'test_suite', None) is not None:
-            default_encoding = sys.getdefaultencoding()
-            try:
-                plugin_suite = plugin.test_suite()
-            except ImportError, e:
-                bzrlib.trace.warning(
-                    'Unable to test plugin "%s": %s', name, e)
-            else:
+    default_encoding = sys.getdefaultencoding()
+    for name, plugin in bzrlib.plugin.plugins().items():
+        try:
+            plugin_suite = plugin.test_suite()
+        except ImportError, e:
+            bzrlib.trace.warning(
+                'Unable to test plugin "%s": %s', name, e)
+        else:
+            if plugin_suite is not None:
                 suite.addTest(plugin_suite)
-            if default_encoding != sys.getdefaultencoding():
-                bzrlib.trace.warning(
-                    'Plugin "%s" tried to reset default encoding to: %s', name,
-                    sys.getdefaultencoding())
-                reload(sys)
-                sys.setdefaultencoding(default_encoding)
+        if default_encoding != sys.getdefaultencoding():
+            bzrlib.trace.warning(
+                'Plugin "%s" tried to reset default encoding to: %s', name,
+                sys.getdefaultencoding())
+            reload(sys)
+            sys.setdefaultencoding(default_encoding)
+    return suite
+
+
+def multiply_tests_from_modules(module_name_list, scenario_iter):
+    """Adapt all tests in some given modules to given scenarios.
+
+    This is the recommended public interface for test parameterization.
+    Typically the test_suite() method for a per-implementation test
+    suite will call multiply_tests_from_modules and return the 
+    result.
+
+    :param module_name_list: List of fully-qualified names of test
+        modules.
+    :param scenario_iter: Iterable of pairs of (scenario_name, 
+        scenario_param_dict).
+
+    This returns a new TestSuite containing the cross product of
+    all the tests in all the modules, each repeated for each scenario.
+    Each test is adapted by adding the scenario name at the end 
+    of its name, and updating the test object's __dict__ with the
+    scenario_param_dict.
+
+    >>> r = multiply_tests_from_modules(
+    ...     ['bzrlib.tests.test_sampler'],
+    ...     [('one', dict(param=1)), 
+    ...      ('two', dict(param=2))])
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    loader = TestLoader()
+    suite = TestSuite()
+    adapter = TestScenarioApplier()
+    adapter.scenarios = list(scenario_iter)
+    adapt_modules(module_name_list, adapter, loader, suite)
     return suite
 
 
@@ -2550,6 +2572,17 @@ class Feature(object):
         return self.__class__.__name__
 
 
+class _SymlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_symlinks()
+
+    def feature_name(self):
+        return 'symlinks'
+
+SymlinkFeature = _SymlinkFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 
@@ -2577,3 +2610,21 @@ class TestScenarioApplier(object):
         new_id = "%s(%s)" % (new_test.id(), scenario[0])
         new_test.id = lambda: new_id
         return new_test
+
+
+def probe_unicode_in_user_encoding():
+    """Try to encode several unicode strings to use in unicode-aware tests.
+    Return first successfull match.
+
+    :return:  (unicode value, encoded plain string value) or (None, None)
+    """
+    possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+    for uni_val in possible_vals:
+        try:
+            str_val = uni_val.encode(bzrlib.user_encoding)
+        except UnicodeEncodeError:
+            # Try a different character
+            pass
+        else:
+            return uni_val, str_val
+    return None, None

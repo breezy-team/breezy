@@ -42,7 +42,7 @@ class TestLocale(TestCaseWithTransport):
 
     def test_log_C(self):
         out, err = self.run_bzr_subprocess(
-            '--no-aliases --no-plugins -q log --log-format=long tree',
+            '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
                             'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         self.assertEqual('', err)
@@ -58,7 +58,7 @@ message:
 
     def test_log_BOGUS(self):
         out, err = self.run_bzr_subprocess(
-            '--no-aliases --no-plugins -q log --log-format=long tree',
+            '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none',
                             'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         # XXX: This depends on the exact formatting of a locale.Error

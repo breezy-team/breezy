@@ -25,6 +25,7 @@ from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     has_symlinks,
     )
+from bzrlib.symbol_versioning import zero_ninetyone
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
@@ -177,8 +178,9 @@ class TestPreviousHeads(TestCaseWithTree):
             self.branch.repository.get_transaction())
         
     def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(
-            inventories, 
+        return self.applyDeprecated(zero_ninetyone,
+            self.file_active.find_previous_heads,
+            inventories,
             self.branch.repository.weave_store,
             self.branch.repository.get_transaction())
         
