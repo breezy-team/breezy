@@ -110,6 +110,10 @@ IN DEVELOPMENT
      will remain opened.
      (Vincent Ladeuil, #140055)
 
+   * Monitor the .bzr directory created in the top level test
+     directory to detect leaking tests.
+     (Vincent Ladeuil, #147986)
+
    * The basename, not the full path, is now used when checking whether
      the profiling dump file begins with ``callgrind.out`` or not. This
      fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
