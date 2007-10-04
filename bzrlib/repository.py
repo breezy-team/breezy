@@ -629,10 +629,11 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
+        self.base = control_files._transport.base
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, 
-                           self.bzrdir.transport.base)
+        return '%s(%r)' % (self.__class__.__name__,
+                           self.base)
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -792,7 +793,9 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context and write group.')
+            raise errors.BzrError('mismatched lock context %r and '
+                'write group %r.' %
+                (self.get_transaction(), self._write_group))
         self._commit_write_group()
         self._write_group = None
 
@@ -811,6 +814,14 @@ class Repository(object):
         If revision_id is None all content is copied.
         """
         revision_id = osutils.safe_revision_id(revision_id)
+        # fast path same-url fetch operations
+        if self.has_same_location(source):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
         inter = InterRepository.get(source, self)
         try:
             return inter.fetch(revision_id=revision_id, pb=pb)
@@ -919,7 +930,7 @@ class Repository(object):
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "has_revision is a LBYL symptom.")
+            mutter_callsite(3, "has_revision is a LBYL symptom.")
         revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
@@ -1239,7 +1250,7 @@ class Repository(object):
         :return: a Graph object with the graph reachable from revision_ids.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            mutter_callsite(3,
                 "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
@@ -1891,9 +1902,9 @@ format_registry.register_lazy(
     'bzrlib.repofmt.weaverepo',
     'RepositoryFormat7'
     )
+
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
-
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
@@ -1967,6 +1978,15 @@ class InterRepository(InterObject):
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
 
+    @staticmethod
+    def _same_model(source, target):
+        """True if source and target have the same data representation."""
+        if source.supports_rich_root() != target.supports_rich_root():
+            return False
+        if source._serializer != target._serializer:
+            return False
+        return True
+
 
 class InterSameDataRepository(InterRepository):
     """Code for converting between repositories that represent the same data.
@@ -1986,11 +2006,7 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if source.supports_rich_root() != target.supports_rich_root():
-            return False
-        if source._serializer != target._serializer:
-            return False
-        return True
+        return InterRepository._same_model(source, target)
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -2173,12 +2189,13 @@ class InterKnitRepo(InterSameDataRepository):
         could lead to confusing results, and there is no need to be 
         overly general.
         """
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
         try:
-            return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit1)))
+            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
+                isinstance(target._format, RepositoryFormatKnit))
         except AttributeError:
             return False
+        return are_knits and InterRepository._same_model(source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
