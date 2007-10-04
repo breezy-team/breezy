@@ -115,6 +115,7 @@ class CommitBuilder(object):
             self._timezone = int(timezone)
 
         self._generate_revision_if_needed()
+        self._repo_graph = repository.get_graph()
 
     def commit(self, message):
         """Make the actual commit.
@@ -255,7 +256,7 @@ class CommitBuilder(object):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self.repository.get_graph().heads(parent_candiate_entries.keys())
+        head_set = self._repo_graph.heads(parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
             if ie.file_id in inv:
