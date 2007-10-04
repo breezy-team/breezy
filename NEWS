@@ -134,6 +134,9 @@ IN DEVELOPMENT
      deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
      (Martin Pool)
 
+   * Removed previous deprecated ``basis_knit`` parameter to the
+     ``KnitVersionedFile`` constructor. (Robert Collins)
+
    * Special purpose method ``TestCase.run_bzr_decode`` is moved to the test_non_ascii 
      class that needs it.
      (Martin Pool)

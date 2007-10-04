@@ -1403,7 +1403,8 @@ class BasicKnitTests(KnitTests):
         # request a last-first iteration
         results = list(k1.iter_lines_added_or_present_in_versions(
             ['base2', 'base']))
-        self.assertEqual([('readv', 'id.knit', [(0, 87), (87, 89)], False)],
+        self.assertEqual(
+            [('readv', 'id.knit', [(0, 87), (87, 89)], False, None)],
             instrumented_t._activity)
         self.assertEqual(['text\n', 'text2\n'], results)
 
