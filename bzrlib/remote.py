@@ -607,7 +607,12 @@ class RemoteRepository(object):
         return False
 
     def fetch(self, source, revision_id=None, pb=None):
-        if self.has_same_location(source) or source.has_same_location(self):
+        if self.has_same_location(source):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
             return 0, []
         self._ensure_real()
         return self._real_repository.fetch(
