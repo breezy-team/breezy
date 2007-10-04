@@ -17,9 +17,12 @@
 
 """Commands behaviour tests for bzr.
 
-This tests the behaviour of the commands.
-The API is tested in the tests/blackbox files.
+Test the internal behaviour of the commands (the blackbox tests are intended to
+test the usage of the commands).
 """
+
+# FIXME: If the separation described above from the blackbox tests is not worth
+# it, all the tests defined below should be moved to blackbox instead. 
 
 from bzrlib.tests import TestLoader
 
