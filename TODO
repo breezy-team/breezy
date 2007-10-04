@@ -9,3 +9,4 @@ Todo
   to the installation overhead of a dependency. 
 - possibly generate a factored out generic 'git' python module if our native
   bindings become big enough.
+- TESTS

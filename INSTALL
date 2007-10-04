@@ -3,7 +3,7 @@ Installation
 
 Installation of bzr-git requires several things:
 
-1) bzr 0.9
+1) bzr 0.9 or higher
 2) symlink the directory containing __init__.py from bzr-git - i.e. this source
    tree - into either ~/.bazaar/plugins/git, or wherever bzrlib is as
    bzrlib/plugins/git.
