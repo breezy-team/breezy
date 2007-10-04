@@ -29,6 +29,7 @@ def test_suite():
         'bzrlib.tests.commands.test_branch',
         'bzrlib.tests.commands.test_cat',
         'bzrlib.tests.commands.test_checkout',
+        'bzrlib.tests.commands.test_commit',
         'bzrlib.tests.commands.test_init',
         'bzrlib.tests.commands.test_init_repository',
         'bzrlib.tests.commands.test_merge',

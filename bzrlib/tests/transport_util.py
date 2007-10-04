@@ -114,9 +114,9 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         url = _change_scheme_in(url, _backing_scheme, _hooked_scheme)
         return url
 
-    def install_hooks(self):
+    def start_logging_connections(self):
         ConnectionHookedTransport.hooks.install_hook('_set_connection',
-                                                     self.set_connection_hook)
+                                                     self._collect_connection)
         # uninstall our hooks when we are finished
         self.addCleanup(self.reset_hooks)
 
@@ -126,7 +126,7 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
     def reset_connections(self):
         self.connections = []
 
-    def set_connection_hook(self, transport, connection, credentials):
+    def _collect_connection(self, transport, connection, credentials):
         # Note: uncomment the following line and use 'bt' under pdb, that will
         # identify all the connections made including the extraneous ones.
         # import pdb; pdb.set_trace()

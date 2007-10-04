@@ -598,8 +598,10 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
 
+        possible_transports = []
         if location is not None:
             mergeable, location_transport = _get_mergeable_helper(location)
+            possible_transports.append(location_transport)
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -611,7 +613,8 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-                location_transport = transport.get_transport(location)
+                location_transport = transport.get_transport(
+                    location, possible_transports=possible_transports)
 
         if mergeable is not None:
             if revision is not None:
@@ -637,8 +640,11 @@ class cmd_pull(Command):
         if verbose:
             old_rh = branch_to.revision_history()
         if tree_to is not None:
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=tree_to.is_ignored)
             result = tree_to.pull(branch_from, overwrite, revision_id,
-                delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
+                                  change_reporter,
+                                  possible_transports=possible_transports)
         else:
             result = branch_to.pull(branch_from, overwrite, revision_id)
 
@@ -2272,6 +2278,8 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
+        if fixes is None:
+            fixes = []
         bug_property = self._get_bug_fix_properties(fixes, tree.branch)
         if bug_property:
             properties['bugs'] = bug_property
