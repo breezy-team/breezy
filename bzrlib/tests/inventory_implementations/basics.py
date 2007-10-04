@@ -202,6 +202,13 @@ class TestInventoryBasics(TestCase):
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=('bye-id',))])
 
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('src', 'src-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id',), yield_parents=True)])
+
     def test_add_recursive(self):
         parent = InventoryDirectory('src-id', 'src', 'tree-root')
         child = InventoryFile('hello-id', 'hello.c', 'src-id')

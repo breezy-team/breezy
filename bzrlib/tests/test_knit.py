@@ -816,6 +816,18 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(["c"], index.get_parents_with_ghosts("a"))
         self.assertEqual(["a"], index.get_parents_with_ghosts("b"))
 
+    def test_add_versions_random_id_is_accepted(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = self.get_knit_index(transport, "filename", "r")
+
+        index.add_versions([
+            ("a", ["option"], (None, 0, 1), ["b"]),
+            ("a", ["opt"], (None, 1, 2), ["c"]),
+            ("b", ["option"], (None, 2, 3), ["a"])
+            ], random_id=True)
+
     def test_delay_create_and_add_versions(self):
         transport = MockTransport()
 
@@ -1303,22 +1315,38 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[1], ('text-1', 'b\n'))
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
-    def test_knit_join(self):
-        """Store in knit with parents"""
-        k1 = KnitVersionedFile('test1', get_transport('.'), factory=KnitPlainFactory(), create=True)
-        k1.add_lines('text-a', [], split_lines(TEXT_1))
-        k1.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
-
-        k1.add_lines('text-c', [], split_lines(TEXT_1))
-        k1.add_lines('text-d', ['text-c'], split_lines(TEXT_1))
-
-        k1.add_lines('text-m', ['text-b', 'text-d'], split_lines(TEXT_1))
-
-        k2 = KnitVersionedFile('test2', get_transport('.'), factory=KnitPlainFactory(), create=True)
+    def _test_join_with_factories(self, k1_factory, k2_factory):
+        k1 = KnitVersionedFile('test1', get_transport('.'), factory=k1_factory, create=True)
+        k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
+        k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
+        k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
+        k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
+        k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
+        k2 = KnitVersionedFile('test2', get_transport('.'), factory=k2_factory, create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
         self.assertTrue(k2.has_version('text-c'))
+        origins = k2.annotate('text-m')
+        self.assertEquals(origins[0], ('text-a', 'a1\n'))
+        self.assertEquals(origins[1], ('text-b', 'b2\n'))
+        self.assertEquals(origins[2], ('text-d', 'd3\n'))
+
+    def test_knit_join_plain_to_plain(self):
+        """Test joining a plain knit with a plain knit."""
+        self._test_join_with_factories(KnitPlainFactory(), KnitPlainFactory())
+
+    def test_knit_join_anno_to_anno(self):
+        """Test joining an annotated knit with an annotated knit."""
+        self._test_join_with_factories(None, None)
+
+    def test_knit_join_anno_to_plain(self):
+        """Test joining an annotated knit with a plain knit."""
+        self._test_join_with_factories(None, KnitPlainFactory())
+
+    def test_knit_join_plain_to_anno(self):
+        """Test joining a plain knit with an annotated knit."""
+        self._test_join_with_factories(KnitPlainFactory(), None)
 
     def test_reannotate(self):
         k1 = KnitVersionedFile('knit1', get_transport('.'),
@@ -1895,11 +1923,8 @@ class TestWeaveToKnit(KnitTests):
 
 class TestKnitCaching(KnitTests):
     
-    def create_knit(self, cache_add=False):
+    def create_knit(self):
         k = self.make_test_knit(True)
-        if cache_add:
-            k.enable_cache()
-
         k.add_lines('text-1', [], split_lines(TEXT_1))
         k.add_lines('text-2', [], split_lines(TEXT_2))
         return k
@@ -1907,14 +1932,6 @@ class TestKnitCaching(KnitTests):
     def test_no_caching(self):
         k = self.create_knit()
         # Nothing should be cached without setting 'enable_cache'
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_add_and_clear(self):
-        k = self.create_knit(True)
-
-        self.assertEqual(['text-1', 'text-2'], sorted(k._data._cache.keys()))
-
-        k.clear_cache()
         self.assertEqual({}, k._data._cache)
 
     def test_cache_data_read_raw(self):
@@ -2307,6 +2324,10 @@ class TestGraphIndexKnit(KnitTests):
             [('new', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
+    def test_add_versions_random_id_accepted(self):
+        index = self.two_graph_index(catch_adds=True)
+        index.add_versions([], random_id=True)
+
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
@@ -2569,6 +2590,10 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_versions,
             [('new', 'no-eol,fulltext', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
+
+    def test_add_versions_random_id_accepted(self):
+        index = self.two_graph_index(catch_adds=True)
+        index.add_versions([], random_id=True)
 
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)

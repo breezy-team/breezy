@@ -1208,6 +1208,14 @@ class RemoteTransportRegistration(tests.TestCase):
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
+    def test_bzr_https(self):
+        # https://bugs.launchpad.net/bzr/+bug/128456
+        t = get_transport('bzr+https://example.com/path')
+        self.assertIsInstance(t, remote.RemoteHTTPTransport)
+        self.assertStartsWith(
+            t._http_transport.base,
+            'https://')
+
 
 class TestRemoteTransport(tests.TestCase):
         

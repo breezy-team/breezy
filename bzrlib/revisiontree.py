@@ -153,6 +153,20 @@ class RevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].kind
 
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.inventory.path2id(path)
+        if id is None:
+            return ('missing', None, None, None)
+        entry = self._inventory[id]
+        kind = entry.kind
+        if kind == 'file':
+            return (kind, entry.text_size, entry.executable, entry.text_sha1)
+        elif kind == 'symlink':
+            return (kind, None, None, entry.symlink_target)
+        else:
+            return (kind, None, None, None)
+
     def _comparison_data(self, entry, path):
         if entry is None:
             return None, False, None

@@ -90,14 +90,14 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo')
         self.assertEqual(['foo'], tree.get_parent_ids())
         # the commit should have returned the same id we asked for.
         self.assertEqual('foo', committed_id)
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
-        committed_id = tree.commit('message', allow_pointless=True)
+        committed_id = tree.commit('message')
         self.assertTrue(tree.branch.repository.has_revision(committed_id))
         self.assertNotEqual(None, committed_id)
 
@@ -322,6 +322,22 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertEqual(subtree.last_revision(),
             basis.get_reference_revision(basis.path2id('subtree')))
         self.assertNotEqual(rev_id, rev_id2)
+
+    def test_nested_pointless_commits_are_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'])
+        # record the reference.
+        rev_id = tree.commit('added reference')
+        child_revid = subtree.last_revision()
+        # now do a no-op commit with allow_pointless=False
+        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+            allow_pointless=False)
+        self.assertEqual(child_revid, subtree.last_revision())
+        self.assertEqual(rev_id, tree.last_revision())
 
 
 class TestCommitProgress(TestCaseWithWorkingTree):

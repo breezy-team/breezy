@@ -87,6 +87,23 @@ def make_writable(filename):
         os.chmod(filename, mod)
 
 
+def minimum_path_selection(paths):
+    """Return the smallset subset of paths which are outside paths.
+
+    :param paths: A container (and hence not None) of paths.
+    :return: A set of paths sufficient to include everything in paths via
+        is_inside_any, drawn from the paths parameter.
+    """
+    search_paths = set()
+    paths = set(paths)
+    for path in paths:
+        other_paths = paths.difference([path])
+        if not is_inside_any(other_paths, path):
+            # this is a top level path, we must check it.
+            search_paths.add(path)
+    return search_paths
+
+
 _QUOTE_RE = None
 
 
@@ -537,13 +554,19 @@ def is_inside_or_parent_of_any(dir_list, fname):
 
 
 def pumpfile(fromfile, tofile):
-    """Copy contents of one file to another."""
+    """Copy contents of one file to another.
+    
+    :return: The number of bytes copied.
+    """
     BUFSIZE = 32768
+    length = 0
     while True:
         b = fromfile.read(BUFSIZE)
         if not b:
             break
         tofile.write(b)
+        length += len(b)
+    return length
 
 
 def file_iterator(input_file, readsize=32768):
