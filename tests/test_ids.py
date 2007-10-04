@@ -19,6 +19,7 @@ from bzrlib.tests import TestCase
 from bzrlib.plugins.git import bzrrevid_from_git, gitrevid_from_bzr
 
 class TestRevidConversion(TestCase):
+
     def test_simple_git_to_bzr(self):
         self.assertEqual("git:c6a4d8f1fa4ac650748e647c4b1b368f589a7356", 
                          bzrrevid_from_git("c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
