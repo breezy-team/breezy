@@ -1153,6 +1153,7 @@ class TestCase(unittest.TestCase):
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -1301,7 +1302,9 @@ class TestCase(unittest.TestCase):
             working_dir):
         """Run bazaar command line, splitting up a string command line."""
         if isinstance(args, basestring):
-            args = list(shlex.split(args))
+            # shlex don't understand unicode strings,
+            # so args should be plain string (bialix 20070906)
+            args = list(shlex.split(str(args)))
         return self._run_bzr_core(args, retcode=retcode,
                 encoding=encoding, stdin=stdin, working_dir=working_dir,
                 )
@@ -2628,3 +2631,18 @@ def probe_unicode_in_user_encoding():
         else:
             return uni_val, str_val
     return None, None
+
+
+def probe_bad_non_ascii(encoding):
+    """Try to find [bad] character with code [128..255]
+    that cannot be decoded to unicode in some encoding.
+    Return None if all non-ascii characters is valid
+    for given encoding.
+    """
+    for i in xrange(128, 256):
+        char = chr(i)
+        try:
+            char.decode(encoding)
+        except UnicodeDecodeError:
+            return char
+    return None
