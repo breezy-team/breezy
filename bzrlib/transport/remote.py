@@ -291,7 +291,7 @@ class RemoteTransport(transport.ConnectedTransport):
         # the external path for RemoteTransports is the base
         return self.base
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         if not offsets:
             return
 

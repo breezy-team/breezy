@@ -127,6 +127,9 @@ IN DEVELOPMENT
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
 
+   * Removed ``bzrlib.transport.TransportLogger`` - please see the new
+     ``trace+`` transport instead. (Robert Collins)
+
    * Removed previously deprecated varargs interface to ``TestCase.run_bzr`` and
      deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
      (Martin Pool)
@@ -155,9 +158,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
-      put by the method call, to allow avoiding stat-after-write or
-      housekeeping in callers. (Robert Collins)
+   * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
+     put by the method call, to allow avoiding stat-after-write or
+     housekeeping in callers. (Robert Collins)
 
    * New class ``bzrlib.errors.InternalBzrError`` which is just a convenient
      shorthand for deriving from BzrError and setting internal_error = True.
@@ -182,6 +185,11 @@ IN DEVELOPMENT
      and returns a gzipped version of the same. This is used to avoid a bunch
      of api friction during adding of knit hunks. (Robert Collins)
 
+   * New parameter on ``bzrlib.transport.Transport.readv``
+     ``adjust_for_latency`` which changes readv from returning strictly the
+     requested data to inserted return larger ranges and in forward read order
+     to reduce the effect of network latency. (Robert Collins)
+
    * New parameter yield_parents on ``Inventory.iter_entries_by_dir`` which
      causes the parents of a selected id to be returned recursively, so all the
      paths from the root down to each element of selected_file_ids are
@@ -197,6 +205,9 @@ IN DEVELOPMENT
      (Robert Collins)
 
   TESTING:
+
+   * New transport implementation ``trace+`` which is useful for testing,
+     logging activity taken to its _activity attribute. (Robert Collins)
 
    * When running bzr commands within the test suite, internal exceptions are
      not caught and reported in the usual way, but rather allowed to propagate
