@@ -1522,7 +1522,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None):
+             change_reporter=None, possible_transports=None):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1530,7 +1530,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             pp.next_phase()
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
-            count = self.branch.pull(source, overwrite, stop_revision)
+            count = self.branch.pull(source, overwrite, stop_revision,
+                                     possible_transports=possible_transports)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()

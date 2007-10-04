@@ -103,6 +103,9 @@ IN DEVELOPMENT
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
 
+   * Handles default value for ListOption in cmd_commit.
+     (Vincent Ladeuil, #140432)
+
    * HttpServer and FtpServer need to be closed properly or a listening socket
      will remain opened.
      (Vincent Ladeuil, #140055)
