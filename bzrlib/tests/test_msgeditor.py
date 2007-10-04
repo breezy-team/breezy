@@ -33,11 +33,12 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
-    probe_bad_non_ascii_in_user_encoding,
+    probe_bad_non_ascii,
     TestCaseWithTransport,
     TestSkipped,
     )
 from bzrlib.trace import mutter
+
 
 class MsgEditorTest(TestCaseWithTransport):
 
@@ -256,11 +257,10 @@ if len(sys.argv) == 2:
             # LANG env variable has no effect on Windows
             # but some characters anyway cannot be represented
             # in default user encoding
-            char = '\xff'
-            if sys.platform == 'win32':
-                char = probe_bad_non_ascii_in_user_encoding()
-                if char is None:
-                    raise TestSkipped('cannot find suitable character')
+            char = probe_bad_non_ascii(bzrlib.user_encoding)
+            if char is None:
+                raise TestSkipped('Cannot find suitable non-ascii character '
+                    'for user_encoding (%s)' % bzrlib.user_encoding)
 
             self.make_fake_editor(message=char)
 

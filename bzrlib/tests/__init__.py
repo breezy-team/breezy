@@ -72,7 +72,6 @@ except ImportError:
     pass
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
-import bzrlib.osutils
 import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
@@ -1148,7 +1147,7 @@ class TestCase(unittest.TestCase):
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
-            'BZR_EDITOR': None, # test_msgeditor manipulate with this variable
+            'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -1321,7 +1320,9 @@ class TestCase(unittest.TestCase):
             working_dir):
         """Run bazaar command line, splitting up a string command line."""
         if isinstance(args, basestring):
-            args = list(shlex.split(args))
+            # shlex don't understand unicode strings,
+            # so args should be plain string (bialix 20070906)
+            args = list(shlex.split(str(args)))
         return self._run_bzr_core(args, retcode=retcode,
                 encoding=encoding, stdin=stdin, working_dir=working_dir,
                 )
@@ -1879,7 +1880,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
-        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+        root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
         TestCaseWithMemoryTransport.TEST_ROOT = root
         
         # make a fake bzr directory there to prevent any tests propagating
@@ -1995,7 +1996,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         name and then create two subdirs - test and home under it.
         """
         # create a directory within the top level test directory
-        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
+        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
         self.test_home_dir = self.test_base_dir + '/home'
@@ -2674,16 +2675,16 @@ def probe_unicode_in_user_encoding():
     return None, None
 
 
-def probe_bad_non_ascii_in_user_encoding():
+def probe_bad_non_ascii(encoding):
     """Try to find [bad] character with code [128..255]
-    that cannot be decoded to unicode in user_encoding.
+    that cannot be decoded to unicode in some encoding.
     Return None if all non-ascii characters is valid
-    for current user_encoding.
+    for given encoding.
     """
     for i in xrange(128, 256):
         char = chr(i)
         try:
-            char.decode(bzrlib.user_encoding)
+            char.decode(encoding)
         except UnicodeDecodeError:
             return char
     return None

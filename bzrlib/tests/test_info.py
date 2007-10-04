@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
 from urllib import quote
 
 from bzrlib import (
@@ -242,6 +243,8 @@ class TestInfo(tests.TestCaseWithTransport):
         )
 
     def test_location_list(self):
+        if sys.platform == 'win32':
+            raise tests.TestSkipped('Windows-unfriendly test')
         locs = info.LocationList('/home/foo')
         locs.add_url('a', 'file:///home/foo/')
         locs.add_url('b', 'file:///home/foo/bar/')
