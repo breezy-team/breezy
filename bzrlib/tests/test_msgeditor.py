@@ -39,6 +39,7 @@ from bzrlib.tests import (
     )
 from bzrlib.trace import mutter
 
+
 class MsgEditorTest(TestCaseWithTransport):
 
     def make_uncommitted_tree(self):

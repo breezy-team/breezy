@@ -1772,12 +1772,6 @@ register_transport_proto('bzr+https://',
 register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
-register_transport_proto('bzr+https://',
-#                help="Fast access using the Bazaar smart server over HTTPS."
-             )
-register_lazy_transport('bzr+https://',
-                        'bzrlib.transport.remote',
-                        'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
             help="Fast access using the Bazaar smart server over SSH.",
             default_port=22)
