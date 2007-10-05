@@ -186,7 +186,7 @@ class _BaseProgressBar(object):
         self.MIN_PAUSE = 0.1 # seconds
         now = time.time()
         # starting now
-        self.start_time = None
+        self.start_time = now
         # next update should not throttle
         self.last_update = now - self.MIN_PAUSE - 1
 
