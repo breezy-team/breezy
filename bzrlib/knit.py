@@ -1998,7 +1998,12 @@ class _KnitData(object):
     def _record_to_data(self, version_id, digest, lines, dense_lines=None):
         """Convert version_id, digest, lines into a raw data block.
         
-        :param dense_lines: The bytes of lines but in a denser form.
+        :param dense_lines: The bytes of lines but in a denser form. For
+            instance, if lines is a list of 1000 bytestrings each ending in \n,
+            dense_lines may be a list with one line in it, containing all the
+            1000's lines and their \n's. Using dense_lines if it is already
+            known is a win because the string join to create bytes in this
+            function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
         # Note: using a string copy here increases memory pressure with e.g.
