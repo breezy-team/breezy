@@ -1196,8 +1196,7 @@ class Repository(object):
         :param xml: A serialised inventory.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        result = self._serializer.read_inventory_from_string(xml)
-        result.root.revision = revision_id
+        result = self._serializer.read_inventory_from_string(xml, revision_id)
         return result
 
     def serialise_inventory(self, inv):
@@ -1671,8 +1670,7 @@ class MetaDirRepository(Repository):
 
 
 class RepositoryFormatRegistry(registry.Registry):
-    """Registry of RepositoryFormats.
-    """
+    """Registry of RepositoryFormats."""
 
     def get(self, format_string):
         r = registry.Registry.get(self, format_string)
@@ -1700,6 +1698,10 @@ class RepositoryFormat(object):
      * a format string which is used when the BzrDir supports versioned
        children.
      * an open routine which returns a Repository instance.
+
+    There is one and only one format for every disk format. The actual
+    repository types do not indicate disk format at all - only repo._format can
+    be used to determine the disk format of a Repository instance.
 
     Formats are placed in an dict by their format string for reference 
     during opening. These should be subclasses of RepositoryFormat
