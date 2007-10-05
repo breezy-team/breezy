@@ -740,7 +740,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
             inv = tree._get_inventory()
             inv.add_path('bar', 'file', 'bar-id')
             # no-op change is enough to make it lose state
-            # import pdb;pdb.set_trace()
             tree._dirstate.set_state_from_inventory(inv)
         finally:
             tree.unlock()

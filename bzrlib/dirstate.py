@@ -1860,6 +1860,9 @@ class DirState(object):
 
         :param new_inv: The inventory object to set current state from.
         """
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(1,
+                "set_state_from_inventory called; please mutate the tree instead")
         self._read_dirblocks_if_needed()
         # sketch:
         # incremental algorithm:
@@ -1897,7 +1900,7 @@ class DirState(object):
                     fingerprint = ''
             else:
                 # for safety disable variables
-                new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = None
+                del new_path_utf8, new_dirname, new_basename, new_id, new_entry_key
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if not current_old:
