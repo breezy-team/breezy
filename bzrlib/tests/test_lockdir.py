@@ -36,7 +36,6 @@ from bzrlib.errors import (
     LockError,
     LockFailed,
     LockNotHeld,
-    UnlockableTransport,
     )
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseWithTransport
