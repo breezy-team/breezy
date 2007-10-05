@@ -51,7 +51,7 @@ from bzrlib import (
     )
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.repofmt.knitrepo import KnitRepository, KnitRepository3
+from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
@@ -1310,15 +1310,14 @@ class InventoryKnitThunk(object):
             # existing knit to be changed - its all behind 'repo.add_inventory'.
 
 
-class GraphKnitRepository1(KnitRepository):
+class GraphKnitRepository(KnitRepository):
     """Experimental graph-knit using repository."""
 
-    _commit_builder_class = PackCommitBuilder
-
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
+        control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-                              _revision_store, control_store, text_store)
+            _revision_store, control_store, text_store, _commit_builder_class,
+            _serializer)
         index_transport = control_files._transport.clone('indices')
         self._packs = RepositoryPackCollection(self, control_files._transport,
             index_transport,
@@ -1367,80 +1366,6 @@ class GraphKnitRepository1(KnitRepository):
         reconciler.reconcile()
         return reconciler
 
-    def reconcile_actions(self):
-        """Return a set of actions taken by reconcile on this repository.
- 
-        Pack repositories currently perform no reconciliation.
-
-        :return: A set of actions. e.g. set(['inventory_gc']).
-        """
-        return set([])
-
-
-class GraphKnitRepository3(KnitRepository3):
-    """Experimental graph-knit using subtrees repository."""
-
-    _commit_builder_class = PackRootCommitBuilder
-
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        KnitRepository3.__init__(self, _format, a_bzrdir, control_files,
-                              _revision_store, control_store, text_store)
-        index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport,
-            index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
-        self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
-        self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
-        self._inv_thunk = InventoryKnitThunk(self, index_transport)
-        # for tests
-        self._reconcile_does_inventory_gc = False
-
-    def _abort_write_group(self):
-        return self._packs._abort_write_group()
-
-    def _refresh_data(self):
-        if self.control_files._lock_count==1:
-            self._revision_store.reset()
-            self.weave_store.reset()
-            self._inv_thunk.reset()
-            # forget what names there are
-            self._packs.reset()
-
-    def _start_write_group(self):
-        self._packs._start_write_group()
-
-    def _commit_write_group(self):
-        return self._packs._commit_write_group()
-
-    def get_inventory_weave(self):
-        return self._inv_thunk.get_weave()
-
-    @needs_write_lock
-    def pack(self):
-        """Compress the data within the repository.
-
-        This will pack all the data to a single pack. In future it may
-        recompress deltas or do other such expensive operations.
-        """
-        self._packs.pack()
-
-    @needs_write_lock
-    def reconcile(self, other=None, thorough=False):
-        """Reconcile this repository."""
-        from bzrlib.reconcile import PackReconciler
-        reconciler = PackReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
-
-    def reconcile_actions(self):
-        """Return a set of actions taken by reconcile on this repository.
-        
-        :return: A set of actions. e.g. set(['inventory_gc']).
-        """
-        return set([])
-
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
     """Format logic for pack structured repositories.
@@ -1456,6 +1381,17 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
      - an optional 'no-working-trees' flag
      - a LockDir lock
     """
+
+    # Set this attribute in derived classes to control the repository class
+    # created by open and initialize.
+    repository_class = None
+    # Set this attribute in derived classes to control the
+    # _commit_builder_class that the repository objects will have passed to
+    # their constructor.
+    _commit_builder_class = None
+    # Set this attribute in derived clases to control the _serializer that the
+    # repository objects will have passed to their constructor.
+    _serializer = None
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -1536,7 +1472,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
                               control_files=control_files,
                               _revision_store=_revision_store,
                               control_store=control_store,
-                              text_store=text_store)
+                              text_store=text_store,
+                              _commit_builder_class=self._commit_builder_class,
+                              _serializer=self._serializer)
 
 
 class RepositoryFormatGraphKnit1(RepositoryFormatPack):
@@ -1556,7 +1494,9 @@ class RepositoryFormatGraphKnit1(RepositoryFormatPack):
     This format was introduced in bzr.dev.
     """
 
-    repository_class = GraphKnitRepository1
+    repository_class = GraphKnitRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('experimental')
@@ -1598,9 +1538,11 @@ class RepositoryFormatGraphKnit3(RepositoryFormatPack):
      - support for recording tree-references
     """
 
-    repository_class = GraphKnitRepository3
+    repository_class = GraphKnitRepository
+    _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
+    _serializer = xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('experimental-subtree')

@@ -58,8 +58,10 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt):
+    def _unpack_inventory(self, elt, revision_id=None):
         """Construct from XML Element
+
+        :param revision_id: Ignored parameter used by xml5.
         """
         assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
