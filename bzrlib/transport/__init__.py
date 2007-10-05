@@ -99,7 +99,7 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is not handler registered for it.
+    # Add chroot directly, because there is no handler registered for it.
     modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
@@ -125,22 +125,29 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
-        self.get(key).insert(0, 
+        self.get(key).insert(0,
                 registry._LazyObjectGetter(module_name, member_name))
 
-    def register_transport(self, key, help=None, info=None):
-        self.register(key, [], help, info)
+    def register_transport(self, key, help=None, default_port=None):
+        self.register(key, [], help, default_port)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
+    def get_default_port(self, scheme):
+        """Return the registered default port for this protocol scheme."""
+        try:
+            return self.get_info(scheme + '://')
+        except LookupError:
+            return None
 
-transport_list_registry = TransportListRegistry( )
+
+transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None):
-    transport_list_registry.register_transport(prefix, help, info)
+def register_transport_proto(prefix, help=None, info=None, default_port=None):
+    transport_list_registry.register_transport(prefix, help, default_port)
 
 
 def register_lazy_transport(prefix, module, classname):
@@ -635,10 +642,72 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
-    def readv(self, relpath, offsets):
+    def readv(self, relpath, offsets, adjust_for_latency=False,
+        upper_limit=None):
         """Get parts of the file at the given relative path.
 
-        :offsets: A list of (offset, size) tuples.
+        :param relpath: The path to read data from.
+        :param offsets: A list of (offset, size) tuples.
+        :param adjust_for_latency: Adjust the requested offsets to accomdate
+            transport latency. This may re-order the offsets, expand them to
+            grab adjacent data when there is likely a high cost to requesting
+            data relative to delivering it.
+        :param upper_limit: When adjust_for_latency is True setting upper_limit
+            allows the caller to tell the transport about the length of the
+            file, so that requests are not issued for ranges beyond the end of
+            the file. This matters because some servers and/or transports error
+            in such a case rather than just satisfying the available ranges.
+            upper_limit should always be provided when adjust_for_latency is
+            True, and should be the size of the file in bytes.
+        :return: A list or generator of (offset, data) tuples
+        """
+        if adjust_for_latency:
+            offsets = sorted(offsets)
+            # short circuit empty requests
+            if len(offsets) == 0:
+                def empty_yielder():
+                    # Quick thunk to stop this function becoming a generator
+                    # itself, rather we return a generator that has nothing to
+                    # yield.
+                    if False:
+                        yield None
+                return empty_yielder()
+            # expand by page size at either end
+            expansion = self.recommended_page_size()
+            reduction = expansion / 2
+            new_offsets = []
+            for offset, length in offsets:
+                new_offset = offset - reduction
+                new_length = length + expansion
+                if new_offset < 0:
+                    # don't ask for anything < 0
+                    new_length -= new_offset
+                    new_offset = 0
+                if (upper_limit is not None and
+                    new_offset + new_length > upper_limit):
+                    new_length = upper_limit - new_offset
+                new_offsets.append((new_offset, new_length))
+            # combine the expanded offsets
+            offsets = []
+            current_offset, current_length = new_offsets[0]
+            current_finish = current_length + current_offset
+            for offset, length in new_offsets[1:]:
+                if offset > current_finish:
+                    offsets.append((current_offset, current_length))
+                    current_offset = offset
+                    current_length = length
+                    continue
+                finish = offset + length
+                if finish > current_finish:
+                    current_finish = finish
+            offsets.append((current_offset, current_length))
+        return self._readv(relpath, offsets)
+
+    def _readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :param relpath: The path to read.
+        :param offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
         if not offsets:
@@ -1256,6 +1325,10 @@ class ConnectedTransport(Transport):
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
+        if port is None:
+            # The port isn't explicitly specified, so return the default (if
+            # there is one).
+            port = transport_list_registry.get_default_port(scheme)
         return (scheme, user, password, host, port, path)
 
     @staticmethod
@@ -1286,7 +1359,10 @@ class ConnectedTransport(Transport):
             # have one so that it doesn't get accidentally
             # exposed.
             netloc = '%s@%s' % (urllib.quote(user), netloc)
-        if port is not None:
+        if (port is not None and 
+            port != transport_list_registry.get_default_port(scheme)):
+            # Include the port in the netloc (unless it's the same as the
+            # default, in which case we omit it as it is redundant).
             netloc = '%s:%d' % (netloc, port)
         path = urllib.quote(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
@@ -1595,30 +1671,6 @@ class Server(object):
         raise NotImplementedError
 
 
-class TransportLogger(object):
-    """Adapt a transport to get clear logging data on api calls.
-    
-    Feel free to extend to log whatever calls are of interest.
-    """
-
-    def __init__(self, adapted):
-        self._adapted = adapted
-        self._calls = []
-
-    def get(self, name):
-        self._calls.append((name,))
-        return self._adapted.get(name)
-
-    def __getattr__(self, name):
-        """Thunk all undefined access through to self._adapted."""
-        # raise AttributeError, name 
-        return getattr(self._adapted, name)
-
-    def readv(self, name, offsets):
-        self._calls.append((name, offsets))
-        return self._adapted.readv(name, offsets)
-
-
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
@@ -1626,34 +1678,37 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).")
+            help="Access using SFTP (most SSH servers provide SFTP).",
+            default_port=22)
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            )
+            default_port=80)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+            default_port=443)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            )
+            default_port=80)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+            default_port=443)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-            help="Read-only access of branches exported on the web.")
+            help="Read-only access of branches exported on the web.",
+            default_port=80)
 register_transport_proto('https://',
-            help="Read-only access of branches exported on the web using SSL.")
+            help="Read-only access of branches exported on the web using SSL.",
+            default_port=443)
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
@@ -1662,14 +1717,18 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 
 register_transport_proto('ftp://',
-            help="Access using passive FTP.")
+            help="Access using passive FTP.",
+            default_port=21)
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://',
-            help="Access using active FTP.")
+            help="Access using active FTP.",
+            default_port=21)
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+
+# chroots cannot be implicitly accessed, they must be explicitly created:
 register_transport_proto('chroot+')
 
 register_transport_proto('readonly+',
@@ -1679,6 +1738,9 @@ register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTrans
 
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+
+register_transport_proto('trace+')
+register_lazy_transport('trace+', 'bzrlib.transport.trace', 'TransportTraceDecorator')
 
 register_transport_proto('unlistable+')
 register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
@@ -1692,14 +1754,15 @@ register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
 register_transport_proto('bzr://',
-            help="Fast access using the Bazaar smart server.")
+            help="Fast access using the Bazaar smart server.",
+            default_port=4155)
 
 register_lazy_transport('bzr://',
                         'bzrlib.transport.remote',
                         'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-             )
+            default_port=80)
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
@@ -1710,7 +1773,8 @@ register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.")
+            help="Fast access using the Bazaar smart server over SSH.",
+            default_port=22)
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'RemoteSSHTransport')
