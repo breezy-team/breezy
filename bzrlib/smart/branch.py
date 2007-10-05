@@ -135,6 +135,8 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             return FailedSmartServerResponse(('TokenMismatch',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
+        except errors.LockFailed, e:
+            return FailedSmartServerResponse(('LockFailed', str(e.lock), str(e.why)))
         branch.repository.leave_lock_in_place()
         branch.leave_lock_in_place()
         branch.unlock()

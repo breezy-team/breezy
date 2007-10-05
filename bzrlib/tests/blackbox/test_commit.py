@@ -550,4 +550,4 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
             retcode=3)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: Cannot lock.*readonly transport\n$')
+            r'^bzr: ERROR: Cannot lock.*readonly transport')

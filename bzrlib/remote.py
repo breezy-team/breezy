@@ -414,6 +414,8 @@ class RemoteRepository(object):
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -940,6 +942,8 @@ class RemoteBranch(branch.Branch):
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         elif response[0] == 'ReadOnlyError':
             raise errors.ReadOnlyError(self)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
             
