@@ -461,6 +461,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
                                             self.pool)
+                self.mutter("setting revision property %r to %r" % (prop, value))
 
             for baton in reversed(branch_batons):
                 self.editor.close_directory(baton, self.pool)
