@@ -126,6 +126,32 @@ class BrokenRepoScenario(object):
         return self.test_case.add_revision(repo, revision_id, inv, parent_ids)
 
 
+class UndamagedRepositoryScenario(BrokenRepoScenario):
+    """A scenario where the repository has no damage.
+
+    It has a single revision, 'rev1a', with a single file.
+    """
+
+    def all_versions(self):
+        return ['rev1a']
+
+    def populated_parents(self):
+        return [([], 'rev1a')]
+
+    def corrected_parents(self):
+        # Same as the populated parents, because there was nothing wrong.
+        return self.populated_parents()
+
+    def check_regexes(self):
+        return ["0 unreferenced text ancestors"]
+
+    def populate_repository(self, repo):
+        # make rev1a: A well-formed revision, containing 'a-file'
+        inv = self.make_one_file_inventory(
+            repo, 'rev1a', [], root_revision='rev1a')
+        self.add_revision(repo, 'rev1a', inv, [])
+
+
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev2' has 'a-file' with a
     parent 'rev1b' that is not in the revision ancestry.
@@ -151,7 +177,9 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
 
     def check_regexes(self):
         return [r"\* a-file-id version rev2 has parents \['rev1a', 'rev1b'\] "
-                r"but should have \['rev1a'\]"]
+                r"but should have \['rev1a'\]",
+                "1 unreferenced text ancestors",
+                ]
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
@@ -197,7 +225,10 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
 
     def check_regexes(self):
         return [r"\* a-file-id version rev3 has parents "
-                r"\['rev1c'\] but should have \[\]"]
+                r"\['rev1c'\] but should have \[\]",
+                # Also check reporting of unreferenced ancestors
+                r"unreferenced ancestor: {rev1c} in a-file-id",
+                ]
 
     def populate_repository(self, repo):
         # make rev2, with a-file
@@ -476,6 +507,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
 class BrokenRepositoryTestProviderAdapter(TestScenarioApplier):
 
     scenario_classes = [
+        UndamagedRepositoryScenario,
         FileParentIsNotInRevisionAncestryScenario,
         FileParentHasInaccessibleInventoryScenario,
         FileParentsNotReferencedByAnyInventoryScenario,

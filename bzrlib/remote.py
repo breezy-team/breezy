@@ -626,12 +626,11 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
-    def find_bad_ancestors(self, revision_ids, file_id, vf,
-                           inventory_revisions):
+    def get_versioned_file_checker(self, revisions, revision_versions_cache):
         self._ensure_real()
-        return self._real_repository.find_bad_ancestors(revision_ids, file_id,
-            vf, inventory_revisions)
-
+        return self._real_repository.get_versioned_file_checker(
+            revisions, revision_versions_cache)
+        
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """

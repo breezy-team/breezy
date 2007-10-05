@@ -1455,32 +1455,6 @@ class Repository(object):
     def get_versioned_file_checker(self, revisions, revision_versions_cache):
         return WeaveChecker(revisions, revision_versions_cache, self)
 
-    def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
-                           revision_versions):
-        """Search the versionedfile for ancestors that are not referenced.
-
-        The graph of a given versionedfile should be a subset of the graph
-        described by the repository's revisions.  One possible deviation is
-        if a text's parents are not a subset of its revision's parents'
-        last-modified revisions.  This deviation prevents
-        fileids_altered_by_revision_ids from correctly determining which
-        revisions of each text need to be fetched.
-
-        This method detects this case.
-
-        :param revision_ids: The revisions to scan for deviations
-        :file_id: The file-id of the versionedfile to scan
-        :versionedfile: The versionedfile to scan
-        :revision_versions: A dict that is a cache of last-modified revisions
-            of files for each version
-        """
-        graph = self.get_graph()
-        return versionedfile.find_bad_ancestors(
-            revision_ids,
-            revision_versions.get_text_version,
-            file_id,
-            graph)
-        
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.

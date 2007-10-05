@@ -218,13 +218,10 @@ class Check(object):
             for revision_id, (weave_parents,correct_parents) in result.items():
                 self.inconsistent_parents.append(
                     (revision_id, weave_id, weave_parents, correct_parents))
-            result = w.find_bad_ancestors(
-                self.planned_revisions,
-                self.revision_versions.get_text_version,
-                weave_id,
-                self.repository.get_graph())
-            for revision_id in result.iterkeys():
-                self.unreferenced_ancestors.add((weave_id, revision_id))
+                unreferenced_parents = set(weave_parents)-set(correct_parents)
+                for unreferenced_parent in unreferenced_parents:
+                    self.unreferenced_ancestors.add(
+                        (weave_id, unreferenced_parent))
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):

@@ -496,64 +496,6 @@ class VersionedFile(object):
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
-    def find_bad_ancestors(self, revision_ids, get_text_version, file_id,
-            repo_graph):
-        """Search this versionedfile for ancestors that are not referenced.
-
-        One possible deviation is if a text's parents are not a subset of its
-        revision's parents' last-modified revisions.  This deviation prevents
-        fileids_altered_by_revision_ids from correctly determining which
-        revisions of each text need to be fetched.
-
-        This method detects this case.
-
-        :param revision_ids: The revisions to scan for deviations
-        :param file_id: The file-id of the versionedfile to scan
-        :param get_text_version: a callable that takes two arguments,
-            file_id and a revision_id, and returns the id of text version of
-            that file in that revision.
-
-        :returns: a dict mapping bad parents to a set of revisions they occur
-            in.
-        """
-        result = {}
-        from bzrlib.trace import mutter
-        for num, revision_id in enumerate(revision_ids):
-
-            #if revision_id == 'broken-revision-1-2': import pdb; pdb.set_trace()
-            #if revision_id == 'broken-revision-1-2':
-            #    result.setdefault('parent-1',set()).add('broken-revision-1-2')
-            #    result.setdefault('parent-2',set()).add('broken-revision-1-2')
-            text_revision = get_text_version(file_id, revision_id)
-            if text_revision is None:
-                continue
-
-            file_parents = repo_graph.get_parents([text_revision])[0]
-            revision_parents = set()
-            for parent_id in file_parents:
-                try:
-                    revision_parents.add(get_text_version(file_id, parent_id))
-                # Skip ghosts (this means they can't provide texts...)
-                except errors.RevisionNotPresent:
-                    continue
-            # XXX:
-            knit_parents = set(self.get_parents(text_revision))
-            unreferenced = knit_parents.difference(revision_parents)
-            for unreferenced_id in unreferenced:
-                result.setdefault(unreferenced_id, set()).add(text_revision)
-
-            correct_parents = tuple(repo_graph.heads(knit_parents))
-            spurious_parents = knit_parents.difference(correct_parents)
-            for spurious_parent in spurious_parents:
-                result.setdefault(spurious_parent, set()).add(text_revision)
-            # XXX: false positives
-            #text_parents = self.get_parents(text_revision)
-            #if text_parents != file_parents:
-            #    for text_parent in text_parents:
-            #        result.setdefault(text_parent, set()).add(text_revision)
-        mutter('find_bad_ancestors: %r', result)
-        return result
-
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.
