@@ -709,6 +709,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         file_id = filename + '-id'
         entry = inventory.InventoryFile(file_id, filename, 'TREE_ROOT')
         entry.revision = revision
+        entry.text_size = 0
         inv.add(entry)
         vf = repo.weave_store.get_weave_or_empty(file_id,
                                                  repo.get_transaction())
