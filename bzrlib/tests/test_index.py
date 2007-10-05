@@ -366,6 +366,10 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('name', "not an index\n")
         index = GraphIndex(trans, 'name', 13)
 
+    def test_open_sets_parsed_map_empty(self):
+        index = self.make_index()
+        self.assertEqual([], index._parsed_byte_map)
+
     def test_iter_all_entries_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))

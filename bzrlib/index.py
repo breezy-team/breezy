@@ -245,6 +245,7 @@ class GraphIndex(object):
         self._transport = transport
         self._name = name
         self._nodes = None
+        self._parsed_byte_map = []
         self._key_count = None
         self._keys_by_offset = None
         self._nodes_by_key = None
