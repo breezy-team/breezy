@@ -874,3 +874,32 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         stream = repo.get_data_stream(['revid'])
         self.assertRaises(errors.SmartProtocolError, list, stream)
     
+    def test_backwards_compatibility(self):
+        """If the server doesn't recognise this request, fallback to VFS."""
+        error_msg = (
+            "Generic bzr smart protocol error: "
+            "bad request 'Repository.stream_knit_data_for_revisions'")
+        responses = [
+            (('error', error_msg), '')]
+        repo, client = self.setup_fake_client_and_repository(
+            responses, 'path')
+        self.mock_called = False
+        repo._real_repository = MockRealRepository(self)
+        repo.get_data_stream(['revid'])
+        self.assertTrue(self.mock_called)
+        self.failIf(client.expecting_body,
+            "The protocol has been left in an unclean state that will cause "
+            "TooManyConcurrentRequests errors.")
+
+
+class MockRealRepository(object):
+    """Helper class for TestRepositoryStreamKnitData.test_unknown_method."""
+
+    def __init__(self, test):
+        self.test = test
+
+    def get_data_stream(self, revision_ids):
+        self.test.assertEqual(['revid'], revision_ids)
+        self.test.mock_called = True
+
+
