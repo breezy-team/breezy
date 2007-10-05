@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,9 +47,32 @@ class TestNonAscii(TestCaseWithTransport):
         bzrlib.user_encoding = self._orig_encoding
         super(TestNonAscii, self).tearDown()
 
-    def create_base(self):
-        bzr = self.run_bzr
+    def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None):
+        """Run bzr and decode the output into a particular encoding.
 
+        Returns a string containing the stdout output from bzr.
+
+        :param fail: If true, the operation is expected to fail with 
+            a UnicodeError.
+        """
+        if encoding is None:
+            encoding = bzrlib.user_encoding
+        try:
+            out = self.run_bzr(args, output_encoding=encoding, encoding=encoding,
+                retcode=retcode)[0]
+            return out.decode(encoding)
+        except UnicodeError, e:
+            if not fail:
+                raise
+        else:
+            # This command, run from the regular command line, will give a
+            # traceback to the user.  That's not really good for a situation
+            # that can be provoked just by the interaction of their input data
+            # and locale, as some of these are.  What would be better?
+            if fail:
+                self.fail("Expected UnicodeError not raised")
+
+    def create_base(self):
         fs_enc = sys.getfilesystemencoding()
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
@@ -86,13 +108,11 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt = wt
 
     def test_status(self):
-        bzr = self.run_bzr_decode
-
         open(self.info['filename'], 'ab').write('added something\n')
-        txt = bzr('status')
+        txt = self.run_bzr_decode('status')
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
-        txt = bzr('status', encoding='ascii')
+        txt = self.run_bzr_decode('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
                     self.info['filename'].encode('ascii', 'replace'),)
         self.assertEqual(expected, txt)
@@ -136,7 +156,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr(['relpath', self.info['filename']])
         self.assertEqual(self.info['filename'] + '\n', txt)
 
-        bzr(['relpath', self.info['filename']], encoding='ascii', retcode=3)
+        bzr(['relpath', self.info['filename']], encoding='ascii', fail=True)
 
     def test_inventory(self):
         bzr = self.run_bzr_decode
@@ -146,7 +166,7 @@ class TestNonAscii(TestCaseWithTransport):
                          txt.splitlines())
 
         # inventory should fail if unable to encode
-        bzr('inventory', encoding='ascii', retcode=3)
+        bzr('inventory', encoding='ascii', fail=True)
 
         # We don't really care about the ids themselves,
         # but the command shouldn't fail
@@ -177,7 +197,7 @@ class TestNonAscii(TestCaseWithTransport):
         dirname = self.info['directory']
 
         # fname1 already exists
-        bzr(['mv', 'a', fname1], retcode=3)
+        bzr(['mv', 'a', fname1], fail=True)
 
         txt = bzr(['mv', 'a', fname2])
         self.assertEqual(u'a => %s\n' % fname2, txt)
@@ -285,7 +305,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('renames')
         self.assertEqual(u'a => %s\n' % fname, txt)
 
-        bzr('renames', retcode=3, encoding='ascii')
+        bzr('renames', fail=True, encoding='ascii')
 
     def test_remove(self):
         bzr = self.run_bzr_decode
@@ -368,7 +388,7 @@ class TestNonAscii(TestCaseWithTransport):
         # Deleted should fail if cannot decode
         # Because it is giving the exact paths
         # which might be used by a front end
-        bzr('deleted', encoding='ascii', retcode=3)
+        bzr('deleted', encoding='ascii', fail=True)
 
     def test_modified(self):
         bzr = self.run_bzr_decode
@@ -379,7 +399,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('modified')
         self.assertEqual(fname+'\n', txt)
 
-        bzr('modified', encoding='ascii', retcode=3)
+        bzr('modified', encoding='ascii', fail=True)
 
     def test_added(self):
         bzr = self.run_bzr_decode
@@ -391,7 +411,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('added')
         self.assertEqual(fname+'\n', txt)
 
-        bzr('added', encoding='ascii', retcode=3)
+        bzr('added', encoding='ascii', fail=True)
 
     def test_root(self):
         bzr = self.run_bzr_decode
@@ -407,7 +427,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('root')
         self.failUnless(txt.endswith(dirname+'\n'))
 
-        txt = bzr('root', encoding='ascii', retcode=3)
+        txt = bzr('root', encoding='ascii', fail=True)
 
     def test_log(self):
         bzr = self.run_bzr_decode
@@ -443,7 +463,7 @@ class TestNonAscii(TestCaseWithTransport):
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
-        bzr(['touching-revisions', fname2], encoding='ascii', retcode=3)
+        bzr(['touching-revisions', fname2], encoding='ascii', fail=True)
 
     def test_ls(self):
         bzr = self.run_bzr_decode
@@ -455,8 +475,8 @@ class TestNonAscii(TestCaseWithTransport):
         self.assertEqual(sorted(['', 'a', 'b', self.info['filename']]),
                          sorted(txt.split('\0')))
 
-        txt = bzr('ls', encoding='ascii', retcode=3)
-        txt = bzr('ls --null', encoding='ascii', retcode=3)
+        txt = bzr('ls', encoding='ascii', fail=True)
+        txt = bzr('ls --null', encoding='ascii', fail=True)
 
     def test_unknowns(self):
         bzr = self.run_bzr_decode
@@ -469,7 +489,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('unknowns')
         self.assertEqual(u'"%s"\n' % (fname,), txt)
 
-        bzr('unknowns', encoding='ascii', retcode=3)
+        bzr('unknowns', encoding='ascii', fail=True)
 
     def test_ignore(self):
         bzr = self.run_bzr_decode

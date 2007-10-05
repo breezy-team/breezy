@@ -72,15 +72,14 @@ except ImportError:
     pass
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
-import bzrlib.osutils
 import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eighteen,
     zero_ninetyone,
+    zero_ninetytwo,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -135,6 +134,7 @@ def packages_to_test():
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
+    import bzrlib.tests.inventory_implementations
     import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
@@ -149,6 +149,7 @@ def packages_to_test():
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
+            bzrlib.tests.inventory_implementations,
             bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
@@ -160,7 +161,7 @@ def packages_to_test():
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
-    Compared to this unittest version this class adds support for
+    Compared to the unittest version this class adds support for
     profiling, benchmarking, stopping as soon as a test fails,  and
     skipping tests.  There are further-specialized subclasses for
     different types of display.
@@ -341,7 +342,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         except KeyboardInterrupt:
             raise
         except:
-            self.addError(test, test.__exc_info())
+            self.addError(test, test._exc_info())
         else:
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
@@ -374,7 +375,6 @@ class ExtendedTestResult(unittest._TextTestResult):
     def wasStrictlySuccessful(self):
         if self.unsupported or self.known_failure_count:
             return False
-
         return self.wasSuccessful()
 
 
@@ -982,6 +982,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsSameRealPath(self, path1, path2):
+        """Fail if path1 and path2 points to different files"""
+        self.assertEqual(osutils.realpath(path1),
+                         osutils.realpath(path2),
+                         "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
+
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
@@ -1147,6 +1153,7 @@ class TestCase(unittest.TestCase):
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -1283,11 +1290,6 @@ class TestCase(unittest.TestCase):
         else:
             return "DELETED log file to reduce memory footprint"
 
-    @deprecated_method(zero_eighteen)
-    def capture(self, cmd, retcode=0):
-        """Shortcut that splits cmd into words, runs, and returns stdout"""
-        return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
-
     def requireFeature(self, feature):
         """This test requires a specific feature is available.
 
@@ -1296,30 +1298,13 @@ class TestCase(unittest.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    @deprecated_method(zero_eighteen)
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
-        """Invoke bzr and return (stdout, stderr).
-
-        Don't call this method, just use run_bzr() which is equivalent.
-
-        :param argv: Arguments to invoke bzr.  This may be either a 
-            single string, in which case it is split by shlex into words, 
-            or a list of arguments.
-        :param retcode: Expected return code, or None for don't-care.
-        :param encoding: Encoding for sys.stdout and sys.stderr
-        :param stdin: A string to be used as stdin for the command.
-        :param working_dir: Change to this directory before running
-        """
-        return self._run_bzr_autosplit(argv, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
-
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
         """Run bazaar command line, splitting up a string command line."""
         if isinstance(args, basestring):
-            args = list(shlex.split(args))
+            # shlex don't understand unicode strings,
+            # so args should be plain string (bialix 20070906)
+            args = list(shlex.split(str(args)))
         return self._run_bzr_core(args, retcode=retcode,
                 encoding=encoding, stdin=stdin, working_dir=working_dir,
                 )
@@ -1350,7 +1335,7 @@ class TestCase(unittest.TestCase):
         try:
             result = self.apply_redirected(ui.ui_factory.stdin,
                 stdout, stderr,
-                bzrlib.commands.run_bzr_catch_errors,
+                bzrlib.commands.run_bzr_catch_user_errors,
                 args)
         finally:
             logger.removeHandler(handler)
@@ -1369,7 +1354,8 @@ class TestCase(unittest.TestCase):
                               message='Unexpected return code')
         return out, err
 
-    def run_bzr(self, *args, **kwargs):
+    def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
+                working_dir=None, error_regexes=[], output_encoding=None):
         """Invoke bzr, as if it were run from the command line.
 
         The argument list should not include the bzr program name - the
@@ -1382,9 +1368,6 @@ class TestCase(unittest.TestCase):
 
         2- A single string, eg "add a".  This is the most convenient 
         for hardcoded commands.
-
-        3- Several varargs parameters, eg run_bzr("add", "a").  
-        This is not recommended for new code.
 
         This runs bzr through the interface that catches and reports
         errors, and with logging set to something approximating the
@@ -1404,38 +1387,16 @@ class TestCase(unittest.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        retcode = kwargs.pop('retcode', 0)
-        encoding = kwargs.pop('encoding', None)
-        stdin = kwargs.pop('stdin', None)
-        working_dir = kwargs.pop('working_dir', None)
-        error_regexes = kwargs.pop('error_regexes', [])
-
-        if kwargs:
-            raise TypeError("run_bzr() got unexpected keyword arguments '%s'"
-                            % kwargs.keys())
-
-        if len(args) == 1:
-            if isinstance(args[0], (list, basestring)):
-                args = args[0]
-        else:
-            symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
-                                   DeprecationWarning, stacklevel=3)
-
-        out, err = self._run_bzr_autosplit(args=args,
+        out, err = self._run_bzr_autosplit(
+            args=args,
             retcode=retcode,
-            encoding=encoding, stdin=stdin, working_dir=working_dir,
+            encoding=encoding,
+            stdin=stdin,
+            working_dir=working_dir,
             )
-
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
-
-    def run_bzr_decode(self, *args, **kwargs):
-        if 'encoding' in kwargs:
-            encoding = kwargs['encoding']
-        else:
-            encoding = bzrlib.user_encoding
-        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes
@@ -1874,19 +1835,45 @@ class TestCaseWithMemoryTransport(TestCase):
         base = self.get_vfs_only_server().get_url()
         return self._adjust_url(base, relpath)
 
-    def _make_test_root(self):
-        if TestCaseWithMemoryTransport.TEST_ROOT is not None:
-            return
-        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
-        TestCaseWithMemoryTransport.TEST_ROOT = root
-        
-        # make a fake bzr directory there to prevent any tests propagating
-        # up onto the source directory's real branch
+    def _create_safety_net(self):
+        """Make a fake bzr directory.
+
+        This prevents any tests propagating up onto the TEST_ROOT directory's
+        real branch.
+        """
+        root = TestCaseWithMemoryTransport.TEST_ROOT
         bzrdir.BzrDir.create_standalone_workingtree(root)
 
-        # The same directory is used by all tests, and we're not specifically
-        # told when all tests are finished.  This will do.
-        atexit.register(_rmtree_temp_dir, root)
+    def _check_safety_net(self):
+        """Check that the safety .bzr directory have not been touched.
+
+        _make_test_root have created a .bzr directory to prevent tests from
+        propagating. This method ensures than a test did not leaked.
+        """
+        root = TestCaseWithMemoryTransport.TEST_ROOT
+        wt = workingtree.WorkingTree.open(root)
+        last_rev = wt.last_revision()
+        if last_rev != 'null:':
+            # The current test have modified the /bzr directory, we need to
+            # recreate a new one or all the followng tests will fail.
+            # If you need to inspect its content uncomment the following line
+            # import pdb; pdb.set_trace()
+            _rmtree_temp_dir(root + '/.bzr')
+            self._create_safety_net()
+            raise AssertionError('%s/.bzr should not be modified' % root)
+
+    def _make_test_root(self):
+        if TestCaseWithMemoryTransport.TEST_ROOT is None:
+            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            TestCaseWithMemoryTransport.TEST_ROOT = root
+
+            self._create_safety_net()
+
+            # The same directory is used by all tests, and we're not
+            # specifically told when all tests are finished.  This will do.
+            atexit.register(_rmtree_temp_dir, root)
+
+        self.addCleanup(self._check_safety_net)
 
     def makeAndChdirToTestDir(self):
         """Create a temporary directories for this one test.
@@ -1993,7 +1980,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         name and then create two subdirs - test and home under it.
         """
         # create a directory within the top level test directory
-        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
+        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
         self.test_home_dir = self.test_base_dir + '/home'
@@ -2077,7 +2064,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         else:
             self.failIf(osutils.lexists(path),path+" exists")
 
-    def assertInWorkingTree(self,path,root_path='.',tree=None):
+    def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2088,7 +2075,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
 
-    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2425,6 +2412,7 @@ def test_suite():
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
+                   'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
@@ -2613,6 +2601,17 @@ class Feature(object):
         return self.__class__.__name__
 
 
+class _SymlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_symlinks()
+
+    def feature_name(self):
+        return 'symlinks'
+
+SymlinkFeature = _SymlinkFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 
@@ -2640,3 +2639,36 @@ class TestScenarioApplier(object):
         new_id = "%s(%s)" % (new_test.id(), scenario[0])
         new_test.id = lambda: new_id
         return new_test
+
+
+def probe_unicode_in_user_encoding():
+    """Try to encode several unicode strings to use in unicode-aware tests.
+    Return first successfull match.
+
+    :return:  (unicode value, encoded plain string value) or (None, None)
+    """
+    possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+    for uni_val in possible_vals:
+        try:
+            str_val = uni_val.encode(bzrlib.user_encoding)
+        except UnicodeEncodeError:
+            # Try a different character
+            pass
+        else:
+            return uni_val, str_val
+    return None, None
+
+
+def probe_bad_non_ascii(encoding):
+    """Try to find [bad] character with code [128..255]
+    that cannot be decoded to unicode in some encoding.
+    Return None if all non-ascii characters is valid
+    for given encoding.
+    """
+    for i in xrange(128, 256):
+        char = chr(i)
+        try:
+            char.decode(encoding)
+        except UnicodeDecodeError:
+            return char
+    return None

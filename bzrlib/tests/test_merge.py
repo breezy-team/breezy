@@ -142,7 +142,7 @@ class TestMerge(TestCaseWithTransport):
                     this_tree=tree_b, ignore_zero=True)
         log = self._get_log(keep_log_file=True)
         self.failUnless('All changes applied successfully.\n' not in log)
-        tree_b.revert([])
+        tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
                     this_tree=tree_b, ignore_zero=False)
         log = self._get_log(keep_log_file=True)
@@ -228,7 +228,7 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit('changed file to directory')
         tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual('directory', file_kind('tree_b/file'))
-        tree_b.revert([])
+        tree_b.revert()
         self.assertEqual('file', file_kind('tree_b/file'))
         self.build_tree_contents([('tree_b/file', 'content_2')])
         tree_b.commit('content change')

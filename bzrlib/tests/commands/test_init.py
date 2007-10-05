@@ -23,7 +23,7 @@ class TestInit(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestInit, self).setUp()
-        self.install_hooks()
+        self.start_logging_connections()
 
     def test_init(self):
         cmd = cmd_init()

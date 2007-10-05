@@ -317,6 +317,9 @@ class TestStatus(TestCaseWithTransport):
         result = self.run_bzr("status -r 0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
 
+        result = self.run_bzr("status -c 1")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -r 0")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n" \
@@ -368,6 +371,28 @@ class TestStatus(TestCaseWithTransport):
         result2 = self.run_bzr("status --versioned -r 0..")[0]
         self.assertEquals(result2, result)
 
+    def test_status_SV(self):
+        tree = self.make_branch_and_tree('.')
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status -SV")[0]
+        self.assertNotContainsRe(result, "hello.txt")
+
+        tree.add("hello.txt")
+        result = self.run_bzr("status -SV")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        tree.commit(message="added")
+        result = self.run_bzr("status -SV -r 0..1")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status -SV -r 0")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        result2 = self.run_bzr("status -SV -r 0..")[0]
+        self.assertEquals(result2, result)
+
     def assertStatusContains(self, pattern):
         """Run status, and assert it contains the given pattern"""
         result = self.run_bzr("status --short")[0]
@@ -385,6 +410,10 @@ class TestStatus(TestCaseWithTransport):
         self.assertStatusContains('RK  file => directory/')
         rmdir('directory')
         self.assertStatusContains('RD  file => directory')
+
+    def test_status_illegal_revision_specifiers(self):
+        out, err = self.run_bzr('status -r 1..23..123', retcode=3)
+        self.assertContainsRe(err, 'one or two revision specifiers')
 
 
 class TestStatusEncodings(TestCaseWithTransport):
