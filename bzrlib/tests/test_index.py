@@ -358,13 +358,13 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             builder.add_node(key, value, references)
         stream = builder.finish()
         trans = self.get_transport()
-        trans.put_file('index', stream)
-        return GraphIndex(trans, 'index')
+        size = trans.put_file('index', stream)
+        return GraphIndex(trans, 'index', size)
 
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        index = GraphIndex(trans, 'name')
+        index = GraphIndex(trans, 'name', 13)
 
     def test_iter_all_entries_empty(self):
         index = self.make_index()
@@ -494,7 +494,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_validate_bad_index_errors(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        index = GraphIndex(trans, 'name')
+        index = GraphIndex(trans, 'name', 13)
         self.assertRaises(errors.BadIndexFormatSignature, index.validate)
 
     def test_validate_bad_node_refs(self):
@@ -539,12 +539,12 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
             builder.add_node(key, value, references)
         stream = builder.finish()
         trans = self.get_transport()
-        trans.put_file(name, stream)
-        return GraphIndex(trans, name)
+        size = trans.put_file(name, stream)
+        return GraphIndex(trans, name, size)
 
     def test_open_missing_index_no_error(self):
         trans = self.get_transport()
-        index1 = GraphIndex(trans, 'missing')
+        index1 = GraphIndex(trans, 'missing', 100)
         index = CombinedGraphIndex([index1])
 
     def test_add_index(self):
@@ -677,7 +677,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
     def test_validate_bad_child_index_errors(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        index1 = GraphIndex(trans, 'name')
+        index1 = GraphIndex(trans, 'name', 13)
         index = CombinedGraphIndex([index1])
         self.assertRaises(errors.BadIndexFormatSignature, index.validate)
 

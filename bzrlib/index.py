@@ -232,11 +232,15 @@ class GraphIndex(object):
     suitable for production use. :XXX
     """
 
-    def __init__(self, transport, name):
+    def __init__(self, transport, name, size):
         """Open an index called name on transport.
 
         :param transport: A bzrlib.transport.Transport.
         :param name: A path to provide to transport API calls.
+        :param size: The size of the index in bytes. This is used for bisection
+            logic to perform partial index reads. While the size could be
+            obtained by statting the file this introduced an additional round
+            trip that is avoided by having it supplied.
         """
         self._transport = transport
         self._name = name
@@ -244,6 +248,7 @@ class GraphIndex(object):
         self._key_count = None
         self._keys_by_offset = None
         self._nodes_by_key = None
+        self._size = size
 
     def _buffer_all(self):
         """Buffer all the index data.

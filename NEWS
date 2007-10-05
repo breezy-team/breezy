@@ -126,6 +126,9 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+   * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
+     constructor, for enabling bisection searches. (Robert Collins)
+
    * ``CommitBuilder.record_entry_contents`` now requires the root entry of a
      tree be supplied to it, previously failing to do so would trigger a
      deprecation warning. (Robert Collins)
