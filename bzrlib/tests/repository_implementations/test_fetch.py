@@ -64,6 +64,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         knit3_repo = b_bzrdir.create_repository()
         # fetch with a default limit (grab everything)
         knit3_repo.fetch(tree_a.branch.repository, revision_id=None)
+        # Reopen to avoid any in-memory caching - ensure its reading from
+        # disk.
+        knit3_repo = b_bzrdir.open_repository()
         rev1_tree = knit3_repo.revision_tree('rev1')
         lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
         self.assertEqual([], lines)
@@ -82,7 +85,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         wt = self.make_branch_and_tree('a-repo-with-sigs')
         wt.commit('rev1', allow_pointless=True, rev_id='rev1')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         return repo
 
     def test_fetch_copies_signatures(self):

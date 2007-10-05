@@ -72,7 +72,7 @@ class RepoFetcher(object):
     after running:
     count_copied -- number of revisions copied
 
-    This should not be used directory, its essential a object to encapsulate
+    This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
@@ -80,11 +80,10 @@ class RepoFetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
-            # check that last_revision is in 'from' and then return a
-            # no-operation.
-            if last_revision is not None and not is_null(last_revision):
-                to_repository.get_revision(last_revision)
-            return
+            # repository.fetch should be taking care of this case.
+            raise errors.BzrError('RepoFetcher run '
+                    'between two objects at the same location: '
+                    '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance
@@ -353,7 +352,7 @@ class Inter1and2Helper(object):
             if root_id not in versionedfile:
                 versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
                     self.target.get_transaction())
-            parent_texts[root_id] = versionedfile[root_id].add_lines(
+            _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
                 revision_id, parents, [], parent_texts)
 
     def regenerate_inventory(self, revs):

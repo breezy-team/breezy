@@ -32,7 +32,12 @@ from bzrlib.inventory import Inventory
 import bzrlib.repofmt.weaverepo as weaverepo
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
 
@@ -173,7 +178,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
     
-        # start by adding a file so the data for hte file exists.
+        # start by adding a file so the data knit for the file exists in
+        # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')
@@ -237,22 +243,27 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
-        inv_file = tree_a.branch.repository.control_weaves.get_weave(
-            'inventory', 
-            tree_a.branch.repository.get_transaction())
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        inv_file = tree_a.branch.repository.get_inventory_weave()
         inv_file.add_lines('orphan', [], [])
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
         # and sign 'rev2'
-        tree_a.branch.repository.sign_revision('rev2',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        tree_a.branch.repository.sign_revision('rev2', bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
 
     def test_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
         # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
+        # as some formats keyed off inventory data in the past.)
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.bzrdir.open_repository()
@@ -271,7 +282,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(['rev1'],
                          repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
         
-    def test_fetch_preserves_signatures(self):
+    def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
         from_signature = from_repo.get_signature_text('rev2')
         to_repo = self.make_to_repository('target')
@@ -289,22 +300,23 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = Inventory(revision_id='ghost')
-        inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
-        sha1 = repo.add_inventory('ghost', inv, [])
-        rev = bzrlib.revision.Revision(timestamp=0,
-                                       timezone=None,
-                                       committer="Foo Bar <foo@example.com>",
-                                       message="Message",
-                                       inventory_sha1=sha1,
-                                       revision_id='ghost')
-        rev.parent_ids = []
-        repo.add_revision('ghost', rev)
+        repo.lock_write()
+        builder = repo.get_commit_builder(None, [], None,
+            committer="Foo Bar <foo@example.com>",
+            revision_id='ghost')
+        ie = bzrlib.inventory.InventoryDirectory('TREE_ROOT', '', None)
+        builder.record_entry_contents(ie, [], '', None,
+            ('directory', None, None, None))
+        builder.finish_inventory()
+        builder.commit("Message")
+        repo.unlock()
          
         repo = self.make_to_repository('missing_ghost')
         inv = Inventory(revision_id='with_ghost')
         inv.root.revision = 'with_ghost'
+        repo.lock_write()
+        repo.start_write_group()
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -314,6 +326,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                                        revision_id='with_ghost')
         rev.parent_ids = ['ghost']
         repo.add_revision('with_ghost', rev)
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_fetch_all_fixes_up_ghost(self):
         # fetching from a repo with a current ghost unghosts it in referencing
@@ -325,3 +339,27 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # rev must not be corrupt now
         rev = repo.get_revision('with_ghost')
         self.assertEqual([None, 'ghost', 'with_ghost'], repo.get_ancestry('with_ghost'))
+
+
+class TestFetchDependentData(TestCaseWithInterRepository):
+
+    def test_reference(self):
+        from_tree = self.make_branch_and_tree('tree')
+        to_repo = self.make_to_repository('to')
+        if (not from_tree.supports_tree_reference() or
+            not from_tree.branch.repository._format.supports_tree_reference or
+            not to_repo._format.supports_tree_reference):
+            raise TestNotApplicable("Need subtree support.")
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.commit('subrev 1')
+        from_tree.add_reference(subtree)
+        tree_rev = from_tree.commit('foo')
+        # now from_tree has a last-modified of subtree of the rev id of the
+        # commit for foo, and a reference revision of the rev id of the commit
+        # for subrev 1
+        to_repo.fetch(from_tree.branch.repository, tree_rev)
+        # to_repo should have a file_graph for from_tree.path2id('subtree') and
+        # revid tree_rev.
+        file_vf = to_repo.weave_store.get_weave(
+            from_tree.path2id('subtree'), to_repo.get_transaction())
+        self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))

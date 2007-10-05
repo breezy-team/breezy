@@ -36,7 +36,7 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http', 'bzr+https']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -234,6 +234,7 @@ class RemoteTransport(transport.ConnectedTransport):
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
         self._translate_error(resp)
+        return len(upload_contents)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False,
@@ -290,7 +291,7 @@ class RemoteTransport(transport.ConnectedTransport):
         # the external path for RemoteTransports is the base
         return self.base
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         if not offsets:
             return
 
@@ -450,8 +451,6 @@ class RemoteTCPTransport(RemoteTransport):
 
     def _build_medium(self):
         assert self.base.startswith('bzr://')
-        if self._port is None:
-            self._port = BZR_DEFAULT_PORT
         return medium.SmartTCPClientMedium(self._host, self._port), None
 
 
@@ -483,7 +482,7 @@ class RemoteHTTPTransport(RemoteTransport):
     """
 
     def __init__(self, base, _from_transport=None, http_transport=None):
-        assert base.startswith('bzr+http://')
+        assert ( base.startswith('bzr+http://') or base.startswith('bzr+https://') )
 
         if http_transport is None:
             # FIXME: the password may be lost here because it appears in the

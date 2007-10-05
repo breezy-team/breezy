@@ -67,15 +67,15 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr_error(['Show-base is not supported for this merge type'],
                            'merge ../b -r last:1..last:1 --merge-type weave'
                            ' --show-base')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --reprocess')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
@@ -83,7 +83,7 @@ class TestMerge(ExternalBase):
         b_tip = b.last_revision()
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3)
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
@@ -91,7 +91,7 @@ class TestMerge(ExternalBase):
         self.assertEquals(a.get_parent_ids(), 
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
-        a_tree.revert([], backups=False)
+        a_tree.revert(backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
@@ -164,9 +164,8 @@ class TestMerge(ExternalBase):
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
-        out = self.run_bzr('merge ../branch_a', retcode=3)
-        self.assertEquals(out,
-                ('','bzr: ERROR: Working tree has uncommitted changes.\n'))
+        self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
+                           'merge ../branch_a')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
@@ -235,7 +234,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge a --uncommitted -d b')
         self.failUnlessExists('b/file_1')
         self.failUnlessExists('b/file_ii')
-        tree_b.revert([])
+        tree_b.revert()
         self.run_bzr_error(('Cannot use --uncommitted and --revision',),
                            'merge /a --uncommitted -r1 -d b')
 
@@ -270,7 +269,7 @@ class TestMerge(ExternalBase):
         os.chdir('tree_b')
         self.run_bzr('merge ../tree_a')
         self.assertEqual('directory', file_kind('file'))
-        tree_b.revert([])
+        tree_b.revert()
         self.assertEqual('file', file_kind('file'))
         self.build_tree_contents([('file', 'content_2')])
         tree_b.commit('content change')
@@ -313,7 +312,7 @@ class TestMerge(ExternalBase):
         self.write_directive('directive', source.branch, 'target', 'rev1')
         err = self.run_bzr('merge -d target directive')[1]
         self.assertNotContainsRe(err, 'Preview patch does not match changes')
-        target.revert([])
+        target.revert()
         self.write_directive('directive', source.branch, 'target', 'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
@@ -339,9 +338,45 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge -d target -r revid:rev2a branch_a')
         self.failUnlessExists('target/file1')
         self.failIfExists('target/file2')
-        target.revert([])
+        target.revert()
 
         # It should work if the revid has no integer revno
         self.run_bzr('merge -d target -r revid:rev2a branch_b')
         self.failUnlessExists('target/file1')
         self.failIfExists('target/file2')
+
+    def assertDirectoryContent(self, directory, entries, message=''):
+        """Assert whether entries (file or directories) exist in a directory.
+        
+        It also checks that there are no extra entries.
+        """
+        ondisk = os.listdir(directory)
+        if set(ondisk) == set(entries):
+            return
+        if message:
+            message += '\n'
+        raise AssertionError(
+            '%s"%s" directory content is different:\na = %s\nb = %s\n'
+            % (message, directory, sorted(entries), sorted(ondisk)))
+
+    def test_cherrypicking_merge(self):
+        # make source branch
+        source = self.make_branch_and_tree('source')
+        for f in ('a', 'b', 'c', 'd'):
+            self.build_tree(['source/'+f])
+            source.add(f)
+            source.commit('added '+f, rev_id='rev_'+f)
+        # target branch
+        target = source.bzrdir.sprout('target', 'rev_a').open_workingtree()
+        self.assertDirectoryContent('target', ['.bzr', 'a'])
+        # pick 1 revision
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_c source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c'])
+        target.revert()
+        # pick 2 revisions
+        self.run_bzr('merge -d target -r revid:rev_b..revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'c', 'd'])
+        target.revert()
+        # pick 1 revision with option --changes
+        self.run_bzr('merge -d target -c revid:rev_d source')
+        self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])

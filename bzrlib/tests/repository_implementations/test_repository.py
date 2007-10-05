@@ -234,13 +234,6 @@ class TestRepository(TestCaseWithRepository):
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        repo = self.make_repository('.')
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
-
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
@@ -457,7 +450,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
                           [('file1-id', 'rev3', 'file1-notpresent')]))
-        self.assertRaises(errors.NoSuchId, list,
+        self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
 
@@ -564,10 +557,19 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        inv_file = tree_a.branch.repository.control_weaves.get_weave(
-            'inventory', 
-            tree_a.branch.repository.get_transaction())
-        inv_file.add_lines('orphan', [], [])
+        tree_a.lock_write()
+        try:
+            tree_a.branch.repository.start_write_group()
+            inv_file = tree_a.branch.repository.get_inventory_weave()
+            try:
+                inv_file.add_lines('orphan', [], [])
+            except:
+                tree_a.branch.repository.commit_write_group()
+                raise
+            else:
+                tree_a.branch.repository.abort_write_group()
+        finally:
+            tree_a.unlock()
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -668,10 +670,16 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
-        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
-                          None, None)
-        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
-                          None)
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                              None, None)
+            self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                              None)
+        finally:
+            repo.abort_write_group()
+            repo.unlock()
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

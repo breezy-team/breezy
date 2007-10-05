@@ -16,7 +16,9 @@
 
 
 import os
+import sys
 
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
@@ -122,6 +124,8 @@ class TestRemove(ExternalBase):
         self.run_bzr_remove_changed_files(['modified:[.\s]*a[.\s]*b/c'], files)
 
     def test_remove_changed_files_from_child_dir(self):
+        if sys.platform == 'win32':
+            raise TestSkipped("Windows unable to remove '.' directory")
         tree = self._make_add_and_assert_tree(files)
         self.run_bzr("commit -m 'added files'")
         self.changeFile(a)
