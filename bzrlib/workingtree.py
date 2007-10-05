@@ -702,6 +702,40 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    def path_content_summary(self, path, _lstat=osutils.lstat,
+        _mapper=osutils.file_kind_from_stat_mode):
+        """See Tree.path_content_summary."""
+        abspath = self.abspath(path)
+        try:
+            stat_result = _lstat(abspath)
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = _mapper(stat_result.st_mode)
+        if kind == 'file':
+            size = stat_result.st_size
+            # try for a stat cache lookup
+            if not supports_executable():
+                executable = None # caller can decide policy.
+            else:
+                mode = stat_result.st_mode
+                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            return (kind, size, executable, self._sha_from_stat(
+                path, stat_result))
+        elif kind == 'directory':
+            # perhaps it looks like a plain directory, but it's really a
+            # reference.
+            if self._directory_is_tree_reference(path):
+                kind = 'tree-reference'
+            return kind, None, None, None
+        elif kind == 'symlink':
+            return ('symlink', None, None, os.readlink(abspath))
+        else:
+            return (kind, None, None, None)
+
     @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
@@ -798,6 +832,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for file_id, hash in modified_hashes.iteritems():
                 yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        return None
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
@@ -943,6 +987,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             other_tree.unlock()
         other_tree.bzrdir.retire_bzrdir()
 
+    def _directory_is_tree_reference(self, relpath):
+        # as a special case, if a directory contains control files then 
+        # it's a tree reference, except that the root of the tree is not
+        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        # TODO: We could ask all the control formats whether they
+        # recognize this directory, but at the moment there's no cheap api
+        # to do that.  Since we probably can only nest bzr checkouts and
+        # they always use this name it's ok for now.  -- mbp 20060306
+        #
+        # FIXME: There is an unhandled case here of a subdirectory
+        # containing .bzr but not a branch; that will probably blow up
+        # when you try to commit it.  It might happen if there is a
+        # checkout in a subdirectory.  This can be avoided by not adding
+        # it.  mbp 20070306
+
     @needs_tree_write_lock
     def extract(self, file_id, format=None):
         """Extract a subtree from this tree.
@@ -995,7 +1054,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return wt
 
     def _serialize(self, inventory, out_file):
-        xml5.serializer_v5.write_inventory(self._inventory, out_file)
+        xml5.serializer_v5.write_inventory(self._inventory, out_file,
+            working=True)
 
     def _deserialize(selt, in_file):
         return xml5.serializer_v5.read_inventory(in_file)
@@ -1462,7 +1522,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None):
+             change_reporter=None, possible_transports=None):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1470,7 +1530,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             pp.next_phase()
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
-            count = self.branch.pull(source, overwrite, stop_revision)
+            count = self.branch.pull(source, overwrite, stop_revision,
+                                     possible_transports=possible_transports)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()
@@ -1903,14 +1964,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.apply_inventory_delta(inv_delta)
 
     @needs_tree_write_lock
-    def revert(self, filenames, old_tree=None, backups=True, 
+    def revert(self, filenames=None, old_tree=None, backups=True,
                pb=DummyProgress(), report_changes=False):
         from bzrlib.conflicts import resolve
+        if filenames == []:
+            filenames = None
+            symbol_versioning.warn('Using [] to revert all files is deprecated'
+                ' as of bzr 0.91.  Please use None (the default) instead.',
+                DeprecationWarning, stacklevel=2)
         if old_tree is None:
             old_tree = self.basis_tree()
         conflicts = transform.revert(self, old_tree, filenames, backups, pb,
                                      report_changes)
-        if not len(filenames):
+        if filenames is None:
             self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
         else:
@@ -2017,7 +2083,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self, change_reporter=None):
+    def update(self, change_reporter=None, possible_transports=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2042,7 +2108,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        if self.branch.get_master_branch() is not None:
+        if self.branch.get_master_branch(possible_transports) is not None:
             self.lock_write()
             update_branch = True
         else:
@@ -2050,7 +2116,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             update_branch = False
         try:
             if update_branch:
-                old_tip = self.branch.update()
+                old_tip = self.branch.update(possible_transports)
             else:
                 old_tip = None
             return self._update_tree(old_tip, change_reporter)
@@ -2635,7 +2701,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """
         sio = StringIO()
         inv = Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio)
+        xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         control_files.put('inventory', sio)
 

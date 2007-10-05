@@ -361,6 +361,15 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
+        
+    def test_check_error(self):
+        # This has a member called 'message', which is problematic in
+        # python2.5 because that is a slot on the base Exception class
+        e = errors.BzrCheckError('example check failure')
+        self.assertEqual(
+            "Internal check failed: example check failure",
+            str(e))
+        self.assertTrue(e.internal_error)
 
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""

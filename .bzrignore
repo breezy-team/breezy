@@ -19,6 +19,8 @@ build
 [#]*#
 .#*
 ./tags
+./bzrlib/tags
+./TAGS
 # The shelf plugin uses this dir
 ./.shelf
 # Mac droppings
@@ -41,3 +43,6 @@ bzrlib/_knit_load_data_c.c
 doc/en/release-notes/NEWS.txt
 doc/en/developer-guide/HACKING.txt
 doc/en/user-reference/bzr_man.txt
+# built extension modules
+bzrlib/_*_c.so
+bzrlib/_*_c.pyd

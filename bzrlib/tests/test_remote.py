@@ -110,11 +110,18 @@ class FakeProtocol(object):
     def __init__(self, body):
         self.body = body
         self._body_buffer = None
+        self._fake_client = fake_client
 
     def read_body_bytes(self, count=-1):
         if self._body_buffer is None:
             self._body_buffer = StringIO(self.body)
-        return self._body_buffer.read(count)
+        bytes = self._body_buffer.read(count)
+        if self._body_buffer.tell() == len(self._body_buffer.getvalue()):
+            self._fake_client.expecting_body = False
+        return bytes
+
+    def cancel_read_body(self):
+        self._fake_client.expecting_body = False
 
     def read_streamed_body(self):
         return self.body
@@ -125,13 +132,14 @@ class FakeClient(_SmartClient):
     
     def __init__(self, responses):
         # We don't call the super init because there is no medium.
-        """create a FakeClient.
+        """Create a FakeClient.
 
         :param respones: A list of response-tuple, body-data pairs to be sent
             back to callers.
         """
         self.responses = responses
         self._calls = []
+        self.expecting_body = False
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -140,7 +148,8 @@ class FakeClient(_SmartClient):
     def call_expecting_body(self, method, *args):
         self._calls.append(('call_expecting_body', method, args))
         result = self.responses.pop(0)
-        return result[0], FakeProtocol(result[1])
+        self.expecting_body = True
+        return result[0], FakeProtocol(result[1], self)
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -739,6 +748,70 @@ class TestRepositoryTarball(TestRemoteRepository):
             self.assertEqual(self.tarball_content, tarball_file.read())
         finally:
             tarball_file.close()
+
+    def XXX_test_sprout_uses_tarball(self):
+        # XXX: update this for new streaming fetch method.
+        raise tests.KnownFailure(
+            'XXX: update this test for new streaming fetch method')
+        # RemoteRepository.sprout should try to use the
+        # tarball command rather than accessing all the files
+        transport_path = 'srcrepo'
+        expected_responses = [(('ok',), self.tarball_content),
+            ]
+        expected_calls = [('call2', 'Repository.tarball', ('///srcrepo/', 'bz2',),),
+            ]
+        remote_repo, client = self.setup_fake_client_and_repository(
+            expected_responses, transport_path)
+        # make a regular local repository to receive the results
+        dest_transport = MemoryTransport()
+        dest_transport.mkdir('destrepo')
+        bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
+        dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
+        # try to copy...
+        remote_repo.sprout(dest_bzrdir)
+
+    def test_backwards_compatibility(self):
+        """If the server doesn't recognise this request, fallback to VFS.
+        
+        This happens when a current client talks to an older server that
+        doesn't implement 'Repository.tarball'.
+        """
+        # Make a regular local repository to receive the results
+        dest_transport = MemoryTransport()
+        dest_transport.mkdir('destrepo')
+        bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
+        dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
+
+        error_msg = (
+            "Generic bzr smart protocol error: "
+            "bad request 'Repository.tarball'")
+        responses = [(('error', error_msg), '')]
+        remote_repo, client = self.setup_fake_client_and_repository(
+            responses, 'path')
+        mock_real_repo = MockRealRepository()
+        remote_repo._real_repository = mock_real_repo
+
+        # try to copy...
+        remote_repo.sprout(dest_bzrdir)
+
+        self.assertEqual([('sprout', dest_bzrdir, None)], mock_real_repo.calls,
+            "RemoteRepository didn't fallback to the real repository correctly")
+        self.failIf(client.expecting_body,
+            "The protocol has been left in an unclean state that will cause "
+            "TooManyConcurrentRequests errors.")
+
+
+class MockRealRepository(object):
+    """Mock of a RemoteRepository's '_real_repository' attribute.
+    
+    Used by TestRepositoryTarball.test_backwards_compatibility.
+    """
+
+    def __init__(self):
+        self.calls = []
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        self.calls.append(('sprout', to_bzrdir, revision_id))
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):

@@ -564,8 +564,8 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
@@ -579,14 +579,15 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         few tests should need to do that), and having a missing dir as home is
         an effective way to ensure that this is the case.
         """
-        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+        self.assertIsSameRealPath(
+            self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
             self.test_home_dir)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
         
     def test_cwd_is_TEST_ROOT(self):
-        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_dir, cwd)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
@@ -611,6 +612,19 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
+
+    def test_safety_net(self):
+        """No test should modify the safety .bzr directory.
+
+        We just test that the _check_safety_net private method raises
+        AssertionError, it's easier than building a test suite with the same
+        test.
+        """
+        # Oops, a commit in the current directory (i.e. without local .bzr
+        # directory) will crawl up the hierarchy to find a .bzr directory.
+        self.run_bzr(['commit', '-mfoo', '--unchanged'])
+        # But we have a safety net in place.
+        self.assertRaises(AssertionError, self._check_safety_net)
 
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
@@ -1658,3 +1672,29 @@ class TestCheckInventoryShape(TestCaseWithTransport):
             self.check_inventory_shape(tree.inventory, files)
         finally:
             tree.unlock()
+
+
+class TestBlackboxSupport(TestCase):
+    """Tests for testsuite blackbox features."""
+
+    def test_run_bzr_failure_not_caught(self):
+        # When we run bzr in blackbox mode, we want any unexpected errors to
+        # propagate up to the test suite so that it can show the error in the
+        # usual way, and we won't get a double traceback.
+        e = self.assertRaises(
+            AssertionError,
+            self.run_bzr, ['assert-fail'])
+        # make sure we got the real thing, not an error from somewhere else in
+        # the test framework
+        self.assertEquals('always fails', str(e))
+        # check that there's no traceback in the test log
+        self.assertNotContainsRe(self._get_log(keep_log_file=True),
+            r'Traceback')
+
+    def test_run_bzr_user_error_caught(self):
+        # Running bzr in blackbox mode, normal/expected/user errors should be
+        # caught in the regular way and turned into an error message plus exit
+        # code.
+        out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
