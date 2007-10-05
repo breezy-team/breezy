@@ -381,30 +381,6 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.checkUnreconciled(d, repo.reconcile(thorough=True))
 
 
-
-#commiting rev X, row 0 local change, row 1 no local change against at least one parent
-#rev parents  X.revision inv.revision foreach parent     knit parents   label
-#revA          X         revA                            revA            parent-changed
-#revA          A         revA                            NO ENTRY
-#revA          X         revB                            revB            parent-changed
-#revA          A         revB                            NO ENTRY
-#revA  revB    X         revC  revC                      revC            parent changed (C in ancestory of A,B)
-#revA  revB    C         revC  revC                      NO ENTRY
-#revA  revB    X         revA  revC                      revA            left-side change (C in ancestry of A)
-#revA  revB    A         revA  revC                      NO ENTRY
-#revA  revB    X         revC  revB                      revB            right-side change (C in ancestry of B)
-#revA  revB    B         revC  revB                      NO ENTRY
-#revA  revB    X         revA  revB                      revA revB       both-side change no prior join
-#revA  revB    X         revA  revB                      revA revB       both-side change no prior join (that is, we always record a change in this case)
-#revA  revB    X         revA  revB                      revA            both-side change, one side pre-merged (A merged B)
-#revA  revB    A         revA  revB                      NO ENTRY       
-#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join
-#revA  revB    X         revC  revD                      revC revD       both-side parent change no prior join (that is we always record a change in this case)
-#revA  revB    X         revC  revD                      revC            both sides parent change, C merged D
-#revA  revB    C         revC  revD                      NO ENTRY
-
-
-
 class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
 
     def test_aborts_if_bad_parents_in_index(self):
