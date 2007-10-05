@@ -19,12 +19,63 @@
 
 
 from bzrlib import (
+    errors,
     inventory,
     revision as _mod_revision,
     )
 from bzrlib.repository import _RevisionTextVersionCache
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.repository_implementations.helpers import (
+    TestCaseWithBrokenRevisionIndex,
+    )
 
+
+class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
+
+    def test__find_inconsistent_revision_parents(self):
+        """_find_inconsistent_revision_parents finds revisions with broken
+        parents.
+        """
+        repo = self.make_repo_with_extra_ghost_index()
+        self.assertEqual(
+            [('revision-id', ['incorrect-parent'], [])],
+            list(repo._find_inconsistent_revision_parents()))
+
+    def test__check_for_inconsistent_revision_parents(self):
+        """_check_for_inconsistent_revision_parents raises BzrCheckError if
+        there are any revisions with inconsistent parents.
+        """
+        repo = self.make_repo_with_extra_ghost_index()
+        self.assertRaises(
+            errors.BzrCheckError,
+            repo._check_for_inconsistent_revision_parents)
+
+    def test__check_for_inconsistent_revision_parents_on_clean_repo(self):
+        """_check_for_inconsistent_revision_parents does nothing if there are
+        no broken revisions.
+        """
+        repo = self.make_repository('empty-repo')
+        if not repo.revision_graph_can_have_wrong_parents():
+            raise TestNotApplicable(
+                '%r cannot have corrupt revision index.' % repo)
+        repo._check_for_inconsistent_revision_parents()  # nothing happens
+
+    def test_check_reports_bad_ancestor(self):
+        repo = self.make_repo_with_extra_ghost_index()
+        # XXX: check requires a non-empty revision IDs list, but it ignores the
+        # contents of it!
+        check_object = repo.check(['ignored'])
+        check_object.report_results(verbose=False)
+        log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(
+            log, '1 revisions have incorrect parents in the revision index')
+        check_object.report_results(verbose=True)
+        log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(
+            log,
+            "revision-id has wrong parents in index: "
+            r"\['incorrect-parent'\] should be \[\]")
 
 class TestFindBadAncestors(TestCaseWithRepository):
 
@@ -131,5 +182,4 @@ class TestFindBadAncestors(TestCaseWithRepository):
     def test_ghost(self):
         result = self.find_bad_ancestors('file2-id', ['rev3'])
         self.assertEqual({'rev1c': set(['rev3'])}, result)
-
 

@@ -17,12 +17,7 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = [
-    'KnitReconciler',
-    'reconcile',
-    'Reconciler',
-    'RepoReconciler',
-    ]
+__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
 from bzrlib import (
@@ -31,7 +26,9 @@ from bzrlib import (
     ui,
     repository,
     )
-from bzrlib.trace import mutter
+from bzrlib import errors
+from bzrlib import ui
+from bzrlib.trace import mutter, note
 from bzrlib.tsort import TopoSorter, topo_sort
 
 
@@ -81,7 +78,13 @@ class Reconciler(object):
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
-        self.pb.note('Reconciliation complete.')
+        if repo_reconciler.aborted:
+            self.pb.note(
+                'Reconcile aborted: revision index has inconsistent parents.')
+            self.pb.note(
+                'Run "bzr check" for more details.')
+        else:
+            self.pb.note('Reconciliation complete.')
 
 
 class RepoReconciler(object):
@@ -104,6 +107,7 @@ class RepoReconciler(object):
         """
         self.garbage_inventories = 0
         self.inconsistent_parents = 0
+        self.aborted = False
         self.repo = repo
         self.thorough = thorough
 
@@ -288,7 +292,12 @@ class KnitReconciler(RepoReconciler):
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
         if self.thorough:
-            self._load_indexes()
+            try:
+                self._load_indexes()
+            except errors.BzrCheckError:
+                self.aborted = True
+                return
+            # knits never suffer this
             self._gc_inventory()
             self._fix_text_parents()
 
@@ -298,6 +307,7 @@ class KnitReconciler(RepoReconciler):
         self.pb.update('Reading indexes.', 0, 2)
         self.inventory = self.repo.get_inventory_weave()
         self.pb.update('Reading indexes.', 1, 2)
+        self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo._revision_store.get_revision_file(self.transaction)
         self.pb.update('Reading indexes.', 2, 2)
 
