@@ -37,7 +37,6 @@ from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
-from bzrlib.trace import mutter
 
 
 class VersionedFile(object):
