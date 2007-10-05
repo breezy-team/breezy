@@ -32,10 +32,12 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+from bzrlib import errors
 from bzrlib import repository as _mod_repository
+from bzrlib import revision
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
-from bzrlib.trace import note
+from bzrlib.trace import log_error, note, mutter
 
 class Check(object):
     """Check a repository"""
@@ -97,7 +99,7 @@ class Check(object):
              self.repository.bzrdir.root_transport,
              self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
-        note('%6d versionedfiles', len(self.checked_weaves))
+        note('%6d file-ids', len(self.checked_weaves))
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
         note('%6d unreferenced text ancestors',
@@ -123,7 +125,7 @@ class Check(object):
                         note('       * %s', linker)
             if verbose:
                 for file_id, revision_id in self.unreferenced_ancestors:
-                    note('unreferenced ancestor: {%s} in %s', revision_id,
+                    log_error('unreferenced ancestor: {%s} in %s', revision_id,
                         file_id)
         if len(self.inconsistent_parents):
             note('%6d inconsistent parents', len(self.inconsistent_parents))
@@ -190,13 +192,12 @@ class Check(object):
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
-            result = w.check_parents(
-                self.planned_revisions,
-                self.revision_versions.get_text_version,
-                weave_id,
-                revision_parents,
-                self.repository.get_graph(),
-                self.repository.get_inventory)
+
+            weave_checker = self.repository.get_versioned_file_checker(
+                self.planned_revisions, self.revision_versions)
+            result = weave_checker.check_file_version_parents(
+                w, weave_id, revision_parents)
+
             for revision_id, (weave_parents,correct_parents) in result.items():
                 self.inconsistent_parents.append(
                     (revision_id, weave_id, weave_parents, correct_parents))
@@ -248,3 +249,6 @@ def check(branch, verbose):
         branch.unlock()
     branch_result.report_results(verbose)
     repo_result.report_results(verbose)
+
+
+

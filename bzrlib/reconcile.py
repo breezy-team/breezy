@@ -368,13 +368,10 @@ class KnitReconciler(RepoReconciler):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
-            versions_with_bad_parents = vf.check_parents(
-                self.revisions.versions(),
-                revision_versions.get_text_version,
-                file_id,
-                revision_parents,
-                self.repo.get_graph(),
-                self.repo.get_inventory)
+            vf_checker = self.repo.get_versioned_file_checker(
+                self.revisions.versions(), revision_versions)
+            versions_with_bad_parents = vf_checker.check_file_version_parents(
+                vf, file_id, revision_parents)
             if len(versions_with_bad_parents) == 0:
                 continue
             new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,

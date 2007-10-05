@@ -496,50 +496,6 @@ class VersionedFile(object):
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
-    def calculate_parents(self, revision_id, get_text_version, file_id,
-            parents_provider, repo_graph, get_inventory):
-        text_revision = get_text_version(file_id, revision_id)
-        if text_revision is None:
-            return None
-        parents_of_text_revision = parents_provider.get_parents(
-            [text_revision])[0]
-        parents_from_inventories = []
-        for parent in parents_of_text_revision:
-            if parent == revision.NULL_REVISION:
-                continue
-            try:
-                inventory = get_inventory(parent)
-            except errors.RevisionNotPresent:
-                pass
-            else:
-                introduced_in = inventory[file_id].revision
-                parents_from_inventories.append(introduced_in)
-        mutter('%r:%r introduced in: %r',
-               file_id, revision_id, parents_from_inventories)
-        heads = set(repo_graph.heads(parents_from_inventories))
-        mutter('    heads: %r', heads)
-        new_parents = []
-        for parent in parents_from_inventories:
-            if parent in heads and parent not in new_parents:
-                new_parents.append(parent)
-        return new_parents
-
-    def check_parents(self, revision_ids, get_text_version, file_id,
-            parents_provider, repo_graph, get_inventory):
-        result = {}
-        for num, revision_id in enumerate(revision_ids):
-            correct_parents = self.calculate_parents(revision_id,
-                    get_text_version, file_id, parents_provider, repo_graph,
-                    get_inventory)
-            if correct_parents is None:
-                continue
-            text_revision = get_text_version(file_id, revision_id)
-            knit_parents = self.get_parents(text_revision)
-            if correct_parents != knit_parents:
-                result[revision_id] = (knit_parents, correct_parents)
-        mutter('    RESULT: %r', result)
-        return result
-
     def find_bad_ancestors(self, revision_ids, get_text_version, file_id,
             parents_provider, repo_graph):
         """Search this versionedfile for ancestors that are not referenced.

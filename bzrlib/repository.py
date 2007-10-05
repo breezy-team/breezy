@@ -1452,6 +1452,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
+    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+        return WeaveChecker(revisions, revision_versions_cache, self)
+
     def find_bad_ancestors(self, revision_ids, file_id, versionedfile,
                            revision_versions):
         """Search the versionedfile for ancestors that are not referenced.
@@ -2524,3 +2527,55 @@ class _RevisionParentsProvider(object):
                 self._memoized[revision_id] = parents
             parents_list.append(parents)
         return parents_list
+
+
+class WeaveChecker(object):
+
+    def __init__(self, planned_revisions, revision_versions, repository):
+        self.planned_revisions = planned_revisions
+        self.revision_versions = revision_versions
+        self.repository = repository
+        
+    def calculate_file_version_parents(self, revision_id, file_id,
+                                       parents_provider):
+        text_revision = self.revision_versions.get_text_version(
+            file_id, revision_id)
+        if text_revision is None:
+            return None
+        parents_of_text_revision = parents_provider.get_parents(
+            [text_revision])[0]
+        parents_from_inventories = []
+        for parent in parents_of_text_revision:
+            if parent == _mod_revision.NULL_REVISION:
+                continue
+            try:
+                inventory = self.repository.get_inventory(parent)
+            except errors.RevisionNotPresent:
+                pass
+            else:
+                introduced_in = inventory[file_id].revision
+                parents_from_inventories.append(introduced_in)
+        mutter('%r:%r introduced in: %r',
+               file_id, revision_id, parents_from_inventories)
+        graph = self.repository.get_graph()
+        heads = set(graph.heads(parents_from_inventories))
+        mutter('    heads: %r', heads)
+        new_parents = []
+        for parent in parents_from_inventories:
+            if parent in heads and parent not in new_parents:
+                new_parents.append(parent)
+        return new_parents
+
+    def check_file_version_parents(self, weave, file_id, parents_provider):
+        result = {}
+        for num, revision_id in enumerate(self.planned_revisions):
+            correct_parents = self.calculate_file_version_parents(
+                revision_id, file_id, parents_provider)
+            if correct_parents is None:
+                continue
+            text_revision = self.revision_versions.get_text_version(
+                file_id, revision_id)
+            knit_parents = weave.get_parents(text_revision)
+            if correct_parents != knit_parents:
+                result[revision_id] = (knit_parents, correct_parents)
+        return result
