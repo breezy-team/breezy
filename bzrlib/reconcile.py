@@ -371,8 +371,6 @@ class KnitReconciler(RepoReconciler):
         parent lists, and replaces the versionedfile with a corrected version.
         """
         transaction = self.repo.get_transaction()
-        revision_parents = repository._RevisionParentsProvider(self.repo)
-        revision_graph = graph.Graph(revision_parents)
         revision_versions = repository._RevisionTextVersionCache(self.repo)
         for num, file_id in enumerate(self.repo.weave_store):
             self.pb.update('Fixing text parents', num,
@@ -381,7 +379,7 @@ class KnitReconciler(RepoReconciler):
             vf_checker = self.repo.get_versioned_file_checker(
                 self.revisions.versions(), revision_versions)
             versions_with_bad_parents = vf_checker.check_file_version_parents(
-                vf, file_id, revision_parents)
+                vf, file_id)
             if len(versions_with_bad_parents) == 0:
                 continue
             new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,

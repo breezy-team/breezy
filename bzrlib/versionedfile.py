@@ -497,7 +497,7 @@ class VersionedFile(object):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
     def find_bad_ancestors(self, revision_ids, get_text_version, file_id,
-            parents_provider, repo_graph):
+            repo_graph):
         """Search this versionedfile for ancestors that are not referenced.
 
         One possible deviation is if a text's parents are not a subset of its
@@ -512,9 +512,6 @@ class VersionedFile(object):
         :param get_text_version: a callable that takes two arguments,
             file_id and a revision_id, and returns the id of text version of
             that file in that revision.
-        :param parents_provider: An implementation of ParentsProvider to use
-            for determining the revision graph's ancestry.
-            _RevisionParentsProvider is recommended for this purpose.
 
         :returns: a dict mapping bad parents to a set of revisions they occur
             in.
@@ -531,7 +528,7 @@ class VersionedFile(object):
             if text_revision is None:
                 continue
 
-            file_parents = parents_provider.get_parents([text_revision])[0]
+            file_parents = repo_graph.get_parents([text_revision])[0]
             revision_parents = set()
             for parent_id in file_parents:
                 try:

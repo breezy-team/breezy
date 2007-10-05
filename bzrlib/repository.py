@@ -1473,16 +1473,12 @@ class Repository(object):
         :versionedfile: The versionedfile to scan
         :revision_versions: A dict that is a cache of last-modified revisions
             of files for each version
-        :parents_provider: An implementation of ParentsProvider to use for
-            determining the revision graph's ancestry.
-            _RevisionParentsProvider is recommended for this purpose.
         """
         graph = self.get_graph()
         return versionedfile.find_bad_ancestors(
             revision_ids,
             revision_versions.get_text_version,
             file_id,
-            graph,
             graph)
         
     @needs_write_lock
@@ -1579,8 +1575,6 @@ class Repository(object):
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
         
-
-
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
     def _deprecated_repository_forwarder():
@@ -2506,54 +2500,19 @@ class _RevisionTextVersionCache(object):
         return inv_revisions.get(file_id)
 
 
-class _RevisionParentsProvider(object):
-    """A parents provider that uses a repositoy's revision objects.
-
-    Should only be used when checking for corruption.
-
-    For uncorrupt repositories, should give the same results as the repo's
-    get_parents implementation, except much more slowly.
-    """
-    def __init__(self, repo):
-        self._repo = repo
-        self._memoized = {}
-
-    def get_parents(self, revision_ids):
-        parents_list = []
-        for revision_id in revision_ids:
-            try:
-                parents = self._memoized[revision_id]
-            except KeyError:
-                if revision_id == _mod_revision.NULL_REVISION:
-                    parents = []
-                else:
-                    try:
-                        revision = self._repo.get_revision(revision_id)
-                        parents = revision.parent_ids
-                    except errors.NoSuchRevision:
-                        parents = None
-                    else:
-                        if len(parents) == 0:
-                            parents = [_mod_revision.NULL_REVISION]
-                self._memoized[revision_id] = parents
-            parents_list.append(parents)
-        return parents_list
-
-
 class WeaveChecker(object):
 
     def __init__(self, planned_revisions, revision_versions, repository):
         self.planned_revisions = planned_revisions
         self.revision_versions = revision_versions
         self.repository = repository
-        
-    def calculate_file_version_parents(self, revision_id, file_id,
-                                       parents_provider):
+    
+    def calculate_file_version_parents(self, revision_id, file_id):
         text_revision = self.revision_versions.get_text_version(
             file_id, revision_id)
         if text_revision is None:
             return None
-        parents_of_text_revision = parents_provider.get_parents(
+        parents_of_text_revision = self.repository.get_parents(
             [text_revision])[0]
         parents_from_inventories = []
         for parent in parents_of_text_revision:
@@ -2577,11 +2536,11 @@ class WeaveChecker(object):
                 new_parents.append(parent)
         return new_parents
 
-    def check_file_version_parents(self, weave, file_id, parents_provider):
+    def check_file_version_parents(self, weave, file_id):
         result = {}
         for num, revision_id in enumerate(self.planned_revisions):
             correct_parents = self.calculate_file_version_parents(
-                revision_id, file_id, parents_provider)
+                revision_id, file_id)
             if correct_parents is None:
                 continue
             text_revision = self.revision_versions.get_text_version(

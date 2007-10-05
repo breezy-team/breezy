@@ -202,8 +202,6 @@ class Check(object):
             n_weaves = len(weave_ids) + 1
         self.progress.update('checking versionedfile', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
-        revision_parents = _mod_repository._RevisionParentsProvider(
-            self.repository)
         files_in_revisions = {}
         revisions_of_files = {}
         for i, weave_id in enumerate(weave_ids):
@@ -215,8 +213,7 @@ class Check(object):
 
             weave_checker = self.repository.get_versioned_file_checker(
                 self.planned_revisions, self.revision_versions)
-            result = weave_checker.check_file_version_parents(
-                w, weave_id, revision_parents)
+            result = weave_checker.check_file_version_parents(w, weave_id)
 
             for revision_id, (weave_parents,correct_parents) in result.items():
                 self.inconsistent_parents.append(
@@ -225,7 +222,6 @@ class Check(object):
                 self.planned_revisions,
                 self.revision_versions.get_text_version,
                 weave_id,
-                revision_parents,
                 self.repository.get_graph())
             for revision_id in result.iterkeys():
                 self.unreferenced_ancestors.add((weave_id, revision_id))
