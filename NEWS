@@ -191,6 +191,10 @@ IN DEVELOPMENT
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
 
+   * New module ``bzrlib.bisect_multi`` with generic multiple-bisection-at-once
+     logic, currently only available for byte-based lookup
+     (``bisect_multi_bytes``). (Robert Collins)
+
    * New helper ``bzrlib.tuned_gzip.bytes_to_gzip`` which takes a byte string
      and returns a gzipped version of the same. This is used to avoid a bunch
      of api friction during adding of knit hunks. (Robert Collins)
