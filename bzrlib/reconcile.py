@@ -382,18 +382,22 @@ class KnitReconciler(RepoReconciler):
                 vf, file_id)
             if len(versions_with_bad_parents) == 0:
                 continue
-            new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
-                self.transaction)
-            new_parents = {}
-            for version in vf.versions():
-                if version in versions_with_bad_parents:
-                    parents = versions_with_bad_parents[version][1]
-                else:
-                    parents = vf.get_parents(version)
-                new_parents[version] = parents
-            for version in topo_sort(new_parents.items()):
-                new_vf.add_lines(version, new_parents[version],
-                                 vf.get_lines(version))
-            self.repo.weave_store.copy(new_vf, file_id, self.transaction)
-            self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
+            self._fix_text_parent(file_id, vf, versions_with_bad_parents)
+
+    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents):
+        """Fix bad versionedfile entries in a single versioned file."""
+        new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
+            self.transaction)
+        new_parents = {}
+        for version in vf.versions():
+            if version in versions_with_bad_parents:
+                parents = versions_with_bad_parents[version][1]
+            else:
+                parents = vf.get_parents(version)
+            new_parents[version] = parents
+        for version in topo_sort(new_parents.items()):
+            new_vf.add_lines(version, new_parents[version],
+                             vf.get_lines(version))
+        self.repo.weave_store.copy(new_vf, file_id, self.transaction)
+        self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 

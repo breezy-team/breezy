@@ -2456,7 +2456,7 @@ class _RevisionTextVersionCache(object):
         self.repository = repository
         self.revision_versions = {}
 
-    def add_revision_text_version(self, tree):
+    def add_revision_text_versions(self, tree):
         """Cache text version data from the supplied revision tree"""
         inv_revisions = {}
         for path, entry in tree.iter_entries_by_dir():
@@ -2470,7 +2470,7 @@ class _RevisionTextVersionCache(object):
             inv_revisions = self.revision_versions[revision_id]
         except KeyError:
             tree = self.repository.revision_tree(revision_id)
-            inv_revisions = self.add_revision_text_version(tree)
+            inv_revisions = self.add_revision_text_versions(tree)
         return inv_revisions.get(file_id)
 
 
