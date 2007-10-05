@@ -77,6 +77,7 @@ class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
     _serializer = xml5.serializer_v5
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         MetaDirRepository.__init__(self, _format, a_bzrdir, control_files,

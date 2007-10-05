@@ -30,9 +30,14 @@ from bzrlib import (
 from bzrlib.repofmt import (
     weaverepo,
     )
+from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+from bzrlib.smart.server import (
+    SmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing,
+    )
 from bzrlib.tests import (
-                          adapt_modules,
                           default_transport,
+                          iter_suite_tests,
                           TestScenarioApplier,
                           TestLoader,
                           TestSuite,
@@ -504,93 +509,78 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
             repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
 
 
-class BrokenRepositoryTestProviderAdapter(TestScenarioApplier):
-
-    scenario_classes = [
-        UndamagedRepositoryScenario,
-        FileParentIsNotInRevisionAncestryScenario,
-        FileParentHasInaccessibleInventoryScenario,
-        FileParentsNotReferencedByAnyInventoryScenario,
-        TooManyParentsScenario,
-        ClaimedFileParentDidNotModifyFileScenario,
-        IncorrectlyOrderedParentsScenario,
-        ]
-
-    def __init__(self):
-        TestScenarioApplier.__init__(self)
-        self.scenarios = [
-            (s.__name__, {'scenario_class': s}) for s in self.scenario_classes]
-
+all_scenarios = [
+    UndamagedRepositoryScenario,
+    FileParentIsNotInRevisionAncestryScenario,
+    FileParentHasInaccessibleInventoryScenario,
+    FileParentsNotReferencedByAnyInventoryScenario,
+    TooManyParentsScenario,
+    ClaimedFileParentDidNotModifyFileScenario,
+    IncorrectlyOrderedParentsScenario,
+    ]
+    
 
 def test_suite():
-    result = TestSuite()
-    test_repository_implementations = [
-        'bzrlib.tests.repository_implementations.test_break_lock',
-        # note that test_check_reconcile is intentionally excluded from this
-        # list; it is handled further down.
-        'bzrlib.tests.repository_implementations.test_break_lock',
-        'bzrlib.tests.repository_implementations.test_check',
-        'bzrlib.tests.repository_implementations.test_commit_builder',
-        'bzrlib.tests.repository_implementations.test_fetch',
-        'bzrlib.tests.repository_implementations.test_fileid_involved',
-        'bzrlib.tests.repository_implementations.test_has_same_location',
-        'bzrlib.tests.repository_implementations.test_iter_reverse_revision_history',
-        'bzrlib.tests.repository_implementations.test_pack',
-        'bzrlib.tests.repository_implementations.test_reconcile',
-        'bzrlib.tests.repository_implementations.test_repository',
-        'bzrlib.tests.repository_implementations.test_revision',
-        'bzrlib.tests.repository_implementations.test_statistics',
-        'bzrlib.tests.repository_implementations.test_write_group',
-        ]
-
-    from bzrlib.smart.server import (
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        )
-    from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
-    format_adapter = RepositoryTestProviderAdapter(
+    disk_format_adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         [(format, format._matchingbzrdir) for format in all_formats])
-    loader = TestLoader()
-    adapt_modules(test_repository_implementations, format_adapter, loader,
-                  result)
 
-    adapt_to_smart_server = RepositoryTestProviderAdapter(
+    remote_repo_adapter = RepositoryTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
         [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
         MemoryServer
         )
-    adapt_modules(test_repository_implementations,
-                  adapt_to_smart_server,
-                  loader,
-                  result)
 
-    # Parameterise test_check_reconcile by both repository format *and* by
-    # broken-repository scenario.
-    from bzrlib.tests import iter_suite_tests
-    scenario_suite = TestSuite()
-    scenario_adapter = BrokenRepositoryTestProviderAdapter()
-    modules_for_broken_repo_scenario = [
-        'bzrlib.tests.repository_implementations.test_check_reconcile']
-    adapt_modules(
-        modules_for_broken_repo_scenario,
-        format_adapter,
-        loader,
-        scenario_suite)
-    adapt_modules(
-        modules_for_broken_repo_scenario,
-        adapt_to_smart_server,
-        loader,
-        scenario_suite)
-    for test in iter_suite_tests(scenario_suite):
-        result.addTests(scenario_adapter.adapt(test))
+    # format_applier adapts tests by repository format.
+    format_applier = TestScenarioApplier()
+    format_applier.scenarios = (disk_format_adapter.scenarios +
+                                remote_repo_adapter.scenarios)
+
+    # broken_scenario_applier adapts tests by BrokenRepoScenario; it's intended
+    # to be used on top of format_applier.
+    broken_scenario_applier = TestScenarioApplier()
+    broken_scenario_applier.scenarios = [(s.__name__, {'scenario_class': s})
+                                         for s in all_scenarios]
+
+    prefix = 'bzrlib.tests.repository_implementations.'
+    # A list of tests: (module_name, [adapters]).
+    test_repository_implementations = [
+        ('test_break_lock', [format_applier]),
+        ('test_check_reconcile', [format_applier, broken_scenario_applier]),
+        ('test_check', [format_applier]),
+        ('test_commit_builder', [format_applier]),
+        ('test_fetch', [format_applier]),
+        ('test_fileid_involved', [format_applier]),
+        ('test_has_same_location', [format_applier]),
+        ('test_iter_reverse_revision_history', [format_applier]),
+        ('test_pack', [format_applier]),
+        ('test_reconcile', [format_applier]),
+        ('test_repository', [format_applier]),
+        ('test_revision', [format_applier]),
+        ('test_statistics', [format_applier]),
+        ('test_write_group', [format_applier]),
+        ]
+
+    result = TestSuite()
+    loader = TestLoader()
+
+    for module_name, appliers in test_repository_implementations:
+        tests = loader.loadTestsFromModuleNames([prefix + module_name])
+        suite = TestSuite()
+        suite.addTests(tests)
+        for applier in appliers:
+            new_suite = TestSuite()
+            for test in iter_suite_tests(suite):
+                new_suite.addTests(applier.adapt(test))
+            suite = new_suite
+        result.addTests(suite)
     
     return result
