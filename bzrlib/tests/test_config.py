@@ -887,6 +887,14 @@ class TestLocationConfig(TestCaseInTempDir):
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         
+    def test_get_bzr_remote_path(self):
+        my_config = config.LocationConfig('/a/c')
+        self.assertEqual('bzr', my_config.get_bzr_remote_path())
+        my_config.set_user_option('bzr_remote_path', '/path-bzr')
+        self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
+        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
+
 
 precedence_global = 'option = global'
 precedence_branch = 'option = branch'

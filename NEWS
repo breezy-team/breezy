@@ -35,6 +35,10 @@ IN DEVELOPMENT
    * New ``revert --forget-merges`` command, which removes the record of a pending 
      merge without affecting the working tree contents.  (Martin Pool)
 
+   * New ``bzr_remote_path`` configuration variable allows finer control of
+     remote bzr locations than BZR_REMOTE_PATH environment variable.
+     (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to

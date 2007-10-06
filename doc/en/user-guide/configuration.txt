@@ -188,6 +188,17 @@ For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+bzr_remote_path
+---------------
+(Default: "bzr").  The path to the command that should be used to run the smart
+server for bzr.  This value may only be specified in locations.conf, because:
+
+- it's needed before branch.conf is accessible
+- allowing remote branch.conf files to specify commands would be a security
+  risk
+
+It is overridden by the BZR_REMOTE_PATH environment variable.
+
 smtp_server
 -----------
 (Default: "localhost"). SMTP server to use when Bazaar needs to send
