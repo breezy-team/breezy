@@ -673,15 +673,18 @@ class Transport(object):
                         yield None
                 return empty_yielder()
             # expand by page size at either end
-            expansion = self.recommended_page_size()
-            reduction = expansion / 2
+            maximum_expansion = self.recommended_page_size()
             new_offsets = []
             for offset, length in offsets:
+                expansion = maximum_expansion - length
+                if expansion < 0:
+                    # we're asking for more than the minimum read anyway.
+                    expansion = 0
+                reduction = expansion / 2
                 new_offset = offset - reduction
                 new_length = length + expansion
                 if new_offset < 0:
                     # don't ask for anything < 0
-                    new_length -= new_offset
                     new_offset = 0
                 if (upper_limit is not None and
                     new_offset + new_length > upper_limit):
