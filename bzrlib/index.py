@@ -245,6 +245,10 @@ class GraphIndex(object):
         """
         self._transport = transport
         self._name = name
+        # becomes a dict of key:(value, reference-list-byte-locations) 
+        # used by the bisection interface to store parsed but not resolved
+        # keys.
+        self._bisect_nodes = None
         self._nodes = None
         # a sorted list of slice-addresses for the parsed bytes of the file.
         # e.g. (0,1) would mean that byte 0 is parsed.
@@ -374,6 +378,13 @@ class GraphIndex(object):
         except ValueError:
             raise errors.BadIndexOptions(self)
 
+    def _resolve_references(self, references):
+        """Return the resolved key references for references."""
+        node_refs = []
+        for ref_list in references:
+            node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
+        return tuple(node_refs)
+
     def _parsed_byte_index(self, offset):
         """Return the index of the entry immediately before offset.
 
@@ -438,6 +449,11 @@ class GraphIndex(object):
         the bytestring of each key element. e.g. if you have the keys ('foo',
         'bar'), ('foobar', 'gam') and do a prefix search for ('foo', None) then
         only the former key is returned.
+
+        WARNING: Note that this method currently causes a full index parse
+        unconditionally (which is reasonably appropriate as it is a means for
+        thunking many small indices into one larger one and still supplies
+        iter_all_entries at the thunk layer).
 
         :param keys: An iterable providing the key prefixes to be retrieved.
             Each key prefix takes the form of a tuple the length of a key, but
@@ -516,6 +532,11 @@ class GraphIndex(object):
     def lookup_keys_via_location(self, location_keys):
         """Public interface for implementing bisection.
 
+        If _buffer_all has been called, then all the data for the index is in
+        memory, and this method should not be called, as it uses a separate
+        cache because it cannot pre-resolve all indices, which buffer_all does
+        for performance.
+
         :param location_keys: A list of location, key tuples.
         :return: A list of (location_key, result) tuples as expected by
             bzrlib.bisect_multi.bisect_multi_bytes.
@@ -547,23 +568,16 @@ class GraphIndex(object):
             if length > 0:
                 readv_ranges.append((location, length))
         # read the header if needed
-        if self._nodes is None:
+        if self._bisect_nodes is None:
             readv_ranges.append((0, 200))
-        if readv_ranges:
-            readv_data = self._transport.readv(self._name, readv_ranges, True,
-                self._size)
-            # parse
-            for offset, data in readv_data:
-                if self._nodes is None:
-                    # this must be the start
-                    assert offset == 0
-                    offset, data = self._parse_header_from_bytes(data)
-                self._parse_region(offset, data)
-                # print offset, len(data), data
+        self._read_and_parse(readv_ranges)
         # generate results:
         #  - figure out <, >, missing, present
         #  - result present references so we can return them.
         result = []
+        # keys that we cannot answer until we resolve references
+        pending_references = []
+        pending_locations = set()
         for location, key in location_keys:
             # can we answer from cache?
             index = self._parsed_key_index(key)
@@ -572,12 +586,24 @@ class GraphIndex(object):
                  # end of the file has been parsed
                  self._parsed_byte_map[index][1] == self._size)):
                 # the key has been parsed, so no lookup is needed
-                if key in self._nodes:
+                if key in self._bisect_nodes:
                     if self.node_ref_lists:
-                        value, refs = self._nodes[key]
-                        result.append(((location, key), (self, key, value, refs)))
+                        # the references may not have been all parsed.
+                        value, refs = self._bisect_nodes[key]
+                        wanted_locations = []
+                        for ref_list in refs:
+                            for ref in ref_list:
+                                if ref not in self._keys_by_offset:
+                                    wanted_locations.append(ref)
+                        if wanted_locations:
+                            pending_locations.update(wanted_locations)
+                            pending_references.append((location, key))
+                            continue
+                        result.append(((location, key), (self, key,
+                            value, self._resolve_references(refs))))
                     else:
-                        result.append(((location, key), (self, key, self._nodes[key])))
+                        result.append(((location, key),
+                            (self, key, self._bisect_nodes[key])))
                 else:
                     result.append(((location, key), False))
                 continue
@@ -590,6 +616,24 @@ class GraphIndex(object):
             else:
                 direction = +1
             result.append(((location, key), direction))
+        readv_ranges = []
+        # lookup data to resolve references
+        for location in pending_locations:
+            length = 800
+            if location + length > self._size:
+                length = self._size - location
+            # TODO: trim out parsed locations (e.g. if the 800 is into the
+            # parsed region trim it, and dont use the ajust_for_latency
+            # facility)
+            if length > 0:
+                readv_ranges.append((location, length))
+        self._read_and_parse(readv_ranges)
+        for location, key in pending_references:
+            # answer key references we had to look-up-late.
+            index = self._parsed_key_index(key)
+            value, refs = self._bisect_nodes[key]
+            result.append(((location, key), (self, key,
+                value, self._resolve_references(refs))))
         return result
 
     def _parse_header_from_bytes(self, bytes):
@@ -632,9 +676,8 @@ class GraphIndex(object):
         self._expected_elements = 3 + self._key_length
         # raw data keyed by offset
         self._keys_by_offset = {}
-        # ready-to-return key:value or key:value, node_ref_lists
-        self._nodes = {}
-        self._nodes_by_key = {}
+        # keys with the value and node references
+        self._bisect_nodes = {}
         return header_end, bytes[header_end:]
 
     def _parse_region(self, offset, data):
@@ -748,34 +791,15 @@ class GraphIndex(object):
             ref_lists = tuple(ref_lists)
             self._keys_by_offset[pos] = (key, absent, ref_lists, value)
             pos += len(line) + 1 # +1 for the \n
-        self._parsed_bytes(offset, first_key, offset + len(data), key)
-        # XXXXXX repeated work here.
-        for key, absent, references, value in self._keys_by_offset.itervalues():
             if absent:
                 continue
-            # resolve references:
             if self.node_ref_lists:
-                node_refs = []
-                for ref_list in references:
-                    node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
-                node_value = (value, tuple(node_refs))
+                node_value = (value, ref_lists)
             else:
                 node_value = value
-            self._nodes[key] = node_value
-            if self._key_length > 1:
-                subkey = list(reversed(key[:-1]))
-                key_dict = self._nodes_by_key
-                if self.node_ref_lists:
-                    key_value = key, node_value[0], node_value[1]
-                else:
-                    key_value = key, node_value
-                # possibly should do this on-demand, but it seems likely it is 
-                # always wanted
-                # For a key of (foo, bar, baz) create
-                # _nodes_by_key[foo][bar][baz] = key_value
-                for subkey in key[:-1]:
-                    key_dict = key_dict.setdefault(subkey, {})
-                key_dict[key[-1]] = key_value
+            self._bisect_nodes[key] = node_value
+            # print "parsed ", key
+        self._parsed_bytes(offset, first_key, offset + len(data), key)
 
     def _parsed_bytes(self, start, start_key, end, end_key):
         """Mark the bytes from start to end as parsed.
@@ -817,6 +841,23 @@ class GraphIndex(object):
                 # no, new entry
                 self._parsed_byte_map.insert(index, new_value)
                 self._parsed_key_map.insert(index, new_key)
+
+    def _read_and_parse(self, readv_ranges):
+        """Read the the ranges and parse the resulting data.
+
+        :param readv_ranges: A prepared readv range list.
+        """
+        if readv_ranges:
+            readv_data = self._transport.readv(self._name, readv_ranges, True,
+                self._size)
+            # parse
+            for offset, data in readv_data:
+                if self._bisect_nodes is None:
+                    # this must be the start
+                    assert offset == 0
+                    offset, data = self._parse_header_from_bytes(data)
+                self._parse_region(offset, data)
+                # print offset, len(data), data
 
     def _signature(self):
         """The file signature for this index type."""

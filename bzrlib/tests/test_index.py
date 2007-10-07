@@ -546,6 +546,44 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([((index._size // 2, ('50', )), +1)],
             result)
 
+    def test_lookup_key_resolves_references(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        def make_value(number):
+            return str(number) + 'Y'*100
+        for counter in range(64):
+            nodes.append((make_key(counter), make_value(counter),
+                ((make_key(counter + 20),),)  ))
+        index = self.make_index(ref_lists=1, nodes=nodes)
+        # lookup a key in the middle that does not exist, so that when we can
+        # check that the referred-to-keys are not accessed automatically.
+        result =index.lookup_keys_via_location(
+            [(index._size // 2, ('40', ))])
+        # check the parse map - only the start and middle should have been
+        # parsed.
+        self.assertEqual([(0, 3890), (6444, 10274)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(25)), (make_key(37), make_key(52))],
+            index._parsed_key_map)
+        # and check the transport activity likewise.
+        self.assertEqual(
+            [('readv', 'index', [(7906, 800), (0, 200)], True, 15813)],
+            index._transport._activity)
+        # reset the transport log for testing the reference lookup
+        del index._transport._activity[:]
+        # now looking up a key in the portion of the file already parsed should
+        # only perform IO to resolve its key references.
+        result = index.lookup_keys_via_location([(4000, make_key(40))])
+        self.assertEqual(
+            [((4000, make_key(40)),
+              (index, make_key(40), make_value(40), ((make_key(60),),)))],
+            result)
+        self.assertEqual([('readv', 'index', [(11976, 800)], True, 15813)],
+            index._transport._activity)
+
+
     def test_iter_all_entries_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))
