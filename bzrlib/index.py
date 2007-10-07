@@ -31,6 +31,7 @@ import re
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import trace
+from bzrlib.bisect_multi import bisect_multi_bytes
 from bzrlib.trace import mutter
 """)
 from bzrlib import debug, errors
@@ -420,6 +421,17 @@ class GraphIndex(object):
         start, end = self._parsed_byte_map[index]
         return offset >= start and offset < end
 
+    def _iter_entries_from_total_buffer(self, keys):
+        """Iterate over keys when the entire index is parsed."""
+        keys = keys.intersection(self._keys)
+        if self.node_ref_lists:
+            for key in keys:
+                value, node_refs = self._nodes[key]
+                yield self, key, value, node_refs
+        else:
+            for key in keys:
+                yield self, key, self._nodes[key]
+
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
@@ -430,17 +442,12 @@ class GraphIndex(object):
         """
         keys = set(keys)
         if not keys:
-            return
-        if self._nodes is None:
-            self._buffer_all()
-        keys = keys.intersection(self._keys)
-        if self.node_ref_lists:
-            for key in keys:
-                value, node_refs = self._nodes[key]
-                yield self, key, value, node_refs
+            return []
+        if self._nodes is not None:
+            return self._iter_entries_from_total_buffer(keys)
         else:
-            for key in keys:
-                yield self, key, self._nodes[key]
+            return (result[1] for result in bisect_multi_bytes(
+                self.lookup_keys_via_location, self._size, keys))
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.

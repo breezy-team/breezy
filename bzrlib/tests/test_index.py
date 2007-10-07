@@ -583,7 +583,6 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([('readv', 'index', [(11976, 800)], True, 15813)],
             index._transport._activity)
 
-
     def test_iter_all_entries_empty(self):
         index = self.make_index()
         self.assertEqual([], list(index.iter_all_entries()))

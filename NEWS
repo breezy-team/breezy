@@ -51,6 +51,9 @@ IN DEVELOPMENT
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
+   * Pack indices are now partially parsed for specific key lookup using a
+     bisection approach. (Robert Collins)
+
    * Partial commits are now approximately 40% faster by walking over the
      unselected current tree more efficiently. (Robert Collins)
 
