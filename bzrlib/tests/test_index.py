@@ -419,11 +419,6 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([(0, 72)], index._parsed_byte_map)
         self.assertEqual([(None, ('name',))], index._parsed_key_map)
 
-    ### - tests:
-    # data with a reference that won't be accessed by the default readv request
-    # change the _nodes dict to a bisectable list, or perhaps an adjacent list.
-    # on result generation,
-
     def test_parsing_non_adjacent_data_trims(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
@@ -638,6 +633,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
 
     def test_iter_missing_entry_empty(self):
         index = self.make_index()
+        self.assertEqual([], list(index.iter_entries([('a', )])))
+
+    def test_iter_missing_entry_empty_no_size(self):
+        index = self.make_index()
+        index = GraphIndex(index._transport, 'index', None)
         self.assertEqual([], list(index.iter_entries([('a', )])))
 
     def test_iter_key_prefix_1_element_key_None(self):

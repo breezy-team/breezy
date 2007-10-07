@@ -242,7 +242,10 @@ class GraphIndex(object):
         :param size: The size of the index in bytes. This is used for bisection
             logic to perform partial index reads. While the size could be
             obtained by statting the file this introduced an additional round
-            trip that is avoided by having it supplied.
+            trip as well as requiring stat'able transports, both of which are
+            avoided by having it supplied. If size is None, then bisection
+            support will be disabled and accessing the index will just stream
+            all the data.
         """
         self._transport = transport
         self._name = name
@@ -443,6 +446,8 @@ class GraphIndex(object):
         keys = set(keys)
         if not keys:
             return []
+        if self._size is None and self._nodes is None:
+            self._buffer_all()
         if self._nodes is not None:
             return self._iter_entries_from_total_buffer(keys)
         else:
