@@ -778,7 +778,9 @@ class GraphIndex(object):
         if trim_start:
             offset += trim_start
         # print "parsing", repr(data)
-        lines = data.splitlines()
+        # pslitlines mangles the \r delimiters.. don't use it.
+        lines = data.split('\n')
+        del lines[-1]
         pos = offset
         first_key = None
         key = None
