@@ -19,6 +19,7 @@
 from bzrlib import errors
 from bzrlib.index import *
 from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.transport import get_transport
 
 
 class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
@@ -357,7 +358,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
-        trans = self.get_transport()
+        trans = get_transport('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
 
@@ -369,6 +370,181 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_open_sets_parsed_map_empty(self):
         index = self.make_index()
         self.assertEqual([], index._parsed_byte_map)
+        self.assertEqual([], index._parsed_key_map)
+
+    def test_first_lookup_key_via_location(self):
+        index = self.make_index()
+        # reset the transport log
+        del index._transport._activity[:]
+        # do a lookup_keys_via_location call for the middle of the file, which
+        # is what bisection uses.
+        result = index.lookup_keys_via_location(
+            [(index._size // 2, ('missing', ))])
+        # this should have asked for a readv request, with adjust_for_latency,
+        # and two regions: the header, and half-way into the file.
+        self.assertEqual([
+            ('readv', 'index', [(30, 30), (0, 200)], True, 60),
+            ],
+            index._transport._activity)
+        # and the result should be that the key cannot be present, because this
+        # is a trivial index.
+        self.assertEqual([((index._size // 2, ('missing', )), False)],
+            result)
+        # And the regions of the file that have been parsed - in this case the
+        # entire file - should be in the parsed region map.
+        self.assertEqual([(0, 60)], index._parsed_byte_map)
+        self.assertEqual([(None, None)], index._parsed_key_map)
+
+    def test_parsing_parses_data_adjacent_to_parsed_regions(self):
+        # we trim data we recieve to remove the first and trailing
+        # partial lines, except when they start at the end/finish at the start
+        # of a region we've alread parsed/ the end of the file. The trivial
+        # test for this is an index with 1 key.
+        index = self.make_index(nodes=[(('name', ), 'data', ())])
+        # reset the transport log
+        del index._transport._activity[:]
+        result = index.lookup_keys_via_location(
+            [(index._size // 2, ('missing', ))])
+        # this should have asked for a readv request, with adjust_for_latency,
+        # and two regions: the header, and half-way into the file.
+        self.assertEqual([
+            ('readv', 'index', [(36, 36), (0, 200)], True, 72),
+            ],
+            index._transport._activity)
+        # and the result should be that the key cannot be present, because this
+        # is a trivial index and we should not have to do more round trips.
+        self.assertEqual([((index._size // 2, ('missing', )), False)],
+            result)
+        # The whole file should be parsed at this point.
+        self.assertEqual([(0, 72)], index._parsed_byte_map)
+        self.assertEqual([(None, ('name',))], index._parsed_key_map)
+
+    ### - tests:
+    # data with a reference that won't be accessed by the default readv request
+    # change the _nodes dict to a bisectable list, or perhaps an adjacent list.
+    # on result generation,
+
+    def test_parsing_non_adjacent_data_trims(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        for counter in range(64):
+            nodes.append((make_key(counter), 'Y'*100, ()))
+        index = self.make_index(nodes=nodes)
+        result = index.lookup_keys_via_location(
+            [(index._size // 2, ('40', ))])
+        # and the result should be that the key cannot be present, because key is
+        # in the middle of the observed data from a 4K read - the smallest transport
+        # will do today with this api.
+        self.assertEqual([((index._size // 2, ('40', )), False)],
+            result)
+        # and we should have a parse map that includes the header and the
+        # region that was parsed after trimming.
+        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+
+    def test_lookup_missing_key_answers_without_io_when_map_permits(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        for counter in range(64):
+            nodes.append((make_key(counter), 'Y'*100, ()))
+        index = self.make_index(nodes=nodes)
+        # lookup the keys in the middle of the file
+        result =index.lookup_keys_via_location(
+            [(index._size // 2, ('40', ))])
+        # check the parse map, this determines the test validity
+        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+        # reset the transport log
+        del index._transport._activity[:]
+        # now looking up a key in the portion of the file already parsed should
+        # not create a new transport request, and should return False (cannot
+        # be in the index) - even when the byte location we ask for is outside
+        # the parsed region
+        # 
+        result = index.lookup_keys_via_location(
+            [(4000, ('40', ))])
+        self.assertEqual([((4000, ('40', )), False)],
+            result)
+        self.assertEqual([], index._transport._activity)
+
+    def test_lookup_present_key_answers_without_io_when_map_permits(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        def make_value(number):
+            return str(number) + 'Y'*100
+        for counter in range(64):
+            nodes.append((make_key(counter), make_value(counter), ()))
+        index = self.make_index(nodes=nodes)
+        # lookup the keys in the middle of the file
+        result =index.lookup_keys_via_location(
+            [(index._size // 2, ('40', ))])
+        # check the parse map, this determines the test validity
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+        # reset the transport log
+        del index._transport._activity[:]
+        # now looking up a key in the portion of the file already parsed should
+        # not create a new transport request, and should return False (cannot
+        # be in the index) - even when the byte location we ask for is outside
+        # the parsed region
+        # 
+        result = index.lookup_keys_via_location([(4000, make_key(40))])
+        self.assertEqual(
+            [((4000, make_key(40)), (index, make_key(40), make_value(40)))],
+            result)
+        self.assertEqual([], index._transport._activity)
+
+    def test_lookup_key_below_probed_area(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        for counter in range(64):
+            nodes.append((make_key(counter), 'Y'*100, ()))
+        index = self.make_index(nodes=nodes)
+        # ask for the key in the middle, but a key that is located in the
+        # unparsed region before the middle.
+        result =index.lookup_keys_via_location(
+            [(index._size // 2, ('30', ))])
+        # check the parse map, this determines the test validity
+        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+        self.assertEqual([((index._size // 2, ('30', )), -1)],
+            result)
+
+    def test_lookup_key_above_probed_area(self):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        for counter in range(64):
+            nodes.append((make_key(counter), 'Y'*100, ()))
+        index = self.make_index(nodes=nodes)
+        # ask for the key in the middle, but a key that is located in the
+        # unparsed region after the middle.
+        result =index.lookup_keys_via_location(
+            [(index._size // 2, ('50', ))])
+        # check the parse map, this determines the test validity
+        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+        self.assertEqual([((index._size // 2, ('50', )), +1)],
+            result)
 
     def test_iter_all_entries_empty(self):
         index = self.make_index()
