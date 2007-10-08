@@ -2026,6 +2026,9 @@ class DirState(object):
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
+        # XXX: Some callers pass '' as the packed_stat, and it seems to be
+        # sometimes present in the dirstate - this seems oddly inconsistent.
+        # mbp 20071008
         if (fingerprint is '') != (packed_stat in (DirState.NULLSTAT, '')):
             raise AssertionError("either both fingerprint and packed_stat "
                 "should be be supplied to update_minimal, or neither: %r, %r"
