@@ -590,6 +590,20 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def sha_file_by_name(fname):
+    """Calculate the SHA1 of a file by reading the full text"""
+    s = sha.new()
+    f = os.open(fname, os.O_RDONLY)
+    try:
+        while True:
+            b = os.read(f, 1<<16)
+            if not b:
+                return s.hexdigest()
+            s.update(b)
+    finally:
+        os.close(f)
+
+
 def sha_strings(strings, _factory=sha.new):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
