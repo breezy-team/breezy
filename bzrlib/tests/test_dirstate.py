@@ -700,7 +700,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
 
-    def test_set_state_from_inventory_preserves_hashcahche(self):
+    def test_set_state_from_inventory_preserves_hashcache(self):
         # https://bugs.edge.launchpad.net/bzr/+bug/146176
         # set_state_from_inventory should preserve the stat and hash value for
         # workingtree files that are not changed by the inventory.
@@ -738,6 +738,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
            
             # extract the inventory, and add something to it
             inv = tree._get_inventory()
+            # should see the file we poked in...
+            self.assertTrue(inv.has_id('foo-id'))
+            self.assertTrue(inv.has_filename('foo'))
             inv.add_path('bar', 'file', 'bar-id')
             # no-op change is enough to make it lose state
             tree._dirstate.set_state_from_inventory(inv)
@@ -749,9 +752,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # now check that the state still has the original hashcache value
             state = tree._dirstate
             foo_tuple = state._get_entry(0, path_utf8='foo')
-            self.expectFailure(
-                'set_state_from_inventory clears hashcache (#146176)',
-                self.assertEqual,
+            ## self.expectFailure(
+                ## 'set_state_from_inventory clears hashcache (#146176)',
+            self.assertEqual(
                 (('', 'foo', 'foo-id',),
                  [('f', foo_sha, len(foo_contents), False,
                    dirstate.pack_stat(foo_stat))]),

@@ -1875,6 +1875,9 @@ class DirState(object):
         # both must have roots so this is safe:
         current_new = new_iterator.next()
         current_old = old_iterator.next()
+        # XXX: if we're generating things in order, why do we need to call
+        # update_minimal, rather than just generating the whole list in one
+        # go?
         def advance(iterator):
             try:
                 return iterator.next()
@@ -1892,29 +1895,37 @@ class DirState(object):
                 new_dirname, new_basename = osutils.split(new_path_utf8)
                 new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
+                new_dir_parts = new_dirname.split('/')
                 current_new_minikind = \
                     DirState._kind_to_minikind[current_new[1].kind]
                 if current_new_minikind == 't':
                     fingerprint = current_new[1].reference_revision or ''
                 else:
+                    # XXX: mbp- why are we erasing the fingerprint?  surely we
+                    # should be leaving it alone when updating, if one is
+                    # already present?  only clear it when adding a new
+                    # record.
                     fingerprint = ''
             else:
                 # for safety disable variables
                 del new_path_utf8, new_dirname, new_basename, new_id, new_entry_key
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
-            if not current_old:
+            if current_old is None:
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
-            elif not current_new:
+            elif current_new is None:
                 # new is finished
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
                 # same -  common case
+                # We're looking at the same path and id in both the dirstate
+                # and inventory, so just need to update the fields in the
+                # dirstate from the one in the inventory.
                 # TODO: update the record if anything significant has changed.
                 # the minimal required trigger is if the execute bit or cached
                 # kind has changed.
@@ -1926,8 +1937,9 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif (new_entry_key[0].split('/') < current_old[0][0].split('/')
-                  and new_entry_key[1:] < current_old[0][1:]):
+            elif (new_dir_parts < current_old[0][0].split('/')
+                  or (new_dirname == current_old[0][0]
+                      and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
@@ -1935,7 +1947,8 @@ class DirState(object):
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             else:
-                # old comes before:
+                # we've advanced past the place where the old key would be,
+                # without seeing it in the new list.  so it must be gone.
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
@@ -2002,14 +2015,21 @@ class DirState(object):
                 'directory'), etc.
         :param executable: Should the executable bit be set?
         :param fingerprint: Simple fingerprint for new entry.
-        :param packed_stat: packed stat value for new entry.
+        :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
                 extra computation.
+
+        If packed_stat and fingerprint are not given, they're invalidated in
+        the entry.
         """
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
+##         if (fingerprint is '') != (packed_stat is DirState.NULLSTAT):
+##             raise AssertionError("either both fingerprint and packed_stat "
+##                 "should be be supplied to update_minimal, or neither: %r, %r"
+##                 % (fingerprint, packed_stat))
         entry_index, present = self._find_entry_index(key, block)
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         id_index = self._get_id_index()
