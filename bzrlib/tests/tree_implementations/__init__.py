@@ -326,6 +326,7 @@ def test_suite():
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
         'bzrlib.tests.tree_implementations.test_list_files',
+        'bzrlib.tests.tree_implementations.test_path_content_summary',
         'bzrlib.tests.tree_implementations.test_revision_tree',
         'bzrlib.tests.tree_implementations.test_test_trees',
         'bzrlib.tests.tree_implementations.test_tree',

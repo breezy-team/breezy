@@ -618,8 +618,9 @@ class InterVersionedFile(InterObject):
             # TODO: remove parent texts when they are not relevant any more for 
             # memory pressure reduction. RBC 20060313
             # pb.update('Converting versioned data', 0, len(order))
+            total = len(order)
             for index, version in enumerate(order):
-                pb.update('Converting versioned data', index, len(order))
+                pb.update('Converting versioned data', index, total)
                 _, _, parent_text = target.add_lines(version,
                                                self.source.get_parents(version),
                                                self.source.get_lines(version),
@@ -633,6 +634,8 @@ class InterVersionedFile(InterObject):
                                         msg,
                                         version_ids,
                                         ignore_missing)
+            else:
+                return total
         finally:
             pb.finished()
 

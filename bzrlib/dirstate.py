@@ -212,6 +212,7 @@ import time
 import zlib
 
 from bzrlib import (
+    debug,
     errors,
     inventory,
     lock,
@@ -340,6 +341,10 @@ class DirState(object):
         self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
+        if 'hashcache' in debug.debug_flags:
+            self._sha1_file = self._sha1_file_and_mutter
+        else:
+            self._sha1_file = osutils.sha_file_by_name
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1128,7 +1133,7 @@ class DirState(object):
         # process this entry.
         link_or_sha1 = None
         if minikind == 'f':
-            link_or_sha1 = self._sha1_file(abspath, entry)
+            link_or_sha1 = self._sha1_file(abspath)
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
             if self._cutoff_time is None:
@@ -1182,13 +1187,11 @@ class DirState(object):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
-    def _sha1_file(self, abspath, entry):
-        """Calculate the SHA1 of a file by reading the full text"""
-        f = file(abspath, 'rb', buffering=65000)
-        try:
-            return osutils.sha_file(f)
-        finally:
-            f.close()
+    def _sha1_file_and_mutter(self, abspath):
+        # when -Dhashcache is turned on, this is monkey-patched in to log
+        # file reads
+        trace.mutter("dirstate sha1 " + abspath)
+        return osutils.sha_file_by_name(abspath)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""

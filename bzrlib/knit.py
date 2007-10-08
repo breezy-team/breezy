@@ -254,7 +254,7 @@ class KnitAnnotateFactory(object):
     def parse_line_delta_iter(self, lines):
         return iter(self.parse_line_delta(lines))
 
-    def parse_line_delta(self, lines, version_id):
+    def parse_line_delta(self, lines, version_id, plain=False):
         """Convert a line based delta into internal representation.
 
         line delta is in the form of:
@@ -263,6 +263,10 @@ class KnitAnnotateFactory(object):
         revid(utf8) newline\n
         internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
+
+        :param plain: If True, the lines are returned as a plain
+            list, not as a list of tuples, i.e.
+            (start, end, count, [1..count newline])
         """
         result = []
         lines = iter(lines)
@@ -274,10 +278,18 @@ class KnitAnnotateFactory(object):
             return cache.setdefault(origin, origin), text
 
         # walk through the lines parsing.
-        for header in lines:
-            start, end, count = [int(n) for n in header.split(',')]
-            contents = [tuple(next().split(' ', 1)) for i in xrange(count)]
-            result.append((start, end, count, contents))
+        # Note that the plain test is explicitly pulled out of the
+        # loop to minimise any performance impact
+        if plain:
+            for header in lines:
+                start, end, count = [int(n) for n in header.split(',')]
+                contents = [next().split(' ', 1)[1] for i in xrange(count)]
+                result.append((start, end, count, contents))
+        else:
+            for header in lines:
+                start, end, count = [int(n) for n in header.split(',')]
+                contents = [tuple(next().split(' ', 1)) for i in xrange(count)]
+                result.append((start, end, count, contents))
         return result
 
     def get_fulltext_content(self, lines):
@@ -409,9 +421,8 @@ class KnitVersionedFile(VersionedFile):
     """
 
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
-                 factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
-                 create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None, index=None, access_method=None):
+        factory=None, delta=True, create=False, create_parent_dir=False,
+        delay_create=False, dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -422,10 +433,6 @@ class KnitVersionedFile(VersionedFile):
             actually be created until the first data is stored.
         :param index: An index to use for the knit.
         """
-        if deprecated_passed(basis_knit):
-            warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
-                 " deprecated as of bzr 0.9.",
-                 DeprecationWarning, stacklevel=2)
         if access_mode is None:
             access_mode = 'w'
         super(KnitVersionedFile, self).__init__(access_mode)
@@ -455,7 +462,7 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(_access)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, 
+        return '%s(%s)' % (self.__class__.__name__,
                            self.transport.abspath(self.filename))
     
     def _check_should_delta(self, first_parents):
@@ -971,9 +978,6 @@ class KnitVersionedFile(VersionedFile):
         the requested versions and content_map contains the KnitContents.
         Both dicts take version_ids as their keys.
         """
-        for version_id in version_ids:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
         record_map = self._get_record_map(version_ids)
 
         text_map = {}
@@ -1412,7 +1416,10 @@ class _KnitIndex(_KnitComponentFile):
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        options = self._cache[version_id][1]
+        try:
+            options = self._cache[version_id][1]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self._filename)
         if 'fulltext' in options:
             return 'fulltext'
         else:
@@ -1651,7 +1658,10 @@ class KnitGraphIndex(object):
             return 'fulltext'
 
     def _get_node(self, version_id):
-        return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        try:
+            return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        except IndexError:
+            raise RevisionNotPresent(version_id, self)
 
     def get_options(self, version_id):
         """Return a string represention options.
@@ -2154,8 +2164,20 @@ class InterKnit(InterVersionedFile):
         assert isinstance(self.source, KnitVersionedFile)
         assert isinstance(self.target, KnitVersionedFile)
 
-        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        # If the source and target are mismatched w.r.t. annotations vs
+        # plain, the data needs to be converted accordingly
+        if self.source.factory.annotated == self.target.factory.annotated:
+            converter = None
+        elif self.source.factory.annotated:
+            converter = self._anno_to_plain_converter
+        else:
+            # We're converting from a plain to an annotated knit. This requires
+            # building the annotations from scratch. The generic join code
+            # handles this implicitly so we delegate to it.
+            return super(InterKnit, self).join(pb, msg, version_ids,
+                ignore_missing)
 
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:
             return 0
 
@@ -2213,12 +2235,30 @@ class InterKnit(InterVersionedFile):
                 assert version_id == version_id2, 'logic error, inconsistent results'
                 count = count + 1
                 pb.update("Joining knit", count, total)
-                raw_records.append((version_id, options, parents, len(raw_data)))
+                if converter:
+                    size, raw_data = converter(raw_data, version_id, options,
+                        parents)
+                else:
+                    size = len(raw_data)
+                raw_records.append((version_id, options, parents, size))
                 raw_datum.append(raw_data)
             self.target._add_raw_records(raw_records, ''.join(raw_datum))
             return count
         finally:
             pb.finished()
+
+    def _anno_to_plain_converter(self, raw_data, version_id, options,
+                                 parents):
+        """Convert annotated content to plain content."""
+        data, digest = self.source._data._parse_record(version_id, raw_data)
+        if 'fulltext' in options:
+            content = self.source.factory.parse_fulltext(data, version_id)
+            lines = self.target.factory.lower_fulltext(content)
+        else:
+            delta = self.source.factory.parse_line_delta(data, version_id,
+                plain=True)
+            lines = self.target.factory.lower_line_delta(delta)
+        return self.target._data._record_to_data(version_id, digest, lines)
 
 
 InterVersionedFile.register_optimiser(InterKnit)

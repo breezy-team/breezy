@@ -49,7 +49,6 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
-    hashcache,
     ignores,
     merge,
     osutils,
@@ -270,21 +269,6 @@ class WorkingTree4(WorkingTree3):
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
-
-    def _directory_is_tree_reference(self, relpath):
-        # as a special case, if a directory contains control files then 
-        # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
-        # TODO: We could ask all the control formats whether they
-        # recognize this directory, but at the moment there's no cheap api
-        # to do that.  Since we probably can only nest bzr checkouts and
-        # they always use this name it's ok for now.  -- mbp 20060306
-        #
-        # FIXME: There is an unhandled case here of a subdirectory
-        # containing .bzr but not a branch; that will probably blow up
-        # when you try to commit it.  It might happen if there is a
-        # checkout in a subdirectory.  This can be avoided by not adding
-        # it.  mbp 20070306
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -1099,6 +1083,24 @@ class WorkingTree4(WorkingTree3):
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
 
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        state = self.current_dirstate()
+        # XXX: should we make the path be passed in as utf8 ?
+        entry = state._get_entry(0, path_utf8=cache_utf8.encode(path))
+        tree_details = entry[1][0]
+        packed_stat = dirstate.pack_stat(stat_result)
+        if tree_details[4] == packed_stat:
+            return tree_details[1]
+        else:
+            return None
+
     @needs_read_lock
     def supports_tree_reference(self):
         return self._repo_supports_tree_reference
@@ -1556,6 +1558,20 @@ class DirStateRevisionTree(Tree):
 
     def kind(self, file_id):
         return self.inventory[file_id].kind
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.inventory.path2id(path)
+        if id is None:
+            return ('missing', None, None, None)
+        entry = self._inventory[id]
+        kind = entry.kind
+        if kind == 'file':
+            return (kind, entry.text_size, entry.executable, entry.text_sha1)
+        elif kind == 'symlink':
+            return (kind, None, None, entry.symlink_target)
+        else:
+            return (kind, None, None, None)
 
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]

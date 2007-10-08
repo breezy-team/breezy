@@ -24,6 +24,7 @@ from bzrlib import (
 from bzrlib.tag import (
     BasicTags,
     _merge_tags_if_possible,
+    DisabledTags,
     )
 from bzrlib.tests import (
     KnownFailure,
@@ -151,3 +152,20 @@ class TestTagsInCheckouts(TestCaseWithTransport):
             "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
             child.tags.lookup_tag, 'foo')
+
+
+class DisabledTagsTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(DisabledTagsTests, self).setUp()
+        branch = self.make_branch('.')
+        self.tags = DisabledTags(branch)
+
+    def test_supports_tags(self):
+        self.assertEqual(self.tags.supports_tags(), False)
+
+    def test_set_tag(self):
+        self.assertRaises(errors.TagsNotSupported, self.tags.set_tag)
+
+    def test_get_reverse_tag_dict(self):
+        self.assertEqual(self.tags.get_reverse_tag_dict(), {})

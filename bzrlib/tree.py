@@ -185,6 +185,20 @@ class Tree(object):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
+    def path_content_summary(self, path):
+        """Get a summary of the information about path.
+        
+        :param path: A relative path within the tree.
+        :return: A tuple containing kind, size, exec, sha1-or-link.
+            Kind is always present (see tree.kind()).
+            size is present if kind is file, None otherwise.
+            exec is None unless kind is file and the platform supports the 'x'
+                bit.
+            sha1-or-link is the link target if kind is symlink, or the sha1 if
+                it can be obtained without reading the file.
+        """
+        raise NotImplementedError(self.path_content_summary)
+
     def get_reference_revision(self, file_id, path=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"

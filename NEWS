@@ -9,6 +9,11 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+  CHANGES:
+  
+   * ``bzr`` now returns exit code 4 if an internal error occurred, and 
+     3 if a normal error occurred.  (Martin Pool)
+
    * ``pull``, ``merge`` and ``push`` will no longer silently correct some
      repository index errors that occured as a result of the Weave disk format.
      Instead the ``reconcile`` command needs to be run to correct those
@@ -29,6 +34,10 @@ IN DEVELOPMENT
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
      merge without affecting the working tree contents.  (Martin Pool)
+
+   * New ``bzr_remote_path`` configuration variable allows finer control of
+     remote bzr locations than BZR_REMOTE_PATH environment variable.
+     (Aaron Bentley)
 
   PERFORMANCE:
 
@@ -54,8 +63,14 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr+https://`` smart server across https now supported. 
+     (John Ferlito, Martin Pool, #128456)
+
    * Mutt is now a supported mail client; set ``mail_client=mutt`` in your
      bazaar.conf and ``send`` will use mutt. (Keir Mierle)
+
+   * New option ``-c``/``--change`` for ``merge`` command for cherrypicking 
+     changes from one revision. (Alexander Belchenko, #141368)
 
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
@@ -73,7 +88,10 @@ IN DEVELOPMENT
      paramiko.
      (Vincent Ladeuil, #59150)
 
-   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+   * Fix commit ordering in corner case. (Aaron Bentley, #94975)
+
+   * Fix long standing bug in partial commit when there are renames 
+     left in tree. (Robert Collins, #140419)
 
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
@@ -82,9 +100,23 @@ IN DEVELOPMENT
      contains a symbolic link.
      (Vincent Ladeuil, #141382).
 
+   * Fix log against smart server branches that don't support tags.
+     (James Westby, #140615)
+
+   * Fix 'unprintable error' message when displaying BzrCheckError and 
+     some other exceptions on Python 2.5.
+     (Martin Pool, #144633)
+
+   * Handles default value for ListOption in cmd_commit.
+     (Vincent Ladeuil, #140432)
+
    * HttpServer and FtpServer need to be closed properly or a listening socket
      will remain opened.
      (Vincent Ladeuil, #140055)
+
+   * Monitor the .bzr directory created in the top level test
+     directory to detect leaking tests.
+     (Vincent Ladeuil, #147986)
 
    * The basename, not the full path, is now used when checking whether
      the profiling dump file begins with ``callgrind.out`` or not. This
@@ -96,11 +128,32 @@ IN DEVELOPMENT
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
+   * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
+     Merwe)
+
   API BREAKS:
+
+   * ``CommitBuilder.record_entry_contents`` now requires the root entry of a
+     tree be supplied to it, previously failing to do so would trigger a
+     deprecation warning. (Robert Collins)
 
    * ``KnitVersionedFile.add*`` will no longer cache added records even when
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
+
+   * Removed ``bzrlib.transport.TransportLogger`` - please see the new
+     ``trace+`` transport instead. (Robert Collins)
+
+   * Removed previously deprecated varargs interface to ``TestCase.run_bzr`` and
+     deprecated methods ``TestCase.capture`` and ``TestCase.run_bzr_captured``.
+     (Martin Pool)
+
+   * Removed previous deprecated ``basis_knit`` parameter to the
+     ``KnitVersionedFile`` constructor. (Robert Collins)
+
+   * Special purpose method ``TestCase.run_bzr_decode`` is moved to the test_non_ascii 
+     class that needs it.
+     (Martin Pool)
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
@@ -119,13 +172,25 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
-      put by the method call, to allow avoiding stat-after-write or
-      housekeeping in callers. (Robert Collins)
+   * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
+     put by the method call, to allow avoiding stat-after-write or
+     housekeeping in callers. (Robert Collins)
+
+   * New class ``bzrlib.errors.InternalBzrError`` which is just a convenient
+     shorthand for deriving from BzrError and setting internal_error = True.
+     (Robert Collins)
+
+   * New method ``bzrlib.mutabletree.update_to_one_parent_via_delta`` for
+     moving the state of a parent tree to a new version via a delta rather than
+     a complete replacement tree. (Robert Collins)
 
    * New method ``bzrlib.osutils.minimum_path_selection`` useful for removing
      duplication from user input, when a user mentions both a path and an item
      contained within that path. (Robert Collins)
+
+   * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
+     tuple containing the key information about a path for commit processing
+     to complete. (Robert Collins)
 
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
@@ -134,12 +199,56 @@ IN DEVELOPMENT
      and returns a gzipped version of the same. This is used to avoid a bunch
      of api friction during adding of knit hunks. (Robert Collins)
 
+   * New parameter on ``bzrlib.transport.Transport.readv``
+     ``adjust_for_latency`` which changes readv from returning strictly the
+     requested data to inserted return larger ranges and in forward read order
+     to reduce the effect of network latency. (Robert Collins)
+
    * New parameter yield_parents on ``Inventory.iter_entries_by_dir`` which
      causes the parents of a selected id to be returned recursively, so all the
      paths from the root down to each element of selected_file_ids are
      returned. (Robert Collins)
 
+   * Knit joining has been enhanced to support plain to annotated conversion
+     and annotated to plain conversion. (Ian Clatworthy)
+
+   * The CommitBuilder method ``record_entry_contents`` now returns summary
+     information about the effect of the commit on the repository. This tuple
+     contains an inventory delta item if the entry changed from the basis, and a
+     boolean indicating whether a new file graph node was recorded.
+     (Robert Collins)
+
   TESTING:
+
+   * New transport implementation ``trace+`` which is useful for testing,
+     logging activity taken to its _activity attribute. (Robert Collins)
+
+   * When running bzr commands within the test suite, internal exceptions are
+     not caught and reported in the usual way, but rather allowed to propagate
+     up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
+     makes this behavior available to other users.
+     (Martin Pool)
+
+
+bzr 0.91 2007-09-26
+===================
+
+  BUG FIXES:
+
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
+
+   * Fix commit ordering in corner case (Aaron Bentley, #94975)
+
+   * Fix ''bzr info bzr://host/'' and other operations on ''bzr://' URLs with
+     an implicit port.  We were incorrectly raising PathNotChild due to
+     inconsistent treatment of the ''_port'' attribute on the Transport object.
+     (Andrew Bennetts, #133965)
+
+   * Make RemoteRepository.sprout cope gracefully with servers that don't
+     support the ``Repository.tarball`` request.
+     (Andrew Bennetts)
 
 
 bzr 0.91rc2 2007-09-11
@@ -147,6 +256,7 @@ bzr 0.91rc2 2007-09-11
 
    * Replaced incorrect tarball for previous release; a debug statement was left 
      in bzrlib/remote.py.
+
 
 bzr 0.91rc1 2007-09-11
 ======================
@@ -282,9 +392,13 @@ bzr 0.91rc1 2007-09-11
    * Overwrite conflicting tags by ``push`` and ``pull`` if the
      ``--overwrite`` option is specified.  (Lukáš Lalinský, #93947)
 
-    * In checkouts, tags are copied into the master branch when created,
-      changed or deleted, and are copied into the checkout when it is 
-      updated.  (Martin Pool, #93856, #93860)
+   * In checkouts, tags are copied into the master branch when created,
+     changed or deleted, and are copied into the checkout when it is 
+     updated.  (Martin Pool, #93856, #93860)
+
+   * Print a warning instead of aborting the ``python setup.py install``
+     process if building of a C extension is not possible.
+     (Lukáš Lalinský, Alexander Belchenko)
 
   IMPROVEMENTS:
 
