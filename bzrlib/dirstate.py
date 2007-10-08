@@ -2026,10 +2026,10 @@ class DirState(object):
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
-##         if (fingerprint is '') != (packed_stat is DirState.NULLSTAT):
-##             raise AssertionError("either both fingerprint and packed_stat "
-##                 "should be be supplied to update_minimal, or neither: %r, %r"
-##                 % (fingerprint, packed_stat))
+        if (fingerprint is '') != (packed_stat in (DirState.NULLSTAT, '')):
+            raise AssertionError("either both fingerprint and packed_stat "
+                "should be be supplied to update_minimal, or neither: %r, %r"
+                % (fingerprint, packed_stat))
         entry_index, present = self._find_entry_index(key, block)
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         id_index = self._get_id_index()
