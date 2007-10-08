@@ -1699,9 +1699,10 @@ class RepositoryFormat(object):
        children.
      * an open routine which returns a Repository instance.
 
-    There is one and only one format for every disk format. The actual
-    repository types do not indicate disk format at all - only repo._format can
-    be used to determine the disk format of a Repository instance.
+    There is one and only one Format subclass for each on-disk format. But
+    there can be one Repository subclass that is used for several different
+    formats. The _format attribute on a Repository instance can be used to
+    determine the disk format.
 
     Formats are placed in an dict by their format string for reference 
     during opening. These should be subclasses of RepositoryFormat

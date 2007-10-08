@@ -77,8 +77,10 @@ class _KnitParentsProvider(object):
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
-    # make an manually, or incorrectly initialised KnitRepository object
-    # invalid
+    # These attributes are inherited from the Repository base class. Setting
+    # them to None ensures that if the constructor is changed to not initialize
+    # them, or a subclass fails to call the constructor, that an error will
+    # occur rather than the system working but generating incorrect data.
     _commit_builder_class = None
     _serializer = None
 
