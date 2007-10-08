@@ -1952,6 +1952,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
+        # for compatability 
+        if file_id is None:
+            symbol_versioning.warn(symbol_versioning.zero_twelve
+                % 'WorkingTree.set_root_id with fileid=None',
+                DeprecationWarning,
+                stacklevel=3)
+            file_id = ROOT_ID
+        else:
+            file_id = osutils.safe_file_id(file_id)
         self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
