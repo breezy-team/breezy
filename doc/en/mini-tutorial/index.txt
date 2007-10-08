@@ -11,7 +11,8 @@ Bazaar is a distributed version control system that makes it easier for
 people to work together on software projects. 
 
 Over the next five minutes, you'll learn how to put your files under
-version control, how to create your own 
+version control, how to record changes to them, examine your work, publish
+it and merge changes from someone else.
 
 If you'd prefer a more detailed introduction, take a look at our guide
 `Learning More`_.
@@ -28,11 +29,12 @@ trivial to install on any platform that runs Python 2.4:
 - *Mac OS X:* `install using MacPorts`_.
 
 For other platforms and how to install from source code, see the Downloads_
-page.
+and Installation_ pages.
 
 .. _installation instructions: http://bazaar-vcs.org/WindowsDownloads
 .. _install using MacPorts: http://bazaar-vcs.org/MacPorts
 .. _Downloads: http://bazaar-vcs.org/Download
+.. _Installation: http://bazaar-vcs.org/InstallationFAQ
 
 
 Introducing yourself
@@ -57,7 +59,14 @@ Now, check that your name and email address are correctly registered::
 Putting existing files under version control
 ============================================
 
-Switch to a directory where you've already got some files, then type::
+Let's create a directory and some files to use with Bazaar::
+
+ $ mkdir myproject
+ $ cd myproject
+ $ mkdir subdirectory
+ $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
+
+Now get Bazaar to initalise itself in that directory::
 
   $ bzr init
   
@@ -70,8 +79,14 @@ The next step is to tell Bazaar which files you want to track.
 
   $ bzr add
 
-Bazaar will now recursively put everything in that directory under version
-control.
+Bazaar will now recursively put everything in the directory under version
+control::
+
+ $ added subdirectory
+ $ added test1.txt
+ $ added test2.txt
+ $ added test3.txt
+ $ added subdirectory/test4.txt
 
 Next, take a snapshot of your files by committing them to your branch. Add 
 a commit message to explain why you made the commit::
@@ -81,7 +96,7 @@ a commit message to explain why you made the commit::
 As Bazaar is a distributed version control system, it doesn't need to 
 connect to a central server to make the commit. Instead, Bazaar stores your 
 branch and all its commits inside the directory you're working with - look
-for the ```.bzr``` sub-directory.
+for the ``.bzr`` sub-directory.
 
 
 Making changes to your files
@@ -89,29 +104,17 @@ Making changes to your files
 
 Let's change a file and commit those changes to your branch.
 
-Edit a file::
+Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
-  $ cd foobar.john
-  $ hack...
-
-Check what have you done::
-
-  $ bzr diff
-  === modified file 'foo.c'
-  --- foo.c
-  +++ foo.c
-  @@ -30,6 +30,7 @@
- 
-   #include "foo.h"
- 
-  +
-   static PyObject *
-   _pyfribidi_log2vis (PyObject * self, PyObject * args, PyObject * kw)
-   {
+ === modified file 'test1.txt'
+ --- test1.txt   2007-10-08 17:56:14 +0000
+ +++ test1.txt   2007-10-08 17:46:22 +0000
+ @@ -0,0 +1,1 @@
+ +test test test
 
 Commit your work to your Bazaar branch::
 
-  $ bzr commit -m 'added some whitespace'
+  $ bzr commit -m 'added first line of text'
   Committed revision 2.
 
 
@@ -124,17 +127,17 @@ You can see the history of your branch by browsing its log::
   ------------------------------------------------------------
   revno: 2
   committer: John Doe <john.doe@gmail.com>
-  branch nick: foobar.john
-  timestamp: Mon 2007-09-28 01:33:35 +0200
+  branch nick: myproject
+  timestamp: Mon 2007-10-08 17:56:14 +0000
   message:
-    added some whitespace
+    added first line of text
   ------------------------------------------------------------
   revno: 1
   committer: John Doe <john.doe@gmail.com>
-  branch nick: foobar.john
-  timestamp: Mon 2006-09-28 01:06:11 +0200
+  branch nick: myproject
+  timestamp: Mon 2006-10-08 17:46:22 +0000
   message:
-    initial revision
+    Initial import
 
 
 Publishing Your Branch
@@ -143,18 +146,18 @@ Publishing Your Branch
 There are a couple of ways to publish your branch but the easiest way is to
 push it to a web server.
 
-Let's assume you want to publish your branch at jod.example.com/foobar.john
+Let's assume you want to publish your branch at myserver.com/myproject
 and you have sftp access to the server::
 
-  $ bzr push sftp://jod@jod.example.com/public_html/foobar.john/
+  $ bzr push sftp://me@myserver.com/public_html/myproject/
   2 revision(s) pushed.
     
-Note that to use sftp, your may need to install ''paramiko'' and
-''pyCrypto''. See http://bazaar-vcs.org/InstallationFaq for details.
+*Note:* to use sftp, you may need to install ``paramiko`` and
+``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
 
 Now anyone can get their own copy of your branch by typing::
 
-  bzr branch http://jod.example.com/foobar.john/
+  bzr branch http://myserver.com/myproject/
 
 Their branch will have all the same files, with the same revision history
 as yours but any changes they make will stay in their own branch. If you
@@ -205,6 +208,7 @@ branch::
 Bazaar won't automatically commit changes from a merge. Although Bazaar
 excels at handling complex merges, from time to time you may need to 
 resolve conflicts or make other minor changes before committing. 
+
 
 Learning more
 =============
