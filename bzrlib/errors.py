@@ -44,6 +44,12 @@ from bzrlib.patches import (
 # 'unprintable'.
 
 
+# return codes from the bzr program
+EXIT_OK = 0
+EXIT_ERROR = 3
+EXIT_INTERNAL_ERROR = 4
+
+
 class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
@@ -252,6 +258,12 @@ class ReservedId(BzrError):
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
+
+
+class RootMissing(InternalBzrError):
+
+    _fmt = ("The root entry of a tree must be the first entry supplied to "
+        "record_entry_contents.")
 
 
 class NoHelpTopic(BzrError):

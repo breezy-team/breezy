@@ -96,7 +96,7 @@ class CommitBuilder(object):
             self._committer = committer
 
         self.new_inventory = Inventory(None)
-        self._new_revision_id = osutils.safe_revision_id(revision_id)
+        self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
 
@@ -115,6 +115,7 @@ class CommitBuilder(object):
             self._timezone = int(timezone)
 
         self._generate_revision_if_needed()
+        self._repo_graph = repository.get_graph()
 
     def commit(self, message):
         """Make the actual commit.
@@ -194,20 +195,26 @@ class CommitBuilder(object):
             commit.
         :param tree: The tree that is being committed.
         """
-        if ie.parent_id is not None:
-            # if ie is not root, add a root automatically.
-            symbol_versioning.warn('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
-            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
-                                       '', tree)
-        else:
-            # In this revision format, root entries have no knit or weave When
-            # serializing out to disk and back in root.revision is always
-            # _new_revision_id
-            ie.revision = self._new_revision_id
+        # In this revision format, root entries have no knit or weave When
+        # serializing out to disk and back in root.revision is always
+        # _new_revision_id
+        ie.revision = self._new_revision_id
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
+    def _get_delta(self, ie, basis_inv, path):
+        """Get a delta against the basis inventory for ie."""
+        if ie.file_id not in basis_inv:
+            # add
+            return (None, path, ie.file_id, ie)
+        elif ie != basis_inv[ie.file_id]:
+            # common but altered
+            # TODO: avoid tis id2path call.
+            return (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+        else:
+            # common, unaltered
+            return None
+
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+        content_summary):
         """Record the content of ie from tree into the commit if needed.
 
         Side effect: sets ie.revision when unchanged
@@ -217,90 +224,188 @@ class CommitBuilder(object):
             commit.
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
-        obtain content.
-        :return: True if a new version of the entry has been recorded.
-            (Committing a merge where a file was only changed on the other side
-            will not return True.)
+            obtain content.
+        :param content_summary: Summary data from the tree about the paths
+            content - stat, length, exec, sha/link target. This is only
+            accessed when the entry has a revision of None - that is when it is
+            a candidate to commit.
+        :return: A tuple (change_delta, version_recorded). change_delta is 
+            an inventory_delta change for this entry against the basis tree of
+            the commit, or None if no change occured against the basis tree.
+            version_recorded is True if a new version of the entry has been
+            recorded. For instance, committing a merge where a file was only
+            changed on the other side will return (delta, False).
         """
         if self.new_inventory.root is None:
+            if ie.parent_id is not None:
+                raise errors.RootMissing()
             self._check_root(ie, parent_invs, tree)
+        if ie.revision is None:
+            kind = content_summary[0]
+        else:
+            # ie is carried over from a prior commit
+            kind = ie.kind
+        # XXX: repository specific check for nested tree support goes here - if
+        # the repo doesn't want nested trees we skip it ?
+        if (kind == 'tree-reference' and
+            not self.repository._format.supports_tree_reference):
+            # mismatch between commit builder logic and repository:
+            # this needs the entry creation pushed down into the builder.
+            raise NotImplementedError('Missing repository subtree support.')
+        # transitional assert only, will remove before release.
+        assert ie.kind == kind
         self.new_inventory.add(ie)
 
+        # TODO: slow, take it out of the inner loop.
+        try:
+            basis_inv = parent_invs[0]
+        except IndexError:
+            basis_inv = Inventory(root_id=None)
+
         # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
+        # for committing. We may record the previous parents revision if the
+        # content is actually unchanged against a sole head.
         if ie.revision is not None:
-            return ie.revision == self._new_revision_id and (path != '' or
+            if self._versioned_root or path != '':
+                # not considered for commit
+                delta = None
+            else:
+                # repositories that do not version the root set the root's
+                # revision to the new commit even when no change occurs, and
+                # this masks when a change may have occurred against the basis,
+                # so calculate if one happened.
+                if ie.file_id not in basis_inv:
+                    # add
+                    delta = (None, path, ie.file_id, ie)
+                else:
+                    basis_id = basis_inv[ie.file_id]
+                    if basis_id.name != '':
+                        # not the root
+                        delta = (basis_inv.id2path(ie.file_id), path,
+                            ie.file_id, ie)
+                    else:
+                        # common, unaltered
+                        delta = None
+            # not considered for commit, OR, for non-rich-root 
+            return delta, ie.revision == self._new_revision_id and (path != '' or
                 self._versioned_root)
 
+        # XXX: Friction: parent_candidates should return a list not a dict
+        #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        heads = self.repository.get_graph().heads(parent_candiate_entries.keys())
-        # XXX: Note that this is unordered - and this is tolerable because 
-        # the previous code was also unordered.
-        previous_entries = dict((head, parent_candiate_entries[head]) for head
-            in heads)
-        # we are creating a new revision for ie in the history store and
-        # inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
-        return ie.revision == self._new_revision_id and (path != '' or
-            self._versioned_root)
+        head_set = self._repo_graph.heads(parent_candiate_entries.keys())
+        heads = []
+        for inv in parent_invs:
+            if ie.file_id in inv:
+                old_rev = inv[ie.file_id].revision
+                if old_rev in head_set:
+                    heads.append(inv[ie.file_id].revision)
+                    head_set.remove(inv[ie.file_id].revision)
 
-    def modified_directory(self, file_id, file_parents):
-        """Record the presence of a symbolic link.
+        store = False
+        # now we check to see if we need to write a new record to the
+        # file-graph.
+        # We write a new entry unless there is one head to the ancestors, and
+        # the kind-derived content is unchanged.
 
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-
-    def modified_reference(self, file_id, file_parents):
-        """Record the modification of a reference.
-
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-    
-    def modified_file_text(self, file_id, file_parents,
-                           get_content_byte_lines, text_sha1=None,
-                           text_size=None):
-        """Record the text of file file_id
-
-        :param file_id: The file_id of the file to record the text of.
-        :param file_parents: The per-file parent revision ids.
-        :param get_content_byte_lines: A callable which will return the byte
-            lines for the file.
-        :param text_sha1: Optional SHA1 of the file contents.
-        :param text_size: Optional size of the file contents.
-        """
-        # mutter('storing text of file {%s} in revision {%s} into %r',
-        #        file_id, self._new_revision_id, self.repository.weave_store)
-        # special case to avoid diffing on renames or 
-        # reparenting
-        if (len(file_parents) == 1
-            and text_sha1 == file_parents.values()[0].text_sha1
-            and text_size == file_parents.values()[0].text_size):
-            previous_ie = file_parents.values()[0]
-            versionedfile = self.repository.weave_store.get_weave(file_id,
-                self.repository.get_transaction())
-            versionedfile.clone_text(self._new_revision_id,
-                previous_ie.revision, file_parents.keys())
-            return text_sha1, text_size
+        # Cheapest check first: no ancestors, or more the one head in the
+        # ancestors, we write a new node.
+        if len(heads) != 1:
+            store = True
+        if not store:
+            # There is a single head, look it up for comparison
+            parent_entry = parent_candiate_entries[heads[0]]
+            # if the non-content specific data has changed, we'll be writing a
+            # node:
+            if (parent_entry.parent_id != ie.parent_id or
+                parent_entry.name != ie.name):
+                store = True
+        # now we need to do content specific checks:
+        if not store:
+            # if the kind changed the content obviously has
+            if kind != parent_entry.kind:
+                store = True
+        if kind == 'file':
+            if not store:
+                if (# if the file length changed we have to store:
+                    parent_entry.text_size != content_summary[1] or
+                    # if the exec bit has changed we have to store:
+                    parent_entry.executable != content_summary[2]):
+                    store = True
+                elif parent_entry.text_sha1 == content_summary[3]:
+                    # all meta and content is unchanged (using a hash cache
+                    # hit to check the sha)
+                    ie.revision = parent_entry.revision
+                    ie.text_size = parent_entry.text_size
+                    ie.text_sha1 = parent_entry.text_sha1
+                    ie.executable = parent_entry.executable
+                    return self._get_delta(ie, basis_inv, path), False
+                else:
+                    # Either there is only a hash change(no hash cache entry,
+                    # or same size content change), or there is no change on
+                    # this file at all.
+                    # Provide the parent's hash to the store layer, so that the
+                    # content is unchanged we will not store a new node.
+                    nostore_sha = parent_entry.text_sha1
+            if store:
+                # We want to record a new node regardless of the presence or
+                # absence of a content change in the file.
+                nostore_sha = None
+            ie.executable = content_summary[2]
+            lines = tree.get_file(ie.file_id, path).readlines()
+            try:
+                ie.text_sha1, ie.text_size = self._add_text_to_weave(
+                    ie.file_id, lines, heads, nostore_sha)
+            except errors.ExistingContent:
+                # Turns out that the file content was unchanged, and we were
+                # only going to store a new node if it was changed. Carry over
+                # the entry.
+                ie.revision = parent_entry.revision
+                ie.text_size = parent_entry.text_size
+                ie.text_sha1 = parent_entry.text_sha1
+                ie.executable = parent_entry.executable
+                return self._get_delta(ie, basis_inv, path), False
+        elif kind == 'directory':
+            if not store:
+                # all data is meta here, nothing specific to directory, so
+                # carry over:
+                ie.revision = parent_entry.revision
+                return self._get_delta(ie, basis_inv, path), False
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
+        elif kind == 'symlink':
+            current_link_target = content_summary[3]
+            if not store:
+                # symlink target is not generic metadata, check if it has
+                # changed.
+                if current_link_target != parent_entry.symlink_target:
+                    store = True
+            if not store:
+                # unchanged, carry over.
+                ie.revision = parent_entry.revision
+                ie.symlink_target = parent_entry.symlink_target
+                return self._get_delta(ie, basis_inv, path), False
+            ie.symlink_target = current_link_target
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
+        elif kind == 'tree-reference':
+            if not store:
+                if content_summary[3] != parent_entry.reference_revision:
+                    store = True
+            if not store:
+                # unchanged, carry over.
+                ie.reference_revision = parent_entry.reference_revision
+                ie.revision = parent_entry.revision
+                return self._get_delta(ie, basis_inv, path), False
+            ie.reference_revision = content_summary[3]
+            lines = []
+            self._add_text_to_weave(ie.file_id, lines, heads, None)
         else:
-            new_lines = get_content_byte_lines()
-            return self._add_text_to_weave(file_id, new_lines,
-                file_parents.keys())
+            raise NotImplementedError('unknown kind')
+        ie.revision = self._new_revision_id
+        return self._get_delta(ie, basis_inv, path), True
 
-    def modified_link(self, file_id, file_parents, link_target):
-        """Record the presence of a symbolic link.
-
-        :param file_id: The file_id of the link to record.
-        :param file_parents: The per-file parent revision ids.
-        :param link_target: Target location of this link.
-        """
-        self._add_text_to_weave(file_id, [], file_parents.keys())
-
-    def _add_text_to_weave(self, file_id, new_lines, parents):
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
         # Don't change this to add_lines - add_lines_with_ghosts is cheaper
@@ -311,11 +416,13 @@ class CommitBuilder(object):
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
-        result = versionedfile.add_lines_with_ghosts(
-            self._new_revision_id, parents, new_lines,
-            random_id=self.random_revid, check_content=False)[0:2]
-        versionedfile.clear_cache()
-        return result
+        try:
+            return versionedfile.add_lines_with_ghosts(
+                self._new_revision_id, parents, new_lines,
+                nostore_sha=nostore_sha, random_id=self.random_revid,
+                check_content=False)[0:2]
+        finally:
+            versionedfile.clear_cache()
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -332,8 +439,6 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
-        # ie must be root for this builder
-        assert ie.parent_id is None
 
 
 ######################################################################
@@ -395,7 +500,6 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         _mod_revision.check_not_reserved_id(revision_id)
         assert inv.revision_id is None or inv.revision_id == revision_id, \
             "Mismatch between inventory revision" \
@@ -428,7 +532,6 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         # TODO: jam 20070210 Shouldn't we check rev.revision_id and
         #       rev.parent_ids?
         _mod_revision.check_not_reserved_id(revision_id)
@@ -525,10 +628,11 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
+        self.base = control_files._transport.base
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, 
-                           self.bzrdir.transport.base)
+        return '%s(%r)' % (self.__class__.__name__,
+                           self.base)
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -659,7 +763,6 @@ class Repository(object):
 
         revision_id: only return revision ids included by revision_id.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(other, self).missing_revision_ids(revision_id)
 
     @staticmethod
@@ -678,7 +781,6 @@ class Repository(object):
         This is a destructive operation! Do not use it on existing 
         repositories.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id)
 
     def commit_write_group(self):
@@ -688,7 +790,9 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context and write group.')
+            raise errors.BzrError('mismatched lock context %r and '
+                'write group %r.' %
+                (self.get_transaction(), self._write_group))
         self._commit_write_group()
         self._write_group = None
 
@@ -706,7 +810,14 @@ class Repository(object):
 
         If revision_id is None all content is copied.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
+        # fast path same-url fetch operations
+        if self.has_same_location(source):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
         inter = InterRepository.get(source, self)
         try:
             return inter.fetch(revision_id=revision_id, pb=pb)
@@ -730,7 +841,6 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
         self.start_write_group()
@@ -815,8 +925,7 @@ class Repository(object):
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "has_revision is a LBYL symptom.")
-        revision_id = osutils.safe_revision_id(revision_id)
+            mutter_callsite(3, "has_revision is a LBYL symptom.")
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
 
@@ -844,7 +953,6 @@ class Repository(object):
     @needs_read_lock
     def _get_revisions(self, revision_ids):
         """Core work logic to get many revisions without sanity checks."""
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         for rev_id in revision_ids:
             if not rev_id or not isinstance(rev_id, basestring):
                 raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
@@ -861,7 +969,6 @@ class Repository(object):
         # TODO: jam 20070210 This shouldn't be necessary since get_revision
         #       would have already do it.
         # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        revision_id = osutils.safe_revision_id(revision_id)
         rev = self.get_revision(revision_id)
         rev_tmp = StringIO()
         # the current serializer..
@@ -902,7 +1009,6 @@ class Repository(object):
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         signature = gpg_strategy.sign(plaintext)
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
@@ -919,8 +1025,7 @@ class Repository(object):
         assert self._serializer.support_altered_by_hack, \
             ("fileids_altered_by_revision_ids only supported for branches " 
              "which store inventory as unnested xml, not on %r" % self)
-        selected_revision_ids = set(osutils.safe_revision_id(r)
-                                    for r in revision_ids)
+        selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
         result = {}
 
@@ -1068,9 +1173,6 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        # TODO: jam 20070210 Technically we don't need to sanitize, since all
-        #       called functions must sanitize.
-        revision_id = osutils.safe_revision_id(revision_id)
         return self.deserialise_inventory(
             revision_id, self.get_inventory_xml(revision_id))
 
@@ -1080,7 +1182,6 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         result = self._serializer.read_inventory_from_string(xml)
         result.root.revision = revision_id
         return result
@@ -1097,7 +1198,6 @@ class Repository(object):
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
-        revision_id = osutils.safe_revision_id(revision_id)
         try:
             assert isinstance(revision_id, str), type(revision_id)
             iw = self.get_inventory_weave()
@@ -1109,8 +1209,6 @@ class Repository(object):
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
-        # TODO: jam 20070210 Shouldn't this be deprecated / removed?
-        revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
@@ -1135,14 +1233,14 @@ class Repository(object):
         :return: a Graph object with the graph reachable from revision_ids.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            mutter_callsite(3,
                 "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
             required = set([])
         else:
-            pending = set(osutils.safe_revision_id(r) for r in revision_ids)
+            pending = set(revision_ids)
             # special case NULL_REVISION
             if _mod_revision.NULL_REVISION in pending:
                 pending.remove(_mod_revision.NULL_REVISION)
@@ -1181,7 +1279,6 @@ class Repository(object):
         :param revision_id: The revision id to start with.  All its lefthand
             ancestors will be traversed.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         if revision_id in (None, _mod_revision.NULL_REVISION):
             return
         next_id = revision_id
@@ -1245,7 +1342,6 @@ class Repository(object):
             return RevisionTree(self, Inventory(root_id=None), 
                                 _mod_revision.NULL_REVISION)
         else:
-            revision_id = osutils.safe_revision_id(revision_id)
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
@@ -1273,7 +1369,6 @@ class Repository(object):
         """
         if _mod_revision.is_null(revision_id):
             return [None]
-        revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
@@ -1299,7 +1394,6 @@ class Repository(object):
         - it writes to stdout, it assumes that that is valid etc. Fix
         by creating a new more flexible convenience function.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         tree = self.revision_tree(revision_id)
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
@@ -1314,7 +1408,6 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def revision_parents(self, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         return self.get_inventory_weave().parent_names(revision_id)
 
     def get_parents(self, revision_ids):
@@ -1365,21 +1458,18 @@ class Repository(object):
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        revision_id = osutils.safe_revision_id(revision_id)
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @needs_read_lock
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
-        revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_signature(revision_id,
                                                   self.get_transaction())
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
         """Return the text for a signature."""
-        revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.get_signature_text(revision_id,
                                                        self.get_transaction())
 
@@ -1395,7 +1485,6 @@ class Repository(object):
         if not revision_ids:
             raise ValueError("revision_ids must be non-empty in %s.check" 
                     % (self,))
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         return self._check(revision_ids)
 
     def _check(self, revision_ids):
@@ -1787,9 +1876,9 @@ format_registry.register_lazy(
     'bzrlib.repofmt.weaverepo',
     'RepositoryFormat7'
     )
+
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
-
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
@@ -1849,9 +1938,6 @@ class InterRepository(InterObject):
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
-            # TODO: jam 20070210 InterRepository is internal enough that it
-            #       should assume revision_ids are already utf-8
-            revision_id = osutils.safe_revision_id(revision_id)
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
             source_ids.pop(0)
@@ -1862,6 +1948,15 @@ class InterRepository(InterObject):
         # other_ids had while only returning the members from other_ids
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
+
+    @staticmethod
+    def _same_model(source, target):
+        """True if source and target have the same data representation."""
+        if source.supports_rich_root() != target.supports_rich_root():
+            return False
+        if source._serializer != target._serializer:
+            return False
+        return True
 
 
 class InterSameDataRepository(InterRepository):
@@ -1882,11 +1977,7 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if source.supports_rich_root() != target.supports_rich_root():
-            return False
-        if source._serializer != target._serializer:
-            return False
-        return True
+        return InterRepository._same_model(source, target)
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -1905,9 +1996,6 @@ class InterSameDataRepository(InterRepository):
             self.target.set_make_working_trees(self.source.make_working_trees())
         except NotImplementedError:
             pass
-        # TODO: jam 20070210 This is fairly internal, so we should probably
-        #       just assert that revision_id is not unicode.
-        revision_id = osutils.safe_revision_id(revision_id)
         # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, _mod_revision.NULL_REVISION) and 
             self.target.has_revision(revision_id)):
@@ -1919,10 +2007,8 @@ class InterSameDataRepository(InterRepository):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, 
+               self.source, self.source._format, self.target,
                self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -1969,8 +2055,6 @@ class InterWeaveRepo(InterSameDataRepository):
     def copy_content(self, revision_id=None):
         """See InterRepository.copy_content()."""
         # weave specific optimised path:
-        # TODO: jam 20070210 Internal, should be an assert, not translate
-        revision_id = osutils.safe_revision_id(revision_id)
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
         except NotImplementedError:
@@ -2003,8 +2087,6 @@ class InterWeaveRepo(InterSameDataRepository):
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -2069,12 +2151,13 @@ class InterKnitRepo(InterSameDataRepository):
         could lead to confusing results, and there is no need to be 
         overly general.
         """
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
         try:
-            return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit1)))
+            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
+                isinstance(target._format, RepositoryFormatKnit))
         except AttributeError:
             return False
+        return are_knits and InterRepository._same_model(source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
@@ -2082,8 +2165,6 @@ class InterKnitRepo(InterSameDataRepository):
         from bzrlib.fetch import KnitRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         f = KnitRepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
@@ -2138,8 +2219,6 @@ class InterModel1and2(InterRepository):
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import Model1toKnit2Fetcher
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         f = Model1toKnit2Fetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
@@ -2160,8 +2239,6 @@ class InterModel1and2(InterRepository):
             self.target.set_make_working_trees(self.source.make_working_trees())
         except NotImplementedError:
             pass
-        # TODO: jam 20070210 Internal, assert, don't translate
-        revision_id = osutils.safe_revision_id(revision_id)
         # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, _mod_revision.NULL_REVISION) and 
             self.target.has_revision(revision_id)):
@@ -2194,8 +2271,6 @@ class InterKnit1and2(InterKnitRepo):
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, 
                self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         f = Knit1to2Fetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,

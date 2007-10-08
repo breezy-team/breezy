@@ -120,7 +120,6 @@ class AllInOneRepository(Repository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        revision_id = osutils.safe_revision_id(revision_id)
         result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
@@ -156,7 +155,6 @@ class AllInOneRepository(Repository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
@@ -248,7 +246,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        revision_id = osutils.safe_revision_id(revision_id)
         result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
@@ -258,7 +255,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         # TODO: jam 20070210 get_revision_reconcile should do this for us
-        revision_id = osutils.safe_revision_id(revision_id)
         r = self.get_revision_reconcile(revision_id)
         # weave corruption can lead to absent revision markers that should be
         # present.
@@ -286,7 +282,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
@@ -599,11 +594,12 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 class WeaveCommitBuilder(CommitBuilder):
     """A builder for weave based repos that don't support ghosts."""
 
-    def _add_text_to_weave(self, file_id, new_lines, parents):
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
         result = versionedfile.add_lines(
-            self._new_revision_id, parents, new_lines)[0:2]
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha)[0:2]
         versionedfile.clear_cache()
         return result
 
