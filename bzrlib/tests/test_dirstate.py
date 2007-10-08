@@ -1399,12 +1399,14 @@ class InstrumentedDirState(dirstate.DirState):
         super(InstrumentedDirState, self).__init__(path)
         self._time_offset = 0
         self._log = []
+        # member is dynamically set in DirState.__init__ to turn on trace
+        self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _sha1_file(self, abspath):
+    def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
         return osutils.sha_file_by_name(abspath)
 
