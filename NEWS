@@ -128,6 +128,9 @@ IN DEVELOPMENT
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
+   * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
+     Merwe)
+
   API BREAKS:
 
    * ``CommitBuilder.record_entry_contents`` now requires the root entry of a
