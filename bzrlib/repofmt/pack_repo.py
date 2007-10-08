@@ -124,6 +124,7 @@ class RepositoryPackCollection(object):
         self._index_transport = index_transport
         self._upload_transport = upload_transport
         self._pack_transport = pack_transport
+        self._suffix_offsets = {'.rix':0, '.iix':1, '.tix':2, '.six':3}
         self.packs = []
 
     def add_pack_to_memory(self, pack):
@@ -653,7 +654,8 @@ class RepositoryPackCollection(object):
         if self._names is None:
             self._names = {}
             for index, key, value in \
-                GraphIndex(self.transport, 'pack-names').iter_all_entries():
+                GraphIndex(self.transport, 'pack-names', None
+                    ).iter_all_entries():
                 name = key[0]
                 sizes = [int(digits) for digits in value.split(' ')]
                 self._names[name] = sizes
@@ -686,6 +688,7 @@ class RepositoryPackCollection(object):
         objects, and pack_map is a mapping from those objects to the 
         pack tuple they describe.
         """
+        size_offset = self._suffix_offsets[suffix]
         indices = []
         pack_map = {}
         self.ensure_loaded()
@@ -693,7 +696,9 @@ class RepositoryPackCollection(object):
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
             index_name = name + suffix
-            new_index = GraphIndex(self._index_transport, index_name)
+            index_size = self._names[name][size_offset]
+            new_index = GraphIndex(
+                self._index_transport, index_name, index_size)
             indices.append(new_index)
             pack_map[new_index] = self._pack_tuple(name)
         return pack_map, indices
@@ -774,10 +779,12 @@ class RepositoryPackCollection(object):
         # this should really reuse the existing index objects for these 
         # packs - this means making the way they are managed in the repo be 
         # more sane.
+        size_offset = self._suffix_offsets[index_suffix]
         indices = {}
         for transport, name in pack_details:
             index_name = name[:-5] + index_suffix
-            indices[GraphIndex(self._index_transport, index_name)] = \
+            index_size = self._names[index_name][index_size]
+            indices[GraphIndex(self._index_transport, index_name, index_size)] = \
                 (transport, name)
         return indices
 
@@ -998,7 +1005,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         else:
             del self.repo._revision_pack_map[self.repo._revision_write_index]
             self.repo._revision_write_index = None
-            new_index = GraphIndex(self.transport, new_index_name)
+            new_index = GraphIndex(self.transport, new_index_name,
+                new_pack.revision_index_length)
             self.repo._revision_pack_map[new_index] = (self.repo._packs._pack_tuple(new_name))
             # revisions 'knit' accessed : update it.
             self.repo._revision_all_indices.insert_index(0, new_index)
@@ -1016,7 +1024,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         if self.repo._signature_all_indices is not None:
             # sigatures 'knit' accessed : update it.
             self.repo._signature_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name))
+                GraphIndex(self.transport, new_index_name,
+                    new_pack.signature_index_length))
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._signature_all_indices._indices[1]
@@ -1127,7 +1136,8 @@ class GraphKnitTextStore(VersionedFileStore):
             # with the new on-disk one. XXX: is this really a good idea?
             # perhaps just keep using the memory one ?
             self.repo._text_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name))
+                GraphIndex(self.transport, new_index_name,
+                    new_pack.text_index_length))
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._text_all_indices._indices[1]
@@ -1252,7 +1262,8 @@ class InventoryKnitThunk(object):
             # with the new on-disk one. XXX: is this really a good idea?
             # perhaps just keep using the memory one ?
             self.repo._inv_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name))
+                GraphIndex(self.transport, new_index_name,
+                    new_pack.inventory_index_length))
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._inv_all_indices._indices[1]
