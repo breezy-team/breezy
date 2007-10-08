@@ -1901,14 +1901,15 @@ class DirState(object):
                 if current_new_minikind == 't':
                     fingerprint = current_new[1].reference_revision or ''
                 else:
-                    # XXX: mbp- why are we erasing the fingerprint?  surely we
-                    # should be leaving it alone when updating, if one is
-                    # already present?  only clear it when adding a new
-                    # record.
+                    # We normally only insert or remove records, or update
+                    # them when it has significantly changed.  Then we want to
+                    # erase its fingerprint.  Unaffected records should
+                    # normally not be updated at all.
                     fingerprint = ''
             else:
                 # for safety disable variables
-                del new_path_utf8, new_dirname, new_basename, new_id, new_entry_key
+                new_path_utf8 = new_dirname = new_basename = new_id = \
+                    new_entry_key = new_dir_parts = None
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if current_old is None:
@@ -2014,7 +2015,8 @@ class DirState(object):
         :param minikind: The type for the entry ('f' == 'file', 'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
-        :param fingerprint: Simple fingerprint for new entry.
+        :param fingerprint: Simple fingerprint for new entry: sha1 for files, 
+            referenced revision id for subtrees, etc.
         :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
@@ -2029,10 +2031,6 @@ class DirState(object):
         # XXX: Some callers pass '' as the packed_stat, and it seems to be
         # sometimes present in the dirstate - this seems oddly inconsistent.
         # mbp 20071008
-        if (fingerprint is '') != (packed_stat in (DirState.NULLSTAT, '')):
-            raise AssertionError("either both fingerprint and packed_stat "
-                "should be be supplied to update_minimal, or neither: %r, %r"
-                % (fingerprint, packed_stat))
         entry_index, present = self._find_entry_index(key, block)
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         id_index = self._get_id_index()
