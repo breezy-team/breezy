@@ -721,20 +721,20 @@ class TestDirStateManipulations(TestCaseWithDirState):
             foo_size = len(foo_contents)
 
             # should not be cached yet, because the file's too fresh
-            ## self.assertEqual(
-            ##     (('', 'foo', 'foo-id',),
-            ##      [('f', '', 0, False, dirstate.DirState.NULLSTAT)]),
-            ##     tree._dirstate._get_entry(0, 'foo-id'))
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', '', 0, False, dirstate.DirState.NULLSTAT)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
             # poke in some hashcache information - it wouldn't normally be
             # stored because it's too fresh
             tree._dirstate.update_minimal(
                 ('', 'foo', 'foo-id'),
                 'f', False, foo_sha, foo_packed, foo_size, 'foo')
             # now should be cached
-            ## self.assertEqual(
-            ##     (('', 'foo', 'foo-id',),
-            ##      [('f', foo_sha, foo_size, False, foo_packed)]),
-            ##     tree._dirstate._get_entry(0, 'foo-id'))
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', foo_sha, foo_size, False, foo_packed)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
            
             # extract the inventory, and add something to it
             inv = tree._get_inventory()
@@ -752,8 +752,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # now check that the state still has the original hashcache value
             state = tree._dirstate
             foo_tuple = state._get_entry(0, path_utf8='foo')
-            ## self.expectFailure(
-                ## 'set_state_from_inventory clears hashcache (#146176)',
             self.assertEqual(
                 (('', 'foo', 'foo-id',),
                  [('f', foo_sha, len(foo_contents), False,
