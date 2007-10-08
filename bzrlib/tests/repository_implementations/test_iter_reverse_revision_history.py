@@ -123,11 +123,6 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
         self.assertRevHistoryList(['rev-\xc3\xa5', 'rev-\xc2\xb5'],
                                   repo, 'rev-\xc3\xa5')
 
-        self.callDeprecated([osutils._revision_id_warning],
-                            self.assertRevHistoryList,
-                                ['rev-\xc3\xa5', 'rev-\xc2\xb5'],
-                                repo, u'rev-\xe5')
-
     def test_merged_history(self):
         tree1, tree2 = self.create_merged_history()
         repo = tree1.branch.repository
