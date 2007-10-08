@@ -1057,8 +1057,6 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        # TODO: jam 20070210 Technically we don't need to sanitize, since all
-        #       called functions must sanitize.
         return self.deserialise_inventory(
             revision_id, self.get_inventory_xml(revision_id))
 
@@ -1095,7 +1093,6 @@ class Repository(object):
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
-        # TODO: jam 20070210 Shouldn't this be deprecated / removed?
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
@@ -1825,8 +1822,6 @@ class InterRepository(InterObject):
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
-            # TODO: jam 20070210 InterRepository is internal enough that it
-            #       should assume revision_ids are already utf-8
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
             source_ids.pop(0)
