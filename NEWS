@@ -77,6 +77,11 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * ``bzr+ssh://`` and ``sftp://`` URLs that do not specify ports explicitly
+     no longer assume that means port 22.  This allows people using OpenSSH to
+     override the default port in their ``~/.ssh/config`` if they wish.  This
+     fixes a bug introduced in bzr 0.91.  (Andrew Bennetts, #146715)
+
    * Commands reporting exceptions can now be profiled and still have their
      data correctly dumped to a file. For example, a ``bzr commit`` with
      no changes still reports the operation as pointless but doing so no
