@@ -870,6 +870,8 @@ class GraphIndex(object):
                 self._parsed_byte_map[index + 1][1])
             self._parsed_key_map[index] = (self._parsed_key_map[index][0],
                 self._parsed_key_map[index + 1][1])
+            del self._parsed_byte_map[index + 1]
+            del self._parsed_key_map[index + 1]
         elif self._parsed_byte_map[index][1] == start:
             # extend the lower entry
             self._parsed_byte_map[index] = (
