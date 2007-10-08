@@ -695,14 +695,20 @@ class Transport(object):
             current_offset, current_length = new_offsets[0]
             current_finish = current_length + current_offset
             for offset, length in new_offsets[1:]:
+                finish = offset + length
                 if offset > current_finish:
+                    # there is a gap, output the current accumulator and start
+                    # a new one for the region we're examining.
                     offsets.append((current_offset, current_length))
                     current_offset = offset
                     current_length = length
-                    continue
-                finish = offset + length
-                if finish > current_finish:
                     current_finish = finish
+                    continue
+                if finish > current_finish:
+                    # extend the current accumulator to the end of the region
+                    # we're examining.
+                    current_finish = finish
+                    current_length = finish - current_offset
             offsets.append((current_offset, current_length))
         return self._readv(relpath, offsets)
 
