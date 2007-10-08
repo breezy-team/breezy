@@ -1709,6 +1709,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
+        inventory.revision_id = revision_id
         return xml7.serializer_v7.write_inventory_to_string(inventory)
 
     def _cache_basis_inventory(self, new_revision):
