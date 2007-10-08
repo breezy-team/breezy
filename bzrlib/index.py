@@ -389,6 +389,20 @@ class GraphIndex(object):
             node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
         return tuple(node_refs)
 
+    def _find_index(self, range_map, key):
+        """Helper for the _parsed_*_index calls.
+
+        Given a range map - [(start, end), ...], finds the index of the range
+        in the map for key if it is in the map, and if it is not there, the
+        immediately preceeding range in the map.
+        """
+        result = bisect_right(range_map, key) - 1
+        if result + 1 < len(range_map):
+            # check the border condition, it may be in result + 1
+            if range_map[result + 1][0] == key[0]:
+                return result + 1
+        return result
+
     def _parsed_byte_index(self, offset):
         """Return the index of the entry immediately before offset.
 
@@ -400,7 +414,7 @@ class GraphIndex(object):
         asking for 12 will return 1
         """
         key = (offset, 0)
-        return bisect_right(self._parsed_byte_map, key) - 1
+        return self._find_index(self._parsed_byte_map, key)
 
     def _parsed_key_index(self, key):
         """Return the index of the entry immediately before key.
@@ -413,8 +427,8 @@ class GraphIndex(object):
         asking for 'b' will return 1
         asking for 'e' will return 1
         """
-        search_key = (key, 0)
-        return bisect_right(self._parsed_key_map, search_key) - 1
+        search_key = (key, None)
+        return self._find_index(self._parsed_key_map, search_key)
 
     def _is_parsed(self, offset):
         """Returns True if offset has been parsed."""
@@ -567,11 +581,21 @@ class GraphIndex(object):
         readv_ranges = []
         for location, key in location_keys:
             # can we answer from cache?
+            # - if we know the answer - yes
             index = self._parsed_key_index(key)
             if (len(self._parsed_key_map) and 
                 self._parsed_key_map[index][0] <= key and
-                self._parsed_key_map[index][1] > key):
+                (self._parsed_key_map[index][1] > key or
+                 # end of the file has been parsed
+                 self._parsed_byte_map[index][1] == self._size)):
                 # the key has been parsed, so no lookup is needed
+                continue
+            # - if we have examined this part of the file already - yes
+            index = self._parsed_byte_index(location)
+            if (len(self._parsed_byte_map) and 
+                self._parsed_byte_map[index][0] <= location and
+                self._parsed_byte_map[index][1] > location):
+                # the byte region has been parsed, so no read is needed.
                 continue
             length = 800
             if location + length > self._size:
@@ -774,12 +798,13 @@ class GraphIndex(object):
             assert trim_end != 0, 'no \n was present'
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
         # adjust offset and data to the parseable data.
-        data = data[trim_start:trim_end]
+        trimmed_data = data[trim_start:trim_end]
+        assert trimmed_data, 'read unneeded data'
         if trim_start:
             offset += trim_start
-        # print "parsing", repr(data)
+        # print "parsing", repr(trimmed_data)
         # splitlines mangles the \r delimiters.. don't use it.
-        lines = data.split('\n')
+        lines = trimmed_data.split('\n')
         del lines[-1]
         pos = offset
         first_key = None
@@ -813,7 +838,7 @@ class GraphIndex(object):
                 node_value = value
             self._bisect_nodes[key] = node_value
             # print "parsed ", key
-        self._parsed_bytes(offset, first_key, offset + len(data), key)
+        self._parsed_bytes(offset, first_key, offset + len(trimmed_data), key)
 
     def _parsed_bytes(self, start, start_key, end, end_key):
         """Mark the bytes from start to end as parsed.
@@ -824,37 +849,46 @@ class GraphIndex(object):
         :param start: The start of the parsed region.
         :param end: The end of the parsed region.
         """
-        key = (start, 0)
-        index = bisect_right(self._parsed_byte_map, key)
+        index = self._parsed_byte_index(start)
         new_value = (start, end)
         new_key = (start_key, end_key)
-        if index == 0:
+        if index == -1:
             # first range parsed is always the beginning.
             self._parsed_byte_map.insert(index, new_value)
             self._parsed_key_map.insert(index, new_key)
-        elif index == len(self._parsed_byte_map):
-            # may be adjacent to the prior entry
-            if start == self._parsed_byte_map[index - 1][1]:
-                self._parsed_byte_map[index - 1] = (
-                    self._parsed_byte_map[index - 1][0], end)
-                self._parsed_key_map[index - 1] = (
-                    self._parsed_key_map[index - 1][0], end_key)
-            else:
-                #no, new entry
-                self._parsed_byte_map.insert(index, new_value)
-                self._parsed_key_map.insert(index, new_key)
+            return
+        # four cases:
+        # new region
+        # extend lower region
+        # extend higher region
+        # combine two regions
+        if (index + 1 < len(self._parsed_byte_map) and
+            self._parsed_byte_map[index][1] == start and
+            self._parsed_byte_map[index + 1][0] == end):
+            # combine two regions
+            self._parsed_byte_map[index] = (self._parsed_byte_map[index][0],
+                self._parsed_byte_map[index + 1][1])
+            self._parsed_key_map[index] = (self._parsed_key_map[index][0],
+                self._parsed_key_map[index + 1][1])
+        elif self._parsed_byte_map[index][1] == start:
+            # extend the lower entry
+            self._parsed_byte_map[index] = (
+                self._parsed_byte_map[index][0], end)
+            self._parsed_key_map[index] = (
+                self._parsed_key_map[index][0], end_key)
+        elif (index + 1 < len(self._parsed_byte_map) and
+            self._parsed_byte_map[index + 1][0] == end):
+            # extend the higher entry
+            self._parsed_byte_map[index + 1] = (
+                start, self._parsed_byte_map[index + 1][1])
+            self._parsed_key_map[index + 1] = (
+                start_key, self._parsed_key_map[index + 1][1])
         else:
-            # may be adjacent to the next entry
-            if end == self._parsed_byte_map[index][0]:
-                # move the next entry down to this range
-                self._parsed_byte_map[index] = (
-                    start, self._parsed_byte_map[index][1])
-                self._parsed_key_map[index] = (
-                    start_key, self._parsed_key_map[index][1])
-            else:
-                # no, new entry
-                self._parsed_byte_map.insert(index, new_value)
-                self._parsed_key_map.insert(index, new_key)
+            # new entry
+            self._parsed_byte_map.insert(index + 1, new_value)
+            self._parsed_key_map.insert(index + 1, new_key)
+        assert sorted(self._parsed_byte_map) == self._parsed_byte_map
+        assert sorted(self._parsed_key_map) == self._parsed_key_map
 
     def _read_and_parse(self, readv_ranges):
         """Read the the ranges and parse the resulting data.
