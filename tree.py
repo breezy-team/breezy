@@ -68,7 +68,7 @@ class SvnRevisionTree(RevisionTree):
         self.editor = TreeBuildEditor(self, pool)
         self.file_data = {}
         editor, baton = svn.delta.make_editor(self.editor, pool)
-        root_repos = repository.transport.get_repos_root()
+        root_repos = repository.transport.get_svn_repos_root()
         reporter = repository.transport.do_switch(
                 self.revnum, True, 
                 urlutils.join(root_repos, self.branch_path), editor, baton, pool)

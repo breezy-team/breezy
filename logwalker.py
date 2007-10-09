@@ -335,7 +335,7 @@ class LogWalker(object):
         edit, baton = svn.delta.make_editor(editor, pool)
         old_base = transport.base
         try:
-            root_repos = transport.get_repos_root()
+            root_repos = transport.get_svn_repos_root()
             transport.reparent(urlutils.join(root_repos, path))
             reporter = transport.do_update(revnum,  True, edit, baton, pool)
             reporter.set_path("", revnum, True, None, pool)

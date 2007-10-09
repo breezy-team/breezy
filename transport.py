@@ -282,9 +282,16 @@ class SvnRaTransport(Transport):
         self.mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
+    def get_repos_root(self):
+        root = self.get_svn_repos_root()
+        if (self.base.startswith("svn+http:") or 
+            self.base.startswith("svn+https:")):
+            return "svn+%s" % root
+        return root
+
     @convert_svn_error
     @needs_busy
-    def get_repos_root(self):
+    def get_svn_repos_root(self):
         if self._root is None:
             self.mutter("svn get-repos-root")
             self._root = svn.ra.get_repos_root(self._ra)
@@ -313,12 +320,13 @@ class SvnRaTransport(Transport):
 
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
-            self.reparent(self.svn_url)
+            self.reparent(self.base)
         assert self._backing_url == self.svn_url
 
     def reparent_root(self):
         if self._is_http_transport():
-            self.svn_url = self.base = self.get_repos_root()
+            self.svn_url = self.get_svn_repos_root()
+            self.base = self.get_repos_root()
         else:
             self.reparent(self.get_repos_root())
 
@@ -327,17 +335,17 @@ class SvnRaTransport(Transport):
     def reparent(self, url):
         url = url.rstrip("/")
         self.base = url
-        self.svn_url = url
-        if url == self._backing_url:
+        self.svn_url = bzr_to_svn_url(url)
+        if self.svn_url == self._backing_url:
             return
         if hasattr(svn.ra, 'reparent'):
             self.mutter('svn reparent %r' % url)
-            svn.ra.reparent(self._ra, url, self.pool)
+            svn.ra.reparent(self._ra, self.svn_url, self.pool)
         else:
             self.mutter('svn reparent (reconnect) %r' % url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
-        self._backing_url = url
+        self._backing_url = self.svn_url
 
     @convert_svn_error
     @needs_busy
