@@ -886,6 +886,7 @@ class KnitVersionedFile(VersionedFile):
                 lines = lines[:]
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
+                line_bytes += '\n'
 
         if delta:
             # To speed the extract of texts the delta chain is limited
@@ -908,11 +909,18 @@ class KnitVersionedFile(VersionedFile):
                 store_lines)
         else:
             options.append('fulltext')
-            # get mixed annotation + content and feed it into the
-            # serialiser.
-            store_lines = self.factory.lower_fulltext(content)
-            size, bytes = self._data._record_to_data(version_id, digest,
-                store_lines)
+            # isinstance is slower and we have no hierarchy.
+            if self.factory.__class__ == KnitPlainFactory:
+                # Use the already joined bytes saving iteration time in
+                # _record_to_data.
+                size, bytes = self._data._record_to_data(version_id, digest,
+                    lines, [line_bytes])
+            else:
+                # get mixed annotation + content and feed it into the
+                # serialiser.
+                store_lines = self.factory.lower_fulltext(content)
+                size, bytes = self._data._record_to_data(version_id, digest,
+                    store_lines)
 
         access_memo = self._data.add_raw_records([size], bytes)[0]
         self._index.add_versions(
@@ -1972,17 +1980,26 @@ class _KnitData(object):
     def _open_file(self):
         return self._access.open_file()
 
-    def _record_to_data(self, version_id, digest, lines):
+    def _record_to_data(self, version_id, digest, lines, dense_lines=None):
         """Convert version_id, digest, lines into a raw data block.
         
+        :param dense_lines: The bytes of lines but in a denser form. For
+            instance, if lines is a list of 1000 bytestrings each ending in \n,
+            dense_lines may be a list with one line in it, containing all the
+            1000's lines and their \n's. Using dense_lines if it is already
+            known is a win because the string join to create bytes in this
+            function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        bytes = (''.join(chain(
+        # Note: using a string copy here increases memory pressure with e.g.
+        # ISO's, but it is about 3 seconds faster on a 1.2Ghz intel machine
+        # when doing the initial commit of a mozilla tree. RBC 20070921
+        bytes = ''.join(chain(
             ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
-            lines,
-            ["end %s\n" % version_id])))
+            dense_lines or lines,
+            ["end %s\n" % version_id]))
         assert bytes.__class__ == str
         compressed_bytes = bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes
