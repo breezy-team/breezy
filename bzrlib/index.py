@@ -889,8 +889,6 @@ class GraphIndex(object):
             # new entry
             self._parsed_byte_map.insert(index + 1, new_value)
             self._parsed_key_map.insert(index + 1, new_key)
-        assert sorted(self._parsed_byte_map) == self._parsed_byte_map
-        assert sorted(self._parsed_key_map) == self._parsed_key_map
 
     def _read_and_parse(self, readv_ranges):
         """Read the the ranges and parse the resulting data.
