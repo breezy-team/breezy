@@ -913,8 +913,10 @@ class KnitVersionedFile(VersionedFile):
                 store_lines)
         else:
             options.append('fulltext')
+            # isinstance is slower and we have no hierarchy.
             if self.factory.__class__ == KnitPlainFactory:
-                # use the prejoined bytes
+                # Use the already joined bytes saving iteration time in
+                # _record_to_data.
                 size, bytes = self._data._record_to_data(version_id, digest,
                     lines, [line_bytes])
             else:
