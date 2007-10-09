@@ -1182,9 +1182,7 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = self._serializer.read_inventory_from_string(xml)
-        result.root.revision = revision_id
-        return result
+        return self._serializer.read_inventory_from_string(xml, revision_id)
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
@@ -1645,8 +1643,7 @@ class MetaDirRepository(Repository):
 
 
 class RepositoryFormatRegistry(registry.Registry):
-    """Registry of RepositoryFormats.
-    """
+    """Registry of RepositoryFormats."""
 
     def get(self, format_string):
         r = registry.Registry.get(self, format_string)
@@ -1674,6 +1671,11 @@ class RepositoryFormat(object):
      * a format string which is used when the BzrDir supports versioned
        children.
      * an open routine which returns a Repository instance.
+
+    There is one and only one Format subclass for each on-disk format. But
+    there can be one Repository subclass that is used for several different
+    formats. The _format attribute on a Repository instance can be used to
+    determine the disk format.
 
     Formats are placed in an dict by their format string for reference 
     during opening. These should be subclasses of RepositoryFormat

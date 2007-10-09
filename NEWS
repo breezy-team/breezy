@@ -155,6 +155,9 @@ IN DEVELOPMENT
      class that needs it.
      (Martin Pool)
 
+   * The class ``bzrlib.repofmt.knitrepo.KnitRepository3`` has been folded into
+     ``KnitRepository`` by parameters to the constructor. (Robert Collins)
+
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
      cost to store a version of a file. (Robert Collins)
@@ -175,6 +178,11 @@ IN DEVELOPMENT
    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
      put by the method call, to allow avoiding stat-after-write or
      housekeeping in callers. (Robert Collins)
+
+   * ``bzrlib.xml_serializer.Serializer`` is now responsible for checking that
+     mandatory attributes are present on serialisation and deserialisation.
+     This fixes some holes in API usage and allows better separation between
+     physical storage and object serialisation. (Robert Collins)
 
    * New class ``bzrlib.errors.InternalBzrError`` which is just a convenient
      shorthand for deriving from BzrError and setting internal_error = True.

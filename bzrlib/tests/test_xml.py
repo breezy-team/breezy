@@ -178,6 +178,7 @@ _inventory_utf8_v5 = """<inventory file_id="TRE&#233;_ROOT" format="5"
 
 class TestSerializer(TestCase):
     """Test XML serialization"""
+
     def test_canned_inventory(self):
         """Test unpacked a canned inventory v4 file."""
         inp = StringIO(_working_inventory_v4)
@@ -388,7 +389,7 @@ class TestSerializer(TestCase):
         fid_bar1 = u'b\xe5r-01'.encode('utf8')
         fid_sub = u's\xb5bdir-01'.encode('utf8')
         fid_bar2 = u'b\xe5r-02'.encode('utf8')
-        expected = [(u'', fid_root, None, None),
+        expected = [(u'', fid_root, None, rev_id_2),
                     (u'b\xe5r', fid_bar1, fid_root, rev_id_1),
                     (u's\xb5bdir', fid_sub, fid_root, rev_id_1),
                     (u's\xb5bdir/b\xe5r', fid_bar2, fid_sub, rev_id_2),
