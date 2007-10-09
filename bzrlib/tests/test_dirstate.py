@@ -701,7 +701,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.check_state_with_reopen(expected_result, state)
 
     def test_set_state_from_inventory_preserves_hashcache(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/146176
+        # https://bugs.launchpad.net/bzr/+bug/146176
         # set_state_from_inventory should preserve the stat and hash value for
         # workingtree files that are not changed by the inventory.
        
@@ -742,7 +742,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.assertTrue(inv.has_id('foo-id'))
             self.assertTrue(inv.has_filename('foo'))
             inv.add_path('bar', 'file', 'bar-id')
-            # no-op change is enough to make it lose state
+            # this used to cause it to lose its hashcache
             tree._dirstate.set_state_from_inventory(inv)
         finally:
             tree.unlock()

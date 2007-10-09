@@ -1865,8 +1865,15 @@ class DirState(object):
                 "set_state_from_inventory called; please mutate the tree instead")
         self._read_dirblocks_if_needed()
         # sketch:
-        # incremental algorithm:
-        # two iterators: current data and new data, both in dirblock order. 
+        # Two iterators: current data and new data, both in dirblock order. 
+        # We zip them together, which tells about entries that are new in the
+        # inventory, or removed in the inventory, or present in both and
+        # possibly changed.  
+        #
+        # You might think we could just synthesize a new dirstate directly
+        # since we're processing it in the right order.  However, we need to
+        # also consider there may be any number of parent trees and relocation
+        # pointers, and we don't want to duplicate that here.
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
@@ -1875,9 +1882,6 @@ class DirState(object):
         # both must have roots so this is safe:
         current_new = new_iterator.next()
         current_old = old_iterator.next()
-        # XXX: if we're generating things in order, why do we need to call
-        # update_minimal, rather than just generating the whole list in one
-        # go?
         def advance(iterator):
             try:
                 return iterator.next()
@@ -1911,13 +1915,13 @@ class DirState(object):
                     new_entry_key = None
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
-            if current_old is None:
+            if not current_old:
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
-            elif current_new is None:
+            elif not current_new:
                 # new is finished
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
