@@ -1895,7 +1895,6 @@ class DirState(object):
                 new_dirname, new_basename = osutils.split(new_path_utf8)
                 new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
-                new_dir_parts = new_dirname.split('/')
                 current_new_minikind = \
                     DirState._kind_to_minikind[current_new[1].kind]
                 if current_new_minikind == 't':
@@ -1909,7 +1908,7 @@ class DirState(object):
             else:
                 # for safety disable variables
                 new_path_utf8 = new_dirname = new_basename = new_id = \
-                    new_entry_key = new_dir_parts = None
+                    new_entry_key = None
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if current_old is None:
@@ -1938,7 +1937,7 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif (new_dir_parts < current_old[0][0].split('/')
+            elif (cmp_by_dirs(new_dirname, current_old[0][0]) < 0
                   or (new_dirname == current_old[0][0]
                       and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
