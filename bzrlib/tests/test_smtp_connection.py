@@ -38,6 +38,49 @@ def connection_refuser():
     return smtp
 
 
+class MockSMTPFactory(object):
+    """A fake SMTP connection to test the connection setup."""
+    def __init__(self, fail_on=None, smtp_features=None):
+        self._fail_on = fail_on or []
+        self._calls = []
+        self._smtp_features = smtp_features or []
+        self._ehlo_called = False
+
+    def __call__(self):
+        # The factory pretends to be a connection
+        return self
+
+    def connect(self, server):
+        self._calls.append(('connect', server))
+
+    def helo(self):
+        self._calls.append(('helo',))
+        if 'helo' in self._fail_on:
+            return 500, 'helo failure'
+        else:
+            return 200, 'helo success'
+
+    def ehlo(self):
+        self._calls.append(('ehlo',))
+        if 'ehlo' in self._fail_on:
+            return 500, 'ehlo failure'
+        else:
+            self._ehlo_called = True
+            return 200, 'ehlo success'
+
+    def has_extn(self, extension):
+        self._calls.append(('has_extn', extension))
+        return self._ehlo_called and extension in self._smtp_features
+
+    def starttls(self):
+        self._calls.append(('starttls',))
+        if 'starttls' in self._fail_on:
+            return 500, 'starttls failure'
+        else:
+            self._ehlo_called = True
+            return 200, 'starttls success'
+
+
 class TestSMTPConnection(TestCase):
 
     def get_connection(self, text, smtp_factory=None):
@@ -76,6 +119,56 @@ class TestSMTPConnection(TestCase):
 
         conn = self.get_connection('[DEFAULT]\nsmtp_password=mypass\n')
         self.assertEqual(u'mypass', conn._smtp_password)
+
+    def test_create_connection(self):
+        mock = MockSMTPFactory()
+        conn = self.get_connection('', smtp_factory=mock)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls')], mock._calls)
+
+    def test_create_connection_ehlo_fails(self):
+        # Check that we call HELO if EHLO failed.
+        mock = MockSMTPFactory(fail_on=['ehlo'])
+        conn = self.get_connection('', smtp_factory=mock)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('helo',),
+                          ('has_extn', 'starttls')], mock._calls)
+
+    def test_create_connection_ehlo_helo_fails(self):
+        # Check that we raise an exception if both EHLO and HELO fail.
+        mock = MockSMTPFactory(fail_on=['ehlo', 'helo'])
+        conn = self.get_connection('', smtp_factory=mock)
+        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('helo',)], mock._calls)
+
+    def test_create_connection_starttls(self):
+        # Check that STARTTLS plus a second EHLO are called if the
+        # server says it supports the feature.
+        mock = MockSMTPFactory(smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=mock)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('starttls',),
+                          ('ehlo',)], mock._calls)
+
+    def test_create_connection_starttls_fails(self):
+        # Check that we raise an exception if the server claims to
+        # support STARTTLS, but then fails when we try to activate it.
+        mock = MockSMTPFactory(fail_on=['starttls'], smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=mock)
+        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('starttls',)], mock._calls)
 
     def test_get_message_addresses(self):
         msg = Message()
