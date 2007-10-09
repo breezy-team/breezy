@@ -1860,10 +1860,20 @@ class DirState(object):
 
         :param new_inv: The inventory object to set current state from.
         """
+        if 'evil' in debug.debug_flags:
+            trace.mutter_callsite(1,
+                "set_state_from_inventory called; please mutate the tree instead")
         self._read_dirblocks_if_needed()
         # sketch:
-        # incremental algorithm:
-        # two iterators: current data and new data, both in dirblock order. 
+        # Two iterators: current data and new data, both in dirblock order. 
+        # We zip them together, which tells about entries that are new in the
+        # inventory, or removed in the inventory, or present in both and
+        # possibly changed.  
+        #
+        # You might think we could just synthesize a new dirstate directly
+        # since we're processing it in the right order.  However, we need to
+        # also consider there may be any number of parent trees and relocation
+        # pointers, and we don't want to duplicate that here.
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
@@ -1894,10 +1904,15 @@ class DirState(object):
                 if current_new_minikind == 't':
                     fingerprint = current_new[1].reference_revision or ''
                 else:
+                    # We normally only insert or remove records, or update
+                    # them when it has significantly changed.  Then we want to
+                    # erase its fingerprint.  Unaffected records should
+                    # normally not be updated at all.
                     fingerprint = ''
             else:
                 # for safety disable variables
-                new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = None
+                new_path_utf8 = new_dirname = new_basename = new_id = \
+                    new_entry_key = None
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if not current_old:
@@ -1912,6 +1927,9 @@ class DirState(object):
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
                 # same -  common case
+                # We're looking at the same path and id in both the dirstate
+                # and inventory, so just need to update the fields in the
+                # dirstate from the one in the inventory.
                 # TODO: update the record if anything significant has changed.
                 # the minimal required trigger is if the execute bit or cached
                 # kind has changed.
@@ -1923,8 +1941,9 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif (new_entry_key[0].split('/') < current_old[0][0].split('/')
-                  and new_entry_key[1:] < current_old[0][1:]):
+            elif (cmp_by_dirs(new_dirname, current_old[0][0]) < 0
+                  or (new_dirname == current_old[0][0]
+                      and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
@@ -1932,7 +1951,8 @@ class DirState(object):
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             else:
-                # old comes before:
+                # we've advanced past the place where the old key would be,
+                # without seeing it in the new list.  so it must be gone.
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
@@ -1998,15 +2018,22 @@ class DirState(object):
         :param minikind: The type for the entry ('f' == 'file', 'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
-        :param fingerprint: Simple fingerprint for new entry.
-        :param packed_stat: packed stat value for new entry.
+        :param fingerprint: Simple fingerprint for new entry: sha1 for files, 
+            referenced revision id for subtrees, etc.
+        :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
                 extra computation.
+
+        If packed_stat and fingerprint are not given, they're invalidated in
+        the entry.
         """
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
+        # XXX: Some callers pass '' as the packed_stat, and it seems to be
+        # sometimes present in the dirstate - this seems oddly inconsistent.
+        # mbp 20071008
         entry_index, present = self._find_entry_index(key, block)
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         id_index = self._get_id_index()

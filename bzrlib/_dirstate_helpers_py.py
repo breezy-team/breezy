@@ -144,9 +144,9 @@ def cmp_by_dirs_py(path1, path2):
 
     :param path1: first path
     :param path2: second path
-    :return: positive number if ``path1`` comes first,
+    :return: negative number if ``path1`` comes first,
         0 if paths are equal,
-        and negative number if ``path2`` sorts first
+        and positive number if ``path2`` sorts first
     """
     if not isinstance(path1, str):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -166,9 +166,9 @@ def _cmp_path_by_dirblock_py(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: positive number if ``path1`` comes first,
+    :return: negative number if ``path1`` comes first,
         0 if paths are equal
-        and a negative number if ``path2`` sorts first
+        and a positive number if ``path2`` sorts first
     """
     if not isinstance(path1, str):
         raise TypeError("'path1' must be a plain string, not %s: %r"
