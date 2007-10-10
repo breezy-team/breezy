@@ -1846,7 +1846,6 @@ class DirState(object):
         try to keep everything in sorted blocks all the time, but sometimes
         it's easier to sort after the fact.
         """
-        # TODO: Might be faster to do a schwartzian transform?
         def _key(entry):
             # sort by: directory parts, file name, file id
             return entry[0][0].split('/'), entry[0][1], entry[0][2]
