@@ -53,7 +53,7 @@ def launchpad_transport_indirect(
         result = resolve.submit(service)
     except xmlrpclib.Fault, fault:
         raise errors.InvalidURL(
-            path=base_url, extra=' %s' % fault.faultString)
+            path=base_url, extra=fault.faultString)
 
     for url in result['urls']:
         scheme = urlsplit(url)[0]
@@ -63,7 +63,7 @@ def launchpad_transport_indirect(
             break
     else:
         raise errors.InvalidURL(path=base_url,
-                                extra=' no supported schemes')
+                                extra='no supported schemes')
 
     return get_transport(url)
 
