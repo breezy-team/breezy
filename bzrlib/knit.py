@@ -421,9 +421,8 @@ class KnitVersionedFile(VersionedFile):
     """
 
     def __init__(self, relpath, transport, file_mode=None, access_mode=None,
-                 factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
-                 create=False, create_parent_dir=False, delay_create=False,
-                 dir_mode=None, index=None, access_method=None):
+        factory=None, delta=True, create=False, create_parent_dir=False,
+        delay_create=False, dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -434,10 +433,6 @@ class KnitVersionedFile(VersionedFile):
             actually be created until the first data is stored.
         :param index: An index to use for the knit.
         """
-        if deprecated_passed(basis_knit):
-            warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
-                 " deprecated as of bzr 0.9.",
-                 DeprecationWarning, stacklevel=2)
         if access_mode is None:
             access_mode = 'w'
         super(KnitVersionedFile, self).__init__(access_mode)
@@ -467,7 +462,7 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(_access)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, 
+        return '%s(%s)' % (self.__class__.__name__,
                            self.transport.abspath(self.filename))
     
     def _check_should_delta(self, first_parents):
@@ -560,8 +555,8 @@ class KnitVersionedFile(VersionedFile):
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
         """
-        required_versions = set([osutils.safe_revision_id(v) for v in
-            required_versions])
+        if not isinstance(required_versions, set):
+            required_versions = set(required_versions)
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         for version_id in required_versions:
@@ -616,7 +611,6 @@ class KnitVersionedFile(VersionedFile):
 
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
-        version_id = osutils.safe_revision_id(version_id)
         self.check_not_reserved_id(version_id)
         parents = self.get_parents(version_id)
         if len(parents):
@@ -659,7 +653,6 @@ class KnitVersionedFile(VersionedFile):
 
     def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1()."""
-        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
         record_map = self._get_record_map(version_ids)
         # record entry 2 is the 'digest'.
         return [record_map[v][2] for v in version_ids]
@@ -671,7 +664,6 @@ class KnitVersionedFile(VersionedFile):
 
     def has_ghost(self, version_id):
         """True if there is a ghost reference in the file to version_id."""
-        version_id = osutils.safe_revision_id(version_id)
         # maybe we have it
         if self.has_version(version_id):
             return False
@@ -737,7 +729,6 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.has_version."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "has_version is a LBYL scenario")
-        version_id = osutils.safe_revision_id(version_id)
         return self._index.has_version(version_id)
 
     __contains__ = has_version
@@ -895,6 +886,7 @@ class KnitVersionedFile(VersionedFile):
                 lines = lines[:]
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
+                line_bytes += '\n'
 
         if delta:
             # To speed the extract of texts the delta chain is limited
@@ -917,11 +909,18 @@ class KnitVersionedFile(VersionedFile):
                 store_lines)
         else:
             options.append('fulltext')
-            # get mixed annotation + content and feed it into the
-            # serialiser.
-            store_lines = self.factory.lower_fulltext(content)
-            size, bytes = self._data._record_to_data(version_id, digest,
-                store_lines)
+            # isinstance is slower and we have no hierarchy.
+            if self.factory.__class__ == KnitPlainFactory:
+                # Use the already joined bytes saving iteration time in
+                # _record_to_data.
+                size, bytes = self._data._record_to_data(version_id, digest,
+                    lines, [line_bytes])
+            else:
+                # get mixed annotation + content and feed it into the
+                # serialiser.
+                store_lines = self.factory.lower_fulltext(content)
+                size, bytes = self._data._record_to_data(version_id, digest,
+                    store_lines)
 
         access_memo = self._data.add_raw_records([size], bytes)[0]
         self._index.add_versions(
@@ -973,7 +972,6 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
-        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
         for version_id in version_ids:
             self.check_not_reserved_id(version_id)
         text_map, content_map = self._get_content_maps(version_ids)
@@ -988,9 +986,6 @@ class KnitVersionedFile(VersionedFile):
         the requested versions and content_map contains the KnitContents.
         Both dicts take version_ids as their keys.
         """
-        for version_id in version_ids:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
         record_map = self._get_record_map(version_ids)
 
         text_map = {}
@@ -1050,8 +1045,6 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
-        else:
-            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
         if pb is None:
             pb = progress.DummyProgress()
         # we don't care about inclusions, the caller cares.
@@ -1094,8 +1087,6 @@ class KnitVersionedFile(VersionedFile):
             The order is undefined, allowing for different optimisations in
             the underlying implementation.
         """
-        version_ids = [osutils.safe_revision_id(version_id) for
-            version_id in version_ids]
         return self._index.iter_parents(version_ids)
 
     def num_versions(self):
@@ -1106,7 +1097,6 @@ class KnitVersionedFile(VersionedFile):
 
     def annotate_iter(self, version_id):
         """See VersionedFile.annotate_iter."""
-        version_id = osutils.safe_revision_id(version_id)
         return self.factory.annotate_iter(self, version_id)
 
     def get_parents(self, version_id):
@@ -1114,7 +1104,6 @@ class KnitVersionedFile(VersionedFile):
         # perf notes:
         # optimism counts!
         # 52554 calls in 1264 872 internal down from 3674
-        version_id = osutils.safe_revision_id(version_id)
         try:
             return self._index.get_parents(version_id)
         except KeyError:
@@ -1122,7 +1111,6 @@ class KnitVersionedFile(VersionedFile):
 
     def get_parents_with_ghosts(self, version_id):
         """See VersionedFile.get_parents."""
-        version_id = osutils.safe_revision_id(version_id)
         try:
             return self._index.get_parents_with_ghosts(version_id)
         except KeyError:
@@ -1134,7 +1122,6 @@ class KnitVersionedFile(VersionedFile):
             versions = [versions]
         if not versions:
             return []
-        versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry(versions, topo_sorted)
 
     def get_ancestry_with_ghosts(self, versions):
@@ -1143,15 +1130,11 @@ class KnitVersionedFile(VersionedFile):
             versions = [versions]
         if not versions:
             return []
-        versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry_with_ghosts(versions)
 
     def plan_merge(self, ver_a, ver_b):
         """See VersionedFile.plan_merge."""
-        ver_a = osutils.safe_revision_id(ver_a)
-        ver_b = osutils.safe_revision_id(ver_b)
         ancestors_b = set(self.get_ancestry(ver_b, topo_sorted=False))
-        
         ancestors_a = set(self.get_ancestry(ver_a, topo_sorted=False))
         annotated_a = self.annotate(ver_a)
         annotated_b = self.annotate(ver_b)
@@ -1441,7 +1424,10 @@ class _KnitIndex(_KnitComponentFile):
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        options = self._cache[version_id][1]
+        try:
+            options = self._cache[version_id][1]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self._filename)
         if 'fulltext' in options:
             return 'fulltext'
         else:
@@ -1680,7 +1666,10 @@ class KnitGraphIndex(object):
             return 'fulltext'
 
     def _get_node(self, version_id):
-        return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        try:
+            return list(self._get_entries(self._version_ids_to_keys([version_id])))[0]
+        except IndexError:
+            raise RevisionNotPresent(version_id, self)
 
     def get_options(self, version_id):
         """Return a string represention options.
@@ -1991,17 +1980,26 @@ class _KnitData(object):
     def _open_file(self):
         return self._access.open_file()
 
-    def _record_to_data(self, version_id, digest, lines):
+    def _record_to_data(self, version_id, digest, lines, dense_lines=None):
         """Convert version_id, digest, lines into a raw data block.
         
+        :param dense_lines: The bytes of lines but in a denser form. For
+            instance, if lines is a list of 1000 bytestrings each ending in \n,
+            dense_lines may be a list with one line in it, containing all the
+            1000's lines and their \n's. Using dense_lines if it is already
+            known is a win because the string join to create bytes in this
+            function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        bytes = (''.join(chain(
+        # Note: using a string copy here increases memory pressure with e.g.
+        # ISO's, but it is about 3 seconds faster on a 1.2Ghz intel machine
+        # when doing the initial commit of a mozilla tree. RBC 20070921
+        bytes = ''.join(chain(
             ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
-            lines,
-            ["end %s\n" % version_id])))
+            dense_lines or lines,
+            ["end %s\n" % version_id]))
         assert bytes.__class__ == str
         compressed_bytes = bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes

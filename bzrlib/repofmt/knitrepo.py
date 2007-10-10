@@ -37,6 +37,7 @@ from bzrlib import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
+    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -76,7 +77,19 @@ class _KnitParentsProvider(object):
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
-    _serializer = xml5.serializer_v5
+    # These attributes are inherited from the Repository base class. Setting
+    # them to None ensures that if the constructor is changed to not initialize
+    # them, or a subclass fails to call the constructor, that an error will
+    # occur rather than the system working but generating incorrect data.
+    _commit_builder_class = None
+    _serializer = None
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+        control_store, text_store, _commit_builder_class, _serializer):
+        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files,
+            _revision_store, control_store, text_store)
+        self._commit_builder_class = _commit_builder_class
+        self._serializer = _serializer
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -99,8 +112,6 @@ class KnitRepository(MetaDirRepository):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
-        from_revid = osutils.safe_revision_id(from_revid)
-        to_revid = osutils.safe_revision_id(to_revid)
         vf = self._get_revision_vf()
         from_set = set(vf.get_ancestry(from_revid))
         to_set = set(vf.get_ancestry(to_revid))
@@ -129,7 +140,6 @@ class KnitRepository(MetaDirRepository):
         """
         if _mod_revision.is_null(revision_id):
             return [None]
-        revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()
         try:
             return [None] + vf.get_ancestry(revision_id, topo_sorted)
@@ -151,7 +161,6 @@ class KnitRepository(MetaDirRepository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self._get_revision_vf()
         if revision_id is None:
             return a_weave.get_graph()
@@ -178,7 +187,7 @@ class KnitRepository(MetaDirRepository):
             pending = set(self.all_revision_ids())
             required = set([])
         else:
-            pending = set(osutils.safe_revision_id(r) for r in revision_ids)
+            pending = set(revision_ids)
             # special case NULL_REVISION
             if _mod_revision.NULL_REVISION in pending:
                 pending.remove(_mod_revision.NULL_REVISION)
@@ -226,43 +235,10 @@ class KnitRepository(MetaDirRepository):
         return reconciler
     
     def revision_parents(self, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         return self._get_revision_vf().get_parents(revision_id)
 
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
-
-
-class KnitRepository3(KnitRepository):
-
-    # knit3 repositories need a RootCommitBuilder
-    _commit_builder_class = RootCommitBuilder
-
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-                              _revision_store, control_store, text_store)
-        self._serializer = xml7.serializer_v7
-
-    def deserialise_inventory(self, revision_id, xml):
-        """Transform the xml into an inventory object. 
-
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
-        """
-        result = self._serializer.read_inventory_from_string(xml)
-        assert result.root.revision is not None
-        return result
-
-    def serialise_inventory(self, inv):
-        """Transform the inventory object into XML text.
-
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
-        """
-        assert inv.revision_id is not None
-        assert inv.root.revision is not None
-        return KnitRepository.serialise_inventory(self, inv)
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -282,6 +258,13 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
     repository_class = None
+    # Set this attribute in derived classes to control the
+    # _commit_builder_class that the repository objects will have passed to
+    # their constructor.
+    _commit_builder_class = None
+    # Set this attribute in derived clases to control the _serializer that the
+    # repository objects will have passed to their constructor.
+    _serializer = xml5.serializer_v5
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -373,7 +356,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                               control_files=control_files,
                               _revision_store=_revision_store,
                               control_store=control_store,
-                              text_store=text_store)
+                              text_store=text_store,
+                              _commit_builder_class=self._commit_builder_class,
+                              _serializer=self._serializer)
 
 
 class RepositoryFormatKnit1(RepositoryFormatKnit):
@@ -393,6 +378,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
+    _commit_builder_class = CommitBuilder
+    _serializer = xml5.serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -425,9 +412,11 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
      - support for recording tree-references
     """
 
-    repository_class = KnitRepository3
+    repository_class = KnitRepository
+    _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
+    _serializer = xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')

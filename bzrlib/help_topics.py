@@ -265,6 +265,7 @@ development.
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
                operations.
+-Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.

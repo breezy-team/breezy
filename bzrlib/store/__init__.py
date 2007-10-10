@@ -127,7 +127,6 @@ class Store(object):
             pb.update('preparing to copy')
         failed = set()
         count = 0
-        ids = [osutils.safe_file_id(i) for i in ids] # get the list for showing a length.
         for fileid in ids:
             count += 1
             if self.has_id(fileid):
@@ -172,7 +171,6 @@ class TransportStore(Store):
 
         f -- A file-like object
         """
-        fileid = osutils.safe_file_id(fileid)
         mutter("add store entry %r", fileid)
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
@@ -212,7 +210,6 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
-        fileid = osutils.safe_file_id(fileid)
         return self._transport.has_any(self._id_to_names(fileid, suffix))
 
     def _get_name(self, fileid, suffix=None):
@@ -236,7 +233,6 @@ class TransportStore(Store):
 
     def get(self, fileid, suffix=None):
         """See Store.get()."""
-        fileid = osutils.safe_file_id(fileid)
         names = self._id_to_names(fileid, suffix)
         for name in names:
             try:
