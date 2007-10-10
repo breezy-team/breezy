@@ -181,6 +181,8 @@ class RepositoryPackCollection(object):
     def all_packs(self):
         """Return a list of all the Pack objects this repository has.
 
+        Note that an in-progress pack being created is not returned.
+
         :return: A list of Pack objects for all the packs in the repository.
         """
         result = []
