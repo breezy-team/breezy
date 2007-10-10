@@ -49,7 +49,7 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-from bzrlib.repofmt import knitrepo, weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -598,6 +598,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+
 class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
@@ -764,6 +765,16 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
+class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir('experimental-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff('Bazaar Experimental subtrees\n',
+                             t.get('format').read())
+
+
 # TESTS TO WRITE:
 # XXX: signatures must be preserved. add a test.
 # XXX: packs w/o revisions are ignored by autopack
@@ -885,12 +896,84 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
             existing_packs, [1000, 1000, 10])
         self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
 
+    def test_all_packs_none(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        packs = tree.branch.repository._packs
+        packs.ensure_loaded()
+        self.assertEqual([], packs.all_packs())
 
-class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
+    def test_all_packs_one(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        tree.commit('start')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        packs = tree.branch.repository._packs
+        packs.ensure_loaded()
+        self.assertEqual([pack_repo.Pack(packs._pack_transport,
+            packs.names()[0], None, None, None, None)], packs.all_packs())
 
-    def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('experimental-subtree')
+    def test_all_packs_two(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        tree.commit('start')
+        tree.commit('continue')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        packs = tree.branch.repository._packs
+        packs.ensure_loaded()
+        self.assertEqual([
+            pack_repo.Pack(packs._pack_transport,
+                packs.names()[0], None, None, None, None),
+            pack_repo.Pack(packs._pack_transport,
+                packs.names()[1], None, None, None, None),
+            ], packs.all_packs())
 
-    def check_format(self, t):
-        self.assertEqualDiff('Bazaar Experimental subtrees\n',
-                             t.get('format').read())
+
+class TestPack(TestCaseWithTransport):
+    """Tests for the Pack object."""
+
+    def assertCurrentlyEqual(self, left, right):
+        self.assertTrue(left == right)
+        self.assertTrue(right == left)
+        self.assertFalse(left != right)
+        self.assertFalse(right != left)
+
+    def assertCurrentlyNotEqual(self, left, right):
+        self.assertFalse(left == right)
+        self.assertFalse(right == left)
+        self.assertTrue(left != right)
+        self.assertTrue(right != left)
+
+    def test___eq____ne__(self):
+        left = pack_repo.Pack()
+        right = pack_repo.Pack()
+        self.assertCurrentlyEqual(left, right)
+        # change all attributes and ensure equality changes as we do.
+        left.revision_index = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.revision_index = 'a'
+        self.assertCurrentlyEqual(left, right)
+        left.inventory_index = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.inventory_index = 'a'
+        self.assertCurrentlyEqual(left, right)
+        left.text_index = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.text_index = 'a'
+        self.assertCurrentlyEqual(left, right)
+        left.signature_index = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.signature_index = 'a'
+        self.assertCurrentlyEqual(left, right)
+        left.name = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.name = 'a'
+        self.assertCurrentlyEqual(left, right)
+        left.transport = 'a'
+        self.assertCurrentlyNotEqual(left, right)
+        right.transport = 'a'
+        self.assertCurrentlyEqual(left, right)

@@ -93,13 +93,24 @@ class PackRootCommitBuilder(RootCommitBuilder):
 class Pack(object):
     """An in memory proxy for a .pack and its indices."""
 
-    def __init__(self):
-        self.revision_index = None
-        self.inventory_index = None
-        self.text_index = None
-        self.signature_index = None
-        self.name = None
-        self.transport = None
+    def __init__(self, transport=None, name=None, revision_index=None,
+        inventory_index=None, text_index=None, signature_index=None):
+        self.revision_index = revision_index
+        self.inventory_index = inventory_index
+        self.text_index = text_index
+        self.signature_index = signature_index
+        self.name = name
+        self.transport = transport
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return "<bzrlib.repofmt.pack_repo.Pack object at 0x%x, %s, %s" % (
+            id(self), self.transport, self.name)
 
     def get_revision_count(self):
         return self.revision_index.key_count()
@@ -166,6 +177,16 @@ class RepositoryPackCollection(object):
         return self.repo._text_knit.add_lines_with_ghosts(
             revision_id, parents, new_lines, nostore_sha=nostore_sha,
             random_id=random_revid, check_content=False)[0:2]
+
+    def all_packs(self):
+        """Return a list of all the Pack objects this repository has.
+
+        :return: A list of Pack objects for all the packs in the repository.
+        """
+        result = []
+        for name in self.names():
+            result.append(Pack(self._pack_transport, name, None, None, None))
+        return result
 
     def all_pack_details(self):
         """Return a list of all the packs as transport,name tuples.
