@@ -266,6 +266,17 @@ class GraphIndex(object):
         self._nodes_by_key = None
         self._size = size
 
+    def __eq__(self, other):
+        """Equal when self and otherwere created with the same parameters."""
+        return (
+            type(self) == type(other) and
+            self._transport == other._transport and
+            self._name == other._name and
+            self._size == other._size)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def _buffer_all(self):
         """Buffer all the index data.
 

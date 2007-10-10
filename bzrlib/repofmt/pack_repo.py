@@ -137,6 +137,8 @@ class RepositoryPackCollection(object):
         self._pack_transport = pack_transport
         self._suffix_offsets = {'.rix':0, '.iix':1, '.tix':2, '.six':3}
         self.packs = []
+        # name:Pack mapping
+        self._packs = {}
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -144,6 +146,8 @@ class RepositoryPackCollection(object):
         :param pack: A Pack object.
         """
         self.packs.append(pack)
+        assert pack.name not in self._packs
+        self._packs[pack.name] = pack
         if self.repo._revision_all_indices is None:
             # to make this function more useful, perhaps we should make an
             # all_indices object in future?
@@ -187,7 +191,7 @@ class RepositoryPackCollection(object):
         """
         result = []
         for name in self.names():
-            result.append(Pack(self._pack_transport, name, None, None, None))
+            result.append(self.get_pack_by_name(name))
         return result
 
     def all_pack_details(self):
@@ -252,7 +256,8 @@ class RepositoryPackCollection(object):
                 # one revision for each to the total revision count, to get
                 # a matching distribution.
                 continue
-            existing_packs.append((revision_count, transport_and_name))
+            existing_packs.append((revision_count, transport_and_name,
+                self.get_pack_by_name(transport_and_name[1])))
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
@@ -481,19 +486,23 @@ class RepositoryPackCollection(object):
         :param pack_operations: A list of [revision_count, packs_to_combine].
         :return: None.
         """
-        for revision_count, pack_details in pack_operations:
+        for revision_count, pack_list in pack_operations:
             # we may have no-ops from the setup logic
-            if len(pack_details) == 0:
+            if len(pack_list) == 0:
                 continue
             # have a progress bar?
-            self._combine_packs(pack_details)
+            pack_details = [details for details,_ in pack_list]
+            packs = [pack for _, pack in pack_list]
+            assert pack_details[0].__class__ == tuple
+            self._combine_packs(pack_details, packs)
             for pack_detail in pack_details:
                 self._remove_pack_by_name(pack_detail[1])
         # record the newly available packs and stop advertising the old
         # packs
         self._save_pack_names()
         # move the old packs out of the way
-        for revision_count, pack_details in pack_operations:
+        for revision_count, pack_list in pack_operations:
+            pack_details = [details for details,_ in pack_list]
             self._obsolete_packs(pack_details)
 
     def pack(self):
@@ -520,13 +529,20 @@ class RepositoryPackCollection(object):
                     continue
                 revision_count = index.key_count()
                 pack_operations[-1][0] += revision_count
-                pack_operations[-1][1].append(transport_and_name)
+                pack_operations[-1][1].append((transport_and_name,
+                    self.get_pack_by_name(transport_and_name[1])))
             self._execute_pack_operations(pack_operations)
         finally:
             if not self.repo.is_in_write_group():
                 self.reset()
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
+        """Plan a pack operation.
+
+        :param existing_packs: The packs to pack.
+        :parma pack_distribution: A list with the number of revisions desired
+            in each pack.
+        """
         if len(existing_packs) <= len(pack_distribution):
             return []
         existing_packs.sort(reverse=True)
@@ -537,7 +553,7 @@ class RepositoryPackCollection(object):
             # distribution chart we will include its contents in the new pack for
             # that position. If its larger, we remove its size from the
             # distribution chart
-            next_pack_rev_count, next_pack_details = existing_packs.pop(0)
+            next_pack_rev_count, next_pack_details, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
                 # this is already packed 'better' than this, so we can
                 # not waste time packing it.
@@ -553,7 +569,7 @@ class RepositoryPackCollection(object):
                 # add the revisions we're going to add to the next output pack
                 pack_operations[-1][0] += next_pack_rev_count
                 # allocate this pack to the next pack sub operation
-                pack_operations[-1][1].append(next_pack_details)
+                pack_operations[-1][1].append((next_pack_details, next_pack))
                 if pack_operations[-1][0] >= pack_distribution[0]:
                     # this pack is used up, shift left.
                     del pack_distribution[0]
@@ -561,7 +577,7 @@ class RepositoryPackCollection(object):
         
         return pack_operations
 
-    def _combine_packs(self, pack_details):
+    def _combine_packs(self, pack_details, packs):
         """Combine the data from the packs listed in pack_details.
 
         This does little more than a bulk copy of data. One key difference
@@ -575,7 +591,7 @@ class RepositoryPackCollection(object):
         :return: None
         """
         # select revision keys
-        revision_index_map = self._revision_index_map(pack_details)
+        revision_index_map = self._revision_index_map(pack_details, packs)
         # select inventory keys
         inv_index_map = self._inv_index_map(pack_details)
         # select text keys
@@ -683,6 +699,24 @@ class RepositoryPackCollection(object):
                 sizes = [int(digits) for digits in value.split(' ')]
                 self._names[name] = sizes
 
+    def get_pack_by_name(self, name):
+        """Get a Pack object by name.
+
+        :param name: The name of the pack - e.g. '123456'
+        :return: A Pack object.
+        """
+        try:
+            return self._packs[name]
+        except KeyError:
+            rev_index = self._make_index(name, '.rix')
+            inv_index = self._make_index(name, '.iix')
+            txt_index = self._make_index(name, '.tix')
+            sig_index = self._make_index(name, '.six')
+            result = Pack(self._pack_transport, name, rev_index, inv_index,
+                txt_index, sig_index)
+            self._packs[name] = result
+            return result
+
     def allocate(self, name, revision_index_length, inventory_index_length,
         text_index_length, signature_index_length):
         """Allocate name in the list of packs.
@@ -711,20 +745,20 @@ class RepositoryPackCollection(object):
         objects, and pack_map is a mapping from those objects to the 
         pack tuple they describe.
         """
-        size_offset = self._suffix_offsets[suffix]
-        indices = []
-        pack_map = {}
         self.ensure_loaded()
+        details = []
         for name in self.names():
             # TODO: maybe this should expose size to us  to allow
             # sorting of the indices for better performance ?
-            index_name = name + suffix
-            index_size = self._names[name][size_offset]
-            new_index = GraphIndex(
-                self._index_transport, index_name, index_size)
-            indices.append(new_index)
-            pack_map[new_index] = self._pack_tuple(name)
-        return pack_map, indices
+            details.append(self._pack_tuple(name))
+        return self._make_index_to_pack_map(details, suffix)
+
+    def _make_index(self, name, suffix):
+        size_offset = self._suffix_offsets[suffix]
+        index_name = name + suffix
+        index_size = self._names[name][size_offset]
+        return GraphIndex(
+            self._index_transport, index_name, index_size)
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -795,6 +829,7 @@ class RepositoryPackCollection(object):
     def reset(self):
         self._names = None
         self.packs = []
+        self._packs = {}
 
     def _make_index_to_pack_map(self, pack_details, index_suffix):
         """Given a list (transport,name), return a map of (index)->(transport, name)."""
@@ -802,30 +837,31 @@ class RepositoryPackCollection(object):
         # this should really reuse the existing index objects for these 
         # packs - this means making the way they are managed in the repo be 
         # more sane.
-        size_offset = self._suffix_offsets[index_suffix]
-        indices = {}
+        indices = []
+        pack_map = {}
+        self.ensure_loaded()
         for transport, name in pack_details:
             index_name = name[:-5] + index_suffix
-            index_size = self._names[index_name][index_size]
-            indices[GraphIndex(self._index_transport, index_name, index_size)] = \
-                (transport, name)
-        return indices
+            new_index = self._make_index(index_name, index_suffix)
+            indices.append(new_index)
+            pack_map[new_index] = (transport, name)
+        return pack_map, indices
 
     def _inv_index_map(self, pack_details):
         """Get a map of inv index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.iix')
+        return self._make_index_to_pack_map(pack_details, '.iix')[0]
 
-    def _revision_index_map(self, pack_details):
+    def _revision_index_map(self, pack_details, packs):
         """Get a map of revision index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.rix')
+        return self._make_index_to_pack_map(pack_details, '.rix')[0]
 
     def _signature_index_map(self, pack_details):
         """Get a map of signature index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.six')
+        return self._make_index_to_pack_map(pack_details, '.six')[0]
 
     def _text_index_map(self, pack_details):
         """Get a map of text index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.tix')
+        return self._make_index_to_pack_map(pack_details, '.tix')[0]
 
     def _index_contents(self, pack_map, key_filter=None):
         """Get an iterable of the index contents from a pack_map.

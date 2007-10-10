@@ -2343,7 +2343,8 @@ class InterPackRepo(InterSameDataRepository):
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
         packs = self.source._packs.all_pack_details()
-        revision_index_map = self.source._packs._revision_index_map(packs)
+        _packs = self.source._packs.all_packs()
+        revision_index_map = self.source._packs._revision_index_map(packs, _packs)
         inventory_index_map = self.source._packs._inv_index_map(packs)
         text_index_map = self.source._packs._text_index_map(packs)
         signature_index_map = self.source._packs._signature_index_map(packs)

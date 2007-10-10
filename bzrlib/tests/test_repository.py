@@ -913,8 +913,9 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         packs = tree.branch.repository._packs
         packs.ensure_loaded()
-        self.assertEqual([pack_repo.Pack(packs._pack_transport,
-            packs.names()[0], None, None, None, None)], packs.all_packs())
+        self.assertEqual([
+            packs.get_pack_by_name(packs.names()[0])],
+            packs.all_packs())
 
     def test_all_packs_two(self):
         format = self.get_format()
@@ -926,11 +927,34 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs = tree.branch.repository._packs
         packs.ensure_loaded()
         self.assertEqual([
-            pack_repo.Pack(packs._pack_transport,
-                packs.names()[0], None, None, None, None),
-            pack_repo.Pack(packs._pack_transport,
-                packs.names()[1], None, None, None, None),
+            packs.get_pack_by_name(packs.names()[0]),
+            packs.get_pack_by_name(packs.names()[1]),
             ], packs.all_packs())
+
+    def test_get_pack_by_name(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        tree.commit('start')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        packs = tree.branch.repository._packs
+        packs.ensure_loaded()
+        name = packs.names()[0]
+        pack_1 = packs.get_pack_by_name(name)
+        # the pack should be correctly initialised
+        rev_index = GraphIndex(packs._index_transport, name + '.rix',
+            packs._names[name][0])
+        inv_index = GraphIndex(packs._index_transport, name + '.iix',
+            packs._names[name][1])
+        txt_index = GraphIndex(packs._index_transport, name + '.tix',
+            packs._names[name][2])
+        sig_index = GraphIndex(packs._index_transport, name + '.six',
+            packs._names[name][3])
+        self.assertEqual(pack_repo.Pack(packs._pack_transport,
+                packs.names()[0], rev_index, inv_index, txt_index, sig_index),
+            pack_1)
+        # and the same instance should be returned on successive calls.
+        self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
 
 class TestPack(TestCaseWithTransport):
