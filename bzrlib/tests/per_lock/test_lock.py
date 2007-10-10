@@ -68,7 +68,7 @@ class TestLock(TestCaseWithLock):
         a_lock = self.read_lock('a-file')
         a_lock.unlock()
 
-        self.assertRaises(errors.ReadOnlyLockError, self.write_lock, 'a-file')
+        self.assertRaises(errors.LockFailed, self.write_lock, 'a-file')
 
     def test_write_lock(self):
         """Smoke test for write locks."""
