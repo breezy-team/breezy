@@ -252,14 +252,17 @@ class TestBranchRegistration(TestCase):
                 test_case.assertEquals(method_name, "resolve_lp_url")
                 test_case.assertEquals(list(method_params), ['bzr'])
                 test_case.assertEquals(authenticated, False)
-                return dict(host='bazaar.launchpad.net',
-                            path='~bzr/bzr/trunk',
-                            supported_schemes=['bzr+ssh', 'sftp',
-                                               'bzr+http', 'http'])
+                return dict(urls=[
+                        'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'http://bazaar.launchpad.net~bzr/bzr/trunk'])
         service = MockService()
         resolve = ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
-        self.assertEquals(result['host'], 'bazaar.launchpad.net')
-        self.assertEquals(result['path'], '~bzr/bzr/trunk')
-        self.assertEquals(result['supported_schemes'],
-                          ['bzr+ssh', 'sftp', 'bzr+http', 'http'])
+        self.assertTrue('urls' in result)
+        self.assertEquals(result['urls'], [
+                'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                'http://bazaar.launchpad.net~bzr/bzr/trunk'])

@@ -16,6 +16,8 @@
 
 """Tests for indirect branch urls through Launchpad.net"""
 
+import xmlrpclib
+
 from bzrlib import (
     errors,
     )
@@ -44,9 +46,8 @@ class IndirectUrlTests(TestCase):
     def test_short_form(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
-            self, 'apt', dict(host='bazaar.launchpad.net',
-                              path='~apt/apt/devel',
-                              supported_schemes=['http']))
+            self, 'apt', dict(urls=[
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
         url = 'lp:apt'
         t = launchpad_transport_indirect(url, factory)
         self.assertEquals(
@@ -55,9 +56,8 @@ class IndirectUrlTests(TestCase):
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
-            self, 'apt', dict(host='bazaar.launchpad.net',
-                              path='~apt/apt/devel',
-                              supported_schemes=['http']))
+            self, 'apt', dict(urls=[
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
         url = 'lp:///apt'
         t = launchpad_transport_indirect(url, factory)
         self.assertEquals(
@@ -67,10 +67,19 @@ class IndirectUrlTests(TestCase):
         # If the XMLRPC call does not return any protocols we support,
         # invalidURL is raised.
         factory = FakeResolveFactory(
-            self, 'apt', dict(host='bazaar.launchpad.net',
-                              path='~apt/apt/devel',
-                              supported_schemes=['bad-scheme']))
-        url = 'lp:apt'
+            self, 'apt', dict(urls=[
+                    'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
+        url = 'lp:///apt'
+        self.assertRaises(errors.InvalidURL,
+                          launchpad_transport_indirect, url, factory)
+
+    def test_indirect_fault(self):
+        # Test that XMLRPC faults get converted to InvalidURL errors.
+        factory = FakeResolveFactory(self, 'apt', None)
+        def submit(service):
+            raise xmlrpclib.Fault(42, 'something went wrong')
+        factory.submit = submit
+        url = 'lp:///apt'
         self.assertRaises(errors.InvalidURL,
                           launchpad_transport_indirect, url, factory)
 

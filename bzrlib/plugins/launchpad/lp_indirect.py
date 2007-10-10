@@ -22,6 +22,9 @@ on Launchpad, which can then either serve the branch itself or redirect
 again.
 """
 
+from urlparse import urlsplit
+import xmlrpclib
+
 from bzrlib import (
     errors,
     )
@@ -46,17 +49,23 @@ def launchpad_transport_indirect(
     # Perform an XMLRPC request to resolve the path
     resolve = request_factory(path)
     service = LaunchpadService()
-    result = resolve.submit(service)
+    try:
+        result = resolve.submit(service)
+    except xmlrpclib.Fault, fault:
+        raise errors.InvalidURL(
+            path=base_url, extra=' %s' % fault.faultString)
 
-    for scheme in result['supported_schemes']:
+    for url in result['urls']:
+        scheme = urlsplit(url)[0]
+        # Once we have a way to know if the user can do bzr+ssh, we
+        # should allow it through here too.
         if scheme in ['bzr+http', 'http']:
-            real_url = '%s://%s/%s' % (scheme, result['host'], result['path'])
             break
     else:
         raise errors.InvalidURL(path=base_url,
                                 extra=' no supported schemes')
 
-    return get_transport(real_url)
+    return get_transport(url)
 
 
 def get_test_permutations():
