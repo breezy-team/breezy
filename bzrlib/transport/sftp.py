@@ -247,7 +247,7 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         """See Transport.readv()"""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.

@@ -37,10 +37,13 @@ class TransportDecorator(Transport):
     method to return the url prefix for the subclass.
     """
 
-    def __init__(self, url, _decorated=None):
-        """Set the 'base' path where files will be stored.
+    def __init__(self, url, _decorated=None, _from_transport=None):
+        """Set the 'base' path of the transport.
         
-        _decorated is a private parameter for cloning."""
+        :param _decorated: A private parameter for cloning.
+        :param _from_transport: Is available for subclasses that
+            need to share state across clones.
+        """
         prefix = self._get_url_prefix()
         assert url.startswith(prefix), \
                 "url %r doesn't start with decorator prefix %r" % \
@@ -73,7 +76,8 @@ class TransportDecorator(Transport):
         """See Transport.clone()."""
         decorated_clone = self._decorated.clone(offset)
         return self.__class__(
-            self._get_url_prefix() + decorated_clone.base, decorated_clone)
+            self._get_url_prefix() + decorated_clone.base, decorated_clone,
+            self)
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -137,6 +141,10 @@ class TransportDecorator(Transport):
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
+
+    def _readv(self, relpath, offsets):
+        """See Transport._readv."""
+        return self._decorated._readv(relpath, offsets)
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size()."""

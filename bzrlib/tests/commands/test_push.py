@@ -24,7 +24,7 @@ class TestPush(TestCaseWithConnectionHookedTransport):
     def test_push(self):
         self.make_branch_and_tree('branch')
 
-        self.install_hooks()
+        self.start_logging_connections()
 
         cmd = cmd_push()
         cmd.run(self.get_url('remote'), directory='branch')
