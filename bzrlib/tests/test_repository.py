@@ -973,8 +973,8 @@ class TestPack(TestCaseWithTransport):
         self.assertTrue(right != left)
 
     def test___eq____ne__(self):
-        left = pack_repo.Pack()
-        right = pack_repo.Pack()
+        left = pack_repo.Pack('', '', '', '', '', '')
+        right = pack_repo.Pack('', '', '', '', '', '')
         self.assertCurrentlyEqual(left, right)
         # change all attributes and ensure equality changes as we do.
         left.revision_index = 'a'

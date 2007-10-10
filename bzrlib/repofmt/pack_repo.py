@@ -93,14 +93,16 @@ class PackRootCommitBuilder(RootCommitBuilder):
 class Pack(object):
     """An in memory proxy for a .pack and its indices."""
 
-    def __init__(self, transport=None, name=None, revision_index=None,
-        inventory_index=None, text_index=None, signature_index=None):
+    def __init__(self, transport, name, revision_index, inventory_index,
+        text_index, signature_index):
         self.revision_index = revision_index
         self.inventory_index = inventory_index
         self.text_index = text_index
         self.signature_index = signature_index
         self.name = name
         self.transport = transport
+        assert None not in (revision_index, inventory_index, text_index,
+            signature_index, name, transport)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -419,9 +421,6 @@ class RepositoryPackCollection(object):
             )):
             self._upload_transport.delete(random_name)
             return None
-        result = Pack()
-        result.name = new_name
-        result.transport = self._upload_transport.clone('../packs/')
         # write indices
         index_transport = self._index_transport
         rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
@@ -463,16 +462,14 @@ class RepositoryPackCollection(object):
         # uploading blind under the chosen name.
         write_stream.close()
         self._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
+        result = Pack(self._upload_transport.clone('../packs/'), new_name,
+            revision_index, inv_index, text_index, signature_index)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
                 result.transport, result.name,
                 time.time() - start_time)
-        result.revision_index = revision_index
-        result.inventory_index = inv_index
-        result.text_index = text_index
-        result.signature_index = signature_index
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: finished: %s%s t+%6.3fs',
@@ -921,17 +918,15 @@ class RepositoryPackCollection(object):
         if data_inserted:
             self._open_pack_writer.end()
             new_name = self._open_pack_hash.hexdigest()
-            new_pack = Pack()
-            new_pack.name = new_name
-            new_pack.transport = self._upload_transport.clone('../packs/')
-            # To populate:
-            # new_pack.revision_index = 
-            # new_pack.inventory_index = 
-            # new_pack.text_index = 
-            # new_pack.signature_index = 
-            self.repo.weave_store.flush(new_name, new_pack)
-            self.repo._inv_thunk.flush(new_name, new_pack)
-            self.repo._revision_store.flush(new_name, new_pack)
+            txt_index, text_index_length = self.repo.weave_store.flush(
+                new_name)
+            inv_index, inventory_index_length = \
+                self.repo._inv_thunk.flush(new_name)
+            rev_index, revision_index_length, \
+                sig_index, signature_index_length = \
+                self.repo._revision_store.flush(new_name)
+            new_pack = Pack(self._upload_transport.clone('../packs/'),
+                new_name, rev_index, inv_index, txt_index, sig_index)
             self._write_stream.close()
             self._upload_transport.rename(self.repo._open_pack_tuple[1],
                 '../packs/' + new_name + '.pack')
@@ -941,9 +936,9 @@ class RepositoryPackCollection(object):
             # - the existing name is not the actual hash - e.g.
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
-            self.allocate(new_name, new_pack.revision_index_length,
-                new_pack.inventory_index_length, new_pack.text_index_length,
-                new_pack.signature_index_length)
+            self.allocate(new_name, revision_index_length,
+                inventory_index_length, text_index_length,
+                signature_index_length)
             self.repo._open_pack_tuple = None
             if not self.autopack():
                 self._save_pack_names()
@@ -1050,12 +1045,14 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             return True
         return False
 
-    def flush(self, new_name, new_pack):
+    def flush(self, new_name):
         """Write out pending indices."""
         # write a revision index (might be empty)
         new_index_name = self.name_to_revision_index_name(new_name)
-        new_pack.revision_index_length = self.transport.put_file(
+        revision_index_length = self.transport.put_file(
             new_index_name, self.repo._revision_write_index.finish())
+        rev_index = GraphIndex(self.transport, new_index_name,
+                revision_index_length)
         if self.repo._revision_all_indices is None:
             # create a pack map for the autopack code - XXX finish
             # making a clear managed list of packs, indices and use
@@ -1064,11 +1061,9 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         else:
             del self.repo._revision_pack_map[self.repo._revision_write_index]
             self.repo._revision_write_index = None
-            new_index = GraphIndex(self.transport, new_index_name,
-                new_pack.revision_index_length)
-            self.repo._revision_pack_map[new_index] = (self.repo._packs._pack_tuple(new_name))
+            self.repo._revision_pack_map[rev_index] = (self.repo._packs._pack_tuple(new_name))
             # revisions 'knit' accessed : update it.
-            self.repo._revision_all_indices.insert_index(0, new_index)
+            self.repo._revision_all_indices.insert_index(0, rev_index)
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._revision_all_indices._indices[1]
@@ -1077,19 +1072,21 @@ class GraphKnitRevisionStore(KnitRevisionStore):
 
         # write a signatures index (might be empty)
         new_index_name = self.name_to_signature_index_name(new_name)
-        new_pack.signature_index_length = self.transport.put_file(
+        signature_index_length = self.transport.put_file(
             new_index_name, self.repo._signature_write_index.finish())
         self.repo._signature_write_index = None
+        sig_index = GraphIndex(self.transport, new_index_name,
+            signature_index_length)
         if self.repo._signature_all_indices is not None:
             # sigatures 'knit' accessed : update it.
-            self.repo._signature_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name,
-                    new_pack.signature_index_length))
+            self.repo._signature_all_indices.insert_index(0, sig_index)
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._signature_all_indices._indices[1]
             # reset the knit access writer
             self.repo._signature_knit_access.set_writer(None, None, (None, None))
+        return (rev_index, revision_index_length, sig_index,
+            signature_index_length)
 
     def name_to_revision_index_name(self, name):
         """The revision index is the name + .rix."""
@@ -1182,24 +1179,25 @@ class GraphKnitTextStore(VersionedFileStore):
         self._setup_knit(self.repo.is_in_write_group())
         self.repo._text_all_indices = CombinedGraphIndex(indices)
 
-    def flush(self, new_name, new_pack):
+    def flush(self, new_name):
         """Write the index out to new_name."""
         # write a revision index (might be empty)
         new_index_name = self.name_to_text_index_name(new_name)
-        new_pack.text_index_length = self.transport.put_file(
+        text_index_length = self.transport.put_file(
             new_index_name, self.repo._text_write_index.finish())
+        txt_index = GraphIndex(self.transport, new_index_name,
+            text_index_length)
         self.repo._text_write_index = None
         self._setup_knit(False)
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used, replace the mutated memory index
             # with the new on-disk one. XXX: is this really a good idea?
             # perhaps just keep using the memory one ?
-            self.repo._text_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name,
-                    new_pack.text_index_length))
+            self.repo._text_all_indices.insert_index(0, txt_index)
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._text_all_indices._indices[1]
+        return txt_index, text_index_length
 
     def get_weave_or_empty(self, file_id, transaction, force_write=False):
         """Get a 'Knit' backed by the .tix indices.
@@ -1309,25 +1307,26 @@ class InventoryKnitThunk(object):
         self.repo._inv_all_indices = CombinedGraphIndex(indices)
         self.repo._inv_pack_map = pack_map
 
-    def flush(self, new_name, new_pack):
+    def flush(self, new_name):
         """Write the index out to new_name."""
         # write an index (might be empty)
         new_index_name = self.name_to_inv_index_name(new_name)
-        new_pack.inventory_index_length = self.transport.put_file(
+        inventory_index_length = self.transport.put_file(
             new_index_name, self.repo._inv_write_index.finish())
         self.repo._inv_write_index = None
+        inv_index = GraphIndex(self.transport, new_index_name,
+            inventory_index_length)
         if self.repo._inv_all_indices is not None:
             # inv 'knit' has been used, replace the mutated memory index
             # with the new on-disk one. XXX: is this really a good idea?
             # perhaps just keep using the memory one ?
-            self.repo._inv_all_indices.insert_index(0,
-                GraphIndex(self.transport, new_index_name,
-                    new_pack.inventory_index_length))
+            self.repo._inv_all_indices.insert_index(0, inv_index)
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._inv_all_indices._indices[1]
             self.repo._inv_knit_access.set_writer(None, None, (None, None))
         self.repo._inv_pack_map = None
+        return inv_index, inventory_index_length
 
     def get_weave(self):
         """Get a 'Knit' that contains inventory data."""
