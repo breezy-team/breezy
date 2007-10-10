@@ -652,7 +652,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
         self.assertEqual([],
-            list(GraphIndex(t, 'pack-names').iter_all_entries()))
+            list(GraphIndex(t, 'pack-names', None).iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
 
@@ -699,9 +699,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names').iter_all_entries()))
+            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names')
+        index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         node = list(index.iter_all_entries())[0]
         name = node[1][0]
@@ -719,7 +719,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names').iter_all_entries()))
+            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
 
     def test_commit_across_pack_shape_boundary_autopacks(self):
         format = self.get_format()
@@ -733,11 +733,11 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         for x in range(9):
             tree.commit('commit %s' % x)
         # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names')
+        index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names')
+        index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.bzrdir.open_workingtree()
@@ -748,7 +748,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
         tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names')
+        index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
@@ -761,7 +761,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree.commit('more work')
         tree.branch.repository.pack()
         # there should be 1 packs:
-        index = GraphIndex(trans, 'pack-names')
+        index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
