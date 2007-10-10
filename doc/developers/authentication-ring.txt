@@ -156,11 +156,13 @@ it in the best possible way.
 Future versions of this specification may provide additional
 encodings [#password_encoding]_.
 
-.. [#password_encoding] Additional password encoding methods may be defined
-   that will rely on external means to store the password which, in these
-   cases, will not appear anymore in the definition but be provided. An
-   encoding named ``netrc`` for example will provide passwords by using the
-   ``.netrc`` file.
+.. [#password_encoding] Additional password encoding methods may
+   be defined that will rely on external means to store the
+   password which, in these cases, will not appear anymore in the
+   definition. It is assumed that additional password encodings
+   will provide a storage outside of the file described here. An
+   encoding named ``netrc`` for example will provide passwords by
+   retrieving them in the ``.netrc`` file.
 
 File format
 -----------
@@ -212,7 +214,8 @@ The default content of the file will be::
 
 This section could define:
 
-  * ``user``: default user to be used.
+  * ``user``: default user to be used (if not defined the usual
+    bzr way applies, see below).
 
   * ``password_encoding``: default password encoding.
 
@@ -315,7 +318,7 @@ Implementation constraints
 --------------------------
 
 * bzr should be able to prompt for a ``user`` for a given (``scheme``, ``host``
-  [, ``realm``]). Note that ``realm`` may be available only after a first
+  [, ``realm``]). Note that ``realm`` is available only after a first
   connection attempt to the server.
 
 * No assumptions should be made about the clients of this service
