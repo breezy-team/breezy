@@ -57,7 +57,7 @@ class _OSLock(object):
             return self.f
         except IOError, e:
             if e.errno in (errno.EACCES, errno.EPERM):
-                raise errors.ReadOnlyLockError(self.filename, str(e))
+                raise errors.LockFailed(self.filename, str(e))
             if e.errno != errno.ENOENT:
                 raise
 
@@ -223,7 +223,7 @@ if have_fcntl:
                 new_f = open(self.filename, 'rb+')
             except IOError, e:
                 if e.errno in (errno.EACCES, errno.EPERM):
-                    raise errors.ReadOnlyLockError(self.filename, str(e))
+                    raise errors.LockFailed(self.filename, str(e))
                 raise
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a

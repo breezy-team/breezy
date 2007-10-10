@@ -112,15 +112,10 @@ class TestFileIds(tests.TestCase):
 class TestGenRevisionId(tests.TestCase):
     """Test generating revision ids"""
 
-    def assertMatchesRe(self, regex, text):
-        """Make sure text is matched by the regex given"""
-        if re.match(regex, text) is None:
-            self.fail('Pattern %s did not match text %s' % (regex, text))
-
     def assertGenRevisionId(self, regex, username, timestamp=None):
         """gen_revision_id should create a revision id matching the regex"""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
-        self.assertMatchesRe(regex, revision_id)
+        self.assertContainsRe(revision_id, '^'+regex+'$')
         # It should be a utf8 revision_id, not a unicode one
         self.assertIsInstance(revision_id, str)
         # gen_revision_id should always return ascii revision ids.

@@ -742,8 +742,10 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.assertTrue(inv.has_id('foo-id'))
             self.assertTrue(inv.has_filename('foo'))
             inv.add_path('bar', 'file', 'bar-id')
+            tree._dirstate._validate()
             # this used to cause it to lose its hashcache
             tree._dirstate.set_state_from_inventory(inv)
+            tree._dirstate._validate()
         finally:
             tree.unlock()
 
@@ -751,6 +753,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             # now check that the state still has the original hashcache value
             state = tree._dirstate
+            state._validate()
             foo_tuple = state._get_entry(0, path_utf8='foo')
             self.assertEqual(
                 (('', 'foo', 'foo-id',),
