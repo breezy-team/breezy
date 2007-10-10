@@ -2342,14 +2342,9 @@ class InterPackRepo(InterSameDataRepository):
                 revision_ids = self.missing_revision_ids(revision_id)
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
-        packs = self.source._packs.all_pack_details()
-        _packs = self.source._packs.all_packs()
-        signature_index_map = self.source._packs._signature_index_map(packs)
+        packs = self.source._packs.all_packs()
         pack = self.target._packs.create_pack_from_packs(
-            _packs,
-            signature_index_map,
-            '.fetch',
-            revision_ids,
+            packs, '.fetch', revision_ids,
             )
         if pack is not None:
             self.target._packs._save_pack_names()

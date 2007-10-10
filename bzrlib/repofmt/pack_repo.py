@@ -267,20 +267,17 @@ class RepositoryPackCollection(object):
         self._execute_pack_operations(pack_operations)
         return True
 
-    def create_pack_from_packs(self, packs,
-        signature_index_map, suffix,
-        revision_ids=None):
+    def create_pack_from_packs(self, packs, suffix, revision_ids=None):
         """Create a new pack by reading data from other packs.
 
         This does little more than a bulk copy of data. One key difference
         is that data with the same item key across multiple packs is elided
         from the output. The new pack is written into the current pack store
         along with its indices, and the name added to the pack names. The 
-        source packs are not altered.
+        source packs are not altered and are not required to be in the current
+        pack collection.
 
         :param packs: An iterable of Packs to combine.
-        :param text_index_map: A text index map.
-        :param signature_index_map: A signature index map.
         :param revision_ids: Either None, to copy all data, or a list
             of revision_ids to limit the copied data to the data they
             introduced.
@@ -407,6 +404,8 @@ class RepositoryPackCollection(object):
                 time.time() - start_time)
         # select signature keys
         signature_filter = revision_keys # same keyspace
+        signature_index_map = self._packs_list_to_pack_map_and_index_list(
+            packs, 'signature_index')[0]
         signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
@@ -501,7 +500,7 @@ class RepositoryPackCollection(object):
             pack_details = [details for details,_ in pack_list]
             packs = [pack for _, pack in pack_list]
             assert pack_details[0].__class__ == tuple
-            self._combine_packs(pack_details, packs)
+            self.create_pack_from_packs(packs, '.autopack')
             for pack_detail in pack_details:
                 self._remove_pack_by_name(pack_detail[1])
         # record the newly available packs and stop advertising the old
@@ -581,24 +580,6 @@ class RepositoryPackCollection(object):
                     pack_operations.append([0, []])
         
         return pack_operations
-
-    def _combine_packs(self, pack_details, packs):
-        """Combine the data from the packs listed in pack_details.
-
-        This does little more than a bulk copy of data. One key difference
-        is that data with the same item key across multiple packs is elided
-        from the output. The new pack is written into the current pack store
-        along with its indices, and the name added to the pack names. The 
-        source packs are not altered.
-
-        :param pack_details: A list of tuples with the transport and pack name
-            in use.
-        :return: None
-        """
-        # select signature keys
-        signature_index_map = self._signature_index_map(pack_details)
-        self.create_pack_from_packs(packs,
-            signature_index_map, '.autopack')
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
         # plan a readv on each source pack:
@@ -744,6 +725,7 @@ class RepositoryPackCollection(object):
         objects, and pack_map is a mapping from those objects to the 
         pack tuple they describe.
         """
+        # TODO: stop using this; it creates new indices unnecessarily.
         self.ensure_loaded()
         details = []
         for name in self.names():
@@ -863,10 +845,6 @@ class RepositoryPackCollection(object):
             indices.append(index)
             pack_map[index] = (pack.transport, pack.file_name())
         return pack_map, indices
-
-    def _signature_index_map(self, pack_details):
-        """Get a map of signature index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.six')[0]
 
     def _index_contents(self, pack_map, key_filter=None):
         """Get an iterable of the index contents from a pack_map.
