@@ -38,7 +38,7 @@ def connection_refuser():
     return smtp
 
 
-class MockSMTPFactory(object):
+class StubSMTPFactory(object):
     """A fake SMTP connection to test the connection setup."""
     def __init__(self, fail_on=None, smtp_features=None):
         self._fail_on = fail_on or []
@@ -121,54 +121,55 @@ class TestSMTPConnection(TestCase):
         self.assertEqual(u'mypass', conn._smtp_password)
 
     def test_create_connection(self):
-        mock = MockSMTPFactory()
-        conn = self.get_connection('', smtp_factory=mock)
+        factory = StubSMTPFactory()
+        conn = self.get_connection('', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
-                          ('has_extn', 'starttls')], mock._calls)
+                          ('has_extn', 'starttls')], factory._calls)
 
     def test_create_connection_ehlo_fails(self):
         # Check that we call HELO if EHLO failed.
-        mock = MockSMTPFactory(fail_on=['ehlo'])
-        conn = self.get_connection('', smtp_factory=mock)
+        factory = StubSMTPFactory(fail_on=['ehlo'])
+        conn = self.get_connection('', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('helo',),
-                          ('has_extn', 'starttls')], mock._calls)
+                          ('has_extn', 'starttls')], factory._calls)
 
     def test_create_connection_ehlo_helo_fails(self):
         # Check that we raise an exception if both EHLO and HELO fail.
-        mock = MockSMTPFactory(fail_on=['ehlo', 'helo'])
-        conn = self.get_connection('', smtp_factory=mock)
+        factory = StubSMTPFactory(fail_on=['ehlo', 'helo'])
+        conn = self.get_connection('', smtp_factory=factory)
         self.assertRaises(errors.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
-                          ('helo',)], mock._calls)
+                          ('helo',)], factory._calls)
 
     def test_create_connection_starttls(self):
         # Check that STARTTLS plus a second EHLO are called if the
         # server says it supports the feature.
-        mock = MockSMTPFactory(smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=mock)
+        factory = StubSMTPFactory(smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('has_extn', 'starttls'),
                           ('starttls',),
-                          ('ehlo',)], mock._calls)
+                          ('ehlo',)], factory._calls)
 
     def test_create_connection_starttls_fails(self):
         # Check that we raise an exception if the server claims to
         # support STARTTLS, but then fails when we try to activate it.
-        mock = MockSMTPFactory(fail_on=['starttls'], smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=mock)
+        factory = StubSMTPFactory(fail_on=['starttls'],
+                                  smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=factory)
         self.assertRaises(errors.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('has_extn', 'starttls'),
-                          ('starttls',)], mock._calls)
+                          ('starttls',)], factory._calls)
 
     def test_get_message_addresses(self):
         msg = Message()
