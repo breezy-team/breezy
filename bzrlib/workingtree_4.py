@@ -158,8 +158,6 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
             f = f.strip('/')
-            assert '//' not in f
-            assert '..' not in f
             if self.path2id(f):
                 # special case tree root handling.
                 if f == '' and self.path2id(f) == ROOT_ID:
