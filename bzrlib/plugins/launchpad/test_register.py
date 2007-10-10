@@ -26,6 +26,7 @@ from lp_registration import (
         BaseRequest,
         BranchBugLinkRequest,
         BranchRegistrationRequest,
+        ResolveLaunchpadURLRequest,
         LaunchpadService,
         )
 
@@ -74,19 +75,23 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
 
-    def __init__(self, testcase):
+    def __init__(self, testcase, expect_auth):
         self.testcase = testcase
+        self.expect_auth = expect_auth
 
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
         test = self.testcase
         self.connected_host = host
-        auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
-        assert len(auth_hdrs) == 1
-        authinfo = auth_hdrs[0]
-        expected_auth = 'testuser@launchpad.net:testpassword'
-        test.assertEquals(authinfo,
-                'Basic ' + base64.encodestring(expected_auth).strip())
+        if self.expect_auth:
+            auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
+            assert len(auth_hdrs) == 1
+            authinfo = auth_hdrs[0]
+            expected_auth = 'testuser@launchpad.net:testpassword'
+            test.assertEquals(authinfo,
+                    'Basic ' + base64.encodestring(expected_auth).strip())
+        else:
+            assert not http_headers
         return InstrumentedXMLRPCConnection(test)
 
     def send_request(self, connection, handler_path, request_body):
@@ -146,7 +151,7 @@ class TestBranchRegistration(TestCase):
     def test_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
         # use a real transport, but intercept at the http/xml layer
-        transport = InstrumentedXMLRPCTransport(self)
+        transport = InstrumentedXMLRPCTransport(self, expect_auth=True)
         service = LaunchpadService(transport)
         service.registrant_email = 'testuser@launchpad.net'
         service.registrant_password = 'testpassword'
@@ -166,6 +171,17 @@ class TestBranchRegistration(TestCase):
                  'description',
                  'author@launchpad.net',
                  'product'))
+        self.assertTrue(transport.got_request)
+
+    def test_onto_transport_unauthenticated(self):
+        """Test how an unauthenticated request is transmitted across a mock Transport"""
+        transport = InstrumentedXMLRPCTransport(self, expect_auth=False)
+        service = LaunchpadService(transport)
+        resolve = ResolveLaunchpadURLRequest('bzr')
+        resolve.submit(service)
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
+        self.assertEquals(len(transport.sent_params), 1)
+        self.assertEquals(transport.sent_params, ('bzr', ))
         self.assertTrue(transport.got_request)
 
     def test_subclass_request(self):
@@ -228,3 +244,22 @@ class TestBranchRegistration(TestCase):
         rego = BranchBugLinkRequest('http://server/branch', 1234)
         result = rego.submit(service)
         self.assertEquals(result, 'http://launchpad.net/bug/1234')
+
+    def test_mock_resolve_lp_url(self):
+        test_case = self
+        class MockService(MockLaunchpadService):
+            def send_request(self, method_name, method_params, authenticated):
+                test_case.assertEquals(method_name, "resolve_lp_url")
+                test_case.assertEquals(list(method_params), ['bzr'])
+                test_case.assertEquals(authenticated, False)
+                return dict(host='bazaar.launchpad.net',
+                            path='/~bzr/bzr/trunk',
+                            supported_schemes=['bzr+ssh', 'sftp',
+                                               'bzr+http', 'http'])
+        service = MockService()
+        resolve = ResolveLaunchpadURLRequest('bzr')
+        result = resolve.submit(service)
+        self.assertEquals(result['host'], 'bazaar.launchpad.net')
+        self.assertEquals(result['path'], '/~bzr/bzr/trunk')
+        self.assertEquals(result['supported_schemes'],
+                          ['bzr+ssh', 'sftp', 'bzr+http', 'http'])

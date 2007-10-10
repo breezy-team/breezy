@@ -214,3 +214,18 @@ class BranchBugLinkRequest(BaseRequest):
         # This must match the parameter tuple expected by Launchpad for this
         # method
         return (self.branch_url, self.bug_id, '')
+
+
+class ResolveLaunchpadURLRequest(BaseRequest):
+    """Request to resolve an lp: URL."""
+
+    _methodname = 'resolve_lp_url'
+    _authenticated = False
+
+    def __init__(self, path):
+        assert path
+        self.path = path
+
+    def _request_params(self):
+        """Return xmlrpc request parameters"""
+        return (self.path,)
