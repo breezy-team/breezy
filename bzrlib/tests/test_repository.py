@@ -1001,3 +1001,7 @@ class TestPack(TestCaseWithTransport):
         self.assertCurrentlyNotEqual(left, right)
         right.transport = 'a'
         self.assertCurrentlyEqual(left, right)
+
+    def test_file_name(self):
+        pack = pack_repo.Pack('', 'a_name', '', '', '', '')
+        self.assertEqual('a_name.pack', pack.file_name())

@@ -114,6 +114,10 @@ class Pack(object):
         return "<bzrlib.repofmt.pack_repo.Pack object at 0x%x, %s, %s" % (
             id(self), self.transport, self.name)
 
+    def file_name(self):
+        """Get the file name for the pack on disk."""
+        return self.name + '.pack'
+
     def get_revision_count(self):
         return self.revision_index.key_count()
 
@@ -263,7 +267,7 @@ class RepositoryPackCollection(object):
         self._execute_pack_operations(pack_operations)
         return True
 
-    def create_pack_from_packs(self, packs, revision_index_map,
+    def create_pack_from_packs(self, packs,
         inventory_index_map, text_index_map, signature_index_map, suffix,
         revision_ids=None):
         """Create a new pack by reading data from other packs.
@@ -275,7 +279,6 @@ class RepositoryPackCollection(object):
         source packs are not altered.
 
         :param packs: An iterable of Packs to combine.
-        :param revision_index_map: A revision index map.
         :param inventory_index_map: A inventory index map.
         :param text_index_map: A text index map.
         :param signature_index_map: A signature index map.
@@ -296,8 +299,8 @@ class RepositoryPackCollection(object):
             return None
         random_name = self.repo.control_files._lock.nonce + suffix
         if 'fetch' in debug.debug_flags:
-            plain_pack_list = ['%s%s' % (transport.base, name) for
-                transport, name in revision_index_map.itervalues()]
+            plain_pack_list = ['%s%s' % (a_pack.transport.base, a_pack.name)
+                for a_pack in packs]
             if revision_ids is not None:
                 rev_count = len(revision_ids)
             else:
@@ -333,6 +336,10 @@ class RepositoryPackCollection(object):
             revision_keys = [(revision_id,) for revision_id in revision_ids]
         else:
             revision_keys = None
+
+        # select revision keys
+        revision_index_map = self._packs_list_to_pack_map_and_index_list(
+            packs, 'revision_index')[0]
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
         list(self._copy_nodes_graph(revision_nodes, revision_index_map, writer,
@@ -585,15 +592,13 @@ class RepositoryPackCollection(object):
             in use.
         :return: None
         """
-        # select revision keys
-        revision_index_map = self._revision_index_map(pack_details, packs)
         # select inventory keys
         inv_index_map = self._inv_index_map(pack_details)
         # select text keys
         text_index_map = self._text_index_map(pack_details)
         # select signature keys
         signature_index_map = self._signature_index_map(pack_details)
-        self.create_pack_from_packs(packs, revision_index_map, inv_index_map,
+        self.create_pack_from_packs(packs, inv_index_map,
             text_index_map, signature_index_map, '.autopack')
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
@@ -842,13 +847,27 @@ class RepositoryPackCollection(object):
             pack_map[new_index] = (transport, name)
         return pack_map, indices
 
+    def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
+        """Convert a list of packs to an index pack map and index list.
+
+        :param packs: The packs list to process.
+        :param index_attribute: The attribute that the desired index is found
+            on.
+        :return: A tuple (map, list) where map contains the dict from
+            index:pack_tuple, and lsit contains the indices in the same order
+            as the packs list.
+        """
+        indices = []
+        pack_map = {}
+        for pack in packs:
+            index = getattr(pack, index_attribute)
+            indices.append(index)
+            pack_map[index] = (pack.transport, pack.file_name())
+        return pack_map, indices
+
     def _inv_index_map(self, pack_details):
         """Get a map of inv index -> packs for pack_details."""
         return self._make_index_to_pack_map(pack_details, '.iix')[0]
-
-    def _revision_index_map(self, pack_details, packs):
-        """Get a map of revision index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.rix')[0]
 
     def _signature_index_map(self, pack_details):
         """Get a map of signature index -> packs for pack_details."""
