@@ -122,10 +122,10 @@ class Editor:
                 *args, **kwargs)
 
     @convert_svn_error
-    def change_dir_prop(self, baton, *args, **kwargs):
+    def change_dir_prop(self, baton, name, value, pool=None):
         assert self.recent_baton[-1] == baton
         return svn.delta.editor_invoke_change_dir_prop(self.editor, baton, 
-                                                       *args, **kwargs)
+                                                       name, value, pool)
 
     @convert_svn_error
     def delete_entry(self, *args, **kwargs):
@@ -148,10 +148,10 @@ class Editor:
         return baton
 
     @convert_svn_error
-    def change_file_prop(self, baton, *args, **kwargs):
+    def change_file_prop(self, baton, name, value, pool=None):
         assert self.recent_baton[-1] == baton
-        svn.delta.editor_invoke_change_file_prop(self.editor, baton, *args, 
-                                                 **kwargs)
+        svn.delta.editor_invoke_change_file_prop(self.editor, baton, name, 
+                                                 value, pool)
 
     @convert_svn_error
     def close_file(self, baton, *args, **kwargs):
