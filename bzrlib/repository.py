@@ -2344,12 +2344,10 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
         packs = self.source._packs.all_pack_details()
         _packs = self.source._packs.all_packs()
-        inventory_index_map = self.source._packs._inv_index_map(packs)
         text_index_map = self.source._packs._text_index_map(packs)
         signature_index_map = self.source._packs._signature_index_map(packs)
         pack = self.target._packs.create_pack_from_packs(
             _packs,
-            inventory_index_map,
             text_index_map,
             signature_index_map,
             '.fetch',

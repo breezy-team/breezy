@@ -268,7 +268,7 @@ class RepositoryPackCollection(object):
         return True
 
     def create_pack_from_packs(self, packs,
-        inventory_index_map, text_index_map, signature_index_map, suffix,
+        text_index_map, signature_index_map, suffix,
         revision_ids=None):
         """Create a new pack by reading data from other packs.
 
@@ -279,7 +279,6 @@ class RepositoryPackCollection(object):
         source packs are not altered.
 
         :param packs: An iterable of Packs to combine.
-        :param inventory_index_map: A inventory index map.
         :param text_index_map: A text index map.
         :param signature_index_map: A signature index map.
         :param revision_ids: Either None, to copy all data, or a list
@@ -354,6 +353,8 @@ class RepositoryPackCollection(object):
         # querying for keys here could introduce a bug where an inventory item
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
+        inventory_index_map = self._packs_list_to_pack_map_and_index_list(
+            packs, 'inventory_index')[0]
         inv_nodes = self._index_contents(inventory_index_map, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
@@ -592,13 +593,11 @@ class RepositoryPackCollection(object):
             in use.
         :return: None
         """
-        # select inventory keys
-        inv_index_map = self._inv_index_map(pack_details)
         # select text keys
         text_index_map = self._text_index_map(pack_details)
         # select signature keys
         signature_index_map = self._signature_index_map(pack_details)
-        self.create_pack_from_packs(packs, inv_index_map,
+        self.create_pack_from_packs(packs,
             text_index_map, signature_index_map, '.autopack')
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
