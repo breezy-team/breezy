@@ -110,10 +110,11 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
 class MockLaunchpadService(LaunchpadService):
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, authenticated):
         """Stash away the method details rather than sending them to a real server"""
         self.called_method_name = method_name
         self.called_method_params = method_params
+        self.called_authenticated = authenticated
 
 
 class TestBranchRegistration(TestCase):
@@ -186,10 +187,11 @@ class TestBranchRegistration(TestCase):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "register_branch")
                 test_case.assertEquals(list(method_params),
                         ['url', 'name', 'title', 'description', 'email', 'name'])
+                test_case.assertEquals(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('url', 'name', 'title',
@@ -201,10 +203,11 @@ class TestBranchRegistration(TestCase):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "register_branch")
                 test_case.assertEquals(list(method_params),
                         ['http://server/branch', 'branch', '', '', '', ''])
+                test_case.assertEquals(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('http://server/branch')
@@ -215,10 +218,11 @@ class TestBranchRegistration(TestCase):
         """Send bug-branch link to mock server"""
         test_case = self
         class MockService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "link_branch_to_bug")
                 test_case.assertEquals(list(method_params),
                         ['http://server/branch', 1234, ''])
+                test_case.assertEquals(authenticated, True)
                 return 'http://launchpad.net/bug/1234'
         service = MockService()
         rego = BranchBugLinkRequest('http://server/branch', 1234)
