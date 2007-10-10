@@ -26,7 +26,7 @@ from lp_registration import (
         BaseRequest,
         BranchBugLinkRequest,
         BranchRegistrationRequest,
-        ResolveLaunchpadURLRequest,
+        ResolveLaunchpadPathRequest,
         LaunchpadService,
         )
 
@@ -177,7 +177,7 @@ class TestBranchRegistration(TestCase):
         """Test how an unauthenticated request is transmitted across a mock Transport"""
         transport = InstrumentedXMLRPCTransport(self, expect_auth=False)
         service = LaunchpadService(transport)
-        resolve = ResolveLaunchpadURLRequest('bzr')
+        resolve = ResolveLaunchpadPathRequest('bzr')
         resolve.submit(service)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 1)
@@ -253,13 +253,13 @@ class TestBranchRegistration(TestCase):
                 test_case.assertEquals(list(method_params), ['bzr'])
                 test_case.assertEquals(authenticated, False)
                 return dict(host='bazaar.launchpad.net',
-                            path='/~bzr/bzr/trunk',
+                            path='~bzr/bzr/trunk',
                             supported_schemes=['bzr+ssh', 'sftp',
                                                'bzr+http', 'http'])
         service = MockService()
-        resolve = ResolveLaunchpadURLRequest('bzr')
+        resolve = ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
         self.assertEquals(result['host'], 'bazaar.launchpad.net')
-        self.assertEquals(result['path'], '/~bzr/bzr/trunk')
+        self.assertEquals(result['path'], '~bzr/bzr/trunk')
         self.assertEquals(result['supported_schemes'],
                           ['bzr+ssh', 'sftp', 'bzr+http', 'http'])

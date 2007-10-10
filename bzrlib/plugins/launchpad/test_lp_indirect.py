@@ -18,10 +18,24 @@
 
 from bzrlib import (
     errors,
-    transport,
     )
-from bzrlib.transport import get_transport
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestCase
+from bzrlib.plugins.launchpad.lp_indirect import (
+    launchpad_transport_indirect)
+
+
+class FakeResolveFactory(object):
+    def __init__(self, test, expected_path, result):
+        self._test = test
+        self._expected_path = expected_path
+        self._result = result
+
+    def __call__(self, path):
+        self._test.assertEqual(self._expected_path, path)
+        return self
+
+    def submit(self, service):
+        return self._result
 
 
 class IndirectUrlTests(TestCase):
@@ -29,22 +43,39 @@ class IndirectUrlTests(TestCase):
 
     def test_short_form(self):
         """A launchpad url should map to a http url"""
+        factory = FakeResolveFactory(
+            self, 'apt', dict(host='bazaar.launchpad.net',
+                              path='~apt/apt/devel',
+                              supported_schemes=['http']))
         url = 'lp:apt'
-        t = get_transport(url)
-        self.assertEquals(t.base, 'http://code.launchpad.net/apt/')
+        t = launchpad_transport_indirect(url, factory)
+        self.assertEquals(
+            t.base, 'http://bazaar.launchpad.net/%7Eapt/apt/devel/')
 
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
-        # These can change to use the smartserver protocol or something 
-        # else in the future.
+        factory = FakeResolveFactory(
+            self, 'apt', dict(host='bazaar.launchpad.net',
+                              path='~apt/apt/devel',
+                              supported_schemes=['http']))
         url = 'lp:///apt'
-        t = get_transport(url)
-        real_url = t.base
-        self.assertEquals(real_url, 'http://code.launchpad.net/apt/')
+        t = launchpad_transport_indirect(url, factory)
+        self.assertEquals(
+            t.base, 'http://bazaar.launchpad.net/%7Eapt/apt/devel/')
+
+    def test_indirect_no_matching_schemes(self):
+        # If the XMLRPC call does not return any protocols we support,
+        # invalidURL is raised.
+        factory = FakeResolveFactory(
+            self, 'apt', dict(host='bazaar.launchpad.net',
+                              path='~apt/apt/devel',
+                              supported_schemes=['bad-scheme']))
+        url = 'lp:apt'
+        self.assertRaises(errors.InvalidURL,
+                          launchpad_transport_indirect, url, factory)
 
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_indirection(self):
         self.assertRaises(errors.InvalidURL,
-            get_transport,
+            launchpad_transport_indirect,
             'lp://ratotehunoahu')
-

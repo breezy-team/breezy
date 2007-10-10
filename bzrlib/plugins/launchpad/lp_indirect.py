@@ -30,15 +30,32 @@ from bzrlib.transport import (
     Transport,
     )
 
+from lp_registration import LaunchpadService, ResolveLaunchpadPathRequest
 
-def launchpad_transport_indirect(base_url):
+
+def launchpad_transport_indirect(
+        base_url, request_factory=ResolveLaunchpadPathRequest):
     """Uses Launchpad.net as a directory of open source software"""
     if base_url.startswith('lp:///'):
-        real_url = 'http://code.launchpad.net/' + base_url[6:]
+        path = base_url[6:]
     elif base_url.startswith('lp:') and base_url[3] != '/':
-        real_url = 'http://code.launchpad.net/' + base_url[3:]
+        path = base_url[3:]
     else:
         raise errors.InvalidURL(path=base_url)
+
+    # Perform an XMLRPC request to resolve the path
+    resolve = request_factory(path)
+    service = LaunchpadService()
+    result = resolve.submit(service)
+
+    for scheme in result['supported_schemes']:
+        if scheme in ['bzr+http', 'http']:
+            real_url = '%s://%s/%s' % (scheme, result['host'], result['path'])
+            break
+    else:
+        raise errors.InvalidURL(path=base_url,
+                                extra=' no supported schemes')
+
     return get_transport(real_url)
 
 

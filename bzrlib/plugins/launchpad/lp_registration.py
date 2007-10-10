@@ -216,10 +216,10 @@ class BranchBugLinkRequest(BaseRequest):
         return (self.branch_url, self.bug_id, '')
 
 
-class ResolveLaunchpadURLRequest(BaseRequest):
-    """Request to resolve an lp: URL."""
+class ResolveLaunchpadPathRequest(BaseRequest):
+    """Request to resolve the path component of an lp: URL."""
 
-    _methodname = 'resolve_lp_url'
+    _methodname = 'resolve_lp_path'
     _authenticated = False
 
     def __init__(self, path):
