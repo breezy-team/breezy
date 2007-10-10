@@ -228,11 +228,16 @@ To have Bazaar produce a bundle and email it to the project, replace
 
  $ bzr send --mail-to=project@projectdomain.com
 
-
 Learning more
 =============
 
-To learn about Bazaar::
+Now you've seen how to put your files under version control, make your
+branch of someone else's work and send your code for merger with someone
+else's branch.
+
+You can find out more about Bazaar in the `Bazaar user guide <../../index.html>`_.
+
+To learn about Bazaar on the command-line::
 
   $ bzr help
 
@@ -243,5 +248,3 @@ To learn about Bazaar commands::
 To learn about the ''foo'' topic or command::
 
   $ bzr help foo
-
-Alternatively, browse the `Bazaar Documentation <../../index.html>`_.
