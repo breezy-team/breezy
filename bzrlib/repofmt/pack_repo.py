@@ -268,7 +268,7 @@ class RepositoryPackCollection(object):
         return True
 
     def create_pack_from_packs(self, packs,
-        text_index_map, signature_index_map, suffix,
+        signature_index_map, suffix,
         revision_ids=None):
         """Create a new pack by reading data from other packs.
 
@@ -378,6 +378,8 @@ class RepositoryPackCollection(object):
                 inv_index.key_count(),
                 time.time() - start_time)
         # select text keys
+        text_index_map = self._packs_list_to_pack_map_and_index_list(
+            packs, 'text_index')[0]
         text_nodes = self._index_contents(text_index_map, text_filter)
         if text_filter is not None:
             # We could return the keys copied as part of the return value from
@@ -593,12 +595,10 @@ class RepositoryPackCollection(object):
             in use.
         :return: None
         """
-        # select text keys
-        text_index_map = self._text_index_map(pack_details)
         # select signature keys
         signature_index_map = self._signature_index_map(pack_details)
         self.create_pack_from_packs(packs,
-            text_index_map, signature_index_map, '.autopack')
+            signature_index_map, '.autopack')
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
         # plan a readv on each source pack:
@@ -864,17 +864,9 @@ class RepositoryPackCollection(object):
             pack_map[index] = (pack.transport, pack.file_name())
         return pack_map, indices
 
-    def _inv_index_map(self, pack_details):
-        """Get a map of inv index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.iix')[0]
-
     def _signature_index_map(self, pack_details):
         """Get a map of signature index -> packs for pack_details."""
         return self._make_index_to_pack_map(pack_details, '.six')[0]
-
-    def _text_index_map(self, pack_details):
-        """Get a map of text index -> packs for pack_details."""
-        return self._make_index_to_pack_map(pack_details, '.tix')[0]
 
     def _index_contents(self, pack_map, key_filter=None):
         """Get an iterable of the index contents from a pack_map.
