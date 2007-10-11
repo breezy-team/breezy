@@ -457,6 +457,9 @@ class GraphIndex(object):
             keys supplied. No additional keys will be returned, and every
             key supplied that is in the index will be returned.
         """
+        # PERFORMANCE TODO: parse and bisect all remaining data at some
+        # threshold of total-index processing/get calling layers that expect to
+        # read the entire index to use the iter_all_entries  method instead.
         keys = set(keys)
         if not keys:
             return []
@@ -725,13 +728,18 @@ class GraphIndex(object):
         # trim the data.
         # end first:
         end = offset + len(data)
+        high_parsed = offset
         while True:
-            index = self._parsed_byte_index(offset)
             # Trivial test - if the current index's end is within the
             # low-matching parsed range, we're done.
+            index = self._parsed_byte_index(high_parsed)
             if end < self._parsed_byte_map[index][1]:
                 return
-            if self._parse_segment(offset, data, end, index):
+            # print "[%d:%d]" % (offset, end), \
+            #     self._parsed_byte_map[index:index + 2]
+            high_parsed, last_segment = self._parse_segment(
+                offset, data, end, index)
+            if last_segment:
                 return
 
     def _parse_segment(self, offset, data, end, index):
@@ -743,6 +751,10 @@ class GraphIndex(object):
         :param index: The current index into the parsed bytes map.
         :return: True if the parsed segment is the last possible one in the
             range of data.
+        :return: high_parsed_byte, last_segment.
+            high_parsed_byte is the location of the highest parsed byte in this
+            segment, last_segment is True if the parsed segment is the last
+            possible one in the data block.
         """
         # default is to use all data
         trim_end = None
@@ -819,7 +831,8 @@ class GraphIndex(object):
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
         # adjust offset and data to the parseable data.
         trimmed_data = data[trim_start:trim_end]
-        assert trimmed_data, 'read unneeded data'
+        assert trimmed_data, 'read unneeded data [%d:%d] from [%d:%d]' % (
+            trim_start, trim_end, offset, offset + len(data))
         if trim_start:
             offset += trim_start
         # print "parsing", repr(trimmed_data)
@@ -859,7 +872,7 @@ class GraphIndex(object):
             self._bisect_nodes[key] = node_value
             # print "parsed ", key
         self._parsed_bytes(offset, first_key, offset + len(trimmed_data), key)
-        return last_segment
+        return offset + len(trimmed_data), last_segment
 
     def _parsed_bytes(self, start, start_key, end, end_key):
         """Mark the bytes from start to end as parsed.
