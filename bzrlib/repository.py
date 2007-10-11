@@ -1453,7 +1453,7 @@ class Repository(object):
         return graph.Graph(parents_provider)
 
     def get_versioned_file_checker(self, revisions, revision_versions_cache):
-        return WeaveChecker(revisions, revision_versions_cache, self)
+        return VersionedFileChecker(revisions, revision_versions_cache, self)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2450,7 +2450,7 @@ def _unescape_xml(data):
 
 
 class _RevisionTextVersionCache(object):
-    """A cache of the versionedfile versions for revision and file-id"""
+    """A cache of the versionedfile versions for revision and file-id."""
 
     def __init__(self, repository):
         self.repository = repository
@@ -2474,7 +2474,7 @@ class _RevisionTextVersionCache(object):
         return inv_revisions.get(file_id)
 
 
-class WeaveChecker(object):
+class VersionedFileChecker(object):
 
     def __init__(self, planned_revisions, revision_versions, repository):
         self.planned_revisions = planned_revisions

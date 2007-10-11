@@ -36,6 +36,7 @@ from bzrlib.smart.server import (
     ReadonlySmartTCPServer_for_testing,
     )
 from bzrlib.tests import (
+                          adapt_modules,
                           default_transport,
                           iter_suite_tests,
                           TestScenarioApplier,
@@ -544,43 +545,43 @@ def test_suite():
     format_applier.scenarios = (disk_format_adapter.scenarios +
                                 remote_repo_adapter.scenarios)
 
-    # broken_scenario_applier adapts tests by BrokenRepoScenario; it's intended
-    # to be used on top of format_applier.
+    # broken_scenario_applier adapts tests by BrokenRepoScenario by repository
+    # format; i.e. by the cartesian product of format scenarios and broken
+    # repository scenarios.
+    broken_scenarios = [(s.__name__, {'scenario_class': s})
+                        for s in all_scenarios]
+    broken_scenarios_for_all_formats = [
+        ('%s,%s' % (f_scenario_name, b_scenario_name),
+         dict(f_scenario_dict.items() + b_scenario_dict.items()))
+        for f_scenario_name, f_scenario_dict in format_applier.scenarios
+        for b_scenario_name, b_scenario_dict in broken_scenarios]
     broken_scenario_applier = TestScenarioApplier()
-    broken_scenario_applier.scenarios = [(s.__name__, {'scenario_class': s})
-                                         for s in all_scenarios]
+    broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
 
     prefix = 'bzrlib.tests.repository_implementations.'
-    # A list of tests: (module_name, [adapters]).
     test_repository_implementations = [
-        ('test_break_lock', [format_applier]),
-        ('test_check_reconcile', [format_applier, broken_scenario_applier]),
-        ('test_check', [format_applier]),
-        ('test_commit_builder', [format_applier]),
-        ('test_fetch', [format_applier]),
-        ('test_fileid_involved', [format_applier]),
-        ('test_has_same_location', [format_applier]),
-        ('test_iter_reverse_revision_history', [format_applier]),
-        ('test_pack', [format_applier]),
-        ('test_reconcile', [format_applier]),
-        ('test_repository', [format_applier]),
-        ('test_revision', [format_applier]),
-        ('test_statistics', [format_applier]),
-        ('test_write_group', [format_applier]),
+        'test_break_lock',
+        'test_check',
+        'test_commit_builder',
+        'test_fetch',
+        'test_fileid_involved',
+        'test_has_same_location',
+        'test_iter_reverse_revision_history',
+        'test_pack',
+        'test_reconcile',
+        'test_repository',
+        'test_revision',
+        'test_statistics',
+        'test_write_group',
         ]
 
     result = TestSuite()
     loader = TestLoader()
+    module_name_list = [prefix + module_name
+                        for module_name in test_repository_implementations]
+    adapt_modules(module_name_list, format_applier, loader, result)
+    adapt_modules(
+        [prefix + 'test_check_reconcile'],
+        broken_scenario_applier, loader, result)
 
-    for module_name, appliers in test_repository_implementations:
-        tests = loader.loadTestsFromModuleNames([prefix + module_name])
-        suite = TestSuite()
-        suite.addTests(tests)
-        for applier in appliers:
-            new_suite = TestSuite()
-            for test in iter_suite_tests(suite):
-                new_suite.addTests(applier.adapt(test))
-            suite = new_suite
-        result.addTests(suite)
-    
     return result
