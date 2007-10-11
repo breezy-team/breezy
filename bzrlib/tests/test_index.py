@@ -460,24 +460,25 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             return (str(number) + 'X'*100,)
         def make_value(number):
             return 'Y'*100
-        for counter in range(64):
+        for counter in range(128):
             nodes.append((make_key(counter), make_value(counter), ()))
         index = self.make_index(nodes=nodes)
         result = index.lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
-        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(0, 3991), (11622, 15534)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(116)), (make_key(35), make_key(51))],
             index._parsed_key_map)
         # now ask for two keys, right before and after the parsed region
         result = index.lookup_keys_via_location(
-            [(4900, make_key(30)), (8914, make_key(49))])
+            [(11450, make_key(34)), (15534, make_key(52))])
         self.assertEqual([
-            ((4900, make_key(30)), (index, make_key(30), make_value(30))),
-            ((8914, make_key(49)), (index, make_key(49), make_value(49))),
+            ((11450, make_key(34)), (index, make_key(34), make_value(34))),
+            ((15534, make_key(52)), (index, make_key(52), make_value(52))),
             ],
             result)
+        self.assertEqual([(0, 3991), (9975, 17799)], index._parsed_byte_map)
 
     def test_lookup_missing_key_answers_without_io_when_map_permits(self):
         # generate a big enough index that we only read some of it on a typical
