@@ -775,17 +775,6 @@ class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
                              t.get('format').read())
 
 
-# TESTS TO WRITE:
-# XXX: signatures must be preserved. add a test.
-# XXX: packs w/o revisions are ignored by autopack
-# XXX: packs w/o revisions are packed by explicit pack
-# XXX: packs bigger than the planned distribution chart
-#      are skipped over by autopack, and their revision
-#      counts removed from the large end of the distribution
-#      chart.
-    
-
-
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
