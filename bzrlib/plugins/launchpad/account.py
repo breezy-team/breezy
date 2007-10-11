@@ -14,7 +14,7 @@ class NoRegisteredSSHKeys(errors.BzrError):
     _fmt = "The user %(user)s has not registered any SSH keys with Launchpad."
 
 
-def get_lp_username(config=None):
+def get_lp_login(config=None):
     """Return the user's Launchpad Username"""
     if config is None:
         config = GlobalConfig()
@@ -22,7 +22,7 @@ def get_lp_username(config=None):
     return config.get_user_option('launchpad_username')
 
 
-def set_lp_username(username, config=None):
+def set_lp_login(username, config=None):
     """Set the user's Launchpad username"""
     if config is None:
         config = GlobalConfig()
@@ -30,7 +30,7 @@ def set_lp_username(username, config=None):
     config.set_user_option('launchpad_username', username)
 
 
-def check_lp_username(username, transport=None):
+def check_lp_login(username, transport=None):
     """Check whether the given Launchpad username is okay.
 
     This will check for both existance and whether the user has
