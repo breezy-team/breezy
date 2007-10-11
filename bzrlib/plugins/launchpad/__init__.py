@@ -114,6 +114,50 @@ class cmd_register_branch(Command):
 
 register_command(cmd_register_branch)
 
+
+class cmd_launchpad_login(Command):
+    """Show or set the Launchpad user id.
+
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command can be used to set or show the
+    user ID that Bazaar will use for such communication.
+
+    :Examples:
+      Show the Launchpad ID of the current user::
+
+          bzr launchpad-login
+
+      Set the Launchpad ID of the current user::
+
+          bzr launchpad-login $USERNAME
+    """
+    aliases = ['lp-login']
+    takes_args = ['name?']
+    takes_options = [
+         Option('no-check',
+                "Don't check that the user name is valid."),
+        ]
+
+    def run(self, name=None, no_check=None):
+        import account
+        check_account = not no_check
+
+        if name is None:
+            username = account.get_lp_login()
+            if check_account:
+                account.check_lp_login(username)
+            if username:
+                self.outf.write(username + '\n')
+            else:
+                self.outf.write('No Launchpad user ID configured.\n')
+        else:
+            if check_account:
+                account.check_lp_login(name)
+            account.set_lp_login(name)
+
+register_command(cmd_launchpad_login)
+
+
 register_lazy_transport(
     'lp:',
     'bzrlib.plugins.launchpad.lp_indirect',
@@ -129,10 +173,11 @@ def test_suite():
     from unittest import TestSuite, TestLoader
     import test_register
     import test_lp_indirect
+    import test_account
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [test_register, test_lp_indirect]:
+    for m in [test_register, test_lp_indirect, test_account]:
         suite.addTests(loader.loadTestsFromModule(m))
     return suite
 
