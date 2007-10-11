@@ -662,48 +662,16 @@ class Transport(object):
         :return: A list or generator of (offset, data) tuples
         """
         if adjust_for_latency:
-            offsets = sorted(offsets)
-            # short circuit empty requests
-            if len(offsets) == 0:
-                def empty_yielder():
-                    # Quick thunk to stop this function becoming a generator
-                    # itself, rather we return a generator that has nothing to
-                    # yield.
-                    if False:
-                        yield None
-                return empty_yielder()
-            # expand by page size at either end
-            maximum_expansion = self.recommended_page_size()
-            new_offsets = []
-            for offset, length in offsets:
-                expansion = maximum_expansion - length
-                if expansion < 0:
-                    # we're asking for more than the minimum read anyway.
-                    expansion = 0
-                reduction = expansion / 2
-                new_offset = offset - reduction
-                new_length = length + expansion
-                if new_offset < 0:
-                    # don't ask for anything < 0
-                    new_offset = 0
-                if (upper_limit is not None and
-                    new_offset + new_length > upper_limit):
-                    new_length = upper_limit - new_offset
-                new_offsets.append((new_offset, new_length))
-            # combine the expanded offsets
-            offsets = []
-            current_offset, current_length = new_offsets[0]
-            current_finish = current_length + current_offset
-            for offset, length in new_offsets[1:]:
-                if offset > current_finish:
-                    offsets.append((current_offset, current_length))
-                    current_offset = offset
-                    current_length = length
-                    continue
-                finish = offset + length
-                if finish > current_finish:
-                    current_finish = finish
-            offsets.append((current_offset, current_length))
+            # Design note: We may wish to have different algorithms for the
+            # expansion of the offsets per-transport. E.g. for local disk to
+            # use page-aligned expansion. If that is the case consider the following structure:
+            #  - a test that transport.readv uses self._offset_expander or some similar attribute, to do the expansion
+            #  - a test for each transport that it has some known-good offset expander
+            #  - unit tests for each offset expander
+            #  - a set of tests for the offset expander interface, giving
+            #    baseline behaviour (which the current transport
+            #    adjust_for_latency tests could be repurposed to).
+            offsets = self._sort_expand_and_combine(offsets, upper_limit)
         return self._readv(relpath, offsets)
 
     def _readv(self, relpath, offsets):
@@ -759,6 +727,65 @@ class Transport(object):
                 this_data = data_map.pop(cur_offset_and_size)
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
+
+    def _sort_expand_and_combine(self, offsets, upper_limit):
+        """Helper for readv.
+
+        :param offsets: A readv vector - (offset, length) tuples.
+        :param upper_limit: The highest byte offset that may be requested.
+        :return: A readv vector that will read all the regions requested by
+            offsets, in start-to-end order, with no duplicated regions,
+            expanded by the transports recommended page size.
+        """
+        offsets = sorted(offsets)
+        # short circuit empty requests
+        if len(offsets) == 0:
+            def empty_yielder():
+                # Quick thunk to stop this function becoming a generator
+                # itself, rather we return a generator that has nothing to
+                # yield.
+                if False:
+                    yield None
+            return empty_yielder()
+        # expand by page size at either end
+        maximum_expansion = self.recommended_page_size()
+        new_offsets = []
+        for offset, length in offsets:
+            expansion = maximum_expansion - length
+            if expansion < 0:
+                # we're asking for more than the minimum read anyway.
+                expansion = 0
+            reduction = expansion / 2
+            new_offset = offset - reduction
+            new_length = length + expansion
+            if new_offset < 0:
+                # don't ask for anything < 0
+                new_offset = 0
+            if (upper_limit is not None and
+                new_offset + new_length > upper_limit):
+                new_length = upper_limit - new_offset
+            new_offsets.append((new_offset, new_length))
+        # combine the expanded offsets
+        offsets = []
+        current_offset, current_length = new_offsets[0]
+        current_finish = current_length + current_offset
+        for offset, length in new_offsets[1:]:
+            finish = offset + length
+            if offset > current_finish:
+                # there is a gap, output the current accumulator and start
+                # a new one for the region we're examining.
+                offsets.append((current_offset, current_length))
+                current_offset = offset
+                current_length = length
+                current_finish = finish
+                continue
+            if finish > current_finish:
+                # extend the current accumulator to the end of the region
+                # we're examining.
+                current_finish = finish
+                current_length = finish - current_offset
+        offsets.append((current_offset, current_length))
+        return offsets
 
     @staticmethod
     def _coalesce_offsets(offsets, limit, fudge_factor):
