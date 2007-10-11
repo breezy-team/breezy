@@ -260,8 +260,7 @@ class RepositoryPackCollection(object):
                 # one revision for each to the total revision count, to get
                 # a matching distribution.
                 continue
-            existing_packs.append((revision_count, self._pack_tuple(pack.name),
-                pack))
+            existing_packs.append((revision_count, pack))
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
@@ -492,24 +491,20 @@ class RepositoryPackCollection(object):
         :param pack_operations: A list of [revision_count, packs_to_combine].
         :return: None.
         """
-        for revision_count, pack_list in pack_operations:
+        for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
-            if len(pack_list) == 0:
+            if len(packs) == 0:
                 continue
             # have a progress bar?
-            pack_details = [details for details,_ in pack_list]
-            packs = [pack for _, pack in pack_list]
-            assert pack_details[0].__class__ == tuple
             self.create_pack_from_packs(packs, '.autopack')
-            for pack_detail in pack_details:
-                self._remove_pack_by_name(pack_detail[1])
+            for pack in packs:
+                self._remove_pack_by_name(pack.name)
         # record the newly available packs and stop advertising the old
         # packs
         self._save_pack_names()
-        # move the old packs out of the way
-        for revision_count, pack_list in pack_operations:
-            pack_details = [details for details,_ in pack_list]
-            self._obsolete_packs(pack_details)
+        # Move the old packs out of the way now they are no longer referenced.
+        for revision_count, packs in pack_operations:
+            self._obsolete_packs(packs)
 
     def pack(self):
         """Pack the pack collection totally."""
@@ -533,8 +528,7 @@ class RepositoryPackCollection(object):
             for pack in self.all_packs():
                 revision_count = pack.get_revision_count()
                 pack_operations[-1][0] += revision_count
-                pack_operations[-1][1].append((self._pack_tuple(pack.name),
-                    pack))
+                pack_operations[-1][1].append(pack)
             self._execute_pack_operations(pack_operations)
         finally:
             if not self.repo.is_in_write_group():
@@ -543,7 +537,8 @@ class RepositoryPackCollection(object):
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
 
-        :param existing_packs: The packs to pack.
+        :param existing_packs: The packs to pack. (A list of (revcount, Pack)
+            tuples).
         :parma pack_distribution: A list with the number of revisions desired
             in each pack.
         """
@@ -557,7 +552,7 @@ class RepositoryPackCollection(object):
             # distribution chart we will include its contents in the new pack for
             # that position. If its larger, we remove its size from the
             # distribution chart
-            next_pack_rev_count, next_pack_details, next_pack = existing_packs.pop(0)
+            next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
                 # this is already packed 'better' than this, so we can
                 # not waste time packing it.
@@ -573,7 +568,7 @@ class RepositoryPackCollection(object):
                 # add the revisions we're going to add to the next output pack
                 pack_operations[-1][0] += next_pack_rev_count
                 # allocate this pack to the next pack sub operation
-                pack_operations[-1][1].append((next_pack_details, next_pack))
+                pack_operations[-1][1].append(next_pack)
                 if pack_operations[-1][0] >= pack_distribution[0]:
                     # this pack is used up, shift left.
                     del pack_distribution[0]
@@ -759,7 +754,7 @@ class RepositoryPackCollection(object):
         """Provide an order to the underlying names."""
         return sorted(self._names.keys())
 
-    def _obsolete_packs(self, pack_details):
+    def _obsolete_packs(self, packs):
         """Move a number of packs which have been obsoleted out of the way.
 
         Each pack and its associated indices are moved out of the way.
@@ -769,19 +764,18 @@ class RepositoryPackCollection(object):
         the names of packs that contain the data previously available via these
         packs.
 
-        :param pack_details: The transport, name tuples for the packs.
+        :param packs: The packs to obsolete.
         :param return: None.
         """
-        for pack_detail in pack_details:
-            pack_detail[0].rename(pack_detail[1],
-                '../obsolete_packs/' + pack_detail[1])
-            basename = pack_detail[1][:-4]
+        for pack in packs:
+            pack.transport.rename(pack.file_name(),
+                '../obsolete_packs/' + pack.file_name())
             # TODO: Probably needs to know all possible indexes for this pack
             # - or maybe list the directory and move all indexes matching this
             # name whether we recognize it or not?
-            for suffix in ('iix', 'six', 'tix', 'rix'):
-                self._index_transport.rename(basename + suffix,
-                    '../obsolete_packs/' + basename + suffix)
+            for suffix in ('.iix', '.six', '.tix', '.rix'):
+                self._index_transport.rename(pack.name + suffix,
+                    '../obsolete_packs/' + pack.name + suffix)
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
@@ -805,7 +799,7 @@ class RepositoryPackCollection(object):
 
     def _remove_pack_by_name(self, name):
         # strip .pack
-        self._names.pop(name[:-5])
+        self._names.pop(name)
 
     def reset(self):
         self._names = None
