@@ -295,6 +295,15 @@ class Config(object):
     def _get_nickname(self):
         return None
 
+    def get_bzr_remote_path(self):
+        try:
+            return os.environ['BZR_REMOTE_PATH']
+        except KeyError:
+            path = self.get_user_option("bzr_remote_path")
+            if path is None:
+                path = 'bzr'
+            return path
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""

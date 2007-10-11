@@ -27,6 +27,7 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    config,
     debug,
     errors,
     trace,
@@ -466,8 +467,10 @@ class RemoteSSHTransport(RemoteTransport):
         # ssh will prompt the user for a password if needed and if none is
         # provided but it will not give it back, so no credentials can be
         # stored.
+        location_config = config.LocationConfig(self.base)
+        bzr_remote_path = location_config.get_bzr_remote_path()
         return medium.SmartSSHClientMedium(self._host, self._port,
-                                           self._user, self._password), None
+            self._user, self._password, bzr_remote_path=bzr_remote_path), None
 
 
 class RemoteHTTPTransport(RemoteTransport):

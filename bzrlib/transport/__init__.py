@@ -1707,9 +1707,10 @@ register_transport_proto('file://',
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
+# Note that sftp:// has no default_port, because the user's ~/.ssh/config
+# can set it to arbitrary values based on hostname.
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).",
-            default_port=22)
+            help="Access using SFTP (most SSH servers provide SFTP).")
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
@@ -1802,9 +1803,10 @@ register_transport_proto('bzr+https://',
 register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
+# Note that bzr+ssh:// has no default_port, because the user's ~/.ssh/config
+# can set it to arbitrary values based on hostname.
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.",
-            default_port=22)
+            help="Fast access using the Bazaar smart server over SSH.")
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'RemoteSSHTransport')

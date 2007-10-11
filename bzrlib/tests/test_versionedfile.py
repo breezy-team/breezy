@@ -623,38 +623,30 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([], vf.get_parents('notbxbfse'))
         self.assertEqual({'notbxbfse':()}, vf.get_graph())
-        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
-                         vf.has_version, parent_id_unicode))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
         self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
-        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
-                        vf.has_ghost, parent_id_unicode))
         self.assertTrue(vf.has_ghost(parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
-        self.callDeprecated([osutils._revision_id_warning],
-                            vf.add_lines, parent_id_unicode, [], [])
+        vf.add_lines(parent_id_utf8, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8, ),
                           },
                          vf.get_graph())
-        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
-                        vf.has_version, parent_id_unicode))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
+        self.assertEqual([parent_id_utf8, 'notbxbfse'],
+            vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
         self.assertEqual({parent_id_utf8:[],
                           'notbxbfse':[parent_id_utf8],
                           },
                          vf.get_graph_with_ghosts())
-        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
-                         vf.has_ghost, parent_id_unicode))
         self.assertFalse(vf.has_ghost(parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):

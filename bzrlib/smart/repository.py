@@ -163,6 +163,9 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
+        except errors.LockFailed, e:
+            return FailedSmartServerResponse(('LockFailed',
+                str(e.lock), str(e.why)))
         repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
