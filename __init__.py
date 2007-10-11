@@ -24,7 +24,7 @@ from StringIO import StringIO
 import stgit
 import stgit.git as git
 
-from bzrlib import config, iterablefile, graph, osutils, urlutils
+from bzrlib import config, iterablefile, deprecated_graph, osutils, urlutils
 from bzrlib.decorators import *
 import bzrlib.branch
 import bzrlib.bzrdir
@@ -156,6 +156,11 @@ class GitBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
 bzrlib.bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
 
 
+class GitBranchFormat(bzrlib.branch.BranchFormat):
+    def get_branch_description(self):
+        return 'Git Branch'
+
+
 class GitBranch(bzrlib.branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
@@ -166,6 +171,7 @@ class GitBranch(bzrlib.branch.Branch):
         self.base = gitdir.root_transport.base
         if '.git' not in gitdir.root_transport.list_dir('.'):
             raise errors.NotBranchError(self.base)
+        self._format = GitBranchFormat()
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -237,7 +243,7 @@ class GitRepository(bzrlib.repository.Repository):
         return self.get_revision_graph_with_ghosts(revisions).get_ancestors()
 
     def get_revision_graph_with_ghosts(self, revision_ids=None):
-        result = graph.Graph()
+        result = deprecated_graph.Graph()
         for revision in self._ancestor_revisions(revision_ids):
             result.add_node(revision.revision_id, revision.parent_ids)
             self._revision_cache[revision.revision_id] = revision
