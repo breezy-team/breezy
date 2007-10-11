@@ -736,12 +736,27 @@ class GraphIndex(object):
         # trim the data.
         # end first:
         end = offset + len(data)
-        index = self._parsed_byte_index(offset)
+        while True:
+            index = self._parsed_byte_index(offset)
+            # Trivial test - if the current index's end is within the
+            # low-matching parsed range, we're done.
+            if end < self._parsed_byte_map[index][1]:
+                return
+            if self._parse_segment(offset, data, end, index):
+                return
+
+    def _parse_segment(self, offset, data, end, index):
+        """Parse one segment of data.
+
+        :param offset: Where 'data' begins in the file.
+        :param data: Some data to parse a segment of.
+        :param end: Where data ends
+        :param index: The current index into the parsed bytes map.
+        :return: True if the parsed segment is the last possible one in the
+            range of data.
+        """
         # default is to use all data
         trim_end = None
-        # trivial check for entirely parsed data:
-        if end < self._parsed_byte_map[index][1]:
-            return
         # accomodate overlap with data before this.
         if offset < self._parsed_byte_map[index][1]:
             # overlaps the lower parsed region
@@ -767,30 +782,35 @@ class GraphIndex(object):
             trim_end = None
             # do not strip to the last \n
             end_adjacent = True
+            last_segment = True
         elif index + 1 == len(self._parsed_byte_map):
             # at the end of the parsed data
             # use it all
             trim_end = None
             # but strip to the last \n
             end_adjacent = False
+            last_segment = True
         elif end == self._parsed_byte_map[index + 1][0]:
             # buts up against the next parsed region
             # use it all
             trim_end = None
             # do not strip to the last \n
             end_adjacent = True
+            last_segment = True
         elif end > self._parsed_byte_map[index + 1][0]:
             # overlaps into the next parsed region
             # only consider the unparsed data
             trim_end = self._parsed_byte_map[index + 1][0] - offset
             # do not strip to the last \n as we know its an entire record
             end_adjacent = True
+            last_segment = end < self._parsed_byte_map[index + 1][1]
         else:
             # does not overlap into the next region
             # use it all
             trim_end = None
             # but strip to the last \n
             end_adjacent = False
+            last_segment = True
         # now find bytes to discard if needed
         if not start_adjacent:
             # work around python bug in rfind
@@ -850,6 +870,7 @@ class GraphIndex(object):
             self._bisect_nodes[key] = node_value
             # print "parsed ", key
         self._parsed_bytes(offset, first_key, offset + len(trimmed_data), key)
+        return last_segment
 
     def _parsed_bytes(self, start, start_key, end, end_key):
         """Mark the bytes from start to end as parsed.
@@ -915,8 +936,8 @@ class GraphIndex(object):
                     # this must be the start
                     assert offset == 0
                     offset, data = self._parse_header_from_bytes(data)
+                # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
                 self._parse_region(offset, data)
-                # print offset, len(data), data
 
     def _signature(self):
         """The file signature for this index type."""

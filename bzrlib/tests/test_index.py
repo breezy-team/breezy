@@ -441,6 +441,44 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
             index._parsed_key_map)
 
+    def test_parsing_data_handles_parsed_contained_regions(self):
+        # the following patten creates a parsed region that is wholly within a
+        # single result from the readv layer:
+        # .... single-read (readv-minimum-size) ...
+        # which then trims the start and end so the parsed size is < readv
+        # miniumum.
+        # then a dual lookup (or a reference lookup for that matter) which
+        # abuts or overlaps the parsed region on both sides will need to 
+        # discard the data in the middle, but parse the end as well.
+        #
+        # we test this by doing a single lookup to seed the data, then 
+        # a lookup for two keys that are present, and adjacent - 
+        # we except both to be found, and the parsed byte map to include the
+        # locations of both keys.
+        nodes = []
+        def make_key(number):
+            return (str(number) + 'X'*100,)
+        def make_value(number):
+            return 'Y'*100
+        for counter in range(64):
+            nodes.append((make_key(counter), make_value(counter), ()))
+        index = self.make_index(nodes=nodes)
+        result = index.lookup_keys_via_location(
+            [(index._size // 2, ('40', ))])
+        # and we should have a parse map that includes the header and the
+        # region that was parsed after trimming.
+        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
+        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+            index._parsed_key_map)
+        # now ask for two keys, right before and after the parsed region
+        result = index.lookup_keys_via_location(
+            [(4900, make_key(30)), (8914, make_key(49))])
+        self.assertEqual([
+            ((4900, make_key(30)), (index, make_key(30), make_value(30))),
+            ((8914, make_key(49)), (index, make_key(49), make_value(49))),
+            ],
+            result)
+
     def test_lookup_missing_key_answers_without_io_when_map_permits(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
