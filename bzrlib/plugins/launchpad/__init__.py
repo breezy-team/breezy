@@ -134,8 +134,8 @@ class cmd_launchpad_login(Command):
     aliases = ['lp-login']
     takes_args = ['name?']
     takes_options = [
-         Option('no-check',
-                "Don't check that the user name is valid."),
+        Option('no-check',
+               "Don't check that the user name is valid."),
         ]
 
     def run(self, name=None, no_check=None):
@@ -144,9 +144,9 @@ class cmd_launchpad_login(Command):
 
         if name is None:
             username = account.get_lp_login()
-            if check_account:
-                account.check_lp_login(username)
             if username:
+                if check_account:
+                    account.check_lp_login(username)
                 self.outf.write(username + '\n')
             else:
                 self.outf.write('No Launchpad user ID configured.\n')

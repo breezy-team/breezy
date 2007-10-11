@@ -42,9 +42,6 @@ class CheckAccountTests(TestCaseWithMemoryTransport):
         transport.put_bytes('~test_user/+sshkeys', 'some keys here')
         account.check_lp_login('test_user', transport)
 
-    def test_check_lp_login_connection_failure(self):
-        pass
-
     def test_check_lp_login_no_user(self):
         transport = self.get_transport()
         self.assertRaises(account.UnknownLaunchpadUsername,
