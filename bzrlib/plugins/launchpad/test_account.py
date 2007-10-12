@@ -51,6 +51,18 @@ class LaunchpadAccountTests(TestCase):
         self.assertEqual(
             'test_user', my_config.get_user_option('launchpad_username'))
 
+    def test_unknown_launchpad_username(self):
+        # Test formatting of UnknownLaunchpadUsername exception
+        error = account.UnknownLaunchpadUsername(user='test_user')
+        self.assertEqualDiff('The user name test_user is not registered '
+                             'on Launchpad.', str(error))
+
+    def test_no_registered_ssh_keys(self):
+        # Test formatting of NoRegisteredSSHKeys exception
+        error = account.NoRegisteredSSHKeys(user='test_user')
+        self.assertEqualDiff('The user test_user has not registered any '
+                             'SSH keys with Launchpad.', str(error))
+
 
 class CheckAccountTests(TestCaseWithMemoryTransport):
 

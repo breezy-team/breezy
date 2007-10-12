@@ -138,7 +138,7 @@ class cmd_launchpad_login(Command):
                "Don't check that the user name is valid."),
         ]
 
-    def run(self, name=None, no_check=None):
+    def run(self, name=None, no_check=False):
         import account
         check_account = not no_check
 

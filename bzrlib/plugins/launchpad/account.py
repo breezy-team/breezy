@@ -37,7 +37,7 @@ class NoRegisteredSSHKeys(errors.BzrError):
 
 
 def get_lp_login(_config=None):
-    """Return the user's Launchpad Username"""
+    """Return the user's Launchpad username"""
     if _config is None:
         _config = GlobalConfig()
 
