@@ -90,11 +90,6 @@ class KnitRepository(MetaDirRepository):
             _revision_store, control_store, text_store)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
-
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files,
-                                   _revision_store, control_store, text_store)
         self._reconcile_fixes_text_parents = True
 
     def _warn_if_deprecated(self):
