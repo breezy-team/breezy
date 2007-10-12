@@ -123,9 +123,9 @@ class cmd_launchpad_login(Command):
 
           bzr launchpad-login
 
-      Set the Launchpad ID of the current user::
+      Set the Launchpad ID of the current user to 'bob'::
 
-          bzr launchpad-login $USERNAME
+          bzr launchpad-login bob
     """
     aliases = ['lp-login']
     takes_args = ['name?']
@@ -146,6 +146,7 @@ class cmd_launchpad_login(Command):
                 self.outf.write(username + '\n')
             else:
                 self.outf.write('No Launchpad user ID configured.\n')
+                return 1
         else:
             if check_account:
                 account.check_lp_login(name)

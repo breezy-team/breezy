@@ -40,27 +40,27 @@ class LaunchpadAccountTests(TestCase):
     def test_get_lp_login(self):
         # Test that get_lp_login() returns the configured username
         my_config = self.setup_config(
-            '[DEFAULT]\nlaunchpad_username=test_user\n')
-        self.assertEqual('test_user', account.get_lp_login(my_config))
+            '[DEFAULT]\nlaunchpad_username=test-user\n')
+        self.assertEqual('test-user', account.get_lp_login(my_config))
 
     def test_set_lp_login(self):
         # Test that set_lp_login() updates the config file.
         my_config = self.setup_config('')
         self.assertEqual(None, my_config.get_user_option('launchpad_username'))
-        account.set_lp_login('test_user', my_config)
+        account.set_lp_login('test-user', my_config)
         self.assertEqual(
-            'test_user', my_config.get_user_option('launchpad_username'))
+            'test-user', my_config.get_user_option('launchpad_username'))
 
     def test_unknown_launchpad_username(self):
         # Test formatting of UnknownLaunchpadUsername exception
-        error = account.UnknownLaunchpadUsername(user='test_user')
-        self.assertEqualDiff('The user name test_user is not registered '
+        error = account.UnknownLaunchpadUsername(user='test-user')
+        self.assertEqualDiff('The user name test-user is not registered '
                              'on Launchpad.', str(error))
 
     def test_no_registered_ssh_keys(self):
         # Test formatting of NoRegisteredSSHKeys exception
-        error = account.NoRegisteredSSHKeys(user='test_user')
-        self.assertEqualDiff('The user test_user has not registered any '
+        error = account.NoRegisteredSSHKeys(user='test-user')
+        self.assertEqualDiff('The user test-user has not registered any '
                              'SSH keys with Launchpad.', str(error))
 
 
@@ -68,18 +68,18 @@ class CheckAccountTests(TestCaseWithMemoryTransport):
 
     def test_check_lp_login_valid_user(self):
         transport = self.get_transport()
-        transport.mkdir('~test_user')
-        transport.put_bytes('~test_user/+sshkeys', 'some keys here')
-        account.check_lp_login('test_user', transport)
+        transport.mkdir('~test-user')
+        transport.put_bytes('~test-user/+sshkeys', 'some keys here')
+        account.check_lp_login('test-user', transport)
 
     def test_check_lp_login_no_user(self):
         transport = self.get_transport()
         self.assertRaises(account.UnknownLaunchpadUsername,
-                          account.check_lp_login, 'test_user', transport)
+                          account.check_lp_login, 'test-user', transport)
 
     def test_check_lp_login_no_ssh_keys(self):
         transport = self.get_transport()
-        transport.mkdir('~test_user')
-        transport.put_bytes('~test_user/+sshkeys', '')
+        transport.mkdir('~test-user')
+        transport.put_bytes('~test-user/+sshkeys', '')
         self.assertRaises(account.NoRegisteredSSHKeys,
-                          account.check_lp_login, 'test_user', transport)
+                          account.check_lp_login, 'test-user', transport)
