@@ -643,10 +643,8 @@ class Commit(object):
 
         # Check and warn about old CommitBuilders
         if not self.builder.record_root_entry:
-            symbol_versioning.warn('CommitBuilders should support recording'
-                ' the root entry as of bzr 0.10.', DeprecationWarning, 
-                stacklevel=1)
-            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            raise AssertionError('CommitBuilders should support recording'
+                ' the root entry as of bzr 0.10.')
 
         # Build the new inventory
         self._populate_from_inventory(specific_files)
@@ -677,6 +675,7 @@ class Commit(object):
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
+                if delta: self.basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
         deleted_ids = set(self.basis_inv._byid.keys()) - \
@@ -706,8 +705,6 @@ class Commit(object):
         # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
-        if not self.builder.record_root_entry:
-            entries.next()
         for path, existing_ie in entries:
             file_id = existing_ie.file_id
             name = existing_ie.name
