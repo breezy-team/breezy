@@ -14,19 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for reconiliation of repositories."""
+"""Tests for reconciliation of repositories."""
 
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.revision import Revision
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests import TestSkipped, TestNotApplicable
+from bzrlib.tests.repository_implementations.helpers import (
+    TestCaseWithBrokenRevisionIndex,
+    )
+from bzrlib.tests.repository_implementations.test_repository import (
+    TestCaseWithRepository,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.uncommit import uncommit
-from bzrlib.workingtree import WorkingTree
 
 
 class TestReconcile(TestCaseWithRepository):
@@ -374,3 +379,26 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = d.open_repository()
         self.checkUnreconciled(d, repo.reconcile())
         self.checkUnreconciled(d, repo.reconcile(thorough=True))
+
+
+class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
+
+    def test_aborts_if_bad_parents_in_index(self):
+        """Reconcile refuses to proceed if the revision index is wrong when
+        checked against the revision texts, so that it does not generate broken
+        data.
+
+        Ideally reconcile would fix this, but until we implement that we just
+        make sure we safely detect this problem.
+        """
+        repo = self.make_repo_with_extra_ghost_index()
+        reconciler = repo.reconcile(thorough=True)
+        self.assertTrue(reconciler.aborted,
+            "reconcile should have aborted due to bad parents.")
+
+    def test_does_not_abort_on_clean_repo(self):
+        repo = self.make_repository('.')
+        reconciler = repo.reconcile(thorough=True)
+        self.assertFalse(reconciler.aborted,
+            "reconcile should not have aborted on an unbroken repository.")
+
