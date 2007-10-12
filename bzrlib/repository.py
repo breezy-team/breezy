@@ -1484,10 +1484,6 @@ class Repository(object):
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
         """
-        if revision_ids is not None:
-            symbol_versioning.warn('revision_ids should not be supplied to'
-                ' Repostiory.check, as of bzr 0.92.',
-                 DeprecationWarning, stacklevel=3)
         return self._check(revision_ids)
 
     def _check(self, revision_ids):
