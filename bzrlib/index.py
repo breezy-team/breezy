@@ -276,7 +276,7 @@ class GraphIndex(object):
             mutter('Reading entire index %s', self._transport.abspath(self._name))
         stream = self._transport.get(self._name)
         self._read_prefix(stream)
-        expected_elements = 3 + self._key_length
+        self._expected_elements = 3 + self._key_length
         line_count = 0
         # raw data keyed by offset
         self._keys_by_offset = {}
@@ -285,34 +285,15 @@ class GraphIndex(object):
         self._nodes_by_key = {}
         trailers = 0
         pos = stream.tell()
-        for line in stream.readlines():
-            if line == '\n':
-                trailers += 1
-                continue
-            elements = line.split('\0')
-            if len(elements) != expected_elements:
-                raise errors.BadIndexData(self)
-            # keys are tuples
-            key = tuple(elements[:self._key_length])
-            absent, references, value = elements[-3:]
-            value = value[:-1] # remove the newline
-            ref_lists = []
-            for ref_string in references.split('\t'):
-                ref_lists.append(tuple([
-                    int(ref) for ref in ref_string.split('\r') if ref
-                    ]))
-            ref_lists = tuple(ref_lists)
-            self._keys_by_offset[pos] = (key, absent, ref_lists, value)
-            pos += len(line)
+        lines = stream.read().split('\n')
+        del lines[-1]
+        _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in self._keys_by_offset.itervalues():
             if absent:
                 continue
             # resolve references:
             if self.node_ref_lists:
-                node_refs = []
-                for ref_list in references:
-                    node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
-                node_value = (value, tuple(node_refs))
+                node_value = (value, self._resolve_references(references))
             else:
                 node_value = value
             self._nodes[key] = node_value
@@ -849,12 +830,24 @@ class GraphIndex(object):
         lines = trimmed_data.split('\n')
         del lines[-1]
         pos = offset
-        first_key = None
+        first_key, last_key, nodes, _ = self._parse_lines(lines, pos)
+        for key, value in nodes:
+            self._bisect_nodes[key] = value
+        self._parsed_bytes(offset, first_key,
+            offset + len(trimmed_data), last_key)
+        return offset + len(trimmed_data), last_segment
+
+    def _parse_lines(self, lines, pos):
         key = None
+        first_key = None
+        trailers = 0
+        nodes = []
         for line in lines:
             if line == '':
                 # must be at the end
-                assert self._size == pos + 1, "%s %s" % (self._size, pos)
+                if self._size:
+                    assert self._size == pos + 1, "%s %s" % (self._size, pos)
+                trailers += 1
                 continue
             elements = line.split('\0')
             if len(elements) != self._expected_elements:
@@ -878,10 +871,9 @@ class GraphIndex(object):
                 node_value = (value, ref_lists)
             else:
                 node_value = value
-            self._bisect_nodes[key] = node_value
+            nodes.append((key, node_value))
             # print "parsed ", key
-        self._parsed_bytes(offset, first_key, offset + len(trimmed_data), key)
-        return offset + len(trimmed_data), last_segment
+        return first_key, key, nodes, trailers
 
     def _parsed_bytes(self, start, start_key, end, end_key):
         """Mark the bytes from start to end as parsed.
