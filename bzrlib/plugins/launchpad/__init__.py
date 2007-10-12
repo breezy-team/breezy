@@ -14,11 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Launchpad.net integration plugin for Bazaar
-
-To install this file, put the 'bzr_lp' directory, or a symlink to it,
-in your ~/.bazaar/plugins/ directory.
-"""
+"""Launchpad.net integration plugin for Bazaar."""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPL_URL
@@ -84,7 +80,7 @@ class cmd_register_branch(Command):
             author='',
             link_bug=None,
             dry_run=False):
-        from lp_registration import (
+        from bzrlib.plugins.launchpad.lp_registration import (
             LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
             DryRunLaunchpadService)
         rego = BranchRegistrationRequest(branch_url=branch_url,
@@ -139,7 +135,7 @@ class cmd_launchpad_login(Command):
         ]
 
     def run(self, name=None, no_check=False):
-        import account
+        from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
         if name is None:
@@ -171,9 +167,8 @@ register_lazy_transport(
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
-    import test_register
-    import test_lp_indirect
-    import test_account
+    from bzrlib.plugins.launchpad import (
+        test_register, test_lp_indirect, test_account)
 
     loader = TestLoader()
     suite = TestSuite()
