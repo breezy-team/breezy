@@ -249,10 +249,11 @@ class GraphIndex(object):
         """
         self._transport = transport
         self._name = name
-        # becomes a dict of key:(value, reference-list-byte-locations) 
-        # used by the bisection interface to store parsed but not resolved
-        # keys.
+        # Becomes a dict of key:(value, reference-list-byte-locations) used by
+        # the bisection interface to store parsed but not resolved keys.
         self._bisect_nodes = None
+        # Becomes a dict of key:(value, reference-list-keys) which are ready to
+        # be returned directly to callers.
         self._nodes = None
         # a sorted list of slice-addresses for the parsed bytes of the file.
         # e.g. (0,1) would mean that byte 0 is parsed.
@@ -383,7 +384,15 @@ class GraphIndex(object):
             raise errors.BadIndexOptions(self)
 
     def _resolve_references(self, references):
-        """Return the resolved key references for references."""
+        """Return the resolved key references for references.
+        
+        References are resolved by looking up the location of the key in the
+        _keys_by_offset map and substituting the key name, preserving ordering.
+
+        :param references: An iterable of iterables of key locations. e.g. 
+            [[123, 456], [123]]
+        :return: A tuple of tuples of keys.
+        """
         node_refs = []
         for ref_list in references:
             node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
@@ -566,7 +575,7 @@ class GraphIndex(object):
         cache because it cannot pre-resolve all indices, which buffer_all does
         for performance.
 
-        :param location_keys: A list of location, key tuples.
+        :param location_keys: A list of location(byte offset), key tuples.
         :return: A list of (location_key, result) tuples as expected by
             bzrlib.bisect_multi.bisect_multi_bytes.
         """
@@ -662,7 +671,7 @@ class GraphIndex(object):
             if location + length > self._size:
                 length = self._size - location
             # TODO: trim out parsed locations (e.g. if the 800 is into the
-            # parsed region trim it, and dont use the ajust_for_latency
+            # parsed region trim it, and dont use the adjust_for_latency
             # facility)
             if length > 0:
                 readv_ranges.append((location, length))
