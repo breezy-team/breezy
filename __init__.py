@@ -157,6 +157,7 @@ bzrlib.bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
 
 
 class GitBranchFormat(bzrlib.branch.BranchFormat):
+
     def get_branch_description(self):
         return 'Git Branch'
 
@@ -304,6 +305,10 @@ class GitRepository(bzrlib.repository.Repository):
         result.committer = committer 
         result.properties['git-tree-id'] = tree_id
         return result
+
+    def revision_trees(self, revids):
+        for revid in revids:
+            yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id):
         return GitRevisionTree(self, revision_id)
