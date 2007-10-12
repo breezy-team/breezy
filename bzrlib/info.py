@@ -128,13 +128,14 @@ def gather_location_info(repository, branch=None, working=None):
     return [(n, locs[n]) for n in order if n in locs]
 
 
-def _show_location_info(locs):
+def _show_location_info(locs, outfile):
     """Show known locations for working, branch and repository."""
-    print 'Location:'
+    print >> outfile, 'Location:'
     path_list = LocationList(osutils.getcwd())
     for name, loc in locs:
         path_list.add_url(name, loc)
-    sys.stdout.writelines(path_list.get_lines())
+    outfile.writelines(path_list.get_lines())
+
 
 def _gather_related_branches(branch):
     locs = LocationList(osutils.getcwd())
@@ -143,6 +144,7 @@ def _gather_related_branches(branch):
     locs.add_url('parent branch', branch.get_parent())
     locs.add_url('submit branch', branch.get_submit_branch())
     return locs
+
 
 def _show_related_info(branch, outfile):
     """Show parent and push location of branch."""
@@ -153,60 +155,66 @@ def _show_related_info(branch, outfile):
         outfile.writelines(locs.get_lines())
 
 
-def _show_format_info(control=None, repository=None, branch=None, working=None):
+def _show_format_info(control=None, repository=None, branch=None,
+                      working=None, outfile=None):
     """Show known formats for control, working, branch and repository."""
-    print
-    print 'Format:'
+    print >> outfile
+    print >> outfile, 'Format:'
     if control:
-        print '       control: %s' % control._format.get_format_description()
+        print >> outfile, '       control: %s' % \
+            control._format.get_format_description()
     if working:
-        print '  working tree: %s' % working._format.get_format_description()
+        print >> outfile, '  working tree: %s' % \
+            working._format.get_format_description()
     if branch:
-        print '        branch: %s' % branch._format.get_format_description()
+        print >> outfile, '        branch: %s' % \
+            branch._format.get_format_description()
     if repository:
-        print '    repository: %s' % repository._format.get_format_description()
+        print >> outfile, '    repository: %s' % \
+            repository._format.get_format_description()
 
 
-def _show_locking_info(repository, branch=None, working=None):
+def _show_locking_info(repository, branch=None, working=None, outfile=None):
     """Show locking status of working, branch and repository."""
     if (repository.get_physical_lock_status() or
         (branch and branch.get_physical_lock_status()) or
         (working and working.get_physical_lock_status())):
-        print
-        print 'Lock status:'
+        print >> outfile
+        print >> outfile, 'Lock status:'
         if working:
             if working.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
-            print '  working tree: %s' % status
+            print >> outfile, '  working tree: %s' % status
         if branch:
             if branch.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
-            print '        branch: %s' % status
+            print >> outfile, '        branch: %s' % status
         if repository:
             if repository.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
-            print '    repository: %s' % status
+            print >> outfile, '    repository: %s' % status
 
 
-def _show_missing_revisions_branch(branch):
+def _show_missing_revisions_branch(branch, outfile):
     """Show missing master revisions in branch."""
     # Try with inaccessible branch ?
     master = branch.get_master_branch()
     if master:
         local_extra, remote_extra = find_unmerged(branch, master)
         if remote_extra:
-            print
-            print 'Branch is out of date: missing %d revision%s.' % (
-                len(remote_extra), plural(len(remote_extra)))
+            print >> outfile
+            print >> outfile, ('Branch is out of date: missing %d ' +
+                               'revision%s.') % (len(remote_extra),
+                                                 plural(len(remote_extra)))
 
 
-def _show_missing_revisions_working(working):
+def _show_missing_revisions_working(working, outfile):
     """Show missing revisions in working tree."""
     branch = working.branch
     basis = working.basis_tree()
@@ -220,24 +228,25 @@ def _show_missing_revisions_working(working):
     if branch_revno and tree_last_id != branch_last_revision:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)
         missing_count = branch_revno - tree_last_revno
-        print
-        print 'Working tree is out of date: missing %d revision%s.' % (
-            missing_count, plural(missing_count))
+        print >> outfile
+        print >> outfile, ('Working tree is out of date: missing %d ' +
+                           'revision%s.') % (missing_count,
+                                             plural(missing_count))
 
 
-def _show_working_stats(working):
+def _show_working_stats(working, outfile):
     """Show statistics about a working tree."""
     basis = working.basis_tree()
     work_inv = working.inventory
     delta = working.changes_from(basis, want_unchanged=True)
 
-    print
-    print 'In the working tree:'
-    print '  %8s unchanged' % len(delta.unchanged)
-    print '  %8d modified' % len(delta.modified)
-    print '  %8d added' % len(delta.added)
-    print '  %8d removed' % len(delta.removed)
-    print '  %8d renamed' % len(delta.renamed)
+    print >> outfile
+    print >> outfile, 'In the working tree:'
+    print >> outfile, '  %8s unchanged' % len(delta.unchanged)
+    print >> outfile, '  %8d modified' % len(delta.modified)
+    print >> outfile, '  %8d added' % len(delta.added)
+    print >> outfile, '  %8d removed' % len(delta.removed)
+    print >> outfile, '  %8d renamed' % len(delta.renamed)
 
     ignore_cnt = unknown_cnt = 0
     for path in working.extras():
@@ -245,61 +254,65 @@ def _show_working_stats(working):
             ignore_cnt += 1
         else:
             unknown_cnt += 1
-    print '  %8d unknown' % unknown_cnt
-    print '  %8d ignored' % ignore_cnt
+    print >> outfile, '  %8d unknown' % unknown_cnt
+    print >> outfile, '  %8d ignored' % ignore_cnt
 
     dir_cnt = 0
     for file_id in work_inv:
         if (work_inv.get_file_kind(file_id) == 'directory' and 
             not work_inv.is_root(file_id)):
             dir_cnt += 1
-    print '  %8d versioned %s' \
+    print >> outfile, '  %8d versioned %s' \
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))
 
 
-def _show_branch_stats(branch, verbose):
+def _show_branch_stats(branch, verbose, outfile):
     """Show statistics about a branch."""
     revno, head = branch.last_revision_info()
-    print
-    print 'Branch history:'
-    print '  %8d revision%s' % (revno, plural(revno))
+    print >> outfile
+    print >> outfile, 'Branch history:'
+    print >> outfile, '  %8d revision%s' % (revno, plural(revno))
     stats = branch.repository.gather_stats(head, committers=verbose)
     if verbose:
         committers = stats['committers']
-        print '  %8d committer%s' % (committers, plural(committers))
+        print >> outfile, '  %8d committer%s' % (committers,
+            plural(committers))
     if revno:
         timestamp, timezone = stats['firstrev']
         age = int((time.time() - timestamp) / 3600 / 24)
-        print '  %8d day%s old' % (age, plural(age))
-        print '   first revision: %s' % osutils.format_date(timestamp,
-            timezone)
+        print >> outfile, '  %8d day%s old' % (age, plural(age))
+        print >> outfile, '   first revision: %s' % osutils.format_date(
+            timestamp, timezone)
         timestamp, timezone = stats['latestrev']
-        print '  latest revision: %s' % osutils.format_date(timestamp,
-            timezone)
+        print >> outfile, '  latest revision: %s' % osutils.format_date(
+            timestamp, timezone)
     return stats
 
 
-def _show_repository_info(repository):
+def _show_repository_info(repository, outfile):
     """Show settings of a repository."""
     if repository.make_working_trees():
-        print
-        print 'Create working tree for new branches inside the repository.'
+        print >> outfile
+        print >> outfile, ('Create working tree for new branches inside ' +
+                           'the repository.')
 
 
-def _show_repository_stats(stats):
+def _show_repository_stats(stats, outfile):
     """Show statistics about a repository."""
     if 'revisions' in stats or 'size' in stats:
-        print
-        print 'Repository:'
+        print >> outfile
+        print >> outfile, 'Repository:'
     if 'revisions' in stats:
         revisions = stats['revisions']
-        print '  %8d revision%s' % (revisions, plural(revisions))
+        print >> outfile, '  %8d revision%s' % (revisions, plural(revisions))
     if 'size' in stats:
-        print '  %8d KiB' % (stats['size']/1024)
+        print >> outfile, '  %8d KiB' % (stats['size']/1024)
 
-def show_bzrdir_info(a_bzrdir, verbose=False):
+def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
     """Output to stdout the 'info' for a_bzrdir."""
+    if outfile is None:
+        outfile = sys.stdout
     try:
         tree = a_bzrdir.open_workingtree(
             recommend_upgrade=False)
@@ -327,42 +340,46 @@ def show_bzrdir_info(a_bzrdir, verbose=False):
 
     lockable.lock_read()
     try:
-        show_component_info(a_bzrdir, repository, branch, tree, verbose)
+        show_component_info(a_bzrdir, repository, branch, tree, verbose,
+                            outfile)
     finally:
         lockable.unlock()
 
 
 def show_component_info(control, repository, branch=None, working=None,
-    verbose=1):
+    verbose=1, outfile=None):
     """Write info about all bzrdir components to stdout"""
+    if outfile is None:
+        outfile = sys.stdout
     if verbose is False:
         verbose = 1
     if verbose is True:
         verbose = 2
     layout = describe_layout(repository, branch, working)
     format = describe_format(control, repository, branch, working)
-    print "%s (format: %s)" % (layout, format)
-    _show_location_info(gather_location_info(repository, branch, working))
+    print >> outfile, "%s (format: %s)" % (layout, format)
+    _show_location_info(gather_location_info(repository, branch, working),
+                        outfile)
     if branch is not None:
-        _show_related_info(branch, sys.stdout)
+        _show_related_info(branch, outfile)
     if verbose == 0:
         return
-    _show_format_info(control, repository, branch, working)
-    _show_locking_info(repository, branch, working)
+    _show_format_info(control, repository, branch, working, outfile)
+    _show_locking_info(repository, branch, working, outfile)
     if branch is not None:
-        _show_missing_revisions_branch(branch)
+        _show_missing_revisions_branch(branch, outfile)
     if working is not None:
-        _show_missing_revisions_working(working)
-        _show_working_stats(working)
+        _show_missing_revisions_working(working, outfile)
+        _show_working_stats(working, outfile)
     elif branch is not None:
-        _show_missing_revisions_branch(branch)
+        _show_missing_revisions_branch(branch, outfile)
     if branch is not None:
-        stats = _show_branch_stats(branch, verbose==2)
+        stats = _show_branch_stats(branch, verbose==2, outfile)
     else:
         stats = repository.gather_stats()
     if branch is None and working is None:
-        _show_repository_info(repository)
-    _show_repository_stats(stats)
+        _show_repository_info(repository, outfile)
+    _show_repository_stats(stats, outfile)
 
 
 def describe_layout(repository=None, branch=None, tree=None):

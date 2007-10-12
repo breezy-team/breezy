@@ -1062,6 +1062,7 @@ class cmd_info(Command):
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
     takes_options = ['verbose']
+    encoding_type = 'replace'
 
     @display_command
     def run(self, location=None, verbose=False):
@@ -1071,7 +1072,7 @@ class cmd_info(Command):
             noise_level = 0
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
-                         verbose=noise_level)
+                         verbose=noise_level, outfile=self.outf)
 
 
 class cmd_remove(Command):
