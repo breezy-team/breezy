@@ -1451,6 +1451,7 @@ class ConfigObj(Section):
         The error will have occured at ``cur_index``
         """
         line = infile[cur_index]
+        cur_index += 1
         message = text % cur_index
         error = ErrorClass(message, cur_index, line)
         if self.raise_errors:
