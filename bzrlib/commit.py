@@ -678,6 +678,8 @@ class Commit(object):
                 if delta: self.basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
+        # XXX: Could the list of deleted paths and ids be instead taken from
+        # _populate_from_inventory?
         deleted_ids = set(self.basis_inv._byid.keys()) - \
             set(self.builder.new_inventory._byid.keys())
         if deleted_ids:
@@ -725,12 +727,6 @@ class Commit(object):
                     deleted_paths.add(path)
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
-                    # Missing entries need to be deleted from the working
-                    # inventory separately from files that were specifically
-                    # removed.  Note: this doesn't include missing files
-                    # within missing directories, but they should be
-                    # implicitly deleted when the delta is applied.
-                    self.basis_delta.append((path, None, file_id, None))
                     continue
             # TODO: have the builder do the nested commit just-in-time IF and
             # only if needed.
