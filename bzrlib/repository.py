@@ -620,6 +620,7 @@ class Repository(object):
         self.weave_store = text_store
         # for tests
         self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = False
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
@@ -1438,6 +1439,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
+    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+        return VersionedFileChecker(revisions, revision_versions_cache, self)
+
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
@@ -1472,7 +1476,7 @@ class Repository(object):
                                                        self.get_transaction())
 
     @needs_read_lock
-    def check(self, revision_ids):
+    def check(self, revision_ids=None):
         """Check consistency of all history of given revision_ids.
 
         Different repository implementations should override _check().
@@ -1480,9 +1484,6 @@ class Repository(object):
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
         """
-        if not revision_ids:
-            raise ValueError("revision_ids must be non-empty in %s.check" 
-                    % (self,))
         return self._check(revision_ids)
 
     def _check(self, revision_ids):
@@ -1516,9 +1517,18 @@ class Repository(object):
                     revision_id.decode('ascii')
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
+    
+    def revision_graph_can_have_wrong_parents(self):
+        """Is it possible for this repository to have a revision graph with
+        incorrect parents?
 
-
-
+        If True, then this repository must also implement
+        _find_inconsistent_revision_parents so that check and reconcile can
+        check for inconsistencies before proceeding with other checks that may
+        depend on the revision index being consistent.
+        """
+        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
+        
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
     def _deprecated_repository_forwarder():
@@ -2407,3 +2417,80 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
+
+
+class _RevisionTextVersionCache(object):
+    """A cache of the versionedfile versions for revision and file-id."""
+
+    def __init__(self, repository):
+        self.repository = repository
+        self.revision_versions = {}
+
+    def add_revision_text_versions(self, tree):
+        """Cache text version data from the supplied revision tree"""
+        inv_revisions = {}
+        for path, entry in tree.iter_entries_by_dir():
+            inv_revisions[entry.file_id] = entry.revision
+        self.revision_versions[tree.get_revision_id()] = inv_revisions
+        return inv_revisions
+
+    def get_text_version(self, file_id, revision_id):
+        """Determine the text version for a given file-id and revision-id"""
+        try:
+            inv_revisions = self.revision_versions[revision_id]
+        except KeyError:
+            tree = self.repository.revision_tree(revision_id)
+            inv_revisions = self.add_revision_text_versions(tree)
+        return inv_revisions.get(file_id)
+
+
+class VersionedFileChecker(object):
+
+    def __init__(self, planned_revisions, revision_versions, repository):
+        self.planned_revisions = planned_revisions
+        self.revision_versions = revision_versions
+        self.repository = repository
+    
+    def calculate_file_version_parents(self, revision_id, file_id):
+        text_revision = self.revision_versions.get_text_version(
+            file_id, revision_id)
+        if text_revision is None:
+            return None
+        parents_of_text_revision = self.repository.get_parents(
+            [text_revision])[0]
+        parents_from_inventories = []
+        for parent in parents_of_text_revision:
+            if parent == _mod_revision.NULL_REVISION:
+                continue
+            try:
+                inventory = self.repository.get_inventory(parent)
+            except errors.RevisionNotPresent:
+                pass
+            else:
+                try:
+                    introduced_in = inventory[file_id].revision
+                except errors.NoSuchId:
+                    pass
+                else:
+                    parents_from_inventories.append(introduced_in)
+        graph = self.repository.get_graph()
+        heads = set(graph.heads(parents_from_inventories))
+        new_parents = []
+        for parent in parents_from_inventories:
+            if parent in heads and parent not in new_parents:
+                new_parents.append(parent)
+        return new_parents
+
+    def check_file_version_parents(self, weave, file_id):
+        result = {}
+        for num, revision_id in enumerate(self.planned_revisions):
+            correct_parents = self.calculate_file_version_parents(
+                revision_id, file_id)
+            if correct_parents is None:
+                continue
+            text_revision = self.revision_versions.get_text_version(
+                file_id, revision_id)
+            knit_parents = weave.get_parents(text_revision)
+            if correct_parents != knit_parents:
+                result[revision_id] = (knit_parents, correct_parents)
+        return result

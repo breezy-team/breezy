@@ -90,6 +90,7 @@ class KnitRepository(MetaDirRepository):
             _revision_store, control_store, text_store)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
+        self._reconcile_fixes_text_parents = True
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -239,6 +240,36 @@ class KnitRepository(MetaDirRepository):
 
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
+
+    def _find_inconsistent_revision_parents(self):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
+
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
+        """
+        vf = self._get_revision_vf()
+        index_versions = vf.versions()
+        for index_version in index_versions:
+            parents_according_to_index = vf._index.get_parents_with_ghosts(
+                index_version)
+            revision = self._revision_store.get_revision(index_version,
+                self.get_transaction())
+            parents_according_to_revision = revision.parent_ids
+            if parents_according_to_index != parents_according_to_revision:
+                yield (index_version, parents_according_to_index,
+                    parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
+
+    def revision_graph_can_have_wrong_parents(self):
+        # The revision.kndx could potentially claim a revision has a different
+        # parent to the revision text.
+        return True
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
