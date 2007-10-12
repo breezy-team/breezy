@@ -787,6 +787,11 @@ def locations_config_filename():
     return osutils.pathjoin(config_dir(), 'locations.conf')
 
 
+def authentication_config_filename():
+    """Return per-user authentication ini file filename."""
+    return osutils.pathjoin(config_dir(), 'authentication.conf')
+
+
 def user_ignore_config_filename():
     """Return the user default ignore filename"""
     return osutils.pathjoin(config_dir(), 'ignore')
@@ -878,6 +883,7 @@ def extract_email_address(e):
 
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
+
     def __init__(self, branch):
         self.branch = branch
 
@@ -928,3 +934,71 @@ class TreeConfig(IniBasedConfig):
             self.branch.control_files.put('branch.conf', out_file)
         finally:
             self.branch.unlock()
+
+
+class AuthenticationConfig(object):
+    """The authentication configuration file based on a ini file.
+
+    Implements the authentication.conf file described in
+    doc/developers/authentication-ring.txt.
+    """
+
+    def __init__(self, _file=None):
+        super(AuthenticationConfig, self).__init__()
+        # The ConfigObj
+        self._config = None
+        if _file is None:
+            self._input = authentication_config_filename()
+        else:
+            self._input = _file
+
+    def _get_config(self):
+        if self._config is not None:
+            return self._config
+        try:
+            self._config = ConfigObj(self._input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._config
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+        credentials = None
+        for auth_def_name, auth_def in self._get_config().items():
+            a_scheme, a_user, a_host, a_port, a_path = map(
+                auth_def.get, ['scheme', 'user', 'host', 'port',
+                               'path'])
+            if a_scheme is not None and scheme != a_scheme:
+                continue
+            if a_host is not None:
+                if not (host == a_host
+                        or (a_host.startswith('.') and host.endswith(a_host))):
+                    continue
+            if a_port is not None and port != int(a_port):
+                continue
+            if (a_path is not None and path is not None
+                and not path.startswith(a_path)):
+                continue
+            if (a_user is not None and user is not None
+                and a_user != user):
+                continue
+            user = a_user
+            if user is None:
+                # Can't find a user
+                continue
+            a_password, a_encoding = map(auth_def.get,
+                                         ['password', 'password_encoding'])
+            password = self.decode_password(a_password, a_encoding)
+            try:
+                verify_certificates = auth_def.as_bool('verify_certificates')
+            except KeyError:
+                verify_certificates = True
+            credentials = {'name': auth_def_name,
+                           'user': user, 'password': password,
+                           'verify_certificates': verify_certificates,
+                           }
+            break
+
+        return credentials
+
+    def decode_password(self, password, encoding):
+        return password

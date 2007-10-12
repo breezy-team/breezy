@@ -1107,3 +1107,166 @@ class TestTreeConfig(TestCaseWithTransport):
         self.assertEqual(value, 'value3-top')
         value = tree_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
+
+
+class TestAuthenticationConfig(TestCase):
+    """Test the authentication.conf file matching."""
+
+    # XXX: test definitions without users.
+
+    def _got_user_passwd(self, expected_user, expected_password,
+                         config, *args, **kwargs):
+        credentials = config.get_credentials(*args, **kwargs)
+        if credentials is None:
+            user = None
+            password = None
+        else:
+            user = credentials['user']
+            password = credentials['password']
+        self.assertEquals(expected_user, user)
+        self.assertEquals(expected_password, password)
+
+    def  test_empty_config(self):
+        conf = config.AuthenticationConfig(_file=StringIO())
+        self.assertEquals({}, conf._get_config())
+        self._got_user_passwd(None, None, conf, 'http', 'foo.net')
+
+    def test_broken_config(self):
+        conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
+        self.assertRaises(errors.ParseConfigError, conf._get_config)
+
+    def test_credentials_for_scheme_host(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[ftp definition]
+scheme=ftp
+host=foo.net
+user=joe
+password=secret-pass
+"""))
+        # Basic matching
+        self._got_user_passwd('joe', 'secret-pass', conf, 'ftp', 'foo.net')
+        # different scheme
+        self._got_user_passwd(None, None, conf, 'http', 'foo.net')
+        # different host
+        self._got_user_passwd(None, None, conf, 'ftp', 'bar.net')
+
+    def test_credentials_for_host_port(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[ftp definition]
+scheme=ftp
+port=10021
+host=foo.net
+user=joe
+password=secret-pass
+"""))
+        # No port
+        self._got_user_passwd('joe', 'secret-pass',
+                              conf, 'ftp', 'foo.net', port=10021)
+        # different port
+        self._got_user_passwd(None, None, conf, 'ftp', 'foo.net')
+
+    def test_for_matching_host(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[sourceforge]
+scheme=bzr
+host=bzr.sf.net
+user=joe
+password=joepass
+[sourceforge domain]
+scheme=bzr
+host=.bzr.sf.net
+user=georges
+password=bendover
+"""))
+        # matching domain
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'bzr', 'foo.bzr.sf.net')
+        # phishing attempt
+        self._got_user_passwd(None, None,
+                              conf, 'bzr', 'bbzr.sf.net')
+
+    def test_for_matching_host_None(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[catchup bzr]
+scheme=bzr
+user=joe
+password=joepass
+[DEFAULT]
+user=georges
+password=bendover
+"""))
+        # match no host
+        self._got_user_passwd('joe', 'joepass',
+                              conf, 'bzr', 'quux.net')
+        # no host but different scheme
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'ftp', 'quux.net')
+
+    def test_credentials_for_path(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[http dir1]
+scheme=http
+host=bar.org
+path=/dir1
+user=jim
+password=jimpass
+[http dir2]
+scheme=http
+host=bar.org
+path=/dir2
+user=georges
+password=bendover
+"""))
+        # no path no dice
+        self._got_user_passwd(None, None,
+                              conf, 'http', host='bar.org', path='/dir3')
+        # matching path
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'http', host='bar.org', path='/dir2')
+        # matching subdir
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', host='bar.org',path='/dir1/subdir')
+
+    def test_credentials_for_user(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[with user]
+scheme=http
+host=bar.org
+user=jim
+password=jimpass
+"""))
+        # Get user
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', 'bar.org')
+        # Get same user
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', 'bar.org', user='jim')
+        # Don't get a different user if one is specified
+        self._got_user_passwd(None, None,
+                              conf, 'http', 'bar.org', user='georges')
+
+    def test_verify_certificates(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[self-signed]
+scheme=https
+host=bar.org
+user=jim
+password=jimpass
+verify_certificates=False
+[normal]
+scheme=https
+host=foo.net
+user=georges
+password=bendover
+"""))
+        credentials = conf.get_credentials('https', 'bar.org')
+        self.assertEquals(False, credentials.get('verify_certificates'))
+        credentials = conf.get_credentials('https', 'foo.net')
+        self.assertEquals(True, credentials.get('verify_certificates'))

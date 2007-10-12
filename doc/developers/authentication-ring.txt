@@ -106,15 +106,18 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
   * ``host``: can be empty (to act as a default for any host),
 
   * ``port`` can be empty (useful when an host provides several servers for the
-    same scheme), only numerical values are allowed,
+    same scheme), only numerical values are allowed, this should be used only
+    when the server use a port different than the scheme standard port,
 
   * ``path``: can be empty (FTP or SFTP will never user it),
 
-  * ``user``: can be empty (and will use the same default as ``bzr``, python's
-    ``getpass.get_user()``),
+  * ``user``: can be empty (``bzr`` will defaults to python's
+    ``getpass.get_user()`` and attempt another matching(see below)),
 
   * ``password``: can be empty (for security reasons, a user may use the
-    definitions without storing the passwords but want to be prompted).
+    definitions without storing the passwords but want to be prompted ; or the
+    password will be provided by an external plugin via the
+    ``password_encoding`` mechanism decribed below).
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
 
@@ -131,8 +134,9 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 
  3. ``scheme`` matches even if decorators are used in the requested URL,
 
- 4. ``host`` matches if included in the requested URL. ``foo.net`` will match a
-    requested ``bzr.foo.net``.
+ 4. ``host`` matches exactly or act as a domain if it starts with '.'
+   (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
+   will not match ``bzr.sf.net``).
 
  5. ``port`` matches if included in the requested URL (exact matches only)
 
@@ -239,7 +243,8 @@ The use cases described below use the file format defined above.
         bzr branch ftp://foo.net/bzr/branch
         bzr pull ftp://bzr.foo.net/bzr/product/branch/trunk
 
-  * all connections are done with the same ``user`` (the local one) and the
+  * all connections are done with the same ``user`` (the remote
+    one for which the default bzr one is not appropriate) and the
     password is always prompted with some exceptions::
 
         # Pet projects on hobby.net
@@ -260,7 +265,7 @@ The use cases described below use the file format defined above.
         [DEFAULT]
         user=foobar
         
-  * an HTTP server that also acts as a proxy (weird)::
+  * an HTTP server and a proxy::
 
         # development branches on dev server
         [dev]
@@ -278,15 +283,14 @@ The use cases described below use the file format defined above.
         user=user2
         password=pass2
         
-        # Pesky proxy
+        # proxy
         [proxy]
         scheme=http
-        host=dev.company.com
+        host=proxy.company.com
+        port=3128
         user=proxyuser1
         password=proxypass1
         
-Note that the proxy should be specified last because it uses no path. An
-alternative is to specify the port used by the proxy.
 
 UI Changes
 ----------
