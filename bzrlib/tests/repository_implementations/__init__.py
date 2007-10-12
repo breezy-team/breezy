@@ -39,6 +39,8 @@ from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           iter_suite_tests,
+                          multiply_scenarios,
+                          multiply_tests_from_modules,
                           TestScenarioApplier,
                           TestLoader,
                           TestSuite,
@@ -510,7 +512,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
             repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
 
 
-all_scenarios = [
+all_broken_scenario_classes = [
     UndamagedRepositoryScenario,
     FileParentIsNotInRevisionAncestryScenario,
     FileParentHasInaccessibleInventoryScenario,
@@ -540,28 +542,17 @@ def test_suite():
         MemoryServer
         )
 
-    # format_applier adapts tests by repository format.
-    format_applier = TestScenarioApplier()
-    format_applier.scenarios = (disk_format_adapter.scenarios +
-                                remote_repo_adapter.scenarios)
+    # format_scenarios is all the implementations of Repository; i.e. all disk
+    # formats plus RemoteRepository.
+    format_scenarios = (disk_format_adapter.scenarios +
+                        remote_repo_adapter.scenarios)
 
-    # broken_scenario_applier adapts tests by BrokenRepoScenario by repository
-    # format; i.e. by the cartesian product of format scenarios and broken
-    # repository scenarios.
-    broken_scenarios = [(s.__name__, {'scenario_class': s})
-                        for s in all_scenarios]
-    broken_scenarios_for_all_formats = [
-        ('%s,%s' % (f_scenario_name, b_scenario_name),
-         dict(f_scenario_dict.items() + b_scenario_dict.items()))
-        for f_scenario_name, f_scenario_dict in format_applier.scenarios
-        for b_scenario_name, b_scenario_dict in broken_scenarios]
-    broken_scenario_applier = TestScenarioApplier()
-    broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
 
     prefix = 'bzrlib.tests.repository_implementations.'
-    test_repository_implementations = [
+    test_repository_modules = [
         'test_break_lock',
         'test_check',
+        # test_check_reconcile is intentionally omitted, see below.
         'test_commit_builder',
         'test_fetch',
         'test_fileid_involved',
@@ -574,12 +565,21 @@ def test_suite():
         'test_statistics',
         'test_write_group',
         ]
-
-    result = TestSuite()
-    loader = TestLoader()
     module_name_list = [prefix + module_name
-                        for module_name in test_repository_implementations]
-    adapt_modules(module_name_list, format_applier, loader, result)
+                        for module_name in test_repository_modules]
+
+    # Parameterise repository_implementations test modules by format.
+    result = multiply_tests_from_modules(module_name_list, format_scenarios)
+
+    # test_check_reconcile needs to be parameterised by format *and* by broken
+    # repository scenario.
+    broken_scenarios = [(s.__name__, {'scenario_class': s})
+                        for s in all_broken_scenario_classes]
+    broken_scenarios_for_all_formats = multiply_scenarios(
+        format_scenarios, broken_scenarios)
+    broken_scenario_applier = TestScenarioApplier()
+    broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
+    loader = TestLoader()
     adapt_modules(
         [prefix + 'test_check_reconcile'],
         broken_scenario_applier, loader, result)
