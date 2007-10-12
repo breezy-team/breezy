@@ -433,7 +433,7 @@ class MutableTree(tree.Tree):
         """Update the parents of this tree after a commit.
 
         This gives the tree one parent, with revision id new_revid. The
-        inventory delta is applied ot the current basis tree to generate the
+        inventory delta is applied to the current basis tree to generate the
         inventory for the parent new_revid, and all other parent trees are
         discarded.
 

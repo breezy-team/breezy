@@ -263,6 +263,9 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
+        # accumulates an inventory delta to the basis entry, so we can make
+        # just the necessary updates to the workingtree's cached basis.
+        self.basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -338,6 +341,7 @@ class Commit(object):
                 self.reporter.started(new_revno, self.rev_id, master_location)
 
                 self._update_builder_with_changes()
+                self._report_and_accumulate_deletes()
                 self._check_pointless()
 
                 # TODO: Now the new inventory is known, check for conflicts.
@@ -380,7 +384,11 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
-            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
+            # XXX: This will need to be changed if we support doing a
+            # selective commit while a merge is still pending - then we'd
+            # still have multiple parents after the commit.
+            self.work_tree.update_to_one_parent_via_delta(self.rev_id,
+                self.basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -670,13 +678,17 @@ class Commit(object):
                 if version_recorded:
                     self.any_entries_changed = True
 
-        # note that deletes have occurred
-        if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
+    def _report_and_accumulate_deletes(self):
+        deleted_ids = set(self.basis_inv._byid.keys()) - \
+            set(self.builder.new_inventory._byid.keys())
+        if deleted_ids:
             self.any_entries_deleted = True
-        # Report what was deleted.
-        if self.any_entries_deleted and self.reporter.is_verbose():
+            # TODO: better to just look up the paths for particular things we
+            # care about?  probably the common case is that most of the tree
+            # is not deleted.
             for path, ie in self.basis_inv.iter_entries():
-                if ie.file_id not in self.builder.new_inventory:
+                if ie.file_id in deleted_ids:
+                    self.basis_delta.append((path, None, ie.file_id, None))
                     self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
@@ -716,6 +728,12 @@ class Commit(object):
                     deleted_paths.add(path)
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
+                    # Missing entries need to be deleted from the working
+                    # inventory separately from files that were specifically
+                    # removed.  Note: this doesn't include missing files
+                    # within missing directories, but they should be
+                    # implicitly deleted when the delta is applied.
+                    self.basis_delta.append((path, None, file_id, None))
                     continue
             # TODO: have the builder do the nested commit just-in-time IF and
             # only if needed.
@@ -787,6 +805,8 @@ class Commit(object):
             ie.revision = None
         delta, version_recorded = self.builder.record_entry_contents(ie,
             self.parent_invs, path, self.work_tree, content_summary)
+        if delta:
+            self.basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:
