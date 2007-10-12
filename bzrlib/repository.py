@@ -252,8 +252,6 @@ class CommitBuilder(object):
             # mismatch between commit builder logic and repository:
             # this needs the entry creation pushed down into the builder.
             raise NotImplementedError('Missing repository subtree support.')
-        # transitional assert only, will remove before release.
-        assert ie.kind == kind
         self.new_inventory.add(ie)
 
         # TODO: slow, take it out of the inner loop.
@@ -266,30 +264,29 @@ class CommitBuilder(object):
         # for committing. We may record the previous parents revision if the
         # content is actually unchanged against a sole head.
         if ie.revision is not None:
-            if self._versioned_root or path != '':
-                # not considered for commit
-                delta = None
-            else:
+            if not self._versioned_root and path == '':
+                # XXX: It looks like this is only hit when _check_root decided
+                # to set a new revision on the root.  We seem to be overriding
+                # ie.revision being set at this point to mean either its an
+                # unversioned root, or that it's an unchanged file.
+                #
                 # repositories that do not version the root set the root's
                 # revision to the new commit even when no change occurs, and
                 # this masks when a change may have occurred against the basis,
                 # so calculate if one happened.
-                if ie.file_id not in basis_inv:
+                if ie.file_id in basis_inv:
+                    delta = (basis_inv.id2path(ie.file_id), path,
+                        ie.file_id, ie)
+                else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                else:
-                    basis_id = basis_inv[ie.file_id]
-                    if basis_id.name != '':
-                        # not the root
-                        delta = (basis_inv.id2path(ie.file_id), path,
-                            ie.file_id, ie)
-                    else:
-                        # common, unaltered
-                        delta = None
-            # not considered for commit, OR, for non-rich-root 
-            return delta, ie.revision == self._new_revision_id and (path != '' or
-                self._versioned_root)
-
+                return delta, False
+            else:
+                # we don't need to commit this, because the caller already
+                # determined that an existing revision of this file is
+                # appropriate.
+                delta = None
+                return delta, ie.revision == self._new_revision_id
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
