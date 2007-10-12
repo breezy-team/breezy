@@ -148,6 +148,34 @@ class KnitRepository(MetaDirRepository):
             raise errors.NoSuchRevision(self, revision_id)
 
     @needs_read_lock
+    def get_data_stream(self, revision_ids):
+        """See Repository.get_data_stream."""
+        item_keys = self.item_keys_introduced_by(revision_ids)
+        for knit_kind, file_id, versions in item_keys:
+            name = (knit_kind,)
+            if knit_kind == 'file':
+                name = ('file', file_id)
+                knit = self.weave_store.get_weave_or_empty(
+                    file_id, self.get_transaction())
+            elif knit_kind == 'inventory':
+                knit = self.get_inventory_weave()
+            elif knit_kind == 'revisions':
+                knit = self._revision_store.get_revision_file(
+                    self.get_transaction())
+            elif knit_kind == 'signatures':
+                knit = self._revision_store.get_signature_file(
+                    self.get_transaction())
+            else:
+                raise AssertionError('Unknown knit kind %r' % (knit_kind,))
+            yield name, _get_stream_as_bytes(knit, versions)
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        revision_id = osutils.safe_revision_id(revision_id)
+        return self.get_revision_reconcile(revision_id)
+
+    @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 

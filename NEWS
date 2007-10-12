@@ -322,6 +322,10 @@ bzr 0.91rc1 2007-09-11
    * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
      is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
 
+   * New ``Repository.stream_knit_data_for_revisions`` request added to the
+     network protocol for greatly reduced roundtrips when retrieving a set of
+     revisions. (Andrew Bennetts)
+
   BUG FIXES:
 
    * ``bzr plugins`` now lists the version number for each plugin in square

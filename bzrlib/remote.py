@@ -31,6 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.pack import ContainerReader
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
@@ -540,13 +541,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        to_repo = self._copy_repository_tarball(to_bzrdir, revision_id)
-        if to_repo is None:
-            self._ensure_real()
-            return self._real_repository.sprout(
-                to_bzrdir, revision_id=revision_id)
-        else:
-            return to_repo
+        dest_repo = to_bzrdir.create_repository()
+        dest_repo.fetch(self, revision_id=revision_id)
+        return dest_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
@@ -787,6 +784,45 @@ class RemoteRepository(object):
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
+
+    def get_data_stream(self, revision_ids):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+        if response == ('ok',):
+            return self._deserialise_stream(protocol)
+        elif (response == ('error', "Generic bzr smart protocol error: "
+                "bad request 'Repository.stream_knit_data_for_revisions'") or
+              response == ('error', "Generic bzr smart protocol error: "
+                "bad request u'Repository.stream_knit_data_for_revisions'")):
+            protocol.cancel_read_body()
+            self._ensure_real()
+            return self._real_repository.get_data_stream(revision_ids)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _deserialise_stream(self, protocol):
+        buffer = StringIO(protocol.read_body_bytes())
+        reader = ContainerReader(buffer)
+        for record_names, read_bytes in reader.iter_records():
+            try:
+                # These records should have only one name, and that name
+                # should be a one-element tuple.
+                [name_tuple] = record_names
+            except ValueError:
+                raise errors.SmartProtocolError(
+                    'Repository data stream had invalid record name %r'
+                    % (record_names,))
+            yield name_tuple, read_bytes(None)
+
+    def insert_data_stream(self, stream):
+        self._ensure_real()
+        self._real_repository.insert_data_stream(stream)
+
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        self._ensure_real()
+        return self._real_repository.item_keys_introduced_by(revision_ids,
+            _files_pb=_files_pb)
 
     def revision_graph_can_have_wrong_parents(self):
         # The answer depends on the remote repo format.

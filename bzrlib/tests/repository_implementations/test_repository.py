@@ -363,6 +363,67 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_data_stream(self):
+        # Make a repo with a revision
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Get a data stream (a file-like object) for that revision
+        try:
+            stream = repo.get_data_stream(['rev_id'])
+        except NotImplementedError:
+            # Not all repositories support streaming.
+            return
+
+        # The data stream is a iterator that yields (name, versioned_file)
+        # pairs for:
+        #   * the file knit (or knits; if this repo has rich roots there will
+        #     be a file knit for that as well as for 'file1').
+        #   * the inventory knit
+        #   * the revisions knit
+        # in that order.
+        expected_record_names = [
+            ('file', 'file1'),
+            ('inventory',),
+            ('signatures',),
+            ('revisions',)]
+        streamed_names = []
+        for name, bytes in stream:
+            streamed_names.append(name)
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the stream, then remove it
+            # from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file knits can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            expected_record_name = ('file', inv.root.file_id)
+            self.assertTrue(expected_record_name in streamed_names)
+            streamed_names.remove(expected_record_name)
+
+        self.assertEqual(expected_record_names, streamed_names)
+
+    def test_insert_data_stream(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        source_repo = tree.branch.repository
+        dest_repo = self.make_repository('dest')
+        try:
+            stream = source_repo.get_data_stream(['rev_id'])
+        except NotImplementedError, e:
+            # Not all repositories support streaming.
+            self.assertContainsRe(str(e), 'get_data_stream')
+            raise TestSkipped('This format does not support streaming.')
+
+        dest_repo.insert_data_stream(stream)
+        self.assertTrue(dest_repo.has_revision('rev_id'))
+
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
@@ -392,6 +453,43 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
+
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, []),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
 
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""
