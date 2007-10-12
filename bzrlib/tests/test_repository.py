@@ -694,7 +694,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.check_databases(t)
 
-    def test_add_revision_creates_pack_indices(self):
+    def test_adding_revision_creates_pack_indices(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
@@ -764,6 +764,167 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
+
+    def test_pack_repositories_support_multiple_write_locks(self):
+        format = self.get_format()
+        self.make_repository('.', shared=True, format=format)
+        r1 = repository.Repository.open('.')
+        r2 = repository.Repository.open('.')
+        r1.lock_write()
+        self.addCleanup(r1.unlock)
+        r2.lock_write()
+        r2.unlock()
+
+    def _add_text(self, repo, fileid):
+        """Add a text to the repository within a write group."""
+        vf =repo.weave_store.get_weave(fileid, repo.get_transaction())
+        vf.add_lines('samplerev+' + fileid, [], [])
+
+    def test_concurrent_writers_merge_new_packs(self):
+        format = self.get_format()
+        self.make_repository('.', shared=True, format=format)
+        r1 = repository.Repository.open('.')
+        r2 = repository.Repository.open('.')
+        r1.lock_write()
+        try:
+            # access enough data to load the names list
+            list(r1.all_revision_ids())
+            r2.lock_write()
+            try:
+                # access enough data to load the names list
+                list(r2.all_revision_ids())
+                r1.start_write_group()
+                try:
+                    r2.start_write_group()
+                    try:
+                        self._add_text(r1, 'fileidr1')
+                        self._add_text(r2, 'fileidr2')
+                    except:
+                        r2.abort_write_group()
+                        raise
+                except:
+                    r1.abort_write_group()
+                    raise
+                # both r1 and r2 have open write groups with data in them
+                # created while the other's write group was open.
+                # Commit both which requires a merge to the pack-names.
+                try:
+                    r1.commit_write_group()
+                except:
+                    r2.abort_write_group()
+                    raise
+                r2.commit_write_group()
+                # Now both repositories should now about both names
+                r1._packs.ensure_loaded()
+                r2._packs.ensure_loaded()
+                self.assertEqual(r1._packs.names(), r2._packs.names())
+                self.assertEqual(2, len(r1._packs.names()))
+            finally:
+                r1.unlock()
+        finally:
+            r2.unlock()
+
+    def test_concurrent_writer_second_preserves_dropping_a_pack(self):
+        format = self.get_format()
+        self.make_repository('.', shared=True, format=format)
+        r1 = repository.Repository.open('.')
+        r2 = repository.Repository.open('.')
+        # add a pack to drop
+        r1.lock_write()
+        try:
+            r1.start_write_group()
+            try:
+                self._add_text(r1, 'fileidr1')
+            except:
+                r1.abort_write_group()
+                raise
+            else:
+                r1.commit_write_group()
+            r1._packs.ensure_loaded()
+            name_to_drop = r1._packs.names()[0]
+        finally:
+            r1.unlock()
+        r1.lock_write()
+        try:
+            # access enough data to load the names list
+            list(r1.all_revision_ids())
+            r2.lock_write()
+            try:
+                # access enough data to load the names list
+                list(r2.all_revision_ids())
+                r1._packs.ensure_loaded()
+                try:
+                    r2.start_write_group()
+                    try:
+                        # in r1, drop the pack
+                        r1._packs._remove_pack_by_name(name_to_drop)
+                        # in r2, add a pack
+                        self._add_text(r2, 'fileidr2')
+                    except:
+                        r2.abort_write_group()
+                        raise
+                except:
+                    r1.reset()
+                    raise
+                # r1 has a changed names list, and r2 an open write groups with
+                # changes.
+                # save r1, and then commit the r2 write coupe, which requires a
+                # merge to the pack-names, which should not reinstate
+                # name_to_drop
+                try:
+                    r1._packs._save_pack_names()
+                    r1._packs.reset()
+                except:
+                    r2.abort_write_group()
+                    raise
+                try:
+                    r2.commit_write_group()
+                except:
+                    r2.abort_write_group()
+                    raise
+                # Now both repositories should now about just one name.
+                r1._packs.ensure_loaded()
+                r2._packs.ensure_loaded()
+                self.assertEqual(r1._packs.names(), r2._packs.names())
+                self.assertEqual(1, len(r1._packs.names()))
+                self.assertFalse(name_to_drop in r1._packs.names())
+            finally:
+                r1.unlock()
+        finally:
+            r2.unlock()
+
+    def test_lock_write_does_not_physically_lock(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.assertFalse(repo.get_physical_lock_status())
+
+    def prepare_for_break_lock(self):
+        old_factory = bzrlib.ui.ui_factory
+        def restoreFactory():
+            bzrlib.ui.ui_factory = old_factory
+        self.addCleanup(restoreFactory)
+        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+
+    def test_break_lock_breaks_physical_lock(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo._packs.lock_names()
+        repo2 = repository.Repository.open('.')
+        self.assertTrue(repo.get_physical_lock_status())
+        self.prepare_for_break_lock()
+        repo2.break_lock()
+        self.assertFalse(repo.get_physical_lock_status())
+
+    def test_broken_physical_locks_error_on_release_names_lock(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo._packs.lock_names()
+        self.assertTrue(repo.get_physical_lock_status())
+        repo2 = repository.Repository.open('.')
+        self.prepare_for_break_lock()
+        repo2.break_lock()
+        self.assertRaises(errors.LockBroken, repo._packs.release_names)
+
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
 

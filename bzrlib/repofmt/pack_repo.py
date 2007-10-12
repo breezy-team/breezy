@@ -34,6 +34,7 @@ from bzrlib.index import (
     GraphIndexPrefixAdapter,
     )
 from bzrlib.knit import KnitGraphIndex, _PackAccess, _KnitData
+from bzrlib.osutils import rand_chars
 from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
 """)
@@ -145,6 +146,8 @@ class RepositoryPackCollection(object):
         self.packs = []
         # name:Pack mapping
         self._packs = {}
+        # the previous pack-names content
+        self._packs_at_load = None
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -292,7 +295,7 @@ class RepositoryPackCollection(object):
         if revision_ids is not None and len(revision_ids) == 0:
             # silly fetch request.
             return None
-        random_name = self.repo.control_files._lock.nonce + suffix
+        random_name = self._random_name() + suffix
         if 'fetch' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (a_pack.transport.base, a_pack.name)
                 for a_pack in packs]
@@ -506,6 +509,14 @@ class RepositoryPackCollection(object):
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
 
+    def lock_names(self):
+        """Acquire the mutex around the pack-names index.
+        
+        This cannot be used in the middle of a read-only transaction on the
+        repository.
+        """
+        self.repo.control_files.lock_write()
+
     def pack(self):
         """Pack the pack collection totally."""
         self.ensure_loaded()
@@ -667,12 +678,12 @@ class RepositoryPackCollection(object):
     def ensure_loaded(self):
         if self._names is None:
             self._names = {}
-            for index, key, value in \
-                GraphIndex(self.transport, 'pack-names', None
-                    ).iter_all_entries():
+            self._packs_at_load = set()
+            for index, key, value in self._iter_disk_pack_index():
                 name = key[0]
                 sizes = [int(digits) for digits in value.split(' ')]
                 self._names[name] = sizes
+                self._packs_at_load.add((key, value))
 
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
@@ -710,6 +721,16 @@ class RepositoryPackCollection(object):
             raise errors.DuplicateKey(name)
         self._names[name] = (revision_index_length, inventory_index_length,
             text_index_length, signature_index_length)
+
+    def _iter_disk_pack_index(self):
+        """Iterate over the contents of the pack-names index.
+        
+        This is used when loading the list from disk, and before writing to
+        detect updates from others during our write operation.
+        :return: An iterator of the index contents.
+        """
+        return GraphIndex(self.transport, 'pack-names', None
+                ).iter_all_entries()
 
     def _make_index_map(self, suffix):
         """Return information on existing indexes.
@@ -805,6 +826,7 @@ class RepositoryPackCollection(object):
         self._names = None
         self.packs = []
         self._packs = {}
+        self._packs_at_load = None
 
     def _make_index_to_pack_map(self, pack_details, index_suffix):
         """Given a list (transport,name), return a map of (index)->(transport, name)."""
@@ -854,19 +876,51 @@ class RepositoryPackCollection(object):
         else:
             return all_index.iter_entries(key_filter)
 
+    def _random_name(self):
+        """Return a random name."""
+        return rand_chars(20)
+
+    def release_names(self):
+        """Release the mutex around the pack-names index."""
+        self.repo.control_files.unlock()
+
     def _save_pack_names(self):
-        builder = GraphIndexBuilder()
-        for name, sizes in self._names.iteritems():
-            builder.add_node((name, ), ' '.join(str(size) for size in sizes))
-        self.transport.put_file('pack-names', builder.finish())
+        """Save the list of packs.
+
+        This will take out the mutex around the pack names list for the
+        duration of the method call. If concurrent updates have been made, a
+        three-way merge between the current list and the current in memory list
+        is performed.
+        """
+        self.lock_names()
+        try:
+            builder = GraphIndexBuilder()
+            # load the disk nodes across
+            disk_nodes = set()
+            for index, key, value in self._iter_disk_pack_index():
+                disk_nodes.add((key, value))
+            # do a two-way diff against our original content
+            current_nodes = set()
+            for name, sizes in self._names.iteritems():
+                current_nodes.add(
+                    ((name, ), ' '.join(str(size) for size in sizes)))
+            deleted_nodes = self._packs_at_load - current_nodes
+            new_nodes = current_nodes - self._packs_at_load
+            disk_nodes.difference_update(deleted_nodes)
+            disk_nodes.update(new_nodes)
+            for key, value in disk_nodes:
+                builder.add_node(key, value)
+            self.transport.put_file('pack-names', builder.finish())
+        finally:
+            self.release_names()
 
     def setup(self):
         # cannot add names if we're not in a 'write lock'.
-        if self.repo.control_files._lock_mode != 'w':
+        if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
 
     def _start_write_group(self):
-        random_name = self.repo.control_files._lock.nonce
+        random_name = self._random_name()
         self.repo._open_pack_tuple = (self._upload_transport, random_name + '.pack')
         write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
         self._write_stream = write_stream
@@ -984,7 +1038,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo.control_files._lock_mode,
+            create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=knit_access)
         return self.repo._revision_knit
@@ -1011,7 +1065,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo.control_files._lock_mode,
+            create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=knit_access)
         return self.repo._signature_knit
@@ -1376,14 +1430,30 @@ class GraphKnitRepository(KnitRepository):
         self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
+        # True when the repository object is 'write locked' (as opposed to the
+        # physical lock only taken out around changes to the pack-names list.) 
+        # Another way to represent this would be a decorator around the control
+        # files object that presents logical locks as physical ones - if this
+        # gets ugly consider that alternative design. RBC 20071011
+        self._write_lock_count = 0
+        self._transaction = None
         # for tests
         self._reconcile_does_inventory_gc = False
 
     def _abort_write_group(self):
         self._packs._abort_write_group()
 
+    def _access_mode(self):
+        """Return 'w' or 'r' for depending on whether a write lock is active.
+        
+        This method is a helper for the Knit-thunking support objects.
+        """
+        if self.is_write_locked():
+            return 'w'
+        return 'r'
+
     def _refresh_data(self):
-        if self.control_files._lock_count==1:
+        if self._write_lock_count == 1 or self.control_files._lock_count==1:
             self._revision_store.reset()
             self.weave_store.reset()
             self._inv_thunk.reset()
@@ -1398,6 +1468,42 @@ class GraphKnitRepository(KnitRepository):
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
+
+    def get_transaction(self):
+        if self._write_lock_count:
+            return self._transaction
+        else:
+            return self.control_files.get_transaction()
+
+    def is_locked(self):
+        return self._write_lock_count or self.control_files.is_locked()
+
+    def is_write_locked(self):
+        return self._write_lock_count
+
+    def lock_write(self, token=None):
+        if not self._write_lock_count and self.is_locked():
+            raise errors.ReadOnlyError(self)
+        self._write_lock_count += 1
+        if self._write_lock_count == 1:
+            from bzrlib import transactions
+            self._transaction = transactions.WriteTransaction()
+        self._refresh_data()
+
+    def lock_read(self):
+        if self._write_lock_count:
+            self._write_lock_count += 1
+        else:
+            self.control_files.lock_read()
+        self._refresh_data()
+
+    def leave_lock_in_place(self):
+        # not supported - raise an error
+        raise NotImplementedError(self.leave_lock_in_place)
+
+    def dont_leave_lock_in_place(self):
+        # not supported - raise an error
+        raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
     def pack(self):
@@ -1415,6 +1521,19 @@ class GraphKnitRepository(KnitRepository):
         reconciler = PackReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
+
+    def unlock(self):
+        if self._write_lock_count == 1 and self._write_group is not None:
+            raise errors.BzrError(
+                'Must end write groups before releasing write locks.')
+        if self._write_lock_count:
+            self._write_lock_count -= 1
+            if not self._write_lock_count:
+                transaction = self._transaction
+                self._transaction = None
+                transaction.finish()
+        else:
+            self.control_files.unlock()
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
