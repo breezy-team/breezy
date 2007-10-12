@@ -2471,13 +2471,14 @@ class VersionedFileChecker(object):
             except errors.RevisionNotPresent:
                 pass
             else:
-                introduced_in = inventory[file_id].revision
-                parents_from_inventories.append(introduced_in)
-        mutter('%r:%r introduced in: %r',
-               file_id, revision_id, parents_from_inventories)
+                try:
+                    introduced_in = inventory[file_id].revision
+                except errors.NoSuchId:
+                    pass
+                else:
+                    parents_from_inventories.append(introduced_in)
         graph = self.repository.get_graph()
         heads = set(graph.heads(parents_from_inventories))
-        mutter('    heads: %r', heads)
         new_parents = []
         for parent in parents_from_inventories:
             if parent in heads and parent not in new_parents:

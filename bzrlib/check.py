@@ -37,7 +37,7 @@ from bzrlib import repository as _mod_repository
 from bzrlib import revision
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
-from bzrlib.trace import log_error, note, mutter
+from bzrlib.trace import log_error, note
 
 class Check(object):
     """Check a repository"""
