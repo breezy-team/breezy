@@ -387,7 +387,7 @@ class Commit(object):
             # XXX: This will need to be changed if we support doing a
             # selective commit while a merge is still pending - then we'd
             # still have multiple parents after the commit.
-            self.work_tree.update_to_one_parent_via_delta(self.rev_id,
+            self.work_tree.update_basis_by_delta(self.rev_id,
                 self.basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)

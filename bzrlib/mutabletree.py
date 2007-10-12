@@ -429,7 +429,7 @@ class MutableTree(tree.Tree):
                 self.read_working_inventory()
         return added, ignored
 
-    def update_to_one_parent_via_delta(self, new_revid, delta):
+    def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.
 
         This gives the tree one parent, with revision id new_revid. The
