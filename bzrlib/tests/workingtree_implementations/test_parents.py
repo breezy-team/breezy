@@ -340,6 +340,9 @@ class UpdateToOneParentViaDeltaTests(TestParents):
 
     def assertTransitionFromBasisToShape(self, basis_shape, basis_revid,
         new_shape, new_revid, extra_parent=None):
+        # set the inventory revision ids.
+        basis_shape.revision_id = basis_revid
+        new_shape.revision_id = new_revid
         delta = self.make_inv_delta(basis_shape, new_shape)
         tree = self.make_branch_and_tree('tree')
         # the shapes need to be in the tree's repository to be able to set them

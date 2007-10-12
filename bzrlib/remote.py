@@ -422,6 +422,8 @@ class RemoteRepository(object):
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -609,6 +611,13 @@ class RemoteRepository(object):
         return False
 
     def fetch(self, source, revision_id=None, pb=None):
+        if self.has_same_location(source):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
         self._ensure_real()
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
@@ -977,6 +986,8 @@ class RemoteBranch(branch.Branch):
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         elif response[0] == 'ReadOnlyError':
             raise errors.ReadOnlyError(self)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
             

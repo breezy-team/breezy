@@ -35,6 +35,10 @@ IN DEVELOPMENT
    * New ``revert --forget-merges`` command, which removes the record of a pending 
      merge without affecting the working tree contents.  (Martin Pool)
 
+   * New ``bzr_remote_path`` configuration variable allows finer control of
+     remote bzr locations than BZR_REMOTE_PATH environment variable.
+     (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
@@ -72,6 +76,11 @@ IN DEVELOPMENT
      (Martin Pool, #63894)
 
   BUG FIXES:
+
+   * ``bzr+ssh://`` and ``sftp://`` URLs that do not specify ports explicitly
+     no longer assume that means port 22.  This allows people using OpenSSH to
+     override the default port in their ``~/.ssh/config`` if they wish.  This
+     fixes a bug introduced in bzr 0.91.  (Andrew Bennetts, #146715)
 
    * Commands reporting exceptions can now be profiled and still have their
      data correctly dumped to a file. For example, a ``bzr commit`` with
@@ -124,6 +133,9 @@ IN DEVELOPMENT
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
+   * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
+     Merwe)
+
   API BREAKS:
 
    * ``CommitBuilder.record_entry_contents`` now requires the root entry of a
@@ -133,6 +145,9 @@ IN DEVELOPMENT
    * ``KnitVersionedFile.add*`` will no longer cache added records even when
      enable_cache() has been called - the caching feature is now exclusively for
      reading existing data. (Robert Collins)
+
+   * ``ReadOnlyLockError`` is deprecated; ``LockFailed`` is usually more 
+     appropriate.  (Martin Pool)
 
    * Removed ``bzrlib.transport.TransportLogger`` - please see the new
      ``trace+`` transport instead. (Robert Collins)
@@ -147,6 +162,9 @@ IN DEVELOPMENT
    * Special purpose method ``TestCase.run_bzr_decode`` is moved to the test_non_ascii 
      class that needs it.
      (Martin Pool)
+
+   * The class ``bzrlib.repofmt.knitrepo.KnitRepository3`` has been folded into
+     ``KnitRepository`` by parameters to the constructor. (Robert Collins)
 
    * The ``VersionedFile`` interface now allows content checks to be bypassed
      by supplying check_content=False.  This saves nearly 30% of the minimum
@@ -168,6 +186,11 @@ IN DEVELOPMENT
    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
      put by the method call, to allow avoiding stat-after-write or
      housekeeping in callers. (Robert Collins)
+
+   * ``bzrlib.xml_serializer.Serializer`` is now responsible for checking that
+     mandatory attributes are present on serialisation and deserialisation.
+     This fixes some holes in API usage and allows better separation between
+     physical storage and object serialisation. (Robert Collins)
 
    * New class ``bzrlib.errors.InternalBzrError`` which is just a convenient
      shorthand for deriving from BzrError and setting internal_error = True.

@@ -1551,7 +1551,22 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(result[0][0] <= 400)
             self.assertTrue(result[0][0] + data_len >= 1034)
             check_result_data(result)
-        
+        # test from observed failure case.
+        if transport.is_readonly():
+            file('a', 'w').write('a'*1024*1024)
+        else:
+            transport.put_bytes('a', 'a'*1024*1024)
+        broken_vector = [(465219, 800), (225221, 800), (445548, 800),
+            (225037, 800), (221357, 800), (437077, 800), (947670, 800),
+            (465373, 800), (947422, 800)]
+        results = list(transport.readv('a', broken_vector, True, 1024*1024))
+        found_items = [False]*9
+        for pos, (start, length) in enumerate(broken_vector):
+            # check the range is covered by the result
+            for offset, data in results:
+                if offset <= start and start + length <= offset + len(data):
+                    found_items[pos] = True
+        self.assertEqual([True]*9, found_items)
 
     def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()

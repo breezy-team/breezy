@@ -109,8 +109,6 @@ class MutableTree(tree.Tree):
             ids = [None] * len(files)
         else:
             assert(len(ids) == len(files))
-            ids = [osutils.safe_file_id(file_id) for file_id in ids]
-
         if kinds is None:
             kinds = [None] * len(files)
         else:
