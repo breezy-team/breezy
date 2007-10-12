@@ -111,6 +111,9 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['False'], stanza.get_all('clean'))
 
+        # XXX: This assumes its being run against a repository that does
+        # update the root revision on every commit.  Newer ones that use
+        # RootCommitBuilder won't update it on each commit.
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r3', 'r3', 'r2', 'unversioned'],
