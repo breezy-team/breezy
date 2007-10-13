@@ -945,8 +945,7 @@ class AuthenticationConfig(object):
 
     def __init__(self, _file=None):
         super(AuthenticationConfig, self).__init__()
-        # The ConfigObj
-        self._config = None
+        self._config = None # The ConfigObj
         if _file is None:
             self._input = authentication_config_filename()
         else:
@@ -956,24 +955,60 @@ class AuthenticationConfig(object):
         if self._config is not None:
             return self._config
         try:
+            # FIXME: Should we validate something here ? Includes: port must be
+            # numeric, empty sections are useless, verify_certificates is
+            # boolean, at least one of user/password/password_encoding should
+            # be defined, etc.
+
+            # Note: the encoding below declares that the file itself is utf-8
+            # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._config
 
     def get_credentials(self, scheme, host, port=None, user=None, path=None):
+        """Returns the matching credentials from authentication.conf file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: A dict with containing thematching credentials or None.
+           This includes:
+           - name: the section name of the credentials in the
+             authentication.conf file,
+           - user: can't de different from the provided user if any,
+           - password: the decoded password,
+           - verify_certificates: https specific, True if the server
+             certificate should be verified, False otherwise.
+        """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
-            a_scheme, a_user, a_host, a_port, a_path = map(
-                auth_def.get, ['scheme', 'user', 'host', 'port',
-                               'path'])
+            a_scheme, a_host, a_port, a_user, a_path = map(
+                auth_def.get, ['scheme', 'host', 'port', 'user', 'path'])
+
+            # Sanitize credentials
+            if a_port is not None: a_port = int(a_port)
+            try:
+                a_verify_certificates = auth_def.as_bool('verify_certificates')
+            except KeyError:
+                a_verify_certificates = True
+
+            # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
                 continue
             if a_host is not None:
                 if not (host == a_host
                         or (a_host.startswith('.') and host.endswith(a_host))):
                     continue
-            if a_port is not None and port != int(a_port):
+            if a_port is not None and port != a_port:
                 continue
             if (a_path is not None and path is not None
                 and not path.startswith(a_path)):
@@ -988,13 +1023,9 @@ class AuthenticationConfig(object):
             a_password, a_encoding = map(auth_def.get,
                                          ['password', 'password_encoding'])
             password = self.decode_password(a_password, a_encoding)
-            try:
-                verify_certificates = auth_def.as_bool('verify_certificates')
-            except KeyError:
-                verify_certificates = True
             credentials = {'name': auth_def_name,
                            'user': user, 'password': password,
-                           'verify_certificates': verify_certificates,
+                           'verify_certificates': a_verify_certificates,
                            }
             break
 

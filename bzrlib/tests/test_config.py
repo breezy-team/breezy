@@ -24,16 +24,16 @@ import sys
 
 #import bzrlib specific imports here
 from bzrlib import (
+    branch,
+    bzrdir,
     config,
     errors,
     osutils,
     mail_client,
     urlutils,
+    tests,
     trace,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -201,7 +201,7 @@ inactive = false
 active = True
 nonactive = False
 """
-class TestConfigObj(TestCase):
+class TestConfigObj(tests.TestCase):
     def test_get_bool(self):
         from bzrlib.config import ConfigObj
         co = ConfigObj(StringIO(bool_config))
@@ -216,7 +216,7 @@ good=good # line 2
 [section] # line 3
 whocares=notme # line 4
 """
-class TestConfigObjErrors(TestCase):
+class TestConfigObjErrors(tests.TestCase):
 
     def test_duplicate_section_name_error_line(self):
         try:
@@ -226,7 +226,7 @@ class TestConfigObjErrors(TestCase):
         else:
             self.fail('Error in config file not detected')
 
-class TestConfig(TestCase):
+class TestConfig(tests.TestCase):
 
     def test_constructs(self):
         config.Config()
@@ -282,7 +282,7 @@ class TestConfig(TestCase):
         self.assertEqual('long', my_config.log_format())
 
 
-class TestConfigPath(TestCase):
+class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
@@ -322,7 +322,7 @@ class TestConfigPath(TestCase):
             self.assertEqual(config.locations_config_filename(),
                              '/home/bogus/.bazaar/locations.conf')
 
-class TestIniConfig(TestCase):
+class TestIniConfig(tests.TestCase):
 
     def test_contructs(self):
         my_config = config.IniBasedConfig("nothing")
@@ -341,7 +341,7 @@ class TestIniConfig(TestCase):
         self.failUnless(my_config._get_parser() is parser)
 
 
-class TestGetConfig(TestCase):
+class TestGetConfig(tests.TestCase):
 
     def test_constructs(self):
         my_config = config.GlobalConfig()
@@ -360,7 +360,7 @@ class TestGetConfig(TestCase):
                                           'utf-8')])
 
 
-class TestBranchConfig(TestCaseWithTransport):
+class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_constructs(self):
         branch = FakeBranch()
@@ -376,14 +376,14 @@ class TestBranchConfig(TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = BzrDir.create_standalone_workingtree('.').branch
+        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
         self.assertEqual(my_config.get_user_option('wacky'), 'unlikely')
 
         # Ensure we get the same thing if we start again
-        b2 = Branch.open('.')
+        b2 = branch.Branch.open('.')
         my_config2 = b2.get_config()
         self.assertEqual(my_config2.get_user_option('wacky'), 'unlikely')
 
@@ -468,7 +468,7 @@ class TestBranchConfig(TestCaseWithTransport):
             trace.warning = _warning
 
 
-class TestGlobalConfigItems(TestCase):
+class TestGlobalConfigItems(tests.TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
@@ -570,7 +570,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
 
-class TestLocationConfig(TestCaseInTempDir):
+class TestLocationConfig(tests.TestCaseInTempDir):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -922,7 +922,7 @@ option = exact
 """
 
 
-class TestBranchConfigItems(TestCaseInTempDir):
+class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def get_branch_config(self, global_config=None, location=None, 
                           location_config=None, branch_data_config=None):
@@ -1072,7 +1072,7 @@ class TestBranchConfigItems(TestCaseInTempDir):
         self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
 
 
-class TestMailAddressExtraction(TestCase):
+class TestMailAddressExtraction(tests.TestCase):
 
     def test_extract_email_address(self):
         self.assertEqual('jane@test.com',
@@ -1081,7 +1081,7 @@ class TestMailAddressExtraction(TestCase):
                           config.extract_email_address, 'Jane Tester')
 
 
-class TestTreeConfig(TestCaseWithTransport):
+class TestTreeConfig(tests.TestCaseWithTransport):
 
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
@@ -1109,7 +1109,7 @@ class TestTreeConfig(TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
 
-class TestAuthenticationConfig(TestCase):
+class TestAuthenticationConfig(tests.TestCase):
     """Test the authentication.conf file matching."""
 
     # XXX: test definitions without users.
@@ -1134,6 +1134,13 @@ class TestAuthenticationConfig(TestCase):
     def test_broken_config(self):
         conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
         self.assertRaises(errors.ParseConfigError, conf._get_config)
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """[broken]
+scheme=ftp
+user=joe
+verify_certificates=askme
+"""))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
     def test_credentials_for_scheme_host(self):
         conf = config.AuthenticationConfig(_file=StringIO(
@@ -1270,3 +1277,4 @@ password=bendover
         self.assertEquals(False, credentials.get('verify_certificates'))
         credentials = conf.get_credentials('https', 'foo.net')
         self.assertEquals(True, credentials.get('verify_certificates'))
+
