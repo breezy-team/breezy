@@ -14,11 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Launchpad.net integration plugin for Bazaar
-
-To install this file, put the 'bzr_lp' directory, or a symlink to it,
-in your ~/.bazaar/plugins/ directory.
-"""
+"""Launchpad.net integration plugin for Bazaar."""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPL_URL
@@ -84,7 +80,7 @@ class cmd_register_branch(Command):
             author='',
             link_bug=None,
             dry_run=False):
-        from lp_registration import (
+        from bzrlib.plugins.launchpad.lp_registration import (
             LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
             DryRunLaunchpadService)
         rego = BranchRegistrationRequest(branch_url=branch_url,
@@ -114,6 +110,51 @@ class cmd_register_branch(Command):
 
 register_command(cmd_register_branch)
 
+
+class cmd_launchpad_login(Command):
+    """Show or set the Launchpad user id.
+
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command can be used to set or show the
+    user ID that Bazaar will use for such communication.
+
+    :Examples:
+      Show the Launchpad ID of the current user::
+
+          bzr launchpad-login
+
+      Set the Launchpad ID of the current user to 'bob'::
+
+          bzr launchpad-login bob
+    """
+    aliases = ['lp-login']
+    takes_args = ['name?']
+    takes_options = [
+        Option('no-check',
+               "Don't check that the user name is valid."),
+        ]
+
+    def run(self, name=None, no_check=False):
+        from bzrlib.plugins.launchpad import account
+        check_account = not no_check
+
+        if name is None:
+            username = account.get_lp_login()
+            if username:
+                if check_account:
+                    account.check_lp_login(username)
+                self.outf.write(username + '\n')
+            else:
+                self.outf.write('No Launchpad user ID configured.\n')
+                return 1
+        else:
+            if check_account:
+                account.check_lp_login(name)
+            account.set_lp_login(name)
+
+register_command(cmd_launchpad_login)
+
+
 register_lazy_transport(
     'lp:',
     'bzrlib.plugins.launchpad.lp_indirect',
@@ -127,12 +168,12 @@ register_lazy_transport(
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
-    import test_register
-    import test_lp_indirect
+    from bzrlib.plugins.launchpad import (
+        test_register, test_lp_indirect, test_account)
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [test_register, test_lp_indirect]:
+    for m in [test_register, test_lp_indirect, test_account]:
         suite.addTests(loader.loadTestsFromModule(m))
     return suite
 

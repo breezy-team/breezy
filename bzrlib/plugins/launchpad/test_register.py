@@ -22,7 +22,7 @@ import xmlrpclib
 from bzrlib.tests import TestCase, TestSkipped
 
 # local import
-from lp_registration import (
+from bzrlib.plugins.launchpad.lp_registration import (
         BaseRequest,
         BranchBugLinkRequest,
         BranchRegistrationRequest,
