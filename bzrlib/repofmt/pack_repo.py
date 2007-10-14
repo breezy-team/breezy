@@ -92,10 +92,38 @@ class PackRootCommitBuilder(RootCommitBuilder):
 
 
 class Pack(object):
-    """An in memory proxy for a .pack and its indices."""
+    """An in memory proxy for a pack and its indices.
+
+    This is a base class that is not directly used, instead the classes
+    ExistingPack and NewPack are used.
+    """
+
+    def __init__(self):
+        pass
+
+    def revision_index_name(self, name):
+        """The revision index is the name + .rix."""
+        return name + '.rix'
+
+    def signature_index_name(self, name):
+        """The signature index is the name + .six."""
+        return name + '.six'
+
+    def text_index_name(self, name):
+        """The text index is the name + .tix."""
+        return name + '.tix'
+
+    def inventory_index_name(self, name):
+        """The inv index is the name + .iix."""
+        return name + '.iix'
+
+
+class ExistingPack(Pack):
+    """An in memory proxy for an exisiting .pack and its disk indices."""
 
     def __init__(self, transport, name, revision_index, inventory_index,
         text_index, signature_index):
+        Pack.__init__(self)
         self.revision_index = revision_index
         self.inventory_index = inventory_index
         self.text_index = text_index
@@ -121,6 +149,10 @@ class Pack(object):
 
     def get_revision_count(self):
         return self.revision_index.key_count()
+
+
+class NewPack(Pack):
+    """An in memory proxy for a pack which is being created."""
 
 
 class RepositoryPackCollection(object):
@@ -257,7 +289,7 @@ class RepositoryPackCollection(object):
     def flush_revision_signature_indices(self, new_name):
         """Write out pending indices."""
         # write a revision index (might be empty)
-        new_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
+        new_index_name = NewPack().revision_index_name(new_name)
         revision_index_length = self._index_transport.put_file(
             new_index_name, self.repo._revision_write_index.finish())
         rev_index = GraphIndex(self._index_transport, new_index_name,
@@ -280,7 +312,7 @@ class RepositoryPackCollection(object):
             self.repo._revision_knit_access.set_writer(None, None, (None, None))
 
         # write a signatures index (might be empty)
-        new_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
+        new_index_name = NewPack().signature_index_name(new_name)
         signature_index_length = self._index_transport.put_file(
             new_index_name, self.repo._signature_write_index.finish())
         self.repo._signature_write_index = None
@@ -300,7 +332,7 @@ class RepositoryPackCollection(object):
     def flush_inventory_index(self, new_name):
         """Write the index out to new_name."""
         # write an index (might be empty)
-        new_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
+        new_index_name = NewPack().inventory_index_name(new_name)
         inventory_index_length = self._index_transport.put_file(
             new_index_name, self.repo._inv_write_index.finish())
         self.repo._inv_write_index = None
@@ -322,7 +354,7 @@ class RepositoryPackCollection(object):
     def flush_text_index(self, new_name):
         """Write the index out to new_name."""
         # write a revision index (might be empty)
-        new_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
+        new_index_name = NewPack().text_index_name(new_name)
         text_index_length = self._index_transport.put_file(
             new_index_name, self.repo._text_write_index.finish())
         txt_index = GraphIndex(self._index_transport, new_index_name,
@@ -503,8 +535,9 @@ class RepositoryPackCollection(object):
             self._upload_transport.delete(random_name)
             return None
         # write indices
+        new_pack = NewPack()
         index_transport = self._index_transport
-        rev_index_name = self.repo._revision_store.name_to_revision_index_name(new_name)
+        rev_index_name = new_pack.revision_index_name(new_name)
         revision_index_length = index_transport.put_file(rev_index_name,
             revision_index.finish())
         if 'fetch' in debug.debug_flags:
@@ -512,7 +545,7 @@ class RepositoryPackCollection(object):
             mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
-        inv_index_name = self.repo._inv_thunk.name_to_inv_index_name(new_name)
+        inv_index_name = new_pack.inventory_index_name(new_name)
         inventory_index_length = index_transport.put_file(inv_index_name,
             inv_index.finish())
         if 'fetch' in debug.debug_flags:
@@ -520,7 +553,7 @@ class RepositoryPackCollection(object):
             mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
-        text_index_name = self.repo.weave_store.name_to_text_index_name(new_name)
+        text_index_name = new_pack.text_index_name(new_name)
         text_index_length = index_transport.put_file(text_index_name,
             text_index.finish())
         if 'fetch' in debug.debug_flags:
@@ -528,7 +561,7 @@ class RepositoryPackCollection(object):
             mutter('%s: create_pack: wrote file texts index: %s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
-        signature_index_name = self.repo._revision_store.name_to_signature_index_name(new_name)
+        signature_index_name = new_pack.signature_index_name(new_name)
         signature_index_length = index_transport.put_file(signature_index_name,
             signature_index.finish())
         if 'fetch' in debug.debug_flags:
@@ -543,7 +576,7 @@ class RepositoryPackCollection(object):
         # uploading blind under the chosen name.
         write_stream.close()
         self._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
-        result = Pack(self._upload_transport.clone('../packs/'), new_name,
+        result = ExistingPack(self._upload_transport.clone('../packs/'), new_name,
             revision_index, inv_index, text_index, signature_index)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
@@ -768,8 +801,8 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix')
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
-            result = Pack(self._pack_transport, name, rev_index, inv_index,
-                txt_index, sig_index)
+            result = ExistingPack(self._pack_transport, name, rev_index,
+                inv_index, txt_index, sig_index)
             self.add_pack_to_memory(result)
             return result
 
@@ -1054,7 +1087,7 @@ class RepositoryPackCollection(object):
             rev_index, revision_index_length, \
                 sig_index, signature_index_length = \
                 self.flush_revision_signature_indices(new_name)
-            new_pack = Pack(self._upload_transport.clone('../packs/'),
+            new_pack = ExistingPack(self._upload_transport.clone('../packs/'),
                 new_name, rev_index, inv_index, txt_index, sig_index)
             self._write_stream.close()
             self._upload_transport.rename(self.repo._open_pack_tuple[1],
@@ -1171,14 +1204,6 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             return True
         return False
 
-    def name_to_revision_index_name(self, name):
-        """The revision index is the name + .rix."""
-        return name + '.rix'
-
-    def name_to_signature_index_name(self, name):
-        """The signature index is the name + .six."""
-        return name + '.six'
-
     def setup(self):
         # setup in-memory indices to accumulate data.
         self.repo._revision_write_index = InMemoryGraphIndex(1)
@@ -1283,10 +1308,6 @@ class GraphKnitTextStore(VersionedFileStore):
             ids.add(key[0])
         return iter(ids)
 
-    def name_to_text_index_name(self, name):
-        """The text index is the name + .tix."""
-        return name + '.tix'
-
     def setup(self):
         # setup in-memory indices to accumulate data.
         self.repo._text_write_index = InMemoryGraphIndex(reference_lists=2,
@@ -1366,10 +1387,6 @@ class InventoryKnitThunk(object):
             index=knit_index,
             factory=knit.KnitPlainFactory(),
             access_method=knit_access)
-
-    def name_to_inv_index_name(self, name):
-        """The inv index is the name + .iix."""
-        return name + '.iix'
 
     def setup(self):
         # setup in-memory indices to accumulate data.

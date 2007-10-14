@@ -1100,7 +1100,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
             packs._names[name][2])
         sig_index = GraphIndex(packs._index_transport, name + '.six',
             packs._names[name][3])
-        self.assertEqual(pack_repo.Pack(packs._pack_transport,
+        self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
                 packs.names()[0], rev_index, inv_index, txt_index, sig_index),
             pack_1)
         # and the same instance should be returned on successive calls.
@@ -1123,8 +1123,8 @@ class TestPack(TestCaseWithTransport):
         self.assertTrue(right != left)
 
     def test___eq____ne__(self):
-        left = pack_repo.Pack('', '', '', '', '', '')
-        right = pack_repo.Pack('', '', '', '', '', '')
+        left = pack_repo.ExistingPack('', '', '', '', '', '')
+        right = pack_repo.ExistingPack('', '', '', '', '', '')
         self.assertCurrentlyEqual(left, right)
         # change all attributes and ensure equality changes as we do.
         left.revision_index = 'a'
@@ -1153,5 +1153,5 @@ class TestPack(TestCaseWithTransport):
         self.assertCurrentlyEqual(left, right)
 
     def test_file_name(self):
-        pack = pack_repo.Pack('', 'a_name', '', '', '', '')
+        pack = pack_repo.ExistingPack('', 'a_name', '', '', '', '')
         self.assertEqual('a_name.pack', pack.file_name())
