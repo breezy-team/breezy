@@ -203,21 +203,6 @@ class RepositoryPackCollection(object):
             result.append(self.get_pack_by_name(name))
         return result
 
-    def all_pack_details(self):
-        """Return a list of all the packs as transport,name tuples.
-
-        :return: A list of (transport, name) tuples for all the packs in the
-            repository.
-        """
-        # XXX: fix me, should be direct rather than indirect
-        if self.repo._revision_all_indices is None:
-            # trigger creation of the all revision index.
-            self.repo._revision_store.get_revision_file(self.repo.get_transaction())
-        result = []
-        for index, transport_and_name in self.repo._revision_pack_map.iteritems():
-            result.append(transport_and_name)
-        return result
-
     def autopack(self):
         """Pack the pack collection incrementally.
         
