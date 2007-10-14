@@ -33,7 +33,8 @@ from bzrlib.transport import (
     Transport,
     )
 
-from lp_registration import LaunchpadService, ResolveLaunchpadPathRequest
+from bzrlib.plugins.launchpad.lp_registration import (
+    LaunchpadService, ResolveLaunchpadPathRequest)
 
 
 def launchpad_transport_indirect(

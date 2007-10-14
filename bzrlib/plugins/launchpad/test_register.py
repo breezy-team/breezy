@@ -249,7 +249,7 @@ class TestBranchRegistration(TestCase):
         test_case = self
         class MockService(MockLaunchpadService):
             def send_request(self, method_name, method_params, authenticated):
-                test_case.assertEquals(method_name, "resolve_lp_url")
+                test_case.assertEquals(method_name, "resolve_lp_path")
                 test_case.assertEquals(list(method_params), ['bzr'])
                 test_case.assertEquals(authenticated, False)
                 return dict(urls=[
