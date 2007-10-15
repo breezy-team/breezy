@@ -265,7 +265,7 @@ class Commit(object):
         self.verbose = verbose
         # accumulates an inventory delta to the basis entry, so we can make
         # just the necessary updates to the workingtree's cached basis.
-        self.basis_delta = []
+        self._basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -388,7 +388,7 @@ class Commit(object):
             # selective commit while a merge is still pending - then we'd
             # still have multiple parents after the commit.
             self.work_tree.update_basis_by_delta(self.rev_id,
-                self.basis_delta)
+                self._basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -407,7 +407,7 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # TODO: we could simplify this by using self.basis_delta.
+        # TODO: we could simplify this by using self._basis_delta.
 
         # The inital commit adds a root directory, but this in itself is not
         # a worthwhile commit.  
@@ -672,7 +672,7 @@ class Commit(object):
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
-                if delta: self.basis_delta.append(delta)
+                if delta: self._basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
@@ -686,7 +686,7 @@ class Commit(object):
             deleted.sort()
             # XXX: this is not quite directory-order sorting
             for path, file_id in deleted:
-                self.basis_delta.append((path, None, file_id, None))
+                self._basis_delta.append((path, None, file_id, None))
                 self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
@@ -796,7 +796,7 @@ class Commit(object):
         delta, version_recorded = self.builder.record_entry_contents(ie,
             self.parent_invs, path, self.work_tree, content_summary)
         if delta:
-            self.basis_delta.append(delta)
+            self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:
