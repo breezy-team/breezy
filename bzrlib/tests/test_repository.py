@@ -1169,6 +1169,7 @@ class TestNewPack(TestCaseWithTransport):
         pack = pack_repo.NewPack(upload_transport, index_transport,
             pack_transport)
         self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
+        self.assertIsInstance(pack.inventory_index, InMemoryGraphIndex)
         self.assertIsInstance(pack._hash, type(md5.new()))
         self.assertTrue(pack.upload_transport is upload_transport)
         self.assertTrue(pack.index_transport is index_transport)

@@ -98,13 +98,16 @@ class Pack(object):
     ExistingPack and NewPack are used.
     """
 
-    def __init__(self, revision_index):
+    def __init__(self, revision_index, inventory_index):
         """Create a pack instance.
 
         :param revision_index: A GraphIndex for determining what revisions are
             present in the Pack and accessing the locations of their texts.
+        :param inventory_index: A GraphIndex for determining what inventories are
+            present in the Pack and accessing the locations of their texts.
         """
         self.revision_index = revision_index
+        self.inventory_index = inventory_index
 
     def get_revision_count(self):
         return self.revision_index.key_count()
@@ -131,8 +134,7 @@ class ExistingPack(Pack):
 
     def __init__(self, transport, name, revision_index, inventory_index,
         text_index, signature_index):
-        Pack.__init__(self, revision_index)
-        self.inventory_index = inventory_index
+        Pack.__init__(self, revision_index, inventory_index)
         self.text_index = text_index
         self.signature_index = signature_index
         self.name = name
@@ -171,7 +173,14 @@ class NewPack(Pack):
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
         """
-        Pack.__init__(self, InMemoryGraphIndex(reference_lists=1))
+        Pack.__init__(self,
+            # Revisions: parents list, no text compression.
+            InMemoryGraphIndex(reference_lists=1),
+            # Inventory: We want to map compression only, but currently the
+            # knit code hasn't been updated enough to understand that, so we
+            # have a regular 2-list index giving parents and compression
+            # source.
+            InMemoryGraphIndex(reference_lists=2))
         # where should the new pack be opened
         self.upload_transport = upload_transport
         # where are indices written out to
@@ -181,7 +190,7 @@ class NewPack(Pack):
         # tracks the content written to the .pack file.
         self._hash = md5.new()
         # a four-tuple with the length in bytes of the indices, once the pack
-        # is finalised.
+        # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
         # the temporary pack file name.
         self.random_name = rand_chars(20) + upload_suffix
@@ -201,12 +210,22 @@ class NewPack(Pack):
         """
         new_name = self._hash.hexdigest()
         self.index_sizes = [None, None, None, None]
+
         revision_index_name = self.revision_index_name(new_name)
         self.index_sizes[0] = self.index_transport.put_file(
             revision_index_name, self.revision_index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
+                time.ctime(), self.upload_transport.base, self.random_name,
+                time.time() - self.start_time)
+
+        inv_index_name = self.inventory_index_name(new_name)
+        self.index_sizes[1] = self.index_transport.put_file(inv_index_name,
+            self.inventory_index.finish())
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
 
@@ -381,16 +400,13 @@ class RepositoryPackCollection(object):
             del self.repo._signature_all_indices._indices[1]
             # reset the knit access writer
             self.repo._signature_knit_access.set_writer(None, None, (None, None))
-        return (rev_index, revision_index_length, sig_index,
+        return (rev_index, sig_index,
             signature_index_length)
 
-    def flush_inventory_index(self, new_name):
+    def flush_inventory_index(self, new_name, inventory_index_length):
         """Write the index out to new_name."""
         # write an index (might be empty)
         new_index_name = self._new_pack.inventory_index_name(new_name)
-        inventory_index_length = self._index_transport.put_file(
-            new_index_name, self.repo._inv_write_index.finish())
-        self.repo._inv_write_index = None
         inv_index = GraphIndex(self._index_transport, new_index_name,
             inventory_index_length)
         if self.repo._inv_all_indices is not None:
@@ -404,7 +420,7 @@ class RepositoryPackCollection(object):
             self.repo._inv_knit_access.set_writer(None, None, (None, None))
         else:
             self.repo._inv_pack_map = None
-        return inv_index, inventory_index_length
+        return inv_index
 
     def flush_text_index(self, new_name):
         """Write the index out to new_name."""
@@ -485,7 +501,6 @@ class RepositoryPackCollection(object):
         writer = pack.ContainerWriter(write_data)
         writer.begin()
         # open new indices
-        inv_index = InMemoryGraphIndex(reference_lists=2)
         text_index = InMemoryGraphIndex(reference_lists=2, key_elements=2)
         signature_index = InMemoryGraphIndex(reference_lists=0)
         # select revisions
@@ -518,7 +533,7 @@ class RepositoryPackCollection(object):
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            writer, inv_index, output_lines=True)
+            writer, new_pack.inventory_index, output_lines=True)
         if revision_ids:
             fileid_revisions = self.repo._find_file_ids_from_xml_inventory_lines(
                 inv_lines, revision_ids)
@@ -533,7 +548,7 @@ class RepositoryPackCollection(object):
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
-                inv_index.key_count(),
+                new_pack.inventory_index.key_count(),
                 time.time() - new_pack.start_time)
         # select text keys
         text_index_map = self._packs_list_to_pack_map_and_index_list(
@@ -585,7 +600,7 @@ class RepositoryPackCollection(object):
         new_name = new_pack._hash.hexdigest()
         # if nothing has been written, discard the new pack.
         if 0 == sum((new_pack.get_revision_count(),
-            inv_index.key_count(),
+            new_pack.inventory_index.key_count(),
             text_index.key_count(),
             signature_index.key_count(),
             )):
@@ -595,14 +610,8 @@ class RepositoryPackCollection(object):
         index_transport = self._index_transport
         new_pack.finish()
         revision_index_length = new_pack.index_sizes[0]
-        inv_index_name = new_pack.inventory_index_name(new_name)
-        inventory_index_length = index_transport.put_file(inv_index_name,
-            inv_index.finish())
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
-                time.time() - new_pack.start_time)
+        inventory_index_length = new_pack.index_sizes[1]
+
         text_index_name = new_pack.text_index_name(new_name)
         text_index_length = index_transport.put_file(text_index_name,
             text_index.finish())
@@ -627,7 +636,8 @@ class RepositoryPackCollection(object):
         write_stream.close()
         self._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
         result = ExistingPack(self._upload_transport.clone('../packs/'), new_name,
-            new_pack.revision_index, inv_index, text_index, signature_index)
+            new_pack.revision_index, new_pack.inventory_index, text_index,
+            signature_index)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
@@ -996,8 +1006,6 @@ class RepositoryPackCollection(object):
         self.repo._text_all_indices = None
         # and the pack map
         self.repo._text_pack_map = None
-        # remove any accumlating index of inv data
-        self.repo._inv_write_index = None
         # remove all constructed inv data indices
         self.repo._inv_all_indices = None
         # remove the knit access object
@@ -1130,9 +1138,9 @@ class RepositoryPackCollection(object):
             new_name = self._new_pack._hash.hexdigest()
             self._new_pack.finish()
             txt_index, text_index_length = self.flush_text_index(new_name)
-            inv_index, inventory_index_length = \
-                self.flush_inventory_index(new_name)
-            rev_index, revision_index_length, \
+            inv_index = \
+                self.flush_inventory_index(new_name, self._new_pack.index_sizes[1])
+            rev_index, \
                 sig_index, signature_index_length = \
                 self.flush_revision_signature_indices(new_name,
                 self._new_pack.index_sizes[0])
@@ -1147,8 +1155,8 @@ class RepositoryPackCollection(object):
             # - the existing name is not the actual hash - e.g.
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
-            self.allocate(new_name, revision_index_length,
-                inventory_index_length, text_index_length,
+            self.allocate(new_name, self._new_pack.index_sizes[0],
+                self._new_pack.index_sizes[1], text_index_length,
                 signature_index_length)
             self.repo._open_pack_tuple = None
             self._new_pack = None
@@ -1398,8 +1406,8 @@ class InventoryKnitThunk(object):
 
     def data_inserted(self):
         # XXX: Should we define __len__ for indices?
-        if (getattr(self.repo, '_inv_write_index', None) and
-            self.repo._inv_write_index.key_count()):
+        if (self.repo._packs._new_pack is not None and
+            self.repo._packs._new_pack.inventory_index.key_count()):
             return True
 
     def _ensure_all_index(self):
@@ -1409,7 +1417,7 @@ class InventoryKnitThunk(object):
         pack_map, indices = self.repo._packs._make_index_map('.iix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
-            indices.append(self.repo._inv_write_index)
+            indices.append(self.repo._packs._new_pack.inventory_index)
         self.repo._inv_all_indices = CombinedGraphIndex(indices)
         self.repo._inv_pack_map = pack_map
 
@@ -1418,9 +1426,9 @@ class InventoryKnitThunk(object):
         self._ensure_all_index()
         filename = 'inventory'
         if self.repo.is_in_write_group():
-            add_callback = self.repo._inv_write_index.add_nodes
-            self.repo._inv_pack_map[self.repo._inv_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._open_pack_writer, self.repo._inv_write_index
+            add_callback = self.repo._packs._new_pack.inventory_index.add_nodes
+            self.repo._inv_pack_map[self.repo._packs._new_pack.inventory_index] = self.repo._open_pack_tuple
+            writer = self.repo._packs._open_pack_writer, self.repo._packs._new_pack.inventory_index
         else:
             add_callback = None # no data-adding permitted.
             writer = None
@@ -1438,13 +1446,9 @@ class InventoryKnitThunk(object):
 
     def setup(self):
         # setup in-memory indices to accumulate data.
-        # - we want to map compression only, but currently the knit code hasn't
-        # been updated enough to understand that, so we have a regular 2-list
-        # index giving parents and compression source.
-        self.repo._inv_write_index = InMemoryGraphIndex(reference_lists=2)
         # if we have created an inventory index, add the new write index to it
         if getattr(self.repo, '_inv_all_indices', None) is not None:
-            self.repo._inv_all_indices.insert_index(0, self.repo._inv_write_index)
+            self.repo._inv_all_indices.insert_index(0, self.repo._packs._new_pack.inventory_index)
             # we don't bother updating the knit layer, because there is not
             # defined interface for adding inventories that should need the 
             # existing knit to be changed - its all behind 'repo.add_inventory'.
