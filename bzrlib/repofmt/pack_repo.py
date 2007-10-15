@@ -98,16 +98,21 @@ class Pack(object):
     ExistingPack and NewPack are used.
     """
 
-    def __init__(self, revision_index, inventory_index):
+    def __init__(self, revision_index, inventory_index, text_index):
         """Create a pack instance.
 
         :param revision_index: A GraphIndex for determining what revisions are
             present in the Pack and accessing the locations of their texts.
         :param inventory_index: A GraphIndex for determining what inventories are
-            present in the Pack and accessing the locations of their texts.
+            present in the Pack and accessing the locations of their
+            texts/deltas.
+        :param text_index: A GraphIndex for determining what file texts
+        are present in the pack and accessing the locations of their
+        texts/deltas (via (fileid, revisionid) tuples).
         """
         self.revision_index = revision_index
         self.inventory_index = inventory_index
+        self.text_index = text_index
 
     def get_revision_count(self):
         return self.revision_index.key_count()
@@ -134,7 +139,7 @@ class ExistingPack(Pack):
 
     def __init__(self, transport, name, revision_index, inventory_index,
         text_index, signature_index):
-        Pack.__init__(self, revision_index, inventory_index)
+        Pack.__init__(self, revision_index, inventory_index, text_index)
         self.text_index = text_index
         self.signature_index = signature_index
         self.name = name
@@ -180,7 +185,11 @@ class NewPack(Pack):
             # knit code hasn't been updated enough to understand that, so we
             # have a regular 2-list index giving parents and compression
             # source.
-            InMemoryGraphIndex(reference_lists=2))
+            InMemoryGraphIndex(reference_lists=2),
+            # Texts: compression and per file graph, for all fileids - so two
+            # reference lists and two elements in the key tuple.
+            InMemoryGraphIndex(reference_lists=2, key_elements=2),
+            )
         # where should the new pack be opened
         self.upload_transport = upload_transport
         # where are indices written out to
@@ -210,24 +219,30 @@ class NewPack(Pack):
         """
         new_name = self._hash.hexdigest()
         self.index_sizes = [None, None, None, None]
+        self._write_index(new_name, self.revision_index, 0,
+            self.revision_index_name, 'revision')
+        self._write_index(new_name, self.inventory_index, 1,
+            self.inventory_index_name, 'inventory')
+        self._write_index(new_name, self.text_index, 2,
+            self.text_index_name, 'file texts')
 
-        revision_index_name = self.revision_index_name(new_name)
-        self.index_sizes[0] = self.index_transport.put_file(
-            revision_index_name, self.revision_index.finish())
+    def _write_index(self, new_name, index, index_offset, name_getter, label):
+        """Write out an index.
+
+        :param new_name: The basename of the pack.
+        :param index: The index object to serialise.
+        :param index_offset: Where in self.index_sizes to remember this.
+        :param name_getter: What to use to get the name of the index on disk.
+        :param label: What label to give the index e.g. 'revision'.
+        """
+        index_name = name_getter(new_name)
+        self.index_sizes[index_offset] = self.index_transport.put_file(
+            index_name, index.finish())
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
-            mutter('%s: create_pack: wrote revision index: %s%s t+%6.3fs',
-                time.ctime(), self.upload_transport.base, self.random_name,
-                time.time() - self.start_time)
-
-        inv_index_name = self.inventory_index_name(new_name)
-        self.index_sizes[1] = self.index_transport.put_file(inv_index_name,
-            self.inventory_index.finish())
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: wrote inventory index: %s%s t+%6.3fs',
-                time.ctime(), self.upload_transport.base, self.random_name,
-                time.time() - self.start_time)
+            mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
+                time.ctime(), label, self.upload_transport.base,
+                self.random_name, time.time() - self.start_time)
 
 
 class RepositoryPackCollection(object):
@@ -293,7 +308,7 @@ class RepositoryPackCollection(object):
         file_id_index = GraphIndexPrefixAdapter(
             self.repo._text_all_indices,
             (file_id, ), 1,
-            add_nodes_callback=self.repo._text_write_index.add_nodes)
+            add_nodes_callback=self.repo._packs._new_pack.text_index.add_nodes)
         self.repo._text_knit._index._graph_index = file_id_index
         self.repo._text_knit._index._add_callback = file_id_index.add_nodes
         return self.repo._text_knit.add_lines_with_ghosts(
@@ -422,15 +437,12 @@ class RepositoryPackCollection(object):
             self.repo._inv_pack_map = None
         return inv_index
 
-    def flush_text_index(self, new_name):
+    def flush_text_index(self, new_name, text_index_length):
         """Write the index out to new_name."""
         # write a revision index (might be empty)
         new_index_name = self._new_pack.text_index_name(new_name)
-        text_index_length = self._index_transport.put_file(
-            new_index_name, self.repo._text_write_index.finish())
         txt_index = GraphIndex(self._index_transport, new_index_name,
             text_index_length)
-        self.repo._text_write_index = None
         self.repo.weave_store._setup_knit(False)
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used, replace the mutated memory index
@@ -440,7 +452,7 @@ class RepositoryPackCollection(object):
             # remove the write buffering index. XXX: API break
             # - clearly we need a remove_index call too.
             del self.repo._text_all_indices._indices[1]
-        return txt_index, text_index_length
+        return txt_index
 
     def create_pack_from_packs(self, packs, suffix, revision_ids=None):
         """Create a new pack by reading data from other packs.
@@ -501,7 +513,6 @@ class RepositoryPackCollection(object):
         writer = pack.ContainerWriter(write_data)
         writer.begin()
         # open new indices
-        text_index = InMemoryGraphIndex(reference_lists=2, key_elements=2)
         signature_index = InMemoryGraphIndex(reference_lists=0)
         # select revisions
         if revision_ids:
@@ -572,11 +583,11 @@ class RepositoryPackCollection(object):
                     a_missing_key[0])
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
-            text_index))
+            new_pack.text_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
-                text_index.key_count(),
+                new_pack.text_index.key_count(),
                 time.time() - new_pack.start_time)
         # select signature keys
         signature_filter = revision_keys # same keyspace
@@ -601,7 +612,7 @@ class RepositoryPackCollection(object):
         # if nothing has been written, discard the new pack.
         if 0 == sum((new_pack.get_revision_count(),
             new_pack.inventory_index.key_count(),
-            text_index.key_count(),
+            new_pack.text_index.key_count(),
             signature_index.key_count(),
             )):
             self._upload_transport.delete(random_name)
@@ -611,15 +622,8 @@ class RepositoryPackCollection(object):
         new_pack.finish()
         revision_index_length = new_pack.index_sizes[0]
         inventory_index_length = new_pack.index_sizes[1]
+        text_index_length = new_pack.index_sizes[2]
 
-        text_index_name = new_pack.text_index_name(new_name)
-        text_index_length = index_transport.put_file(text_index_name,
-            text_index.finish())
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: wrote file texts index: %s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
-                time.time() - new_pack.start_time)
         signature_index_name = new_pack.signature_index_name(new_name)
         signature_index_length = index_transport.put_file(signature_index_name,
             signature_index.finish())
@@ -636,7 +640,7 @@ class RepositoryPackCollection(object):
         write_stream.close()
         self._upload_transport.rename(random_name, '../packs/' + new_name + '.pack')
         result = ExistingPack(self._upload_transport.clone('../packs/'), new_name,
-            new_pack.revision_index, new_pack.inventory_index, text_index,
+            new_pack.revision_index, new_pack.inventory_index, new_pack.text_index,
             signature_index)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
@@ -996,8 +1000,6 @@ class RepositoryPackCollection(object):
         self.repo._signature_write_index = None
         self.repo._signature_all_indices = None
         self.repo._signature_knit_access = None
-        # remove any accumlating index of text data
-        self.repo._text_write_index = None
         # no access object.
         self.repo._text_knit_access = None
         # no write-knit
@@ -1137,7 +1139,8 @@ class RepositoryPackCollection(object):
             self._open_pack_writer.end()
             new_name = self._new_pack._hash.hexdigest()
             self._new_pack.finish()
-            txt_index, text_index_length = self.flush_text_index(new_name)
+            txt_index = \
+                self.flush_text_index(new_name, self._new_pack.index_sizes[2])
             inv_index = \
                 self.flush_inventory_index(new_name, self._new_pack.index_sizes[1])
             rev_index, \
@@ -1156,7 +1159,7 @@ class RepositoryPackCollection(object):
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
             self.allocate(new_name, self._new_pack.index_sizes[0],
-                self._new_pack.index_sizes[1], text_index_length,
+                self._new_pack.index_sizes[1], self._new_pack.index_sizes[2],
                 signature_index_length)
             self.repo._open_pack_tuple = None
             self._new_pack = None
@@ -1313,9 +1316,8 @@ class GraphKnitTextStore(VersionedFileStore):
         self._transport = weavestore._transport
 
     def data_inserted(self):
-        # XXX: Should we define __len__ for indices?
-        if (getattr(self.repo, '_text_write_index', None) and
-            self.repo._text_write_index.key_count()):
+        if (self.repo._packs._new_pack is not None and
+            self.repo._packs._new_pack.text_index.key_count()):
             return True
 
     def _ensure_all_index(self, for_write=None):
@@ -1326,7 +1328,7 @@ class GraphKnitTextStore(VersionedFileStore):
         self.repo._text_pack_map = pack_map
         if for_write or self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
-            indices.insert(0, self.repo._text_write_index)
+            indices.insert(0, self.repo._packs._new_pack.text_index)
         self._setup_knit(self.repo.is_in_write_group())
         self.repo._text_all_indices = CombinedGraphIndex(indices)
 
@@ -1337,8 +1339,8 @@ class GraphKnitTextStore(VersionedFileStore):
         """
         self._ensure_all_index()
         if force_write or self.repo.is_in_write_group():
-            add_callback = self.repo._text_write_index.add_nodes
-            self.repo._text_pack_map[self.repo._text_write_index] = self.repo._open_pack_tuple
+            add_callback = self.repo._packs._new_pack.text_index.add_nodes
+            self.repo._text_pack_map[self.repo._packs._new_pack.text_index] = self.repo._open_pack_tuple
         else:
             add_callback = None # no data-adding permitted.
 
@@ -1365,9 +1367,6 @@ class GraphKnitTextStore(VersionedFileStore):
         return iter(ids)
 
     def setup(self):
-        # setup in-memory indices to accumulate data.
-        self.repo._text_write_index = InMemoryGraphIndex(reference_lists=2,
-            key_elements=2)
         # we require that text 'knits' be accessed from within the write 
         # group to be able to be written to, simply because it makes this
         # code cleaner - we don't need to track all 'open' knits and 
@@ -1378,7 +1377,7 @@ class GraphKnitTextStore(VersionedFileStore):
     
     def _setup_knit(self, for_write):
         if for_write:
-            writer = (self.repo._packs._open_pack_writer, self.repo._text_write_index)
+            writer = (self.repo._packs._open_pack_writer, self.repo._packs._new_pack.text_index)
         else:
             writer = None
         self.repo._text_knit_access = _PackAccess(
