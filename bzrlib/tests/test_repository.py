@@ -22,6 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
+import md5
 from stat import S_ISDIR
 from StringIO import StringIO
 
@@ -1160,6 +1161,7 @@ class TestPack(TestCaseWithTransport):
 class TestNewPack(TestCaseWithTransport):
     """Tests for pack_repo.NewPack."""
 
-    def test_new_instance_has_new_indices(self):
+    def test_new_instance_attributes(self):
         pack = pack_repo.NewPack()
         self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
+        self.assertIsInstance(pack._hash, type(md5.new()))

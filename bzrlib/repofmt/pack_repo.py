@@ -160,6 +160,8 @@ class NewPack(Pack):
 
     def __init__(self):
         Pack.__init__(self, InMemoryGraphIndex(1))
+        # tracks the content written to the .pack file.
+        self._hash = md5.new()
 
 
 class RepositoryPackCollection(object):
@@ -187,6 +189,8 @@ class RepositoryPackCollection(object):
         self._packs = {}
         # the previous pack-names content
         self._packs_at_load = None
+        # when a pack is being created by this object, the state of that pack.
+        self._new_pack = None
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -421,9 +425,9 @@ class RepositoryPackCollection(object):
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, random_name,
                 time.time() - start_time)
-        pack_hash = md5.new()
+        new_pack = NewPack()
         buffer = []
-        def write_data(bytes, update=pack_hash.update, write=write_stream.write):
+        def write_data(bytes, update=new_pack._hash.update, write=write_stream.write):
             buffer.append(bytes)
             if len(buffer) == 640:
                 bytes = ''.join(buffer)
@@ -530,8 +534,8 @@ class RepositoryPackCollection(object):
         if len(buffer):
             bytes = ''.join(buffer)
             write_stream.write(bytes)
-            pack_hash.update(bytes)
-        new_name = pack_hash.hexdigest()
+            new_pack._hash.update(bytes)
+        new_name = new_pack._hash.hexdigest()
         # if nothing has been written, discard the new pack.
         if 0 == sum((revision_index.key_count(),
             inv_index.key_count(),
@@ -1064,14 +1068,13 @@ class RepositoryPackCollection(object):
         self.repo._open_pack_tuple = (self._upload_transport, random_name + '.pack')
         write_stream = self._upload_transport.open_write_stream(random_name + '.pack')
         self._write_stream = write_stream
-        self._open_pack_hash = md5.new()
+        self.setup()
         def write_data(bytes, write=write_stream.write,
-                       update=self._open_pack_hash.update):
+                       update=self._new_pack._hash.update):
             write(bytes)
             update(bytes)
         self._open_pack_writer = pack.ContainerWriter(write_data)
         self._open_pack_writer.begin()
-        self.setup()
         self.repo._revision_store.setup()
         self.repo.weave_store.setup()
         self.repo._inv_thunk.setup()
@@ -1080,7 +1083,6 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         self.reset()
-        self._open_pack_hash = None
 
     def _commit_write_group(self):
         data_inserted = (self.repo._revision_store.data_inserted() or
@@ -1088,7 +1090,7 @@ class RepositoryPackCollection(object):
             self.repo._inv_thunk.data_inserted())
         if data_inserted:
             self._open_pack_writer.end()
-            new_name = self._open_pack_hash.hexdigest()
+            new_name = self._new_pack._hash.hexdigest()
             txt_index, text_index_length = self.flush_text_index(new_name)
             inv_index, inventory_index_length = \
                 self.flush_inventory_index(new_name)
@@ -1118,7 +1120,6 @@ class RepositoryPackCollection(object):
         # forget what names there are - should just refresh and deal with the
         # delta.
         self.reset()
-        self._open_pack_hash = None
         self._write_stream = None
 
 
