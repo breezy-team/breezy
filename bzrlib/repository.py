@@ -658,6 +658,10 @@ class Repository(object):
     def is_locked(self):
         return self.control_files.is_locked()
 
+    def is_write_locked(self):
+        """Return True if this object is write locked."""
+        return self.is_locked() and self.control_files._lock_mode == 'w'
+
     def lock_write(self, token=None):
         """Lock this repository for writing.
 
@@ -915,7 +919,7 @@ class Repository(object):
 
         :return: None.
         """
-        if not self.is_locked() or self.control_files._lock_mode != 'w':
+        if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
         if self._write_group:
             raise errors.BzrError('already in a write group')

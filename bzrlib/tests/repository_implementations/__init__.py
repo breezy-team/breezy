@@ -524,7 +524,6 @@ all_broken_scenario_classes = [
     
 
 def test_suite():
-
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
@@ -547,7 +546,6 @@ def test_suite():
     format_scenarios = (disk_format_adapter.scenarios +
                         remote_repo_adapter.scenarios)
 
-
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [
         'test_break_lock',
@@ -557,6 +555,7 @@ def test_suite():
         'test_fetch',
         'test_fileid_involved',
         'test_has_same_location',
+        'test_is_write_locked',
         'test_iter_reverse_revision_history',
         'test_pack',
         'test_reconcile',
