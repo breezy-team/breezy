@@ -548,7 +548,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
 
     def test_info(self):
-        bzr = self.run_bzr_decode
-        bzr(['branch', u'.', self.info['directory']])
-        bzr(['info', self.info['directory']])
-        bzr(['info', self.info['directory']], encoding='ascii')
+        self.run_bzr_decode(['branch', u'.', self.info['directory']])
+        self.run_bzr_decode(['info', self.info['directory']])
+        self.run_bzr_decode(['info', self.info['directory']],
+                            encoding='ascii')

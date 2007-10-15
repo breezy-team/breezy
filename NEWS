@@ -130,7 +130,9 @@ IN DEVELOPMENT
    * Trivial fix for invoking command ``reconfigure`` without arguments.
      (Rob Weir, #141629)
 
-   * Unicode-safe output from ``bzr info``. (Lukáš Lalinský, #151844)
+   * Unicode-safe output from ``bzr info``. The output will be encoded
+     using the terminal encoding and unrepresentable characters will be
+     replaced by '?'. (Lukáš Lalinský, #151844)
 
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
