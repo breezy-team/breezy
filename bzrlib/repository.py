@@ -2489,6 +2489,9 @@ class _RevisionTextVersionCache(object):
     def __init__(self, repository):
         self.repository = repository
         self.revision_versions = {}
+        self.revision_parents = {}
+        self.repo_graph = self.repository.get_graph()
+        self.rev_heads = {}
 
     def add_revision_text_versions(self, tree):
         """Cache text version data from the supplied revision tree"""
@@ -2503,10 +2506,44 @@ class _RevisionTextVersionCache(object):
         try:
             inv_revisions = self.revision_versions[revision_id]
         except KeyError:
-            tree = self.repository.revision_tree(revision_id)
-            inv_revisions = self.add_revision_text_versions(tree)
+            try:
+                tree = self.repository.revision_tree(revision_id)
+            except errors.RevisionNotPresent:
+                self.revision_versions[revision_id] = inv_revisions = {}
+            else:
+                inv_revisions = self.add_revision_text_versions(tree)
         return inv_revisions.get(file_id)
 
+    def prepopulate_revs(self, revision_ids):
+        # Filter out versions that we don't have an inventory for, so that the
+        # revision_trees() call won't fail.
+        inv_weave = self.repository.get_inventory_weave()
+        revs = [r for r in revision_ids if inv_weave.has_version(r)]
+        # XXX: this loop is very similar to
+        # bzrlib.fetch.Inter1and2Helper.iter_rev_trees.
+        while revs:
+            for tree in self.repository.revision_trees(revs[:100]):
+                if tree.inventory.revision_id is None:
+                    tree.inventory.revision_id = tree.get_revision_id()
+                self.add_revision_text_versions(tree)
+            revs = revs[100:]
+
+    def get_parents(self, revision_id):
+        try:
+            return self.revision_parents[revision_id]
+        except KeyError:
+            parents = self.repository.get_parents([revision_id])[0]
+            self.revision_parents[revision_id] = parents
+            return parents
+
+    def heads(self, revision_ids):
+        revision_ids = tuple(revision_ids)
+        try:
+            return self.rev_heads[revision_ids]
+        except KeyError:
+            heads = self.repo_graph.heads(revision_ids)
+            self.rev_heads[revision_ids] = heads
+            return heads
 
 class VersionedFileChecker(object):
 
@@ -2520,25 +2557,17 @@ class VersionedFileChecker(object):
             file_id, revision_id)
         if text_revision is None:
             return None
-        parents_of_text_revision = self.repository.get_parents(
-            [text_revision])[0]
+        parents_of_text_revision = self.revision_versions.get_parents(
+            text_revision)
         parents_from_inventories = []
         for parent in parents_of_text_revision:
             if parent == _mod_revision.NULL_REVISION:
                 continue
-            try:
-                inventory = self.repository.get_inventory(parent)
-            except errors.RevisionNotPresent:
-                pass
-            else:
-                try:
-                    introduced_in = inventory[file_id].revision
-                except errors.NoSuchId:
-                    pass
-                else:
-                    parents_from_inventories.append(introduced_in)
-        graph = self.repository.get_graph()
-        heads = set(graph.heads(parents_from_inventories))
+            introduced_in = self.revision_versions.get_text_version(file_id,
+                    parent)
+            if introduced_in is not None:
+                parents_from_inventories.append(introduced_in)
+        heads = set(self.revision_versions.heads(parents_from_inventories))
         new_parents = []
         for parent in parents_from_inventories:
             if parent in heads and parent not in new_parents:
