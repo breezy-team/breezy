@@ -212,6 +212,14 @@ class NewPack(Pack):
         # when was this pack started ?
         self.start_time = time.time()
 
+    def data_inserted(self):
+        """True if data has been added to this pack."""
+        return 0 != sum((self.get_revision_count(),
+            self.inventory_index.key_count(),
+            self.text_index.key_count(),
+            self.signature_index.key_count(),
+            ))
+
     def finish(self):
         """Finish the new pack.
 
@@ -316,7 +324,7 @@ class RepositoryPackCollection(object):
         file_id_index = GraphIndexPrefixAdapter(
             self.repo._text_all_indices,
             (file_id, ), 1,
-            add_nodes_callback=self.repo._packs._new_pack.text_index.add_nodes)
+            add_nodes_callback=self._new_pack.text_index.add_nodes)
         self.repo._text_knit._index._graph_index = file_id_index
         self.repo._text_knit._index._add_callback = file_id_index.add_nodes
         return self.repo._text_knit.add_lines_with_ghosts(
@@ -612,12 +620,8 @@ class RepositoryPackCollection(object):
             write_stream.write(bytes)
             new_pack._hash.update(bytes)
         new_name = new_pack._hash.hexdigest()
-        # if nothing has been written, discard the new pack.
-        if 0 == sum((new_pack.get_revision_count(),
-            new_pack.inventory_index.key_count(),
-            new_pack.text_index.key_count(),
-            new_pack.signature_index.key_count(),
-            )):
+        if not new_pack.data_inserted():
+            # nothing was copied, discard the new pack.
             self._upload_transport.delete(random_name)
             return None
         # write indices
@@ -1122,10 +1126,7 @@ class RepositoryPackCollection(object):
         self.reset()
 
     def _commit_write_group(self):
-        data_inserted = (self.repo._revision_store.data_inserted() or
-            self.repo.weave_store.data_inserted() or 
-            self.repo._inv_thunk.data_inserted())
-        if data_inserted:
+        if self._new_pack.data_inserted():
             self._open_pack_writer.end()
             new_name = self._new_pack._hash.hexdigest()
             self._new_pack.finish()
@@ -1244,15 +1245,6 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             access_method=knit_access)
         return self.repo._signature_knit
 
-    def data_inserted(self):
-        if self.repo._packs._new_pack is None:
-            return False
-        if self.repo._packs._new_pack.revision_index.key_count():
-            return True
-        if self.repo._packs._new_pack.signature_index.key_count():
-            return True
-        return False
-
     def setup(self):
         # if knit indices have been handed out, add a mutable
         # index to them
@@ -1301,11 +1293,6 @@ class GraphKnitTextStore(VersionedFileStore):
         self.weavestore = weavestore
         # XXX for check() which isn't updated yet
         self._transport = weavestore._transport
-
-    def data_inserted(self):
-        if (self.repo._packs._new_pack is not None and
-            self.repo._packs._new_pack.text_index.key_count()):
-            return True
 
     def _ensure_all_index(self, for_write=None):
         """Create the combined index for all texts."""
@@ -1389,12 +1376,6 @@ class InventoryKnitThunk(object):
         """
         self.repo = repo
         self.transport = transport
-
-    def data_inserted(self):
-        # XXX: Should we define __len__ for indices?
-        if (self.repo._packs._new_pack is not None and
-            self.repo._packs._new_pack.inventory_index.key_count()):
-            return True
 
     def _ensure_all_index(self):
         """Create the combined index for all inventories."""
