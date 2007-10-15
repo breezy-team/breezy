@@ -1162,6 +1162,18 @@ class TestNewPack(TestCaseWithTransport):
     """Tests for pack_repo.NewPack."""
 
     def test_new_instance_attributes(self):
-        pack = pack_repo.NewPack()
+        upload_transport = self.get_transport('upload')
+        pack_transport = self.get_transport('pack')
+        index_transport = self.get_transport('index')
+        upload_transport.mkdir('.')
+        pack = pack_repo.NewPack(upload_transport, index_transport,
+            pack_transport)
         self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
         self.assertIsInstance(pack._hash, type(md5.new()))
+        self.assertTrue(pack.upload_transport is upload_transport)
+        self.assertTrue(pack.index_transport is index_transport)
+        self.assertTrue(pack.pack_transport is pack_transport)
+        self.assertEqual(None, pack.index_sizes)
+        self.assertEqual(20, len(pack.random_name))
+        self.assertIsInstance(pack.random_name, str)
+        self.assertIsInstance(pack.start_time, float)
