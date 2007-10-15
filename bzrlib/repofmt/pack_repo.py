@@ -98,8 +98,13 @@ class Pack(object):
     ExistingPack and NewPack are used.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, revision_index):
+        """Create a pack instance.
+
+        :param revision_index: A GraphIndex for determining what revisions are
+            present in the Pack and accessing the locations of their texts.
+        """
+        self.revision_index = revision_index
 
     def revision_index_name(self, name):
         """The revision index is the name + .rix."""
@@ -123,8 +128,7 @@ class ExistingPack(Pack):
 
     def __init__(self, transport, name, revision_index, inventory_index,
         text_index, signature_index):
-        Pack.__init__(self)
-        self.revision_index = revision_index
+        Pack.__init__(self, revision_index)
         self.inventory_index = inventory_index
         self.text_index = text_index
         self.signature_index = signature_index
@@ -153,6 +157,9 @@ class ExistingPack(Pack):
 
 class NewPack(Pack):
     """An in memory proxy for a pack which is being created."""
+
+    def __init__(self):
+        Pack.__init__(self, InMemoryGraphIndex(1))
 
 
 class RepositoryPackCollection(object):
@@ -289,9 +296,9 @@ class RepositoryPackCollection(object):
     def flush_revision_signature_indices(self, new_name):
         """Write out pending indices."""
         # write a revision index (might be empty)
-        new_index_name = NewPack().revision_index_name(new_name)
+        new_index_name = self.repo._packs._new_pack.revision_index_name(new_name)
         revision_index_length = self._index_transport.put_file(
-            new_index_name, self.repo._revision_write_index.finish())
+            new_index_name, self.repo._packs._new_pack.revision_index.finish())
         rev_index = GraphIndex(self._index_transport, new_index_name,
                 revision_index_length)
         if self.repo._revision_all_indices is None:
@@ -300,8 +307,7 @@ class RepositoryPackCollection(object):
             # that in these mapping classes
             self.repo._revision_pack_map = self._make_index_map('.rix')[0]
         else:
-            del self.repo._revision_pack_map[self.repo._revision_write_index]
-            self.repo._revision_write_index = None
+            del self.repo._revision_pack_map[self.repo._packs._new_pack.revision_index]
             self.repo._revision_pack_map[rev_index] = (self._pack_tuple(new_name))
             # revisions 'knit' accessed : update it.
             self.repo._revision_all_indices.insert_index(0, rev_index)
@@ -929,7 +935,6 @@ class RepositoryPackCollection(object):
         """Clear all cached data."""
         # cached revision data
         self.repo._revision_knit = None
-        self.repo._revision_write_index = None
         self.repo._revision_all_indices = None
         self.repo._revision_knit_access = None
         # cached signature data
@@ -954,6 +959,8 @@ class RepositoryPackCollection(object):
         # remove the knit access object
         self.repo._inv_knit_access = None
         self.repo._inv_pack_map = None
+        # remove the open pack
+        self._new_pack = None
         # information about packs.
         self._names = None
         self.packs = []
@@ -1050,6 +1057,7 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
+        self._new_pack = NewPack()
 
     def _start_write_group(self):
         random_name = self._random_name()
@@ -1147,10 +1155,10 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         pack_map, indices = self.repo._packs._make_index_map('.rix')
         if self.repo.is_in_write_group():
             # allow writing: queue writes to a new index
-            indices.insert(0, self.repo._revision_write_index)
-            pack_map[self.repo._revision_write_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._open_pack_writer, self.repo._revision_write_index
-            add_callback = self.repo._revision_write_index.add_nodes
+            indices.insert(0, self.repo._packs._new_pack.revision_index)
+            pack_map[self.repo._packs._new_pack.revision_index] = self.repo._open_pack_tuple
+            writer = self.repo._packs._open_pack_writer, self.repo._packs._new_pack.revision_index
+            add_callback = self.repo._packs._new_pack.revision_index.add_nodes
         else:
             writer = None
             add_callback = None # no data-adding permitted.
@@ -1196,8 +1204,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         return self.repo._signature_knit
 
     def data_inserted(self):
-        if (getattr(self.repo, '_revision_write_index', None) and
-            self.repo._revision_write_index.key_count()):
+        if (getattr(self.repo._packs, '_new_pack', None) and
+            self.repo._packs._new_pack.revision_index.key_count()):
             return True
         if (getattr(self.repo, '_signature_write_index', None) and
             self.repo._signature_write_index.key_count()):
@@ -1206,16 +1214,15 @@ class GraphKnitRevisionStore(KnitRevisionStore):
 
     def setup(self):
         # setup in-memory indices to accumulate data.
-        self.repo._revision_write_index = InMemoryGraphIndex(1)
         self.repo._signature_write_index = InMemoryGraphIndex(0)
         # if knit indices have been handed out, add a mutable
         # index to them
         if self.repo._revision_knit is not None:
-            self.repo._revision_all_indices.insert_index(0, self.repo._revision_write_index)
-            self.repo._revision_knit._index._add_callback = self.repo._revision_write_index.add_nodes
+            self.repo._revision_all_indices.insert_index(0, self.repo._packs._new_pack.revision_index)
+            self.repo._revision_knit._index._add_callback = self.repo._packs._new_pack.revision_index.add_nodes
             self.repo._revision_knit_access.set_writer(
                 self.repo._packs._open_pack_writer,
-                self.repo._revision_write_index, self.repo._open_pack_tuple)
+                self.repo._packs._new_pack.revision_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
             self.repo._signature_all_indices.insert_index(0, self.repo._signature_write_index)
             self.repo._signature_knit._index._add_callback = self.repo._signature_write_index.add_nodes

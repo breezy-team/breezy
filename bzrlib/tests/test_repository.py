@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib.index import GraphIndex
+from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import (
     TestCase,
@@ -1155,3 +1155,11 @@ class TestPack(TestCaseWithTransport):
     def test_file_name(self):
         pack = pack_repo.ExistingPack('', 'a_name', '', '', '', '')
         self.assertEqual('a_name.pack', pack.file_name())
+
+
+class TestNewPack(TestCaseWithTransport):
+    """Tests for pack_repo.NewPack."""
+
+    def test_new_instance_has_new_indices(self):
+        pack = pack_repo.NewPack()
+        self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
