@@ -387,8 +387,13 @@ class Commit(object):
             # XXX: This will need to be changed if we support doing a
             # selective commit while a merge is still pending - then we'd
             # still have multiple parents after the commit.
-            self.work_tree.update_basis_by_delta(self.rev_id,
-                self._basis_delta)
+            #
+            # XXX: update_basis_by_delta is slower at present because it works
+            # on inventories, so this is not active until there's a native
+            # dirstate implementation.
+            ## self.work_tree.update_basis_by_delta(self.rev_id,
+            ##      self._basis_delta)
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
