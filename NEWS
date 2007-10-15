@@ -55,6 +55,9 @@ IN DEVELOPMENT
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
+   * Pack indices are now partially parsed for specific key lookup using a
+     bisection approach. (Robert Collins)
+
    * Partial commits are now approximately 40% faster by walking over the
      unselected current tree more efficiently. (Robert Collins)
 
@@ -138,6 +141,9 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+   * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
+     constructor, for enabling bisection searches. (Robert Collins)
+
    * ``CommitBuilder.record_entry_contents`` now requires the root entry of a
      tree be supplied to it, previously failing to do so would trigger a
      deprecation warning. (Robert Collins)
@@ -213,6 +219,10 @@ IN DEVELOPMENT
 
    * New method on xml serialisers, write_inventory_to_lines, which matches the
      API used by knits for adding content. (Robert Collins)
+
+   * New module ``bzrlib.bisect_multi`` with generic multiple-bisection-at-once
+     logic, currently only available for byte-based lookup
+     (``bisect_multi_bytes``). (Robert Collins)
 
    * New helper ``bzrlib.tuned_gzip.bytes_to_gzip`` which takes a byte string
      and returns a gzipped version of the same. This is used to avoid a bunch
