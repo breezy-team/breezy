@@ -376,6 +376,12 @@ class TestErrors(TestCaseWithTransport):
             str(e))
         self.assertTrue(e.internal_error)
 
+    def test_repository_data_stream_error(self):
+        """Test the formatting of RepositoryDataStreamError."""
+        e = errors.RepositoryDataStreamError(u"my reason")
+        self.assertEqual(
+            "Corrupt or incompatible data stream: my reason", str(e))
+
 
 class PassThroughError(errors.BzrError):
     
