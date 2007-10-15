@@ -204,6 +204,9 @@ IN DEVELOPMENT
      duplication from user input, when a user mentions both a path and an item
      contained within that path. (Robert Collins)
 
+   * New method ``bzrlib.repository.Repository.is_write_locked`` useful for
+     determining if a repository is write locked. (Robert Collins)
+
    * New method on ``bzrlib.tree.Tree`` ``path_content_summary`` provides a
      tuple containing the key information about a path for commit processing
      to complete. (Robert Collins)

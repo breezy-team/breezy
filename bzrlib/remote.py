@@ -398,6 +398,9 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
+    def is_write_locked(self):
+        return self._lock_mode == 'w'
+
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
