@@ -407,8 +407,10 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # work around the fact that a newly-initted tree does differ from its
-        # basis
+        # TODO: we could simplify this by using self.basis_delta.
+
+        # The inital commit adds a root directory, but this in itself is not
+        # a worthwhile commit.  
         if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
             raise PointlessCommit()
         # Shortcut, if the number of entries changes, then we obviously have
@@ -684,13 +686,13 @@ class Commit(object):
             set(self.builder.new_inventory._byid.keys())
         if deleted_ids:
             self.any_entries_deleted = True
-            # TODO: better to just look up the paths for particular things we
-            # care about?  probably the common case is that most of the tree
-            # is not deleted.
-            for path, ie in self.basis_inv.iter_entries():
-                if ie.file_id in deleted_ids:
-                    self.basis_delta.append((path, None, ie.file_id, None))
-                    self.reporter.deleted(path)
+            deleted = [(self.basis_inv.id2path(file_id), file_id)
+                for file_id in deleted_ids]
+            deleted.sort()
+            # XXX: this is not quite directory-order sorting
+            for path, file_id in deleted:
+                self.basis_delta.append((path, None, file_id, None))
+                self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
