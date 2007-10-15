@@ -459,7 +459,7 @@ class GraphIndex(object):
             return self._iter_entries_from_total_buffer(keys)
         else:
             return (result[1] for result in bisect_multi_bytes(
-                self.lookup_keys_via_location, self._size, keys))
+                self._lookup_keys_via_location, self._size, keys))
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -548,7 +548,7 @@ class GraphIndex(object):
             self._buffer_all()
         return self._key_count
 
-    def lookup_keys_via_location(self, location_keys):
+    def _lookup_keys_via_location(self, location_keys):
         """Public interface for implementing bisection.
 
         If _buffer_all has been called, then all the data for the index is in

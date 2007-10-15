@@ -376,9 +376,9 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index()
         # reset the transport log
         del index._transport._activity[:]
-        # do a lookup_keys_via_location call for the middle of the file, which
+        # do a _lookup_keys_via_location call for the middle of the file, which
         # is what bisection uses.
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(index._size // 2, ('missing', ))])
         # this should have asked for a readv request, with adjust_for_latency,
         # and two regions: the header, and half-way into the file.
@@ -403,7 +403,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=[(('name', ), 'data', ())])
         # reset the transport log
         del index._transport._activity[:]
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(index._size // 2, ('missing', ))])
         # this should have asked for a readv request, with adjust_for_latency,
         # and two regions: the header, and half-way into the file.
@@ -428,7 +428,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         for counter in range(64):
             nodes.append((make_key(counter), 'Y'*100, ()))
         index = self.make_index(nodes=nodes)
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # and the result should be that the key cannot be present, because key is
         # in the middle of the observed data from a 4K read - the smallest transport
@@ -463,7 +463,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         for counter in range(128):
             nodes.append((make_key(counter), make_value(counter), ()))
         index = self.make_index(nodes=nodes)
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
@@ -471,7 +471,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([(None, make_key(116)), (make_key(35), make_key(51))],
             index._parsed_key_map)
         # now ask for two keys, right before and after the parsed region
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(11450, make_key(34)), (15534, make_key(52))])
         self.assertEqual([
             ((11450, make_key(34)), (index, make_key(34), make_value(34))),
@@ -490,7 +490,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             nodes.append((make_key(counter), 'Y'*100, ()))
         index = self.make_index(nodes=nodes)
         # lookup the keys in the middle of the file
-        result =index.lookup_keys_via_location(
+        result =index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
@@ -503,7 +503,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
         # 
-        result = index.lookup_keys_via_location(
+        result = index._lookup_keys_via_location(
             [(4000, ('40', ))])
         self.assertEqual([((4000, ('40', )), False)],
             result)
@@ -521,7 +521,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             nodes.append((make_key(counter), make_value(counter), ()))
         index = self.make_index(nodes=nodes)
         # lookup the keys in the middle of the file
-        result =index.lookup_keys_via_location(
+        result =index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
@@ -534,7 +534,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
         # 
-        result = index.lookup_keys_via_location([(4000, make_key(40))])
+        result = index._lookup_keys_via_location([(4000, make_key(40))])
         self.assertEqual(
             [((4000, make_key(40)), (index, make_key(40), make_value(40)))],
             result)
@@ -551,7 +551,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=nodes)
         # ask for the key in the middle, but a key that is located in the
         # unparsed region before the middle.
-        result =index.lookup_keys_via_location(
+        result =index._lookup_keys_via_location(
             [(index._size // 2, ('30', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
@@ -571,7 +571,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=nodes)
         # ask for the key in the middle, but a key that is located in the
         # unparsed region after the middle.
-        result =index.lookup_keys_via_location(
+        result =index._lookup_keys_via_location(
             [(index._size // 2, ('50', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
@@ -594,7 +594,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(ref_lists=1, nodes=nodes)
         # lookup a key in the middle that does not exist, so that when we can
         # check that the referred-to-keys are not accessed automatically.
-        result =index.lookup_keys_via_location(
+        result =index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # check the parse map - only the start and middle should have been
         # parsed.
@@ -609,7 +609,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         del index._transport._activity[:]
         # now looking up a key in the portion of the file already parsed should
         # only perform IO to resolve its key references.
-        result = index.lookup_keys_via_location([(4000, make_key(40))])
+        result = index._lookup_keys_via_location([(4000, make_key(40))])
         self.assertEqual(
             [((4000, make_key(40)),
               (index, make_key(40), make_value(40), ((make_key(60),),)))],
