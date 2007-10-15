@@ -643,11 +643,6 @@ class Commit(object):
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %s", specific_files)
 
-        # Check and warn about old CommitBuilders
-        if not self.builder.record_root_entry:
-            raise AssertionError('CommitBuilders should support recording'
-                ' the root entry as of bzr 0.10.')
-
         # Build the new inventory
         self._populate_from_inventory(specific_files)
 

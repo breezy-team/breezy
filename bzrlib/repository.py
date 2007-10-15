@@ -156,7 +156,7 @@ class CommitBuilder(object):
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
-            symbol_versioning.warn('Root entry should be supplied to'
+            raise AssertionError('Root entry should be supplied to'
                 ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
@@ -265,11 +265,6 @@ class CommitBuilder(object):
         # content is actually unchanged against a sole head.
         if ie.revision is not None:
             if not self._versioned_root and path == '':
-                # XXX: It looks like this is only hit when _check_root decided
-                # to set a new revision on the root.  We seem to be overriding
-                # ie.revision being set at this point to mean either its an
-                # unversioned root, or that it's an unchanged file.
-                #
                 # repositories that do not version the root set the root's
                 # revision to the new commit even when no change occurs, and
                 # this masks when a change may have occurred against the basis,
@@ -285,8 +280,7 @@ class CommitBuilder(object):
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
                 # appropriate.
-                delta = None
-                return delta, ie.revision == self._new_revision_id
+                return None, (ie.revision == self._new_revision_id)
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
