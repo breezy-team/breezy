@@ -30,6 +30,9 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Support svn+ hack when committing in bound branches. (#150699)
 
+   * Encode = in list branching scheme names (unusable in Subversion property 
+     names). (#125751)
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)
