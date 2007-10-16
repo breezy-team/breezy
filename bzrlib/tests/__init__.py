@@ -355,12 +355,12 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
                 self.stream.write('\n')
-                self.stream.write(\
+                self.stream.write(
                         ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
                 self.stream.write('\n')
                 self.stream.write(test._get_log())
                 self.stream.write('\n')
-                self.stream.write(\
+                self.stream.write(
                         ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
                 self.stream.write('\n')
             self.stream.writeln(self.separator2)

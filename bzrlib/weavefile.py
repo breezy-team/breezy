@@ -53,15 +53,14 @@ def write_weave(weave, f, format=None):
 
 def write_weave_v5(weave, f):
     """Write weave to file f."""
-    f.write(FORMAT_1 + ' ')
+    f.write(FORMAT_1)
 
     for version, included in enumerate(weave._parents):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
             f.write('i ')
-            for i in mininc:
-                f.write(i + ' ')
+            f.write(' '.join(mininc))
             f.write('\n')
         else:
             f.write('i\n')

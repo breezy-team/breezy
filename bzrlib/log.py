@@ -620,28 +620,28 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write(indent + '-' * 60 + '\n')
         if revision.revno is not None:
-            to_file.write(indent + 'revno: ' + revision.revno + '\n')
+            to_file.write(indent + 'revno: %s\n' % (revision.revno,))
         if revision.tags:
             to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
         if self.show_ids:
             to_file.write(indent + 'revision-id:' + revision.rev.revision_id)
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
-                to_file.write(indent + 'parent:' + parent_id + '\n')
+                to_file.write(indent + 'parent: %s\n' % (parent_id,))
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
-            to_file.write(indent + 'author:' + author+ '\n')
-        to_file.write(indent + 'committer:' + revision.rev.committer + '\n')
+            to_file.write(indent + 'author: %s\n' % (author,))
+        to_file.write(indent + 'committer: %s\n' % (revision.rev.committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
-            to_file.write(indent + 'branch nick:' + branch_nick+ '\n')
+            to_file.write(indent + 'branch nick: %s\n' % (branch_nick,))
 
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        to_file.write(indent + 'timestamp: %s\n' % date_str)
+        to_file.write(indent + 'timestamp: %s\n' % (date_str,))
 
         to_file.write(indent + 'message:\n')
         if not revision.rev.message:
@@ -649,7 +649,7 @@ class LongLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write(indent + '  ' + l + '\n')
+                to_file.write(indent + '  %s\n' % (l,))
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids, indent=indent)
 
@@ -681,13 +681,13 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:' + revision.rev.revision_id + '\n')
+            to_file.write('      revision-id:%s\n' % (revision.rev.revision_id,))
         if not revision.rev.message:
             to_file.write('      (no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write('      ' + l + '\n')
+                to_file.write('      %s\n' % (l,))
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length

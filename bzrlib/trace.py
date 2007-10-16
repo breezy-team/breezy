@@ -351,7 +351,7 @@ def report_user_error(exc_info, err_file):
     if 'error' in debug.debug_flags:
         report_bug(exc_info, err_file)
         return
-    err_file.write("bzr: ERROR:" + ' ' + str(exc_info[1]) + '\n')
+    err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
 
 
 def report_bug(exc_info, err_file):

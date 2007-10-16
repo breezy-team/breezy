@@ -1309,7 +1309,7 @@ class ConfigObj(Section):
             reset_comment = True
             # first we check if it's a section marker
             mat = self._sectionmarker.match(line)
-##            sys.stderr.write(sline + ' ' + mat + '\n')
+##            sys.stderr.write('%s %s\n' % (sline, mat))
             if mat is not None:
                 # is a section line
                 (indent, sect_open, sect_name, sect_close, comment) = (
@@ -1368,7 +1368,7 @@ class ConfigObj(Section):
             # it's not a section marker,
             # so it should be a valid ``key = value`` line
             mat = self._keyword.match(line)
-##            sys.stderr.write(sline + ' ' + mat + '\n')
+##            sys.stderr.write('%s %s\n' % (sline, mat))
             if mat is not None:
                 # is a keyword value
                 # value will include any inline comment
@@ -1408,7 +1408,7 @@ class ConfigObj(Section):
                 this_section[key] = value
                 this_section.inline_comments[key] = comment
                 this_section.comments[key] = comment_list
-##                sys.stderr.write(key + ' ' + this_section[key] + '\n')
+##                sys.stderr.write('%s %s\n' % (key, this_section[key]))
 ##                if this_section.name is not None:
 ##                    sys.stderr.write(this_section + '\n')
 ##                    sys.stderr.write(this_section.parent + '\n')

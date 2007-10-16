@@ -636,7 +636,7 @@ class InventoryFile(InventoryEntry):
                 label_pair = (to_label, from_label)
             else:
                 label_pair = (from_label, to_label)
-            output_to.write(\
+            output_to.write(
                   ("Binary files %s and %s differ\n" % label_pair).encode('utf8'))
 
     def has_text(self):

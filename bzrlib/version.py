@@ -39,10 +39,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if src_tree:
         src_revision_id = src_tree.last_revision()
         revno = src_tree.branch.revision_id_to_revno(src_revision_id)
-        to_file.write("  from bzr checkout" + ' ' + src_tree.basedir + '\n')
-        to_file.write("    revision:" + ' ' + revno + '\n')
-        to_file.write("    revid:" + ' ' + src_revision_id + '\n')
-        to_file.write("    branch nick:" + ' ' + src_tree.branch.nick + '\n')
+        to_file.write("  from bzr checkout %s\n" % (src_tree.basedir,))
+        to_file.write("    revision: %s\n" % (revno,))
+        to_file.write("    revid: %s\n" % (src_revision_id,))
+        to_file.write("    branch nick: %s\n" % (src_tree.branch.nick,))
 
     to_file.write("  Python interpreter: ")
     # show path to python interpreter
@@ -73,8 +73,8 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         config_dir = os.path.normpath(config.config_dir())  # use native slashes
         if not isinstance(config_dir, unicode):
             config_dir = config_dir.decode(bzrlib.user_encoding)
-        to_file.write("  Bazaar configuration:" + ' ' + config_dir + '\n')
-        to_file.write("  Bazaar log file:" + ' ')
+        to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
+        to_file.write("  Bazaar log file: ")
         to_file.write(trace._bzr_log_filename + '\n')
     if show_copyright:
         to_file.write('\n')
