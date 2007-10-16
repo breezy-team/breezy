@@ -191,7 +191,8 @@ class NewPack(Pack):
         :param index_transport: A writable transport for the pack's indices to
             be written to when the pack is finished.
         :param pack_transport: A writable transport for the pack to be renamed
-            to when the upload is complete.
+            to when the upload is complete. This *must* be the same as
+            upload_transport.clone('../packs').
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
         """
@@ -285,6 +286,8 @@ class NewPack(Pack):
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
         # write indices
+        # XXX: should rename each index too rather than just uploading blind
+        # under the chosen name.
         self.index_sizes = [None, None, None, None]
         self._write_index('revision', self.revision_index, 'revision')
         self._write_index('inventory', self.inventory_index, 'inventory')
@@ -292,6 +295,19 @@ class NewPack(Pack):
         self._write_index('signature', self.signature_index,
             'revision signatures')
         self.write_stream.close()
+        # Note that this will clobber an existing pack with the same name,
+        # without checking for hash collisions. While this is undesirable this
+        # is something that can be rectified in a subsequent release. One way
+        # to rectify it may be to leave the pack at the original name, writing
+        # its pack-names entry as something like 'HASH: index-sizes
+        # temporary-name'. Allocate that and check for collisions, if it is
+        # collision free then rename it into place. If clients know this scheme
+        # they can handle missing-file errors by:
+        #  - try for HASH.pack
+        #  - try for temporary-name
+        #  - refresh the pack-list to see if the pack is now absent
+        self.upload_transport.rename(self.random_name,
+                '../packs/' + self.name + '.pack')
 
     def make_index(self, index_type):
         """Construct a GraphIndex object for this packs index 'index_type'."""
@@ -659,26 +675,20 @@ class RepositoryPackCollection(object):
         if not new_pack.data_inserted():
             new_pack.abort()
             return None
-        # finish the pack
         new_pack.finish()
-        # add to the repository
         self.allocate(new_pack)
-        # rename into place. XXX: should rename each index too rather than just
-        # uploading blind under the chosen name.
-        self._upload_transport.rename(new_pack.random_name, '../packs/' + new_pack.name + '.pack')
-        result = new_pack
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
-                result.pack_transport, result.name,
+                new_pack.pack_transport, new_pack.name,
                 time.time() - new_pack.start_time)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: finished: %s%s t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 time.time() - new_pack.start_time)
-        return result
+        return new_pack
 
     def _execute_pack_operations(self, pack_operations):
         """Execute a series of pack operations.
@@ -903,7 +913,10 @@ class RepositoryPackCollection(object):
         """
         self.ensure_loaded()
         if a_new_pack.name in self._names:
-            raise errors.DuplicateKey(a_new_pack.name)
+            # a collision with the packs we know about (not the only possible
+            # collision, see NewPack.finish() for some discussion). Remove our
+            # prior reference to it.
+            self._remove_pack_by_name(a_new_pack.name)
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1141,14 +1154,6 @@ class RepositoryPackCollection(object):
     def _commit_write_group(self):
         if self._new_pack.data_inserted():
             self._new_pack.finish()
-            self._upload_transport.rename(self.repo._open_pack_tuple[1],
-                '../packs/' + self._new_pack.name + '.pack')
-            # If this fails, its a hash collision. We should:
-            # - determine if its a collision or
-            # - the same content or
-            # - the existing name is not the actual hash - e.g.
-            #   its a deliberate attack or data corruption has
-            #   occuring during the write of that file.
             self.allocate(self._new_pack)
             self.repo._open_pack_tuple = None
             self._new_pack = None
