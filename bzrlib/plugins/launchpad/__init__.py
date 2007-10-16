@@ -158,12 +158,12 @@ register_command(cmd_launchpad_login)
 register_lazy_transport(
     'lp:',
     'bzrlib.plugins.launchpad.lp_indirect',
-    'launchpad_transport_indirect')
+    'LaunchpadTransport')
 
 register_lazy_transport(
     'lp://',
     'bzrlib.plugins.launchpad.lp_indirect',
-    'launchpad_transport_indirect')
+    'LaunchpadTransport')
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""

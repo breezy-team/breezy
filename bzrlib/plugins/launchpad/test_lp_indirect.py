@@ -23,7 +23,7 @@ from bzrlib import (
     )
 from bzrlib.tests import TestCase
 from bzrlib.plugins.launchpad.lp_indirect import (
-    launchpad_transport_indirect)
+    LaunchpadTransport)
 
 
 class FakeResolveFactory(object):
@@ -48,20 +48,18 @@ class IndirectUrlTests(TestCase):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        url = 'lp:apt'
-        t = launchpad_transport_indirect(url, factory)
-        self.assertEquals(
-            t.base, 'http://bazaar.launchpad.net/%7Eapt/apt/devel/')
+        transport = LaunchpadTransport('lp:apt')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve_base(factory))
 
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        url = 'lp:///apt'
-        t = launchpad_transport_indirect(url, factory)
-        self.assertEquals(
-            t.base, 'http://bazaar.launchpad.net/%7Eapt/apt/devel/')
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve_base(factory))
 
     def test_indirect_no_matching_schemes(self):
         # If the XMLRPC call does not return any protocols we support,
@@ -69,9 +67,8 @@ class IndirectUrlTests(TestCase):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
-        url = 'lp:///apt'
-        self.assertRaises(errors.InvalidURL,
-                          launchpad_transport_indirect, url, factory)
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertRaises(errors.InvalidURL, transport._resolve_base, factory)
 
     def test_indirect_fault(self):
         # Test that XMLRPC faults get converted to InvalidURL errors.
@@ -79,12 +76,10 @@ class IndirectUrlTests(TestCase):
         def submit(service):
             raise xmlrpclib.Fault(42, 'something went wrong')
         factory.submit = submit
-        url = 'lp:///apt'
-        self.assertRaises(errors.InvalidURL,
-                          launchpad_transport_indirect, url, factory)
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertRaises(errors.InvalidURL, transport._resolve_base, factory)
 
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_indirection(self):
         self.assertRaises(errors.InvalidURL,
-            launchpad_transport_indirect,
-            'lp://ratotehunoahu')
+            LaunchpadTransport, 'lp://ratotehunoahu')
