@@ -231,27 +231,26 @@ class NewPack(Pack):
          - stores the index size tuple for the pack in the index_sizes
            attribute.
         """
-        new_name = self._hash.hexdigest()
+        self.name = self._hash.hexdigest()
         self.index_sizes = [None, None, None, None]
-        self._write_index(new_name, self.revision_index, 0,
+        self._write_index(self.revision_index, 0,
             self.revision_index_name, 'revision')
-        self._write_index(new_name, self.inventory_index, 1,
+        self._write_index(self.inventory_index, 1,
             self.inventory_index_name, 'inventory')
-        self._write_index(new_name, self.text_index, 2,
+        self._write_index(self.text_index, 2,
             self.text_index_name, 'file texts')
-        self._write_index(new_name, self.signature_index, 3,
+        self._write_index(self.signature_index, 3,
             self.signature_index_name, 'revision signatures')
 
-    def _write_index(self, new_name, index, index_offset, name_getter, label):
+    def _write_index(self, index, index_offset, name_getter, label):
         """Write out an index.
 
-        :param new_name: The basename of the pack.
         :param index: The index object to serialise.
         :param index_offset: Where in self.index_sizes to remember this.
         :param name_getter: What to use to get the name of the index on disk.
         :param label: What label to give the index e.g. 'revision'.
         """
-        index_name = name_getter(new_name)
+        index_name = name_getter(self.name)
         self.index_sizes[index_offset] = self.index_transport.put_file(
             index_name, index.finish())
         if 'fetch' in debug.debug_flags:
