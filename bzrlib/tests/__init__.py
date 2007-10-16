@@ -354,12 +354,15 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                print >>self.stream
-                print >>self.stream, \
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-')
-                print >>self.stream, test._get_log()
-                print >>self.stream, \
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-')
+                self.stream.write('\n')
+                self.stream.write(\
+                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
+                self.stream.write(test._get_log())
+                self.stream.write('\n')
+                self.stream.write(\
+                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -1282,8 +1285,8 @@ class TestCase(unittest.TestCase):
                     os.remove(self._log_file_name)
                 except OSError, e:
                     if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        print >>sys.stderr, ('Unable to delete log file '
-                                             ' %r' % self._log_file_name)
+                        sys.stderr.write(('Unable to delete log file '
+                                             ' %r\n' % self._log_file_name))
                     else:
                         raise
             return log_contents
@@ -2582,9 +2585,9 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            print >>sys.stderr, ('Permission denied: '
+            sys.stderr.write(('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(dirname))
+                                 '%\n' % os.path.basename(dirname)))
         else:
             raise
 

@@ -618,37 +618,38 @@ class LongLogFormatter(LogFormatter):
         from bzrlib.osutils import format_date
         indent = '    ' * revision.merge_depth
         to_file = self.to_file
-        print >>to_file, indent + '-' * 60
+        to_file.write(indent + '-' * 60 + '\n')
         if revision.revno is not None:
-            print >>to_file, indent + 'revno:', revision.revno
+            to_file.write(indent + 'revno: ' + revision.revno + '\n')
         if revision.tags:
-            print >>to_file, indent + 'tags: %s' % (', '.join(revision.tags))
+            to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
         if self.show_ids:
-            print >>to_file, indent + 'revision-id:', revision.rev.revision_id
+            to_file.write(indent + 'revision-id:' + revision.rev.revision_id)
+            to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
-                print >>to_file, indent + 'parent:', parent_id
+                to_file.write(indent + 'parent:' + parent_id + '\n')
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
-            print >>to_file, indent + 'author:', author
-        print >>to_file, indent + 'committer:', revision.rev.committer
+            to_file.write(indent + 'author:' + author+ '\n')
+        to_file.write(indent + 'committer:' + revision.rev.committer + '\n')
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
-            print >>to_file, indent + 'branch nick:', branch_nick
+            to_file.write(indent + 'branch nick:' + branch_nick+ '\n')
 
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        print >>to_file, indent + 'timestamp: %s' % date_str
+        to_file.write(indent + 'timestamp: %s\n' % date_str)
 
-        print >>to_file, indent + 'message:'
+        to_file.write(indent + 'message:\n')
         if not revision.rev.message:
-            print >>to_file, indent + '  (no message)'
+            to_file.write(indent + '  (no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                print >>to_file, indent + '  ' + l
+                to_file.write(indent + '  ' + l + '\n')
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids, indent=indent)
 
@@ -672,27 +673,27 @@ class ShortLogFormatter(LogFormatter):
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        print >>to_file, "%5s %s\t%s%s" % (revision.revno,
+        to_file.write("%5s %s\t%s%s\n" % (revision.revno,
                 self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                is_merge)
+                is_merge))
         if self.show_ids:
-            print >>to_file,  '      revision-id:', revision.rev.revision_id
+            to_file.write('      revision-id:' + revision.rev.revision_id + '\n')
         if not revision.rev.message:
-            print >>to_file,  '      (no message)'
+            to_file.write('      (no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                print >>to_file,  '      ' + l
+                to_file.write('      ' + l + '\n')
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids)
-        print >>to_file, ''
+        to_file.write('\n')
 
 
 class LineLogFormatter(LogFormatter):
@@ -722,11 +723,13 @@ class LineLogFormatter(LogFormatter):
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
         from bzrlib.osutils import terminal_width
-        print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
+        self.to_file.write(self.log_string(revno, rev, terminal_width()-1))
+        self.to_file.write('\n')
 
     def log_revision(self, revision):
-        print >>self.to_file, self.log_string(revision.revno, revision.rev,
-                                              self._max_chars)
+        self.to_file.write(self.log_string(revision.revno, revision.rev,
+                                              self._max_chars))
+        self.to_file.write('\n')
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string

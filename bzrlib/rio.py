@@ -44,7 +44,7 @@ class RioWriter(object):
 
     def write_stanza(self, stanza):
         if self._soft_nl:
-            print >>self._to_file
+            self._to_file.write('\n')
         stanza.write(self._to_file)
         self._soft_nl = True
 
