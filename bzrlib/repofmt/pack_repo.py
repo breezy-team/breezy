@@ -552,7 +552,6 @@ class RepositoryPackCollection(object):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024*1024)
-        random_name = new_pack.random_name
         if 'fetch' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
                 for a_pack in packs]
@@ -562,7 +561,7 @@ class RepositoryPackCollection(object):
                 rev_count = 'all'
             mutter('%s: create_pack: creating pack from source packs: '
                 '%s%s %s revisions wanted %s t=0',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 plain_pack_list, rev_count)
         writer = pack.ContainerWriter(new_pack._write_data)
         writer.begin()
@@ -581,7 +580,7 @@ class RepositoryPackCollection(object):
             new_pack.revision_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.revision_index.key_count(),
                 time.time() - new_pack.start_time)
         # select inventory keys
@@ -610,7 +609,7 @@ class RepositoryPackCollection(object):
             text_filter = None
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.inventory_index.key_count(),
                 time.time() - new_pack.start_time)
         # select text keys
@@ -638,7 +637,7 @@ class RepositoryPackCollection(object):
             new_pack.text_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.text_index.key_count(),
                 time.time() - new_pack.start_time)
         # select signature keys
@@ -651,7 +650,7 @@ class RepositoryPackCollection(object):
         self._copy_nodes(signature_nodes, signature_index_map, writer, new_pack.signature_index)
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
         if not new_pack.data_inserted():
@@ -664,18 +663,18 @@ class RepositoryPackCollection(object):
         self.allocate(new_pack)
         # rename into place. XXX: should rename each index too rather than just
         # uploading blind under the chosen name.
-        self._upload_transport.rename(random_name, '../packs/' + new_pack.name + '.pack')
+        self._upload_transport.rename(new_pack.random_name, '../packs/' + new_pack.name + '.pack')
         result = new_pack
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 result.pack_transport, result.name,
                 time.time() - new_pack.start_time)
         if 'fetch' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: finished: %s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, random_name,
+                time.ctime(), self._upload_transport.base, new_pack.random_name,
                 time.time() - new_pack.start_time)
         return result
 
@@ -1126,9 +1125,7 @@ class RepositoryPackCollection(object):
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack')
 
-        random_name = self._new_pack.random_name
-
-        self.repo._open_pack_tuple = (self._upload_transport, random_name)
+        self.repo._open_pack_tuple = (self._upload_transport, self._new_pack.random_name)
 
         self._open_pack_writer = pack.ContainerWriter(self._new_pack._write_data)
         self._open_pack_writer.begin()
