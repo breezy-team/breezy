@@ -638,10 +638,8 @@ class RepositoryPackCollection(object):
             return None
         # write indices
         new_pack.finish()
-        # add to name
-        self.allocate(new_pack, new_pack.name, new_pack.index_sizes[0],
-            new_pack.index_sizes[1], new_pack.index_sizes[2],
-            new_pack.index_sizes[3])
+        # add to the repository
+        self.allocate(new_pack)
         # rename into place. XXX: should rename each index too rather than just
         # uploading blind under the chosen name.
         write_stream.close()
@@ -875,24 +873,17 @@ class RepositoryPackCollection(object):
             self.add_pack_to_memory(result)
             return result
 
-    def allocate(self, a_new_pack, name, revision_index_length, inventory_index_length,
-        text_index_length, signature_index_length):
+    def allocate(self, a_new_pack):
         """Allocate name in the list of packs.
 
-        :param name: The basename - e.g. the md5 hash hexdigest.
-        :param revision_index_length: The length of the revision index in
-            bytes.
-        :param inventory_index_length: The length of the inventory index in
-            bytes.
-        :param text_index_length: The length of the text index in bytes.
-        :param signature_index_length: The length of the signature index in
-            bytes.
+        :param a_new_pack: A NewPack instance to be added to the collection of
+            packs for this repository.
         """
         self.ensure_loaded()
-        if name in self._names:
-            raise errors.DuplicateKey(name)
-        self._names[name] = (revision_index_length, inventory_index_length,
-            text_index_length, signature_index_length)
+        if a_new_pack.name in self._names:
+            raise errors.DuplicateKey(a_new_pack.name)
+        self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
+        self.add_pack_to_memory(a_new_pack)
 
     def _iter_disk_pack_index(self):
         """Iterate over the contents of the pack-names index.
@@ -1148,12 +1139,15 @@ class RepositoryPackCollection(object):
             # - the existing name is not the actual hash - e.g.
             #   its a deliberate attack or data corruption has
             #   occuring during the write of that file.
-            self.allocate(self._new_pack, self._new_pack.name, self._new_pack.index_sizes[0],
-                self._new_pack.index_sizes[1], self._new_pack.index_sizes[2],
-                self._new_pack.index_sizes[3])
+            self.allocate(self._new_pack)
             self.repo._open_pack_tuple = None
             self._new_pack = None
+            # this refreshes the revision index map which is used to get the
+            # total revision count which triggers autopack.
+            self.refresh_revision_signature_indices()
             if not self.autopack():
+                # when autopack takes no steps, the names list is still
+                # unsaved.
                 self._save_pack_names()
             # now setup the maps we need to access data again.
             self.refresh_text_index()
@@ -1162,8 +1156,8 @@ class RepositoryPackCollection(object):
         else:
             # remove the pending upload
             self._upload_transport.delete(self.repo._open_pack_tuple[1])
-        # forget what names there are - should just refresh and deal with the
-        # delta.
+        # forget what names there are - XXX should just refresh them and apply
+        # the delta to our pack list and object maps.
         self.reset()
         self._write_stream = None
 
