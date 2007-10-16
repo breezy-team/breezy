@@ -190,7 +190,7 @@ class _CallTreeFilter(object):
             out_file.write('fi=%s\n' % (code.co_filename,))
         out_file.write('fn=%s\n' % (label(code, True),))
         if isinstance(code, str):
-            out_file.write('0  ' + inlinetime + '\n')
+            out_file.write('0  %s\n' % (inlinetime,))
         else:
             out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls

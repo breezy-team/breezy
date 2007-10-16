@@ -60,7 +60,7 @@ def write_weave_v5(weave, f):
             # mininc = weave.minimal_parents(version)
             mininc = included
             f.write('i ')
-            f.write(' '.join(mininc))
+            f.write(' '.join(str(i) for i in mininc))
             f.write('\n')
         else:
             f.write('i\n')
@@ -82,7 +82,7 @@ def write_weave_v5(weave, f):
                 f.write(', \n')
             elif l[-1] == '\n':
                 assert l.find('\n', 0, -1) == -1
-                f.write('. ' + l + ' ')
+                f.write('. ' + l)
             else:
                 assert l.find('\n') == -1
                 f.write(', ' + l + '\n')

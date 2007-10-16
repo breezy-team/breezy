@@ -174,7 +174,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         outfile = open(os.path.join('plugin_test', 'ts_plugin.py'), 'w')
         try:
             outfile.write(template % (tempattribute, 'plugin'))
-            ourfile.write('\n')
+            outfile.write('\n')
         finally:
             outfile.close()
 
