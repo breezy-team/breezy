@@ -46,7 +46,8 @@ class SvnRemoteAccess(BzrDir):
         self.root_transport = _transport
 
         svn_url = bzr_to_svn_url(self.root_transport.base)
-        self.svn_root_url = _transport.get_repos_root()
+        self.svn_root_url = _transport.get_svn_repos_root()
+        self.root_url = _transport.get_repos_root()
 
         assert svn_url.startswith(self.svn_root_url)
         self.branch_path = svn_url[len(self.svn_root_url):]
@@ -95,7 +96,7 @@ class SvnRemoteAccess(BzrDir):
         :return: instance of SvnRepository.
         """
         transport = self.root_transport
-        if self.svn_root_url != transport.base:
+        if self.root_url != transport.base:
             transport = transport.clone_root()
         return SvnRepository(self, transport, self.branch_path)
 

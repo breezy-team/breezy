@@ -25,13 +25,13 @@ from bzrlib.revision import ensure_null
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 
 from commit import push
 from errors import NotSvnBranchPath
 from format import get_rich_root_format
 from repository import SvnRepository
-from transport import bzr_to_svn_url, svn_config
+from transport import bzr_to_svn_url, create_svn_client
 
 
 class FakeControlFiles(object):
@@ -169,8 +169,7 @@ class SvnBranch(Branch):
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
 
-        client_ctx = svn.client.create_context()
-        client_ctx.config = svn_config
+        client_ctx = create_svn_client(Pool())
         svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
                             True, client_ctx)
 

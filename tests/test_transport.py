@@ -167,7 +167,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Bla")
 
         t = SvnRaTransport("%s/dir" % repos_url)
-        root = t.get_repos_root()
+        root = t.get_svn_repos_root()
         self.assertEqual(repos_url, root)
 
     def test_local_abspath(self):

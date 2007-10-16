@@ -19,7 +19,7 @@ from bzrlib import ui
 from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.trace import mutter
 
-import base64
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 import bz2
 
 class BranchingScheme:
@@ -130,12 +130,12 @@ class ListBranchingScheme(BranchingScheme):
         :param branch_list: List of know branch locations.
         """
         if isinstance(branch_list, basestring):
-            branch_list = bz2.decompress(base64.b64decode(branch_list)).splitlines()
+            branch_list = bz2.decompress(urlsafe_b64decode(branch_list.replace(".", "="))).splitlines()
         self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
-        return "list-%s" % base64.b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list))))
+        return "list-%s" % urlsafe_b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list)))).replace("=", ".")
 
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""

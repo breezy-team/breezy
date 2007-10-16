@@ -428,7 +428,7 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        repos_root = self.source.transport.get_repos_root()
+        repos_root = self.source.transport.get_svn_repos_root()
 
         prev_revid = None
         transport = self.source.transport

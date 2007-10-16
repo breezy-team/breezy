@@ -28,6 +28,14 @@ bzr-svn 0.4.4	UNRELEASED
    * Give proper warning message when running 'bzr svn-import' on 
      something that is not a Subversion repository. 
 
+   * Support svn+ hack when committing in bound branches. (#150699)
+
+   * Encode = in list branching scheme names (unusable in Subversion property 
+     names). (#125751)
+
+   * Fix 'bzr checkout --lightweight' for http and https branches. 
+     (#144032)
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)
