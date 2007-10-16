@@ -45,6 +45,13 @@ def _create_auth_baton(pool):
     return svn.core.svn_auth_open(providers, pool)
 
 
+def create_svn_client(pool):
+    client = svn.client.create_context(pool)
+    client.auth_baton = _create_auth_baton(pool)
+    client.config = svn_config
+    return client
+
+
 # Don't run any tests on SvnTransport as it is not intended to be 
 # a full implementation of Transport
 def get_test_permutations():
@@ -193,10 +200,7 @@ class SvnRaTransport(Transport):
         self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
-        self._client = svn.client.create_context(self.pool)
-        self._client.auth_baton = _create_auth_baton(self.pool)
-        self._client.config = svn_config
-
+        self._client = create_svn_client(self.pool)
         try:
             self.mutter('opening SVN RA connection to %r' % self._backing_url)
             self._ra = svn.client.open_ra_session(self._backing_url.encode('utf8'), 
