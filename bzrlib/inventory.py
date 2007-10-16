@@ -637,7 +637,7 @@ class InventoryFile(InventoryEntry):
             else:
                 label_pair = (from_label, to_label)
             output_to.write(\
-                  ("Binary files %s and %s differ"\n % label_pair).encode('utf8'))
+                  ("Binary files %s and %s differ\n" % label_pair).encode('utf8'))
 
     def has_text(self):
         """See InventoryEntry.has_text."""

@@ -64,9 +64,9 @@ def write_weave_v5(weave, f):
                 f.write(i + ' ')
             f.write('\n')
         else:
-            f.write('i ')
-        f.write('1' + ' ' + weave._sha1s[version] + '\n')
-        f.write('n' + ' ' + weave._names[version] + '\n')
+            f.write('i\n')
+        f.write('1 ' + weave._sha1s[version] + '\n')
+        f.write('n ' + weave._names[version] + '\n')
         f.write('\n')
 
     f.write('w\n')
@@ -83,10 +83,10 @@ def write_weave_v5(weave, f):
                 f.write(', \n')
             elif l[-1] == '\n':
                 assert l.find('\n', 0, -1) == -1
-                f.write('.' + ' ' + l + ' ')
+                f.write('. ' + l + ' ')
             else:
                 assert l.find('\n') == -1
-                f.write(',' + ' ' + l + '\n')
+                f.write(', ' + l + '\n')
 
     f.write('W\n')
 
