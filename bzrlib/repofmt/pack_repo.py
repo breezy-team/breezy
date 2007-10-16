@@ -251,6 +251,9 @@ class NewPack(Pack):
                 _buffer[:] = [[], 0]
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
+        # a pack writer object to serialise pack records.
+        self._writer = pack.ContainerWriter(self._write_data)
+        self._writer.begin()
 
     def abort(self):
         """Cancel creating this pack."""
@@ -277,6 +280,7 @@ class NewPack(Pack):
          - stores the index size tuple for the pack in the index_sizes
            attribute.
         """
+        self._writer.end()
         if self._buffer[1]:
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
@@ -563,8 +567,6 @@ class RepositoryPackCollection(object):
                 '%s%s %s revisions wanted %s t=0',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 plain_pack_list, rev_count)
-        writer = pack.ContainerWriter(new_pack._write_data)
-        writer.begin()
         # select revisions
         if revision_ids:
             revision_keys = [(revision_id,) for revision_id in revision_ids]
@@ -576,8 +578,8 @@ class RepositoryPackCollection(object):
             packs, 'revision_index')[0]
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
-        list(self._copy_nodes_graph(revision_nodes, revision_index_map, writer,
-            new_pack.revision_index))
+        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
+            new_pack._writer, new_pack.revision_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
@@ -595,7 +597,7 @@ class RepositoryPackCollection(object):
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            writer, new_pack.inventory_index, output_lines=True)
+            new_pack._writer, new_pack.inventory_index, output_lines=True)
         if revision_ids:
             fileid_revisions = self.repo._find_file_ids_from_xml_inventory_lines(
                 inv_lines, revision_ids)
@@ -633,8 +635,8 @@ class RepositoryPackCollection(object):
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
         # copy text keys and adjust values
-        list(self._copy_nodes_graph(text_nodes, text_index_map, writer,
-            new_pack.text_index))
+        list(self._copy_nodes_graph(text_nodes, text_index_map,
+            new_pack._writer, new_pack.text_index))
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
@@ -647,7 +649,8 @@ class RepositoryPackCollection(object):
         signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
-        self._copy_nodes(signature_nodes, signature_index_map, writer, new_pack.signature_index)
+        self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
+            new_pack.signature_index)
         if 'fetch' in debug.debug_flags:
             mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
@@ -657,7 +660,6 @@ class RepositoryPackCollection(object):
             new_pack.abort()
             return None
         # finish the pack
-        writer.end()
         new_pack.finish()
         # add to the repository
         self.allocate(new_pack)
@@ -1127,8 +1129,6 @@ class RepositoryPackCollection(object):
 
         self.repo._open_pack_tuple = (self._upload_transport, self._new_pack.random_name)
 
-        self._open_pack_writer = pack.ContainerWriter(self._new_pack._write_data)
-        self._open_pack_writer.begin()
         self.repo._revision_store.setup()
         self.repo.weave_store.setup()
         self.repo._inv_thunk.setup()
@@ -1140,7 +1140,6 @@ class RepositoryPackCollection(object):
 
     def _commit_write_group(self):
         if self._new_pack.data_inserted():
-            self._open_pack_writer.end()
             self._new_pack.finish()
             self._upload_transport.rename(self.repo._open_pack_tuple[1],
                 '../packs/' + self._new_pack.name + '.pack')
@@ -1206,7 +1205,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._packs._new_pack.revision_index)
             pack_map[self.repo._packs._new_pack.revision_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._open_pack_writer, self.repo._packs._new_pack.revision_index
+            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.revision_index
             add_callback = self.repo._packs._new_pack.revision_index.add_nodes
         else:
             writer = None
@@ -1234,7 +1233,7 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             # allow writing: queue writes to a new index
             indices.insert(0, self.repo._packs._new_pack.signature_index)
             pack_map[self.repo._packs._new_pack.signature_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._open_pack_writer, self.repo._packs._new_pack.signature_index
+            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.signature_index
             add_callback = self.repo._packs._new_pack.signature_index.add_nodes
         else:
             writer = None
@@ -1259,13 +1258,13 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             self.repo._revision_all_indices.insert_index(0, self.repo._packs._new_pack.revision_index)
             self.repo._revision_knit._index._add_callback = self.repo._packs._new_pack.revision_index.add_nodes
             self.repo._revision_knit_access.set_writer(
-                self.repo._packs._open_pack_writer,
+                self.repo._packs._new_pack._writer,
                 self.repo._packs._new_pack.revision_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
             self.repo._signature_all_indices.insert_index(0, self.repo._packs._new_pack.signature_index)
             self.repo._signature_knit._index._add_callback = self.repo._packs._new_pack.signature_index.add_nodes
             self.repo._signature_knit_access.set_writer(
-                self.repo._packs._open_pack_writer,
+                self.repo._packs._new_pack._writer,
                 self.repo._packs._new_pack.signature_index, self.repo._open_pack_tuple)
 
 
@@ -1358,7 +1357,7 @@ class GraphKnitTextStore(VersionedFileStore):
     
     def _setup_knit(self, for_write):
         if for_write:
-            writer = (self.repo._packs._open_pack_writer, self.repo._packs._new_pack.text_index)
+            writer = (self.repo._packs._new_pack._writer, self.repo._packs._new_pack.text_index)
         else:
             writer = None
         self.repo._text_knit_access = _PackAccess(
@@ -1402,7 +1401,7 @@ class InventoryKnitThunk(object):
         if self.repo.is_in_write_group():
             add_callback = self.repo._packs._new_pack.inventory_index.add_nodes
             self.repo._inv_pack_map[self.repo._packs._new_pack.inventory_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._open_pack_writer, self.repo._packs._new_pack.inventory_index
+            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.inventory_index
         else:
             add_callback = None # no data-adding permitted.
             writer = None
