@@ -244,15 +244,16 @@ Merging your work into the parent branch
 
 After you've worked on your personal branch of bzr-gtk, you may want to
 send your changes back upstream to the project. The easiest way is to
-use a Bazaar bundle.
+use a merge directive.
 
-Bundles are similar to patches but with added intelligent metadata,
-such as revision history. They include all the information needed to
-merge your branch back into the parent.
+A merge directive is a machine-readable request to perform a 
+particular merge.  It usually contains a patch preview of the merge 
+and either contains the necessary revisions, or provides a branch 
+where they can be found.
 
-Replacing ``mybundle.patch``, create your bundle::
+Replacing ``mycode.patch``, create your merge directive::
 
- $ bzr send -o mybundle.patch
+ $ bzr send -o mycode.patch
  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
  
 You can now email the bundle to the upstream project who can, if they
