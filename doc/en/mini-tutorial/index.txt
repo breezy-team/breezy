@@ -1,5 +1,5 @@
 ===================
-Bazaar in 5 minutes
+Bazaar in five minutes
 ===================
 
 .. contents::
@@ -12,9 +12,9 @@ people to work together on software projects.
 
 Over the next five minutes, you'll learn how to put your files under
 version control, how to record changes to them, examine your work, publish
-it and merge changes from someone else.
+it and send your work for merger into a project's trunk.
 
-If you'd prefer a more detailed introduction, take a look at our guide
+If you'd prefer a more detailed introduction, take a look at 
 `Learning More`_.
 
 
@@ -47,8 +47,8 @@ Using your name and email address, instead of John Doe's, type::
 
   $ bzr whoami "John Doe <john.doe@gmail.com>"
   
-Bazaar will now create or modify a configuration file, including your name
-and email address, at ``~/.bazaar/bazaar.conf``
+Bazaar will now create or modify a configuration file, including your
+name and email address.
 
 Now, check that your name and email address are correctly registered::
 
@@ -65,8 +65,12 @@ Let's create a directory and some files to use with Bazaar::
  $ cd myproject
  $ mkdir subdirectory
  $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
+ 
+**Note for Windows users:** use Windows Explorer to create your
+directories, then right-click in those directories and select 
+``New file`` to create your files.
 
-Now get Bazaar to initalise itself in that directory::
+Now get Bazaar to initalize itself in your project directory::
 
   $ bzr init
   
@@ -86,7 +90,7 @@ The next step is to tell Bazaar which files you want to track. Running
  added subdirectory/test4.txt
 
 Next, take a snapshot of your files by committing them to your branch. Add 
-a commit message to explain why you made the commit::
+a message to explain why you made the commit::
 
   $ bzr commit -m "Initial import"
   
@@ -110,7 +114,7 @@ Edit ``test1.txt`` in your favourite editor, then check what have you done::
  @@ -0,0 +1,1 @@
  +test test test
 
-Commit your work to your Bazaar branch::
+Commit your work to the Bazaar branch::
 
   $ bzr commit -m 'Added first line of text'
   Committed revision 2.
@@ -138,16 +142,42 @@ You can see the history of your branch by browsing its log::
     Initial import
 
 
-Publishing Your Branch
-======================
+Publishing your branch with sftp
+================================
 
-There are a couple of ways to publish your branch but the easiest way is to
-push it to Launchpad_, the free software project hosting service.
+There are a couple of ways to publish your branch. If you already have
+an SFTP server or are comfortable setting one up, you can publish your
+branch to it.
+
+Otherwise, skip to the next section to publish with Launchpad_, a free
+hosting service for Bazaar.
 
 .. _Launchpad: https://launchpad.net/
 
+Let's assume you want to publish your branch at ``www.example.com/myproject``::
+
+ $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
+ 2 revision(s) pushed.
+ 
+Bazaar will create a ``myproject`` directory on the remote server and
+push your branch to it.
+ 
+**Note:** that to use sftp, your may need to install ``paramiko`` and
+``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
+
+Now anyone can create their own copy of your branch by typing::
+
+ $ bzr branch http://www.example.com/myproject
+ 
+
+Publishing your branch with Launchpad
+=====================================
+
+Launchpad is a suite of development and hosting tools for free 
+software projects. You can use it to publish your branch.
+
 If you don't have a Launchpad account, follow the `account signup guide`_
-and `register an SSH key`_ in your Launchpad account.
+and `register an SSH key`_ in your new Launchpad account.
 
 .. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
 .. _register an SSH key: https://launchpad.net/people/+me/+editsshkeys
@@ -156,27 +186,22 @@ Replacing ``john.doe`` with your own Launchpad username, type::
 
  $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/myproject
 
-``+junk`` means that this branch isn't associated with any particular
+**Note:** ``+junk`` means that this branch isn't associated with any particular
 project in Launchpad.
 
 Now, anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/myproject
  
-Their branch will have all the same files, with the same revision history
-as yours but any changes they make will stay in their own branch. You
-can merge your branches at any time.
-
-**Note:** you can also push your branch to `your own server using sftp`_.
-
-.. _your own server using sftp: push-with-sftp/
+You can also see information about your branch, including its revision
+history, at https://code.launchpad.net/people/+me/+junk/myproject
 
 
 Creating your own copy of another branch
 ========================================
 
-You can also make your own branch of someone else's work. Let's take a
-real-world example, Bazaar's GTK interface::
+To work with someone else's code, you can make your own copy of their 
+branch. Let's take a real-world example, Bazaar's GTK interface::
 
   $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
   Branched 292 revision(s).                                                        
@@ -184,20 +209,20 @@ real-world example, Bazaar's GTK interface::
 Bazaar will download all the files and complete revision history from the
 bzr-gtk project's trunk branch and create a copy called bzr-gtk.john.
 
-Now, you have your own copy of the branch and can commit any changes you want
-even without a net connection. You can share your branch at any time by 
-publishing it and, if the  bzr-gtk team want to use your work, Bazaar makes it 
-easy for them to merge your branch back into their trunk branch.
+Now, you have your own copy of the branch and can commit changes with 
+or without a net conncetion. You can share your branch at any time by 
+publishing it and, if the  bzr-gtk team want to use your work, Bazaar 
+makes it easy for them to merge your branch back into their trunk branch.
 
 
 Updating your branch from the main branch
 =========================================
 
 While you commit changes to your branch, it's likely that other people will
-also continue to commit code to the main branch.
+also continue to commit code to the parent branch.
 
 To make sure your branch stays up to date, you should merge changes from
-the main branch into your personal branch::
+the parent into your personal branch::
 
   $ bzr merge
   Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
@@ -214,26 +239,28 @@ branch::
   Committed revision 295.
 
 
-Merging your work
-=================
+Merging your work into the parent branch
+========================================
 
-After you've worked on your personal branch of a project, you may want to
-send your changes back upstream. The easiest way is to use a Bazaar bundle.
+After you've worked on your personal branch of bzr-gtk, you may want to
+send your changes back upstream to the project. The easiest way is to
+use a Bazaar bundle.
 
-Bundles are similar to patches, except they include revision history
-from your branch.
+Bundles are similar to patches but with added intelligent metadata,
+such as revision history. They include all the information needed to
+merge your branch back into the parent.
 
-To have Bazaar produce a bundle and email it to the project, replace
-``project@projectdomain.com`` and type::
+Replacing ``mybundle.patch``, create your bundle::
 
- $ bzr send --mail-to=project@projectdomain.com
-
+ $ bzr send -o mybundle.patch
+ Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+ 
+You can now email the bundle to the upstream project who can, if they
+choose, merge it back into trunk, i.e. the parent branch.
+ 
+ 
 Learning more
 =============
-
-Now you've seen how to put your files under version control, make your
-branch of someone else's work and send your code for merger with someone
-else's branch.
 
 You can find out more about Bazaar in the `Bazaar user guide <../../index.html>`_.
 
