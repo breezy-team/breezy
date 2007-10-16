@@ -162,7 +162,7 @@ Let's assume you want to publish your branch at ``www.example.com/myproject``::
 Bazaar will create a ``myproject`` directory on the remote server and
 push your branch to it.
  
-**Note:** that to use sftp, your may need to install ``paramiko`` and
+**Note:** to use sftp, you may need to install ``paramiko`` and
 ``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
 
 Now anyone can create their own copy of your branch by typing::
@@ -210,7 +210,7 @@ Bazaar will download all the files and complete revision history from the
 bzr-gtk project's trunk branch and create a copy called bzr-gtk.john.
 
 Now, you have your own copy of the branch and can commit changes with 
-or without a net conncetion. You can share your branch at any time by 
+or without a net connection. You can share your branch at any time by 
 publishing it and, if the  bzr-gtk team want to use your work, Bazaar 
 makes it easy for them to merge your branch back into their trunk branch.
 
@@ -256,8 +256,8 @@ Replacing ``mycode.patch``, create your merge directive::
  $ bzr send -o mycode.patch
  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
  
-You can now email the merge directive to the upstream project who, if
-they choose, can merge it back into the parent branch.
+You can now email the merge directive to the bzr-gtk project who, if
+they choose, can use it merge your work back into the parent branch.
  
  
 Learning more
