@@ -430,7 +430,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                                               bp_parts, -1)
             self.revnum = None
             self.editor = self.repository.transport.get_commit_editor(
-                message.encode("utf-8"), done, None, False)
+                  {svn.core.SVN_PROP_REVISION_LOG: message.encode("utf-8")}, 
+                  done, None, False)
 
             root = self.editor.open_root(self.base_revnum)
 

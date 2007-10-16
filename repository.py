@@ -357,7 +357,7 @@ class SvnRepository(Repository):
         def done(revision, date, author):
             pass
         editor = self.transport.get_commit_editor(
-                "Updating branching scheme for Bazaar.",
+                {svn.core.SVN_PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
                 done, None, False)
         root = editor.open_root(-1)
         editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
