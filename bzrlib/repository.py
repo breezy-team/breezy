@@ -313,6 +313,7 @@ class CommitBuilder(object):
         # ancestors, we write a new node.
         if len(heads) != 1:
             store = True
+        parent_entry = None
         if not store:
             # There is a single head, look it up for comparison
             parent_entry = parent_candiate_entries[heads[0]]
@@ -327,6 +328,14 @@ class CommitBuilder(object):
             if kind != parent_entry.kind:
                 store = True
         if kind == 'file':
+            if content_summary[2] is None:
+                if parent_entry is not None:
+                    executable = parent_entry.executable
+                else:
+                    executable = False
+                content_summary = (content_summary[0], content_summary[1],
+                                   executable,
+                                   ) + content_summary[3:]
             if not store:
                 if (# if the file length changed we have to store:
                     parent_entry.text_size != content_summary[1] or
