@@ -62,7 +62,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             repo.abort_write_group()
             repo.unlock()
             raise
-        finally:
+        else:
             repo.commit_write_group()
             repo.unlock()
 

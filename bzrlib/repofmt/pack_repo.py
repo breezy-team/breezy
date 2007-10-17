@@ -1618,18 +1618,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
 
 
 class RepositoryFormatGraphKnit1(RepositoryFormatPack):
-    """Experimental pack based repository with knit1 style data.
-
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - uses a GraphKnitIndex for revisions.knit.
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
+    """A no-subtrees parameterised Pack repository.
 
     This format was introduced in bzr.dev.
     """
@@ -1646,9 +1635,6 @@ class RepositoryFormatGraphKnit1(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def __ne__(self, other):
-        return self.__class__ is not other.__class__
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Experimental no-subtrees\n"
@@ -1662,20 +1648,13 @@ class RepositoryFormatGraphKnit1(RepositoryFormatPack):
 
 
 class RepositoryFormatGraphKnit3(RepositoryFormatPack):
-    """Experimental repository with knit3 style data.
+    """A subtrees parameterised Pack repository.
 
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - uses a GraphKnitIndex for revisions.knit.
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
+    This repository format uses the xml7 serializer to get:
      - support for recording full info about the tree root
      - support for recording tree-references
+
+    This format was introduced in bzr.dev.
     """
 
     repository_class = GraphKnitRepository
@@ -1706,4 +1685,4 @@ class RepositoryFormatGraphKnit3(RepositoryFormatPack):
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return "Experimental no-subtrees\n"
+        return "Experimental subtrees\n"

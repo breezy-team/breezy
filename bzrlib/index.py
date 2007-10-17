@@ -268,7 +268,7 @@ class GraphIndex(object):
         self._size = size
 
     def __eq__(self, other):
-        """Equal when self and otherwere created with the same parameters."""
+        """Equal when self and other were created with the same parameters."""
         return (
             type(self) == type(other) and
             self._transport == other._transport and
