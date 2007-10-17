@@ -323,6 +323,7 @@ class NewPack(Pack):
         #  - refresh the pack-list to see if the pack is now absent
         self.upload_transport.rename(self.random_name,
                 '../packs/' + self.name + '.pack')
+        self._state = 'finished'
 
     def make_index(self, index_type):
         """Construct a GraphIndex object for this packs index 'index_type'."""
@@ -473,6 +474,7 @@ class RepositoryPackCollection(object):
         self._new_pack = None
         # aggregated revision index data
         self.revision_index = AggregateIndex()
+        self.inventory_index = AggregateIndex()
         self.signature_index = AggregateIndex()
 
     def add_pack_to_memory(self, pack):
@@ -484,12 +486,8 @@ class RepositoryPackCollection(object):
         assert pack.name not in self._packs
         self._packs[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
+        self.inventory_index.add_index(pack.inventory_index, pack)
         self.signature_index.add_index(pack.signature_index, pack)
-        if self.repo._inv_all_indices is not None:
-            # inv 'knit' has been used : update it.
-            self.repo._inv_all_indices.insert_index(0,
-                pack.inventory_index)
-            self.repo._inv_pack_map[pack.inventory_index] = pack.pack_transport, pack.name + '.pack'
         if self.repo._text_all_indices is not None:
             # text 'knits' have been used : update it.
             self.repo._text_all_indices.insert_index(0,
@@ -567,24 +565,6 @@ class RepositoryPackCollection(object):
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
         return True
-
-    def refresh_inventory_index(self):
-        """Refresh the inventory access index mappings."""
-        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
-            self.all_packs(), 'inventory_index')
-        if self.repo._inv_all_indices is not None:
-            # refresh the pack map dict without replacing the instance.
-            self.repo._inv_pack_map.clear()
-            self.repo._inv_pack_map.update(index_map)
-            # invs 'knit' accessed : update it.
-            # XXX: API break - clearly a 'replace' method would be good?
-            self.repo._inv_all_indices._indices[:] = index_list
-            # reset the knit access writer
-            self.repo._inv_knit_access.set_writer(None, None, (None, None))
-        else:
-            # inventory knit not used, ensure the pack map is regenerated at
-            # next use.
-            self.repo._inv_pack_map = None
 
     def refresh_text_index(self):
         """Refresh the text index mappings."""
@@ -1069,6 +1049,7 @@ class RepositoryPackCollection(object):
         self._names.pop(pack.name)
         self._packs.pop(pack.name)
         self.revision_index.remove_index(pack.revision_index, pack)
+        self.inventory_index.remove_index(pack.inventory_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
 
     def reset(self):
@@ -1087,11 +1068,8 @@ class RepositoryPackCollection(object):
         self.repo._text_all_indices = None
         # and the pack map
         self.repo._text_pack_map = None
-        # remove all constructed inv data indices
-        self.repo._inv_all_indices = None
-        # remove the knit access object
-        self.repo._inv_knit_access = None
-        self.repo._inv_pack_map = None
+        # cached inventory data
+        self.inventory_index.clear()
         # remove the open pack
         self._new_pack = None
         # information about packs.
@@ -1227,6 +1205,8 @@ class RepositoryPackCollection(object):
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
+        self.inventory_index.add_writable_index(self._new_pack.inventory_index,
+            self._new_pack)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
 
@@ -1242,16 +1222,18 @@ class RepositoryPackCollection(object):
         self._new_pack.abort()
         pack = self._new_pack
         self.revision_index.remove_index(pack.revision_index, pack)
+        self.inventory_index.remove_index(pack.inventory_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
         self._new_pack = None
         self.reset()
 
     def _commit_write_group(self):
+        pack = self._new_pack
+        # remove the pack's write indices from the aggregate indices.
+        self.revision_index.remove_index(pack.revision_index, pack)
+        self.inventory_index.remove_index(pack.inventory_index, pack)
+        self.signature_index.remove_index(pack.signature_index, pack)
         if self._new_pack.data_inserted():
-            pack = self._new_pack
-            # remove the pack's write indices from the aggregate indices.
-            self.revision_index.remove_index(pack.revision_index, pack)
-            self.signature_index.remove_index(pack.signature_index, pack)
             # get all the data to disk and read to use
             self._new_pack.finish()
             self.allocate(self._new_pack)
@@ -1263,7 +1245,6 @@ class RepositoryPackCollection(object):
                 self._save_pack_names()
             # now setup the maps we need to access data again.
             self.refresh_text_index()
-            self.refresh_inventory_index()
         else:
             self._new_pack.abort()
         # forget what names there are - XXX should just refresh them and apply
@@ -1459,48 +1440,32 @@ class InventoryKnitThunk(object):
         self.repo = repo
         self.transport = transport
 
-    def _ensure_all_index(self):
-        """Create the combined index for all inventories."""
-        if getattr(self.repo, '_inv_all_indices', None) is not None:
-            return
-        pack_map, indices = self.repo._packs._make_index_map('.iix')
-        if self.repo.is_in_write_group():
-            # allow writing: queue writes to a new index
-            indices.append(self.repo._packs._new_pack.inventory_index)
-        self.repo._inv_all_indices = CombinedGraphIndex(indices)
-        self.repo._inv_pack_map = pack_map
-
     def get_weave(self):
         """Get a 'Knit' that contains inventory data."""
-        self._ensure_all_index()
-        filename = 'inventory'
-        if self.repo.is_in_write_group():
-            add_callback = self.repo._packs._new_pack.inventory_index.add_nodes
-            self.repo._inv_pack_map[self.repo._packs._new_pack.inventory_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.inventory_index
-        else:
-            add_callback = None # no data-adding permitted.
-            writer = None
-
-        knit_index = KnitGraphIndex(self.repo._inv_all_indices,
-            add_callback=add_callback,
-            deltas=True, parents=True)
-        # TODO - mode support. self.weavestore._file_mode,
-        knit_access = _PackAccess(self.repo._inv_pack_map, writer)
-        self.repo._inv_knit_access = knit_access
-        return knit.KnitVersionedFile('inventory', self.transport.clone('..'),
-            index=knit_index,
-            factory=knit.KnitPlainFactory(),
-            access_method=knit_access)
+        self.repo._packs.ensure_loaded()
+        add_callback = self.repo._packs.inventory_index.add_callback
+        # setup knit specific objects
+        knit_index = KnitGraphIndex(
+            self.repo._packs.inventory_index.combined_index,
+            add_callback=add_callback, deltas=True, parents=True)
+        return knit.KnitVersionedFile(
+            'inventory', self.transport.clone('..'),
+            self.repo.control_files._file_mode,
+            create=False, access_mode=self.repo._access_mode(),
+            index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
+            access_method=self.repo._packs.inventory_index.knit_access)
 
     def setup(self):
-        # setup in-memory indices to accumulate data.
-        # if we have created an inventory index, add the new write index to it
-        if getattr(self.repo, '_inv_all_indices', None) is not None:
-            self.repo._inv_all_indices.insert_index(0, self.repo._packs._new_pack.inventory_index)
-            # we don't bother updating the knit layer, because there is not
-            # defined interface for adding inventories that should need the 
-            # existing knit to be changed - its all behind 'repo.add_inventory'.
+        pass
+        # we don't bother updating the knit layer, because there is not
+        # defined interface for adding inventories that should need the 
+        # existing knit to be changed - its all behind 'repo.add_inventory'.
+
+        ## # if knit indices have been handed out, add a mutable
+        ## # index to them
+        ## if self.repo._revision_knit is not None:
+        ##     self.repo._revision_knit._index._add_callback = \
+        ##         self.repo._packs.revision_index.add_callback
 
 
 class GraphKnitRepository(KnitRepository):
