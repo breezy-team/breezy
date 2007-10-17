@@ -2337,6 +2337,22 @@ class cmd_check(Command):
 
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
+
+    Output fields:
+
+        revisions: This is just the number of revisions checked.  It doesn't
+            indicate a problem.
+        versionedfiles: This is just the number of versionedfiles checked.  It
+            doesn't indicate a problem.
+        unreferenced ancestors: Texts that are ancestors of other texts, but
+            are not properly referenced by the revision ancestry.  This is a
+            subtle problem that Bazaar can work around.
+        unique file texts: This is the total number of unique file contents
+            seen in the checked revisions.  It does not indicate a problem.
+        repeated file texts: This is the total number of repeated texts seen
+            in the checked revisions.  Texts can be repeated when their file
+            entries are modified, but the file contents are not.  It does not
+            indicate a problem.
     """
 
     _see_also = ['reconcile']
@@ -2346,8 +2362,7 @@ class cmd_check(Command):
     def run(self, branch=None, verbose=False):
         from bzrlib.check import check
         if branch is None:
-            tree = WorkingTree.open_containing()[0]
-            branch = tree.branch
+            branch = Branch.open_containing('.')[0]
         else:
             branch = Branch.open(branch)
         check(branch, verbose)
@@ -3040,6 +3055,14 @@ class cmd_revert(Command):
     Any files that have been newly added since that revision will be deleted,
     with a backup kept if appropriate.  Directories containing unknown files
     will not be deleted.
+
+    The working tree contains a list of pending merged revisions, which will
+    be included as parents in the next commit.  Normally, revert clears that
+    list as well as reverting the files.  If any files, are specified, revert
+    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    revert ." in the tree root to revert all files but keep the merge record,
+    and "bzr revert --forget-merges" to clear the pending merge list without
+    reverting any files.
     """
 
     _see_also = ['cat', 'export']

@@ -2350,6 +2350,14 @@ class NoDestinationAddress(InternalBzrError):
     _fmt = "Message does not have a destination address."
 
 
+class RepositoryDataStreamError(BzrError):
+
+    _fmt = "Corrupt or incompatible data stream: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
 class SMTPError(BzrError):
 
     _fmt = "SMTP error: %(error)s"

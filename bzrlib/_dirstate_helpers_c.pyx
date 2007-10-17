@@ -478,7 +478,7 @@ cdef class Reader:
     cdef char *cur_cstr # Pointer to the current record
     cdef char *next # Pointer to the end of this record
 
-    def __new__(self, text):
+    def __init__(self, text):
         self.text = text
         self.text_cstr = PyString_AsString(text)
         self.text_size = PyString_Size(text)

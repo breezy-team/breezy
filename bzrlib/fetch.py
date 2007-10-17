@@ -127,14 +127,14 @@ class RepoFetcher(object):
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()
+            if revs is None:
+                return
             self._fetch_everything_for_revisions(revs, pp)
         finally:
             self.pb.clear()
 
     def _fetch_everything_for_revisions(self, revs, pp):
         """Fetch all data for the given set of revisions."""
-        if revs is None:
-            return
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
         # that phase is progressing than we do.  Progress updates for the other
@@ -193,6 +193,8 @@ class RepoFetcher(object):
             return None
             
         try:
+            # XXX: this gets the full graph on both sides, and will make sure
+            # that ghosts are filled whether or not you care about them.
             return self.to_repository.missing_revision_ids(self.from_repository,
                                                            self._last_revision)
         except errors.NoSuchRevision:
@@ -397,3 +399,12 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
+
+
+class RemoteToOtherFetcher(GenericRepoFetcher):
+
+    def _fetch_everything_for_revisions(self, revs, pp):
+        data_stream = self.from_repository.get_data_stream(revs)
+        self.to_repository.insert_data_stream(data_stream)
+
+
