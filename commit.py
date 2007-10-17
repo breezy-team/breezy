@@ -394,14 +394,17 @@ class SvnCommitBuilder(RootCommitBuilder):
                 "/".join(elements), ret[-1], base_rev, self.pool))
         else: # Branch has to be created
             # Already exists, old copy needs to be removed
+            name = "/".join(elements)
             if replace_existing:
-                self.editor.delete_entry("/".join(elements), -1, ret[-1])
+                self.mutter("removing branch dir %r" % name)
+                self.editor.delete_entry(name, -1, ret[-1])
             if base_path is not None:
                 base_url = urlutils.join(self.repository.transport.svn_url, base_path)
             else:
                 base_url = None
+            self.mutter("adding branch dir %r" % name)
             ret.append(self.editor.add_directory(
-                "/".join(elements), ret[-1], base_url, base_rev, self.pool))
+                name, ret[-1], base_url, base_rev, self.pool))
 
         return ret
 
