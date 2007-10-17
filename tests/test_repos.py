@@ -149,8 +149,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
-        self.assertEquals([('pykleur/trunk', 1)], list(repos.follow_branch("pygments/trunk", 3,
-                                      TrunkBranchingScheme(1))))
+        self.assertEquals([('pygments/trunk', 3), ('pykleur/trunk', 2), ('pykleur/trunk', 1)], 
+                list(repos.follow_branch("pygments/trunk", 3, TrunkBranchingScheme(1))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
