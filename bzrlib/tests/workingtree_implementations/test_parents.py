@@ -250,7 +250,7 @@ class TestAddParent(TestParents):
 
 
 class UpdateToOneParentViaDeltaTests(TestParents):
-    """Tests for the update_to_one_parent_via_delta call.
+    """Tests for the update_basis_by_delta call.
     
     This is intuitively defined as 'apply an inventory delta to the basis and
     discard other parents', but for trees that have an inventory that is not
@@ -260,7 +260,7 @@ class UpdateToOneParentViaDeltaTests(TestParents):
 
     def assertDeltaApplicationResultsInExpectedBasis(self, tree, revid, delta,
         expected_inventory):
-        tree.update_to_one_parent_via_delta(revid, delta)
+        tree.update_basis_by_delta(revid, delta)
         # check the last revision was adjusted to rev_id
         self.assertEqual(revid, tree.last_revision())
         # check the parents are what we expect
