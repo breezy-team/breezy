@@ -128,3 +128,6 @@ class MapTree:
 
     def has_filename(self, filename):
         return self.oldtree.has_filename(filename)
+
+    def path_content_summary(self, path):
+        return self.oldtree.path_content_summary(path)

@@ -285,7 +285,7 @@ def rebase(repository, replace_map, replay_fn):
 
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents, 
-                    revid_renames):
+                    revid_renames, fix_revid=None):
     """Replay a commit by simply commiting the same snapshot with different 
     parents.
 
@@ -310,39 +310,49 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                                   timezone=oldrev.timezone,
                                   revprops=revprops,
                                   revision_id=newrevid)
-
-    # Check what new_ie.file_id should be
-    # use old and new parent inventories to generate new_id map
-    fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
-    oldtree = MapTree(repository.revision_tree(oldrevid), fileid_map)
-    total = len(oldtree.inventory)
-    pb = ui.ui_factory.nested_progress_bar()
-    i = 0
     try:
-        parent_invs = map(repository.get_revision_inventory, new_parents)
-        transact = repository.get_transaction()
-        for path, ie in oldtree.inventory.iter_entries():
-            pb.update('upgrading file', i, total)
-            ie = ie.copy()
-            # Either this file was modified last in this revision, 
-            # in which case it has to be rewritten
-            if ie.revision == oldrevid:
-                ie.revision = None
-            else:
-                # or it was already there before the commit, in 
-                # which case the right revision should be used
-                if revid_renames.has_key(ie.revision):
-                    ie.revision = revid_renames[ie.revision]
-                # make sure at least one of the new parents contains 
-                # the ie.file_id, ie.revision combination
-                if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
-                    raise ReplayParentsInconsistent(ie.file_id, ie.revision)
-            i += 1
-            builder.record_entry_contents(ie, parent_invs, path, oldtree)
-    finally:
-        pb.finished()
 
-    builder.finish_inventory()
+        # Check what new_ie.file_id should be
+        # use old and new parent inventories to generate new_id map
+        fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
+        oldtree = MapTree(repository.revision_tree(oldrevid), fileid_map)
+        total = len(oldtree.inventory)
+        pb = ui.ui_factory.nested_progress_bar()
+        i = 0
+        try:
+            parent_invs = map(repository.get_revision_inventory, new_parents)
+            transact = repository.get_transaction()
+            for path, ie in oldtree.inventory.iter_entries():
+                pb.update('upgrading file', i, total)
+                ie = ie.copy()
+                # Either this file was modified last in this revision, 
+                # in which case it has to be rewritten
+                if fix_revid is not None:
+                    ie.revision = fix_revid(ie.revision)
+                if ie.revision == oldrevid:
+                    if repository.weave_store.get_weave_or_empty(ie.file_id, repository.get_transaction()).has_version(newrevid):
+                        ie.revision = newrevid
+                    else:
+                        ie.revision = None
+                else:
+                    # or it was already there before the commit, in 
+                    # which case the right revision should be used
+                    if revid_renames.has_key(ie.revision):
+                        ie.revision = revid_renames[ie.revision]
+                    # make sure at least one of the new parents contains 
+                    # the ie.file_id, ie.revision combination
+                    #if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
+                    #    raise ReplayParentsInconsistent(ie.file_id, ie.revision)
+                i += 1
+                builder.record_entry_contents(ie, parent_invs, path, oldtree,
+                        oldtree.path_content_summary(path))
+        finally:
+            pb.finished()
+
+        builder.finish_inventory()
+    except:
+        builder.repository.abort_write_group()
+        raise
     return builder.commit(oldrev.message)
 
 
