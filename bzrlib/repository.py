@@ -116,7 +116,7 @@ class CommitBuilder(object):
             self._timezone = int(timezone)
 
         self._generate_revision_if_needed()
-        self._repo_graph = repository.get_graph()
+        self._heads = graph.HeadsCache(repository.get_graph()).heads
 
     def commit(self, message):
         """Make the actual commit.
@@ -294,7 +294,7 @@ class CommitBuilder(object):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._repo_graph.heads(parent_candiate_entries.keys())
+        head_set = self._heads(parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
             if ie.file_id in inv:
@@ -2495,7 +2495,9 @@ class _RevisionTextVersionCache(object):
         self.revision_versions = {}
         self.revision_parents = {}
         self.repo_graph = self.repository.get_graph()
-        self.rev_heads = {}
+        # XXX: RBC: I haven't tracked down what uses this, but it would be
+        # better to use the headscache directly I think.
+        self.heads = graph.HeadsCache(self.repo_graph).heads
 
     def add_revision_text_versions(self, tree):
         """Cache text version data from the supplied revision tree"""
@@ -2540,14 +2542,6 @@ class _RevisionTextVersionCache(object):
             self.revision_parents[revision_id] = parents
             return parents
 
-    def heads(self, revision_ids):
-        revision_ids = tuple(revision_ids)
-        try:
-            return self.rev_heads[revision_ids]
-        except KeyError:
-            heads = self.repo_graph.heads(revision_ids)
-            self.rev_heads[revision_ids] = heads
-            return heads
 
 class VersionedFileChecker(object):
 

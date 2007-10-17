@@ -371,6 +371,30 @@ class Graph(object):
         return False
 
 
+class HeadsCache(object):
+    """A cache of results for graph heads calls."""
+
+    def __init__(self, graph):
+        self.graph = graph
+        self._heads = {}
+
+    def heads(self, keys):
+        """Return the heads of keys.
+
+        :see also: Graph.heads.
+        :param keys: The keys to calculate heads for.
+        :return: A set containing the heads, which may be mutated without
+            affecting future lookups.
+        """
+        keys = set(keys)
+        try:
+            return set(self._heads[keys])
+        except KeyError:
+            heads = self.graph.heads(keys)
+            self._heads[keys] = heads
+            return set(heads)
+
+
 class _BreadthFirstSearcher(object):
     """Parallel search the breadth-first the ancestry of revisions.
 
