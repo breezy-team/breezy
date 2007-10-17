@@ -475,6 +475,7 @@ class RepositoryPackCollection(object):
         # aggregated revision index data
         self.revision_index = AggregateIndex()
         self.inventory_index = AggregateIndex()
+        self.text_index = AggregateIndex()
         self.signature_index = AggregateIndex()
 
     def add_pack_to_memory(self, pack):
@@ -487,18 +488,15 @@ class RepositoryPackCollection(object):
         self._packs[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
         self.inventory_index.add_index(pack.inventory_index, pack)
+        self.text_index.add_index(pack.text_index, pack)
         self.signature_index.add_index(pack.signature_index, pack)
-        if self.repo._text_all_indices is not None:
-            # text 'knits' have been used : update it.
-            self.repo._text_all_indices.insert_index(0,
-                pack.text_index)
         
     def _add_text_to_weave(self, file_id, revision_id, new_lines, parents,
         nostore_sha, random_revid):
         file_id_index = GraphIndexPrefixAdapter(
-            self.repo._text_all_indices,
+            self.text_index.combined_index,
             (file_id, ), 1,
-            add_nodes_callback=self._new_pack.text_index.add_nodes)
+            add_nodes_callback=self.text_index.add_callback)
         self.repo._text_knit._index._graph_index = file_id_index
         self.repo._text_knit._index._add_callback = file_id_index.add_nodes
         return self.repo._text_knit.add_lines_with_ghosts(
@@ -565,19 +563,6 @@ class RepositoryPackCollection(object):
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
         return True
-
-    def refresh_text_index(self):
-        """Refresh the text index mappings."""
-        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
-            self.all_packs(), 'text_index')
-        self.repo.weave_store._setup_knit(False)
-        if self.repo._text_all_indices is not None:
-            # refresh the pack map dict without replacing the instance.
-            self.repo._text_pack_map.clear()
-            self.repo._text_pack_map.update(index_map)
-            # invs 'knit' accessed : update it.
-            # XXX: API break - clearly a 'replace' method would be good?
-            self.repo._text_all_indices._indices[:] = index_list
 
     def create_pack_from_packs(self, packs, suffix, revision_ids=None):
         """Create a new pack by reading data from other packs.
@@ -1050,6 +1035,7 @@ class RepositoryPackCollection(object):
         self._packs.pop(pack.name)
         self.revision_index.remove_index(pack.revision_index, pack)
         self.inventory_index.remove_index(pack.inventory_index, pack)
+        self.text_index.remove_index(pack.text_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
 
     def reset(self):
@@ -1060,14 +1046,9 @@ class RepositoryPackCollection(object):
         # cached signature data
         self.repo._signature_knit = None
         self.signature_index.clear()
-        # no access object.
-        self.repo._text_knit_access = None
-        # no write-knit
+        # cached file text data
+        self.text_index.clear()
         self.repo._text_knit = None
-        # remove all constructed text data indices
-        self.repo._text_all_indices = None
-        # and the pack map
-        self.repo._text_pack_map = None
         # cached inventory data
         self.inventory_index.clear()
         # remove the open pack
@@ -1207,6 +1188,8 @@ class RepositoryPackCollection(object):
             self._new_pack)
         self.inventory_index.add_writable_index(self._new_pack.inventory_index,
             self._new_pack)
+        self.text_index.add_writable_index(self._new_pack.text_index,
+            self._new_pack)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
 
@@ -1223,6 +1206,7 @@ class RepositoryPackCollection(object):
         pack = self._new_pack
         self.revision_index.remove_index(pack.revision_index, pack)
         self.inventory_index.remove_index(pack.inventory_index, pack)
+        self.text_index.remove_index(pack.text_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
         self._new_pack = None
         self.reset()
@@ -1232,6 +1216,7 @@ class RepositoryPackCollection(object):
         # remove the pack's write indices from the aggregate indices.
         self.revision_index.remove_index(pack.revision_index, pack)
         self.inventory_index.remove_index(pack.inventory_index, pack)
+        self.text_index.remove_index(pack.text_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
@@ -1243,8 +1228,6 @@ class RepositoryPackCollection(object):
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 self._save_pack_names()
-            # now setup the maps we need to access data again.
-            self.refresh_text_index()
         else:
             self._new_pack.abort()
         # forget what names there are - XXX should just refresh them and apply
@@ -1357,31 +1340,16 @@ class GraphKnitTextStore(VersionedFileStore):
         # XXX for check() which isn't updated yet
         self._transport = weavestore._transport
 
-    def _ensure_all_index(self, for_write=None):
-        """Create the combined index for all texts."""
-        if getattr(self.repo, '_text_all_indices', None) is not None:
-            return
-        pack_map, indices = self.repo._packs._make_index_map('.tix')
-        self.repo._text_pack_map = pack_map
-        if for_write or self.repo.is_in_write_group():
-            # allow writing: queue writes to a new index
-            indices.insert(0, self.repo._packs._new_pack.text_index)
-        self._setup_knit(self.repo.is_in_write_group())
-        self.repo._text_all_indices = CombinedGraphIndex(indices)
-
-    def get_weave_or_empty(self, file_id, transaction, force_write=False):
+    def get_weave_or_empty(self, file_id, transaction):
         """Get a 'Knit' backed by the .tix indices.
 
         The transaction parameter is ignored.
         """
-        self._ensure_all_index()
-        if force_write or self.repo.is_in_write_group():
-            add_callback = self.repo._packs._new_pack.text_index.add_nodes
-            self.repo._text_pack_map[self.repo._packs._new_pack.text_index] = self.repo._open_pack_tuple
-        else:
-            add_callback = None # no data-adding permitted.
-
-        file_id_index = GraphIndexPrefixAdapter(self.repo._text_all_indices,
+        self.repo._packs.ensure_loaded()
+        add_callback = self.repo._packs.text_index.add_callback
+        # setup knit specific objects
+        file_id_index = GraphIndexPrefixAdapter(
+            self.repo._packs.text_index.combined_index,
             (file_id, ), 1, add_nodes_callback=add_callback)
         knit_index = KnitGraphIndex(file_id_index,
             add_callback=file_id_index.add_nodes,
@@ -1390,41 +1358,24 @@ class GraphKnitTextStore(VersionedFileStore):
             self.transport.clone('..'),
             None,
             index=knit_index,
-            access_method=self.repo._text_knit_access,
+            access_method=self.repo._packs.text_index.knit_access,
             factory=knit.KnitPlainFactory())
 
     get_weave = get_weave_or_empty
 
     def __iter__(self):
         """Generate a list of the fileids inserted, for use by check."""
-        self._ensure_all_index()
+        self.repo._packs.ensure_loaded()
         ids = set()
-        for index, key, value, refs in self.repo._text_all_indices.iter_all_entries():
+        for index, key, value, refs in \
+            self.repo._packs.text_index.combined_index.iter_all_entries():
             ids.add(key[0])
         return iter(ids)
 
     def setup(self):
-        # we require that text 'knits' be accessed from within the write 
-        # group to be able to be written to, simply because it makes this
-        # code cleaner - we don't need to track all 'open' knits and 
-        # adjust them.
-        # prepare to do writes.
-        self._ensure_all_index(True)
-        self._setup_knit(True)
-    
-    def _setup_knit(self, for_write):
-        if for_write:
-            writer = (self.repo._packs._new_pack._writer, self.repo._packs._new_pack.text_index)
-        else:
-            writer = None
-        self.repo._text_knit_access = _PackAccess(
-            self.repo._text_pack_map, writer)
-        if for_write:
-            # a reused knit object for commit specifically.
-            self.repo._text_knit = self.get_weave_or_empty(
-                'all-texts', None, for_write)
-        else:
-            self.repo._text_knit = None
+        # a reused knit object for commit.
+        self.repo._text_knit = self.get_weave_or_empty(
+            'all-texts', None)
 
 
 class InventoryKnitThunk(object):
