@@ -483,9 +483,10 @@ class RepositoryPackCollection(object):
         self._execute_pack_operations(pack_operations)
         return True
 
-    def refresh_revision_signature_indices(self):
+    def refresh_revision_indices(self):
         """Refresh the mappings for revisions."""
-        index_map, index_list = self._make_index_map('.rix')
+        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
+            self.all_packs(), 'revision_index')
         if self.repo._revision_all_indices is None:
             # create a pack map for the autopack code - XXX finish
             # making a clear managed list of packs, indices and use
@@ -501,7 +502,9 @@ class RepositoryPackCollection(object):
             # reset the knit access writer
             self.repo._revision_knit_access.set_writer(None, None, (None, None))
 
-        index_map, index_list = self._make_index_map('.six')
+    def refresh_signature_indices(self):
+        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
+            self.all_packs(), 'signature_index')
         if self.repo._signature_all_indices is not None:
             # signature 'knit' accessed : update it.
             # XXX: API break - clearly a 'replace' method would be good?
@@ -511,7 +514,8 @@ class RepositoryPackCollection(object):
 
     def refresh_inventory_index(self):
         """Refresh the inventory access index mappings."""
-        index_map, index_list = self._make_index_map('.iix')
+        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
+            self.all_packs(), 'inventory_index')
         if self.repo._inv_all_indices is not None:
             # refresh the pack map dict without replacing the instance.
             self.repo._inv_pack_map.clear()
@@ -528,7 +532,8 @@ class RepositoryPackCollection(object):
 
     def refresh_text_index(self):
         """Refresh the text index mappings."""
-        index_map, index_list = self._make_index_map('.tix')
+        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
+            self.all_packs(), 'text_index')
         self.repo.weave_store._setup_knit(False)
         if self.repo._text_all_indices is not None:
             # refresh the pack map dict without replacing the instance.
@@ -930,24 +935,6 @@ class RepositoryPackCollection(object):
         return GraphIndex(self.transport, 'pack-names', None
                 ).iter_all_entries()
 
-    def _make_index_map(self, suffix):
-        """Return information on existing indexes.
-
-        :param suffix: Index suffix added to pack name.
-
-        :returns: (pack_map, indices) where indices is a list of GraphIndex 
-        objects, and pack_map is a mapping from those objects to the 
-        pack tuple they describe.
-        """
-        # TODO: stop using this; it creates new indices unnecessarily.
-        self.ensure_loaded()
-        details = []
-        for name in self.names():
-            # TODO: maybe this should expose size to us  to allow
-            # sorting of the indices for better performance ?
-            details.append(self._pack_tuple(name))
-        return self._make_index_to_pack_map(details, suffix)
-
     def _make_index(self, name, suffix):
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
@@ -1051,21 +1038,24 @@ class RepositoryPackCollection(object):
         self._packs = {}
         self._packs_at_load = None
 
-    def _make_index_to_pack_map(self, pack_details, index_suffix):
-        """Given a list (transport,name), return a map of (index)->(transport, name)."""
-        # the simplest thing for now is to create new index objects.
-        # this should really reuse the existing index objects for these 
-        # packs - this means making the way they are managed in the repo be 
-        # more sane.
-        indices = []
-        pack_map = {}
+    def _make_index_map(self, index_suffix):
+        """Return information on existing indexes.
+
+        :param suffix: Index suffix added to pack name.
+
+        :returns: (pack_map, indices) where indices is a list of GraphIndex 
+        objects, and pack_map is a mapping from those objects to the 
+        pack tuple they describe.
+        """
+        # TODO: stop using this; it creates new indices unnecessarily.
         self.ensure_loaded()
-        for transport, name in pack_details:
-            index_name = name[:-5] + index_suffix
-            new_index = self._make_index(name[:-5], index_suffix)
-            indices.append(new_index)
-            pack_map[new_index] = (transport, name)
-        return pack_map, indices
+        suffix_map = {'.rix':'revision_index',
+            '.six':'signature_index',
+            '.iix':'inventory_index',
+            '.tix':'text_index',
+        }
+        return self._packs_list_to_pack_map_and_index_list(self.all_packs(),
+            suffix_map[index_suffix])
 
     def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
         """Convert a list of packs to an index pack map and index list.
@@ -1159,7 +1149,7 @@ class RepositoryPackCollection(object):
             self._new_pack = None
             # this refreshes the revision index map which is used to get the
             # total revision count which triggers autopack.
-            self.refresh_revision_signature_indices()
+            self.refresh_revision_indices()
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
                 # unsaved.
@@ -1167,7 +1157,8 @@ class RepositoryPackCollection(object):
             # now setup the maps we need to access data again.
             self.refresh_text_index()
             self.refresh_inventory_index()
-            self.refresh_revision_signature_indices()
+            self.refresh_signature_indices()
+            self.refresh_revision_indices()
         else:
             self._new_pack.abort()
         # forget what names there are - XXX should just refresh them and apply
