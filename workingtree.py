@@ -41,7 +41,8 @@ from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         revision_id_to_svk_feature, generate_revision_metadata) 
 from revids import escape_svn_path
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client) 
+from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
+                       svn_config) 
 from tree import SvnBasisTree
 
 import os

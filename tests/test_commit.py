@@ -176,7 +176,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         new_tree = copy(tree)
         ie = new_tree.inventory.root
         ie.revision = None
-        builder.record_entry_contents(ie, [tree.inventory], '', new_tree)
+        builder.record_entry_contents(ie, [tree.inventory], '', new_tree, 
+                                      None)
         builder.finish_inventory()
         builder.commit("foo")
 
@@ -199,7 +200,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         new_tree = copy(tree)
         ie = new_tree.inventory.root
         ie.revision = None
-        builder.record_entry_contents(ie, [tree.inventory], '', new_tree)
+        builder.record_entry_contents(ie, [tree.inventory], '', new_tree, None)
         builder.finish_inventory()
         builder.commit("foo")
 

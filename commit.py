@@ -493,7 +493,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (urllib.quote(path), ie.file_id)
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+                              content_summary):
         """Record the content of ie from tree into the commit if needed.
 
         Side effect: sets ie.revision when unchanged
@@ -507,19 +508,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         assert self.new_inventory.root is not None or ie.parent_id is None
         self.new_inventory.add(ie)
-
-        # ie.revision is always None if the InventoryEntry is considered
-        # for committing. ie.snapshot will record the correct revision 
-        # which may be the sole parent if it is untouched.
-        if ie.revision is not None:
-            return
-
-        previous_entries = ie.find_previous_heads(parent_invs, 
-            self.repository.weave_store, None)
-
-        # we are creating a new revision for ie in the history store
-        # and inventory.
-        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
 def replay_delta(builder, old_tree, new_tree):

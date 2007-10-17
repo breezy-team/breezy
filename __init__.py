@@ -37,7 +37,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(0, 90), (0, 91)]
+COMPATIBLE_BZR_VERSIONS = [(0, 92)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.

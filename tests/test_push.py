@@ -454,9 +454,9 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         BzrDir.open(repos_url+"/trunk").sprout("n")
 
     def test_push_unnecessary_merge(self):        
-        from bzrlib import debug
-        debug.debug_flags.add('transport')
-        debug.debug_flags.add('commit')
+        from bzrlib.debug import debug_flags
+        debug_flags.add('transport')
+        debug_flags.add('commit')
         repos_url = self.make_client("a", "dc")
         bzrwt = BzrDir.create_standalone_workingtree("c", 
             format=format.get_rich_root_format())
@@ -473,8 +473,9 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         # Should create dc/trunk
         self.client_update("dc")
 
+        self.assertTrue(os.path.exists("dc/trunk/registry/generic.c"))
         self.build_tree({'dc/trunk/registry/generic.c': "DE"})
-        self.client_commit("dc", "Change copied branch")[0]
+        self.client_commit("dc", "Change copied branch")
         self.client_update("dc")
         merge_revid = newdir.find_repository().generate_revision_id(2, "trunk", "trunk0")
 
