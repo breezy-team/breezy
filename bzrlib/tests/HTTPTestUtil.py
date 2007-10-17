@@ -464,7 +464,7 @@ class AuthServer(HttpServer):
 
 
 # FIXME: There is some code duplication with
-# _urllib2_wrappers.py.DigestAuthHandler. If that duplciation
+# _urllib2_wrappers.py.DigestAuthHandler. If that duplication
 # grows, it may require a refactoring. Also, we don't implement
 # SHA algorithm nor MD5-sess here, but that does not seem worth
 # it.

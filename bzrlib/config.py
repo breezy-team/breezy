@@ -947,8 +947,10 @@ class AuthenticationConfig(object):
         super(AuthenticationConfig, self).__init__()
         self._config = None # The ConfigObj
         if _file is None:
-            self._input = authentication_config_filename()
+            self._get_filename = authentication_config_filename
+            self._input = self._get_filename()
         else:
+            self._get_filename = None
             self._input = _file
 
     def _get_config(self):
@@ -967,6 +969,23 @@ class AuthenticationConfig(object):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._config
 
+    def _save(self):
+        """Save the config file, only tests should use it for now."""
+        file_name = self._get_filename()
+        conf_dir = os.path.dirname(file_name)
+        ensure_config_dir_exists(conf_dir)
+        self._get_config().write(file(file_name, 'wb'))
+
+    def _set_option(self, section_name, option_name, value):
+        """Set an authentication configuration option"""
+        conf = self._get_config()
+        section = conf.get(section_name)
+        if section is None:
+            conf[section] = {}
+            section = conf[section]
+        section[option_name] = value
+        self._save()
+
     def get_credentials(self, scheme, host, port=None, user=None, path=None):
         """Returns the matching credentials from authentication.conf file.
 
@@ -980,7 +999,7 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
-        :return: A dict with containing thematching credentials or None.
+        :return: A dict with containing the matching credentials or None.
            This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
@@ -991,11 +1010,13 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
-            a_scheme, a_host, a_port, a_user, a_path = map(
-                auth_def.get, ['scheme', 'host', 'port', 'user', 'path'])
+            a_scheme, a_host, a_user, a_path = map(
+                auth_def.get, ['scheme', 'host', 'user', 'path'])
 
-            # Sanitize credentials
-            if a_port is not None: a_port = int(a_port)
+            try:
+                a_port = auth_def.as_int('port')
+            except KeyError:
+                a_port = None
             try:
                 a_verify_certificates = auth_def.as_bool('verify_certificates')
             except KeyError:

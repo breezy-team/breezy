@@ -40,6 +40,7 @@ import random
 from warnings import warn
 
 from bzrlib import (
+    config,
     errors,
     osutils,
     urlutils,
@@ -131,9 +132,16 @@ class FtpTransport(ConnectedTransport):
             connection.connect(host=self._host, port=self._port)
             if self._user and self._user != 'anonymous' and \
                     password is None: # '' is a valid password
-                get_password = bzrlib.ui.ui_factory.get_password
-                password = get_password(prompt='FTP %(user)s@%(host)s password',
-                                        user=self._user, host=self._host)
+                auth = config.AuthenticationConfig()
+                config_credentials = auth.get_credentials('ftp', self._host,
+                                                          user=self._user)
+                if config_credentials is not None:
+                    password = config_credentials['password']
+                else:
+                    get_password = bzrlib.ui.ui_factory.get_password
+                    password = get_password(
+                        prompt='FTP %(user)s@%(host)s password',
+                        user=self._user, host=self._host)
             connection.login(user=self._user, passwd=password)
             connection.set_pasv(not self.is_active)
         except ftplib.error_perm, e:

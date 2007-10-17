@@ -322,6 +322,14 @@ class TestConfigPath(tests.TestCase):
             self.assertEqual(config.locations_config_filename(),
                              '/home/bogus/.bazaar/locations.conf')
 
+    def test_authentication_config_filename(self):
+        if sys.platform == 'win32':
+            self.assertEqual(config.authentication_config_filename(), 
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/authentication.conf')
+        else:
+            self.assertEqual(config.authentication_config_filename(),
+                             '/home/bogus/.bazaar/authentication.conf')
+
 class TestIniConfig(tests.TestCase):
 
     def test_contructs(self):
@@ -1109,7 +1117,7 @@ class TestTreeConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
 
-class TestAuthenticationConfig(tests.TestCase):
+class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching."""
 
     # XXX: test definitions without users.
@@ -1278,3 +1286,8 @@ password=bendover
         credentials = conf.get_credentials('https', 'foo.net')
         self.assertEquals(True, credentials.get('verify_certificates'))
 
+
+# FIXME: Once we had a way to declare authentication to all test servers, we
+# can implement generic tests.
+class TestAuthenticationRing(tests.TestCaseWithTransport):
+    pass
