@@ -263,7 +263,7 @@ class ParamikoVendor(SSHVendor):
 
     def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-        
+
         load_host_keys()
 
         try:
@@ -272,7 +272,7 @@ class ParamikoVendor(SSHVendor):
             t.start_client()
         except (paramiko.SSHException, socket.error), e:
             self._raise_connection_error(host, port=port, orig_error=e)
-            
+
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
         keytype = server_key.get_name()
@@ -299,9 +299,9 @@ class ParamikoVendor(SSHVendor):
                 (host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
 
-        _paramiko_auth(username, password, host, t)
+        _paramiko_auth(username, password, host, port, t)
         return t
-        
+
     def connect_sftp(self, username, password, host, port):
         t = self._connect(username, password, host, port)
         try:
@@ -454,7 +454,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
 register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
-def _paramiko_auth(username, password, host, paramiko_transport):
+def _paramiko_auth(username, password, host, port, paramiko_transport):
     # paramiko requires a username, but it might be none if nothing was supplied
     # use the local username, just in case.
     # We don't override username, because if we aren't using paramiko,
@@ -487,7 +487,13 @@ def _paramiko_auth(username, password, host, paramiko_transport):
             pass
 
     # give up and ask for a password
-    password = bzrlib.ui.ui_factory.get_password(
+    auth = config.AuthenticationConfig()
+    config_credentials = auth.get_credentials('ssh', host, port=port,
+                                              user=username)
+    if config_credentials is not None:
+        password = config_credentials['password']
+    else:
+        password = bzrlib.ui.ui_factory.get_password(
             prompt='SSH %(user)s@%(host)s password',
             user=username, host=host)
     try:

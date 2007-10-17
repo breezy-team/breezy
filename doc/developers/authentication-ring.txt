@@ -101,7 +101,9 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 ``password``).
 
   * ``scheme``: can be empty (meaning the rest of the definition can be used
-    for any scheme),
+    for any scheme), ``SFTP`` and ``bzr+ssh`` should not be used here, ``ssh``
+    should be used instead since this is the real scheme regarding
+    authentication,
 
   * ``host``: can be empty (to act as a default for any host),
 
