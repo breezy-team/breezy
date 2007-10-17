@@ -219,35 +219,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree._control_files._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
 
-    def test_commit_with_exec_from_basis(self):
-        tree = self.make_branch_and_tree('tree',
-                format=bzrdir.format_registry.get('knit')())
-        self.build_tree(['tree/file'])
-        tree.add(['file'], ['file-id'])
-        tree._is_executable_from_path_and_stat = \
-            tree._is_executable_from_path_and_stat_from_basis
-        rev_id1 = tree.commit('one')
-        rev_tree1 = tree.branch.repository.revision_tree(rev_id1)
-        self.assertFalse(rev_tree1.inventory['file-id'].executable)
-        tree.lock_write()
-        try:
-            tree._inventory['file-id'].executable = True
-            rev_id2 = tree.commit('two')
-        finally:
-            tree.unlock()
-        rev_tree2 = tree.branch.repository.revision_tree(rev_id2)
-        self.assertTrue(rev_tree2.inventory['file-id'].executable)
-
-        # Now set it back to False, and make sure that is preserved
-        tree.lock_write()
-        try:
-            tree._inventory['file-id'].executable = False
-            rev_id3 = tree.commit('four')
-        finally:
-            tree.unlock()
-        rev_tree3 = tree.branch.repository.revision_tree(rev_id3)
-        self.assertFalse(rev_tree3.inventory['file-id'].executable)
-
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""

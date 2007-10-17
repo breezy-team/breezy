@@ -612,7 +612,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return self._inventory[file_id].executable
 
         _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_stat
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             if not path:
@@ -621,7 +621,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
         _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_basis
+            _is_executable_from_path_and_stat_from_stat
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
