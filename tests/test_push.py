@@ -26,6 +26,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import svn.core
+from time import sleep
 from commit import push
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from revids import generate_svn_revision_id
@@ -474,8 +475,10 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.client_update("dc")
 
         self.assertTrue(os.path.exists("dc/trunk/registry/generic.c"))
-        self.build_tree({'dc/trunk/registry/generic.c': "DE"})
-        self.client_commit("dc", "Change copied branch")
+        sleep(1) # Subversion relies on timestamps to detect 
+                 # changed files...
+        self.build_tree({'dc/trunk/registry/generic.c': "BLA"})
+        self.client_commit("dc/trunk", "Change copied branch")
         self.client_update("dc")
         merge_revid = newdir.find_repository().generate_revision_id(2, "trunk", "trunk0")
 
