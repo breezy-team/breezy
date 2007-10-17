@@ -3055,6 +3055,14 @@ class cmd_revert(Command):
     Any files that have been newly added since that revision will be deleted,
     with a backup kept if appropriate.  Directories containing unknown files
     will not be deleted.
+
+    The working tree contains a list of pending merged revisions, which will
+    be included as parents in the next commit.  Normally, revert clears that
+    list as well as reverting the files.  If any files, are specified, revert
+    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    revert ." in the tree root to revert all files but keep the merge record,
+    and "bzr revert --forget-merges" to clear the pending merge list without
+    reverting any files.
     """
 
     _see_also = ['cat', 'export']
