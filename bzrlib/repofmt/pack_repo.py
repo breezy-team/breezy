@@ -473,6 +473,7 @@ class RepositoryPackCollection(object):
         self._new_pack = None
         # aggregated revision index data
         self.revision_index = AggregateIndex()
+        self.signature_index = AggregateIndex()
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -483,6 +484,7 @@ class RepositoryPackCollection(object):
         assert pack.name not in self._packs
         self._packs[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
+        self.signature_index.add_index(pack.signature_index, pack)
         if self.repo._inv_all_indices is not None:
             # inv 'knit' has been used : update it.
             self.repo._inv_all_indices.insert_index(0,
@@ -492,10 +494,6 @@ class RepositoryPackCollection(object):
             # text 'knits' have been used : update it.
             self.repo._text_all_indices.insert_index(0,
                 pack.text_index)
-        if self.repo._signature_all_indices is not None:
-            # sigatures 'knit' accessed : update it.
-            self.repo._signature_all_indices.insert_index(0,
-                pack.signature_index)
         
     def _add_text_to_weave(self, file_id, revision_id, new_lines, parents,
         nostore_sha, random_revid):
@@ -569,16 +567,6 @@ class RepositoryPackCollection(object):
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
         return True
-
-    def refresh_signature_indices(self):
-        index_map, index_list = self._packs_list_to_pack_map_and_index_list(
-            self.all_packs(), 'signature_index')
-        if self.repo._signature_all_indices is not None:
-            # signature 'knit' accessed : update it.
-            # XXX: API break - clearly a 'replace' method would be good?
-            self.repo._signature_all_indices._indices[:] = index_list
-            # reset the knit access writer
-            self.repo._signature_knit_access.set_writer(None, None, (None, None))
 
     def refresh_inventory_index(self):
         """Refresh the inventory access index mappings."""
@@ -1081,6 +1069,7 @@ class RepositoryPackCollection(object):
         self._names.pop(pack.name)
         self._packs.pop(pack.name)
         self.revision_index.remove_index(pack.revision_index, pack)
+        self.signature_index.remove_index(pack.signature_index, pack)
 
     def reset(self):
         """Clear all cached data."""
@@ -1089,8 +1078,7 @@ class RepositoryPackCollection(object):
         self.revision_index.clear()
         # cached signature data
         self.repo._signature_knit = None
-        self.repo._signature_all_indices = None
-        self.repo._signature_knit_access = None
+        self.signature_index.clear()
         # no access object.
         self.repo._text_knit_access = None
         # no write-knit
@@ -1239,6 +1227,8 @@ class RepositoryPackCollection(object):
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
+        self.signature_index.add_writable_index(self._new_pack.signature_index,
+            self._new_pack)
 
         self.repo._open_pack_tuple = (self._upload_transport, self._new_pack.random_name)
 
@@ -1252,6 +1242,7 @@ class RepositoryPackCollection(object):
         self._new_pack.abort()
         pack = self._new_pack
         self.revision_index.remove_index(pack.revision_index, pack)
+        self.signature_index.remove_index(pack.signature_index, pack)
         self._new_pack = None
         self.reset()
 
@@ -1260,6 +1251,7 @@ class RepositoryPackCollection(object):
             pack = self._new_pack
             # remove the pack's write indices from the aggregate indices.
             self.revision_index.remove_index(pack.revision_index, pack)
+            self.signature_index.remove_index(pack.signature_index, pack)
             # get all the data to disk and read to use
             self._new_pack.finish()
             self.allocate(self._new_pack)
@@ -1272,7 +1264,6 @@ class RepositoryPackCollection(object):
             # now setup the maps we need to access data again.
             self.refresh_text_index()
             self.refresh_inventory_index()
-            self.refresh_signature_indices()
         else:
             self._new_pack.abort()
         # forget what names there are - XXX should just refresh them and apply
@@ -1328,27 +1319,18 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the signature versioned file object."""
         if getattr(self.repo, '_signature_knit', None) is not None:
             return self.repo._signature_knit
-        pack_map, indices = self.repo._packs._make_index_map('.six')
-        if self.repo.is_in_write_group():
-            # allow writing: queue writes to a new index
-            indices.insert(0, self.repo._packs._new_pack.signature_index)
-            pack_map[self.repo._packs._new_pack.signature_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.signature_index
-            add_callback = self.repo._packs._new_pack.signature_index.add_nodes
-        else:
-            writer = None
-            add_callback = None # no data-adding permitted.
-        self.repo._signature_all_indices = CombinedGraphIndex(indices)
-        knit_index = KnitGraphIndex(self.repo._signature_all_indices,
+        self.repo._packs.ensure_loaded()
+        add_callback = self.repo._packs.signature_index.add_callback
+        # setup knit specific objects
+        knit_index = KnitGraphIndex(
+            self.repo._packs.signature_index.combined_index,
             add_callback=add_callback, parents=False)
-        knit_access = _PackAccess(pack_map, writer)
-        self.repo._signature_knit_access = knit_access
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=knit_access)
+            access_method=self.repo._packs.signature_index.knit_access)
         return self.repo._signature_knit
 
     def setup(self):
@@ -1358,11 +1340,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             self.repo._revision_knit._index._add_callback = \
                 self.repo._packs.revision_index.add_callback
         if self.repo._signature_knit is not None:
-            self.repo._signature_all_indices.insert_index(0, self.repo._packs._new_pack.signature_index)
-            self.repo._signature_knit._index._add_callback = self.repo._packs._new_pack.signature_index.add_nodes
-            self.repo._signature_knit_access.set_writer(
-                self.repo._packs._new_pack._writer,
-                self.repo._packs._new_pack.signature_index, self.repo._open_pack_tuple)
+            self.repo._signature_knit._index._add_callback = \
+                self.repo._packs.signature_index.add_callback
 
 
 class GraphKnitTextStore(VersionedFileStore):

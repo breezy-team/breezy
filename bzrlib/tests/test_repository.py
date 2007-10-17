@@ -823,7 +823,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             finally:
                 r1.unlock()
         finally:
-            pass # r2.unlock()
+            r2.unlock()
 
     def test_concurrent_writer_second_preserves_dropping_a_pack(self):
         format = self.get_format()
