@@ -2545,6 +2545,21 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     return suite
 
 
+def multiply_scenarios(scenarios_left, scenarios_right):
+    """Multiply two sets of scenarios.
+
+    :returns: the cartesian product of the two sets of scenarios, that is
+        a scenario for every possible combination of a left scenario and a
+        right scenario.
+    """
+    return [
+        ('%s,%s' % (left_name, right_name),
+         dict(left_dict.items() + right_dict.items()))
+        for left_name, left_dict in scenarios_left
+        for right_name, right_dict in scenarios_right]
+
+
+
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):

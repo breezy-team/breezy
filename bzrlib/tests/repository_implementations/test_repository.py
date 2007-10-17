@@ -61,6 +61,8 @@ class TestRepository(TestCaseWithRepository):
         bzrdirb = self.make_bzrdir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
+        tree_b.lock_read()
+        self.addCleanup(tree_b.unlock)
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
@@ -273,7 +275,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('initial empty commit', rev_id='a-rev',
                     allow_pointless=True)
-        result = tree.branch.repository.check(['a-rev'])
+        result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
         result.report_results(verbose=False)
@@ -363,6 +365,80 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_data_stream(self):
+        # Make a repo with a revision
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Get a data stream (a file-like object) for that revision
+        try:
+            stream = repo.get_data_stream(['rev_id'])
+        except NotImplementedError:
+            # Not all repositories support streaming.
+            return
+
+        # The data stream is a iterator that yields (name, versioned_file)
+        # pairs for:
+        #   * the file knit (or knits; if this repo has rich roots there will
+        #     be a file knit for that as well as for 'file1').
+        #   * the inventory knit
+        #   * the revisions knit
+        # in that order.
+        expected_record_names = [
+            ('file', 'file1'),
+            ('inventory',),
+            ('signatures',),
+            ('revisions',)]
+        streamed_names = []
+        for name, bytes in stream:
+            streamed_names.append(name)
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the stream, then remove it
+            # from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file knits can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            expected_record_name = ('file', inv.root.file_id)
+            self.assertTrue(expected_record_name in streamed_names)
+            streamed_names.remove(expected_record_name)
+
+        self.assertEqual(expected_record_names, streamed_names)
+
+    def test_insert_data_stream(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        source_repo = tree.branch.repository
+        dest_repo = self.make_repository('dest')
+        try:
+            stream = source_repo.get_data_stream(['rev_id'])
+        except NotImplementedError, e:
+            # Not all repositories support streaming.
+            self.assertContainsRe(str(e), 'get_data_stream')
+            raise TestSkipped('This format does not support streaming.')
+
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+        # reopen to be sure it was added.
+        dest_repo = dest_repo.bzrdir.open_repository()
+        self.assertTrue(dest_repo.has_revision('rev_id'))
+
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
@@ -377,6 +453,8 @@ class TestRepository(TestCaseWithRepository):
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
         repository = tree.branch.repository
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
                          repository.iter_files_bytes(
                          [('file1-id', 'rev1', 'file1-old'),
@@ -392,6 +470,68 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
+
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, []),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
+
+    def test_get_graph(self):
+        """Bare-bones smoketest that all repositories implement get_graph."""
+        repo = self.make_repository('repo')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo.get_graph()
+
+    def test_implements_revision_graph_can_have_wrong_parents(self):
+        """All repositories should implement
+        revision_graph_can_have_wrong_parents, so that check and reconcile can
+        work correctly.
+        """
+        repo = self.make_repository('.')
+        # This should work, not raise NotImplementedError:
+        if not repo.revision_graph_can_have_wrong_parents():
+            return
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        # This repo must also implement
+        # _find_inconsistent_revision_parents and
+        # _check_for_inconsistent_revision_parents.  So calling these
+        # should not raise NotImplementedError.
+        list(repo._find_inconsistent_revision_parents())
+        repo._check_for_inconsistent_revision_parents()
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
@@ -487,6 +627,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
@@ -495,6 +637,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in 
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))

@@ -894,6 +894,9 @@ class RepositoryPackCollection(object):
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
 
     def ensure_loaded(self):
+        # NB: if you see an assertion error here, its probably access against
+        # an unlocked repo. Naughty.
+        assert self.repo.is_locked()
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
@@ -1407,6 +1410,7 @@ class GraphKnitRepository(KnitRepository):
         self._transaction = None
         # for tests
         self._reconcile_does_inventory_gc = False
+        self._reconcile_fixes_text_parents = False
 
     def _abort_write_group(self):
         self._packs._abort_write_group()

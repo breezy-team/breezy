@@ -31,6 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.pack import ContainerReader
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
@@ -259,6 +260,7 @@ class RemoteRepository(object):
         self._leave_lock = False
         # for tests
         self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = True
         self.base = self.bzrdir.transport.base
 
     def __str__(self):
@@ -344,6 +346,7 @@ class RemoteRepository(object):
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
+        self._ensure_real()
         return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
@@ -397,6 +400,9 @@ class RemoteRepository(object):
         response = self._client.call('Repository.is_shared', path)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def is_write_locked(self):
+        return self._lock_mode == 'w'
 
     def lock_read(self):
         # wrong eventually - want a local lock cache context
@@ -538,13 +544,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        to_repo = self._copy_repository_tarball(to_bzrdir, revision_id)
-        if to_repo is None:
-            self._ensure_real()
-            return self._real_repository.sprout(
-                to_bzrdir, revision_id=revision_id)
-        else:
-            return to_repo
+        dest_repo = to_bzrdir.create_repository()
+        dest_repo.fetch(self, revision_id=revision_id)
+        return dest_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
@@ -643,6 +645,11 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
+    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+        self._ensure_real()
+        return self._real_repository.get_versioned_file_checker(
+            revisions, revision_versions_cache)
+        
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """
@@ -698,9 +705,9 @@ class RemoteRepository(object):
         return self._real_repository.get_revision_reconcile(revision_id)
 
     @needs_read_lock
-    def check(self, revision_ids):
+    def check(self, revision_ids=None):
         self._ensure_real()
-        return self._real_repository.check(revision_ids)
+        return self._real_repository.check(revision_ids=revision_ids)
 
     def copy_content_into(self, destination, revision_id=None):
         self._ensure_real()
@@ -780,6 +787,58 @@ class RemoteRepository(object):
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
+
+    def get_data_stream(self, revision_ids):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+        if response == ('ok',):
+            return self._deserialise_stream(protocol)
+        elif (response == ('error', "Generic bzr smart protocol error: "
+                "bad request 'Repository.stream_knit_data_for_revisions'") or
+              response == ('error', "Generic bzr smart protocol error: "
+                "bad request u'Repository.stream_knit_data_for_revisions'")):
+            protocol.cancel_read_body()
+            self._ensure_real()
+            return self._real_repository.get_data_stream(revision_ids)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _deserialise_stream(self, protocol):
+        buffer = StringIO(protocol.read_body_bytes())
+        reader = ContainerReader(buffer)
+        for record_names, read_bytes in reader.iter_records():
+            try:
+                # These records should have only one name, and that name
+                # should be a one-element tuple.
+                [name_tuple] = record_names
+            except ValueError:
+                raise errors.SmartProtocolError(
+                    'Repository data stream had invalid record name %r'
+                    % (record_names,))
+            yield name_tuple, read_bytes(None)
+
+    def insert_data_stream(self, stream):
+        self._ensure_real()
+        self._real_repository.insert_data_stream(stream)
+
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        self._ensure_real()
+        return self._real_repository.item_keys_introduced_by(revision_ids,
+            _files_pb=_files_pb)
+
+    def revision_graph_can_have_wrong_parents(self):
+        # The answer depends on the remote repo format.
+        self._ensure_real()
+        return self._real_repository.revision_graph_can_have_wrong_parents()
+
+    def _find_inconsistent_revision_parents(self):
+        self._ensure_real()
+        return self._real_repository._find_inconsistent_revision_parents()
+
+    def _check_for_inconsistent_revision_parents(self):
+        self._ensure_real()
+        return self._real_repository._check_for_inconsistent_revision_parents()
 
 
 class RemoteBranchLockableFiles(LockableFiles):

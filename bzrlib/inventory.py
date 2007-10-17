@@ -570,8 +570,10 @@ class InventoryFile(InventoryEntry):
         if t in checker.checked_texts:
             prev_sha = checker.checked_texts[t]
             if prev_sha != self.text_sha1:
-                raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                    (self.file_id, tree_revision_id))
+                raise BzrCheckError(
+                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
+                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
+                     t))
             else:
                 checker.repeated_text_cnt += 1
                 return

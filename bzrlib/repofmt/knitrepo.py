@@ -90,6 +90,7 @@ class KnitRepository(MetaDirRepository):
             _revision_store, control_store, text_store)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
+        self._reconcile_fixes_text_parents = True
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -145,6 +146,34 @@ class KnitRepository(MetaDirRepository):
             return [None] + vf.get_ancestry(revision_id, topo_sorted)
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
+
+    @needs_read_lock
+    def get_data_stream(self, revision_ids):
+        """See Repository.get_data_stream."""
+        item_keys = self.item_keys_introduced_by(revision_ids)
+        for knit_kind, file_id, versions in item_keys:
+            name = (knit_kind,)
+            if knit_kind == 'file':
+                name = ('file', file_id)
+                knit = self.weave_store.get_weave_or_empty(
+                    file_id, self.get_transaction())
+            elif knit_kind == 'inventory':
+                knit = self.get_inventory_weave()
+            elif knit_kind == 'revisions':
+                knit = self._revision_store.get_revision_file(
+                    self.get_transaction())
+            elif knit_kind == 'signatures':
+                knit = self._revision_store.get_signature_file(
+                    self.get_transaction())
+            else:
+                raise AssertionError('Unknown knit kind %r' % (knit_kind,))
+            yield name, _get_stream_as_bytes(knit, versions)
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        revision_id = osutils.safe_revision_id(revision_id)
+        return self.get_revision_reconcile(revision_id)
 
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
@@ -239,6 +268,35 @@ class KnitRepository(MetaDirRepository):
 
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
+
+    def _find_inconsistent_revision_parents(self):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
+
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
+        """
+        assert self.is_locked()
+        vf = self._get_revision_vf()
+        for index_version in vf.versions():
+            parents_according_to_index = tuple(vf.get_parents_with_ghosts(
+                index_version))
+            revision = self.get_revision(index_version)
+            parents_according_to_revision = tuple(revision.parent_ids)
+            if parents_according_to_index != parents_according_to_revision:
+                yield (index_version, parents_according_to_index,
+                    parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
+
+    def revision_graph_can_have_wrong_parents(self):
+        # The revision.kndx could potentially claim a revision has a different
+        # parent to the revision text.
+        return True
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):

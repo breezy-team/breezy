@@ -86,7 +86,7 @@ cdef class KnitIndexReader:
 
     cdef int history_len
 
-    def __new__(self, kndx, fp):
+    def __init__(self, kndx, fp):
         self.kndx = kndx
         self.fp = fp
 
