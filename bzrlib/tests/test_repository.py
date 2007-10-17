@@ -869,7 +869,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     raise
                 # r1 has a changed names list, and r2 an open write groups with
                 # changes.
-                # save r1, and then commit the r2 write coupe, which requires a
+                # save r1, and then commit the r2 write group, which requires a
                 # merge to the pack-names, which should not reinstate
                 # name_to_drop
                 try:

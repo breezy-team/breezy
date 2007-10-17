@@ -118,6 +118,10 @@ class Pack(object):
         self.text_index = text_index
         self.signature_index = signature_index
 
+    def access_tuple(self):
+        """Return a tuple (transport, name) for the pack content."""
+        return self.pack_transport, self.file_name()
+
     def file_name(self):
         """Get the file name for the pack on disk."""
         return self.name + '.pack'
@@ -255,12 +259,23 @@ class NewPack(Pack):
         # a pack writer object to serialise pack records.
         self._writer = pack.ContainerWriter(self._write_data)
         self._writer.begin()
+        # what state is the pack in? (open, finished, aborted)
+        self._state = 'open'
 
     def abort(self):
         """Cancel creating this pack."""
+        self._state = 'aborted'
         # Remove the temporary pack file.
         self.upload_transport.delete(self.random_name)
         # The indices have no state on disk.
+
+    def access_tuple(self):
+        """Return a tuple (transport, name) for the pack content."""
+        assert self._state in ('open', 'finished')
+        if self._state == 'finished':
+            return Pack.access_tuple(self)
+        else:
+            return self.upload_transport, self.random_name
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -350,6 +365,49 @@ class NewPack(Pack):
         self.make_index(index_type)
 
 
+class AggregateIndex(object):
+    """An aggregated index for the RepositoryPackCollection.
+
+    AggregateIndex is reponsible for managing the PackAccess object,
+    Index-To-Pack mapping, and all indices list for a specific type of index
+    such as 'revision index'.
+    """
+
+    def __init__(self):
+        """Create an AggregateIndex."""
+        self.index_to_pack = {}
+        self.combined_index = CombinedGraphIndex([])
+        self.knit_access = _PackAccess(self.index_to_pack)
+
+    def replace_indices(self, index_to_pack, indices):
+        """Replace the current mappings with fresh ones.
+
+        This should probably not be used eventually, rather incremental add and
+        removal of indices. It has been added during refactoring of existing
+        code.
+
+        :param index_to_pack: A mapping from index objects to
+            (transport, name) tuples for the pack file data.
+        :param indices: A list of indices.
+        """
+        # refresh the revision pack map dict without replacing the instance.
+        self.index_to_pack.clear()
+        self.index_to_pack.update(index_to_pack)
+        # XXX: API break - clearly a 'replace' method would be good?
+        self.combined_index._indices[:] = indices
+
+    def add_index(self, index, pack):
+        """Add index to the aggregate, which is an index for Pack pack.
+        
+        :param index: An index from the pack object.
+        :param pack: A Pack instance.
+        """
+        # expose it to the index map
+        self.index_to_pack[index] = pack.access_tuple()
+        # put it at the front of the linear index list
+        self.combined_index.insert_index(0, index)
+
+
 class RepositoryPackCollection(object):
     """Management of packs within a repository."""
 
@@ -377,6 +435,8 @@ class RepositoryPackCollection(object):
         self._packs_at_load = None
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
+        # aggregated revision index data
+        self.revision_index = None
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -386,14 +446,8 @@ class RepositoryPackCollection(object):
         self.packs.append(pack)
         assert pack.name not in self._packs
         self._packs[pack.name] = pack
-        if self.repo._revision_all_indices is None:
-            # to make this function more useful, perhaps we should make an
-            # all_indices object in future?
-            pass
-        else:
-            self.repo._revision_pack_map[pack.revision_index] = (
-                pack.pack_transport, pack.name + '.pack')
-            self.repo._revision_all_indices.insert_index(0, pack.revision_index)
+        if self.revision_index is not None:
+            self.revision_index.add_index(pack.revision_index, pack)
         if self.repo._inv_all_indices is not None:
             # inv 'knit' has been used : update it.
             self.repo._inv_all_indices.insert_index(0,
@@ -448,10 +502,9 @@ class RepositoryPackCollection(object):
 
         :return: True if packing took place.
         """
-        if self.repo._revision_all_indices is None:
-            # trigger creation of the all revision index.
-            self.repo._revision_store.get_revision_file(self.repo.get_transaction())
-        total_revisions = self.repo._revision_all_indices.key_count()
+        if self.revision_index is None:
+            self.refresh_revision_indices()
+        total_revisions = self.revision_index.combined_index.key_count()
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
             return False
@@ -484,23 +537,21 @@ class RepositoryPackCollection(object):
         return True
 
     def refresh_revision_indices(self):
-        """Refresh the mappings for revisions."""
+        """Refresh the mappings for revisions.
+        
+        This sets up mappings for only the existing packs, never in-progress
+        packs.
+        """
         index_map, index_list = self._packs_list_to_pack_map_and_index_list(
             self.all_packs(), 'revision_index')
-        if self.repo._revision_all_indices is None:
-            # create a pack map for the autopack code - XXX finish
-            # making a clear managed list of packs, indices and use
-            # that in these mapping classes
-            self.repo._revision_pack_map = index_map
+        if self.revision_index is None:
+            # setup indices.
+            self.revision_index = AggregateIndex()
         else:
-            # refresh the revision pack map dict without replacing the instance.
-            self.repo._revision_pack_map.clear()
-            self.repo._revision_pack_map.update(index_map)
-            # revisions 'knit' accessed : update it.
-            # XXX: API break - clearly a 'replace' method would be good?
-            self.repo._revision_all_indices._indices[:] = index_list
             # reset the knit access writer
-            self.repo._revision_knit_access.set_writer(None, None, (None, None))
+            self.revision_index.knit_access.set_writer(None, None, (None, None))
+        # replace all the index data with the current canonical list.
+        self.revision_index.replace_indices(index_map, index_list)
 
     def refresh_signature_indices(self):
         index_map, index_list = self._packs_list_to_pack_map_and_index_list(
@@ -731,10 +782,9 @@ class RepositoryPackCollection(object):
             total_packs = len(self._names)
             if total_packs < 2:
                 return
-            if self.repo._revision_all_indices is None:
-                # trigger creation of the all revision index.
-                self.repo._revision_store.get_revision_file(self.repo.get_transaction())
-            total_revisions = self.repo._revision_all_indices.key_count()
+            if self.revision_index is None:
+                self.refresh_revision_indices()
+            total_revisions = self.revision_index.combined_index.key_count()
             # XXX: the following may want to be a class, to pack with a given
             # policy.
             mutter('Packing repository %s, which has %d pack files, '
@@ -1011,8 +1061,7 @@ class RepositoryPackCollection(object):
         """Clear all cached data."""
         # cached revision data
         self.repo._revision_knit = None
-        self.repo._revision_all_indices = None
-        self.repo._revision_knit_access = None
+        self.revision_index = None
         # cached signature data
         self.repo._signature_knit = None
         self.repo._signature_all_indices = None
@@ -1196,28 +1245,31 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the revision versioned file object."""
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
-        pack_map, indices = self.repo._packs._make_index_map('.rix')
+        self.repo._packs.ensure_loaded()
+        self.repo._packs.refresh_revision_indices()
+        # add write support if needed
         if self.repo._packs._new_pack is not None:
             # allow writing: queue writes to a new index
-            indices.insert(0, self.repo._packs._new_pack.revision_index)
-            pack_map[self.repo._packs._new_pack.revision_index] = self.repo._open_pack_tuple
-            writer = self.repo._packs._new_pack._writer, self.repo._packs._new_pack.revision_index
+            self.repo._packs.revision_index.add_index(
+                self.repo._packs._new_pack.revision_index,
+                self.repo._packs._new_pack)
+            # Updates the index to packs mapping as a side effect,
+            self.repo._packs.revision_index.knit_access.set_writer(
+                self.repo._packs._new_pack._writer,
+                self.repo._packs._new_pack.revision_index, self.repo._open_pack_tuple)
             add_callback = self.repo._packs._new_pack.revision_index.add_nodes
         else:
-            writer = None
             add_callback = None # no data-adding permitted.
-        self.repo._revision_all_indices = CombinedGraphIndex(indices)
-        knit_index = KnitGraphIndex(self.repo._revision_all_indices,
+        # setup knit specific objects
+        knit_index = KnitGraphIndex(
+            self.repo._packs.revision_index.combined_index,
             add_callback=add_callback)
-        knit_access = _PackAccess(pack_map, writer)
-        self.repo._revision_pack_map = pack_map
-        self.repo._revision_knit_access = knit_access
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=knit_access)
+            access_method=self.repo._packs.revision_index.knit_access)
         return self.repo._revision_knit
 
     def get_signature_file(self, transaction):
@@ -1251,9 +1303,12 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         # if knit indices have been handed out, add a mutable
         # index to them
         if self.repo._revision_knit is not None:
-            self.repo._revision_all_indices.insert_index(0, self.repo._packs._new_pack.revision_index)
-            self.repo._revision_knit._index._add_callback = self.repo._packs._new_pack.revision_index.add_nodes
-            self.repo._revision_knit_access.set_writer(
+            self.repo._packs.revision_index.add_index(
+                self.repo._packs._new_pack.revision_index,
+                self.repo._packs._new_pack)
+            self.repo._revision_knit._index._add_callback = \
+                self.repo._packs._new_pack.revision_index.add_nodes
+            self.repo._packs.revision_index.knit_access.set_writer(
                 self.repo._packs._new_pack._writer,
                 self.repo._packs._new_pack.revision_index, self.repo._open_pack_tuple)
         if self.repo._signature_knit is not None:
