@@ -584,9 +584,6 @@ class RepositoryPackCollection(object):
         # - which has already been flushed, so its safe.
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
-        if getattr(self.repo, '_open_pack_tuple', None) is not None:
-            raise errors.BzrError('call to create_pack_from_packs while '
-                'another pack is being written.')
         if self._new_pack is not None:
             raise errors.BzrError('call to create_pack_from_packs while '
                 'another pack is being written.')
@@ -748,27 +745,23 @@ class RepositoryPackCollection(object):
     def pack(self):
         """Pack the pack collection totally."""
         self.ensure_loaded()
-        try:
-            total_packs = len(self._names)
-            if total_packs < 2:
-                return
-            total_revisions = self.revision_index.combined_index.key_count()
-            # XXX: the following may want to be a class, to pack with a given
-            # policy.
-            mutter('Packing repository %s, which has %d pack files, '
-                'containing %d revisions into 1 packs.', self, total_packs,
-                total_revisions)
-            # determine which packs need changing
-            pack_distribution = [1]
-            pack_operations = [[0, []]]
-            for pack in self.all_packs():
-                revision_count = pack.get_revision_count()
-                pack_operations[-1][0] += revision_count
-                pack_operations[-1][1].append(pack)
-            self._execute_pack_operations(pack_operations)
-        finally:
-            if not self.repo.is_in_write_group():
-                self.reset()
+        total_packs = len(self._names)
+        if total_packs < 2:
+            return
+        total_revisions = self.revision_index.combined_index.key_count()
+        # XXX: the following may want to be a class, to pack with a given
+        # policy.
+        mutter('Packing repository %s, which has %d pack files, '
+            'containing %d revisions into 1 packs.', self, total_packs,
+            total_revisions)
+        # determine which packs need changing
+        pack_distribution = [1]
+        pack_operations = [[0, []]]
+        for pack in self.all_packs():
+            revision_count = pack.get_revision_count()
+            pack_operations[-1][0] += revision_count
+            pack_operations[-1][1].append(pack)
+        self._execute_pack_operations(pack_operations)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1033,6 +1026,10 @@ class RepositoryPackCollection(object):
         """
         self._names.pop(pack.name)
         self._packs.pop(pack.name)
+        self._remove_pack_indices(pack)
+
+    def _remove_pack_indices(self, pack):
+        """Remove the indices for pack from the aggregated indices."""
         self.revision_index.remove_index(pack.revision_index, pack)
         self.inventory_index.remove_index(pack.inventory_index, pack)
         self.text_index.remove_index(pack.text_index, pack)
@@ -1193,36 +1190,31 @@ class RepositoryPackCollection(object):
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
 
-        self.repo._open_pack_tuple = (self._upload_transport, self._new_pack.random_name)
-
-        self.repo._revision_store.setup()
-        self.repo.weave_store.setup()
-        self.repo._inv_thunk.setup()
+        # reused revision and signature knits may need updating
+        if self.repo._revision_knit is not None:
+            self.repo._revision_knit._index._add_callback = \
+                self.revision_index.add_callback
+        if self.repo._signature_knit is not None:
+            self.repo._signature_knit._index._add_callback = \
+                self.signature_index.add_callback
+        # create a reused knit object for text addition in commit.
+        self.repo._text_knit = self.repo.weave_store.get_weave_or_empty(
+            'all-texts', None)
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         # forget what names there are
         self._new_pack.abort()
-        pack = self._new_pack
-        self.revision_index.remove_index(pack.revision_index, pack)
-        self.inventory_index.remove_index(pack.inventory_index, pack)
-        self.text_index.remove_index(pack.text_index, pack)
-        self.signature_index.remove_index(pack.signature_index, pack)
+        self._remove_pack_indices(self._new_pack)
         self._new_pack = None
-        self.reset()
+        self.repo._text_knit = None
 
     def _commit_write_group(self):
-        pack = self._new_pack
-        # remove the pack's write indices from the aggregate indices.
-        self.revision_index.remove_index(pack.revision_index, pack)
-        self.inventory_index.remove_index(pack.inventory_index, pack)
-        self.text_index.remove_index(pack.text_index, pack)
-        self.signature_index.remove_index(pack.signature_index, pack)
+        self._remove_pack_indices(self._new_pack)
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
             self._new_pack.finish()
             self.allocate(self._new_pack)
-            self.repo._open_pack_tuple = None
             self._new_pack = None
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
@@ -1230,9 +1222,7 @@ class RepositoryPackCollection(object):
                 self._save_pack_names()
         else:
             self._new_pack.abort()
-        # forget what names there are - XXX should just refresh them and apply
-        # the delta to our pack list and object maps.
-        self.reset()
+        self.repo._text_knit = None
 
 
 class GraphKnitRevisionStore(KnitRevisionStore):
@@ -1296,16 +1286,6 @@ class GraphKnitRevisionStore(KnitRevisionStore):
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._packs.signature_index.knit_access)
         return self.repo._signature_knit
-
-    def setup(self):
-        # if knit indices have been handed out, add a mutable
-        # index to them
-        if self.repo._revision_knit is not None:
-            self.repo._revision_knit._index._add_callback = \
-                self.repo._packs.revision_index.add_callback
-        if self.repo._signature_knit is not None:
-            self.repo._signature_knit._index._add_callback = \
-                self.repo._packs.signature_index.add_callback
 
 
 class GraphKnitTextStore(VersionedFileStore):
@@ -1372,11 +1352,6 @@ class GraphKnitTextStore(VersionedFileStore):
             ids.add(key[0])
         return iter(ids)
 
-    def setup(self):
-        # a reused knit object for commit.
-        self.repo._text_knit = self.get_weave_or_empty(
-            'all-texts', None)
-
 
 class InventoryKnitThunk(object):
     """An object to manage thunking get_inventory_weave to pack based knits."""
@@ -1405,18 +1380,6 @@ class InventoryKnitThunk(object):
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._packs.inventory_index.knit_access)
-
-    def setup(self):
-        pass
-        # we don't bother updating the knit layer, because there is not
-        # defined interface for adding inventories that should need the 
-        # existing knit to be changed - its all behind 'repo.add_inventory'.
-
-        ## # if knit indices have been handed out, add a mutable
-        ## # index to them
-        ## if self.repo._revision_knit is not None:
-        ##     self.repo._revision_knit._index._add_callback = \
-        ##         self.repo._packs.revision_index.add_callback
 
 
 class GraphKnitRepository(KnitRepository):
@@ -1461,6 +1424,8 @@ class GraphKnitRepository(KnitRepository):
         if self._write_lock_count == 1 or self.control_files._lock_count==1:
             # forget what names there are
             self._packs.reset()
+            # XXX: Better to do an in-memory merge, factor out code from
+            # _save_pack_names.
 
     def _start_write_group(self):
         self._packs._start_write_group()

@@ -815,6 +815,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     r2.abort_write_group()
                     raise
                 r2.commit_write_group()
+                # tell r1 to reload from disk
+                r1._packs.reset()
                 # Now both repositories should now about both names
                 r1._packs.ensure_loaded()
                 r2._packs.ensure_loaded()
