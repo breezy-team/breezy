@@ -138,6 +138,10 @@ class ListScheme(TestCase):
     def setUp(self):
         self.scheme = ListBranchingScheme(["foo", "bar/bloe"])
 
+    def test_create_from_string(self):
+        self.scheme = ListBranchingScheme('QlpoOTFBWSZTWXb2s-UAAADBAAAQAQCgACGYGYQYXckU4UJB29rPlA..')
+        self.assertEquals(["foo"], self.scheme.branch_list)
+
     def test_is_tag_empty(self):
         self.assertFalse(self.scheme.is_tag(""))
 
