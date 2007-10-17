@@ -29,6 +29,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    config,
     errors,
     osutils,
     ui,
@@ -1296,6 +1297,25 @@ class TestAuth(object):
         self.assertEqual('contents of b\n',t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
+
+    def test_no_prompt_for_password_when_using_auth_config(self):
+        user =' joe'
+        password = 'foo'
+        stdin_content = 'bar\n'  # Not the right password
+        self.server.add_user(user, password)
+        t = self.get_user_transport(user, None)
+        ui.ui_factory = TestUIFactory(stdin=stdin_content)
+        # Create a minimal config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'httptest': {'scheme': 'http', 'port': self.server.port,
+                          'user': user, 'password': password}})
+        conf._save()
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # stdin should have  been left untouched
+        self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
+
 
 
 class TestHTTPAuth(TestAuth):

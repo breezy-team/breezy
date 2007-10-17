@@ -133,8 +133,9 @@ class FtpTransport(ConnectedTransport):
             if self._user and self._user != 'anonymous' and \
                     password is None: # '' is a valid password
                 auth = config.AuthenticationConfig()
-                config_credentials = auth.get_credentials('ftp', self._host,
-                                                          user=self._user)
+                config_credentials = auth.get_credentials(
+                    'ftp', self._host, self._port, user=self._user,
+                    path=self._path)
                 if config_credentials is not None:
                     password = config_credentials['password']
                 else:

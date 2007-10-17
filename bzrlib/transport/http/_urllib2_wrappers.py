@@ -60,6 +60,7 @@ import time
 
 from bzrlib import __version__ as bzrlib_version
 from bzrlib import (
+    config,
     errors,
     ui,
     )
@@ -1006,15 +1007,29 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             password = None
 
         if password is None:
-            # Prompt user only if we can't find a password
-            if realm:
-                realm_prompt = " Realm: '%s'" % realm
+            scheme, netloc, path, query, fragment = urlparse.urlsplit(authuri)
+            if ':' in netloc:
+                host, port = netloc.rsplit(':', 1)
+                # port is an int here invalid values have been handled by the
+                # upper layers
+                port = int(port)
             else:
-                realm_prompt = ''
-            scheme, host, path, query, fragment = urlparse.urlsplit(authuri)
-            password = ui.ui_factory.get_password(prompt=self.password_prompt,
-                                                  user=user, host=host,
-                                                  realm=realm_prompt)
+                host = netloc
+                port = None
+            auth = config.AuthenticationConfig()
+            config_credentials = auth.get_credentials(
+                scheme, host, port, user=user, path=path)
+            if config_credentials is not None:
+                password = config_credentials['password']
+            else:
+                # Prompt user only if we can't find a password
+                if realm:
+                    realm_prompt = " Realm: '%s'" % realm
+                else:
+                    realm_prompt = ''
+                password = ui.ui_factory.get_password(
+                    prompt=self.password_prompt, user=user, host=netloc,
+                    realm=realm_prompt)
             if password is not None:
                 self.add_password(realm, authuri, user, password)
         return password
