@@ -823,7 +823,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             finally:
                 r1.unlock()
         finally:
-            r2.unlock()
+            pass # r2.unlock()
 
     def test_concurrent_writer_second_preserves_dropping_a_pack(self):
         format = self.get_format()
@@ -842,7 +842,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             else:
                 r1.commit_write_group()
             r1._packs.ensure_loaded()
-            name_to_drop = r1._packs.names()[0]
+            name_to_drop = r1._packs.all_packs()[0].name
         finally:
             r1.unlock()
         r1.lock_write()
@@ -858,14 +858,15 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     r2.start_write_group()
                     try:
                         # in r1, drop the pack
-                        r1._packs._remove_pack_by_name(name_to_drop)
+                        r1._packs.remove_pack_from_memory(
+                            r1._packs.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
                         self._add_text(r2, 'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
                 except:
-                    r1.reset()
+                    r1._packs.reset()
                     raise
                 # r1 has a changed names list, and r2 an open write groups with
                 # changes.
