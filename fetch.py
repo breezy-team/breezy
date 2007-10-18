@@ -432,7 +432,6 @@ class InterFromSvnRepository(InterRepository):
 
         prev_revid = None
         transport = self.source.transport
-        self.target.lock_write()
         if pb is None:
             pb = ui.ui_factory.nested_progress_bar()
             nested_pb = pb
@@ -440,6 +439,7 @@ class InterFromSvnRepository(InterRepository):
             nested_pb = None
         num = 0
         prev_inv = None
+        self.target.lock_write()
         try:
             for revid in reversed(needed):
                 (branch, revnum, scheme) = self.source.lookup_revision_id(revid)

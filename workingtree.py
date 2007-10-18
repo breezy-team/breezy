@@ -676,6 +676,9 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def unlock(self):
+        # non-implementation specific cleanup
+        self._cleanup()
+
         # reverse order of locking.
         try:
             return self._control_files.unlock()
