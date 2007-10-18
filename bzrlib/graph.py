@@ -386,7 +386,7 @@ class HeadsCache(object):
         :return: A set containing the heads, which may be mutated without
             affecting future lookups.
         """
-        keys = set(keys)
+        keys = frozenset(keys)
         try:
             return set(self._heads[keys])
         except KeyError:
