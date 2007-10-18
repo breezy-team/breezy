@@ -574,14 +574,17 @@ class GraphIndex(object):
         readv_ranges = []
         for location, key in location_keys:
             # can we answer from cache?
-            # - if we know the answer - yes
+            if self._bisect_nodes and key in self._bisect_nodes:
+                # We have the key parsed.
+                continue
             index = self._parsed_key_index(key)
             if (len(self._parsed_key_map) and 
                 self._parsed_key_map[index][0] <= key and
-                (self._parsed_key_map[index][1] > key or
+                (self._parsed_key_map[index][1] >= key or
                  # end of the file has been parsed
                  self._parsed_byte_map[index][1] == self._size)):
-                # the key has been parsed, so no lookup is needed
+                # the key has been parsed, so no lookup is needed even if its
+                # not present.
                 continue
             # - if we have examined this part of the file already - yes
             index = self._parsed_byte_index(location)
@@ -609,33 +612,35 @@ class GraphIndex(object):
         pending_locations = set()
         for location, key in location_keys:
             # can we answer from cache?
-            index = self._parsed_key_index(key)
-            if (self._parsed_key_map[index][0] <= key and
-                (self._parsed_key_map[index][1] > key or
-                 # end of the file has been parsed
-                 self._parsed_byte_map[index][1] == self._size)):
+            if key in self._bisect_nodes:
                 # the key has been parsed, so no lookup is needed
-                if key in self._bisect_nodes:
-                    if self.node_ref_lists:
-                        # the references may not have been all parsed.
-                        value, refs = self._bisect_nodes[key]
-                        wanted_locations = []
-                        for ref_list in refs:
-                            for ref in ref_list:
-                                if ref not in self._keys_by_offset:
-                                    wanted_locations.append(ref)
-                        if wanted_locations:
-                            pending_locations.update(wanted_locations)
-                            pending_references.append((location, key))
-                            continue
-                        result.append(((location, key), (self, key,
-                            value, self._resolve_references(refs))))
-                    else:
-                        result.append(((location, key),
-                            (self, key, self._bisect_nodes[key])))
+                if self.node_ref_lists:
+                    # the references may not have been all parsed.
+                    value, refs = self._bisect_nodes[key]
+                    wanted_locations = []
+                    for ref_list in refs:
+                        for ref in ref_list:
+                            if ref not in self._keys_by_offset:
+                                wanted_locations.append(ref)
+                    if wanted_locations:
+                        pending_locations.update(wanted_locations)
+                        pending_references.append((location, key))
+                        continue
+                    result.append(((location, key), (self, key,
+                        value, self._resolve_references(refs))))
                 else:
-                    result.append(((location, key), False))
+                    result.append(((location, key),
+                        (self, key, self._bisect_nodes[key])))
                 continue
+            else:
+                # has the region the key should be in, been parsed?
+                index = self._parsed_key_index(key)
+                if (self._parsed_key_map[index][0] <= key and
+                    (self._parsed_key_map[index][1] >= key or
+                     # end of the file has been parsed
+                     self._parsed_byte_map[index][1] == self._size)):
+                    result.append(((location, key), False))
+                    continue
             # no, is the key above or below the probed location:
             # get the range of the probed & parsed location
             index = self._parsed_byte_index(location)
