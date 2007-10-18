@@ -1424,6 +1424,36 @@ class GraphKnitRepository(KnitRepository):
             return 'w'
         return 'r'
 
+    def get_parents(self, revision_ids):
+        """See StackedParentsProvider.get_parents.
+        
+        This implementation accesses the combined revision index to provide
+        answers.
+        """
+        index = self._packs.revision_index.combined_index
+        search_keys = set()
+        for revision_id in revision_ids:
+            if revision_id != _mod_revision.NULL_REVISION:
+                search_keys.add((revision_id,))
+        found_parents = {_mod_revision.NULL_REVISION:[]}
+        for index, key, value, refs in index.iter_entries(search_keys):
+            parents = refs[0]
+            if not parents:
+                parents = (_mod_revision.NULL_REVISION,)
+            else:
+                parents = tuple(parent[0] for parent in parents)
+            found_parents[key[0]] = parents
+        result = []
+        for revision_id in revision_ids:
+            try:
+                result.append(found_parents[revision_id])
+            except KeyError:
+                result.append(None)
+        return result
+
+    def _make_parents_provider(self):
+        return self
+
     def _refresh_data(self):
         if self._write_lock_count == 1 or self.control_files._lock_count==1:
             # forget what names there are
