@@ -19,11 +19,11 @@
 from cStringIO import StringIO
 
 from bzrlib import config
-from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.tests import TestCaseInTempDir, TestCaseWithMemoryTransport
 from bzrlib.plugins.launchpad import account
 
 
-class LaunchpadAccountTests(TestCase):
+class LaunchpadAccountTests(TestCaseInTempDir):
 
     def setup_config(self, text):
         my_config = config.GlobalConfig()
