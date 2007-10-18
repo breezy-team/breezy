@@ -1,5 +1,7 @@
 0.2		UNRELEASED
 
+ * Add replay command.
+
  * Support the -r argument to rebase.
 
  * Add --dry-run option to rebase command. 

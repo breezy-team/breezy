@@ -464,7 +464,7 @@ def complete_revert(wt, newparents):
                 osutils.rmtree(abs_path)
             else:
                 os.unlink(abs_path)
-    wt.revert([], old_tree=newtree, backups=False)
+    wt.revert(None, old_tree=newtree, backups=False)
     assert not wt.changes_from(wt.basis_tree()).has_changed()
     wt.set_parent_ids(newparents)
 

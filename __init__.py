@@ -258,11 +258,45 @@ class cmd_rebase_todo(Command):
         finally:
             wt.unlock()
 
+class cmd_replay(Command):
+    """Replay a commit on top of a different branch.
 
-register_command(cmd_rebase)
-register_command(cmd_rebase_abort)
-register_command(cmd_rebase_continue)
-register_command(cmd_rebase_todo)
+    """
+    
+    takes_options = ['revision', 'merge-type']
+    takes_args = ['location']
+
+    def run(self, location, revision=None, merge_type=None):
+        from bzrlib.branch import Branch
+        from bzrlib.workingtree import WorkingTree
+        from rebase import regenerate_default_revid, workingtree_replay
+
+        from_branch = Branch.open(location)
+
+        if revision is not None:
+            if len(revision) == 1:
+                if revision[0] is not None:
+                    revid = revision[0].in_history(from_branch).rev_id
+                else:
+                    raise BzrCommandError("--revision takes only one argument")
+        else:
+            raise BzrCommandError("--revision is mandatory")
+
+        wt = WorkingTree.open(".")
+        wt.lock_write()
+        try:
+            wt.branch.repository.fetch(from_branch.repository, revid)
+            replay = workingtree_replay(wt, merge_type=merge_type)
+            newrevid = regenerate_default_revid(wt.branch.repository, revid)
+            replay(wt.branch.repository, revid, newrevid, [wt.last_revision()])
+        finally:
+            wt.unlock()
+
+
+for cmd in [cmd_replay, cmd_rebase, cmd_rebase_abort, cmd_rebase_continue, 
+            cmd_rebase_todo]:
+    register_command(cmd)
+
 
 def test_suite():
     from unittest import TestSuite
