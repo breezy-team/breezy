@@ -16,7 +16,8 @@
 """Rebase."""
 
 from bzrlib.config import Config
-from bzrlib.errors import BzrError, NoSuchFile, UnknownFormatError, UnrelatedBranches
+from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError, 
+                           UnrelatedBranches)
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.merge import Merger
 from bzrlib import osutils
@@ -114,6 +115,11 @@ def unmarshall_rebase_plan(text):
 
 
 def regenerate_default_revid(repository, revid):
+    """Generate a revision id for the rebase of an existing revision.
+    
+    :param repository: Repository in which the revision is present.
+    :param revid: Revision id of the revision that is being rebased.
+    :return: new revision id."""
     rev = repository.get_revision(revid)
     return gen_revision_id(rev.committer, rev.timestamp)
 
