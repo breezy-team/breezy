@@ -30,12 +30,19 @@ from bzrlib import (
     )
 from bzrlib.transport import (
     get_transport,
+    register_urlparse_netloc_protocol,
     Transport,
     )
 
 from bzrlib.plugins.launchpad.lp_registration import (
     LaunchpadService, ResolveLaunchpadPathRequest)
 from bzrlib.plugins.launchpad.account import get_lp_login
+
+
+# As bzrlib.transport.remote may not be loaded yet, make sure bzr+ssh
+# is counted as a netloc protocol.
+register_urlparse_netloc_protocol('bzr+ssh')
+
 
 
 class LaunchpadTransport(Transport):
@@ -52,7 +59,8 @@ class LaunchpadTransport(Transport):
             raise errors.InvalidURL(path=base)
         self._base_transport = None
 
-    def _resolve_base(self, _request_factory=ResolveLaunchpadPathRequest):
+    def _resolve_base(self, _request_factory=ResolveLaunchpadPathRequest,
+                      _lp_login=None):
         """Resolve the base URL for this transport."""
         path = self.base[3:].lstrip('/')
         # Perform an XMLRPC request to resolve the path
@@ -64,16 +72,18 @@ class LaunchpadTransport(Transport):
             raise errors.InvalidURL(
                 path=self.base, extra=fault.faultString)
 
-        lp_login = get_lp_login()
+        if _lp_login is None:
+            _lp_login = get_lp_login()
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)
-            if scheme == 'bzr+ssh' and netloc.endswith('launchpad.net'):
+            if scheme == 'bzr+ssh' and (netloc.endswith('launchpad.net') or
+                                        netloc.endswith('launchpad.dev')):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
-                if lp_login is None:
+                if _lp_login is None:
                     continue
-                url = urlunsplit(scheme, '%s@%s' % (lp_login, netloc),
-                                 path, query, fragment)
+                url = urlunsplit((scheme, '%s@%s' % (_lp_login, netloc),
+                                  path, query, fragment))
                 break
             elif scheme in ['bzr+ssh', 'bzr+http', 'http']:
                 break
@@ -130,6 +140,12 @@ class LaunchpadTransport(Transport):
 
     def get_smart_client(self):
         return self._transport.get_smart_client()
+
+    def get_smart_medium(self):
+        return self._transport.get_smart_medium()
+
+    def get_shared_medium(self):
+        return self._transport.get_shared_medium()
 
     def has(self, relpath):
         """See Transport.has()."""

@@ -24,6 +24,7 @@ from bzrlib import (
 from bzrlib.tests import TestCase
 from bzrlib.plugins.launchpad.lp_indirect import (
     LaunchpadTransport)
+from bzrlib.plugins.launchpad.account import get_lp_login
 
 
 class FakeResolveFactory(object):
@@ -61,6 +62,16 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           transport._resolve_base(factory))
 
+    def test_indirect_skip_bad_schemes(self):
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://another/location']))
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve_base(factory))
+
     def test_indirect_no_matching_schemes(self):
         # If the XMLRPC call does not return any protocols we support,
         # invalidURL is raised.
@@ -78,6 +89,41 @@ class IndirectUrlTests(TestCase):
         factory.submit = submit
         transport = LaunchpadTransport('lp:///apt')
         self.assertRaises(errors.InvalidURL, transport._resolve_base, factory)
+
+    def test_skip_bzr_ssh_launchpad_net_when_anonymous(self):
+        # Test that bzr+ssh://bazaar.launchpad.net gets skipped if
+        # Bazaar does not know the user's Launchpad ID:
+        self.assertEqual(None, get_lp_login())
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve_base(factory))
+
+    def test_rewrite_bzr_ssh_launchpad_net(self):
+        # Test that bzr+ssh URLs get rewritten to include the user's
+        # Launchpad ID (assuming we know the Launchpad ID).
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertEquals(
+            'bzr+ssh://username@bazaar.launchpad.net/~apt/apt/devel',
+            transport._resolve_base(factory, _lp_login='username'))
+
+    def test_no_rewrite_of_other_bzr_ssh(self):
+        # Test that we don't rewrite bzr+ssh URLs for other 
+        self.assertEqual(None, get_lp_login())
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'bzr+ssh://example.com/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+        transport = LaunchpadTransport('lp:///apt')
+        self.assertEquals('bzr+ssh://example.com/~apt/apt/devel',
+                          transport._resolve_base(factory))
 
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_indirection(self):
