@@ -251,18 +251,18 @@ The use cases described below use the file format defined above.
 
         # Pet projects on hobby.net
         [hobby]
-        scheme=https
         host=r.hobby.net
-        verify_certificates=no
         user=jim
         password=obvious1234
         
         # Home server
         [home]
+        scheme=https
         host=home.net
         user=joe
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
+        verify_certificates=no # Still searching a free certificate provider
         
         [DEFAULT]
         user=foobar
@@ -292,7 +292,15 @@ The use cases described below use the file format defined above.
         port=3128
         user=proxyuser1
         password=proxypass1
-        
+
+  * source hosting provider declaring sub-domains for each project::
+
+        [sfnet]
+        scheme=ssh # we use sftp, but ssh is the scheme used for authentication
+        host=.sf.net # The leading '.' ensures that 'sf.net' does not match
+        user=georges
+        password=ben...son
+
 
 UI Changes
 ----------

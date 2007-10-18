@@ -74,6 +74,7 @@ from StringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    debug,
     errors,
     mail_client,
     osutils,
@@ -84,8 +85,6 @@ from bzrlib import (
     )
 import bzrlib.util.configobj.configobj as configobj
 """)
-
-from bzrlib.trace import mutter, warning
 
 
 CHECK_IF_POSSIBLE=0
@@ -238,13 +237,14 @@ class Config(object):
             return v.decode(bzrlib.user_encoding)
         v = os.environ.get('BZREMAIL')
         if v:
-            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
+            trace.warning('BZREMAIL is deprecated in favor of BZR_EMAIL.'
+                          ' Please update your configuration.')
             return v.decode(bzrlib.user_encoding)
-    
+
         v = self._get_user_id()
         if v:
             return v
-        
+
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
@@ -275,8 +275,8 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
-                warning("Please use create_signatures, not check_signatures "
-                        "to set signing policy.")
+                trace.warning("Please use create_signatures,"
+                              " not check_signatures to set signing policy.")
             if policy == CHECK_ALWAYS:
                 return True
         elif policy == SIGN_ALWAYS:
@@ -463,12 +463,12 @@ class LocationConfig(IniBasedConfig):
         if (not os.path.exists(name_generator()) and 
                 os.path.exists(branches_config_filename())):
             if sys.platform == 'win32':
-                warning('Please rename %s to %s' 
-                         % (branches_config_filename(),
-                            locations_config_filename()))
+                trace.warning('Please rename %s to %s' 
+                              % (branches_config_filename(),
+                                 locations_config_filename()))
             else:
-                warning('Please rename ~/.bazaar/branches.conf'
-                        ' to ~/.bazaar/locations.conf')
+                trace.warning('Please rename ~/.bazaar/branches.conf'
+                              ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
         # local file locations are looked up by local path, rather than
@@ -743,9 +743,9 @@ def ensure_config_dir_exists(path=None):
         if sys.platform == 'win32':
             parent_dir = os.path.dirname(path)
             if not os.path.isdir(parent_dir):
-                mutter('creating config parent directory: %r', parent_dir)
+                trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
-        mutter('creating config directory: %r', path)
+        trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
 
 
@@ -1036,6 +1036,7 @@ class AuthenticationConfig(object):
                 continue
             if (a_user is not None and user is not None
                 and a_user != user):
+                # Never contradict the caller about the user to be used
                 continue
             user = a_user
             if user is None:
@@ -1048,6 +1049,8 @@ class AuthenticationConfig(object):
                            'user': user, 'password': password,
                            'verify_certificates': a_verify_certificates,
                            }
+            if 'auth' in debug.debug_flags:
+                trace.mutter("Using authentication section: %r", auth_def_name)
             break
 
         return credentials
