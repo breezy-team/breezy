@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+from cStringIO import StringIO
 import os
 import sys
 import tempfile
@@ -23,6 +24,7 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
+from bzrlib.pack import ContainerWriter
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -163,6 +165,9 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
+        except errors.LockFailed, e:
+            return FailedSmartServerResponse(('LockFailed',
+                str(e.lock), str(e.why)))
         repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
@@ -239,3 +244,20 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
+
+
+class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *revision_ids):
+        stream = repository.get_data_stream(revision_ids)
+        filelike = StringIO()
+        pack = ContainerWriter(filelike.write)
+        pack.begin()
+        try:
+            for name_tuple, bytes in stream:
+                pack.add_bytes_record(bytes, [name_tuple])
+        except errors.RevisionNotPresent, e:
+            return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        pack.end()
+        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
+

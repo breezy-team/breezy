@@ -109,8 +109,6 @@ class MutableTree(tree.Tree):
             ids = [None] * len(files)
         else:
             assert(len(ids) == len(files))
-            ids = [osutils.safe_file_id(file_id) for file_id in ids]
-
         if kinds is None:
             kinds = [None] * len(files)
         else:
@@ -431,11 +429,11 @@ class MutableTree(tree.Tree):
                 self.read_working_inventory()
         return added, ignored
 
-    def update_to_one_parent_via_delta(self, new_revid, delta):
+    def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.
 
         This gives the tree one parent, with revision id new_revid. The
-        inventory delta is applied ot the current basis tree to generate the
+        inventory delta is applied to the current basis tree to generate the
         inventory for the parent new_revid, and all other parent trees are
         discarded.
 

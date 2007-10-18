@@ -491,7 +491,6 @@ class Branch(object):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
-        revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -690,7 +689,6 @@ class Branch(object):
             new_history = []
         new_history = self.revision_history()
         if revision_id is not None and new_history != []:
-            revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
@@ -1369,7 +1367,6 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
-        rev_history = [osutils.safe_revision_id(r) for r in rev_history]
         self._clear_cached_state()
         self._write_revision_history(rev_history)
         self._cache_revision_history(rev_history)
@@ -1388,7 +1385,6 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1434,7 +1430,6 @@ class BzrBranch(Branch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         self.set_revision_history(self._lefthand_history(revision_id,
             last_rev, other_branch))
 
@@ -1448,8 +1443,6 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     # if there are no commits, we're done.
                     return
-            else:
-                stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
@@ -1940,7 +1933,6 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)

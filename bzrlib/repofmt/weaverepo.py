@@ -120,7 +120,6 @@ class AllInOneRepository(Repository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        revision_id = osutils.safe_revision_id(revision_id)
         result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
@@ -156,7 +155,6 @@ class AllInOneRepository(Repository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
@@ -198,6 +196,11 @@ class AllInOneRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
+
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
 
 
 class WeaveMetaDirRepository(MetaDirRepository):
@@ -248,7 +251,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        revision_id = osutils.safe_revision_id(revision_id)
         result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
         self.start_write_group()
@@ -258,7 +260,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         # TODO: jam 20070210 get_revision_reconcile should do this for us
-        revision_id = osutils.safe_revision_id(revision_id)
         r = self.get_revision_reconcile(revision_id)
         # weave corruption can lead to absent revision markers that should be
         # present.
@@ -286,7 +287,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
@@ -307,6 +307,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
                     if revision_id not in result:
                         pending.add(revision_id)
             return result
+
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -500,7 +505,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
         return self._get_versioned_file_store('weaves', transport, control_files)
-
 
 class RepositoryFormat7(MetaDirRepositoryFormat):
     """Bzr repository 7.

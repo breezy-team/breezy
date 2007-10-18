@@ -21,12 +21,10 @@
 from bzrlib import (
     bzrdir,
     errors,
+    symbol_versioning,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
-
-# TODO: Make sure builtin exception class formats are consistent - e.g. should
-# or shouldn't end with a full stop, etc.
 
 
 class TestErrors(TestCaseWithTransport):
@@ -142,9 +140,16 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_read_only_lock_error(self):
-        error = errors.ReadOnlyLockError('filename', 'error message')
+        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
+            errors.ReadOnlyLockError, 'filename', 'error message')
         self.assertEqualDiff("Cannot acquire write lock on filename."
                              " error message", str(error))
+
+    def test_lock_failed(self):
+        error = errors.LockFailed('http://canonical.com/', 'readonly transport')
+        self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
+            str(error))
+        self.assertFalse(error.internal_error)
 
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
@@ -370,6 +375,12 @@ class TestErrors(TestCaseWithTransport):
             "Internal check failed: example check failure",
             str(e))
         self.assertTrue(e.internal_error)
+
+    def test_repository_data_stream_error(self):
+        """Test the formatting of RepositoryDataStreamError."""
+        e = errors.RepositoryDataStreamError(u"my reason")
+        self.assertEqual(
+            "Corrupt or incompatible data stream: my reason", str(e))
 
 
 class PassThroughError(errors.BzrError):

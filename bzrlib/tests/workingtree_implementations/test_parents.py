@@ -250,7 +250,7 @@ class TestAddParent(TestParents):
 
 
 class UpdateToOneParentViaDeltaTests(TestParents):
-    """Tests for the update_to_one_parent_via_delta call.
+    """Tests for the update_basis_by_delta call.
     
     This is intuitively defined as 'apply an inventory delta to the basis and
     discard other parents', but for trees that have an inventory that is not
@@ -260,7 +260,7 @@ class UpdateToOneParentViaDeltaTests(TestParents):
 
     def assertDeltaApplicationResultsInExpectedBasis(self, tree, revid, delta,
         expected_inventory):
-        tree.update_to_one_parent_via_delta(revid, delta)
+        tree.update_basis_by_delta(revid, delta)
         # check the last revision was adjusted to rev_id
         self.assertEqual(revid, tree.last_revision())
         # check the parents are what we expect
@@ -340,6 +340,9 @@ class UpdateToOneParentViaDeltaTests(TestParents):
 
     def assertTransitionFromBasisToShape(self, basis_shape, basis_revid,
         new_shape, new_revid, extra_parent=None):
+        # set the inventory revision ids.
+        basis_shape.revision_id = basis_revid
+        new_shape.revision_id = new_revid
         delta = self.make_inv_delta(basis_shape, new_shape)
         tree = self.make_branch_and_tree('tree')
         # the shapes need to be in the tree's repository to be able to set them
