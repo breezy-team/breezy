@@ -24,11 +24,35 @@ patches, the user can resolve the conflict and continue the rebase using the
 from bzrlib.commands import Command, Option, display_command, register_command
 from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
                            UnrelatedBranches)
-from bzrlib.trace import info
+from bzrlib.trace import info, warning
 
-version_info = (0, 1, 0)
-__version__ = '%d.%d.%d' % version_info
+version_info = (0, 2, 0, 'dev', 0)
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
+
+min_compatible_bzr_version = (0, 92)
+
+def check_bzrlib_version(desired):
+    """Check that bzrlib is compatible.
+
+    If version is < all compatible version, assume incompatible.
+    """
+    import bzrlib
+    bzrlib_version = bzrlib.version_info[:2]
+    if bzrlib.version_info[3] == 'dev':
+        return
+    if bzrlib_version < desired:
+        warning('Installed bzr version %s is too old to be used with bzr-rebase'
+                ' %s.' % (bzrlib.__version__, __version__))
+        # Not using BzrNewError, because it may not exist.
+        raise Exception, ('Version mismatch', desired)
+
+
+check_bzrlib_version(min_compatible_bzr_version)
 
 def find_last_common_revid(revhistory1, revhistory2):
     for revid in reversed(revhistory1):

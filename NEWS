@@ -1,16 +1,18 @@
 0.2		UNRELEASED
 
+ * Check for incompatible Bazaar functions.
+
  * Add replay command.
 
  * Support the -r argument to rebase.
 
  * Add --dry-run option to rebase command. 
 
- * Fix compatibility wit Bazaar 0.19.
+ * Fix compatibility with Bazaar 0.92.
+   (#144031)
 
  * Store parents correctly.
 
 0.1 	2007-07-15
 
  * Initial release.
-hi

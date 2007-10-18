@@ -303,13 +303,14 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrevid
 
-    builder = repository.get_commit_builder(branch=None, parents=new_parents, 
-                                  config=Config(),
-                                  committer=oldrev.committer,
-                                  timestamp=oldrev.timestamp,
-                                  timezone=oldrev.timezone,
-                                  revprops=revprops,
-                                  revision_id=newrevid)
+    builder = repository.get_commit_builder(branch=None, 
+                                            parents=new_parents, 
+                                            config=Config(),
+                                            committer=oldrev.committer,
+                                            timestamp=oldrev.timestamp,
+                                            timezone=oldrev.timezone,
+                                            revprops=revprops,
+                                            revision_id=newrevid)
     try:
 
         # Check what new_ie.file_id should be
