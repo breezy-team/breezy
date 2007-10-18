@@ -23,7 +23,7 @@ patches, the user can resolve the conflict and continue the rebase using the
 
 from bzrlib.commands import Command, Option, display_command, register_command
 from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
-                           UnrelatedBranches)
+                           UnrelatedBranches, NoSuchRevision)
 from bzrlib.trace import info, warning
 
 version_info = (0, 2, 0, 'dev', 0)
@@ -113,7 +113,7 @@ class cmd_rebase(Command):
                             workingtree_replay, write_rebase_plan,
                             regenerate_default_revid,
                             rebase_todo)
-        wt = WorkingTree.open('.')
+        wt = WorkingTree.open(".")
         wt.lock_write()
         if upstream_location is None:
             upstream_location = wt.branch.get_parent()
@@ -160,8 +160,11 @@ class cmd_rebase(Command):
                                                  upstream.revision_history())
                 if common_revid == upstream.last_revision():
                     raise BzrCommandError("Already rebased on %s" % upstream)
-                start_revid = wt.branch.get_rev_id(
-                        wt.branch.revision_id_to_revno(common_revid)+1)
+                try:
+                    start_revid = wt.branch.get_rev_id(
+                            wt.branch.revision_id_to_revno(common_revid)+1)
+                except NoSuchRevision:
+                    raise BzrCommandError("No common revision, please specify --revision")
 
             # Create plan
             replace_map = generate_simple_plan(
@@ -310,9 +313,9 @@ class cmd_replay(Command):
         wt.lock_write()
         try:
             wt.branch.repository.fetch(from_branch.repository, revid)
-            replay = workingtree_replay(wt, merge_type=merge_type)
             newrevid = regenerate_default_revid(wt.branch.repository, revid)
-            replay(wt.branch.repository, revid, newrevid, [wt.last_revision()])
+            replay_delta_workingtree(wt, revid, newrevid, [wt.last_revision()],
+                                     merge_type=merge_type)
         finally:
             wt.unlock()
 

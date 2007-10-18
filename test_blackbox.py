@@ -144,6 +144,17 @@ class TestRebaseSimple(ExternalBase):
         self.check_output('', 'rebase --onto -2 ../main')
         self.check_output('3\n', 'revno')
 
+    def test_unrelated(self):
+        os.chdir('..')
+        os.mkdir('unrelated')
+        os.chdir('unrelated')
+        self.run_bzr('init')
+        self.make_file('hello', "hi world")
+        self.run_bzr('add')
+        self.run_bzr('commit -m x')
+        self.run_bzr_error(['bzr: ERROR: Branches have no common ancestor, and no merge base.*'],
+                           'rebase ../main')
+
     def test_verbose(self):
         self.make_file('hello', '42')
         self.run_bzr('commit -m that')

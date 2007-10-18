@@ -1,5 +1,7 @@
 0.2		UNRELEASED
 
+ * Give proper warning when there is no common base.
+
  * Check for incompatible Bazaar functions.
 
  * Add replay command.
