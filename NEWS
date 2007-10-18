@@ -78,6 +78,11 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+
+  DOCUMENTATION:
+
+   * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
+
   BUG FIXES:
 
    * ``bzr+ssh://`` and ``sftp://`` URLs that do not specify ports explicitly
