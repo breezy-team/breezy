@@ -342,8 +342,8 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                         ie.revision = revid_renames[ie.revision]
                     # make sure at least one of the new parents contains 
                     # the ie.file_id, ie.revision combination
-                    #if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
-                    #    raise ReplayParentsInconsistent(ie.file_id, ie.revision)
+                    if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
+                        raise ReplayParentsInconsistent(ie.file_id, ie.revision)
                 i += 1
                 builder.record_entry_contents(ie, parent_invs, path, oldtree,
                         oldtree.path_content_summary(path))
