@@ -2328,8 +2328,6 @@ class InterPackRepo(InterSameDataRepository):
         """See InterRepository.fetch()."""
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        # TODO: jam 20070210 This should be an assert, not a translate
-        revision_id = osutils.safe_revision_id(revision_id)
         self.count_copied = 0
         if revision_id is None:
             # TODO:
