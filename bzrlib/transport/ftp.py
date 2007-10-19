@@ -143,7 +143,7 @@ class FtpTransport(ConnectedTransport):
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""
-        credentials = self.get_credentials()
+        credentials = self._get_credentials()
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
 

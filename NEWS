@@ -109,6 +109,9 @@ IN DEVELOPMENT
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
 
+   * Fix typo in ftp.py making the reconnection fail on temporary errors.
+     (Vincent Ladeuil, #154259)
+
    * Fix failing test by comparing real paths to cover the case where the TMPDIR
      contains a symbolic link.
      (Vincent Ladeuil, #141382).
