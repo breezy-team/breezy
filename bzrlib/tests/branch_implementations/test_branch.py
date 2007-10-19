@@ -539,9 +539,9 @@ class TestBranchPushLocations(TestCaseWithBranch):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
-        print >> open(fn, 'wt'), ("[%s]\n"
-                                  "push_location=foo" %
-                                  self.get_branch().base[:-1])
+        open(fn, 'wt').write(("[%s]\n"
+                                  "push_location=foo\n" %
+                                  self.get_branch().base[:-1]))
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):

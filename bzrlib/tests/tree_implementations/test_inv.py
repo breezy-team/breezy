@@ -37,16 +37,16 @@ class TestEntryDiffing(TestCaseWithTree):
         super(TestEntryDiffing, self).setUp()
         self.wt = self.make_branch_and_tree('.')
         self.branch = self.wt.branch
-        print >> open('file', 'wb'), 'foo'
-        print >> open('binfile', 'wb'), 'foo'
+        open('file', 'wb').write('foo\n')
+        open('binfile', 'wb').write('foo\n')
         self.wt.add(['file'], ['fileid'])
         self.wt.add(['binfile'], ['binfileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
-        print >> open('file', 'wb'), 'bar'
-        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
+        open('file', 'wb').write('bar\n')
+        open('binfile', 'wb').write('x' * 1023 + '\x00\n')
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
