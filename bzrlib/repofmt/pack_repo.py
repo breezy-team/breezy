@@ -147,7 +147,7 @@ class Pack(object):
 
 
 class ExistingPack(Pack):
-    """An in memory proxy for an exisiting .pack and its disk indices."""
+    """An in memory proxy for an existing .pack and its disk indices."""
 
     def __init__(self, pack_transport, name, revision_index, inventory_index,
         text_index, signature_index):
@@ -227,7 +227,7 @@ class NewPack(Pack):
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
         # How much data to cache when writing packs. Note that this is not
-        # synchronised with reads, because its not in the transport layer, so
+        # synchronised with reads, because it's not in the transport layer, so
         # is not safe unless the client knows it won't be reading from the pack
         # under creation.
         self._cache_limit = 0
@@ -248,7 +248,7 @@ class NewPack(Pack):
             _write=self.write_stream.write, _update=self._hash.update):
             _buffer[0].append(bytes)
             _buffer[1] += len(bytes)
-            # 1MB buffer cap
+            # buffer cap
             if _buffer[1] > self._cache_limit or flush:
                 bytes = ''.join(_buffer[0])
                 _write(bytes)
@@ -332,7 +332,7 @@ class NewPack(Pack):
                 time.time() - self.start_time)
 
     def make_index(self, index_type):
-        """Construct a GraphIndex object for this packs index 'index_type'."""
+        """Construct a GraphIndex object for this pack index 'index_type'."""
         setattr(self, index_type + '_index',
             GraphIndex(self.index_transport,
                 self.index_name(index_type, self.name),
@@ -352,9 +352,8 @@ class NewPack(Pack):
     def _write_index(self, index_type, index, label):
         """Write out an index.
 
+        :param index_type: The type of index to write - e.g. 'revision'.
         :param index: The index object to serialise.
-        :param index_offset: Where in self.index_sizes to remember this.
-        :param name_getter: What to use to get the name of the index on disk.
         :param label: What label to give the index e.g. 'revision'.
         """
         index_name = self.index_name(index_type, self.name)
