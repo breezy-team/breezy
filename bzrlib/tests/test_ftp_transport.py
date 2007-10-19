@@ -82,8 +82,8 @@ class TestFTPServer(TestCaseWithFTPServer):
         t.put_bytes('foo', 'test bytes\n')
         self.assertEqual('test bytes\n', t.get_bytes('foo'))
         t._reconnect()
-        t.put_bytes('foo', 'test bytes\n')
-        self.assertEqual('test bytes\n', t.get_bytes('foo'))
+        t.put_bytes('foo', 'test more bytes\n')
+        self.assertEqual('test more bytes\n', t.get_bytes('foo'))
 
 
 class TestFTPServerUI(TestCaseWithFTPServer):
