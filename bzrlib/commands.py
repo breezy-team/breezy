@@ -449,9 +449,8 @@ class Command(object):
 
         output_encoding = osutils.get_terminal_encoding()
 
-        # use 'replace' so that we don't abort if trying to write out
-        # in e.g. the default C locale.
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
+        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
+                        errors=self.encoding_type)
         # For whatever reason codecs.getwriter() does not advertise its encoding
         # it just returns the encoding of the wrapped file, which is completely
         # bogus. So set the attribute, so we can find the correct encoding later.
@@ -722,8 +721,8 @@ def run_bzr(argv):
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.version import show_version
-        show_version()
+        from bzrlib.builtins import cmd_version
+        cmd_version().run_argv_aliases([])
         return 0
         
     if not opt_no_plugins:
@@ -797,17 +796,36 @@ def main(argv):
 
 
 def run_bzr_catch_errors(argv):
+    # Note: The except clause logic below should be kept in sync with the
+    # profile() routine in lsprof.py.
     try:
         return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        trace.report_exception(sys.exc_info(), sys.stderr)
+        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
             import pdb
             pdb.post_mortem(sys.exc_traceback)
-        return 3
+        return exitcode
+
+
+def run_bzr_catch_user_errors(argv):
+    """Run bzr and report user errors, but let internal errors propagate.
+
+    This is used for the test suite, and might be useful for other programs
+    that want to wrap the commandline interface.
+    """
+    try:
+        return run_bzr(argv)
+    except Exception, e:
+        if (isinstance(e, (OSError, IOError))
+            or not getattr(e, 'internal_error', True)):
+            trace.report_exception(sys.exc_info(), sys.stderr)
+            return 3
+        else:
+            raise
 
 
 class HelpCommandIndex(object):

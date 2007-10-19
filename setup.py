@@ -149,6 +149,8 @@ class bzr_build(build):
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build}
+from distutils import log
+from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
@@ -165,8 +167,28 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
+
+
+class build_ext_if_possible(build_ext):
+
+    def run(self):
+        try:
+            build_ext.run(self)
+        except DistutilsPlatformError, e:
+            log.warn(str(e))
+            log.warn('Extensions cannot be built, '
+                     'will use the Python versions instead')
+
+    def build_extension(self, ext):
+        try:
+            build_ext.build_extension(self, ext)
+        except CCompilerError:
+            log.warn('Building of "%s" extension failed, '
+                     'will use the Python version instead' % (ext.name,))
+
+
 # Override the build_ext if we have Pyrex available
-command_classes['build_ext'] = build_ext
+command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
@@ -197,6 +219,7 @@ def add_pyrex_extension(module_name, **kwargs):
 
 add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
 if unavailable_files:
@@ -229,7 +252,7 @@ if 'bdist_wininst' in sys.argv:
             # help pages
             'data_files': find_docs(),
             # for building pyrex extensions
-            'cmdclass': {'build_ext': build_ext},
+            'cmdclass': {'build_ext': build_ext_if_possible},
            }
 
     ARGS.update(META_INFO)

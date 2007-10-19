@@ -35,6 +35,7 @@ from bzrlib.osutils import (
         pathjoin,
         )
 from bzrlib.tests import (
+        probe_unicode_in_user_encoding,
         StringIOWrapper,
         TestCase,
         TestCaseInTempDir,
@@ -349,6 +350,7 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
+        # this shouldn't give a warning because it's getting an ascii string
         self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
@@ -475,6 +477,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
         self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
+
+    def test_minimum_path_selection(self):
+        self.assertEqual(set(),
+            osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a', 'b']),
+            osutils.minimum_path_selection(['a', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -1001,18 +1013,8 @@ class TestSetUnsetEnv(TestCase):
         
         So Unicode strings must be encoded.
         """
-        # Try a few different characters, to see if we can get
-        # one that will be valid in the user_encoding
-        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
-        for uni_val in possible_vals:
-            try:
-                env_val = uni_val.encode(bzrlib.user_encoding)
-            except UnicodeEncodeError:
-                # Try a different character
-                pass
-            else:
-                break
-        else:
+        uni_val, env_val = probe_unicode_in_user_encoding()
+        if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (bzrlib.user_encoding,))
 

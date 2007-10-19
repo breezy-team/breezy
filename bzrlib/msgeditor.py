@@ -102,8 +102,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
     if not start_message is None:
         start_message = start_message.encode(bzrlib.user_encoding)
-    return edit_commit_message_encoded(infotext.encode(bzrlib.user_encoding),
-                                       ignoreline, start_message)
+    infotext = infotext.encode(bzrlib.user_encoding, 'replace')
+    return edit_commit_message_encoded(infotext, ignoreline, start_message)
 
 
 def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,

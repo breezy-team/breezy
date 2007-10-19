@@ -68,8 +68,6 @@ class KnitRevisionStore(RevisionStore):
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
-        # FIXME: make this ghost aware at the knit level
-        rf = self.get_revision_file(transaction)
         self.get_revision_file(transaction).add_lines_with_ghosts(
             revision.revision_id,
             revision.parent_ids,
@@ -77,7 +75,6 @@ class KnitRevisionStore(RevisionStore):
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore.add_revision_signature_text()."""
-        revision_id = osutils.safe_revision_id(revision_id)
         self.get_signature_file(transaction).add_lines(
             revision_id, [], osutils.split_lines(signature_text))
 
@@ -88,7 +85,6 @@ class KnitRevisionStore(RevisionStore):
 
     def get_revisions(self, revision_ids, transaction):
         """See RevisionStore.get_revisions()."""
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         texts = self._get_serialized_revisions(revision_ids, transaction)
         revisions = []
         try:
@@ -132,7 +128,6 @@ class KnitRevisionStore(RevisionStore):
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
-        revision_id = osutils.safe_revision_id(revision_id)
         return (_mod_revision.is_null(revision_id)
                 or self.get_revision_file(transaction).has_version(revision_id))
 

@@ -130,7 +130,7 @@ class FtpTransport(ConnectedTransport):
             connection = ftplib.FTP()
             connection.connect(host=self._host, port=self._port)
             if self._user and self._user != 'anonymous' and \
-                    password is not None: # '' is a valid password
+                    password is None: # '' is a valid password
                 get_password = bzrlib.ui.ui_factory.get_password
                 password = get_password(prompt='FTP %(user)s@%(host)s password',
                                         user=self._user, host=self._host)
@@ -167,6 +167,7 @@ class FtpTransport(ConnectedTransport):
             or 'no such dir' in s
             or 'could not create file' in s # vsftpd
             or 'file doesn\'t exist' in s
+            or 'file/directory not found' in s # filezilla server
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
@@ -271,14 +272,33 @@ class FtpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
+        bytes = None
         if getattr(fp, 'read', None) is None:
-            fp = StringIO(fp)
+            # hand in a string IO
+            bytes = fp
+            fp = StringIO(bytes)
+        else:
+            # capture the byte count; .read() may be read only so
+            # decorate it.
+            class byte_counter(object):
+                def __init__(self, fp):
+                    self.fp = fp
+                    self.counted_bytes = 0
+                def read(self, count):
+                    result = self.fp.read(count)
+                    self.counted_bytes += len(result)
+                    return result
+            fp = byte_counter(fp)
         try:
             mutter("FTP put: %s", abspath)
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
                 self._rename_and_overwrite(tmp_abspath, abspath, f)
+                if bytes is not None:
+                    return len(bytes)
+                else:
+                    return fp.counted_bytes
             except (ftplib.error_temp,EOFError), e:
                 warning("Failure during ftp PUT. Deleting temporary file.")
                 try:
@@ -586,8 +606,7 @@ class FtpServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        # have asyncore release the channel
-        self._ftp_server.del_channel()
+        self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()
 
@@ -635,6 +654,9 @@ def _setup_medusa():
 
         def __init__(self, root):
             self.root = root
+            # If secured_user is set secured_password will be checked
+            self.secured_user = None
+            self.secured_password = None
 
         def authorize(self, channel, username, password):
             """Return (success, reply_string, filesystem)"""
@@ -647,7 +669,13 @@ def _setup_medusa():
             else:
                 channel.read_only = 0
 
-            return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
+            # Check secured_user if set
+            if (self.secured_user is not None
+                and username == self.secured_user
+                and password != self.secured_password):
+                return 0, 'Password invalid.', None
+            else:
+                return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
 
 
     class ftp_channel(medusa.ftp_server.ftp_channel):

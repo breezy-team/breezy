@@ -106,8 +106,8 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<SmartServerResponse %r args=%r body=%r>" % (self.is_successful(),
-            self.args, self.body)
+        return "<SmartServerResponse %r args=%r body=%r>" % (
+            self.is_successful(), self.args, self.body)
 
 
 class FailedSmartServerResponse(SmartServerResponse):
@@ -318,6 +318,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
+request_handlers.register_lazy(
+    'Repository.stream_knit_data_for_revisions', 'bzrlib.smart.repository',
+    'SmartServerRepositoryStreamKnitDataForRevisions')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

@@ -1052,7 +1052,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
         this.wt.remove('b')
-        this.wt.revert([])
+        this.wt.revert()
 
     def test_file_merge(self):
         if not has_symlinks():

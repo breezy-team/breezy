@@ -20,9 +20,16 @@
 __all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
+from bzrlib import (
+    errors,
+    graph,
+    ui,
+    repository,
+    )
+from bzrlib import errors
 from bzrlib import ui
-from bzrlib.trace import mutter
-from bzrlib.tsort import TopoSorter
+from bzrlib.trace import mutter, note
+from bzrlib.tsort import TopoSorter, topo_sort
 
 
 def reconcile(dir, other=None):
@@ -71,11 +78,22 @@ class Reconciler(object):
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
-        self.pb.note('Reconciliation complete.')
+        if repo_reconciler.aborted:
+            self.pb.note(
+                'Reconcile aborted: revision index has inconsistent parents.')
+            self.pb.note(
+                'Run "bzr check" for more details.')
+        else:
+            self.pb.note('Reconciliation complete.')
 
 
 class RepoReconciler(object):
     """Reconciler that reconciles a repository.
+
+    The goal of repository reconciliation is to make any derived data
+    consistent with the core data committed by a user. This can involve 
+    reindexing, or removing unreferenced data if that can interfere with
+    queries in a given repository.
 
     Currently this consists of an inventory reweave with revision cross-checks.
     """
@@ -89,6 +107,7 @@ class RepoReconciler(object):
         """
         self.garbage_inventories = 0
         self.inconsistent_parents = 0
+        self.aborted = False
         self.repo = repo
         self.thorough = thorough
 
@@ -170,8 +189,8 @@ class RepoReconciler(object):
                 # This is done to avoid a revision_count * time-to-write additional overhead on 
                 # reconcile.
                 new_inventory_vf._check_write_ok()
-                Weave._add_lines(new_inventory_vf, rev_id, parents, self.inventory.get_lines(rev_id),
-                                 None)
+                Weave._add_lines(new_inventory_vf, rev_id, parents,
+                    self.inventory.get_lines(rev_id), None, None, None, False, True)
             else:
                 new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
@@ -267,17 +286,20 @@ class RepoReconciler(object):
 class KnitReconciler(RepoReconciler):
     """Reconciler that reconciles a knit format repository.
 
-    This will detect garbage inventories and remove them.
-
-    Inconsistent parentage is checked for in the revision weave.
+    This will detect garbage inventories and remove them in thorough mode.
     """
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
         if self.thorough:
-            self._load_indexes()
+            try:
+                self._load_indexes()
+            except errors.BzrCheckError:
+                self.aborted = True
+                return
             # knits never suffer this
             self._gc_inventory()
+            self._fix_text_parents()
 
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
@@ -285,6 +307,7 @@ class KnitReconciler(RepoReconciler):
         self.pb.update('Reading indexes.', 0, 2)
         self.inventory = self.repo.get_inventory_weave()
         self.pb.update('Reading indexes.', 1, 2)
+        self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo._revision_store.get_revision_file(self.transaction)
         self.pb.update('Reading indexes.', 2, 2)
 
@@ -337,3 +360,46 @@ class KnitReconciler(RepoReconciler):
         self.garbage_inventories = len(garbage)
         for revision_id in garbage:
             mutter('Garbage inventory {%s} found.', revision_id)
+
+    def _fix_text_parents(self):
+        """Fix bad versionedfile parent entries.
+
+        It is possible for the parents entry in a versionedfile entry to be
+        inconsistent with the values in the revision and inventory.
+
+        This method finds entries with such inconsistencies, corrects their
+        parent lists, and replaces the versionedfile with a corrected version.
+        """
+        transaction = self.repo.get_transaction()
+        revision_versions = repository._RevisionTextVersionCache(self.repo)
+        versions = self.revisions.versions()
+        revision_versions.prepopulate_revs(versions)
+        for num, file_id in enumerate(self.repo.weave_store):
+            self.pb.update('Fixing text parents', num,
+                           len(self.repo.weave_store))
+            vf = self.repo.weave_store.get_weave(file_id, transaction)
+            vf_checker = self.repo.get_versioned_file_checker(
+                versions, revision_versions)
+            versions_with_bad_parents = vf_checker.check_file_version_parents(
+                vf, file_id)
+            if len(versions_with_bad_parents) == 0:
+                continue
+            self._fix_text_parent(file_id, vf, versions_with_bad_parents)
+
+    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents):
+        """Fix bad versionedfile entries in a single versioned file."""
+        new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
+            self.transaction)
+        new_parents = {}
+        for version in vf.versions():
+            if version in versions_with_bad_parents:
+                parents = versions_with_bad_parents[version][1]
+            else:
+                parents = vf.get_parents(version)
+            new_parents[version] = parents
+        for version in topo_sort(new_parents.items()):
+            new_vf.add_lines(version, new_parents[version],
+                             vf.get_lines(version))
+        self.repo.weave_store.copy(new_vf, file_id, self.transaction)
+        self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
+

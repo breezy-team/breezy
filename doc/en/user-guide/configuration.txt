@@ -188,6 +188,17 @@ For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+bzr_remote_path
+---------------
+(Default: "bzr").  The path to the command that should be used to run the smart
+server for bzr.  This value may only be specified in locations.conf, because:
+
+- it's needed before branch.conf is accessible
+- allowing remote branch.conf files to specify commands would be a security
+  risk
+
+It is overridden by the BZR_REMOTE_PATH environment variable.
+
 smtp_server
 -----------
 (Default: "localhost"). SMTP server to use when Bazaar needs to send
@@ -207,18 +218,22 @@ By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
 will try ``xdg-email``. If either of these fails, it will fall back to
 ``editor``.
 
-Supported values are:
+Supported values for specific clients:
 
-:xdg-email: Use xdg-email to run your preferred mail program
-:mapi: Use your preferred e-mail client on Windows.
-:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
-    this works around some bugs that xdg-email doesn't handle.
 :evolution: Use Evolution.
 :kmail: Use KMail.
+:mutt: Use Mutt.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+
+Supported generic values are:
+
+:default: See above.
 :editor: Use your editor to compose the merge request.  This also uses
     your commit id, (see ``bzr whoami``), smtp_server and (optionally)
     smtp_username and smtp_password.
-:default: See above.
+:mapi: Use your preferred e-mail client on Windows.
+:xdg-email: Use xdg-email to run your preferred mail program
 
 submit_branch
 -------------

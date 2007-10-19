@@ -146,6 +146,7 @@ class Serializer_v5(Serializer):
     
     __slots__ = []
 
+    root_id = ROOT_ID
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
@@ -153,19 +154,41 @@ class Serializer_v5(Serializer):
     supported_kinds = set(['file', 'directory', 'symlink'])
     format_num = '5'
 
-    def write_inventory_to_string(self, inv):
-        """Just call write_inventory with a StringIO and return the value"""
+    def _check_revisions(self, inv):
+        """Extension point for subclasses to check during serialisation.
+
+        By default no checking is done.
+
+        :param inv: An inventory about to be serialised, to be checked.
+        :raises: AssertionError if an error has occured.
+        """
+
+    def write_inventory_to_lines(self, inv):
+        """Return a list of lines with the encoded inventory."""
+        return self.write_inventory(inv, None)
+
+    def write_inventory_to_string(self, inv, working=False):
+        """Just call write_inventory with a StringIO and return the value.
+
+        :param working: If True skip history data - text_sha1, text_size,
+            reference_revision, symlink_target.
+        """
         sio = cStringIO.StringIO()
-        self.write_inventory(inv, sio)
+        self.write_inventory(inv, sio, working)
         return sio.getvalue()
 
-    def write_inventory(self, inv, f):
+    def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
         
         :param inv: the inventory to write.
-        :param f: the file to write.
+        :param f: the file to write. (May be None if the lines are the desired
+            output).
+        :param working: If True skip history data - text_sha1, text_size,
+            reference_revision, symlink_target.
+        :return: The inventory as a list of lines.
         """
         _ensure_utf8_re()
+        self._check_revisions(inv)
         output = []
         append = output.append
         self._append_inventory_root(append, inv)
@@ -173,64 +196,98 @@ class Serializer_v5(Serializer):
         # Skip the root
         root_path, root_ie = entries.next()
         for path, ie in entries:
-            self._append_entry(append, ie)
+            if ie.parent_id != self.root_id:
+                parent_str = ' parent_id="'
+                parent_id  = _encode_and_escape(ie.parent_id)
+            else:
+                parent_str = ''
+                parent_id  = ''
+            if ie.kind == 'file':
+                if ie.executable:
+                    executable = ' executable="yes"'
+                else:
+                    executable = ''
+                if not working:
+                    append('<file%s file_id="%s name="%s%s%s revision="%s '
+                        'text_sha1="%s" text_size="%d" />\n' % (
+                        executable, _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name), parent_str, parent_id,
+                        _encode_and_escape(ie.revision), ie.text_sha1,
+                        ie.text_size))
+                else:
+                    append('<file%s file_id="%s name="%s%s%s />\n' % (
+                        executable, _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name), parent_str, parent_id))
+            elif ie.kind == 'directory':
+                if not working:
+                    append('<directory file_id="%s name="%s%s%s revision="%s '
+                        '/>\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id,
+                        _encode_and_escape(ie.revision)))
+                else:
+                    append('<directory file_id="%s name="%s%s%s />\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id))
+            elif ie.kind == 'symlink':
+                if not working:
+                    append('<symlink file_id="%s name="%s%s%s revision="%s '
+                        'symlink_target="%s />\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id,
+                        _encode_and_escape(ie.revision),
+                        _encode_and_escape(ie.symlink_target)))
+                else:
+                    append('<symlink file_id="%s name="%s%s%s />\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id))
+            elif ie.kind == 'tree-reference':
+                if ie.kind not in self.supported_kinds:
+                    raise errors.UnsupportedInventoryKind(ie.kind)
+                if not working:
+                    append('<tree-reference file_id="%s name="%s%s%s '
+                        'revision="%s reference_revision="%s />\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id,
+                        _encode_and_escape(ie.revision),
+                        _encode_and_escape(ie.reference_revision)))
+                else:
+                    append('<tree-reference file_id="%s name="%s%s%s />\n' % (
+                        _encode_and_escape(ie.file_id),
+                        _encode_and_escape(ie.name),
+                        parent_str, parent_id))
+            else:
+                raise errors.UnsupportedInventoryKind(ie.kind)
         append('</inventory>\n')
-        f.writelines(output)
+        if f is not None:
+            f.writelines(output)
         # Just to keep the cache from growing without bounds
         # but we may actually not want to do clear the cache
         #_clear_cache()
+        return output
 
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
-        append('<inventory')
         if inv.root.file_id not in (None, ROOT_ID):
-            append(' file_id="')
-            append(_encode_and_escape(inv.root.file_id))
-        append(' format="5"')
+            fileid1 = ' file_id="'
+            fileid2 = _encode_and_escape(inv.root.file_id)
+        else:
+            fileid1 = ""
+            fileid2 = ""
         if inv.revision_id is not None:
-            append(' revision_id="')
-            append(_encode_and_escape(inv.revision_id))
-        append('>\n')
+            revid1 = ' revision_id="'
+            revid2 = _encode_and_escape(inv.revision_id)
+        else:
+            revid1 = ""
+            revid2 = ""
+        append('<inventory%s%s format="5"%s%s>\n' % (
+            fileid1, fileid2, revid1, revid2))
         
-    def _append_entry(self, append, ie):
-        """Convert InventoryEntry to XML element and append to output."""
-        # TODO: should just be a plain assertion
-        if ie.kind not in self.supported_kinds:
-            raise errors.UnsupportedInventoryKind(ie.kind)
-
-        append("<")
-        append(ie.kind)
-        if ie.executable:
-            append(' executable="yes"')
-        append(' file_id="')
-        append(_encode_and_escape(ie.file_id))
-        append(' name="')
-        append(_encode_and_escape(ie.name))
-        if self._parent_condition(ie):
-            assert isinstance(ie.parent_id, basestring)
-            append(' parent_id="')
-            append(_encode_and_escape(ie.parent_id))
-        if ie.revision is not None:
-            append(' revision="')
-            append(_encode_and_escape(ie.revision))
-        if ie.symlink_target is not None:
-            append(' symlink_target="')
-            append(_encode_and_escape(ie.symlink_target))
-        if ie.text_sha1 is not None:
-            append(' text_sha1="')
-            append(ie.text_sha1)
-            append('"')
-        if ie.text_size is not None:
-            append(' text_size="%d"' % ie.text_size)
-        if getattr(ie, 'reference_revision', None) is not None:
-            append(' reference_revision="')
-            append(_encode_and_escape(ie.reference_revision))
-        append(" />\n")
-        return
-
-    def _parent_condition(self, ie):
-        return ie.parent_id != ROOT_ID
-
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
         # For the XML format, we need to write them as Unicode rather than as
@@ -279,7 +336,7 @@ class Serializer_v5(Serializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt):
+    def _unpack_inventory(self, elt, revision_id):
         """Construct from XML Element
         """
         assert elt.tag == 'inventory'
@@ -300,6 +357,8 @@ class Serializer_v5(Serializer):
             if ie.parent_id is None:
                 ie.parent_id = root_id
             inv.add(ie)
+        if revision_id is not None:
+            inv.root.revision = revision_id
         return inv
 
     def _unpack_entry(self, elt):
