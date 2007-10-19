@@ -117,8 +117,6 @@ class VersionedFile(object):
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
         """
-        version_id = osutils.safe_revision_id(version_id)
-        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
             left_matching_blocks, nostore_sha, random_id, check_content)
@@ -135,8 +133,6 @@ class VersionedFile(object):
         
         This takes the same parameters as add_lines and returns the same.
         """
-        version_id = osutils.safe_revision_id(version_id)
-        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
             parent_texts, nostore_sha, random_id, check_content)
@@ -191,9 +187,6 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
-        new_version_id = osutils.safe_revision_id(new_version_id)
-        old_version_id = osutils.safe_revision_id(old_version_id)
-        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -358,7 +351,7 @@ class VersionedFile(object):
         if version_ids is None:
             return dict(self.iter_parents(self.versions()))
         result = {}
-        pending = set(osutils.safe_revision_id(v) for v in version_ids)
+        pending = set(version_ids)
         while pending:
             this_iteration = pending
             pending = set()
@@ -660,7 +653,6 @@ class InterVersionedFile(InterObject):
             # None cannot be in source.versions
             return set(self.source.versions())
         else:
-            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
             if ignore_missing:
                 return set(self.source.versions()).intersection(set(version_ids))
             else:

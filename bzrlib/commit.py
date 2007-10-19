@@ -263,6 +263,9 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
+        # accumulates an inventory delta to the basis entry, so we can make
+        # just the necessary updates to the workingtree's cached basis.
+        self._basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -338,6 +341,7 @@ class Commit(object):
                 self.reporter.started(new_revno, self.rev_id, master_location)
 
                 self._update_builder_with_changes()
+                self._report_and_accumulate_deletes()
                 self._check_pointless()
 
                 # TODO: Now the new inventory is known, check for conflicts.
@@ -380,6 +384,15 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
+            # XXX: This will need to be changed if we support doing a
+            # selective commit while a merge is still pending - then we'd
+            # still have multiple parents after the commit.
+            #
+            # XXX: update_basis_by_delta is slower at present because it works
+            # on inventories, so this is not active until there's a native
+            # dirstate implementation.
+            ## self.work_tree.update_basis_by_delta(self.rev_id,
+            ##      self._basis_delta)
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
@@ -399,8 +412,10 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # work around the fact that a newly-initted tree does differ from its
-        # basis
+        # TODO: we could simplify this by using self._basis_delta.
+
+        # The inital commit adds a root directory, but this in itself is not
+        # a worthwhile commit.  
         if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
             raise PointlessCommit()
         # Shortcut, if the number of entries changes, then we obviously have
@@ -633,13 +648,6 @@ class Commit(object):
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %s", specific_files)
 
-        # Check and warn about old CommitBuilders
-        if not self.builder.record_root_entry:
-            symbol_versioning.warn('CommitBuilders should support recording'
-                ' the root entry as of bzr 0.10.', DeprecationWarning, 
-                stacklevel=1)
-            self.builder.new_inventory.add(self.basis_inv.root.copy())
-
         # Build the new inventory
         self._populate_from_inventory(specific_files)
 
@@ -669,15 +677,22 @@ class Commit(object):
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
+                if delta: self._basis_delta.append(delta)
 
-        # note that deletes have occurred
-        if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
+    def _report_and_accumulate_deletes(self):
+        # XXX: Could the list of deleted paths and ids be instead taken from
+        # _populate_from_inventory?
+        deleted_ids = set(self.basis_inv._byid.keys()) - \
+            set(self.builder.new_inventory._byid.keys())
+        if deleted_ids:
             self.any_entries_deleted = True
-        # Report what was deleted.
-        if self.any_entries_deleted and self.reporter.is_verbose():
-            for path, ie in self.basis_inv.iter_entries():
-                if ie.file_id not in self.builder.new_inventory:
-                    self.reporter.deleted(path)
+            deleted = [(self.basis_inv.id2path(file_id), file_id)
+                for file_id in deleted_ids]
+            deleted.sort()
+            # XXX: this is not quite directory-order sorting
+            for path, file_id in deleted:
+                self._basis_delta.append((path, None, file_id, None))
+                self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -694,8 +709,6 @@ class Commit(object):
         # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
-        if not self.builder.record_root_entry:
-            entries.next()
         for path, existing_ie in entries:
             file_id = existing_ie.file_id
             name = existing_ie.name
@@ -787,6 +800,8 @@ class Commit(object):
             ie.revision = None
         delta, version_recorded = self.builder.record_entry_contents(ie,
             self.parent_invs, path, self.work_tree, content_summary)
+        if delta:
+            self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:

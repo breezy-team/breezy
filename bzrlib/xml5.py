@@ -154,6 +154,15 @@ class Serializer_v5(Serializer):
     supported_kinds = set(['file', 'directory', 'symlink'])
     format_num = '5'
 
+    def _check_revisions(self, inv):
+        """Extension point for subclasses to check during serialisation.
+
+        By default no checking is done.
+
+        :param inv: An inventory about to be serialised, to be checked.
+        :raises: AssertionError if an error has occured.
+        """
+
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
@@ -179,6 +188,7 @@ class Serializer_v5(Serializer):
         :return: The inventory as a list of lines.
         """
         _ensure_utf8_re()
+        self._check_revisions(inv)
         output = []
         append = output.append
         self._append_inventory_root(append, inv)
@@ -326,7 +336,7 @@ class Serializer_v5(Serializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt):
+    def _unpack_inventory(self, elt, revision_id):
         """Construct from XML Element
         """
         assert elt.tag == 'inventory'
@@ -347,6 +357,8 @@ class Serializer_v5(Serializer):
             if ie.parent_id is None:
                 ie.parent_id = root_id
             inv.add(ie)
+        if revision_id is not None:
+            inv.root.revision = revision_id
         return inv
 
     def _unpack_entry(self, elt):

@@ -350,6 +350,7 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
+        # this shouldn't give a warning because it's getting an ascii string
         self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):

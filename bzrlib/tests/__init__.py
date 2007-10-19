@@ -2347,6 +2347,7 @@ def test_suite():
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bisect_multi',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
                    'bzrlib.tests.test_bugtracker',
@@ -2542,6 +2543,21 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     adapter.scenarios = list(scenario_iter)
     adapt_modules(module_name_list, adapter, loader, suite)
     return suite
+
+
+def multiply_scenarios(scenarios_left, scenarios_right):
+    """Multiply two sets of scenarios.
+
+    :returns: the cartesian product of the two sets of scenarios, that is
+        a scenario for every possible combination of a left scenario and a
+        right scenario.
+    """
+    return [
+        ('%s,%s' % (left_name, right_name),
+         dict(left_dict.items() + right_dict.items()))
+        for left_name, left_dict in scenarios_left
+        for right_name, right_dict in scenarios_right]
+
 
 
 def adapt_modules(mods_list, adapter, loader, suite):

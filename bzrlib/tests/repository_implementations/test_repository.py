@@ -273,7 +273,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('initial empty commit', rev_id='a-rev',
                     allow_pointless=True)
-        result = tree.branch.repository.check(['a-rev'])
+        result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
         result.report_results(verbose=False)
@@ -490,6 +490,27 @@ class TestRepository(TestCaseWithRepository):
             item_keys.remove(root_item_key)
 
         self.assertEqual(expected_item_keys, item_keys)
+
+    def test_get_graph(self):
+        """Bare-bones smoketest that all repositories implement get_graph."""
+        repo = self.make_repository('repo')
+        repo.get_graph()
+
+    def test_implements_revision_graph_can_have_wrong_parents(self):
+        """All repositories should implement
+        revision_graph_can_have_wrong_parents, so that check and reconcile can
+        work correctly.
+        """
+        repo = self.make_repository('.')
+        # This should work, not raise NotImplementedError:
+        result = repo.revision_graph_can_have_wrong_parents()
+        if result:
+            # If true, then this repo must also implement
+            # _find_inconsistent_revision_parents and
+            # _check_for_inconsistent_revision_parents.  So calling these
+            # should also not raise NotImplementedError.
+            list(repo._find_inconsistent_revision_parents())
+            repo._check_for_inconsistent_revision_parents()
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

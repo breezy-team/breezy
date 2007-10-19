@@ -293,6 +293,7 @@ class RemoteRepository(object):
         self._leave_lock = False
         # for tests
         self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = True
         self.base = self.bzrdir.transport.base
 
     def __str__(self):
@@ -378,6 +379,7 @@ class RemoteRepository(object):
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
+        self._ensure_real()
         return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
@@ -432,6 +434,9 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
+    def is_write_locked(self):
+        return self._lock_mode == 'w'
+
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
@@ -454,6 +459,8 @@ class RemoteRepository(object):
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -671,6 +678,11 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
+    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+        self._ensure_real()
+        return self._real_repository.get_versioned_file_checker(
+            revisions, revision_versions_cache)
+        
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """
@@ -726,9 +738,9 @@ class RemoteRepository(object):
         return self._real_repository.get_revision_reconcile(revision_id)
 
     @needs_read_lock
-    def check(self, revision_ids):
+    def check(self, revision_ids=None):
         self._ensure_real()
-        return self._real_repository.check(revision_ids)
+        return self._real_repository.check(revision_ids=revision_ids)
 
     def copy_content_into(self, destination, revision_id=None):
         self._ensure_real()
@@ -850,6 +862,19 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.item_keys_introduced_by(revision_ids,
             _files_pb=_files_pb)
+
+    def revision_graph_can_have_wrong_parents(self):
+        # The answer depends on the remote repo format.
+        self._ensure_real()
+        return self._real_repository.revision_graph_can_have_wrong_parents()
+
+    def _find_inconsistent_revision_parents(self):
+        self._ensure_real()
+        return self._real_repository._find_inconsistent_revision_parents()
+
+    def _check_for_inconsistent_revision_parents(self):
+        self._ensure_real()
+        return self._real_repository._check_for_inconsistent_revision_parents()
 
 
 class RemoteBranchLockableFiles(LockableFiles):
@@ -1036,6 +1061,8 @@ class RemoteBranch(branch.Branch):
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         elif response[0] == 'ReadOnlyError':
             raise errors.ReadOnlyError(self)
+        elif response[0] == 'LockFailed':
+            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
             

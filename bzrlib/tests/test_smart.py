@@ -452,8 +452,9 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
         response = request.execute('')
-        self.assertEqual(
-            SmartServerResponse(('UnlockableTransport',)), response)
+        error_name, lock_str, why_str = response.args
+        self.assertFalse(response.is_successful())
+        self.assertEqual('LockFailed', error_name)
 
 
 class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
@@ -718,8 +719,8 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.')
         response = request.execute('')
-        self.assertEqual(
-            SmartServerResponse(('UnlockableTransport',)), response)
+        self.assertFalse(response.is_successful())
+        self.assertEqual('LockFailed', response.args[0])
 
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):

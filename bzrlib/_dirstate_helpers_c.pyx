@@ -196,9 +196,9 @@ def cmp_by_dirs_c(path1, path2):
 
     :param path1: first path
     :param path2: second path
-    :return: positive number if ``path1`` comes first,
+    :return: negative number if ``path1`` comes first,
         0 if paths are equal,
-        and negative number if ``path2`` sorts first
+        and positive number if ``path2`` sorts first
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -224,9 +224,9 @@ def _cmp_path_by_dirblock_c(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: positive number if ``path1`` comes first,
+    :return: negative number if ``path1`` comes first,
         0 if paths are equal
-        and a negative number if ``path2`` sorts first
+        and a positive number if ``path2`` sorts first
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -478,7 +478,7 @@ cdef class Reader:
     cdef char *cur_cstr # Pointer to the current record
     cdef char *next # Pointer to the end of this record
 
-    def __new__(self, text):
+    def __init__(self, text):
         self.text = text
         self.text_cstr = PyString_AsString(text)
         self.text_size = PyString_Size(text)
