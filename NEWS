@@ -2,6 +2,9 @@
 
  BUG FIXES
 
+  * Raise exception about pending changes /before/ writing plan. 
+    (#144407)
+
   * Use better merge bases (#144033)
 
   * Give proper warning when there is no common base. (#144401)

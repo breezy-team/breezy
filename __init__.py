@@ -23,7 +23,8 @@ patches, the user can resolve the conflict and continue the rebase using the
 
 from bzrlib.commands import Command, Option, display_command, register_command
 from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
-                           UnrelatedBranches, NoSuchRevision)
+                           UnrelatedBranches, NoSuchRevision, 
+                           UncommittedChanges)
 from bzrlib.trace import info, warning
 
 version_info = (0, 2, 0, 'dev', 0)
@@ -183,6 +184,10 @@ class cmd_rebase(Command):
                 info('%d revisions will be rebased:' % len(todo))
                 for revid in todo:
                     info("%s" % revid)
+
+            # Check for changes in the working tree.
+            if wt.basis_tree().changes_from(wt).has_changed():
+                raise UncommittedChanges(wt)
 
             if not dry_run:
                 # Write plan file
