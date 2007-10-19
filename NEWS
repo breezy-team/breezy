@@ -1,19 +1,27 @@
 0.2		UNRELEASED
 
- * Give proper warning when there is no common base. (#144401)
+ BUG FIXES
 
- * Check for incompatible Bazaar functions.
+  * Use better merge bases (#144033)
 
- * Add replay command.
+  * Give proper warning when there is no common base. (#144401)
 
- * Support the -r argument to rebase.
+  * Support the -r argument to rebase.
 
- * Add --dry-run option to rebase command. 
+  * Add --dry-run option to rebase command. 
 
- * Fix compatibility with Bazaar 0.92.
+  * Fix compatibility with Bazaar 0.92.
    (#144031)
 
- * Store parents correctly.
+  * Store parents correctly.
+ 
+ FEATURES
+
+  * Skip double merges by default, unless specified otherwise. (#126743)
+
+  * Check for incompatible Bazaar functions.
+
+  * Add replay command.
 
 0.1 	2007-07-15
 

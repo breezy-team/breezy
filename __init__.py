@@ -98,13 +98,16 @@ class cmd_rebase(Command):
     takes_args = ['upstream_location?']
     takes_options = ['revision', 'merge-type', 'verbose',
         Option('dry-run',
-               help="Show what would be done, but don't actually do anything."),
+            help="Show what would be done, but don't actually do anything."),
+        Option('always-rebase-merges',
+            help="Don't skip revisions that merge already present revisions."),
         Option('onto', help='Different revision to replay onto.',
-               type=str)]
+            type=str)]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
-            merge_type=None, verbose=False, dry_run=False):
+            merge_type=None, verbose=False, dry_run=False, 
+            always_rebase_merges=False):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -171,7 +174,8 @@ class cmd_rebase(Command):
                     revhistory, start_revid, stop_revid, onto,
                     wt.branch.repository.get_ancestry(onto),
                     wt.branch.repository.revision_parents,
-                    lambda revid: regenerate_default_revid(wt.branch.repository, revid)
+                    lambda revid: regenerate_default_revid(wt.branch.repository, revid),
+                    not always_rebase_merges
                     )
 
             if verbose:

@@ -17,7 +17,7 @@
 
 from bzrlib.config import Config
 from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError, 
-                           UnrelatedBranches)
+                           NoCommonAncestor, UnrelatedBranches)
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.merge import Merger
 from bzrlib import osutils
@@ -401,7 +401,10 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
         # and return it
         return oldparents[1]
 
-    return graph.find_unique_lca(*[oldparents[0],newparents[1]])
+    try:
+        return graph.find_unique_lca(*[oldparents[0],newparents[1]])
+    except NoCommonAncestor:
+        return oldparents[0]
 
 
 def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
