@@ -2447,11 +2447,11 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnit3)
             from bzrlib.repofmt.pack_repo import (RepositoryFormatGraphKnit1,
                 RepositoryFormatGraphKnit3)
-            return (isinstance(source._format, RepositoryFormatKnit1) and
-                    isinstance(target._format, RepositoryFormatKnit3) or
-                    isinstance(source._format, (RepositoryFormatGraphKnit1)) and
-                    isinstance(target._format, (RepositoryFormatGraphKnit3))
-                    )
+            return (isinstance(source._format,
+                    (RepositoryFormatKnit1, RepositoryFormatGraphKnit1)) and
+                isinstance(target._format,
+                    (RepositoryFormatKnit3, RepositoryFormatGraphKnit3))
+                )
         except AttributeError:
             return False
 
