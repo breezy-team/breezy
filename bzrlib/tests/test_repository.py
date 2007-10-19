@@ -748,12 +748,6 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
-        # we want:
-        # format 'Bazaar Experimental'
-        # lock: is a directory
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
         t = repo.bzrdir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
@@ -793,21 +787,18 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             list(GraphIndex(t, 'pack-names', None).iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('indices').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('obsolete_packs').st_mode))
 
     def test_shared_disk_layout(self):
         format = self.get_format()
         repo = self.make_repository('.', shared=True, format=format)
         # we want:
-        # format 'Bazaar-NG Knit Repository Format 1'
-        # lock: is a directory
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
         t = repo.bzrdir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
+        # We should have a 'shared-storage' marker file.
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.check_databases(t)
 
@@ -816,18 +807,15 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         # we want:
-        # format 'Bazaar-NG Knit Repository Format 1'
-        # lock ''
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
         t = repo.bzrdir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
+        # We should have a 'shared-storage' marker file.
         self.assertEqualDiff('', t.get('shared-storage').read())
+        # We should have a marker for the no-working-trees flag.
         self.assertEqualDiff('', t.get('no-working-trees').read())
+        # The marker should go when we toggle the setting.
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.check_databases(t)
@@ -840,8 +828,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
         index = GraphIndex(trans, 'pack-names', None)
-        self.assertEqual(1, len(list(index.iter_all_entries())))
-        node = list(index.iter_all_entries())[0]
+        index_nodes = list(index.iter_all_entries())
+        self.assertEqual(1, len(index_nodes))
+        node = index_nodes[0]
         name = node[1][0]
         # the pack sizes should be listed in the index
         pack_value = node[2]
@@ -865,7 +854,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         # This test could be a little cheaper by replacing the packs
         # attribute on the repository to allow a different pack distribution
-        # and max packs policy - so we are hecking the policy is honoured
+        # and max packs policy - so we are checking the policy is honoured
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
         for x in range(9):
@@ -898,7 +887,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         tree.commit('start')
         tree.commit('more work')
         tree.branch.repository.pack()
-        # there should be 1 packs:
+        # there should be 1 pack:
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
@@ -949,12 +938,13 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                 try:
                     r1.commit_write_group()
                 except:
+                    r1.abort_write_group()
                     r2.abort_write_group()
                     raise
                 r2.commit_write_group()
                 # tell r1 to reload from disk
                 r1._packs.reset()
-                # Now both repositories should now about both names
+                # Now both repositories should know about both names
                 r1._packs.ensure_loaded()
                 r2._packs.ensure_loaded()
                 self.assertEqual(r1._packs.names(), r2._packs.names())
@@ -1041,6 +1031,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         self.assertFalse(repo.get_physical_lock_status())
 
     def prepare_for_break_lock(self):
+        # Setup the global ui factory state so that a break-lock method call
+        # will find usable input in the input stream.
         old_factory = bzrlib.ui.ui_factory
         def restoreFactory():
             bzrlib.ui.ui_factory = old_factory
@@ -1083,7 +1075,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         return bzrdir.format_registry.make_bzrdir('experimental')
 
     def test__max_pack_count(self):
-        """The maximum pack count is geared from the number of revisions."""
+        """The maximum pack count is a function of the number of revisions."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
         packs = repo._packs
@@ -1242,8 +1234,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         sig_index = GraphIndex(packs._index_transport, name + '.six',
             packs._names[name][3])
         self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
-                packs.names()[0], rev_index, inv_index, txt_index, sig_index),
-            pack_1)
+            name, rev_index, inv_index, txt_index, sig_index), pack_1)
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 

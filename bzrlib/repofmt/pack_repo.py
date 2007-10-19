@@ -324,6 +324,12 @@ class NewPack(Pack):
         self.upload_transport.rename(self.random_name,
                 '../packs/' + self.name + '.pack')
         self._state = 'finished'
+        if 'fetch' in debug.debug_flags:
+            # XXX: size might be interesting?
+            mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
+                time.ctime(), self.upload_transport.base, self.random_name,
+                self.pack_transport, self.name,
+                time.time() - self.start_time)
 
     def make_index(self, index_type):
         """Construct a GraphIndex object for this packs index 'index_type'."""
@@ -700,17 +706,6 @@ class RepositoryPackCollection(object):
             return None
         new_pack.finish()
         self.allocate(new_pack)
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                new_pack.pack_transport, new_pack.name,
-                time.time() - new_pack.start_time)
-        if 'fetch' in debug.debug_flags:
-            # XXX: size might be interesting?
-            mutter('%s: create_pack: finished: %s%s t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                time.time() - new_pack.start_time)
         return new_pack
 
     def _execute_pack_operations(self, pack_operations):
@@ -1231,12 +1226,6 @@ class RepositoryPackCollection(object):
 class GraphKnitRevisionStore(KnitRevisionStore):
     """An object to adapt access from RevisionStore's to use GraphKnits.
 
-    This should not live through to production: by production time we should
-    have fully integrated the new indexing and have new data for the
-    repository classes; also we may choose not to do a Knit1 compatible
-    new repository, just a Knit3 one. If neither of these happen, this 
-    should definately be cleaned up before merging.
-
     This class works by replacing the original RevisionStore.
     We need to do this because the GraphKnitRevisionStore is less
     isolated in its layering - it uses services from the repo.
@@ -1455,11 +1444,11 @@ class GraphKnitRepository(KnitRepository):
         return self
 
     def _refresh_data(self):
-        if self._write_lock_count == 1 or self.control_files._lock_count==1:
+        if self._write_lock_count==1 or self.control_files._lock_count==1:
             # forget what names there are
             self._packs.reset()
-            # XXX: Better to do an in-memory merge, factor out code from
-            # _save_pack_names.
+            # XXX: Better to do an in-memory merge when acquiring a new lock -
+            # factor out code from _save_pack_names.
 
     def _start_write_group(self):
         self._packs._start_write_group()
