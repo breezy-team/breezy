@@ -355,3 +355,95 @@ class BytesRecordReader(BaseReader):
                 _check_name_encoding(name)
         read_bytes(None)
 
+
+class ContainerPushParser(object):
+
+    def __init__(self):
+        self._buffer = ''
+        self._state_handler = self._state_expecting_format_line
+        self._parsed_records = []
+        self._reset_current_record()
+
+    def _reset_current_record(self):
+        self._current_record_length = None
+        self._current_record_names = []
+
+    def accept_bytes(self, bytes):
+        self._buffer += bytes
+        # Keep iterating the state machine until it stops consuming bytes from
+        # the buffer.
+        buffer_length = None
+        from bzrlib.trace import mutter
+        while len(self._buffer) != buffer_length:
+            mutter('state: %r, buffer: %r', self._buffer, self._state_handler)
+            buffer_length = len(self._buffer)
+            self._state_handler()
+
+    def read_pending_records(self):
+        records = self._parsed_records
+        self._parsed_records = []
+        return records
+    
+    def _consume_until_byte(self, byte):
+        """Take all bytes up to the given out of the buffer, and return it.
+
+        If the specified byte is not found in the buffer, the buffer is
+        unchanged and this returns None instead.
+        """
+        newline_pos = self._buffer.find('\n')
+        if newline_pos != -1:
+            line = self._buffer[:newline_pos]
+            self._buffer = self._buffer[newline_pos+1:]
+            return line
+        else:
+            return None
+
+    def _consume_line(self):
+        return self._consume_until_byte('\n')
+
+    def _state_expecting_format_line(self):
+        line = self._consume_line()
+        if line is not None:
+            if line != FORMAT_ONE:
+                raise errors.UnknownContainerFormatError(line)
+            self._state_handler = self._state_expecting_record_type
+
+    def _state_expecting_record_type(self):
+        if len(self._buffer) >= 1:
+            record_type = self._buffer[0]
+            self._buffer = self._buffer[1:]
+            if record_type != 'B':
+                raise NotImplementedError('XXX')
+            self._state_handler = self._state_expecting_length
+
+    def _state_expecting_length(self):
+        line = self._consume_line()
+        if line is not None:
+            try:
+                self._current_record_length = int(line)
+            except ValueError:
+                raise errors.InvalidRecordError(
+                    "%r is not a valid length." % (line,))
+            self._state_handler = self._state_expecting_name
+
+    def _state_expecting_name(self):
+        encoded_name_parts = self._consume_line()
+        if encoded_name_parts is not None:
+            if encoded_name_parts == '':
+                self._state_handler = self._state_expecting_body
+            else:
+                name_parts = tuple(encoded_name_parts.split('\x00'))
+                for name_part in name_parts:
+                    _check_name(name_part)
+                self._current_record_names.append(name_parts)
+            
+    def _state_expecting_body(self):
+        if len(self._buffer) >= self._current_record_length:
+            body_bytes = self._buffer[:self._current_record_length]
+            self._buffer = self._buffer[self._current_record_length:]
+            record = (self._current_record_names, body_bytes)
+            self._parsed_records.append(record)
+            self._reset_current_record()
+            self._state_handler = self._state_expecting_record_type
+
+
