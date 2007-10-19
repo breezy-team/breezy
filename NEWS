@@ -85,6 +85,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * Fix a problem with Win32 handling of the executable bit.
+     (John Arbash Meinel, #149113)
+
    * ``bzr+ssh://`` and ``sftp://`` URLs that do not specify ports explicitly
      no longer assume that means port 22.  This allows people using OpenSSH to
      override the default port in their ``~/.ssh/config`` if they wish.  This

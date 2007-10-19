@@ -318,6 +318,8 @@ class CommitBuilder(object):
             if kind != parent_entry.kind:
                 store = True
         if kind == 'file':
+            assert content_summary[2] is not None, \
+                "Files must not have executable = None"
             if not store:
                 if (# if the file length changed we have to store:
                     parent_entry.text_size != content_summary[1] or
