@@ -337,7 +337,8 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                 if fix_revid is not None:
                     ie.revision = fix_revid(ie.revision)
                 if ie.revision == oldrevid:
-                    if repository.weave_store.get_weave_or_empty(ie.file_id, repository.get_transaction()).has_version(newrevid):
+                    if repository.weave_store.get_weave_or_empty(ie.file_id, 
+                            repository.get_transaction()).has_version(newrevid):
                         ie.revision = newrevid
                     else:
                         ie.revision = None
@@ -355,7 +356,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                         oldtree.path_content_summary(path))
         finally:
             pb.finished()
-
         builder.finish_inventory()
     except:
         builder.repository.abort_write_group()
@@ -375,6 +375,19 @@ def commit_rebase(wt, oldrev, newrevid):
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, 
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid)
     write_active_rebase_revid(wt, None)
+
+
+def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
+    # If this was the first commit, no base is needed
+    if len(oldparents) == 0:
+        return NULL_REVISION
+
+    # In the case of a "simple" revision with just one parent, 
+    # that parent should be the base
+    if len(oldparents) == 1:
+        return oldparents[0]
+
+    return graph.find_unique_lca(*[oldparents[0],newparents[0]])
 
 
 def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
@@ -402,15 +415,15 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     write_active_rebase_revid(wt, oldrevid)
     merger = Merger(wt.branch, this_tree=wt)
     merger.set_other_revision(oldrevid, wt.branch)
-    try:
-        merger.find_base()
-    except UnrelatedBranches:
-        merger.set_base_revision(NULL_REVISION, wt.branch)
+    base_revid = replay_determine_base(repository.get_graph(), 
+                                       oldrevid, oldrev.parent_ids,
+                                       newrevid, newparents)
+    mutter('replaying %r as %r with base %r' % (oldrevid, newrevid, base_revid))
+    merger.set_base_revision(base_revid, wt.branch)
     merger.merge_type = merge_type
     merger.do_merge()
     for newparent in newparents[1:]:
         wt.add_pending_merge(newparent)
-
     commit_rebase(wt, oldrev, newrevid)
 
 

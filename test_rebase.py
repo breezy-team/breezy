@@ -16,6 +16,7 @@
 """Tests for the rebase code."""
 
 from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
+from bzrlib.graph import Graph
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -28,7 +29,7 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
                     ReplaySnapshotError, ReplayParentsInconsistent, 
-                    replay_delta_workingtree)
+                    replay_delta_workingtree, replay_determine_base)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -586,4 +587,23 @@ class TestReplaySnapshotError(TestCase):
 class TestReplayParentsInconsistent(TestCase):
     def test_create(self):
         ReplayParentsInconsistent("afileid", "arevid")
+
+
+class ReplayDetermineBaseTests(TestCase):
+    def setUp(self):
+        self.graph = Graph(self)
+
+    def get_parents(self, revid):
+        return self._parent_dict[revid]
+
+    def test_null(self):
+        self._parent_dict = {"myrev": []}
+        self.assertEquals(NULL_REVISION, 
+          replay_determine_base(self.graph, "myrev", [], "mynewrev", ["bar"]))
+
+    def test_simple(self):
+        self._parent_dict = {"myinitrev": [], "myrev": ["myinitrev"]}
+        self.assertEquals("myinitrev", 
+          replay_determine_base(self.graph, "myrev", ["myinitrev"], 
+                                "mynewrev", ["mynewparents"]))
 
