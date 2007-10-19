@@ -196,6 +196,35 @@ class PlanCreatorTests(TestCaseWithTransport):
                 generate_simple_plan(["A", "D", "E"], 
                                      "D", None, "C", ["A", "B", "C"], 
                     parents_map.get, lambda y: y+"'"))
+
+    def test_plan_with_already_merged_skip_merges(self):
+        """We need to use a merge base that makes sense. 
+        
+        A
+        | \
+        B  D
+        | \|
+        C  E
+
+        Rebasing E on C should result in:
+
+        A -> B -> C -> D'
+
+        with a plan of:
+
+        D -> (D', [C])
+        """
+        parents_map = {
+                "A": [],
+                "B": ["A"],
+                "C": ["B"],
+                "D": ["A"],
+                "E": ["D", "B"]
+        }
+        self.assertEquals({"D": ("D'", ["C"])}, 
+                generate_simple_plan(["A", "D", "E"], 
+                                     "D", None, "C", ["A", "B", "C"], 
+                    parents_map.get, lambda y: y+"'", True))
  
 
 class PlanFileTests(TestCaseWithTransport):

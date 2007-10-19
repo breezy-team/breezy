@@ -125,7 +125,8 @@ def regenerate_default_revid(repository, revid):
 
 
 def generate_simple_plan(history, start_revid, stop_revid, onto_revid, 
-                         onto_ancestry, get_parents, generate_revid):
+                         onto_ancestry, get_parents, generate_revid,
+                         skip_full_merged=False):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
 
@@ -136,6 +137,8 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
     :param onto_ancestry: Ancestry of onto_revid
     :param get_parents: Function for obtaining the parents of a revision
     :param generate_revid: Function for generating new revision ids
+    :param skip_full_merged: Skip revisions that merge already merged 
+                             revisions.
 
     :return: replace map
     """
@@ -152,12 +155,15 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
         stop_revno = None
     new_parent = onto_revid
     for oldrevid in history[start_revno:stop_revno]: 
-        parents = get_parents(oldrevid)
-        assert len(parents) == 0 or \
-                parents[0] == history[history.index(oldrevid)-1]
-        parents[0] = new_parent
-        parents = filter(lambda p: p not in onto_ancestry or p == onto_revid, 
-                         parents) 
+        oldparents = get_parents(oldrevid)
+        assert oldparents == [] or \
+                oldparents[0] == history[history.index(oldrevid)-1]
+        if len(oldparents) > 1:
+            parents = [new_parent] + filter(lambda p: p not in onto_ancestry or p == onto_revid, oldparents[1:]) 
+            if len(parents) == 1 and skip_full_merged:
+                continue
+        else:
+            parents = [new_parent]
         newrevid = generate_revid(oldrevid)
         assert newrevid != oldrevid
         replace_map[oldrevid] = (newrevid, parents)
@@ -387,7 +393,15 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
     if len(oldparents) == 1:
         return oldparents[0]
 
-    return graph.find_unique_lca(*[oldparents[0],newparents[0]])
+    # In case the rhs parent(s) of the origin revision has already been merged
+    # in the new branch, use diff between rhs parent and diff from 
+    # original revision
+    if len(newparents) == 1:
+        # FIXME: Find oldparents entry that matches newparents[0] 
+        # and return it
+        return oldparents[1]
+
+    return graph.find_unique_lca(*[oldparents[0],newparents[1]])
 
 
 def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
@@ -418,7 +432,8 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     base_revid = replay_determine_base(repository.get_graph(), 
                                        oldrevid, oldrev.parent_ids,
                                        newrevid, newparents)
-    mutter('replaying %r as %r with base %r' % (oldrevid, newrevid, base_revid))
+    mutter('replaying %r as %r with base %r and new parents %r' % 
+           (oldrevid, newrevid, base_revid, newparents))
     merger.set_base_revision(base_revid, wt.branch)
     merger.merge_type = merge_type
     merger.do_merge()
