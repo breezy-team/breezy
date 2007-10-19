@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Tests for the rebase code."""
 
+from bzrlib.conflicts import ConflictList
 from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
 from bzrlib.graph import Graph
 from bzrlib.revision import NULL_REVISION
@@ -29,7 +30,8 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
                     remove_rebase_plan, read_active_rebase_revid, 
                     write_active_rebase_revid, write_rebase_plan, MapTree,
                     ReplaySnapshotError, ReplayParentsInconsistent, 
-                    replay_delta_workingtree, replay_determine_base)
+                    replay_delta_workingtree, replay_determine_base, 
+                    commit_rebase)
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -600,8 +602,9 @@ class TestReplayWorkingtree(TestCaseWithTransport):
             lambda: replay_delta_workingtree(newwt, "E", "E'", ["D'"]))
         self.assertEquals("E\n" + "A\n" * 10 + "C\n",
                 open("new/afile", 'r').read())
-        mutter("bfile: %s" % open("new/bfile", "r").read())
+        newwt.set_conflicts(ConflictList())
         oldrev = newwt.branch.repository.get_revision("E")
+        commit_rebase(newwt, oldrev, "E'")
         newrev = newwt.branch.repository.get_revision("E'")
         self.assertEquals(["D'"], newrev.parent_ids)
         self.assertEquals(["A", "B", "C", "D'", "E'"], 
