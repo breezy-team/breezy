@@ -381,6 +381,10 @@ class HeadsCache(object):
     def heads(self, keys):
         """Return the heads of keys.
 
+        This matches the API of Graph.heads(), specifically the return value is
+        a set which can be mutated, and ordering of the input is not preserved
+        in the output.
+
         :see also: Graph.heads.
         :param keys: The keys to calculate heads for.
         :return: A set containing the heads, which may be mutated without
