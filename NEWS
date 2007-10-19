@@ -18,6 +18,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Use revprop lists rather than just commit message when committing.
 
+   * The version of bzr-rebase is now checked before it's being used.
+
   BUG FIXES
 
    * Fix compatibility with 0.92.

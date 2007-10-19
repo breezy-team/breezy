@@ -135,6 +135,17 @@ def generate_upgrade_map(revs):
 
     return rename_map
 
+MIN_REBASE_VERSION = (0, 2)
+
+def check_rebase_version():
+    try:
+        from bzrlib.plugins.rebase import version_info as rebase_version_info
+        if rebase_version_info[:2] < MIN_REBASE_VERSION:
+            raise RebaseNotPresent("Version %r present, at least %r required" 
+                                   % (rebase_version_info, MIN_REBASE_VERSION))
+    except ImportError, e:
+        raise RebaseNotPresent(e)
+
 
 def create_upgrade_plan(repository, svn_repository, revision_id=None,
                         allow_changes=False):
@@ -148,10 +159,8 @@ def create_upgrade_plan(repository, svn_repository, revision_id=None,
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
-    try:
-        from bzrlib.plugins.rebase.rebase import generate_transpose_plan
-    except ImportError, e:
-        raise RebaseNotPresent(e)
+    from bzrlib.plugins.rebase.rebase import generate_transpose_plan
+    check_rebase_version()
 
     graph = repository.get_revision_graph(revision_id)
     upgrade_map = generate_upgrade_map(graph.keys())
@@ -189,11 +198,9 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     :param verbose: Whether to print list of rewrites
     :return: Dictionary of mapped revisions
     """
-    try:
-        from bzrlib.plugins.rebase.rebase import (
-            replay_snapshot, rebase, rebase_todo)
-    except ImportError, e:
-        raise RebaseNotPresent(e)
+    check_rebase_version()
+    from bzrlib.plugins.rebase.rebase import (
+        replay_snapshot, rebase, rebase_todo)
 
     # Find revisions that need to be upgraded, create
     # dictionary with revision ids in key, new parents in value
