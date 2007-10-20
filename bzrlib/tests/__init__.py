@@ -77,6 +77,8 @@ from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_passed,
     deprecated_method,
     zero_ninetyone,
     zero_ninetytwo,
@@ -2194,19 +2196,25 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern, exclude_pattern=None,
+def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                        random_order=False):
     """Create a test suite by filtering another one.
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match
-    :param exclude_pattern: pattern that names must not match, if any
+    :param exclude_pattern: A pattern that names must not match. This parameter
+        is deprecated as of bzrlib 0.92. Please use the separate function
+        exclude_tests_by_re instead.
     :param random_order:    if True, tests in the new suite will be put in
                             random order
     :returns: the newly created suite
     """ 
-    if exclude_pattern is not None:
-        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if deprecated_passed(exclude_pattern):
+        symbol_versioning.warn(
+            zero_ninetytwo % "passing exclude_pattern to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if exclude_pattern is not None:
+            suite = exclude_tests_by_re(suite, exclude_pattern)
     result = []
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
@@ -2245,7 +2253,7 @@ def randomise_suite(suite):
     return TestUtil.TestSuite(tests)
 
 
-def sort_suite_by_re(suite, pattern, exclude_pattern=None,
+def sort_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                      random_order=False, append_rest=True):
     """Create a test suite by sorting another one.
     
@@ -2260,8 +2268,12 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                             just an ordering directive
     :returns: the newly created suite
     """ 
-    if exclude_pattern is not None:
-        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if deprecated_passed(exclude_pattern):
+        symbol_versioning.warn(
+            zero_ninetytwo % "passing exclude_pattern to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if exclude_pattern is not None:
+            suite = exclude_tests_by_re(suite, exclude_pattern)
     if append_rest:
         suites = split_suite_by_re(suite, pattern)
     else:
@@ -2336,13 +2348,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             (random_seed))
         random.seed(random_seed)
     # Customise the list of tests if requested
-    if pattern != '.*' or exclude_pattern is not None or random_order:
+    if exclude_pattern is not None:
+        suite = exclude_pattern(suite, pattern)
+    if pattern != '.*' or random_order:
         if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suite = sort_suite_by_re(suite, pattern, random_order=random_order)
         else:
-            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suite = filter_suite_by_re(suite, pattern,
+                random_order=random_order)
     result = runner.run(suite)
 
     if strict:
