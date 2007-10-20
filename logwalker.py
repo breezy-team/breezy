@@ -253,10 +253,13 @@ class LogWalker(object):
 
         extra = ""
         if include_children:
-            extra += " or path like '%s/%%'" % path.strip("/")
+            if path == "":
+                extra += " OR path LIKE '%'"
+            else:
+                extra += " OR path LIKE '%s/%%'" % path.strip("/")
         if include_parents:
-            extra += " or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))" % path.strip("/")
-        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+            extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
+        query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":

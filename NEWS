@@ -20,11 +20,15 @@ bzr-svn 0.4.4	UNRELEASED
 
    * The version of bzr-rebase is now checked before it's being used.
 
+   * Handle checks of modified children correctly when path is the root 
+     in LogWalker.find_latest_change().
+
   BUG FIXES
 
    * Fix compatibility with 0.92.
 
-   * Handle long file names with unicode characters correctly on python2.4 (#129334)
+   * Handle long file names with unicode characters correctly on 
+     python2.4 (#129334)
 
    * Give proper warning message when running 'bzr svn-branching-scheme' on 
      something that is not a Subversion repository. (#145159)
