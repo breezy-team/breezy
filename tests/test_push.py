@@ -18,6 +18,8 @@ from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import AlreadyBranchError, DivergedBranches
 from bzrlib.inventory import Inventory
+from bzrlib.merge import Merger, Merge3Merger
+from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -304,6 +306,51 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         bzrwt.unlock()
         self.assertEquals(revid, newbranch.last_revision())
         self.assertEquals([revid], newbranch.revision_history())
+
+    def test_push_replace_existing(self):
+        # svn-1
+        # |
+        # bzr-1
+        # |    \
+        # bzr2 svn2
+        # |    /
+        # merge
+        repos_url = self.make_client("test", "svnco")
+        self.build_tree({'svnco/foo.txt': 'foo'})
+        self.client_add("svnco/foo.txt")
+        self.client_commit("svnco", "add file") #1
+        self.client_update("svnco")
+
+        os.mkdir('bzrco')
+        dir = BzrDir.open(repos_url).sprout("bzrco")
+        wt = dir.open_workingtree()
+        self.build_tree({'bzrco/bar.txt': 'bar'})
+        wt.add("bar.txt")
+        base_revid = wt.commit("add another file")
+        wt.branch.push(Branch.open(repos_url))
+
+        self.build_tree({"svnco/baz.txt": "baz"})
+        self.client_add("svnco/baz.txt")
+        self.assertEquals(3, 
+                self.client_commit("svnco", "add yet another file")[0])
+        self.client_update("svnco")
+
+        self.build_tree({"bzrco/qux.txt": "qux"})
+        wt.add("qux.txt")
+        wt.commit("add still more files")
+
+        repos = Repository.open(repos_url)
+        wt.branch.repository.fetch(repos)
+        other_rev = repos.generate_revision_id(3, "", "none")
+        merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
+        merge.merge_type = Merge3Merger
+        merge.do_merge()
+        self.assertEquals(base_revid, merge.base_rev_id)
+        merge.set_pending()
+        self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
+        wt.commit("merge")
+        self.assertTrue(os.path.exists("bzrco/baz.txt"))
+        wt.branch.push(Branch.open(repos_url))
 
     def test_repeat(self):
         repos_url = self.make_client("a", "dc")

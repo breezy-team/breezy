@@ -439,13 +439,16 @@ class SvnCommitBuilder(RootCommitBuilder):
             root = self.editor.open_root(self.base_revnum)
 
             replace_existing = False
+            # See whether the base of the commit matches the lhs parent
+            # if not, we need to replace the existing directory
             if len(bp_parts) == len(existing_bp_parts):
+
                 if self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
                     replace_existing = True
                 elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
                     replace_existing = True
 
-            # TODO: Accept create_prefix argument
+            # TODO: Accept create_prefix argument (#118787)
             branch_batons = self.open_branch_batons(root, bp_parts,
                 existing_bp_parts, self.base_path, self.base_revnum,
                 replace_existing)
