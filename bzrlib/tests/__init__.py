@@ -2205,8 +2205,18 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=None,
                             random order
     :returns: the newly created suite
     """ 
-    return sort_suite_by_re(suite, pattern, exclude_pattern,
-        random_order, False)
+    if exclude_pattern is not None:
+        suite = exclude_tests_by_re(suite, exclude_pattern)
+    result = []
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        test_id = test.id()
+        if filter_re.search(test_id):
+            result.append(test)
+    result_suite = TestUtil.TestSuite(result)
+    if random_order:
+        result_suite = randomise_suite(result_suite)
+    return result_suite
 
 
 def exclude_tests_by_re(suite, pattern):
@@ -2244,7 +2254,8 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                             first in the new suite
     :param exclude_pattern: pattern that names must not match, if any
     :param random_order:    if True, tests in the new suite will be put in
-                            random order
+                            random order (with all tests matching pattern
+                            first).
     :param append_rest:     if False, pattern is a strict filter and not
                             just an ordering directive
     :returns: the newly created suite
@@ -2254,21 +2265,12 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
     if append_rest:
         suites = split_suite_by_re(suite, pattern)
     else:
-        suites = [suite]
+        suites = [filter_suite_by_re(suite, pattern)]
     out_tests = []
     for suite in suites:
-        result = []
-        filter_re = re.compile(pattern)
-        for test in iter_suite_tests(suite):
-            test_id = test.id()
-            if append_rest:
-                result.append(test)
-            elif filter_re.search(test_id):
-                result.append(test)
-        result_suite = TestUtil.TestSuite(result)
         if random_order:
-            result_suite = randomise_suite(result_suite)
-        out_tests.append(result_suite)
+            suite = randomise_suite(suite)
+        out_tests.append(suite)
     return TestUtil.TestSuite(out_tests)
 
 
