@@ -263,6 +263,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * New helper method ``bzrlib.tests.exclude_tests_by_re`` which gives a new
+     TestSuite that does not contain tests from the input that matched a
+     regular expression. (Robert Collins)
+
    * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
      suite into two according to a regular expression. (Robert Collins)
 

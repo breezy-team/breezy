@@ -54,8 +54,9 @@ from bzrlib.tests import (
                           TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
-                          iter_suite_tests,
+                          exclude_tests_by_re,
                           filter_suite_by_re,
+                          iter_suite_tests,
                           sort_suite_by_re,
                           split_suite_by_re,
                           test_lsprof,
@@ -1650,6 +1651,18 @@ class TestSelftestFiltering(TestCase):
     def _test_ids(self, test_suite):
         """Get the ids for the tests in a test suite."""
         return [t.id() for t in iter_suite_tests(test_suite)]
+
+    def test_exclude_tests_by_re(self):
+        self.all_names = self._test_ids(self.suite)
+        filtered_suite = exclude_tests_by_re(self.suite, 'exclude_tests_by_re')
+        excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_exclude_tests_by_re')
+        self.assertEqual(len(self.all_names) - 1,
+            filtered_suite.countTestCases())
+        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(excluded_name)
+        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
         filtered_suite = filter_suite_by_re(self.suite, 'test_filter')

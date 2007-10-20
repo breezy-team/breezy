@@ -2209,6 +2209,25 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=None,
         random_order, False)
 
 
+def exclude_tests_by_re(suite, pattern):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be excluded from the result.
+    :return: A TestSuite that contains all the tests from suite without the
+        tests that matched pattern. The order of tests is the same as it was in
+        suite.
+    """
+    result = []
+    exclude_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        test_id = test.id()
+        if not exclude_re.search(test_id):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                      random_order=False, append_rest=True):
     """Create a test suite by sorting another one.
@@ -2223,6 +2242,8 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                             just an ordering directive
     :returns: the newly created suite
     """ 
+    if exclude_pattern is not None:
+        suite = exclude_tests_by_re(suite, exclude_pattern)
     if append_rest:
         suites = split_suite_by_re(suite, pattern)
     else:
@@ -2231,15 +2252,12 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
     for suite in suites:
         result = []
         filter_re = re.compile(pattern)
-        if exclude_pattern is not None:
-            exclude_re = re.compile(exclude_pattern)
         for test in iter_suite_tests(suite):
             test_id = test.id()
-            if exclude_pattern is None or not exclude_re.search(test_id):
-                if append_rest:
-                    result.append(test)
-                elif filter_re.search(test_id):
-                    result.append(test)
+            if append_rest:
+                result.append(test)
+            elif filter_re.search(test_id):
+                result.append(test)
         if random_order:
             random.shuffle(result)
         out_tests.extend(result)
