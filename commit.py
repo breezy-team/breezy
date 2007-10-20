@@ -88,6 +88,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.base_revid = None
         else:
             self.base_revid = parents[0]
+
         self.base_revno = self.branch.revision_id_to_revno(self.base_revid)
         if self.base_revid is None:
             self.base_revnum = -1
@@ -442,7 +443,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             # See whether the base of the commit matches the lhs parent
             # if not, we need to replace the existing directory
             if len(bp_parts) == len(existing_bp_parts):
-
                 if self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
                     replace_existing = True
                 elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
@@ -450,7 +450,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # TODO: Accept create_prefix argument (#118787)
             branch_batons = self.open_branch_batons(root, bp_parts,
-                existing_bp_parts, self.base_path, self.base_revnum,
+                existing_bp_parts, self.base_path, self.base_revnum, 
                 replace_existing)
 
             # Make sure the root id is stored properly
