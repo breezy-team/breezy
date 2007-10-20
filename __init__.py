@@ -52,17 +52,15 @@ def check_bzrlib_version(desired):
         ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
          bzrlib.version_info[3] == 'dev')):
         return
+    from bzrlib.errors import BzrError
     if bzrlib_version < desired[0]:
-        warning('Installed bzr version %s is too old to be used with bzr-svn'
-                ' %s.' % (bzrlib.__version__, __version__))
-        # Not using BzrNewError, because it may not exist.
-        raise Exception, ('Version mismatch', desired)
+        raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
                 ' \nThere should be a newer version of bzr-svn available.' 
                 % (bzrlib.__version__))
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
-            raise Exception, 'Version mismatch'
+            raise BzrError('Version mismatch')
 
 def check_bzrsvn_version():
     """Warn about use of experimental mappings."""

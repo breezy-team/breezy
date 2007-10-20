@@ -40,6 +40,8 @@ bzr-svn 0.4.4	UNRELEASED
    * Fix 'bzr checkout --lightweight' for http and https branches. 
      (#144032)
 
+   * Don't print traceback when raising errors about bzr versions.
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)
