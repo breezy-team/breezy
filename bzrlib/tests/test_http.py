@@ -1220,18 +1220,6 @@ class TestAuth(object):
         """
         self.build_tree_contents([('a', 'contents of a\n'),
                                   ('b', 'contents of b\n'),])
-        self.old_factory = ui.ui_factory
-        # The following has the unfortunate side-effect of hiding any ouput
-        # during the tests (including pdb prompts). Feel free to comment them
-        # for debugging purposes but leave them in place, there are needed to
-        # run the tests without any console
-        self.old_stdout = sys.stdout
-        sys.stdout = StringIOWrapper()
-        self.addCleanup(self.restoreUIFactory)
-
-    def restoreUIFactory(self):
-        ui.ui_factory = self.old_factory
-        sys.stdout = self.old_stdout
 
     def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
@@ -1285,7 +1273,7 @@ class TestAuth(object):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        ui.ui_factory = TestUIFactory(stdin='foo\n')
+        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1304,7 +1292,8 @@ class TestAuth(object):
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
-        ui.ui_factory = TestUIFactory(stdin=stdin_content)
+        ui.ui_factory = TestUIFactory(stdin=stdin_content,
+                                      stdout=StringIOWrapper())
         # Create a minimal config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update(

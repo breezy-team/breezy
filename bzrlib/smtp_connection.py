@@ -92,20 +92,10 @@ class SMTPConnection(object):
         if self._smtp_username is None:
             return
 
-        password = self._smtp_password
-        if password is None:
+        if self._smtp_password is None:
             auth = config.AuthenticationConfig()
-            config_credentials = auth.get_credentials('smtp', self._smtp_server,
-                                                      user=self._smtp_username)
-            if config_credentials is not None:
-                password = config_credentials['password']
-            else:
-                password = ui.ui_factory.get_password(
-                    'Please enter the SMTP password: %(user)s@%(host)s',
-                    user=self._smtp_username,
-                    host=self._smtp_server)
-
-        self._smtp_password = password
+            self._smtp_password = auth.get_password(
+                'smtp', self._smtp_server, self._smtp_username)
 
         self._connection.login(self._smtp_username, self._smtp_password)
 

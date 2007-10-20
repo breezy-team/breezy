@@ -1017,19 +1017,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 host = netloc
                 port = None
             auth = config.AuthenticationConfig()
-            config_credentials = auth.get_credentials(
-                scheme, host, port, user=user, path=path)
-            if config_credentials is not None:
-                password = config_credentials['password']
-            else:
-                # Prompt user only if we can't find a password
-                if realm:
-                    realm_prompt = " Realm: '%s'" % realm
-                else:
-                    realm_prompt = ''
-                password = ui.ui_factory.get_password(
-                    prompt=self.password_prompt, user=user, host=netloc,
-                    realm=realm_prompt)
+            password = auth.get_password(
+                scheme, host, user, port=port, path=path, realm=realm,
+                prompt=self.password_prompt)
             if password is not None:
                 self.add_password(realm, authuri, user, password)
         return password
@@ -1203,6 +1193,7 @@ class HTTPAuthHandler(AbstractAuthHandler):
     the auth request attribute.
     """
 
+    # FIXME: should mention http/https as part of the prompt
     password_prompt = 'HTTP %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'www-authenticate'
     auth_header = 'Authorization'
@@ -1227,6 +1218,7 @@ class ProxyAuthHandler(AbstractAuthHandler):
     the proxy_auth request attribute..
     """
 
+    # FIXME: should mention http/https as part of the prompt
     password_prompt = 'Proxy %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'proxy-authenticate'
     # FIXME: the correct capitalization is Proxy-Authorization,

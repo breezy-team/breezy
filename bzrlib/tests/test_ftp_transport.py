@@ -82,21 +82,6 @@ class TestFTPServer(TestCaseWithFTPServer):
 
 class TestFTPServerUI(TestCaseWithFTPServer):
 
-    def setUp(self):
-        super(TestFTPServerUI, self).setUp()
-        self.old_factory = ui.ui_factory
-        # The following has the unfortunate side-effect of hiding any ouput
-        # during the tests (including pdb prompts). Feel free to comment them
-        # for debugging purposes but leave them in place, there are needed to
-        # run the tests without any console
-        self.old_stdout = sys.stdout
-        sys.stdout = tests.StringIOWrapper()
-        self.addCleanup(self.restoreUIFactory)
-
-    def restoreUIFactory(self):
-        ui.ui_factory = self.old_factory
-        sys.stdout = self.old_stdout
-
     def test_prompt_for_password(self):
         t = self.get_transport()
         # Ensure that the test framework set the password
@@ -105,7 +90,8 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         # reset it to None in the transport before the connection).
         password = t._password
         t._password = None
-        ui.ui_factory = tests.TestUIFactory(stdin=password+'\n')
+        ui.ui_factory = tests.TestUIFactory(stdin=password+'\n',
+                                            stdout=tests.StringIOWrapper())
         # Ask the server to check the password
         server = self.get_server()
         # FIXME: There should be a better way to declare authorized users and
@@ -124,7 +110,8 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         # reset it to None in the transport before the connection).
         password = t._password
         t._password = None
-        ui.ui_factory = tests.TestUIFactory(stdin='precious\n')
+        ui.ui_factory = tests.TestUIFactory(stdin='precious\n',
+                                            stdout=tests.StringIOWrapper())
         # Ask the server to check the password
         server = self.get_server()
         # FIXME: There should be a better way to declare authorized users and

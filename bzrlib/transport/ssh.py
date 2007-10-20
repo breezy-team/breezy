@@ -488,14 +488,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
 
     # give up and ask for a password
     auth = config.AuthenticationConfig()
-    config_credentials = auth.get_credentials('ssh', host, port=port,
-                                              user=username)
-    if config_credentials is not None:
-        password = config_credentials['password']
-    else:
-        password = bzrlib.ui.ui_factory.get_password(
-            prompt='SSH %(user)s@%(host)s password',
-            user=username, host=host)
+    password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)
     except paramiko.SSHException, e:

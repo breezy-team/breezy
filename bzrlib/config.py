@@ -70,6 +70,7 @@ lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
 import re
+# FIXME: Why not CStringIO ? -- vila 20071019
 from StringIO import StringIO
 
 import bzrlib
@@ -80,6 +81,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     trace,
+    ui,
     urlutils,
     win32utils,
     )
@@ -237,6 +239,8 @@ class Config(object):
             return v.decode(bzrlib.user_encoding)
         v = os.environ.get('BZREMAIL')
         if v:
+            # FIXME: Seems to have been deprecated since more than a year now,
+            # time to delete ? -- vila 20071019
             trace.warning('BZREMAIL is deprecated in favor of BZR_EMAIL.'
                           ' Please update your configuration.')
             return v.decode(bzrlib.user_encoding)
@@ -460,10 +464,10 @@ class LocationConfig(IniBasedConfig):
 
     def __init__(self, location):
         name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and 
+        if (not os.path.exists(name_generator()) and
                 os.path.exists(branches_config_filename())):
             if sys.platform == 'win32':
-                trace.warning('Please rename %s to %s' 
+                trace.warning('Please rename %s to %s'
                               % (branches_config_filename(),
                                  locations_config_filename()))
             else:
@@ -1054,6 +1058,47 @@ class AuthenticationConfig(object):
             break
 
         return credentials
+
+    def get_password(self, scheme, host, user, port=None,
+                     realm=None, path=None, prompt=None):
+        """Get a password from authentication file or prompt the user for one.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found password or the one entered by the user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user, path)
+        if credentials is not None:
+            password = credentials['password']
+        else:
+            # Prompt user only if we could't find a password
+            print 'couco'
+            if prompt is None:
+                prompt = ('%s' % scheme.upper()
+                          + ' %(user)s@%(host)s%(realm)s password')
+            # Special handling for optional fields in the prompt
+            if port is not None:
+                prompt_host = '%s:%d' % (host, port)
+            else:
+                prompt_host = host
+            if realm is not None:
+                prompt_realm = ", Realm: '%s'" % realm
+            else:
+                prompt_realm = ''
+            password = ui.ui_factory.get_password(prompt, host=prompt_host,
+                                                  user=user,
+                                                  realm=prompt_realm)
+        return password
 
     def decode_password(self, password, encoding):
         return password

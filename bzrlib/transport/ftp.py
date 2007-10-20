@@ -133,15 +133,8 @@ class FtpTransport(ConnectedTransport):
             if self._user and self._user != 'anonymous' and \
                     password is None: # '' is a valid password
                 auth = config.AuthenticationConfig()
-                config_credentials = auth.get_credentials(
-                    'ftp', self._host, self._port, user=self._user)
-                if config_credentials is not None:
-                    password = config_credentials['password']
-                else:
-                    get_password = bzrlib.ui.ui_factory.get_password
-                    password = get_password(
-                        prompt='FTP %(user)s@%(host)s password',
-                        user=self._user, host=self._host)
+                password = auth.get_password('ftp', self._host, self._user,
+                                             port=self._port)
             connection.login(user=self._user, passwd=password)
             connection.set_pasv(not self.is_active)
         except ftplib.error_perm, e:

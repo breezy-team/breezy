@@ -101,6 +101,20 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         conn = self.get_connection('[DEFAULT]\nsmtp_password=mypass\n')
         self.assertEqual(u'mypass', conn._smtp_password)
 
+    def test_smtp_password_from_user(self):
+        user = 'joe'
+        password = 'hispass'
+        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
+                                   smtp_factory=everybody_is_welcome)
+        self.assertIs(None, conn._smtp_password)
+
+        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
+                                            stdout=tests.StringIOWrapper())
+        conn._connect()
+        self.assertEqual(password, conn._smtp_password)
+        # stdin should be empty (the provided password have been consumed)
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+
     def test_smtp_password_from_auth_config(self):
         user = 'joe'
         password = 'hispass'
@@ -146,6 +160,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+
     def test_destination_address_required(self):
         class FakeConfig:
             def get_user_option(self, option):
@@ -166,38 +181,3 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertRaises(
             errors.NoDestinationAddress,
             smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
-
-
-class TestSMTPConnectionWithUI(tests.TestCaseInTempDir):
-
-    def setUp(self):
-        super(TestSMTPConnectionWithUI, self).setUp()
-        self.old_factory = ui.ui_factory
-        # The following has the unfortunate side-effect of hiding any ouput
-        # during the tests (including pdb prompts). Feel free to comment them
-        # for debugging purposes but leave them in place, there are needed to
-        # run the tests without any console
-        self.old_stdout = sys.stdout
-        sys.stdout = tests.StringIOWrapper()
-        self.addCleanup(self.restoreUIFactory)
-
-    def restoreUIFactory(self):
-        ui.ui_factory = self.old_factory
-        sys.stdout = self.old_stdout
-
-    def get_connection(self, text, smtp_factory=None):
-        return _get_connection(text, smtp_factory)
-
-    def test_smtp_password_from_user(self):
-        user = 'joe'
-        password = 'hispass'
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=everybody_is_welcome)
-        self.assertIs(None, conn._smtp_password)
-
-        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n')
-        conn._connect()
-        self.assertEqual(password, conn._smtp_password)
-        # stdin should be empty (the provided password have been consumed)
-        self.assertEqual('', ui.ui_factory.stdin.readline())
-
