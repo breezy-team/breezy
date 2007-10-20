@@ -2223,22 +2223,51 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                             just an ordering directive
     :returns: the newly created suite
     """ 
-    first = []
-    second = []
+    if append_rest:
+        suites = split_suite_by_re(suite, pattern)
+    else:
+        suites = [suite]
+    out_tests = []
+    for suite in suites:
+        result = []
+        filter_re = re.compile(pattern)
+        if exclude_pattern is not None:
+            exclude_re = re.compile(exclude_pattern)
+        for test in iter_suite_tests(suite):
+            test_id = test.id()
+            if exclude_pattern is None or not exclude_re.search(test_id):
+                if append_rest:
+                    result.append(test)
+                elif filter_re.search(test_id):
+                    result.append(test)
+        if random_order:
+            random.shuffle(result)
+        out_tests.extend(result)
+    return TestUtil.TestSuite(out_tests)
+
+
+def split_suite_by_re(suite, pattern):
+    """Split a test suite into two by a regular expression.
+    
+    :param suite: The suite to split.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be in the first test suite returned, and the others in the
+        second test suite returned.
+    :return: A tuple of two test suites, where the first contains tests from
+        suite matching pattern, and the second contains the remainder from
+        suite. The order within each output suite is the same as it was in
+        suite.
+    """ 
+    matched = []
+    did_not_match = []
     filter_re = re.compile(pattern)
-    if exclude_pattern is not None:
-        exclude_re = re.compile(exclude_pattern)
     for test in iter_suite_tests(suite):
         test_id = test.id()
-        if exclude_pattern is None or not exclude_re.search(test_id):
-            if filter_re.search(test_id):
-                first.append(test)
-            elif append_rest:
-                second.append(test)
-    if random_order:
-        random.shuffle(first)
-        random.shuffle(second)
-    return TestUtil.TestSuite(first + second)
+        if filter_re.search(test_id):
+            matched.append(test)
+        else:
+            did_not_match.append(test)
+    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",

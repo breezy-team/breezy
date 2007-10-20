@@ -78,7 +78,6 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
-
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
@@ -263,6 +262,9 @@ IN DEVELOPMENT
      (Robert Collins)
 
   TESTING:
+
+   * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
+     suite into two according to a regular expression. (Robert Collins)
 
    * New transport implementation ``trace+`` which is useful for testing,
      logging activity taken to its _activity attribute. (Robert Collins)

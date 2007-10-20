@@ -57,6 +57,7 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           filter_suite_by_re,
                           sort_suite_by_re,
+                          split_suite_by_re,
                           test_lsprof,
                           test_suite,
                           )
@@ -1644,20 +1645,35 @@ class TestSelftestFiltering(TestCase):
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
             'bzrlib.tests.test_selftest']))
-        self.all_names = [t.id() for t in iter_suite_tests(self.suite)]
+        self.all_names = self._test_ids(self.suite)
+
+    def _test_ids(self, test_suite):
+        """Get the ids for the tests in a test suite."""
+        return [t.id() for t in iter_suite_tests(test_suite)]
 
     def test_filter_suite_by_re(self):
         filtered_suite = filter_suite_by_re(self.suite, 'test_filter')
-        filtered_names = [t.id() for t in iter_suite_tests(filtered_suite)]
+        filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
-            
+
     def test_sort_suite_by_re(self):
         sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
-        sorted_names = [t.id() for t in iter_suite_tests(sorted_suite)]
+        sorted_names = self._test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+
+    def test_split_suit_by_re(self):
+        self.all_names = self._test_ids(self.suite)
+        split_suite = split_suite_by_re(self.suite, 'test_filter')
+        filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_re')
+        self.assertEqual([filtered_name], self._test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in self._test_ids(split_suite[1]))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(filtered_name)
+        self.assertEqual(remaining_names, self._test_ids(split_suite[1]))
 
 
 class TestCheckInventoryShape(TestCaseWithTransport):
