@@ -254,7 +254,7 @@ class SvnBasisTree(RevisionTree):
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
-                return self.id_map[workingtree.branch.scheme.unprefix(relpath)[1]]
+                return self.id_map[workingtree.branch.unprefix(relpath)]
             return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
