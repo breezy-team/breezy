@@ -2228,6 +2228,13 @@ def exclude_tests_by_re(suite, pattern):
     return TestUtil.TestSuite(result)
 
 
+def randomise_suite(suite):
+    """Return a new TestSuite with suite's tests in random order."""
+    tests = list(iter_suite_tests(suite))
+    random.shuffle(tests)
+    return TestUtil.TestSuite(tests)
+
+
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                      random_order=False, append_rest=True):
     """Create a test suite by sorting another one.
@@ -2258,9 +2265,10 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                 result.append(test)
             elif filter_re.search(test_id):
                 result.append(test)
+        result_suite = TestUtil.TestSuite(result)
         if random_order:
-            random.shuffle(result)
-        out_tests.extend(result)
+            result_suite = randomise_suite(result_suite)
+        out_tests.append(result_suite)
     return TestUtil.TestSuite(out_tests)
 
 

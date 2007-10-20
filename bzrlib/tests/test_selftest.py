@@ -57,6 +57,7 @@ from bzrlib.tests import (
                           exclude_tests_by_re,
                           filter_suite_by_re,
                           iter_suite_tests,
+                          randomise_suite,
                           sort_suite_by_re,
                           split_suite_by_re,
                           test_lsprof,
@@ -1669,6 +1670,22 @@ class TestSelftestFiltering(TestCase):
         filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
+
+    def test_randomise_suite(self):
+        randomised_suite = randomise_suite(self.suite)
+        # randomising should not add or remove test names.
+        self.assertEqual(set(self._test_ids(self.suite)),
+            set(self._test_ids(randomised_suite)))
+        # Technically, this *can* fail, because random.shuffle(list) can be
+        # equal to list. Trying multiple times just pushes the frequency back.
+        # As its len(self.all_names)!:1, the failure frequency should be low
+        # enough to ignore. RBC 20071021.
+        # It should change the order.
+        self.assertNotEqual(self.all_names, self._test_ids(randomised_suite))
+        # But not the length. (Possibly redundant with the set test, but not
+        # necessarily.)
+        self.assertEqual(len(self.all_names),
+            len(self._test_ids(randomised_suite)))
 
     def test_sort_suite_by_re(self):
         sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
