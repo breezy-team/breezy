@@ -9,6 +9,10 @@ bzr-svn 0.4.4	UNRELEASED
    
    * Avoid tracebacks on "Malformed data" errors.
 
+   * Make push location optional for svn-push. 
+   
+   * Make svn-push support --remember.
+
   INTERNALS
 
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 

@@ -272,15 +272,27 @@ class cmd_svn_push(Command):
     This command is experimental and will be removed in the future when all 
     functionality is included in "bzr push".
     """
-    takes_args = ['location']
-    takes_options = ['revision']
+    takes_args = ['location?']
+    takes_options = ['revision', 'remember']
 
-    def run(self, location, revision=None):
+    def run(self, location=None, revision=None, remember=False):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
-        bzrdir = BzrDir.open(location)
+        from bzrlib import urlutils
+
         source_branch = Branch.open_containing(".")[0]
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
         if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError(
@@ -294,6 +306,9 @@ class cmd_svn_push(Command):
             target_branch.pull(source_branch, revision_id)
         except NotBranchError:
             target_branch = bzrdir.import_branch(source_branch, revision_id)
+        # We successfully created the target, remember it
+        if source_branch.get_push_location() is None or remember:
+            source_branch.set_push_location(target_branch.base)
 
 register_command(cmd_svn_push)
 
