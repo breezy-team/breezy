@@ -21,7 +21,7 @@ from bzrlib.inventory import Inventory
 from bzrlib.merge import Merger, Merge3Merger
 from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import KnownFailure, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -352,6 +352,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
         wt.commit("merge", rev_id="mymerge")
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
+        raise KnownFailure("can't work for repository root")
         wt.branch.push(Branch.open(repos_url))
 
     def test_push_replace_existing_branch(self):
@@ -445,6 +446,37 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals([
             svnrepos.generate_revision_id(1, "trunk", "trunk0") 
             , revid1, revid2], newbranch.revision_history())
+
+    def test_push_overwrite(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/bloe': "text"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "initial")
+
+        os.mkdir("d1")
+        bzrdir = BzrDir.open(repos_url+"/trunk").sprout("d1")
+        bzrwt1 = bzrdir.open_workingtree()
+
+        os.mkdir("d2")
+        bzrdir = BzrDir.open(repos_url+"/trunk").sprout("d2")
+        bzrwt2 = bzrdir.open_workingtree()
+
+        self.build_tree({'d1/myfile': "Tour"})
+        bzrwt1.add("myfile")
+        revid1 = bzrwt1.commit("Do a commit")
+
+        self.build_tree({'d2/myfile': "France"})
+        bzrwt2.add("myfile")
+        revid2 = bzrwt1.commit("Do a commit")
+
+        bzrwt1.branch.push(Branch.open(repos_url+"/trunk"))
+
+        raise KnownFailure("push --overwrite not supported yet")
+
+        bzrwt2.branch.push(Branch.open(repos_url+"/trunk"), overwrite=True)
+
+        self.assertEquals([revid2], 
+                Branch.open(repos_url+"/trunk").revision_history())
 
     def test_complex_rename(self):
         repos_url = self.make_client("a", "dc")

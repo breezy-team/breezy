@@ -20,7 +20,8 @@ from svn.core import Pool, SubversionException
 
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
-from bzrlib.errors import InvalidRevisionId, DivergedBranches, UnrelatedBranches
+from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
+                           UnrelatedBranches)
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
@@ -397,6 +398,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             # Already exists, old copy needs to be removed
             name = "/".join(elements)
             if replace_existing:
+                if name == "":
+                    raise BzrError("changing lhs branch history not possible on repository root")
                 self.mutter("removing branch dir %r" % name)
                 self.editor.delete_entry(name, -1, ret[-1])
             if base_path is not None:
