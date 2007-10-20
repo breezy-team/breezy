@@ -841,10 +841,23 @@ class ReadOnlyLockError(LockError):
 
     _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninetytwo)
     def __init__(self, fname, msg):
         LockError.__init__(self, '')
         self.fname = fname
         self.msg = msg
+
+
+class LockFailed(LockError):
+
+    internal_error = False
+
+    _fmt = "Cannot lock %(lock)s: %(why)s"
+
+    def __init__(self, lock, why):
+        LockError.__init__(self, '')
+        self.lock = lock
+        self.why = why
 
 
 class OutSideTransaction(BzrError):
@@ -873,6 +886,8 @@ class ReadOnlyObjectDirtiedError(ReadOnlyError):
 
 
 class UnlockableTransport(LockError):
+
+    internal_error = False
 
     _fmt = "Cannot lock: transport is read only: %(transport)s"
 
@@ -2185,7 +2200,7 @@ class PatchVerificationFailed(BzrError):
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
-    _fmt = "patch_type was %(patch_type)s, but no patch was supplied."
+    _fmt = "Patch_type was %(patch_type)s, but no patch was supplied."
 
     def __init__(self, patch_type):
         BzrError.__init__(self)
@@ -2333,6 +2348,14 @@ class DuplicateRecordNameError(ContainerError):
 class NoDestinationAddress(InternalBzrError):
 
     _fmt = "Message does not have a destination address."
+
+
+class RepositoryDataStreamError(BzrError):
+
+    _fmt = "Corrupt or incompatible data stream: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
 
 
 class SMTPError(BzrError):

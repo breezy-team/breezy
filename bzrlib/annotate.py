@@ -92,7 +92,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             # unrepresentable annotation characters. So encode using 'replace',
             # and write them again.
             to_file.write(anno.encode(encoding, 'replace'))
-        print >>to_file, '| %s' % (text,)
+        to_file.write('| %s\n' % (text,))
         prevanno = anno
 
 

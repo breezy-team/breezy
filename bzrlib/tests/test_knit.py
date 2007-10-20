@@ -2095,8 +2095,8 @@ class TestGraphIndexKnit(KnitTests):
             builder.add_node(node, references, value)
         stream = builder.finish()
         trans = self.get_transport()
-        trans.put_file(name, stream)
-        return GraphIndex(trans, name)
+        size = trans.put_file(name, stream)
+        return GraphIndex(trans, name, size)
 
     def two_graph_index(self, deltas=False, catch_adds=False):
         """Build a two-graph index.
@@ -2406,8 +2406,8 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             builder.add_node(node, references)
         stream = builder.finish()
         trans = self.get_transport()
-        trans.put_file(name, stream)
-        return GraphIndex(trans, name)
+        size = trans.put_file(name, stream)
+        return GraphIndex(trans, name, size)
 
     def test_parents_deltas_incompatible(self):
         index = CombinedGraphIndex([])

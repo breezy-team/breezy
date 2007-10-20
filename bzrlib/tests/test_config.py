@@ -211,6 +211,21 @@ class TestConfigObj(TestCase):
         self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
 
 
+erroneous_config = """[section] # line 1
+good=good # line 2
+[section] # line 3
+whocares=notme # line 4
+"""
+class TestConfigObjErrors(TestCase):
+
+    def test_duplicate_section_name_error_line(self):
+        try:
+            co = ConfigObj(StringIO(erroneous_config), raise_errors=True)
+        except config.configobj.DuplicateError, e:
+            self.assertEqual(3, e.line_number)
+        else:
+            self.fail('Error in config file not detected')
+
 class TestConfig(TestCase):
 
     def test_constructs(self):

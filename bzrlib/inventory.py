@@ -570,8 +570,10 @@ class InventoryFile(InventoryEntry):
         if t in checker.checked_texts:
             prev_sha = checker.checked_texts[t]
             if prev_sha != self.text_sha1:
-                raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                    (self.file_id, tree_revision_id))
+                raise BzrCheckError(
+                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
+                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
+                     t))
             else:
                 checker.repeated_text_cnt += 1
                 return
@@ -634,8 +636,8 @@ class InventoryFile(InventoryEntry):
                 label_pair = (to_label, from_label)
             else:
                 label_pair = (from_label, to_label)
-            print >> output_to, \
-                  ("Binary files %s and %s differ" % label_pair).encode('utf8')
+            output_to.write(
+                  ("Binary files %s and %s differ\n" % label_pair).encode('utf8'))
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -740,12 +742,12 @@ class InventoryLink(InventoryEntry):
                 temp = from_text
                 from_text = to_text
                 to_text = temp
-            print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
+            output_to.write('=== target changed %r => %r\n' % (from_text, to_text))
         else:
             if not reverse:
-                print >>output_to, '=== target was %r' % self.symlink_target
+                output_to.write('=== target was %r\n' % self.symlink_target)
             else:
-                print >>output_to, '=== target is %r' % self.symlink_target
+                output_to.write('=== target is %r\n' % self.symlink_target)
 
     def __init__(self, file_id, name, parent_id):
         super(InventoryLink, self).__init__(file_id, name, parent_id)

@@ -86,6 +86,8 @@ def deprecation_string(a_callable, deprecation_version):
         have a single %s operator in it. a_callable will be turned into a nice
         python symbol and then substituted into deprecation_version.
     """
+    # We also want to handle old-style classes, in particular exception, and
+    # they don't have an im_class attribute.
     if getattr(a_callable, 'im_class', None) is None:
         symbol = "%s.%s" % (a_callable.__module__,
                             a_callable.__name__)
@@ -131,10 +133,15 @@ def deprecated_method(deprecation_version):
         
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
-            symbol = "%s.%s.%s" % (self.__class__.__module__,
-                                   self.__class__.__name__,
-                                   callable.__name__
-                                   )
+            if callable.__name__ == '__init__':
+                symbol = "%s.%s" % (self.__class__.__module__,
+                                    self.__class__.__name__,
+                                    )
+            else:
+                symbol = "%s.%s.%s" % (self.__class__.__module__,
+                                       self.__class__.__name__,
+                                       callable.__name__
+                                       )
             warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",

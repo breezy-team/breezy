@@ -354,12 +354,15 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                print >>self.stream
-                print >>self.stream, \
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-')
-                print >>self.stream, test._get_log()
-                print >>self.stream, \
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-')
+                self.stream.write('\n')
+                self.stream.write(
+                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
+                self.stream.write(test._get_log())
+                self.stream.write('\n')
+                self.stream.write(
+                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -1282,8 +1285,8 @@ class TestCase(unittest.TestCase):
                     os.remove(self._log_file_name)
                 except OSError, e:
                     if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        print >>sys.stderr, ('Unable to delete log file '
-                                             ' %r' % self._log_file_name)
+                        sys.stderr.write(('Unable to delete log file '
+                                             ' %r\n' % self._log_file_name))
                     else:
                         raise
             return log_contents
@@ -2347,6 +2350,7 @@ def test_suite():
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bisect_multi',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
                    'bzrlib.tests.test_bugtracker',
@@ -2544,6 +2548,21 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     return suite
 
 
+def multiply_scenarios(scenarios_left, scenarios_right):
+    """Multiply two sets of scenarios.
+
+    :returns: the cartesian product of the two sets of scenarios, that is
+        a scenario for every possible combination of a left scenario and a
+        right scenario.
+    """
+    return [
+        ('%s,%s' % (left_name, right_name),
+         dict(left_dict.items() + right_dict.items()))
+        for left_name, left_dict in scenarios_left
+        for right_name, right_dict in scenarios_right]
+
+
+
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
@@ -2566,9 +2585,9 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            print >>sys.stderr, ('Permission denied: '
+            sys.stderr.write(('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(dirname))
+                                 '%\n' % os.path.basename(dirname)))
         else:
             raise
 

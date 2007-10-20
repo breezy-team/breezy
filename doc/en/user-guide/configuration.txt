@@ -7,6 +7,63 @@ Information on how to configure Bazaar.
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
+
+Environment variables
+=====================
+While most configuration is handled by configuration files, some options
+which may be semi-permanent can also be controlled through the environment.
+
+BZR_EMAIL
+---------
+Override the email id used by Bazaar.  Typical format::
+
+  "John Doe <jdoe@example.com>"
+
+See also the ``email`` configuration value.
+
+BZR_PROGRESS_BAR
+----------------
+Override the progress display.  Possible values are "none", "dots", "tty"
+
+BZR_SIGQUIT_PDB
+---------------
+Control whether SIGQUIT behaves normally or invokes a breakin debugger.
+0 = Standard SIGQUIT behavior
+1 = Invoke breakin debugger (default)
+
+BZR_HOME
+--------
+Override the home directory used by Bazaar.
+
+BZR_SSH
+-------
+Select a different SSH implementation.
+
+BZR_PDB
+-------
+Control whether to launch a debugger on error.
+0 = Standard behavior
+1 = Launch debugger
+
+BZR_REMOTE_PATH
+---------------
+Path to the Bazaar executable to use when using the bzr+ssh protocol.
+
+See also the ``bzr_remote_path`` configuration value
+
+BZR_EDITOR
+----------
+Path to the editor Bazaar should use for commit messages, etc.
+
+BZR_PLUGIN_PATH
+---------------
+The path to the plugins directory that Bazaar should use.
+
+BZRPATH
+-------
+The path where Bazaar should look for shell plugin external commands.
+
+
 Location of configuration files
 ===============================
 Each user gets a pair of configurations files in ``$HOME/.bazaar``. The first
@@ -250,9 +307,9 @@ not publically-accessible).  Used (and set) by ``bzr send``.
 Branch 6 Options
 ================
 
-These options apply only to branches that use the "experimental-branch6"
-format.  They are usually set in ``.bzr/branch/branch.conf`` automatically, but
-may be manually set in ``locations.conf`` or ``bazaar.conf``.
+These options apply only to branches that use the "dirstate-tags" format.  They
+are usually set in ``.bzr/branch/branch.conf`` automatically, but may be
+manually set in ``locations.conf`` or ``bazaar.conf``.
 
 append_revisions_only
 ---------------------
