@@ -79,7 +79,7 @@ class SMTPConnection(object):
             else:
                 raise
 
-        # Say EHLO (falling back to HLO) to query the server's features.
+        # Say EHLO (falling back to HELO) to query the server's features.
         code, resp = self._connection.ehlo()
         if not (200 <= code <= 299):
             code, resp = self._connection.helo()
