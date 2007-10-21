@@ -373,9 +373,7 @@ class ContainerPushParser(object):
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
         buffer_length = None
-        from bzrlib.trace import mutter
         while len(self._buffer) != buffer_length:
-            mutter('state: %r, buffer: %r', self._buffer, self._state_handler)
             buffer_length = len(self._buffer)
             self._state_handler()
 
