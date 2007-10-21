@@ -523,3 +523,189 @@ class TestReadvFile(tests.TestCaseWithTransport):
         results.append(f.readline())
         results.append(f.read(4))
         self.assertEqual(['0', '\n', '2\n4\n'], results)
+
+
+class PushParserTestCase(tests.TestCase):
+
+    def make_parser_expecting_record_type(self):
+        parser = pack.ContainerPushParser()
+        parser.accept_bytes("Bazaar pack format 1 (introduced in 0.18)\n")
+        return parser
+
+    def make_parser_expecting_bytes_record(self):
+        parser = pack.ContainerPushParser()
+        parser.accept_bytes("Bazaar pack format 1 (introduced in 0.18)\nB")
+        return parser
+
+    def assertRecordParsing(self, expected_record, bytes):
+        parser = self.make_parser_expecting_bytes_record()
+        parser.accept_bytes(bytes)
+        parsed_records = parser.read_pending_records()
+        self.assertEqual([expected_record], parsed_records)
+
+        
+class TestContainerPushParser(PushParserTestCase):
+    """Tests for ContainerPushParser."""
+
+    def test_construct(self):
+        """ContainerPushParser can be constructed."""
+        pack.ContainerPushParser()
+
+    def test_multiple_records_at_once(self):
+        """If multiple records worth of data are fed to the parser in one
+        string, the parser will correctly parse all the records.
+
+        (A naive implementation might stop after parsing the first record.)
+        """
+        parser = self.make_parser_expecting_record_type()
+        parser.accept_bytes("B5\nname1\n\nbody1B5\nname2\n\nbody2")
+        self.assertEqual(
+            [([('name1',)], 'body1'), ([('name2',)], 'body2')],
+            parser.read_pending_records())
+
+
+class TestContainerPushParserBytesParsing(PushParserTestCase):
+    """Tests for reading Bytes records with ContainerPushParser."""
+
+    def test_record_with_no_name(self):
+        """Reading a Bytes record with no name returns an empty list of
+        names.
+        """
+        self.assertRecordParsing(([], 'aaaaa'), "5\n\naaaaa")
+
+    def test_record_with_one_name(self):
+        """Reading a Bytes record with one name returns a list of just that
+        name.
+        """
+        self.assertRecordParsing(
+            ([('name1', )], 'aaaaa'),
+            "5\nname1\n\naaaaa")
+
+    def test_record_with_two_names(self):
+        """Reading a Bytes record with two names returns a list of both names.
+        """
+        self.assertRecordParsing(
+            ([('name1', ), ('name2', )], 'aaaaa'),
+            "5\nname1\nname2\n\naaaaa")
+
+    def test_record_with_two_part_names(self):
+        """Reading a Bytes record with a two_part name reads both."""
+        self.assertRecordParsing(
+            ([('name1', 'name2')], 'aaaaa'),
+            "5\nname1\x00name2\n\naaaaa")
+
+    def test_invalid_length(self):
+        """If the length-prefix is not a number, parsing raises
+        InvalidRecordError.
+        """
+        parser = self.make_parser_expecting_bytes_record()
+        self.assertRaises(
+            errors.InvalidRecordError, parser.accept_bytes, "not a number\n")
+
+    def test_incomplete_record(self):
+        """If the bytes seen so far don't form a complete record, then there
+        will be nothing returned by read_pending_records.
+        """
+        parser = self.make_parser_expecting_bytes_record()
+        parser.accept_bytes("5\n\nabcd")
+        self.assertEqual([], parser.read_pending_records())
+
+    def test_accept_nothing(self):
+        """The edge case of parsing an empty string causes no error."""
+        parser = self.make_parser_expecting_bytes_record()
+        parser.accept_bytes("")
+
+    def assertInvalidRecord(self, bytes):
+        """Assert that parsing the given bytes will raise an
+        InvalidRecordError.
+        """
+        parser = self.make_parser_expecting_bytes_record()
+        self.assertRaises(
+            errors.InvalidRecordError, parser.accept_bytes, bytes)
+
+    def test_read_invalid_name_whitespace(self):
+        """Names must have no whitespace."""
+        # A name with a space.
+        self.assertInvalidRecord("0\nbad name\n\n")
+
+        # A name with a tab.
+        self.assertInvalidRecord("0\nbad\tname\n\n")
+
+        # A name with a vertical tab.
+        self.assertInvalidRecord("0\nbad\vname\n\n")
+
+    def test_repeated_read_pending_records(self):
+        """read_pending_records will not return the same record twice."""
+        parser = self.make_parser_expecting_bytes_record()
+        parser.accept_bytes("6\n\nabcdef")
+        self.assertEqual([([], 'abcdef')], parser.read_pending_records())
+        self.assertEqual([], parser.read_pending_records())
+
+
+class TestMakeReadvReader(tests.TestCaseWithTransport):
+
+    def test_read_skipping_records(self):
+        pack_data = StringIO()
+        writer = pack.ContainerWriter(pack_data.write)
+        writer.begin()
+        memos = []
+        memos.append(writer.add_bytes_record('abc', names=[]))
+        memos.append(writer.add_bytes_record('def', names=[('name1', )]))
+        memos.append(writer.add_bytes_record('ghi', names=[('name2', )]))
+        memos.append(writer.add_bytes_record('jkl', names=[]))
+        writer.end()
+        transport = self.get_transport()
+        transport.put_bytes('mypack', pack_data.getvalue())
+        requested_records = [memos[0], memos[2]]
+        reader = pack.make_readv_reader(transport, 'mypack', requested_records)
+        result = []
+        for names, reader_func in reader.iter_records():
+            result.append((names, reader_func(None)))
+        self.assertEqual([([], 'abc'), ([('name2', )], 'ghi')], result)
+
+
+class TestReadvFile(tests.TestCaseWithTransport):
+    """Tests of the ReadVFile class.
+
+    Error cases are deliberately undefined: this code adapts the underlying
+    transport interface to a single 'streaming read' interface as 
+    ContainerReader needs.
+    """
+
+    def test_read_bytes(self):
+        """Test reading of both single bytes and all bytes in a hunk."""
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0123456789')
+        f = pack.ReadVFile(transport.readv('sample', [(0,1), (1,2), (4,1), (6,2)]))
+        results = []
+        results.append(f.read(1))
+        results.append(f.read(2))
+        results.append(f.read(1))
+        results.append(f.read(1))
+        results.append(f.read(1))
+        self.assertEqual(['0', '12', '4', '6', '7'], results)
+
+    def test_readline(self):
+        """Test using readline() as ContainerReader does.
+
+        This is always within a readv hunk, never across it.
+        """
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0,2), (2,4)]))
+        results = []
+        results.append(f.readline())
+        results.append(f.readline())
+        results.append(f.readline())
+        self.assertEqual(['0\n', '2\n', '4\n'], results)
+
+    def test_readline_and_read(self):
+        """Test exercising one byte reads, readline, and then read again."""
+        transport = self.get_transport()
+        transport.put_bytes('sample', '0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0,6)]))
+        results = []
+        results.append(f.read(1))
+        results.append(f.readline())
+        results.append(f.read(4))
+        self.assertEqual(['0', '\n', '2\n4\n'], results)
