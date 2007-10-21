@@ -31,7 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerReader
+from bzrlib.pack import ContainerReader, ContainerPushParser
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
@@ -224,39 +224,6 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
-
-
-class PackSource(object):
-    def __init__(self, chunked_stream):
-        self.chunked_stream = chunked_stream
-        self.buffer = ''
-    def read(self, length):
-        if length is not None:
-            while len(self.buffer) < length:
-                self.buffer += self.chunked_stream.next()
-            bytes = self.buffer[:length]
-            self.buffer = self.buffer[length:]
-            return bytes
-        else:
-            for bytes in self.chunked_stream:
-                self.buffer += bytes
-            bytes = self.buffer
-            self.buffer = None
-            return bytes
-    def readline(self):
-        while '\n' not in self.buffer:
-            try:
-                self.buffer += self.chunked_stream.next()
-            except StopIteration:
-                break
-        pos = self.buffer.find('\n')
-        if pos == -1:
-            bytes = self.buffer
-            self.buffer = ''
-        else:
-            bytes = self.buffer[:pos+1]
-            self.buffer = self.buffer[pos+1:]
-        return bytes
 
 
 class RemoteRepository(object):
@@ -839,20 +806,21 @@ class RemoteRepository(object):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _deserialise_stream(self, protocol):
-        #buffer = StringIO(protocol.read_body_bytes())
         stream = protocol.read_streamed_body()
-        pack_source = PackSource(stream)
-        reader = ContainerReader(pack_source)
-        for record_names, read_bytes in reader.iter_records():
-            try:
-                # These records should have only one name, and that name
-                # should be a one-element tuple.
-                [name_tuple] = record_names
-            except ValueError:
-                raise errors.SmartProtocolError(
-                    'Repository data stream had invalid record name %r'
-                    % (record_names,))
-            yield name_tuple, read_bytes(None)
+        container_parser = ContainerPushParser()
+        for bytes in stream:
+            container_parser.accept_bytes(bytes)
+            records = container_parser.read_pending_records()
+            for record_names, record_bytes in records:
+                try:
+                    # These records should have only one name, and that name
+                    # should be a one-element tuple.
+                    [name_tuple] = record_names
+                except ValueError:
+                    raise errors.SmartProtocolError(
+                        'Repository data stream had invalid record name %r'
+                        % (record_names,))
+                yield name_tuple, record_bytes
 
     def insert_data_stream(self, stream):
         self._ensure_real()
