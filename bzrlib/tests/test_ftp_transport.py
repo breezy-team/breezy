@@ -122,7 +122,8 @@ class TestFTPServerUI(TestCaseWithFTPServer):
 
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
-        conf._get_config().update({'ftptest': {'scheme': 'ftp', 'user': t._user,
+        conf._get_config().update({'ftptest': {'scheme': 'ftp',
+                                               'user': t._user,
                                                'password': password}})
         conf._save()
         # Issue a request to the server to connect

@@ -1082,7 +1082,6 @@ class AuthenticationConfig(object):
             password = credentials['password']
         else:
             # Prompt user only if we could't find a password
-            print 'couco'
             if prompt is None:
                 prompt = ('%s' % scheme.upper()
                           + ' %(user)s@%(host)s%(realm)s password')

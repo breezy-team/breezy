@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
+    ui,
     urlutils,
     tests,
     trace,
@@ -1118,7 +1119,7 @@ class TestTreeConfig(tests.TestCaseWithTransport):
 
 
 class TestAuthenticationConfigFile(tests.TestCase):
-    """Test the authentication.conf file matching."""
+    """Test the authentication.conf file matching"""
 
     # XXX: test definitions without users.
 
@@ -1287,7 +1288,62 @@ password=bendover
         self.assertEquals(True, credentials.get('verify_certificates'))
 
 
-# FIXME: Once we had a way to declare authentication to all test servers, we
+class TestAuthenticationConfig(tests.TestCase):
+    """Test AuthenticationConfig behaviour"""
+
+    def _check_default_prompt(self, expected_prompt_format, scheme,
+                              host=None, port=None, realm=None, path=None):
+        if host is None:
+            host = 'bar.org'
+        user, password = 'jim', 'precious'
+        expected_prompt = expected_prompt_format % {
+            'scheme': scheme, 'host': host, 'port': port,
+            'user': user, 'realm': realm}
+
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
+                                            stdout=stdout)
+        # We use an empty conf so that the user is always prompted
+        conf = config.AuthenticationConfig()
+        self.assertEquals(password,
+                          conf.get_password(scheme, host, user, port=port,
+                                            realm=realm, path=path))
+        self.assertEquals(stdout.getvalue(), expected_prompt)
+
+    def test_default_prompts(self):
+        self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
+        self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
+                                   'ftp', port=10020)
+
+        self._check_default_prompt('SSH %(user)s@%(host)s:%(port)d password: ',
+                                   'ssh', port=12345)
+        # SMTP port handling is a bit special (it's handled if embedded in the
+        # host too)
+        # FIXME: should we forbid that or extend it to other schemes ?
+        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+                                   'smtp')
+        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+                                   'smtp', host='bar.org:10025')
+        self._check_default_prompt(
+            'SMTP %(user)s@%(host)s:%(port)d password: ',
+            'smtp', port=10025)
+
+        self._check_default_prompt('HTTP %(user)s@%(host)s password: ',
+                                   'http')
+        self._check_default_prompt(
+            "HTTP %(user)s@%(host)s, Realm: '%(realm)s' password: ",
+            'http', realm='bzr')
+        self._check_default_prompt(
+            "HTTP %(user)s@%(host)s:%(port)d, Realm: '%(realm)s' password: ",
+            'http', realm='bzr', port=10080)
+
+        # FIXME: the following pass but the real implementation
+        # (_urllib2_wrappers) do not use the default prompt and displays HTTP
+        # instead of HTTPS
+        self._check_default_prompt('HTTPS %(user)s@%(host)s password: ',
+                                   'https')
+
+# FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
 class TestAuthenticationRing(tests.TestCaseWithTransport):
     pass
