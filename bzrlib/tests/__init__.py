@@ -2197,6 +2197,17 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
+def condition_isinstance(klass_or_klass_list):
+    """Create a condition filter which returns isinstance(param, klass).
+    
+    :return: A callable which when called with one parameter obj return the
+        result of isinstance(obj, klass_or_klass_list).
+    """
+    def condition(obj):
+        return isinstance(obj, klass_or_klass_list)
+    return condition
+
+
 def filter_suite_by_condition(suite, condition):
     """Create a test suite by filtering another one.
     

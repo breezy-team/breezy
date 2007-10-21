@@ -55,6 +55,7 @@ from bzrlib.tests import (
                           TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
+                          condition_isinstance,
                           exclude_tests_by_re,
                           filter_suite_by_condition,
                           filter_suite_by_re,
@@ -1655,6 +1656,14 @@ class TestSelftestFiltering(TestCase):
     def _test_ids(self, test_suite):
         """Get the ids for the tests in a test suite."""
         return [t.id() for t in iter_suite_tests(test_suite)]
+
+    def test_condition_isinstance(self):
+        filtered_suite = filter_suite_by_condition(self.suite,
+            condition_isinstance(self.__class__))
+        class_pattern = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        re_filtered = filter_suite_by_re(self.suite, class_pattern)
+        self.assertEqual(self._test_ids(re_filtered),
+            self._test_ids(filtered_suite))
 
     def test_exclude_tests_by_re(self):
         self.all_names = self._test_ids(self.suite)
