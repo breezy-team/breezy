@@ -56,6 +56,7 @@ from bzrlib.tests import (
                           TextTestRunner,
                           UnavailableFeature,
                           exclude_tests_by_re,
+                          filter_suite_by_condition,
                           filter_suite_by_re,
                           iter_suite_tests,
                           preserve_input,
@@ -1667,8 +1668,15 @@ class TestSelftestFiltering(TestCase):
         remaining_names.remove(excluded_name)
         self.assertEqual(remaining_names, self._test_ids(filtered_suite))
 
+    def test_filter_suite_by_condition(self):
+        test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_condition')
+        filtered_suite = filter_suite_by_condition(self.suite,
+            lambda x:x.id() == test_name)
+        self.assertEqual([test_name], self._test_ids(filtered_suite))
+
     def test_filter_suite_by_re(self):
-        filtered_suite = filter_suite_by_re(self.suite, 'test_filter')
+        filtered_suite = filter_suite_by_re(self.suite, 'test_filter_suite_by_r')
         filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
@@ -1696,7 +1704,7 @@ class TestSelftestFiltering(TestCase):
 
     def test_sort_suite_by_re(self):
         sorted_suite = self.applyDeprecated(zero_ninetytwo,
-            sort_suite_by_re, self.suite, 'test_filter')
+            sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
         sorted_names = self._test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
@@ -1704,7 +1712,7 @@ class TestSelftestFiltering(TestCase):
 
     def test_split_suit_by_re(self):
         self.all_names = self._test_ids(self.suite)
-        split_suite = split_suite_by_re(self.suite, 'test_filter')
+        split_suite = split_suite_by_re(self.suite, 'test_filter_suite_by_r')
         filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_re')
         self.assertEqual([filtered_name], self._test_ids(split_suite[0]))

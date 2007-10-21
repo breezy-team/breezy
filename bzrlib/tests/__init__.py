@@ -2197,6 +2197,22 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
+def filter_suite_by_condition(suite, condition):
+    """Create a test suite by filtering another one.
+    
+    :param suite: The source suite.
+    :param condition: A callable whose result evaluates True when called with a
+        test case.
+    :return: A suite which contains the tests found in suite that pass
+        condition.
+    """ 
+    result = []
+    for test in iter_suite_tests(suite):
+        if condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
 def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                        random_order=DEPRECATED_PARAMETER):
     """Create a test suite by filtering another one.
@@ -2217,13 +2233,11 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                 DeprecationWarning, stacklevel=2)
         if exclude_pattern is not None:
             suite = exclude_tests_by_re(suite, exclude_pattern)
-    result = []
     filter_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
+    def condition(test):
         test_id = test.id()
-        if filter_re.search(test_id):
-            result.append(test)
-    result_suite = TestUtil.TestSuite(result)
+        return filter_re.search(test_id)
+    result_suite = filter_suite_by_condition(suite, condition)
     if deprecated_passed(random_order):
         symbol_versioning.warn(
             zero_ninetytwo % "passing random_order to filter_suite_by_re",

@@ -263,6 +263,9 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * New helper function ``bzrlib.tests.filter_suite_by_condition`` which
+     generalises the ``filter_suite_by_re`` function. (Robert Collins)
+
    * New helper method ``bzrlib.tests.exclude_tests_by_re`` which gives a new
      TestSuite that does not contain tests from the input that matched a
      regular expression. (Robert Collins)
