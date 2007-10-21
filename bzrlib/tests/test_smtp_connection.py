@@ -57,18 +57,14 @@ def everybody_is_welcome():
     return smtp
 
 
-def _get_connection(text, smtp_factory=None):
-    my_config = config.GlobalConfig()
-    config_file = StringIO(text)
-    my_config._get_parser(config_file)
-    return smtp_connection.SMTPConnection(my_config,
-                                          _smtp_factory=smtp_factory)
-
-
 class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def get_connection(self, text, smtp_factory=None):
-        return _get_connection(text, smtp_factory)
+        my_config = config.GlobalConfig()
+        config_file = StringIO(text)
+        my_config._get_parser(config_file)
+        return smtp_connection.SMTPConnection(my_config,
+                                              _smtp_factory=smtp_factory)
 
     def test_defaults(self):
         conn = self.get_connection('')
