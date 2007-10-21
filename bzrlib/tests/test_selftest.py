@@ -55,7 +55,9 @@ from bzrlib.tests import (
                           TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
+                          condition_id_re,
                           condition_isinstance,
+                          exclude_tests_by_condition,
                           exclude_tests_by_re,
                           filter_suite_by_condition,
                           filter_suite_by_re,
@@ -1657,6 +1659,13 @@ class TestSelftestFiltering(TestCase):
         """Get the ids for the tests in a test suite."""
         return [t.id() for t in iter_suite_tests(test_suite)]
 
+    def test_condition_id_re(self):
+        test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_condition_id_re')
+        filtered_suite = filter_suite_by_condition(self.suite,
+            condition_id_re('test_condition_id_re'))
+        self.assertEqual([test_name], self._test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1664,6 +1673,18 @@ class TestSelftestFiltering(TestCase):
         re_filtered = filter_suite_by_re(self.suite, class_pattern)
         self.assertEqual(self._test_ids(re_filtered),
             self._test_ids(filtered_suite))
+
+    def test_exclude_tests_by_condition(self):
+        excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_exclude_tests_by_condition')
+        filtered_suite = exclude_tests_by_condition(self.suite,
+            lambda x:x.id() == excluded_name)
+        self.assertEqual(len(self.all_names) - 1,
+            filtered_suite.countTestCases())
+        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(excluded_name)
+        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
 
     def test_exclude_tests_by_re(self):
         self.all_names = self._test_ids(self.suite)

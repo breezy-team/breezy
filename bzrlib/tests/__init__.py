@@ -2197,6 +2197,19 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
+def condition_id_re(pattern):
+    """Create a condition filter which performs a re check on a test's id.
+    
+    :param pattern: A regular expression string.
+    :return: A callable that returns True if the re matches.
+    """
+    filter_re = re.compile(pattern)
+    def condition(test):
+        test_id = test.id()
+        return filter_re.search(test_id)
+    return condition
+
+
 def condition_isinstance(klass_or_klass_list):
     """Create a condition filter which returns isinstance(param, klass).
     
@@ -2208,12 +2221,28 @@ def condition_isinstance(klass_or_klass_list):
     return condition
 
 
+def exclude_tests_by_condition(suite, condition):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param condition: A callable whose result evaluates True when called with a
+        test case which should be excluded from the result.
+    :return: A suite which contains the tests found in suite that fail
+        condition.
+    """
+    result = []
+    for test in iter_suite_tests(suite):
+        if not condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
 def filter_suite_by_condition(suite, condition):
     """Create a test suite by filtering another one.
     
     :param suite: The source suite.
     :param condition: A callable whose result evaluates True when called with a
-        test case.
+        test case which should be included in the result.
     :return: A suite which contains the tests found in suite that pass
         condition.
     """ 
@@ -2244,10 +2273,7 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                 DeprecationWarning, stacklevel=2)
         if exclude_pattern is not None:
             suite = exclude_tests_by_re(suite, exclude_pattern)
-    filter_re = re.compile(pattern)
-    def condition(test):
-        test_id = test.id()
-        return filter_re.search(test_id)
+    condition = condition_id_re(pattern)
     result_suite = filter_suite_by_condition(suite, condition)
     if deprecated_passed(random_order):
         symbol_versioning.warn(
@@ -2268,13 +2294,7 @@ def exclude_tests_by_re(suite, pattern):
         tests that matched pattern. The order of tests is the same as it was in
         suite.
     """
-    result = []
-    exclude_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
-        test_id = test.id()
-        if not exclude_re.search(test_id):
-            result.append(test)
-    return TestUtil.TestSuite(result)
+    return exclude_tests_by_condition(suite, condition_id_re(pattern))
 
 
 def preserve_input(something):
