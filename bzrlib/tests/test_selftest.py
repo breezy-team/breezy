@@ -36,8 +36,9 @@ from bzrlib import (
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
 from bzrlib.symbol_versioning import (
-        zero_ten,
         zero_eleven,
+        zero_ninetytwo,
+        zero_ten,
         )
 from bzrlib.tests import (
                           ChrootedTestCase,
@@ -57,6 +58,7 @@ from bzrlib.tests import (
                           exclude_tests_by_re,
                           filter_suite_by_re,
                           iter_suite_tests,
+                          preserve_input,
                           randomise_suite,
                           sort_suite_by_re,
                           split_suite_by_re,
@@ -1671,6 +1673,11 @@ class TestSelftestFiltering(TestCase):
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
 
+    def test_preserve_input(self):
+        # NB: Surely this is something in the stdlib to do this?
+        self.assertTrue(self.suite is preserve_input(self.suite))
+        self.assertTrue("@#$" is preserve_input("@#$"))
+
     def test_randomise_suite(self):
         randomised_suite = randomise_suite(self.suite)
         # randomising should not add or remove test names.
@@ -1688,7 +1695,8 @@ class TestSelftestFiltering(TestCase):
             len(self._test_ids(randomised_suite)))
 
     def test_sort_suite_by_re(self):
-        sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
+        sorted_suite = self.applyDeprecated(zero_ninetytwo,
+            sort_suite_by_re, self.suite, 'test_filter')
         sorted_names = self._test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')

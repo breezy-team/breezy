@@ -276,9 +276,11 @@ IN DEVELOPMENT
    * New transport implementation ``trace+`` which is useful for testing,
      logging activity taken to its _activity attribute. (Robert Collins)
 
-   * The ``exclude_pattern`` parameter to the ``bzrlib.tests.`` functions
-     ``filter_suite_by_re`` and ``sort_suite_by_re`` has been deprecated.
-     (Robert Collins)
+   * The ``exclude_pattern`` and ``random_order`` parameters to the function
+     ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)
+
+   * The method ``bzrlib.tests.sort_suite_by_re`` has been deprecated. It is 
+     replaced by the new helper methods added in this release. (Robert Collins)
 
    * When running bzr commands within the test suite, internal exceptions are
      not caught and reported in the usual way, but rather allowed to propagate
