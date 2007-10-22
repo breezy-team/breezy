@@ -782,16 +782,11 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         return pack_file
 
     def make_pack_stream(self, records):
-        m = ['']
-        def w(bytes):
-            m[0] += bytes
-        pack_writer = pack.ContainerWriter(w)
-        pack_writer.begin()
+        pack_serialiser = pack.ContainerSerialiser()
+        yield pack_serialiser.begin()
         for bytes, names in records:
-            pack_writer.add_bytes_record(bytes, names)
-            yield m[0]
-            m[0] = ''
-        pack_writer.end()
+            yield pack_serialiser.bytes_record(bytes, names)
+        yield pack_serialiser.end()
 
     def test_bad_pack_from_server(self):
         """A response with invalid data (e.g. it has a record with multiple
