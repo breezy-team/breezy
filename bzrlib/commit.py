@@ -702,9 +702,9 @@ class Commit(object):
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
         deleted_paths = set()
+        # XXX: Note that entries may have the wrong kind because the entry does
+        # not reflect the status on disk.
         work_inv = self.work_tree.inventory
-        assert work_inv.root is not None
-        # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
