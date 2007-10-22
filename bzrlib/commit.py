@@ -421,10 +421,6 @@ class Commit(object):
         if (self.basis_revid == revision.NULL_REVISION and
             len(self.builder.new_inventory) == 1):
             raise PointlessCommit()
-        # Shortcut, if the number of entries changes, then we obviously have
-        # a change
-        if len(self.builder.new_inventory) != len(self.basis_inv):
-            return
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
         if len(self.builder.new_inventory) != 1 and (self.any_entries_changed
