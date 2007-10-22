@@ -120,27 +120,33 @@ class FtpTransport(ConnectedTransport):
         in base url at transport creation time.
         """
         if credentials is None:
-            password = self._password
+            user, password = self._user, self._password
         else:
-            password = credentials
+            user, password = credentials
+
+        auth = config.AuthenticationConfig()
+        if user is None:
+            user = auth.get_user('ftp', self._host, port=self._port)
+            if user is None:
+                # Default to local user
+                user = getpass.getuser()
 
         mutter("Constructing FTP instance against %r" %
-               ((self._host, self._port, self._user, '********',
+               ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
             connection = ftplib.FTP()
             connection.connect(host=self._host, port=self._port)
-            if self._user and self._user != 'anonymous' and \
+            if user and user != 'anonymous' and \
                     password is None: # '' is a valid password
-                auth = config.AuthenticationConfig()
-                password = auth.get_password('ftp', self._host, self._user,
+                password = auth.get_password('ftp', self._host, user,
                                              port=self._port)
-            connection.login(user=self._user, passwd=password)
+            connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
         except ftplib.error_perm, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
-        return connection, password
+        return connection, (user, password)
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""

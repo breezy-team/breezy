@@ -63,6 +63,7 @@ up=pull
 """
 
 import os
+import getpass
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -1003,12 +1004,13 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
-        :return: A dict with containing the matching credentials or None.
+        :return: A dict containing the matching credentials or None.
            This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
            - user: can't de different from the provided user if any,
-           - password: the decoded password,
+           - password: the decoded password, could be None if the credential
+             defines only the user
            - verify_certificates: https specific, True if the server
              certificate should be verified, False otherwise.
         """
@@ -1042,15 +1044,14 @@ class AuthenticationConfig(object):
                 and a_user != user):
                 # Never contradict the caller about the user to be used
                 continue
-            user = a_user
-            if user is None:
+            if a_user is None:
                 # Can't find a user
                 continue
             a_password, a_encoding = map(auth_def.get,
                                          ['password', 'password_encoding'])
             password = self.decode_password(a_password, a_encoding)
             credentials = {'name': auth_def_name,
-                           'user': user, 'password': password,
+                           'user': a_user, 'password': password,
                            'verify_certificates': a_verify_certificates,
                            }
             if 'auth' in debug.debug_flags:
@@ -1058,6 +1059,29 @@ class AuthenticationConfig(object):
             break
 
         return credentials
+
+    def get_user(self, scheme, host, port=None,
+                 realm=None, path=None, prompt=None):
+        """Get a user from authentication file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user, path)
+        if credentials is not None:
+            user = credentials['user']
+        else:
+            user = None
+        return user
 
     def get_password(self, scheme, host, user, port=None,
                      realm=None, path=None, prompt=None):
@@ -1080,7 +1104,7 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
-        else:
+        if password is None:
             # Prompt user only if we could't find a password
             if prompt is None:
                 prompt = ('%s' % scheme.upper()

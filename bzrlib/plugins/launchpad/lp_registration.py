@@ -92,6 +92,7 @@ class LaunchpadService(object):
 
     def gather_user_credentials(self):
         """Get the password from the user."""
+        # FIXME: query AuthenticationConfig too
         config = bzrlib.config.GlobalConfig()
         self.registrant_email = config.user_email()
         if self.registrant_password is None:

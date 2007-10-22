@@ -162,13 +162,12 @@ it in the best possible way.
 Future versions of this specification may provide additional
 encodings [#password_encoding]_.
 
-.. [#password_encoding] Additional password encoding methods may
-   be defined that will rely on external means to store the
-   password which, in these cases, will not appear anymore in the
-   definition. It is assumed that additional password encodings
-   will provide a storage outside of the file described here. An
-   encoding named ``netrc`` for example will provide passwords by
-   retrieving them in the ``.netrc`` file.
+.. [#password_encoding] Additional password encoding methods may be defined
+   that will rely on external means to store the password which, in these
+   cases, will not appear anymore in the definition. It is assumed that
+   additional password encodings will provide a storage outside of the file
+   described here. An encoding named ``netrc`` for example will provide
+   passwords by retrieving them in the ``.netrc`` file.
 
 File format
 -----------
@@ -245,9 +244,9 @@ The use cases described below use the file format defined above.
         bzr branch ftp://foo.net/bzr/branch
         bzr pull ftp://bzr.foo.net/bzr/product/branch/trunk
 
-  * all connections are done with the same ``user`` (the remote
-    one for which the default bzr one is not appropriate) and the
-    password is always prompted with some exceptions::
+  * all connections are done with the same ``user`` (the remote one for which
+    the default bzr one is not appropriate) and the password is always prompted
+    with some exceptions::
 
         # Pet projects on hobby.net
         [hobby]
@@ -265,6 +264,7 @@ The use cases described below use the file format defined above.
         verify_certificates=no # Still searching a free certificate provider
         
         [DEFAULT]
+        # Our local user is barbaz, on all remote sites we're known as foobar
         user=foobar
         
   * an HTTP server and a proxy::
@@ -295,9 +295,11 @@ The use cases described below use the file format defined above.
 
   * source hosting provider declaring sub-domains for each project::
 
-        [sfnet]
-        scheme=ssh # we use sftp, but ssh is the scheme used for authentication
-        host=.sf.net # The leading '.' ensures that 'sf.net' does not match
+        [sfnet domain]
+        # we use sftp, but ssh is the scheme used for authentication
+        scheme=ssh
+        # The leading '.' ensures that 'sf.net' alone doesn't match
+        host=.sf.net
         user=georges
         password=ben...son
 
@@ -322,8 +324,8 @@ different ways:
   Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
   found. Continue as 2.
 
-Note: A user will be queried only if the server requires it for ``HTTP``, other
-protocols always require a user.
+Note: A user will be queried only if the server requires it for ``HTTP`` or
+``HTTPS``, other protocols always require a user.
 
 In any case, if the server refuses the authentication, bzr reports to the user
 and terminates.

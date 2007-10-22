@@ -30,8 +30,6 @@ from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
-    extract_authentication_uri,
-    extract_credentials,
     )
 
 
@@ -61,6 +59,8 @@ class HttpTransport_urllib(HttpTransportBase):
         path = self._combine_paths(self._path, relative)
         # urllib2 will be confused if it find authentication
         # info (user, password) in the urls. So we handle them separatly.
+
+        # rhaaaa ! confused where ? confused when ? --vila 20070922
         return self._unsplit_url(self._unqualified_scheme,
                                  None, None, self._host, self._port, path)
 

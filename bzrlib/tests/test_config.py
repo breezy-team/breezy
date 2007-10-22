@@ -1121,8 +1121,6 @@ class TestTreeConfig(tests.TestCaseWithTransport):
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 
-    # XXX: test definitions without users.
-
     def _got_user_passwd(self, expected_user, expected_password,
                          config, *args, **kwargs):
         credentials = config.get_credentials(*args, **kwargs)
@@ -1143,11 +1141,12 @@ class TestAuthenticationConfigFile(tests.TestCase):
     def test_broken_config(self):
         conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
         self.assertRaises(errors.ParseConfigError, conf._get_config)
+
         conf = config.AuthenticationConfig(_file=StringIO(
                 """[broken]
 scheme=ftp
 user=joe
-verify_certificates=askme
+verify_certificates=askme # Error: Not a boolean
 """))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
@@ -1345,5 +1344,11 @@ class TestAuthenticationConfig(tests.TestCase):
 
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
+# test_user_password_in_url
+# test_user_in_url_password_from_config
+# test_user_in_url_password_prompted
+# test_user_in_config
+# test_user_getpass.getuser
+# test_user_prompted ?
 class TestAuthenticationRing(tests.TestCaseWithTransport):
     pass

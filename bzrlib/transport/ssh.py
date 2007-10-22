@@ -461,7 +461,12 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # the username might be specified in ~/.ssh/config and we don't want to
     # force it to something else
     # Also, it would mess up the self.relpath() functionality
-    username = username or getpass.getuser()
+    auth = config.AuthenticationConfig()
+    if username is None:
+        username = auth.get_user('ssh', host, port=port)
+        if username is None:
+            # Default to local user
+            username = getpass.getuser()
 
     if _use_ssh_agent:
         agent = paramiko.Agent()
@@ -487,7 +492,6 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
-    auth = config.AuthenticationConfig()
     password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)

@@ -270,7 +270,7 @@ def extract_credentials(url):
 def extract_authentication_uri(url):
     """Extract the authentication uri from any url.
 
-    In the context of bzr, we simplified the authentication uri
+    In the context of bzr, we simplify the authentication uri
     to the host only. For the transport lifetime, we allow only
     one user by realm on a given host. I.e. handling several
     users for different paths for the same realm should be done
@@ -814,6 +814,8 @@ class ProxyHandler(urllib2.ProxyHandler):
         # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
         # grok user:password@host:port as well as
         # http://user:password@host:port
+
+        # FIXME: query AuthenticationConfig too
 
         # Extract credentials from the url and store them in the
         # password manager so that the proxy AuthHandler can use

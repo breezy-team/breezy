@@ -82,6 +82,14 @@ class TestFTPServer(TestCaseWithFTPServer):
 
 class TestFTPServerUI(TestCaseWithFTPServer):
 
+    def _add_authorized_user(self, user, password):
+        server = self.get_server()
+        # FIXME: There should be a better way to declare authorized users and
+        # passwords to the server
+        authorizer = server._ftp_server.authorizer
+        authorizer.secured_user = user
+        authorizer.secured_password = password
+
     def test_prompt_for_password(self):
         t = self.get_transport()
         # Ensure that the test framework set the password
@@ -93,12 +101,7 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         ui.ui_factory = tests.TestUIFactory(stdin=password+'\n',
                                             stdout=tests.StringIOWrapper())
         # Ask the server to check the password
-        server = self.get_server()
-        # FIXME: There should be a better way to declare authorized users and
-        # passwords to the server
-        authorizer = server._ftp_server.authorizer
-        authorizer.secured_user = t._user
-        authorizer.secured_password = password
+        self._add_authorized_user(t._user, password)
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed)
@@ -113,12 +116,7 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         ui.ui_factory = tests.TestUIFactory(stdin='precious\n',
                                             stdout=tests.StringIOWrapper())
         # Ask the server to check the password
-        server = self.get_server()
-        # FIXME: There should be a better way to declare authorized users and
-        # passwords to the server
-        authorizer = server._ftp_server.authorizer
-        authorizer.secured_user = t._user
-        authorizer.secured_password = password
+        self._add_authorized_user(t._user, password)
 
         # Create a config file with the right password
         conf = config.AuthenticationConfig()

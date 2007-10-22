@@ -1304,6 +1304,8 @@ class TestAuth(object):
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should have  been left untouched
         self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
 
 
 
