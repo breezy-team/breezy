@@ -593,7 +593,7 @@ def sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha.new()
-    f = os.open(fname, os.O_RDONLY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
             b = os.read(f, 1<<16)
