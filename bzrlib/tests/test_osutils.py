@@ -277,7 +277,6 @@ class TestOSUtils(TestCaseInTempDir):
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
-
     def test_changing_access(self):
         f = file('file', 'w')
         f.write('monkey')
@@ -298,7 +297,6 @@ class TestOSUtils(TestCaseInTempDir):
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
 
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
@@ -1050,3 +1048,17 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestShaFileByName(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
