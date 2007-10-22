@@ -73,13 +73,15 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
         outfile = open(os.path.join('first', 'plugin.py'), 'w')
         try:
-            print >> outfile, template % (tempattribute, 'first')
+            outfile.write(template % (tempattribute, 'first'))
+            outfile.write('\n')
         finally:
             outfile.close()
 
         outfile = open(os.path.join('second', 'plugin.py'), 'w')
         try:
-            print >> outfile, template % (tempattribute, 'second')
+            outfile.write(template % (tempattribute, 'second'))
+            outfile.write('\n')
         finally:
             outfile.close()
 
@@ -119,13 +121,15 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
         outfile = open(os.path.join('first', 'pluginone.py'), 'w')
         try:
-            print >> outfile, template % (tempattribute, 'first')
+            outfile.write(template % (tempattribute, 'first'))
+            outfile.write('\n')
         finally:
             outfile.close()
 
         outfile = open(os.path.join('second', 'plugintwo.py'), 'w')
         try:
-            print >> outfile, template % (tempattribute, 'second')
+            outfile.write(template % (tempattribute, 'second'))
+            outfile.write('\n')
         finally:
             outfile.close()
 
@@ -169,7 +173,8 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
         outfile = open(os.path.join('plugin_test', 'ts_plugin.py'), 'w')
         try:
-            print >> outfile, template % (tempattribute, 'plugin')
+            outfile.write(template % (tempattribute, 'plugin'))
+            outfile.write('\n')
         finally:
             outfile.close()
 
@@ -191,7 +196,7 @@ class TestAllPlugins(TestCaseInTempDir):
         # check the plugin is not loaded already
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
         # write a plugin that _cannot_ fail to load.
-        print >> file('plugin.py', 'w'), ""
+        file('plugin.py', 'w').write("\n")
         try:
             bzrlib.plugin.load_from_path(['.'])
             all_plugins = self.applyDeprecated(zero_ninetyone,
@@ -215,7 +220,7 @@ class TestPlugins(TestCaseInTempDir):
         # check the plugin is not loaded already
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
         # write a plugin that _cannot_ fail to load.
-        print >> file('plugin.py', 'w'), source
+        file('plugin.py', 'w').write(source + '\n')
         self.addCleanup(self.teardown_plugin)
         bzrlib.plugin.load_from_path(['.'])
     

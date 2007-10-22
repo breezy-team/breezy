@@ -194,7 +194,15 @@ class AnnotatedKnitContent(KnitContent):
         self._lines[-1] = (self._lines[-1][0], line)
 
     def text(self):
-        return [text for origin, text in self._lines]
+        try:
+            return [text for origin, text in self._lines]
+        except ValueError, e:
+            # most commonly (only?) caused by the internal form of the knit
+            # missing annotation information because of a bug - see thread
+            # around 20071015
+            raise KnitCorrupt(self,
+                "line in annotated knit missing annotation information: %s"
+                % (e,))
 
     def copy(self):
         return AnnotatedKnitContent(self._lines[:])
@@ -265,7 +273,7 @@ class KnitAnnotateFactory(object):
         (start, end, count, [1..count tuples (revid, newline)])
 
         :param plain: If True, the lines are returned as a plain
-            list, not as a list of tuples, i.e.
+            list without annotations, not as a list of (origin, content) tuples, i.e.
             (start, end, count, [1..count newline])
         """
         result = []
@@ -1033,10 +1041,14 @@ class KnitVersionedFile(VersionedFile):
 
             # digest here is the digest from the last applied component.
             text = content.text()
-            if sha_strings(text) != digest:
+            actual_sha = sha_strings(text)
+            if actual_sha != digest:
                 raise KnitCorrupt(self.filename,
-                                  'sha-1 does not match %s' % version_id)
-
+                    '\n  sha-1 %s'
+                    '\n  of reconstructed text does not match'
+                    '\n  expected %s'
+                    '\n  for version %s' %
+                    (actual_sha, digest, version_id))
             text_map[version_id] = text
         return text_map, final_content
 

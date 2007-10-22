@@ -64,6 +64,9 @@ IN DEVELOPMENT
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
 
+   * Graph ``heads()`` queries have been bugfixed to no longer access all
+     history unnecessarily. (Robert Collins)
+
   IMPROVEMENTS:
 
    * ``bzr+https://`` smart server across https now supported. 
@@ -78,7 +81,15 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+
+  DOCUMENTATION:
+
+   * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
+
   BUG FIXES:
+
+   * Fix a problem with Win32 handling of the executable bit.
+     (John Arbash Meinel, #149113)
 
    * ``bzr+ssh://`` and ``sftp://`` URLs that do not specify ports explicitly
      no longer assume that means port 22.  This allows people using OpenSSH to
@@ -103,6 +114,9 @@ IN DEVELOPMENT
 
    * Fix selftest semi-random noise during http related tests.
      (Vincent Ladeuil, #140614)
+
+   * Fix typo in ftp.py making the reconnection fail on temporary errors.
+     (Vincent Ladeuil, #154259)
 
    * Fix failing test by comparing real paths to cover the case where the TMPDIR
      contains a symbolic link.

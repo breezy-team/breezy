@@ -157,7 +157,7 @@ class CommitBuilder(object):
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
-            symbol_versioning.warn('Root entry should be supplied to'
+            raise AssertionError('Root entry should be supplied to'
                 ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
@@ -253,8 +253,6 @@ class CommitBuilder(object):
             # mismatch between commit builder logic and repository:
             # this needs the entry creation pushed down into the builder.
             raise NotImplementedError('Missing repository subtree support.')
-        # transitional assert only, will remove before release.
-        assert ie.kind == kind
         self.new_inventory.add(ie)
 
         # TODO: slow, take it out of the inner loop.
@@ -267,30 +265,23 @@ class CommitBuilder(object):
         # for committing. We may record the previous parents revision if the
         # content is actually unchanged against a sole head.
         if ie.revision is not None:
-            if self._versioned_root or path != '':
-                # not considered for commit
-                delta = None
-            else:
+            if not self._versioned_root and path == '':
                 # repositories that do not version the root set the root's
                 # revision to the new commit even when no change occurs, and
                 # this masks when a change may have occurred against the basis,
                 # so calculate if one happened.
-                if ie.file_id not in basis_inv:
+                if ie.file_id in basis_inv:
+                    delta = (basis_inv.id2path(ie.file_id), path,
+                        ie.file_id, ie)
+                else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                else:
-                    basis_id = basis_inv[ie.file_id]
-                    if basis_id.name != '':
-                        # not the root
-                        delta = (basis_inv.id2path(ie.file_id), path,
-                            ie.file_id, ie)
-                    else:
-                        # common, unaltered
-                        delta = None
-            # not considered for commit, OR, for non-rich-root 
-            return delta, ie.revision == self._new_revision_id and (path != '' or
-                self._versioned_root)
-
+                return delta, False
+            else:
+                # we don't need to commit this, because the caller already
+                # determined that an existing revision of this file is
+                # appropriate.
+                return None, (ie.revision == self._new_revision_id)
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -327,6 +318,8 @@ class CommitBuilder(object):
             if kind != parent_entry.kind:
                 store = True
         if kind == 'file':
+            assert content_summary[2] is not None, \
+                "Files must not have executable = None"
             if not store:
                 if (# if the file length changed we have to store:
                     parent_entry.text_size != content_summary[1] or
@@ -2682,7 +2675,6 @@ class _RevisionTextVersionCache(object):
             parents = self.repository.get_parents([revision_id])[0]
             self.revision_parents[revision_id] = parents
             return parents
-
 
 
 class VersionedFileChecker(object):

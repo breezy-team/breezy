@@ -139,7 +139,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     
     def test_commit_unchanged_root(self):
         tree = self.make_branch_and_tree(".")
-        tree.commit('')
+        old_revision_id = tree.commit('')
         tree.lock_write()
         parent_tree = tree.basis_tree()
         parent_tree.lock_read()
@@ -152,7 +152,15 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 ie, [parent_tree.inventory], '', tree,
                 tree.path_content_summary(''))
             self.assertFalse(version_recorded)
-            self.assertEqual(None, delta)
+            # if the repository format recorded a new root revision, that
+            # should be in the delta
+            got_new_revision = ie.revision != old_revision_id
+            if got_new_revision:
+                self.assertEqual(
+                    ('', '', ie.file_id, ie),
+                    delta)
+            else:
+                self.assertEqual(None, delta)
             builder.abort()
         except:
             builder.abort()
