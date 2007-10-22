@@ -891,7 +891,7 @@ class TestHandlers(tests.TestCase):
             smart.repository.SmartServerRepositoryLockWrite)
         self.assertEqual(
             smart.request.request_handlers.get(
-                'Repository.stream_knit_data_for_revisions'),
+                'Repository.chunked_stream_knit_data_for_revisions'),
             smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),

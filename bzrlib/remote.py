@@ -789,16 +789,17 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream(self, revision_ids):
+        REQUEST_NAME = 'Repository.chunked_stream_knit_data_for_revisions'
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
-            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+            REQUEST_NAME, path, *revision_ids)
 
         if response == ('ok',):
             return self._deserialise_stream(protocol)
         elif (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.stream_knit_data_for_revisions'") or
+                "bad request '%s'" % REQUEST_NAME) or
               response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.stream_knit_data_for_revisions'")):
+                "bad request u'%s'" % REQUEST_NAME)):
             protocol.cancel_read_body()
             self._ensure_real()
             return self._real_repository.get_data_stream(revision_ids)

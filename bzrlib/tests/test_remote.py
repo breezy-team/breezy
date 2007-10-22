@@ -808,7 +808,7 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         """If the server doesn't recognise this request, fallback to VFS."""
         error_msg = (
             "Generic bzr smart protocol error: "
-            "bad request 'Repository.stream_knit_data_for_revisions'")
+            "bad request 'Repository.chunked_stream_knit_data_for_revisions'")
         responses = [
             (('error', error_msg), '')]
         repo, client = self.setup_fake_client_and_repository(
