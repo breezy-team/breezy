@@ -48,14 +48,16 @@ from bzrlib import (
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     AppendBasedFileStream,
-    _file_streams,
-    Server,
     ConnectedTransport,
+    _file_streams,
+    register_urlparse_netloc_protocol,
+    Server,
     )
 from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
 
-_have_medusa = False
+
+register_urlparse_netloc_protocol('aftp')
 
 
 class FtpPathError(errors.PathError):

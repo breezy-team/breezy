@@ -34,11 +34,6 @@ handle authentication schemes.
 
 DEBUG = 0
 
-# TODO: It may be possible to share the password_manager across
-# all transports by prefixing the realm by the protocol used
-# (especially if other protocols do not use realms). See
-# PasswordManager below.
-
 # FIXME: Oversimplifying, two kind of exceptions should be
 # raised, once a request is issued: URLError before we have been
 # able to process the response, HTTPError after that. Process the
@@ -62,9 +57,9 @@ from bzrlib import __version__ as bzrlib_version
 from bzrlib import (
     config,
     errors,
+    transport,
     ui,
     )
-
 
 
 # We define our own Response class to keep our httplib pipe clean
@@ -194,7 +189,7 @@ class Request(urllib2.Request):
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
         # auth and proxy_auth are dicts containing, at least
-        # (scheme, url, realm, user, password).
+        # (scheme, host, port, realm, user, password, protocol, path).
         # The dict entries are mostly handled by the AuthHandler.
         # Some authentication schemes may add more entries.
         self.auth = {}
@@ -239,54 +234,6 @@ class _ConnectRequest(Request):
         just want to enable the SSL tunneling.
         """
         urllib2.Request.set_proxy(self, proxy, type)
-
-
-def extract_credentials(url):
-    """Extracts credentials information from url.
-
-    Get user and password from url of the form: http://user:pass@host/path
-    :returns: (clean_url, user, password)
-    """
-    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-    if '@' in netloc:
-        auth, netloc = netloc.split('@', 1)
-        if ':' in auth:
-            user, password = auth.split(':', 1)
-        else:
-            user, password = auth, None
-        user = urllib.unquote(user)
-        if password is not None:
-            password = urllib.unquote(password)
-    else:
-        user = None
-        password = None
-
-    # Build the clean url
-    clean_url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-
-    return clean_url, user, password
-
-def extract_authentication_uri(url):
-    """Extract the authentication uri from any url.
-
-    In the context of bzr, we simplify the authentication uri
-    to the host only. For the transport lifetime, we allow only
-    one user by realm on a given host. I.e. handling several
-    users for different paths for the same realm should be done
-    at a higher level.
-    """
-    scheme, host, path, query, fragment = urlparse.urlsplit(url)
-    return '%s://%s' % (scheme, host)
-
-
-# The AuthHandler classes handle the authentication of the requests, to do
-# that, they need a PasswordManager *at build time*. We also need one to reuse
-# the passwords entered by the user.
-class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
-
-    def __init__(self):
-        urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
 
 
 class ConnectionHandler(urllib2.BaseHandler):
@@ -738,9 +685,8 @@ class ProxyHandler(urllib2.ProxyHandler):
     handler_order = 100
     _debuglevel = DEBUG
 
-    def __init__(self, password_manager, proxies=None):
+    def __init__(self, proxies=None):
         urllib2.ProxyHandler.__init__(self, proxies)
-        self.password_manager = password_manager
         # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel > 0:
@@ -783,7 +729,7 @@ class ProxyHandler(urllib2.ProxyHandler):
 
     def proxy_bypass(self, host):
         """Check if host should be proxied or not"""
-        no_proxy = self.get_proxy_env_var('no', None)
+        no_proxy = self.get_proxy_env_var('no', default_to=None)
         if no_proxy is None:
             return False
         hhost, hport = urllib.splitport(host)
@@ -815,35 +761,26 @@ class ProxyHandler(urllib2.ProxyHandler):
         # grok user:password@host:port as well as
         # http://user:password@host:port
 
-        # FIXME: query AuthenticationConfig too
+        (scheme, user, password,
+         host, port, path) = transport.ConnectedTransport._split_url(proxy)
 
-        # Extract credentials from the url and store them in the
-        # password manager so that the proxy AuthHandler can use
-        # them later.
-        proxy, user, password = extract_credentials(proxy)
         if request.proxy_auth == {}:
-            # No proxy auth parameter are available, we are
-            # handling the first proxied request, intialize.
-            # scheme and realm will be set by the AuthHandler
-            authuri = extract_authentication_uri(proxy)
-            request.proxy_auth = {'user': user, 'password': password,
-                                  'authuri': authuri}
-            if user and password is not None: # '' is a valid password
-                # We default to a realm of None to catch them all.
-                self.password_manager.add_password(None, authuri,
-                                                   user, password)
-        orig_type = request.get_type()
-        scheme, r_scheme = urllib.splittype(proxy)
+            # No proxy auth parameter are available, we are handling the first
+            # proxied request, intialize.  scheme (the authentication scheme)
+            # and realm will be set by the AuthHandler
+            request.proxy_auth = {
+                                  'host': host, 'port': port,
+                                  'user': user, 'password': password,
+                                  'protocol': scheme,
+                                   # We ignore path since we connect to a proxy
+                                  'path': None}
+        if port is None:
+            phost = host
+        else:
+            phost = host + ':%d' % port
+        request.set_proxy(phost, type)
         if self._debuglevel > 0:
-            print 'scheme: %s, r_scheme: %s' % (scheme, r_scheme)
-        host, XXX = urllib.splithost(r_scheme)
-        if host is None:
-            raise errors.InvalidURL(proxy,
-                                    'Invalid syntax in proxy env variable')
-        host = urllib.unquote(host)
-        request.set_proxy(host, type)
-        if self._debuglevel > 0:
-            print 'set_proxy: proxy set to %s://%s' % (type, host)
+            print 'set_proxy: proxy set to %s://%s' % (type, phost)
         return request
 
 
@@ -885,7 +822,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    _max_retry = 2
+    _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
     # The following attributes should be defined by daughter
@@ -893,10 +830,10 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     # - auth_required_header:  the header received from the server
     # - auth_header: the header sent in the request
 
-    def __init__(self, password_manager):
-        self.password_manager = password_manager
-        self.find_user_password = password_manager.find_user_password
-        self.add_password = password_manager.add_password
+    def __init__(self):
+        # We want to know when we enter into an try/fail cycle of
+        # authentications so we initialize to None to indicate that we aren't
+        # in such a cycle by default.
         self._retry_count = None
 
     def update_auth(self, auth, key, value):
@@ -915,8 +852,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """
         # Don't try  to authenticate endlessly
         if self._retry_count is None:
-            # The retry being recusrsive calls, None identify the first try
-            self._retry_count = 0
+            # The retry being recusrsive calls, None identify the first retry
+            self._retry_count = 1
         else:
             self._retry_count += 1
             if self._retry_count > self._max_retry:
@@ -938,8 +875,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if self.auth_match(server_header, auth):
             # auth_match may have modified auth (by adding the
             # password or changing the realm, for example)
-            if request.get_header(self.auth_header, None) is not None \
-                    and not auth['modified']:
+            if (request.get_header(self.auth_header, None) is not None
+                and not auth['modified']):
                 # We already tried that, give up
                 return None
 
@@ -1001,29 +938,20 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # It may happen that we need to reconnect later, let's be ready
         self._retry_count = None
 
-    def get_password(self, user, authuri, realm=None):
+    # FIXME: Rename get_credentials or something and query the auth config for
+    # user too.
+    def get_password(self, auth):
         """Ask user for a password if none is already available."""
-        user_found, password = self.find_user_password(realm, authuri)
-        if user_found != user:
-            # FIXME: write a test for that case
-            password = None
+        user = auth['user']
+        realm = auth['realm']
+        password = auth['password']
 
         if password is None:
-            scheme, netloc, path, query, fragment = urlparse.urlsplit(authuri)
-            if ':' in netloc:
-                host, port = netloc.rsplit(':', 1)
-                # port is an int here invalid values have been handled by the
-                # upper layers
-                port = int(port)
-            else:
-                host = netloc
-                port = None
-            auth = config.AuthenticationConfig()
-            password = auth.get_password(
-                scheme, host, user, port=port, path=path, realm=realm,
+            auth_conf = config.AuthenticationConfig()
+            password = auth_conf.get_password(
+                auth['protocol'], auth['host'], user, port=auth['port'],
+                path=auth['path'], realm=realm,
                 prompt=self.password_prompt)
-            if password is not None:
-                self.add_password(realm, authuri, user, password)
         return password
 
     def http_request(self, request):
@@ -1064,8 +992,7 @@ class BasicAuthHandler(AbstractAuthHandler):
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
             if auth.get('password',None) is None:
-                password = self.get_password(auth['user'], auth['authuri'],
-                                             auth['realm'])
+                password = self.get_password(auth)
                 self.update_auth(auth, 'password', password)
         return match is not None
 
@@ -1125,16 +1052,16 @@ class DigestAuthHandler(AbstractAuthHandler):
             return False
 
         realm = req_auth.get('realm', None)
-        if auth.get('password',None) is None:
-            auth['password'] = self.get_password(auth['user'],
-                                                 auth['authuri'],
-                                                 realm)
         # Put useful info into auth
+        self.update_auth(auth, 'scheme', scheme)
+        self.update_auth(auth, 'realm', realm)
+        if auth.get('password',None) is None:
+            password = self.get_password(auth)
+            self.update_auth(auth, 'password', password)
+
         try:
-            self.update_auth(auth, 'scheme', scheme)
             if req_auth.get('algorithm', None) is not None:
                 self.update_auth(auth, 'algorithm', req_auth.get('algorithm'))
-            self.update_auth(auth, 'realm', realm)
             nonce = req_auth['nonce']
             if auth.get('nonce', None) != nonce:
                 # A new nonce, never used
@@ -1316,14 +1243,13 @@ class Opener(object):
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
-        self.password_manager = PasswordManager()
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
-            ProxyHandler(self.password_manager),
-            HTTPBasicAuthHandler(self.password_manager),
-            HTTPDigestAuthHandler(self.password_manager),
-            ProxyBasicAuthHandler(self.password_manager),
-            ProxyDigestAuthHandler(self.password_manager),
+            ProxyHandler(),
+            HTTPBasicAuthHandler(),
+            HTTPDigestAuthHandler(),
+            ProxyBasicAuthHandler(),
+            ProxyDigestAuthHandler(),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,

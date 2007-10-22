@@ -2045,8 +2045,10 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
         http_transport = self.get_readonly_transport()
         medium = http_transport.get_smart_medium()
-        #remote_transport = RemoteTransport('fake_url', medium)
-        remote_transport = remote.RemoteTransport('/', medium=medium)
+        # Since we provide the medium, the url below will be mostly ignored
+        # during the test, as long as the path is '/'.
+        remote_transport = remote.RemoteTransport('bzr://fake_host/',
+                                                  medium=medium)
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 

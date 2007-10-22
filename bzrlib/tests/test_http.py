@@ -79,7 +79,6 @@ from bzrlib.transport.http import (
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.http._urllib2_wrappers import (
-    PasswordManager,
     ProxyHandler,
     Request,
     )
@@ -205,7 +204,7 @@ class TestHttpTransportUrls(object):
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
         t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises((errors.InvalidURL, errors.ConnectionError),
+        self.assertRaises(errors.InvalidURL,
                           self._transport,
                           'http://http://bazaar-vcs.org/bzr/bzr.dev/')
 
@@ -798,7 +797,7 @@ class TestHttpProxyWhiteBox(TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        handler = ProxyHandler(PasswordManager())
+        handler = ProxyHandler()
         request = Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
@@ -832,10 +831,6 @@ class TestProxyHttpServer(object):
 
     # FIXME: We don't have an https server available, so we don't
     # test https connections.
-
-    # FIXME: Once the test suite is better fitted to test
-    # authorization schemes, test proxy authorizations too (see
-    # bug #83954).
 
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)

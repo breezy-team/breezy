@@ -1076,7 +1076,8 @@ class AuthenticationConfig(object):
 
         :return: The found user.
         """
-        credentials = self.get_credentials(scheme, host, port, user, path)
+        credentials = self.get_credentials(scheme, host, port, user=None,
+                                           path=path)
         if credentials is not None:
             user = credentials['user']
         else:
@@ -1104,6 +1105,8 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
+        else:
+            password = None
         if password is None:
             # Prompt user only if we could't find a password
             if prompt is None:

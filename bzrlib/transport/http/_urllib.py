@@ -75,17 +75,15 @@ class HttpTransport_urllib(HttpTransportBase):
             request.connection = connection
             (auth, proxy_auth) = self._get_credentials()
         else:
-            # First request, intialize credentials
+            # First request, intialize credentials.
+            # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
             user = self._user
             password = self._password
-            authuri = self._remote_path('.')
-            auth = {'user': user, 'password': password, 'authuri': authuri}
-
-            if user and password is not None: # '' is a valid password
-                # Make the (user, password) available to urllib2
-                # We default to a realm of None to catch them all.
-                self._opener.password_manager.add_password(None, authuri,
-                                                           user, password)
+            auth = {'host': self._host, 'port': self._port,
+                    'user': user, 'password': password,
+                    'protocol': self._unqualified_scheme,
+                    'path': self._path}
+            # Proxy initialization will be done by first proxied request
             proxy_auth = {}
         # Ensure authentication info is provided
         request.auth = auth
