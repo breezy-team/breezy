@@ -345,6 +345,8 @@ class DirState(object):
             self._sha1_file = self._sha1_file_and_mutter
         else:
             self._sha1_file = osutils.sha_file_by_name
+        self._last_block_index = None
+        self._last_entry_index = None
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1042,6 +1044,12 @@ class DirState(object):
         """
         if key[0:2] == ('', ''):
             return 0, True
+        try:
+            if (self._last_block_index is not None and
+                self._dirblocks[self._last_block_index][0] == key[0]):
+                return self._last_block_index, True
+        except IndexError:
+            pass
         block_index = bisect_dirblock(self._dirblocks, key[0], 1,
                                       cache=self._split_path_cache)
         # _right returns one-past-where-key is so we have to subtract
@@ -1052,6 +1060,7 @@ class DirState(object):
         # simple and correct:
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
+        self._last_block_index = block_index
         return block_index, present
 
     def _find_entry_index(self, key, block):
@@ -1059,9 +1068,24 @@ class DirState(object):
 
         :return: The entry index, True if the entry for the key is present.
         """
+        len_block = len(block)
+        try:
+            if self._last_entry_index is not None:
+                # mini-bisect here.
+                entry_index = self._last_entry_index + 1
+                # A hit is when the key is after the last slot, and before or
+                # equal to the next slot.
+                if (block[entry_index - 1][0] < key and
+                    key <= block[entry_index][0]):
+                    self._last_entry_index = entry_index
+                    present = block[entry_index][0] == key
+                    return entry_index, present
+        except IndexError:
+            pass
         entry_index = bisect.bisect_left(block, (key, []))
-        present = (entry_index < len(block) and
+        present = (entry_index < len_block and
             block[entry_index][0] == key)
+        self._last_entry_index = entry_index
         return entry_index, present
 
     @staticmethod
@@ -1353,7 +1377,7 @@ class DirState(object):
             return block_index, 0, False, False
         block = self._dirblocks[block_index][1] # access the entries only
         entry_index, present = self._find_entry_index(key, block)
-        # linear search through present entries at this path to find the one
+        # linear search through entries at this path to find the one
         # requested.
         while entry_index < len(block) and block[entry_index][0][1] == basename:
             if block[entry_index][1][tree_index][0] not in \
@@ -1380,7 +1404,8 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
-            assert path_utf8.__class__ == str, 'path_utf8 is not a str: %s %s' % (type(path_utf8), path_utf8)
+            assert path_utf8.__class__ == str, ('path_utf8 is not a str: %s %s'
+                % (type(path_utf8), path_utf8))
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
             block_index, entry_index, dir_present, file_present = \
