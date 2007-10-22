@@ -454,7 +454,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev2c', 'rev3a']),
                          graph.heads(['rev2c', 'rev3a']))
 
-
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
         
