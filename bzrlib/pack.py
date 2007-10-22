@@ -59,17 +59,25 @@ def _check_name_encoding(name):
 
 
 class ContainerSerialiser(object):
-    """A class for serialising containers."""
+    """A helper class for serialising containers.
+    
+    It simply returns bytes from method calls to 'begin', 'end' and
+    'bytes_record'.  You may find ContainerWriter to be a more convenient
+    interface.
+    """
 
     def begin(self):
-        """Begin a container."""
+        """Return the bytes to begin a container."""
         return FORMAT_ONE + "\n"
 
     def end(self):
-        """Finish a container."""
+        """Return the bytes to finish a container."""
         return "E"
 
     def bytes_record(self, bytes, names):
+        """Return the bytes for a Bytes record with the given name and
+        contents.
+        """
         # Kind marker
         byte_sections = ["B"]
         # Length
