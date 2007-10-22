@@ -345,6 +345,10 @@ class DirState(object):
             self._sha1_file = self._sha1_file_and_mutter
         else:
             self._sha1_file = osutils.sha_file_by_name
+        # These two attributes provide a simple cache for lookups into the
+        # dirstate in-memory vectors. By probing respectively for the last
+        # block, and for the next entry, we save nearly 2 bisections per path
+        # during commit.
         self._last_block_index = None
         self._last_entry_index = None
 
@@ -1061,6 +1065,7 @@ class DirState(object):
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
         self._last_block_index = block_index
+        # Reset the entry index cache to the beginning of the block.
         self._last_entry_index = -1
         return block_index, present
 
