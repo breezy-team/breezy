@@ -20,7 +20,8 @@ from bzrlib import urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent, BzrError, UninitializableFormat)
+                           NoRepositoryPresent, BzrError, UninitializableFormat,
+                           OutOfDateTree)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
@@ -449,8 +450,13 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
 
         try:
-            commit_info = svn.client.commit3(specific_files, True, False, 
-                                         self.client_ctx)
+            try:
+                commit_info = svn.client.commit3(specific_files, True, False, 
+                                                 self.client_ctx)
+            except SubversionException, (_, num):
+                if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+                    raise OutOfDateTree(self)
+                raise
         except:
             # Reset properties so the next subversion commit won't 
             # accidently set these properties.

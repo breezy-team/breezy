@@ -50,6 +50,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Don't print traceback when raising errors about bzr versions.
 
+   * Show proper exception when lightweight checkout is out of date.
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)
