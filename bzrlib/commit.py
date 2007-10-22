@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     inventory,
+    revision,
     tree,
     )
 from bzrlib.branch import Branch
@@ -269,6 +270,7 @@ class Commit(object):
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
         self.basis_tree.lock_read()
         try:
@@ -415,8 +417,9 @@ class Commit(object):
         # TODO: we could simplify this by using self._basis_delta.
 
         # The inital commit adds a root directory, but this in itself is not
-        # a worthwhile commit.  
-        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+        # a worthwhile commit.
+        if (self.basis_revid == revision.NULL_REVISION and
+            len(self.builder.new_inventory) == 1):
             raise PointlessCommit()
         # Shortcut, if the number of entries changes, then we obviously have
         # a change
