@@ -685,7 +685,7 @@ class Commit(object):
             set(self.builder.new_inventory._byid.keys())
         if deleted_ids:
             self.any_entries_deleted = True
-            deleted = [(self.basis_inv.id2path(file_id), file_id)
+            deleted = [(self.basis_tree.id2path(file_id), file_id)
                 for file_id in deleted_ids]
             deleted.sort()
             # XXX: this is not quite directory-order sorting
