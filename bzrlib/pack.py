@@ -103,6 +103,13 @@ class ContainerWriter(object):
             and thus are only suitable for use by a ContainerReader.
         """
         current_offset = self.current_offset
+        serialised_record = self._serialise_bytes_record(bytes, names)
+        self.write_func(serialised_record)
+        self.records_written += 1
+        # return a memo of where we wrote data to allow random access.
+        return current_offset, self.current_offset - current_offset
+
+    def _serialise_bytes_record(self, bytes, names):
         # Kind marker
         byte_sections = ["B"]
         # Length
@@ -126,10 +133,7 @@ class ContainerWriter(object):
         # memory pressure in that case. One possibly improvement here is to
         # check the size of the content before deciding to join here vs call
         # write twice.
-        self.write_func(''.join(byte_sections))
-        self.records_written += 1
-        # return a memo of where we wrote data to allow random access.
-        return current_offset, self.current_offset - current_offset
+        return ''.join(byte_sections)
 
 
 class ReadVFile(object):
@@ -373,9 +377,7 @@ class ContainerPushParser(object):
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
         buffer_length = None
-        from bzrlib.trace import mutter
         while len(self._buffer) != buffer_length:
-            mutter('state: %r, buffer: %r', self._buffer, self._state_handler)
             buffer_length = len(self._buffer)
             self._state_handler()
 
