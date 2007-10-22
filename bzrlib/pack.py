@@ -58,58 +58,18 @@ def _check_name_encoding(name):
         raise errors.InvalidRecordError(str(e))
 
 
-class ContainerWriter(object):
-    """A class for writing containers.
-
-    :attribute records_written: The number of user records added to the
-        container. This does not count the prelude or suffix of the container
-        introduced by the begin() and end() methods.
-    """
-
-    def __init__(self, write_func):
-        """Constructor.
-
-        :param write_func: a callable that will be called when this
-            ContainerWriter needs to write some bytes.
-        """
-        self._write_func = write_func
-        self.current_offset = 0
-        self.records_written = 0
+class ContainerSerialiser(object):
+    """A class for serialising containers."""
 
     def begin(self):
-        """Begin writing a container."""
-        self.write_func(FORMAT_ONE + "\n")
-
-    def write_func(self, bytes):
-        self._write_func(bytes)
-        self.current_offset += len(bytes)
+        """Begin a container."""
+        return FORMAT_ONE + "\n"
 
     def end(self):
-        """Finish writing a container."""
-        self.write_func("E")
+        """Finish a container."""
+        return "E"
 
-    def add_bytes_record(self, bytes, names):
-        """Add a Bytes record with the given names.
-        
-        :param bytes: The bytes to insert.
-        :param names: The names to give the inserted bytes. Each name is
-            a tuple of bytestrings. The bytestrings may not contain
-            whitespace.
-        :return: An offset, length tuple. The offset is the offset
-            of the record within the container, and the length is the
-            length of data that will need to be read to reconstitute the
-            record. These offset and length can only be used with the pack
-            interface - they might be offset by headers or other such details
-            and thus are only suitable for use by a ContainerReader.
-        """
-        current_offset = self.current_offset
-        serialised_record = self._serialise_bytes_record(bytes, names)
-        self.write_func(serialised_record)
-        self.records_written += 1
-        # return a memo of where we wrote data to allow random access.
-        return current_offset, self.current_offset - current_offset
-
-    def _serialise_bytes_record(self, bytes, names):
+    def bytes_record(self, bytes, names):
         # Kind marker
         byte_sections = ["B"]
         # Length
@@ -134,6 +94,59 @@ class ContainerWriter(object):
         # check the size of the content before deciding to join here vs call
         # write twice.
         return ''.join(byte_sections)
+
+
+class ContainerWriter(object):
+    """A class for writing containers to a file.
+
+    :attribute records_written: The number of user records added to the
+        container. This does not count the prelude or suffix of the container
+        introduced by the begin() and end() methods.
+    """
+
+    def __init__(self, write_func):
+        """Constructor.
+
+        :param write_func: a callable that will be called when this
+            ContainerWriter needs to write some bytes.
+        """
+        self._write_func = write_func
+        self.current_offset = 0
+        self.records_written = 0
+        self._serialiser = ContainerSerialiser()
+
+    def begin(self):
+        """Begin writing a container."""
+        self.write_func(self._serialiser.begin())
+
+    def write_func(self, bytes):
+        self._write_func(bytes)
+        self.current_offset += len(bytes)
+
+    def end(self):
+        """Finish writing a container."""
+        self.write_func(self._serialiser.end())
+
+    def add_bytes_record(self, bytes, names):
+        """Add a Bytes record with the given names.
+        
+        :param bytes: The bytes to insert.
+        :param names: The names to give the inserted bytes. Each name is
+            a tuple of bytestrings. The bytestrings may not contain
+            whitespace.
+        :return: An offset, length tuple. The offset is the offset
+            of the record within the container, and the length is the
+            length of data that will need to be read to reconstitute the
+            record. These offset and length can only be used with the pack
+            interface - they might be offset by headers or other such details
+            and thus are only suitable for use by a ContainerReader.
+        """
+        current_offset = self.current_offset
+        serialised_record = self._serialiser.bytes_record(bytes, names)
+        self.write_func(serialised_record)
+        self.records_written += 1
+        # return a memo of where we wrote data to allow random access.
+        return current_offset, self.current_offset - current_offset
 
 
 class ReadVFile(object):
