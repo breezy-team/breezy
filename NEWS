@@ -55,6 +55,11 @@ IN DEVELOPMENT
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
+   * Knit text reconstruction now avoids making copies of the lines list for
+     interim texts when building a single text. The new ``apply_delta`` method
+     on ``KnitContent`` aids this by allowing modification of the revision id
+     such objects represent. (Robert Collins)
+
    * Pack indices are now partially parsed for specific key lookup using a
      bisection approach. (Robert Collins)
 
@@ -77,7 +82,6 @@ IN DEVELOPMENT
 
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
-
 
   DOCUMENTATION:
 
