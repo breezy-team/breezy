@@ -1079,7 +1079,7 @@ class DirState(object):
                 if ((entry_index > 0 and block[entry_index - 1][0] < key) and
                     key <= block[entry_index][0]):
                     self._last_entry_index = entry_index
-                    present = block[entry_index][0] == key
+                    present = (block[entry_index][0] == key)
                     return entry_index, present
         except IndexError:
             pass
