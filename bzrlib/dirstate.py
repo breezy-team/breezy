@@ -1061,6 +1061,7 @@ class DirState(object):
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
         self._last_block_index = block_index
+        self._last_entry_index = -1
         return block_index, present
 
     def _find_entry_index(self, key, block):
@@ -1075,7 +1076,7 @@ class DirState(object):
                 entry_index = self._last_entry_index + 1
                 # A hit is when the key is after the last slot, and before or
                 # equal to the next slot.
-                if (block[entry_index - 1][0] < key and
+                if ((entry_index > 0 and block[entry_index - 1][0] < key) and
                     key <= block[entry_index][0]):
                     self._last_entry_index = entry_index
                     present = block[entry_index][0] == key
