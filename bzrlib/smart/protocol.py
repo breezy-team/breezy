@@ -228,9 +228,9 @@ def _send_chunks(stream, write_func):
             _send_chunks(chunk.args, write_func)
             return
         else:
-            raise BzrError(
+            raise errors.BzrError(
                 'Chunks must be str or FailedSmartServerResponse, got %r'
-                % chunks)
+                % chunk)
 
 
 class _StatefulDecoder(object):
