@@ -239,7 +239,20 @@ class Graph(object):
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
             searcher.next()
+        # The common walker finds nodes that are common to two or more of the
+        # input keys, so that we don't access all history when a currently
+        # uncommon search point actually meets up with something behind a
+        # common search point. Common search points do not keep searches
+        # active; they just allow us to make searches inactive without
+        # accessing all history.
+        common_walker = self._make_breadth_first_searcher([])
         while len(active_searchers) > 0:
+            ancestors = set()
+            # advance searches
+            try:
+                common_walker.next()
+            except StopIteration:
+                pass
             for candidate in active_searchers.keys():
                 try:
                     searcher = active_searchers[candidate]
@@ -249,27 +262,44 @@ class Graph(object):
                     # a descendant of another candidate.
                     continue
                 try:
-                    ancestors = searcher.next()
+                    ancestors.update(searcher.next())
                 except StopIteration:
                     del active_searchers[candidate]
                     continue
-                for ancestor in ancestors:
-                    if ancestor in candidate_heads:
-                        candidate_heads.remove(ancestor)
-                        del searchers[ancestor]
-                        if ancestor in active_searchers:
-                            del active_searchers[ancestor]
+            # process found nodes
+            new_common = set()
+            for ancestor in ancestors:
+                if ancestor in candidate_heads:
+                    candidate_heads.remove(ancestor)
+                    del searchers[ancestor]
+                    if ancestor in active_searchers:
+                        del active_searchers[ancestor]
+                # it may meet up with a known common node
+                already_common = ancestor in common_walker.seen
+                if not already_common:
+                    # or it may have been just reached by all the searchers:
                     for searcher in searchers.itervalues():
                         if ancestor not in searcher.seen:
+                            common = False
                             break
                     else:
-                        # if this revision was seen by all searchers, then it
-                        # is a descendant of all candidates, so we can stop
-                        # searching it, and any seen ancestors
-                        for searcher in searchers.itervalues():
-                            seen_ancestors =\
-                                searcher.find_seen_ancestors(ancestor)
-                            searcher.stop_searching_any(seen_ancestors)
+                        common = True
+                if already_common:
+                    # some searcher has encountered our known common nodes:
+                    # just stop it
+                    ancestor_set = set([ancestor])
+                    for searcher in searchers.itervalues():
+                        searcher.stop_searching_any(ancestor_set)
+                if common:
+                    # The final active searcher has just reached this node,
+                    # making it be known as a descendant of all candidates, so
+                    # we can stop searching it, and any seen ancestors
+                    new_common.add(ancestor)
+                    for searcher in searchers.itervalues():
+                        seen_ancestors =\
+                            searcher.find_seen_ancestors(ancestor)
+                        searcher.stop_searching_any(seen_ancestors)
+            common_walker.start_searching(new_common)
         return candidate_heads
 
     def find_unique_lca(self, left_revision, right_revision):
@@ -306,69 +336,12 @@ class Graph(object):
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
         """Determine whether a revision is an ancestor of another.
 
-        There are two possible outcomes: True and False, but there are three
-        possible relationships:
-
-        a) candidate_ancestor is an ancestor of candidate_descendant
-        b) candidate_ancestor is an descendant of candidate_descendant
-        c) candidate_ancestor is an sibling of candidate_descendant
-
-        To check for a, we walk from candidate_descendant, looking for
-        candidate_ancestor.
-
-        To check for b, we walk from candidate_ancestor, looking for
-        candidate_descendant.
-
-        To make a and b more efficient, we can stop any searches that hit
-        common ancestors.
-
-        If we exhaust our searches, but neither a or b is true, then c is true.
-
-        In order to find c efficiently, we must avoid searching from
-        candidate_descendant or candidate_ancestor into common ancestors.  But
-        if we don't search common ancestors at all, we won't know if we hit
-        common ancestors.  So we have a walker for common ancestors.  Note that
-        its searches are not required to terminate in order to determine c to
-        be true.
+        We answer this using heads() as heads() has the logic to perform the
+        smallest number of parent looksup to determine the ancestral
+        relationship between N revisions.
         """
-        ancestor_walker = self._make_breadth_first_searcher(
-            [candidate_ancestor])
-        descendant_walker = self._make_breadth_first_searcher(
-            [candidate_descendant])
-        common_walker = self._make_breadth_first_searcher([])
-        active_ancestor = True
-        active_descendant = True
-        while (active_ancestor or active_descendant):
-            new_common = set()
-            if active_descendant:
-                try:
-                    nodes = descendant_walker.next()
-                except StopIteration:
-                    active_descendant = False
-                else:
-                    if candidate_ancestor in nodes:
-                        return True
-                    new_common.update(nodes.intersection(ancestor_walker.seen))
-            if active_ancestor:
-                try:
-                    nodes = ancestor_walker.next()
-                except StopIteration:
-                    active_ancestor = False
-                else:
-                    if candidate_descendant in nodes:
-                        return False
-                    new_common.update(nodes.intersection(
-                        descendant_walker.seen))
-            try:
-                new_common.update(common_walker.next())
-            except StopIteration:
-                pass
-            for walker in (ancestor_walker, descendant_walker):
-                for node in new_common:
-                    c_ancestors = walker.find_seen_ancestors(node)
-                    walker.stop_searching_any(c_ancestors)
-                common_walker.start_searching(new_common)
-        return False
+        return set([candidate_descendant]) == self.heads(
+            [candidate_ancestor, candidate_descendant])
 
 
 class HeadsCache(object):
