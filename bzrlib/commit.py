@@ -15,8 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# The newly committed revision is going to have a shape corresponding
-# to that of the working inventory.  Files that are not in the
+# The newly committed revisioVn is going to have a shape corresponding
+# to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
 # removed --- this can include files that were either removed from the
 # inventory or deleted in the working tree.  If they were only
@@ -25,7 +25,7 @@
 # We then consider the remaining entries, which will be in the new
 # version.  Directory entries are simply copied across.  File entries
 # must be checked to see if a new version of the file should be
-# recorded.  For each parent revision inventory, we check to see what
+# recorded.  For each parent revision tree, we check to see what
 # version of the file was present.  If the file was present in at
 # least one tree, and if it was the same version in all the trees,
 # then we can just refer to that version.  Otherwise, a new version
@@ -59,7 +59,6 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
-    inventory,
     revision,
     tree,
     )
@@ -76,7 +75,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -793,7 +792,7 @@ class Commit(object):
         # mutter('check %s {%s}', path, file_id)
         # mutter('%s selected for commit', path)
         if definitely_changed or existing_ie is None:
-            ie = inventory.make_entry(kind, name, parent_id, file_id)
+            ie = make_entry(kind, name, parent_id, file_id)
         else:
             ie = existing_ie.copy()
             ie.revision = None
