@@ -1967,10 +1967,7 @@ class DirState(object):
         # build up paths that this id will be left at after the change is made,
         # so we can update their cross references in tree 0
         all_remaining_keys = set()
-        # If the working tree claims it is present, don't worry about it,
-        # because we are removing it. But if it is a rename, we need to remove
-        # the actual location.
-        details = current_old[1][0]
+        # Dont check the working tree, because it's going.
         for details in current_old[1][1:]:
             if details[0] not in ('a', 'r'): # absent, relocated
                 all_remaining_keys.add(current_old[0])
@@ -2002,6 +1999,8 @@ class DirState(object):
                 self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
             assert present, 'could not find entry for %s' % (update_key,)
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
+            # it must not be absent at the moment
+            assert update_tree_details[0][0] != 'a' # absent
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return last_reference
