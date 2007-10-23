@@ -169,6 +169,6 @@ FILE" to mark the conflict as resolved.
 MalformedTransform
 ==================
 It is possible (though very rare) for Bazaar to raise a MalformedTransform
-exception.  This means that Bazaar encounted a filesystem conflict that it was
+exception.  This means that Bazaar encountered a filesystem conflict that it was
 unable to resolve.  This usually indicates a bug.  Please let us know if you
 encounter this.  Our bug tracker is at https://launchpad.net/bzr/+bugs
