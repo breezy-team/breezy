@@ -938,21 +938,28 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # It may happen that we need to reconnect later, let's be ready
         self._retry_count = None
 
-    # FIXME: Rename get_credentials or something and query the auth config for
-    # user too.
-    def get_password(self, auth):
+    def get_user_password(self, auth):
         """Ask user for a password if none is already available."""
+        auth_conf = config.AuthenticationConfig()
         user = auth['user']
-        realm = auth['realm']
         password = auth['password']
+        realm = auth['realm']
+
+        if user is None:
+            user = auth.get_user(auth['protocol'], auth['host'],
+                                 port=auth['port'], path=auth['path'],
+                                 realm=realm)
+            if user is None:
+                # Default to local user
+                user = getpass.getuser()
 
         if password is None:
-            auth_conf = config.AuthenticationConfig()
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
                 path=auth['path'], realm=realm,
                 prompt=self.build_password_prompt(auth))
-        return password
+
+        return user, password
 
     def _build_password_prompt(self, auth):
         """Build a prompt taking the protocol used into account.
@@ -1009,8 +1016,9 @@ class BasicAuthHandler(AbstractAuthHandler):
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth.get('password',None) is None:
-                password = self.get_password(auth)
+            if auth['user'] is None or auth['password'] is None:
+                user, password = self.get_user_password(auth)
+                self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
         return match is not None
 
@@ -1073,8 +1081,9 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         self.update_auth(auth, 'scheme', scheme)
         self.update_auth(auth, 'realm', realm)
-        if auth.get('password',None) is None:
-            password = self.get_password(auth)
+        if auth['user'] is None or auth['password'] is None:
+            user, password = self.get_user_password(auth)
+            self.update_auth(auth, 'user', user)
             self.update_auth(auth, 'password', password)
 
         try:

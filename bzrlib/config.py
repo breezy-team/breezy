@@ -63,7 +63,6 @@ up=pull
 """
 
 import os
-import getpass
 import sys
 
 from bzrlib.lazy_import import lazy_import
