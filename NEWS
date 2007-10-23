@@ -30,6 +30,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``authentication.conf`` file to define remote servers credentials.
+     (Vincent Ladeuil)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
