@@ -180,10 +180,10 @@ class NewPack(Pack):
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
     indices = {
-        'revision':('.rix', 0),
-        'inventory':('.iix', 1),
-        'text':('.tix', 2),
-        'signature':('.six', 3),
+        'revision': ('.rix', 0),
+        'inventory': ('.iix', 1),
+        'text': ('.tix', 2),
+        'signature': ('.six', 3),
         }
 
     def __init__(self, upload_transport, index_transport, pack_transport,
@@ -407,8 +407,11 @@ class AggregateIndex(object):
 
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
+
+        Future searches on the aggregate index will seach this new index
+        before all previously inserted indices.
         
-        :param index: An index from the pack parameter.
+        :param index: An Index for the pack.
         :param pack: A Pack instance.
         """
         # expose it to the index map
@@ -459,7 +462,7 @@ class RepositoryPackCollection(object):
 
         :param transport: Addresses the repository base directory 
             (typically .bzr/repository/).
-        :param index_transport: Addresses the directory containing indexes.
+        :param index_transport: Addresses the directory containing indices.
         :param upload_transport: Addresses the directory into which packs are written
             while they're being created.
         :param pack_transport: Addresses the directory of existing complete packs.
@@ -469,7 +472,7 @@ class RepositoryPackCollection(object):
         self._index_transport = index_transport
         self._upload_transport = upload_transport
         self._pack_transport = pack_transport
-        self._suffix_offsets = {'.rix':0, '.iix':1, '.tix':2, '.six':3}
+        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3}
         self.packs = []
         # name:Pack mapping
         self._packs = {}
@@ -989,8 +992,8 @@ class RepositoryPackCollection(object):
         for pack in packs:
             pack.pack_transport.rename(pack.file_name(),
                 '../obsolete_packs/' + pack.file_name())
-            # TODO: Probably needs to know all possible indexes for this pack
-            # - or maybe list the directory and move all indexes matching this
+            # TODO: Probably needs to know all possible indices for this pack
+            # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
             for suffix in ('.iix', '.six', '.tix', '.rix'):
                 self._index_transport.rename(pack.name + suffix,
@@ -1054,7 +1057,7 @@ class RepositoryPackCollection(object):
         self._packs_at_load = None
 
     def _make_index_map(self, index_suffix):
-        """Return information on existing indexes.
+        """Return information on existing indices.
 
         :param suffix: Index suffix added to pack name.
 
@@ -1064,10 +1067,10 @@ class RepositoryPackCollection(object):
         """
         # TODO: stop using this; it creates new indices unnecessarily.
         self.ensure_loaded()
-        suffix_map = {'.rix':'revision_index',
-            '.six':'signature_index',
-            '.iix':'inventory_index',
-            '.tix':'text_index',
+        suffix_map = {'.rix': 'revision_index',
+            '.six': 'signature_index',
+            '.iix': 'inventory_index',
+            '.tix': 'text_index',
         }
         return self._packs_list_to_pack_map_and_index_list(self.all_packs(),
             suffix_map[index_suffix])
@@ -1558,7 +1561,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             prefixed=False,
             file_mode=control_files._file_mode,
             versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
+            versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
             )
 
     def _get_revision_store(self, repo_transport, control_files):
@@ -1569,8 +1572,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             prefixed=False,
             precious=True,
             versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'delta':False,
-                                  'factory':knit.KnitPlainFactory(),
+            versionedfile_kwargs={'delta': False,
+                                  'factory': knit.KnitPlainFactory(),
                                  },
             escaped=True,
             )
@@ -1583,9 +1586,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
                                   control_files,
                                   versionedfile_class=knit.KnitVersionedFile,
                                   versionedfile_kwargs={
-                                      'create_parent_dir':True,
-                                      'delay_create':True,
-                                      'dir_mode':control_files._dir_mode,
+                                      'create_parent_dir': True,
+                                      'delay_create': True,
+                                      'dir_mode': control_files._dir_mode,
                                   },
                                   escaped=True)
 
