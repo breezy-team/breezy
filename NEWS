@@ -1,5 +1,9 @@
 0.3		UNRELEASED
 
+ BUG FIXES
+
+  * Fix "bzr replay", add test.
+
 0.2		2007-10-19
 
  BUG FIXES

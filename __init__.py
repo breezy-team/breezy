@@ -305,7 +305,7 @@ class cmd_replay(Command):
     def run(self, location, revision=None, merge_type=None):
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
-        from rebase import regenerate_default_revid, workingtree_replay
+        from rebase import regenerate_default_revid, replay_delta_workingtree
 
         from_branch = Branch.open(location)
 

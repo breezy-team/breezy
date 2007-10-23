@@ -177,3 +177,23 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('merge')
         self.run_bzr('commit -m merge')
         self.run_bzr('rebase')
+
+class ReplayTests(ExternalBase):
+    def test_replay(self):
+        os.mkdir('main')
+        os.chdir('main')
+        self.run_bzr('init')
+        open('bar', 'w').write('42')
+        self.run_bzr('add')
+        self.run_bzr('commit -m that')
+        os.mkdir('../feature')
+        os.chdir('../feature')
+        self.run_bzr('init')
+        branch = Branch.open('.')
+        open('hello', 'w').write("my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.assertEquals(1, len(branch.revision_history()))
+        self.run_bzr('replay -r1 ../main')
+        self.assertEquals(2, len(branch.revision_history()))
+        self.assertTrue(os.path.exists('bar'))
