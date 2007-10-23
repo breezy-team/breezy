@@ -1967,7 +1967,12 @@ class DirState(object):
         # build up paths that this id will be left at after the change is made,
         # so we can update their cross references in tree 0
         all_remaining_keys = set()
-        # Dont check the working tree, because it's going.
+        # If the working tree claims it is present, don't worry about it,
+        # because we are removing it. But if it is a rename, we need to remove
+        # the actual location.
+        details = current_old[1][0]
+        if details[0] == 'r':
+            all_remaining_keys.add(tuple(osutils.split(details[1])) + (current_old[0][2],))
         for details in current_old[1][1:]:
             if details[0] not in ('a', 'r'): # absent, relocated
                 all_remaining_keys.add(current_old[0])
@@ -1988,7 +1993,7 @@ class DirState(object):
             if self._id_index is not None:
                 self._id_index[current_old[0][2]].remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
-        # existing details may either be the record we are making as deleted
+        # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
         # be relocations.
         for update_key in all_remaining_keys:
@@ -2000,6 +2005,10 @@ class DirState(object):
             assert present, 'could not find entry for %s' % (update_key,)
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
             # it must not be absent at the moment
+            # This doesn't seem to be strictly true, if you have a file renamed
+            # inside a directory, and you remove the directory
+            if update_tree_details[0][0] == 'a':
+                import pdb; pdb.set_trace()
             assert update_tree_details[0][0] != 'a' # absent
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
