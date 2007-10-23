@@ -272,7 +272,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     """
 
     def all_versions(self):
-        return ['rev1a', 'rev2', 'rev4', 'rev2b', 'rev4', 'rev2c', 'rev5']
+        return ['rev1a', 'rev2', 'rev2b', 'rev2c', 'rev4', 'rev5']
 
     def populated_parents(self):
         return [
