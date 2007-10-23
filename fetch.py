@@ -531,15 +531,14 @@ class InterFromSvnRepository(InterRepository):
                              id_map, scheme)
 
                 pool = Pool()
-                edit, edit_baton = svn.delta.make_editor(editor, pool)
 
                 if parent_revid is None:
                     branch_url = urlutils.join(repos_root, branch)
                     transport.reparent(branch_url)
                     assert transport.svn_url == branch_url.rstrip("/"), \
                         "Expected %r, got %r" % (transport.svn_url, branch_url)
-                    reporter = transport.do_update(
-                                   revnum, True, edit, edit_baton, pool)
+                    reporter = transport.do_update(revnum, True, editor,
+                                                   pool)
 
                     # Report status of existing paths
                     reporter.set_path("", revnum, True, None, pool)
@@ -552,10 +551,9 @@ class InterFromSvnRepository(InterRepository):
                         reporter = transport.do_switch(
                                    revnum, True, 
                                    urlutils.join(repos_root, branch), 
-                                   edit, edit_baton, pool)
+                                   editor, pool)
                     else:
-                        reporter = transport.do_update(
-                                   revnum, True, edit, edit_baton, pool)
+                        reporter = transport.do_update(revnum, True, editor)
 
                     # Report status of existing paths
                     reporter.set_path("", parent_revnum, False, None, pool)

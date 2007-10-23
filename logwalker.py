@@ -334,12 +334,11 @@ class LogWalker(object):
                 pass
         pool = Pool()
         editor = TreeLister(path)
-        edit, baton = svn.delta.make_editor(editor, pool)
         old_base = transport.base
         try:
             root_repos = transport.get_svn_repos_root()
             transport.reparent(urlutils.join(root_repos, path))
-            reporter = transport.do_update(revnum,  True, edit, baton, pool)
+            reporter = transport.do_update(revnum, True, editor, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:
