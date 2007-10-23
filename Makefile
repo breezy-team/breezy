@@ -20,13 +20,15 @@
 
 ### Core Stuff ###
 
+PYTHON=python
+
 .PHONY: all clean extensions pyflakes api-docs
 
 all: extensions
 
 extensions:
 	@echo "building extension modules."
-	python setup.py build_ext -i
+	$(PYTHON) setup.py build_ext -i
 
 check: docs extensions
 	python -Werror -O ./bzr selftest -1v $(tests)
@@ -47,8 +49,7 @@ pyflakes-nounused:
 
 clean:
 	python setup.py clean
-	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
-	rm -rf test????.tmp
+	-find . -name "*.pyc" -o -name "*.pyo" -o -name "*.so" | xargs rm -f
 
 # Build API documentation
 docfiles = bzr bzrlib

@@ -82,10 +82,22 @@ class SMTPConnection(object):
             else:
                 raise
 
-        # If this fails, it just returns an error, but it shouldn't raise an
-        # exception unless something goes really wrong (in which case we want
-        # to fail anyway).
-        self._connection.starttls()
+        # Say EHLO (falling back to HELO) to query the server's features.
+        code, resp = self._connection.ehlo()
+        if not (200 <= code <= 299):
+            code, resp = self._connection.helo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused HELO: %d %s" % (code, resp))
+
+        # Use TLS if the server advertised it:
+        if self._connection.has_extn("starttls"):
+            code, resp = self._connection.starttls()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused STARTTLS: %d %s" % (code, resp))
+            # Say EHLO again, to check for newly revealed features
+            code, resp = self._connection.ehlo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused EHLO: %d %s" % (code, resp))
 
     def _authenticate(self):
         """If necessary authenticate yourself to the server."""

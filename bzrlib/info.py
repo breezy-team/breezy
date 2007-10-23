@@ -148,8 +148,8 @@ def _show_related_info(branch, outfile):
     """Show parent and push location of branch."""
     locs = _gather_related_branches(branch)
     if len(locs.locs) > 0:
-        print >> outfile
-        print >> outfile, 'Related branches:'
+        outfile.write('\n')
+        outfile.write('Related branches:\n')
         outfile.writelines(locs.get_lines())
 
 

@@ -599,15 +599,29 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             path = self.inventory.id2path(file_id)
         return os.lstat(self.abspath(path)).st_mtime
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        file_id = self.path2id(path)
+        return self._inventory[file_id].executable
+
+    def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
+        mode = stat_result.st_mode
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
     if not supports_executable():
         def is_executable(self, file_id, path=None):
             return self._inventory[file_id].executable
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_stat
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -705,11 +719,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if kind == 'file':
             size = stat_result.st_size
             # try for a stat cache lookup
-            if not supports_executable():
-                executable = None # caller can decide policy.
-            else:
-                mode = stat_result.st_mode
-                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            executable = self._is_executable_from_path_and_stat(path, stat_result)
             return (kind, size, executable, self._sha_from_stat(
                 path, stat_result))
         elif kind == 'directory':

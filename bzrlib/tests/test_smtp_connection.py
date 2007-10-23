@@ -39,22 +39,54 @@ def connection_refuser():
     return smtp
 
 
-def everybody_is_welcome():
-    """Fake a smtp server that implements login by accepting anybody."""
-    def connect(server):
-        return (220, "You're so welcome")
+class StubSMTPFactory(object):
+    """A fake SMTP connection to test the connection setup."""
+    def __init__(self, fail_on=None, smtp_features=None):
+        self._fail_on = fail_on or []
+        self._calls = []
+        self._smtp_features = smtp_features or []
+        self._ehlo_called = False
 
-    def starttls():
+    def __call__(self):
+        # The factory pretends to be a connection
+        return self
+
+    def connect(self, server):
+        self._calls.append(('connect', server))
+
+    def helo(self):
+        self._calls.append(('helo',))
+        if 'helo' in self._fail_on:
+            return 500, 'helo failure'
+        else:
+            return 200, 'helo success'
+
+    def ehlo(self):
+        self._calls.append(('ehlo',))
+        if 'ehlo' in self._fail_on:
+            return 500, 'ehlo failure'
+        else:
+            self._ehlo_called = True
+            return 200, 'ehlo success'
+
+    def has_extn(self, extension):
+        self._calls.append(('has_extn', extension))
+        return self._ehlo_called and extension in self._smtp_features
+
+    def starttls(self):
+        self._calls.append(('starttls',))
+        if 'starttls' in self._fail_on:
+            return 500, 'starttls failure'
+        else:
+            self._ehlo_called = True
+            return 200, 'starttls success'
+
+
+class WideOpenSMTPFactory(StubSMTPFactory):
+    """A fake smtp server that implements login by accepting anybody."""
+
+    def login(self, user, password):
         pass
-
-    def login(user, password):
-        pass
-
-    smtp = smtplib.SMTP()
-    smtp.connect = connect
-    smtp.starttls = starttls
-    smtp.login = login
-    return smtp
 
 
 class TestSMTPConnection(tests.TestCaseInTempDir):
@@ -100,8 +132,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_smtp_password_from_user(self):
         user = 'joe'
         password = 'hispass'
+        factory = WideOpenSMTPFactory()
         conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=everybody_is_welcome)
+                                   smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
         ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
@@ -114,8 +147,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_smtp_password_from_auth_config(self):
         user = 'joe'
         password = 'hispass'
+        factory = WideOpenSMTPFactory()
         conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=everybody_is_welcome)
+                                   smtp_factory=factory)
         self.assertEqual(user, conn._smtp_username)
         self.assertIs(None, conn._smtp_password)
         # Create a config file with the right password
@@ -127,6 +161,57 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
         conn._connect()
         self.assertEqual(password, conn._smtp_password)
+
+    def test_create_connection(self):
+        factory = StubSMTPFactory()
+        conn = self.get_connection('', smtp_factory=factory)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls')], factory._calls)
+
+    def test_create_connection_ehlo_fails(self):
+        # Check that we call HELO if EHLO failed.
+        factory = StubSMTPFactory(fail_on=['ehlo'])
+        conn = self.get_connection('', smtp_factory=factory)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('helo',),
+                          ('has_extn', 'starttls')], factory._calls)
+
+    def test_create_connection_ehlo_helo_fails(self):
+        # Check that we raise an exception if both EHLO and HELO fail.
+        factory = StubSMTPFactory(fail_on=['ehlo', 'helo'])
+        conn = self.get_connection('', smtp_factory=factory)
+        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('helo',)], factory._calls)
+
+    def test_create_connection_starttls(self):
+        # Check that STARTTLS plus a second EHLO are called if the
+        # server says it supports the feature.
+        factory = StubSMTPFactory(smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=factory)
+        conn._create_connection()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('starttls',),
+                          ('ehlo',)], factory._calls)
+
+    def test_create_connection_starttls_fails(self):
+        # Check that we raise an exception if the server claims to
+        # support STARTTLS, but then fails when we try to activate it.
+        factory = StubSMTPFactory(fail_on=['starttls'],
+                                  smtp_features=['starttls'])
+        conn = self.get_connection('', smtp_factory=factory)
+        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('starttls',)], factory._calls)
 
     def test_get_message_addresses(self):
         msg = Message()

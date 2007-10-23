@@ -55,8 +55,9 @@ if version_info < NEED_VERS:
                 os.execvp(python, [python] + sys.argv)
             except OSError:
                 pass
-    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
-    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
+    sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
+    sys.stderr.write("  (need %d.%d or later)" % NEED_VERS)
+    sys.stderr.write('\n')
     sys.exit(1)
 if getattr(os, "unsetenv", None) is not None:
     os.unsetenv(REINVOKE)

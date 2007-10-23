@@ -373,6 +373,31 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+    def test_deserialise_sets_root_revision(self):
+        """We must have a inventory.root.revision
+
+        Old versions of the XML5 serializer did not set the revision_id for
+        the whole inventory. So we grab the one from the expected text. Which
+        is valid when the api is not being abused.
+        """
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        inv_xml = '<inventory format="5">\n</inventory>\n'
+        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        self.assertEqual('test-rev-id', inv.root.revision)
+
+    def test_deserialise_uses_global_revision_id(self):
+        """If it is set, then we re-use the global revision id"""
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        inv_xml = ('<inventory format="5" revision_id="other-rev-id">\n'
+                   '</inventory>\n')
+        # Arguably, the deserialise_inventory should detect a mismatch, and
+        # raise an error, rather than silently using one revision_id over the
+        # other.
+        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        self.assertEqual('other-rev-id', inv.root.revision)
+
 
 class KnitRepositoryStreamTests(test_knit.KnitTests):
     """Tests for knitrepo._get_stream_as_bytes."""

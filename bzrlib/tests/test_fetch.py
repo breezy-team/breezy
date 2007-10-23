@@ -268,7 +268,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         branch = wt.branch
         wt.add(["file"], ["id"])
         wt.commit("added file")
-        print >>open("source/file", 'w'), "blah"
+        open("source/file", 'w').write("blah\n")
         wt.commit("changed file")
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))

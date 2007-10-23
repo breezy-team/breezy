@@ -467,6 +467,12 @@ class WorkingTree4(WorkingTree3):
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
+            return False # Missing entries are not executable
+        return entry[1][0][3] # Executable?
+
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
@@ -477,6 +483,9 @@ class WorkingTree4(WorkingTree3):
             if entry == (None, None):
                 return False
             return entry[1][0][3]
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
