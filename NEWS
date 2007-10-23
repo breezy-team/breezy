@@ -1,5 +1,9 @@
 0.3		UNRELEASED
 
+ ENHANCEMENTS
+
+  * "bzr replay" now supports revision ranges.
+
  BUG FIXES
 
   * Fix "bzr replay", add test.

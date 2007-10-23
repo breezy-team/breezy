@@ -305,6 +305,7 @@ class cmd_replay(Command):
     def run(self, location, revision=None, merge_type=None):
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
+        from bzrlib import ui
         from rebase import regenerate_default_revid, replay_delta_workingtree
 
         from_branch = Branch.open(location)
@@ -312,20 +313,34 @@ class cmd_replay(Command):
         if revision is not None:
             if len(revision) == 1:
                 if revision[0] is not None:
-                    revid = revision[0].in_history(from_branch).rev_id
-                else:
-                    raise BzrCommandError("--revision takes only one argument")
+                    todo = [revision[0].in_history(from_branch).rev_id]
+            elif len(revision) == 2:
+                from_revno, from_revid = revision[0].in_history(from_branch)
+                to_revno, to_revid = revision[1].in_history(from_branch)
+                if to_revid is None:
+                    to_revno = from_branch.revno()
+                todo = []
+                for revno in range(from_revno, to_revno + 1):
+                    todo.append(from_branch.get_rev_id(revno))
+            else:
+                raise BzrCommandError(
+                    "--revision takes only one or two arguments")
         else:
             raise BzrCommandError("--revision is mandatory")
 
         wt = WorkingTree.open(".")
         wt.lock_write()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
-            wt.branch.repository.fetch(from_branch.repository, revid)
-            newrevid = regenerate_default_revid(wt.branch.repository, revid)
-            replay_delta_workingtree(wt, revid, newrevid, [wt.last_revision()],
-                                     merge_type=merge_type)
+            for revid in todo:
+                pb.update("replaying commits", todo.index(revid), len(todo))
+                wt.branch.repository.fetch(from_branch.repository, revid)
+                newrevid = regenerate_default_revid(wt.branch.repository, revid)
+                replay_delta_workingtree(wt, revid, newrevid, 
+                                         [wt.last_revision()], 
+                                         merge_type=merge_type)
         finally:
+            pb.finished()
             wt.unlock()
 
 
