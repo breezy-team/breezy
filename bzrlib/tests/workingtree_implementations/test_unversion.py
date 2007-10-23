@@ -16,7 +16,10 @@
 
 """Tests of the WorkingTree.unversion API."""
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -137,3 +140,53 @@ class TestUnversion(TestCaseWithWorkingTree):
                           ('dir2/f3', 'f3-id'),
                          ], paths)
 
+    def test_unversion_after_conflicted_merge(self):
+        # Test for bug #114615
+        tree_a = self.make_branch_and_tree('A')
+        self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
+        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.commit('init')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.inventory.root.file_id
+        finally:
+            tree_a.unlock()
+
+        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        self.build_tree(['B/xyz/'])
+        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.rename_one('a/m', 'xyz/m')
+        tree_b.unversion(['a-id'])
+        tree_b.commit('delete in B')
+
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
+        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        tree_a.commit('change n in A')
+
+        # Merging from A should introduce conflicts because 'n' was modified
+        # and removed, so 'a' needs to be restored. We also have a conflict
+        # because 'a' is still an existing directory
+        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(4, num_conflicts)
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('a', 'a-id'),
+                          ('xyz', 'xyz-id'),
+                          ('a/n.OTHER', 'n-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+        tree_b.unversion(['a-id'])
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
