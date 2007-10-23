@@ -155,7 +155,8 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
         stop_revno = None
     new_parent = onto_revid
     for oldrevid in history[start_revno:stop_revno]: 
-        oldparents = get_parents(oldrevid)
+        oldparents = list(get_parents(oldrevid))
+        assert isinstance(oldparents, list)
         assert oldparents == [] or \
                 oldparents[0] == history[history.index(oldrevid)-1]
         if len(oldparents) > 1:
@@ -211,7 +212,7 @@ def generate_transpose_plan(graph, renames, get_parents, generate_revid):
                 if c in renames:
                     continue
                 if replace_map.has_key(c):
-                    parents = replace_map[c][1]
+                    parents = list(replace_map[c][1])
                 else:
                     parents = list(graph[c])
                 assert isinstance(parents, list), \
@@ -324,7 +325,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                                             revprops=revprops,
                                             revision_id=newrevid)
     try:
-
         # Check what new_ie.file_id should be
         # use old and new parent inventories to generate new_id map
         fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
@@ -363,10 +363,10 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
         finally:
             pb.finished()
         builder.finish_inventory()
+        return builder.commit(oldrev.message)
     except:
-        builder.repository.abort_write_group()
+        builder.abort()
         raise
-    return builder.commit(oldrev.message)
 
 
 def commit_rebase(wt, oldrev, newrevid):

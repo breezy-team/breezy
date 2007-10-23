@@ -505,9 +505,11 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.add(["afile"], ids=["newid"])
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
+        wt.lock_write()
         self.assertRaises(ConflictsInTree, 
             replay_delta_workingtree, wt, "oldcommit", "newcommit", 
             ["newparent"])
+        wt.unlock()
 
     def test_simple(self):
         wt = self.make_branch_and_tree("old")
@@ -521,8 +523,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.build_tree(['new/bfile'])
         wt.add(["bfile"], ids=["newid"])
         wt.commit("bla", rev_id="newparent")
+        wt.lock_write()
         replay_delta_workingtree(wt, "oldcommit", "newcommit", 
             ["newparent"])
+        wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)
@@ -543,8 +547,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.build_tree(['new/bfile'])
         wt.add(["bfile"], ids=["newid"])
         wt.commit("bla", rev_id="newparent")
+        wt.lock_write()
         replay_delta_workingtree(wt, "oldcommit", "newcommit", 
             ["newparent", "ghost"])
+        wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent", "ghost"], newrev.parent_ids)
@@ -594,12 +600,16 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         newwt.add_pending_merge("B")
         newwt.commit("bla", rev_id="E")
         newwt.branch.repository.fetch(oldwt.branch.repository)
+        newwt.lock_write()
         replay_delta_workingtree(newwt, "D", "D'", ["C"])
+        newwt.unlock()
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
+        newwt.lock_write()
         self.assertRaises(ConflictsInTree, 
             lambda: replay_delta_workingtree(newwt, "E", "E'", ["D'"]))
+        newwt.unlock()
         self.assertEquals("E\n" + "A\n" * 10 + "C\n",
                 open("new/afile", 'r').read())
         newwt.set_conflicts(ConflictList())
