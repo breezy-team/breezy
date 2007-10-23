@@ -65,7 +65,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
-        self.weave_store = target.weave_store
         self.dir_baserev = {}
         self._bzr_merges = []
         self._svk_merges = []
@@ -147,10 +146,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.inventory[id].revision = self.revid
 
         # Only record root if the target repository supports it
-        if self.target.supports_rich_root:
-            file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
-            if not file_weave.has_version(self.revid):
-                file_weave.add_lines(self.revid, self.dir_baserev[id], [])
+        self._store_directory(id, self.dir_baserev[id])
 
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
                       pool):
@@ -283,9 +279,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_id = self._get_existing_id(parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
-        file_weave = self.weave_store.get_weave_or_empty(base_file_id, 
-                                                         self.transact)
-        self.file_data = file_weave.get_text(base_revid)
+        self.file_data = self._get_file_data(base_file_id, base_revid)
         self.file_stream = None
         if self.file_id == base_file_id:
             self.file_parents = [base_revid]
@@ -306,10 +300,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        file_weave = self.weave_store.get_weave_or_empty(self.file_id, 
-                                                         self.transact)
-        if not file_weave.has_version(self.revid):
-            file_weave.add_lines(self.revid, self.file_parents, lines)
+        self._store_file(self.file_id, lines)
 
         if self.file_id in self.inventory:
             ie = self.inventory[self.file_id]
@@ -339,15 +330,12 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev.inventory_sha1 = osutils.sha_string(
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
                 self.inventory))
-        try:
-            self.target.add_revision(self.revid, rev, self.inventory)
-            self.target.commit_write_group()
-        except:
-            self.target.abort_write_group()
+        self.target.add_revision(self.revid, rev, self.inventory)
+        self.target.commit_write_group()
         self.pool.destroy()
 
     def abort_edit(self):
-        pass
+        self.target.abort_write_group()
 
     def apply_textdelta(self, file_id, base_checksum):
         actual_checksum = md5.new(self.file_data).hexdigest(),
@@ -357,6 +345,39 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_stream = StringIO()
         return apply_txdelta_handler(StringIO(self.file_data), 
                                      self.file_stream, self.pool)
+
+
+class KnitRevisionBuildEditor(RevisionBuildEditor):
+    """Subversion commit editor that can write to a knit-based repository.
+    """
+    def __init__(self, source, target, branch_path, prev_inventory, revid,
+                 svn_revprops, id_map, scheme):
+        RevisionBuildEditor.__init__(self, source, target, 
+            branch_path, prev_inventory, revid, svn_revprops, id_map, scheme)
+        self.weave_store = target.weave_store
+
+    def _store_directory(self, id, base_revid):
+        file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
+        if not file_weave.has_version(self.revid):
+            file_weave.add_lines(self.revid, base_revid, [])
+
+    def _get_file_data(self, file_id, revid):
+        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
+        return file_weave.get_text(revid)
+
+    def _store_file(self, file_id, lines):
+        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
+        if not file_weave.has_version(self.revid):
+            file_weave.add_lines(self.revid, self.file_parents, lines)
+
+
+class CommitRevisionBuildEditor(RevisionBuildEditor):
+    """Revision Build Editor for Subversion that uses the CommitBuilder API.
+    """
+    def __init__(self, source, target, branch_path, prev_inventory, revid,
+                 svn_revprops, id_map, scheme):
+        RevisionBuildEditor.__init__(self, source, target, 
+            branch_path, prev_inventory, revid, svn_revprops, id_map, scheme)
 
 
 class InterFromSvnRepository(InterRepository):
@@ -460,8 +481,8 @@ class InterFromSvnRepository(InterRepository):
                 id_map = self.source.transform_fileid_map(self.source.uuid, 
                                       revnum, branch, changes, renames, scheme)
 
-                editor = RevisionBuildEditor(self.source, self.target, branch, 
-                             parent_inv, revid, 
+                editor = KnitRevisionBuildEditor(self.source, self.target, 
+                             branch, parent_inv, revid, 
                              self.source._log.get_revision_info(revnum),
                              id_map, scheme)
 
