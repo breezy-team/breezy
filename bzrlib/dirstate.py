@@ -1971,8 +1971,6 @@ class DirState(object):
         # because we are removing it. But if it is a rename, we need to remove
         # the actual location.
         details = current_old[1][0]
-        if details[0] == 'r':
-            all_remaining_keys.add(tuple(osutils.split(details[1])) + (current_old[0][2],))
         for details in current_old[1][1:]:
             if details[0] not in ('a', 'r'): # absent, relocated
                 all_remaining_keys.add(current_old[0])
@@ -2004,12 +2002,6 @@ class DirState(object):
                 self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
             assert present, 'could not find entry for %s' % (update_key,)
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
-            # it must not be absent at the moment
-            # This doesn't seem to be strictly true, if you have a file renamed
-            # inside a directory, and you remove the directory
-            if update_tree_details[0][0] == 'a':
-                import pdb; pdb.set_trace()
-            assert update_tree_details[0][0] != 'a' # absent
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return last_reference

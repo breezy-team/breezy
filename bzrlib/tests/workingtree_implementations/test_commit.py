@@ -112,6 +112,29 @@ class TestCommit(TestCaseWithWorkingTree):
         # The only paths left should be the root
         self.assertEqual([('', root_id)], paths)
 
+    def test_no_autodelete_renamed_away(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir2/'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'],
+                   ['dir-id', 'f1-id', 'f2-id', 'dir2-id'])
+        rev_id1 = tree_a.commit('init')
+        # Rename one entry out of this directory
+        tree_a.rename_one('dir/f1', 'dir2/a')
+        osutils.rmtree('a/dir')
+        tree_a.commit('autoremoved')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.inventory.root.file_id
+            paths = [(path, ie.file_id)
+                     for path, ie in tree_a.iter_entries_by_dir()]
+        finally:
+            tree_a.unlock()
+        # The only paths left should be the root
+        self.assertEqual([('', root_id), ('dir2', 'dir2-id'),
+                          ('dir2/a', 'f1-id'),
+                         ], paths)
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         committed_id = tree.commit('foo', rev_id='foo')
