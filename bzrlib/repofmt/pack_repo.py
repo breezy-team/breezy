@@ -1443,7 +1443,7 @@ class KnitPackRepository(KnitRepository):
         return self
 
     def _refresh_data(self):
-        if self._write_lock_count==1 or self.control_files._lock_count==1:
+        if self._write_lock_count == 1 or self.control_files._lock_count == 1:
             # forget what names there are
             self._packs.reset()
             # XXX: Better to do an in-memory merge when acquiring a new lock -
