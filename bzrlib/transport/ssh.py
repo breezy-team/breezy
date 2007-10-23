@@ -24,18 +24,13 @@ import socket
 import subprocess
 import sys
 
-from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.errors import (ConnectionError,
-                           ParamikoNotPresent,
-                           SocketConnectionError,
-                           SSHVendorNotFound,
-                           TransportError,
-                           UnknownSSH,
-                           )
-
-from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter, warning
-import bzrlib.ui
+from bzrlib import (
+    config,
+    errors,
+    osutils,
+    trace,
+    ui,
+    )
 
 try:
     import paramiko
@@ -98,7 +93,7 @@ class SSHVendorManager(object):
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
-                raise UnknownSSH(vendor_name)
+                raise errors.UnknownSSH(vendor_name)
             return vendor
         return None
 
@@ -122,16 +117,16 @@ class SSHVendorManager(object):
         """
         vendor = None
         if 'OpenSSH' in version:
-            mutter('ssh implementation is OpenSSH')
+            trace.mutter('ssh implementation is OpenSSH')
             vendor = OpenSSHSubprocessVendor()
         elif 'SSH Secure Shell' in version:
-            mutter('ssh implementation is SSH Corp.')
+            trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
         elif 'plink' in version and args[0] == 'plink':
-            # Checking if "plink" was the executed argument as Windows sometimes 
-            # reports 'ssh -V' incorrectly with 'plink' in it's version. 
-            # See https://bugs.launchpad.net/bzr/+bug/107155
-            mutter("ssh implementation is Putty's plink.")
+            # Checking if "plink" was the executed argument as Windows
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # version.  See https://bugs.launchpad.net/bzr/+bug/107155
+            trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
         return vendor
 
@@ -156,10 +151,10 @@ class SSHVendorManager(object):
             if vendor is None:
                 vendor = self._get_vendor_by_inspection()
                 if vendor is None:
-                    mutter('falling back to default implementation')
+                    trace.mutter('falling back to default implementation')
                     vendor = self._default_ssh_vendor
                     if vendor is None:
-                        raise SSHVendorNotFound()
+                        raise errors.SSHVendorNotFound()
             self._cached_ssh_vendor = vendor
         return self._cached_ssh_vendor
 
@@ -182,7 +177,7 @@ class LoopbackSFTP(object):
 
     def __init__(self, sock):
         self.__socket = sock
- 
+
     def send(self, data):
         return self.__socket.send(data)
 
@@ -198,7 +193,7 @@ class LoopbackSFTP(object):
 
 class SSHVendor(object):
     """Abstract base class for SSH vendor implementations."""
-    
+
     def connect_sftp(self, username, password, host, port):
         """Make an SSH connection, and return an SFTPClient.
         
@@ -221,7 +216,7 @@ class SSHVendor(object):
             method that returns a pair of (read, write) filelike objects.
         """
         raise NotImplementedError(self.connect_ssh)
-        
+
     def _raise_connection_error(self, host, port=None, orig_error=None,
                                 msg='Unable to connect to SSH host'):
         """Raise a SocketConnectionError with properly formatted host.
@@ -229,13 +224,13 @@ class SSHVendor(object):
         This just unifies all the locations that try to raise ConnectionError,
         so that they format things properly.
         """
-        raise SocketConnectionError(host=host, port=port, msg=msg,
-                                    orig_error=orig_error)
+        raise errors.SocketConnectionError(host=host, port=port, msg=msg,
+                                           orig_error=orig_error)
 
 
 class LoopbackVendor(SSHVendor):
     """SSH "vendor" that connects over a plain TCP socket, not SSH."""
-    
+
     def connect_sftp(self, username, password, host, port):
         sock = socket.socket()
         try:
@@ -278,24 +273,29 @@ class ParamikoVendor(SSHVendor):
         keytype = server_key.get_name()
         if host in SYSTEM_HOSTKEYS and keytype in SYSTEM_HOSTKEYS[host]:
             our_server_key = SYSTEM_HOSTKEYS[host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+            our_server_key_hex = paramiko.util.hexify(
+                our_server_key.get_fingerprint())
         elif host in BZR_HOSTKEYS and keytype in BZR_HOSTKEYS[host]:
             our_server_key = BZR_HOSTKEYS[host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+            our_server_key_hex = paramiko.util.hexify(
+                our_server_key.get_fingerprint())
         else:
-            warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
+            trace.warning('Adding %s host key for %s: %s'
+                          % (keytype, host, server_key_hex))
             add = getattr(BZR_HOSTKEYS, 'add', None)
             if add is not None: # paramiko >= 1.X.X
                 BZR_HOSTKEYS.add(host, keytype, server_key)
             else:
                 BZR_HOSTKEYS.setdefault(host, {})[keytype] = server_key
             our_server_key = server_key
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+            our_server_key_hex = paramiko.util.hexify(
+                our_server_key.get_fingerprint())
             save_host_keys()
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = pathjoin(config_dir(), 'ssh_host_keys')
-            raise TransportError('Host keys for %s do not match!  %s != %s' % \
+            filename2 = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+            raise errors.TransportError(
+                'Host keys for %s do not match!  %s != %s' %
                 (host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
 
@@ -331,7 +331,7 @@ if paramiko is not None:
 
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
-    
+
     def _connect(self, argv):
         proc = subprocess.Popen(argv,
                                 stdin=subprocess.PIPE,
@@ -381,7 +381,7 @@ class SubprocessVendor(SSHVendor):
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from OpenSSH."""
-    
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
         assert subsystem is not None or command is not None, (
@@ -426,7 +426,7 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         else:
             args.extend([host] + command)
         return args
-    
+
 register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
 
 
@@ -471,13 +471,14 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if _use_ssh_agent:
         agent = paramiko.Agent()
         for key in agent.get_keys():
-            mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
+            trace.mutter('Trying SSH agent key %s'
+                         % paramiko.util.hexify(key.get_fingerprint()))
             try:
                 paramiko_transport.auth_publickey(username, key)
                 return
             except paramiko.SSHException, e:
                 pass
-    
+
     # okay, try finding id_rsa or id_dss?  (posix only)
     if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
         return
@@ -496,8 +497,8 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     try:
         paramiko_transport.auth_password(username, password)
     except paramiko.SSHException, e:
-        raise ConnectionError('Unable to authenticate to SSH host as %s@%s' %
-                              (username, host), e)
+        raise errors.ConnectionError(
+            'Unable to authenticate to SSH host as %s@%s' % (username, host), e)
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
@@ -507,17 +508,18 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
         paramiko_transport.auth_publickey(username, key)
         return True
     except paramiko.PasswordRequiredException:
-        password = bzrlib.ui.ui_factory.get_password(
-                prompt='SSH %(filename)s password',
-                filename=filename)
+        password = ui.ui_factory.get_password(
+            prompt='SSH %(filename)s password', filename=filename)
         try:
             key = pkey_class.from_private_key_file(filename, password)
             paramiko_transport.auth_publickey(username, key)
             return True
         except paramiko.SSHException:
-            mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
+            trace.mutter('SSH authentication via %s key failed.'
+                         % (os.path.basename(filename),))
     except paramiko.SSHException:
-        mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
+        trace.mutter('SSH authentication via %s key failed.'
+                     % (os.path.basename(filename),))
     except IOError:
         pass
     return False
@@ -530,14 +532,15 @@ def load_host_keys():
     """
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
     try:
-        SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
+        SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
+            os.path.expanduser('~/.ssh/known_hosts'))
     except IOError, e:
-        mutter('failed to load system host keys: ' + str(e))
-    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
+        trace.mutter('failed to load system host keys: ' + str(e))
+    bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
     try:
         BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
     except IOError, e:
-        mutter('failed to load bzr host keys: ' + str(e))
+        trace.mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
 
 
@@ -546,8 +549,8 @@ def save_host_keys():
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
-    ensure_config_dir_exists()
+    bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+    config.ensure_config_dir_exists()
 
     try:
         f = open(bzr_hostkey_path, 'w')
@@ -557,7 +560,7 @@ def save_host_keys():
                 f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
         f.close()
     except IOError, e:
-        mutter('failed to save bzr host keys: ' + str(e))
+        trace.mutter('failed to save bzr host keys: ' + str(e))
 
 
 def os_specific_subprocess_params():
