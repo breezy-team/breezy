@@ -200,6 +200,8 @@ class NewPack(Pack):
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
         """
+        # The relative locations of the packs are constrained, but all are
+        # passed in because the caller has them, so as to avoid object churn.
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             InMemoryGraphIndex(reference_lists=1),
@@ -377,6 +379,11 @@ class AggregateIndex(object):
     AggregateIndex is reponsible for managing the PackAccess object,
     Index-To-Pack mapping, and all indices list for a specific type of index
     such as 'revision index'.
+
+    A CombinedIndex provides an index on a single key space built up
+    from several on-disk indices.  The AggregateIndex builds on this 
+    to provide a knit access layer, and allows having up to one writable
+    index within the collection.
     """
 
     def __init__(self):
@@ -425,7 +432,9 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None
+        assert self.add_callback is None, \
+            "%s already has a writable index through %s" % \
+            (self, self.add_callback)
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
