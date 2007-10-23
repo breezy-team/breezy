@@ -99,3 +99,41 @@ class TestUnversion(TestCaseWithWorkingTree):
             self.assertTrue(tree.has_filename('d'))
         finally:
             tree.unlock()
+
+    def test_unversion_renamed(self):
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir/f3',
+                         'a/dir2/'])
+        tree.add(['dir', 'dir/f1', 'dir/f2', 'dir/f3', 'dir2'],
+                 ['dir-id', 'f1-id', 'f2-id', 'f3-id', 'dir2-id'])
+        rev_id1 = tree.commit('init')
+        # Start off by renaming entries, and then unversion a bunch of entries
+        # https://bugs.launchpad.net/bzr/+bug/114615
+        tree.rename_one('dir/f1', 'dir/a')
+        tree.rename_one('dir/f2', 'dir/z')
+        tree.move(['dir/f3'], 'dir2')
+
+        tree.lock_read()
+        try:
+            root_id = tree.inventory.root.file_id
+            paths = [(path, ie.file_id)
+                     for path, ie in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+        self.assertEqual([('', root_id),
+                          ('dir', 'dir-id'),
+                          ('dir2', 'dir2-id'),
+                          ('dir/a', 'f1-id'),
+                          ('dir/z', 'f2-id'),
+                          ('dir2/f3', 'f3-id'),
+                         ], paths)
+
+        tree.unversion(set(['dir-id']))
+        paths = [(path, ie.file_id)
+                 for path, ie in tree.iter_entries_by_dir()]
+
+        self.assertEqual([('', root_id),
+                          ('dir2', 'dir2-id'),
+                          ('dir2/f3', 'f3-id'),
+                         ], paths)
+
