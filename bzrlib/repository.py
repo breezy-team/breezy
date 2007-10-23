@@ -1974,12 +1974,12 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     'Bazaar Experimental no-subtrees\n',
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatGraphKnit1',
+    'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar Experimental subtrees\n',
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatGraphKnit3',
+    'RepositoryFormatKnitPack3',
     )
 
 
@@ -2298,7 +2298,7 @@ class InterPackRepo(InterSameDataRepository):
     @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatGraphKnit1()
+        return pack_repo.RepositoryFormatKnitPack1()
 
     @staticmethod
     def is_compatible(source, target):
@@ -2436,12 +2436,12 @@ class InterKnit1and2(InterKnitRepo):
         try:
             from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
                 RepositoryFormatKnit3)
-            from bzrlib.repofmt.pack_repo import (RepositoryFormatGraphKnit1,
-                RepositoryFormatGraphKnit3)
+            from bzrlib.repofmt.pack_repo import (RepositoryFormatKnitPack1,
+                RepositoryFormatKnitPack3)
             return (isinstance(source._format,
-                    (RepositoryFormatKnit1, RepositoryFormatGraphKnit1)) and
+                    (RepositoryFormatKnit1, RepositoryFormatKnitPack1)) and
                 isinstance(target._format,
-                    (RepositoryFormatKnit3, RepositoryFormatGraphKnit3))
+                    (RepositoryFormatKnit3, RepositoryFormatKnitPack3))
                 )
         except AttributeError:
             return False

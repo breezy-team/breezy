@@ -1222,16 +1222,16 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
 
 
-class GraphKnitRevisionStore(KnitRevisionStore):
-    """An object to adapt access from RevisionStore's to use GraphKnits.
+class KnitPackRevisionStore(KnitRevisionStore):
+    """An object to adapt access from RevisionStore's to use KnitPacks.
 
     This class works by replacing the original RevisionStore.
-    We need to do this because the GraphKnitRevisionStore is less
+    We need to do this because the KnitPackRevisionStore is less
     isolated in its layering - it uses services from the repo.
     """
 
     def __init__(self, repo, transport, revisionstore):
-        """Create a GraphKnitRevisionStore on repo with revisionstore.
+        """Create a KnitPackRevisionStore on repo with revisionstore.
 
         This will store its state in the Repository, use the
         indices FileNames to provide a KnitGraphIndex,
@@ -1279,8 +1279,8 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         return self.repo._signature_knit
 
 
-class GraphKnitTextStore(VersionedFileStore):
-    """An object to adapt access from VersionedFileStore's to use GraphKnits.
+class KnitPackTextStore(VersionedFileStore):
+    """An object to adapt access from VersionedFileStore's to use KnitPacks.
 
     This should not live through to production: by production time we should
     have fully integrated the new indexing and have new data for the
@@ -1289,13 +1289,13 @@ class GraphKnitTextStore(VersionedFileStore):
     should definately be cleaned up before merging.
 
     This class works by replacing the original VersionedFileStore.
-    We need to do this because the GraphKnitRevisionStore is less
+    We need to do this because the KnitPackRevisionStore is less
     isolated in its layering - it uses services from the repo and shares them
     with all the data written in a single write group.
     """
 
     def __init__(self, repo, transport, weavestore):
-        """Create a GraphKnitTextStore on repo with weavestore.
+        """Create a KnitPackTextStore on repo with weavestore.
 
         This will store its state in the Repository, use the
         indices FileNames to provide a KnitGraphIndex,
@@ -1373,7 +1373,7 @@ class InventoryKnitThunk(object):
             access_method=self.repo._packs.inventory_index.knit_access)
 
 
-class GraphKnitRepository(KnitRepository):
+class KnitPackRepository(KnitRepository):
     """Experimental graph-knit using repository."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
@@ -1386,8 +1386,8 @@ class GraphKnitRepository(KnitRepository):
             index_transport,
             control_files._transport.clone('upload'),
             control_files._transport.clone('packs'))
-        self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
-        self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
+        self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
+        self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.) 
@@ -1635,13 +1635,13 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
                               _serializer=self._serializer)
 
 
-class RepositoryFormatGraphKnit1(RepositoryFormatPack):
+class RepositoryFormatKnitPack1(RepositoryFormatPack):
     """A no-subtrees parameterised Pack repository.
 
     This format was introduced in bzr.dev.
     """
 
-    repository_class = GraphKnitRepository
+    repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
     _serializer = xml5.serializer_v5
 
@@ -1665,7 +1665,7 @@ class RepositoryFormatGraphKnit1(RepositoryFormatPack):
         pass
 
 
-class RepositoryFormatGraphKnit3(RepositoryFormatPack):
+class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """A subtrees parameterised Pack repository.
 
     This repository format uses the xml7 serializer to get:
@@ -1675,7 +1675,7 @@ class RepositoryFormatGraphKnit3(RepositoryFormatPack):
     This format was introduced in bzr.dev.
     """
 
-    repository_class = GraphKnitRepository
+    repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
