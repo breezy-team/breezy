@@ -1149,6 +1149,13 @@ user=joe
 verify_certificates=askme # Error: Not a boolean
 """))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """[broken]
+scheme=ftp
+user=joe
+port=port # Error: Not an int
+"""))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
     def test_credentials_for_scheme_host(self):
         conf = config.AuthenticationConfig(_file=StringIO(
@@ -1319,7 +1326,8 @@ class TestAuthenticationConfig(tests.TestCase):
                                    'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
-        # FIXME: should we forbid that or extend it to other schemes ?
+        # FIXME: should we: forbid that, extend it to other schemes, leave
+        # things as they are that's fine thank you ?
         self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
                                    'smtp')
         self._check_default_prompt('SMTP %(user)s@%(host)s password: ',

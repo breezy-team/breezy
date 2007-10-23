@@ -70,8 +70,7 @@ lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
 import re
-# FIXME: Why not CStringIO ? -- vila 20071019
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -961,10 +960,9 @@ class AuthenticationConfig(object):
         if self._config is not None:
             return self._config
         try:
-            # FIXME: Should we validate something here ? Includes: port must be
-            # numeric, empty sections are useless, verify_certificates is
-            # boolean, at least one of user/password/password_encoding should
-            # be defined, etc.
+            # FIXME: Should we validate something here ? Includes: empty
+            # sections are useless, at least one of
+            # user/password/password_encoding should be defined, etc.
 
             # Note: the encoding below declares that the file itself is utf-8
             # encoded, but the values in the ConfigObj are always Unicode.
@@ -1022,10 +1020,15 @@ class AuthenticationConfig(object):
                 a_port = auth_def.as_int('port')
             except KeyError:
                 a_port = None
+            except ValueError:
+                raise ValueError("'port' not numeric in %s" % auth_def_name)
             try:
                 a_verify_certificates = auth_def.as_bool('verify_certificates')
             except KeyError:
                 a_verify_certificates = True
+            except ValueError:
+                raise ValueError(
+                    "'verify_certificates' not boolean in %s" % auth_def_name)
 
             # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
@@ -1046,13 +1049,12 @@ class AuthenticationConfig(object):
             if a_user is None:
                 # Can't find a user
                 continue
-            a_password, a_encoding = map(auth_def.get,
-                                         ['password', 'password_encoding'])
-            password = self.decode_password(a_password, a_encoding)
             credentials = {'name': auth_def_name,
-                           'user': a_user, 'password': password,
+                           'user': a_user, 'password': auth_def['password'],
                            'verify_certificates': a_verify_certificates,
                            }
+            self.decode_password(credentials,
+                                 auth_def.get('password_encoding', None))
             if 'auth' in debug.debug_flags:
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
@@ -1120,5 +1122,5 @@ class AuthenticationConfig(object):
                                                   host=prompt_host, user=user)
         return password
 
-    def decode_password(self, password, encoding):
-        return password
+    def decode_password(self, credentials, encoding):
+        return credentials

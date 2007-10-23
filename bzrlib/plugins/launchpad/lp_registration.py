@@ -24,6 +24,7 @@ import xmlrpclib
 from bzrlib import (
     config,
     errors,
+    __version__ as _bzrlib_version,
     )
 
 # for testing, do
@@ -55,7 +56,7 @@ class LaunchpadService(object):
             else:
                 transport = xmlrpclib.Transport()
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
-                    % (bzrlib.__version__, xmlrpclib.__version__)
+                    % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
 
 
