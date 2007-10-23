@@ -1220,6 +1220,11 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    def update_basis_by_delta(self, new_revid, delta):
+        """See MutableTree.update_basis_by_delta."""
+        assert self.last_revision() != new_revid
+        self.current_dirstate().update_basis_by_delta(delta, new_revid)
+
     @needs_read_lock
     def _validate(self):
         self._dirstate._validate()
@@ -1227,7 +1232,8 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
+        assert not self._dirty, ("attempting to write an inventory when the "
+            "dirstate is dirty will cause data loss")
         self.current_dirstate().set_state_from_inventory(inv)
         self._make_dirty(reset_inventory=False)
         if self._inventory is not None:

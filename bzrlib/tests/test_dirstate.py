@@ -1394,6 +1394,107 @@ class TestGetEntry(TestCaseWithDirState):
             state.unlock()
 
 
+class TestIterChildEntries(TestCaseWithDirState):
+
+    def create_dirstate_with_two_trees(self):
+        """This dirstate contains multiple files and directories.
+
+         /        a-root-value
+         a/       a-dir
+         b/       b-dir
+         c        c-file
+         d        d-file
+         a/e/     e-dir
+         a/f      f-file
+         b/g      g-file
+         b/h\xc3\xa5  h-\xc3\xa5-file  #This is u'\xe5' encoded into utf-8
+
+        Notice that a/e is an empty directory.
+
+        There is one parent tree, which has the same shape with the following variations:
+        b/g in the parent is gone.
+        b/h in the parent has a different id
+        b/i is new in the parent 
+        c is renamed to b/j in the parent
+
+        :return: The dirstate, still write-locked.
+        """
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
+        root_entry = ('', '', 'a-root-value'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        a_entry = ('', 'a', 'a-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        b_entry = ('', 'b', 'b-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        c_entry = ('', 'c', 'c-file'), [
+            ('f', null_sha, 10, False, packed_stat),
+            ('r', 'b/j', 0, False, ''),
+            ]
+        d_entry = ('', 'd', 'd-file'), [
+            ('f', null_sha, 20, False, packed_stat),
+            ('f', 'd', 20, False, 'parent-revid'),
+            ]
+        e_entry = ('a', 'e', 'e-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        f_entry = ('a', 'f', 'f-file'), [
+            ('f', null_sha, 30, False, packed_stat),
+            ('f', 'f', 20, False, 'parent-revid'),
+            ]
+        g_entry = ('b', 'g', 'g-file'), [
+            ('f', null_sha, 30, False, packed_stat),
+            NULL_PARENT_DETAILS,
+            ]
+        h_entry1 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file1'), [
+            ('f', null_sha, 40, False, packed_stat),
+            NULL_PARENT_DETAILS,
+            ]
+        h_entry2 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file2'), [
+            NULL_PARENT_DETAILS,
+            ('f', 'h', 20, False, 'parent-revid'),
+            ]
+        i_entry = ('b', 'i', 'i-file'), [
+            NULL_PARENT_DETAILS,
+            ('f', 'h', 20, False, 'parent-revid'),
+            ]
+        j_entry = ('b', 'j', 'c-file'), [
+            ('r', 'c', 0, False, ''),
+            ('f', 'j', 20, False, 'parent-revid'),
+            ]
+        dirblocks = []
+        dirblocks.append(('', [root_entry]))
+        dirblocks.append(('', [a_entry, b_entry, c_entry, d_entry]))
+        dirblocks.append(('a', [e_entry, f_entry]))
+        dirblocks.append(('b', [g_entry, h_entry1, h_entry2, i_entry, j_entry]))
+        state = dirstate.DirState.initialize('dirstate')
+        state._validate()
+        try:
+            state._set_data(['parent'], dirblocks)
+        except:
+            state.unlock()
+            raise
+        return state, dirblocks
+
+    def test_iter_children_b(self):
+        state, dirblocks = self.create_dirstate_with_two_trees()
+        self.addCleanup(state.unlock)
+        expected_result = []
+        expected_result.append(dirblocks[3][1][2]) # h2
+        expected_result.append(dirblocks[3][1][3]) # i
+        expected_result.append(dirblocks[3][1][4]) # j
+        self.assertEqual(expected_result,
+            list(state._iter_child_entries(1, 'b')))
+
+
 class TestDirstateSortOrder(TestCaseWithTransport):
     """Test that DirState adds entries in the right order."""
 

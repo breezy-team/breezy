@@ -52,6 +52,11 @@ IN DEVELOPMENT
      changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
 
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
