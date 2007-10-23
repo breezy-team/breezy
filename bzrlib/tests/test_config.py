@@ -1310,6 +1310,7 @@ class TestAuthenticationConfig(tests.TestCase):
         self.assertEquals(stdout.getvalue(), expected_prompt)
 
     def test_default_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
         self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
         self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
                                    'ftp', port=10020)
@@ -1327,20 +1328,6 @@ class TestAuthenticationConfig(tests.TestCase):
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
 
-        self._check_default_prompt('HTTP %(user)s@%(host)s password: ',
-                                   'http')
-        self._check_default_prompt(
-            "HTTP %(user)s@%(host)s, Realm: '%(realm)s' password: ",
-            'http', realm='bzr')
-        self._check_default_prompt(
-            "HTTP %(user)s@%(host)s:%(port)d, Realm: '%(realm)s' password: ",
-            'http', realm='bzr', port=10080)
-
-        # FIXME: the following pass but the real implementation
-        # (_urllib2_wrappers) do not use the default prompt and displays HTTP
-        # instead of HTTPS
-        self._check_default_prompt('HTTPS %(user)s@%(host)s password: ',
-                                   'https')
 
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.

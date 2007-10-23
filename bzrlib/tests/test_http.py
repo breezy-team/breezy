@@ -1204,6 +1204,8 @@ class TestAuth(object):
     either TestCaseWithWebserver or TestCaseWithTwoWebservers.
     """
 
+    _password_prompt_prefix = ''
+
     def setUp(self):
         """Set up the test environment
 
@@ -1268,10 +1270,13 @@ class TestAuth(object):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
+        stdout = StringIOWrapper()
+        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=stdout)
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
+        self._check_password_prompt(t._unqualified_scheme, 'joe',
+                                    stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())
@@ -1280,6 +1285,14 @@ class TestAuth(object):
         self.assertEqual('contents of b\n',t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
+
+    def _check_password_prompt(self, scheme, user, actual_prompt):
+        expected_prompt = (self._password_prompt_prefix
+                           + ("%s %s@%s:%d, Realm: '%s' password: "
+                              % (scheme.upper(),
+                                 user, self.server.host, self.server.port,
+                                 self.server.auth_realm)))
+        self.assertEquals(expected_prompt, actual_prompt)
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         user =' joe'
@@ -1327,6 +1340,8 @@ class TestProxyAuth(TestAuth):
     Daughter classes MUST also inherit from TestCaseWithWebserver.
     """
     _auth_header = 'Proxy-authorization'
+    _password_prompt_prefix = 'Proxy '
+
 
     def setUp(self):
         TestCaseWithWebserver.setUp(self)

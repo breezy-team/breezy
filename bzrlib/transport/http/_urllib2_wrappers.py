@@ -951,8 +951,26 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
                 path=auth['path'], realm=realm,
-                prompt=self.password_prompt)
+                prompt=self.build_password_prompt(auth))
         return password
+
+    def _build_password_prompt(self, auth):
+        """Build a prompt taking the protocol used into account.
+
+        The AuthHandler is used by http and https, we want that information in
+        the prompt, so we build the prompt from the authentication dict which
+        contains all the needed parts.
+
+        Also, hhtp and proxy AuthHandlers present different prompts to the
+        user. The daughter classes hosuld implements a public
+        build_password_prompt using this method.
+        """
+        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        realm = auth['realm']
+        if realm is not None:
+            prompt += ", Realm: '%s'" % realm
+        prompt += ' password'
+        return prompt
 
     def http_request(self, request):
         """Insert an authentication header if information is available"""
@@ -1122,8 +1140,6 @@ class HTTPAuthHandler(AbstractAuthHandler):
     the auth request attribute.
     """
 
-    # FIXME: should mention http/https as part of the prompt
-    password_prompt = 'HTTP %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'www-authenticate'
     auth_header = 'Authorization'
 
@@ -1134,6 +1150,9 @@ class HTTPAuthHandler(AbstractAuthHandler):
     def set_auth(self, request, auth):
         """Set the auth params for the request"""
         request.auth = auth
+
+    def build_password_prompt(self, auth):
+        return self._build_password_prompt(auth)
 
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
@@ -1147,8 +1166,6 @@ class ProxyAuthHandler(AbstractAuthHandler):
     the proxy_auth request attribute..
     """
 
-    # FIXME: should mention http/https as part of the prompt
-    password_prompt = 'Proxy %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'proxy-authenticate'
     # FIXME: the correct capitalization is Proxy-Authorization,
     # but python-2.4 urllib2.Request insist on using capitalize()
@@ -1162,6 +1179,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
     def set_auth(self, request, auth):
         """Set the auth params for the request"""
         request.proxy_auth = auth
+
+    def build_password_prompt(self, auth):
+        prompt = self._build_password_prompt(auth)
+        prompt = 'Proxy ' + prompt
+        return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)

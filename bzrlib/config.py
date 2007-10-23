@@ -1107,23 +1107,18 @@ class AuthenticationConfig(object):
             password = credentials['password']
         else:
             password = None
+        # Prompt user only if we could't find a password
         if password is None:
-            # Prompt user only if we could't find a password
             if prompt is None:
-                prompt = ('%s' % scheme.upper()
-                          + ' %(user)s@%(host)s%(realm)s password')
+                # Create a default prompt suitable for most of the cases
+                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
             else:
                 prompt_host = host
-            if realm is not None:
-                prompt_realm = ", Realm: '%s'" % realm
-            else:
-                prompt_realm = ''
-            password = ui.ui_factory.get_password(prompt, host=prompt_host,
-                                                  user=user,
-                                                  realm=prompt_realm)
+            password = ui.ui_factory.get_password(prompt,
+                                                  host=prompt_host, user=user)
         return password
 
     def decode_password(self, password, encoding):
