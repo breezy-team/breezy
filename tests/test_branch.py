@@ -496,10 +496,10 @@ foohosts""")
         weave = newbranch.repository.weave_store.get_weave(
             tree.inventory.path2id("hosts"),
             newbranch.repository.get_transaction())
-        self.assertEqual([
+        self.assertEqual(set([
             generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
-            generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")],
-                          weave.versions())
+            generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")]),
+                          set(weave.versions()))
         newbranch.unlock()
  
 
