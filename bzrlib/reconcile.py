@@ -373,13 +373,15 @@ class KnitReconciler(RepoReconciler):
         transaction = self.repo.get_transaction()
         revision_versions = repository._RevisionTextVersionCache(self.repo)
         versions = self.revisions.versions()
+        mutter('Prepopulating revision text cache with %d revisions',
+                len(versions))
         revision_versions.prepopulate_revs(versions)
         for num, file_id in enumerate(self.repo.weave_store):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             vf_checker = self.repo.get_versioned_file_checker(
-                versions, revision_versions)
+                vf.versions(), revision_versions)
             versions_with_bad_parents = vf_checker.check_file_version_parents(
                 vf, file_id)
             if len(versions_with_bad_parents) == 0:
@@ -388,6 +390,8 @@ class KnitReconciler(RepoReconciler):
 
     def _fix_text_parent(self, file_id, vf, versions_with_bad_parents):
         """Fix bad versionedfile entries in a single versioned file."""
+        mutter('fixing text parent: %r (%d versions)', file_id,
+                len(versions_with_bad_parents))
         new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
             self.transaction)
         new_parents = {}
