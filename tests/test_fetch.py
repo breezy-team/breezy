@@ -173,11 +173,15 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
             oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision(
             oldrepos.generate_revision_id(2, "", "none")))
-        tree = newrepos.revision_tree(
-                oldrepos.generate_revision_id(2, "", "none"))
-        self.assertTrue(tree.has_filename("foo/bla"))
-        self.assertTrue(tree.has_filename("foo"))
-        self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
+        newrepos.lock_read()
+        try:
+            tree = newrepos.revision_tree(
+                    oldrepos.generate_revision_id(2, "", "none"))
+            self.assertTrue(tree.has_filename("foo/bla"))
+            self.assertTrue(tree.has_filename("foo"))
+            self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
+        finally:
+            newrepos.unlock()
 
     def test_fetch_replace(self):
         repos_url = self.make_client('d', 'dc')

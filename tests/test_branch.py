@@ -488,6 +488,7 @@ foohosts""")
         newbranch = newdir.open_branch()
 
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
+        newbranch.lock_read()
         tree = newbranch.repository.revision_tree(
                 generate_svn_revision_id(uuid, 7, "branches/foobranch", 
                 "trunk0"))
@@ -499,6 +500,7 @@ foohosts""")
             generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
             generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")],
                           weave.versions())
+        newbranch.unlock()
  
 
     def test_fetch_odd(self):
@@ -538,16 +540,17 @@ foohosts""")
         uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
              generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
-
+        transaction = newbranch.repository.get_transaction()
+        newbranch.repository.lock_read()
         weave = newbranch.repository.weave_store.get_weave(
-                tree.inventory.path2id("hosts"), 
-                newbranch.repository.get_transaction())
-        self.assertEqual([
+                tree.inventory.path2id("hosts"), transaction)
+        self.assertEqual(set([
             generate_svn_revision_id(uuid, 1, "trunk", "trunk0"),
             generate_svn_revision_id(uuid, 2, "trunk", "trunk0"),
             generate_svn_revision_id(uuid, 3, "trunk", "trunk0"),
-            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0")],
-                          weave.versions())
+            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0")]),
+                          set(weave.versions()))
+        newbranch.repository.unlock()
 
     def test_check(self):
         self.make_client('d', 'dc')

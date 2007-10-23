@@ -659,16 +659,20 @@ def push(target, source, revision_id, validate=False):
     else:
         base_revid = rev.parent_ids[0]
 
-    old_tree = source.repository.revision_tree(revision_id)
-    base_tree = source.repository.revision_tree(base_revid)
+    source.lock_read()
+    try:
+        old_tree = source.repository.revision_tree(revision_id)
+        base_tree = source.repository.revision_tree(base_revid)
 
-    builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
-                               target.get_config(), rev.timestamp,
-                               rev.timezone, rev.committer, rev.properties, 
-                               revision_id, base_tree.inventory)
-                         
-    builder.new_inventory = source.repository.get_inventory(revision_id)
-    replay_delta(builder, base_tree, old_tree)
+        builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
+                                   target.get_config(), rev.timestamp,
+                                   rev.timezone, rev.committer, rev.properties, 
+                                   revision_id, base_tree.inventory)
+                             
+        builder.new_inventory = source.repository.get_inventory(revision_id)
+        replay_delta(builder, base_tree, old_tree)
+    finally:
+        source.unlock()
     try:
         builder.commit(rev.message)
     except SubversionException, (_, num):

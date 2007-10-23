@@ -344,13 +344,17 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         wt.branch.repository.fetch(repos)
         other_rev = repos.generate_revision_id(3, "", "none")
-        merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
-        merge.merge_type = Merge3Merger
-        merge.do_merge()
-        self.assertEquals(base_revid, merge.base_rev_id)
-        merge.set_pending()
-        self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
-        wt.commit("merge", rev_id="mymerge")
+        wt.lock_write()
+        try:
+            merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
+            merge.merge_type = Merge3Merger
+            merge.do_merge()
+            self.assertEquals(base_revid, merge.base_rev_id)
+            merge.set_pending()
+            self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
+            wt.commit("merge", rev_id="mymerge")
+        finally:
+            wt.unlock()
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
         raise KnownFailure("can't work for repository root")
         wt.branch.push(Branch.open(repos_url))
@@ -383,13 +387,17 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         wt.branch.repository.fetch(repos)
         other_rev = repos.generate_revision_id(3, "trunk", "trunk0")
-        merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
-        merge.merge_type = Merge3Merger
-        merge.do_merge()
-        self.assertEquals(base_revid, merge.base_rev_id)
-        merge.set_pending()
-        self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
-        wt.commit("merge", rev_id="mymerge")
+        wt.lock_write()
+        try:
+            merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
+            merge.merge_type = Merge3Merger
+            merge.do_merge()
+            self.assertEquals(base_revid, merge.base_rev_id)
+            merge.set_pending()
+            self.assertEquals([wt.last_revision(), other_rev], wt.get_parent_ids())
+            wt.commit("merge", rev_id="mymerge")
+        finally:
+            wt.unlock()
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
         wt.branch.push(Branch.open(repos_url+"/trunk"))
 
