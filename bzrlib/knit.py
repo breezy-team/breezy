@@ -139,7 +139,7 @@ class KnitContent(object):
         return list(self.annotate_iter())
 
     def apply_delta(self, delta, new_version_id):
-        """Apply delta to the this object to become new_version_id."""
+        """Apply delta to this object to become new_version_id."""
         raise NotImplementedError(self.apply_delta)
 
     def line_delta_iter(self, new_lines):
@@ -194,7 +194,7 @@ class AnnotatedKnitContent(KnitContent):
         return iter(self._lines)
 
     def apply_delta(self, delta, new_version_id):
-        """Apply delta to the this object to become new_version_id."""
+        """Apply delta to this object to become new_version_id."""
         offset = 0
         lines = self._lines
         for start, end, count, delta_lines in delta:
@@ -238,7 +238,7 @@ class PlainKnitContent(KnitContent):
             yield self._version_id, line
 
     def apply_delta(self, delta, new_version_id):
-        """Apply delta to the this object to become new_version_id."""
+        """Apply delta to this object to become new_version_id."""
         offset = 0
         lines = self._lines
         for start, end, count, delta_lines in delta:

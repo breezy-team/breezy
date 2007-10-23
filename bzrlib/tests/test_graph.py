@@ -454,7 +454,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev2c', 'rev3a']),
                          graph.heads(['rev2c', 'rev3a']))
 
-
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
         
@@ -466,7 +465,6 @@ class TestGraph(TestCaseWithMemoryTransport):
             result = []
             for key in keys:
                 if key == 'deeper':
-                    import pdb;pdb.set_trace()
                     self.fail('key deeper was accessed')
                 result.append(graph_dict[key])
             return result

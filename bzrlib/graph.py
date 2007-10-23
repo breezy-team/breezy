@@ -91,7 +91,7 @@ class Graph(object):
         specialized implementations for particular repository types.  See
         Repository.get_graph()
 
-        :param parents_func: an object providing a get_parents call
+        :param parents_provider: An object providing a get_parents call
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
@@ -252,6 +252,7 @@ class Graph(object):
             try:
                 common_walker.next()
             except StopIteration:
+                # No common points being searched at this time.
                 pass
             for candidate in active_searchers.keys():
                 try:
@@ -275,30 +276,27 @@ class Graph(object):
                     if ancestor in active_searchers:
                         del active_searchers[ancestor]
                 # it may meet up with a known common node
-                already_common = ancestor in common_walker.seen
-                if not already_common:
+                if ancestor in common_walker.seen:
+                    # some searcher has encountered our known common nodes:
+                    # just stop it
+                    ancestor_set = set([ancestor])
+                    for searcher in searchers.itervalues():
+                        searcher.stop_searching_any(ancestor_set)
+                else:
                     # or it may have been just reached by all the searchers:
                     for searcher in searchers.itervalues():
                         if ancestor not in searcher.seen:
                             common = False
                             break
                     else:
-                        common = True
-                if already_common:
-                    # some searcher has encountered our known common nodes:
-                    # just stop it
-                    ancestor_set = set([ancestor])
-                    for searcher in searchers.itervalues():
-                        searcher.stop_searching_any(ancestor_set)
-                if common:
-                    # The final active searcher has just reached this node,
-                    # making it be known as a descendant of all candidates, so
-                    # we can stop searching it, and any seen ancestors
-                    new_common.add(ancestor)
-                    for searcher in searchers.itervalues():
-                        seen_ancestors =\
-                            searcher.find_seen_ancestors(ancestor)
-                        searcher.stop_searching_any(seen_ancestors)
+                        # The final active searcher has just reached this node,
+                        # making it be known as a descendant of all candidates,
+                        # so we can stop searching it, and any seen ancestors
+                        new_common.add(ancestor)
+                        for searcher in searchers.itervalues():
+                            seen_ancestors =\
+                                searcher.find_seen_ancestors(ancestor)
+                            searcher.stop_searching_any(seen_ancestors)
             common_walker.start_searching(new_common)
         return candidate_heads
 
@@ -397,7 +395,7 @@ class HeadsCache(object):
 
 
 class _BreadthFirstSearcher(object):
-    """Parallel search the breadth-first the ancestry of revisions.
+    """Parallel search breadth-first the ancestry of revisions.
 
     This class implements the iterator protocol, but additionally
     1. provides a set of seen ancestors, and
