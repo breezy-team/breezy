@@ -4,7 +4,7 @@ Native mode
 Native mode is, unsurprisingly, the mode used for maintaining a native
 package. The main difference to normal mode is that an upstream tarball is
 not needed. The consequence of this is that most operations, such as
-importing a new upstream are not needed.
+importing a new upstream release are not needed.
 
 Setting up the package
 ######################

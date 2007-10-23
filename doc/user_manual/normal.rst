@@ -79,7 +79,7 @@ number, and so it is better for the user to provide it. In our example the
 upstream tarball is named ``scruff-0.1.tar.gz`` and the version number is
 ``0.1``. As there is not code in the branch yet the plugin does not know
 what package you are creating. So you must also supply the package name
-usinf the ``--package`` option. This means that once you have downloaded
+using the ``--package`` option. This means that once you have downloaded
 the tarball you should run::
 
   $ cd scruff/
@@ -213,7 +213,7 @@ New upstream version
 ####################
 
 When a new upstream version is released then the package needs to be updated
-to deal use the new code. To do this, first the new upstream version is
+to use the new code. To do this, first the new upstream version is
 imported on top of the last one, as it is a direct descendant of it. Then your
 current packaging changes are merged in to the new version, which may cause
 conflicts that need to be resolved.

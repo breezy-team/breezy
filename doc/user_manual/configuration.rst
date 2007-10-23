@@ -29,7 +29,7 @@ Configuration Options
 
 The following options are read from the configuration files. Most can also be
 used as command line arguments by prepending ``--`` to the names and not using
-the ``\=`` symbol. There are a few exceptions to this that are noted in the
+the ``=`` symbol. There are a few exceptions to this that are noted in the
 descriptions.
 
 Directories
@@ -56,12 +56,13 @@ Modes
 ^^^^^
 
 These change the way in which the plugin operates. They can be set depending
-on the type of package you are building.
+on the type of package you are building. If none of these are set then
+`normal mode`_ is used.
 
   * ``merge = True``
 
-    Turns on merge mode. This is where only the ``debian/`` directory is 
-    versioned. It uses and ``orig.tar.gz`` for the upstream and combines the
+    Turns on `merge mode`_. This is where only the ``debian/`` directory is 
+    versioned. It uses an ``orig.tar.gz`` for the upstream and combines the
     two before building. It works with both the ``debian/`` directory in the 
     branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``) 
     directly in the top level directory of the branch. (Defaults to ``False``).
@@ -72,18 +73,23 @@ on the type of package you are building.
     option. It will stop the plugin from looking for an ``orig.tar.gz`` and
     build a native package instead. This has no effect if merge mode is on,
     as I don't think it makes any sense to version the ``debian/`` separately
-    for a native package. If you disagree let me know.
+    for a native package. If you disagree let me know. See `native mode`_.
 
   * ``split = True``
 
     This takes a package from a branch that includes both the upstream source
     and the ``debian/`` dir and creates a non-native package from it by
     creating an ``orig.tar.gz`` from the code outside of ``debian/``. This
-    is probably most useful if you are bot upstream and Debian maintainer
+    is probably most useful if you are both upstream and Debian maintainer
     of a non-native package. This has no effect if ``merge`` or ``native``
     are true, the former is for use when you don't version the full source,
     the second for when you don't need an ``orig.tar.gz`` so they make no sense
-    to be used together.
+    to be used together. See `split mode`_.
+
+.. _normal mode: normal.html
+.. _merge mode: merge.html
+.. _native mode: native.html
+.. _split mode: split.html
 
 Interaction with an upstream branch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,8 +103,8 @@ the ``export-upstream`` option. This only works for normal and merge modes.
     This option takes a path (remote or local) to a bzr branch that contains
     the upstream code. If this is set then the plugin will export the code
     from that branch to create the ``.orig.tar.gz``. This option only has no
-    effect if ``native`` of ``split`` is set, and causes any ``orig-dir``
-    setting to be ignored.
+    effect if ``native`` or ``split`` is set, and causes any ``orig-dir``
+    setting to be ignored. See `export-upstream mode`.
 
   * ``export-upstream-revision = revision``
 
@@ -114,7 +120,7 @@ the ``export-upstream`` option. This only works for normal and merge modes.
     local branch before exporting it. It is your responsibility to setup
     the default pull location for the branch. It probably doesn't make too
     much sense to use this option with the ``export-upstream-revision`` one
-    as this will change the tip, but then wont use it. However this is allowed.
+    as this will change the tip, but then won't use it. However this is allowed.
     This option only has an effect if ``export-upstream`` is set. Also note
     that this option cannot be used when ``export-upstream`` is set to a 
     remote branch. [Not a command line option.]
@@ -127,6 +133,8 @@ the ``export-upstream`` option. This only works for normal and merge modes.
     the ``export-upstream-prepull`` option is true. [Not a command line
     option.]
 
+.. _export-upstream mode: export_upstream.html
+
 Builders
 ^^^^^^^^
 
@@ -136,21 +144,21 @@ situations.
   * ``builder = command``
 
     The command to use to build the package. Defaults to ``dpkg-buildpackage 
-    -rfakeroot -uc -us``). Will only be read from the file in your home
+    -rfakeroot -uc -us``. Will only be read from the file in your home
     directory.
 
   * ``quick-builder = command``
 
     The command used to build the package if the ``--quick`` option is used. 
     (Defaults to ``fakeroot debian/rules binary``). Will only be read from
-    the file in your home directory.
+    the config file in your home directory.
 
   * ``source-builder = command``
 
     The command used to build a source package if the ``--short`` or ``-S``
     options are used. Overriden if ``--builder`` or ``--quick`` are given on
     the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
-    -S``). Will only be read from the file in your home directory.
+    -S``). Will only be read from the config file in your home directory.
 
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 
@@ -162,5 +170,5 @@ Then the user can override this locally if they want for all of their packages
 ``~/.bazaar/builddeb.conf``. They can override it for the package if they want 
 (e.g. they have a different location for upstream tarballs of a package if
 they are involved with upstream as well, so they set ``orig_dir = 
-/home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``).
+/home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``.
 

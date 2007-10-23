@@ -29,8 +29,9 @@ bzr-builddeb (0.91) unstable; urgency=low
     option. This allows builddeb to find the correct upstream revision based
   * Correct the pointer to the user manual in the README. Thanks to Achim
     Bohnet for noticing the mistake. (LP: #145019)
+  * Many documentation fixes from dAniel hAhler. Thanks very much.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 23 Oct 2007 21:55:02 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 23 Oct 2007 22:24:40 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 

@@ -2,29 +2,31 @@ Split mode
 ----------
 
 Split mode is quite a specialised mode. It is for people who are both the
-upstream author and maintainer of a package. It allows you to maintiain both
+upstream author and maintainer of a package. It allows you to maintain both
 in a single branch, but have a separation during the build, and not have to
 create the upstream tarball by hand.
 
-.. _normal mode: normal.html
-.. _export-upstream mode: export_upstream.html
-
 Some people like this way of working, but it does make it harder for someone
-else to take over maintainance of the package at a later date.
+else to take over maintenance of the package at a later date.
 
 This mode should not be used by those who are not the upstream author of a
 package, and who are not making the upstream tarball releases.
 
 This mode is a mixture of most of the other modes. You have the upstream
-code and the packaging in the same branch like normal mode and native mode,
-but the only packaging changes can be in the ``debian/`` directory, like
-merge mode. It also saves you having to manually create an upstream tarball,
-like export-upstream mode.
+code and the packaging in the same branch like `normal mode`_ and
+`native mode`_, but the only packaging changes can be in the ``debian/``
+directory, like `merge mode`_. It also saves you having to manually create
+an upstream tarball, like `export-upstream mode`_.
+
+.. _normal mode: normal.html
+.. _native mode: native.html
+.. _merge mode: merge.html
+.. _export-upstream mode: export_upstream.html
 
 Setting up the package
 ######################
 
-Before creating the package you it may be beneficial to set up a shared
+Before creating the package it may be beneficial to set up a shared
 repository for the package. Shared in this context means shared between your
 branches, rather than shared between users in a public location, the latter
 can be done later. To set up a repository then you should run (for a package

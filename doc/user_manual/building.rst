@@ -18,8 +18,8 @@ will do the same thing.
 
 By default it uses ``dpkg-buildpackage -uc -us -rfakeroot`` to build the
 package. If you would prefer to use something else then you can use the
-``--builder`` option to control this. For instance to build in a chroot
-you can run
+``--builder`` option to control this. For instance to build in a pbuilder
+chroot you can run
 
 ::
 
@@ -43,7 +43,7 @@ This option means that running
 
   $ bzr builddeb --quick
 
-Uses the quick-builder. This command defaults to ``fakeroot debian/rules
+uses the quick-builder. This command defaults to ``fakeroot debian/rules
 binary``, but you can set the ``quick-builder`` option in a configuration
 file if you wish to customise it.
 

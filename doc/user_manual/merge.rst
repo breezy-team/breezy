@@ -96,7 +96,7 @@ this for you, but it has not been made to support merge mode yet.
 
 .. _Configuration Files: configuration.html
 
-One the tarballs are in place then you are ready to build the package. See
+Once the tarballs are in place then you are ready to build the package. See
 the `Building the package`_ section for more details on this.
 
 .. _Building the package: building.html
@@ -122,7 +122,7 @@ you will need to add the ``-c changelog`` option.
 The last step is to update the packaging. The first part of this is changing
 any files to reflect changes in the upstream build, for instance updating
 ``debian/rules``, or ``debian/install``. The last part is updating any
-patches that have against the upstream code to work against the latest
+patches against the upstream code to work against the latest
 version. To make this easier you can use the ``bd-do`` command. This runs
 the specified command in an exported directory (so you have the full source
 of the package available). If the command is successful then the contents
