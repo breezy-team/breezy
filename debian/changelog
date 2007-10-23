@@ -27,8 +27,10 @@ bzr-builddeb (0.91) unstable; urgency=low
     in the build.
   * Support $UPSTREAM_VERSION in the export-upstream-revision configuration
     option. This allows builddeb to find the correct upstream revision based
+  * Correct the pointer to the user manual in the README. Thanks to Achim
+    Bohnet for noticing the mistake. (LP: #145019)
 
- -- James Westby <jw+debian@jameswestby.net>  Fri, 21 Sep 2007 18:41:34 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 23 Oct 2007 21:55:02 +0100
 
 bzr-builddeb (0.90) unstable; urgency=low
 
