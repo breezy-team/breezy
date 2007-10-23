@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# The newly committed revisioVn is going to have a shape corresponding
+# The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
 # removed --- this can include files that were either removed from the
@@ -415,7 +415,7 @@ class Commit(object):
             return
         # TODO: we could simplify this by using self._basis_delta.
 
-        # The inital commit adds a root directory, but this in itself is not
+        # The initial commit adds a root directory, but this in itself is not
         # a worthwhile commit.
         if (self.basis_revid == revision.NULL_REVISION and
             len(self.builder.new_inventory) == 1):
