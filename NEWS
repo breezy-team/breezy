@@ -64,8 +64,8 @@ IN DEVELOPMENT
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
 
-   * Graph ``heads()`` queries have been bugfixed to no longer access all
-     history unnecessarily. (Robert Collins)
+   * Graph ``heads()`` queries have been fixed to no longer access all history
+     unnecessarily. (Robert Collins)
 
   IMPROVEMENTS:
 
