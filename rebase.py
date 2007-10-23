@@ -282,7 +282,7 @@ def rebase(repository, replace_map, replay_fn):
                 continue
             replay_fn(repository, revid, newrevid, newparents)
             assert repository.has_revision(newrevid)
-            assert repository.revision_parents(newrevid) == newparents, \
+            assert list(repository.revision_parents(newrevid)) == newparents, \
                    "expected parents %r, got %r" % (newparents, 
                            repository.revision_parents(newrevid))
             if dependencies.has_key(newrevid):
