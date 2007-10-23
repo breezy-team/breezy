@@ -1189,7 +1189,8 @@ class WorkingTree4(WorkingTree3):
                     # Mark this file id as having been removed
                     entry = block[1][entry_index]
                     ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] == 'a'
+                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
+                                               # entries
                         or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty

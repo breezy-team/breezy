@@ -2019,7 +2019,7 @@ class DirState(object):
             if self._id_index is not None:
                 self._id_index[current_old[0][2]].remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
-        # existing details may either be the record we are making as deleted
+        # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
         # be relocations.
         for update_key in all_remaining_keys:
