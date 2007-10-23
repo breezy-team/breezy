@@ -179,7 +179,7 @@ class NewPack(Pack):
 
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
-    indices = {
+    index_definitions = {
         'revision': ('.rix', 0),
         'inventory': ('.iix', 1),
         'text': ('.tix', 2),
@@ -340,11 +340,11 @@ class NewPack(Pack):
 
     def index_name(self, index_type, name):
         """Get the disk name of an index type for pack name 'name'."""
-        return name + NewPack.indices[index_type][0]
+        return name + NewPack.index_definitions[index_type][0]
 
     def index_offset(self, index_type):
         """Get the position in a index_size array for a given index type."""
-        return NewPack.indices[index_type][1]
+        return NewPack.index_definitions[index_type][1]
 
     def set_write_cache_size(self, size):
         self._cache_limit = size
