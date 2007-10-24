@@ -125,10 +125,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             else:
                 found_parents = self.file_parents(repo, version)
                 self.assertEqual(expected_parents, found_parents,
-                    "Expected version %s of a-file-id to have parents %s %s "
-                    "reconcile, but it has %s instead."
-                    % (version, expected_parents, when_description,
-                       found_parents))
+                    "%s reconcile %s has parents %s, should have %s."
+                    % (when_description, version, found_parents,
+                       expected_parents))
 
     def shas_for_versions_of_file(self, repo, versions):
         """Get the SHA-1 hashes of the versions of 'a-file' in the repository.
