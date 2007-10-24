@@ -744,7 +744,7 @@ class RepositoryPackCollection(object):
             # have a progress bar?
             self.create_pack_from_packs(packs, '.autopack')
             for pack in packs:
-                self.remove_pack_from_memory(pack)
+                self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
         self._save_pack_names()
@@ -958,7 +958,7 @@ class RepositoryPackCollection(object):
             # a collision with the packs we know about (not the only possible
             # collision, see NewPack.finish() for some discussion). Remove our
             # prior reference to it.
-            self.remove_pack_from_memory(a_new_pack)
+            self._remove_pack_from_memory(a_new_pack)
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1040,7 +1040,7 @@ class RepositoryPackCollection(object):
         """Return a tuple with the transport and file name for a pack name."""
         return self._pack_transport, name + '.pack'
 
-    def remove_pack_from_memory(self, pack):
+    def _remove_pack_from_memory(self, pack):
         """Remove pack from the packs accessed by this repository.
         
         Only affects memory state, until self._save_pack_names() is invoked.
@@ -1171,7 +1171,7 @@ class RepositoryPackCollection(object):
         # drop no longer present nodes
         for pack in self.all_packs():
             if (pack.name,) not in new_names:
-                self.remove_pack_from_memory(pack)
+                self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
         for key, value in disk_nodes:
             name = key[0]
@@ -1187,7 +1187,7 @@ class RepositoryPackCollection(object):
                     # the only index shows up as deleted by the set difference
                     # - which it may. Until there is a specific test for this,
                     # assume its broken. RBC 20071017.
-                    self.remove_pack_from_memory(self.get_pack_by_name(name))
+                    self._remove_pack_from_memory(self.get_pack_by_name(name))
                     self._names[name] = sizes
                     self.get_pack_by_name(name)
             else:

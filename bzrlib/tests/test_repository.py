@@ -987,7 +987,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     r2.start_write_group()
                     try:
                         # in r1, drop the pack
-                        r1._pack_collection.remove_pack_from_memory(
+                        r1._pack_collection._remove_pack_from_memory(
                             r1._pack_collection.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
                         self._add_text(r2, 'fileidr2')
