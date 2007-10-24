@@ -1032,7 +1032,7 @@ class TestCase(unittest.TestCase):
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
 
-    def _capture_warnings(self, a_callable, *args, **kwargs):
+    def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
         :param a_callable: A callable to call.
@@ -1080,7 +1080,7 @@ class TestCase(unittest.TestCase):
         :param kwargs: The keyword arguments for the callable
         :return: The result of a_callable(``*args``, ``**kwargs``)
         """
-        call_warnings, result = self._capture_warnings(a_callable,
+        call_warnings, result = self._capture_deprecation_warnings(a_callable,
             *args, **kwargs)
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
@@ -1135,7 +1135,7 @@ class TestCase(unittest.TestCase):
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         """
-        call_warnings, result = self._capture_warnings(callable,
+        call_warnings, result = self._capture_deprecation_warnings(callable,
             *args, **kwargs)
         self.assertEqual(expected, call_warnings)
         return result
