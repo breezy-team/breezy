@@ -376,22 +376,41 @@ class KnitReconciler(RepoReconciler):
         mutter('Prepopulating revision text cache with %d revisions',
                 len(versions))
         revision_versions.prepopulate_revs(versions)
+        used_file_versions = revision_versions.used_file_versions()
         for num, file_id in enumerate(self.repo.weave_store):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             vf_checker = self.repo.get_versioned_file_checker(
                 vf.versions(), revision_versions)
-            versions_with_bad_parents = vf_checker.check_file_version_parents(
-                vf, file_id)
-            if len(versions_with_bad_parents) == 0:
+            versions_with_bad_parents, dangling_file_versions = \
+                vf_checker.check_file_version_parents(vf, file_id)
+            full_text_versions = set()
+            unused_versions = set()
+            if (len(versions_with_bad_parents) == 0 and
+                len(dangling_file_versions) == 0):
                 continue
-            self._fix_text_parent(file_id, vf, versions_with_bad_parents)
+            for dangling_version in dangling_file_versions:
+                version = dangling_version[1]
+                if dangling_version in used_file_versions:
+                    # This version *is* used by some revision, even though it
+                    # isn't used by its own revision!  Make sure any revision
+                    # referencing it is stored as a fulltext so that XXX
+                    full_text_versions.add(version)
+                else:
+                    # This version is totally unreferenced.  It should be
+                    # removed.
+                    unused_versions.add(version)
+            self._fix_text_parent(file_id, vf, versions_with_bad_parents,
+                full_text_versions, unused_versions)
 
-    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents):
+    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents,
+            full_text_versions, unused_versions):
         """Fix bad versionedfile entries in a single versioned file."""
         mutter('fixing text parent: %r (%d versions)', file_id,
                 len(versions_with_bad_parents))
+        mutter('(%d need to be full texts, %d are unused)',
+                len(full_text_versions), len(unused_versions))
         new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
             self.transaction)
         new_parents = {}
@@ -402,8 +421,17 @@ class KnitReconciler(RepoReconciler):
                 parents = vf.get_parents(version)
             new_parents[version] = parents
         for version in topo_sort(new_parents.items()):
-            new_vf.add_lines(version, new_parents[version],
-                             vf.get_lines(version))
+#            if version in unused_versions:
+#                continue
+            lines = vf.get_lines(version)
+            parents = new_parents[version]
+            if parents and (parents[0] in full_text_versions):
+                # Force a fulltext
+                mutter('forcing fulltext for %s', version)
+                new_vf._add(version, lines, parents, False,
+                    None, None, None, False)
+            else:
+                new_vf.add_lines(version, parents, lines)
         self.repo.weave_store.copy(new_vf, file_id, self.transaction)
         self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 

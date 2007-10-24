@@ -2535,6 +2535,12 @@ class _RevisionTextVersionCache(object):
             self.revision_parents[revision_id] = parents
             return parents
 
+    def used_file_versions(self):
+        result = set()
+        for inventory_summary in self.revision_versions.itervalues():
+            result.update(inventory_summary.items())
+        return result
+
 
 class VersionedFileChecker(object):
 
@@ -2566,7 +2572,8 @@ class VersionedFileChecker(object):
         return new_parents
 
     def check_file_version_parents(self, weave, file_id):
-        result = {}
+        wrong_parents = {}
+        dangling_file_version = set()
         for num, revision_id in enumerate(self.planned_revisions):
             correct_parents = self.calculate_file_version_parents(
                 revision_id, file_id)
@@ -2574,7 +2581,14 @@ class VersionedFileChecker(object):
                 continue
             text_revision = self.revision_versions.get_text_version(
                 file_id, revision_id)
-            knit_parents = weave.get_parents(text_revision)
+            knit_parents = weave.get_parents(revision_id)
+            if text_revision != revision_id:
+                # This file version is not referenced by its corresponding
+                # inventory!
+                mutter('File %s version %s not referenced by '
+                       'corresponding inventory.',
+                       file_id, revision_id)
+                dangling_file_version.add((file_id, revision_id))
             if correct_parents != knit_parents:
-                result[revision_id] = (knit_parents, correct_parents)
-        return result
+                wrong_parents[revision_id] = (knit_parents, correct_parents)
+        return wrong_parents, dangling_file_version

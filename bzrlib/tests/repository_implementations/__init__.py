@@ -119,19 +119,28 @@ class BrokenRepoScenario(object):
             of the file is verified to have the given parents after the
             reconcile.  i.e. this is used to assert that reconcile made the
             changes we expect it to make.
+        :corrected_inventories: XXX, probably remove
+        :corrected_fulltexts: XXX
     """
 
     def __init__(self, test_case):
         self.test_case = test_case
 
     def make_one_file_inventory(self, repo, revision, parents,
-                                inv_revision=None, root_revision=None):
+                                inv_revision=None, root_revision=None,
+                                file_contents=None):
         return self.test_case.make_one_file_inventory(
             repo, revision, parents, inv_revision=inv_revision,
-            root_revision=root_revision)
+            root_revision=root_revision, file_contents=file_contents)
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         return self.test_case.add_revision(repo, revision_id, inv, parent_ids)
+
+    def corrected_inventories(self):
+        return []
+    
+    def corrected_fulltexts(self):
+        return []
 
 
 class UndamagedRepositoryScenario(BrokenRepoScenario):
@@ -310,7 +319,8 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         self.add_revision(repo, 'rev1a', inv, [])
 
         # make rev2, with a-file.
-        # a-file is unmodified from rev1a.
+        # a-file is unmodified from rev1a, and an unreferenced rev2 file
+        # version is present in the repository.
         self.make_one_file_inventory(
             repo, 'rev2', ['rev1a'], inv_revision='rev1a')
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
@@ -359,6 +369,77 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # parents for the per file graph.
         inv = self.make_one_file_inventory(repo, 'rev5', ['rev2', 'rev2c'])
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
+
+
+class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
+    """
+    rev1a and rev1b with identical contents
+    rev2 revision has parents of [rev1a, rev1b]
+    There is a a-file:rev2 file version, not referenced by the inventory.
+    """
+
+    def all_versions(self):
+        return ['rev1a', 'rev1b', 'rev2', 'rev3', 'rev4']
+
+    def populated_parents(self):
+        return [
+            ([], 'rev1a'),
+            ([], 'rev1b'),
+            (['rev1a', 'rev1b'], 'rev2'),
+            (['rev2'], 'rev3'),
+            (['rev3'], 'rev4'),
+            ]
+
+    def corrected_parents(self):
+        return [
+            ([], 'rev1a'),
+            ([], 'rev1b'),
+            #([], 'rev2'),
+            (['rev1a', 'rev1b'], 'rev3'),
+            (['rev2'], 'rev4'),
+            ]
+
+    def corrected_inventories(self):
+        return [('rev2', 'rev1a')]
+
+    def corrected_fulltexts(self):
+        return ['rev4']
+
+    def check_regexes(self):
+        return []
+
+    def populate_repository(self, repo):
+        # make rev1a: A well-formed revision, containing 'a-file'
+        inv1a = self.make_one_file_inventory(
+            repo, 'rev1a', [], root_revision='rev1a')
+        self.add_revision(repo, 'rev1a', inv1a, [])
+
+        # make rev1b: A well-formed revision, containing 'a-file'
+        # rev1b of a-file has the exact same contents as rev1a.
+        file_contents = repo.revision_tree('rev1a').get_file_text('a-file-id')
+        inv = self.make_one_file_inventory(
+            repo, 'rev1b', [], root_revision='rev1b',
+            file_contents=file_contents)
+        self.add_revision(repo, 'rev1b', inv, [])
+
+        # make rev2, a merge of rev1a and rev1b, with a-file.
+        # a-file is unmodified from rev1a and rev1b, but a new version is
+        # wrongly present anyway.
+        inv = self.make_one_file_inventory(
+            repo, 'rev2', ['rev1a', 'rev1b'], inv_revision='rev1a',
+            file_contents=file_contents)
+        self.add_revision(repo, 'rev2', inv, ['rev1a', 'rev1b'])
+
+        # rev3: a-file unchanged from rev2, but wrongly referencing rev2 of the
+        # file in its inventory.
+        inv = self.make_one_file_inventory(
+            repo, 'rev3', ['rev2'], inv_revision='rev2',
+            file_contents=file_contents)
+        self.add_revision(repo, 'rev3', inv, ['rev2'])
+
+        # rev4: a modification of a-file on top of rev3.
+        inv = self.make_one_file_inventory(repo, 'rev4', ['rev3'])
+        self.add_revision(repo, 'rev4', inv, ['rev3'])
 
 
 class TooManyParentsScenario(BrokenRepoScenario):
@@ -520,6 +601,7 @@ all_broken_scenario_classes = [
     TooManyParentsScenario,
     ClaimedFileParentDidNotModifyFileScenario,
     IncorrectlyOrderedParentsScenario,
+    UnreferencedFileParentsFromNoOpMergeScenario,
     ]
     
 
