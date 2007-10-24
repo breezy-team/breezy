@@ -244,8 +244,15 @@ class NewPack(Pack):
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
+        # A list of byte sequences to be written to the new pack, and the 
+        # aggregate size of them.  Stored as a list rather than separate 
+        # variables so that the _write_data closure below can update them.
         self._buffer = [[], 0]
-        # create a callable for adding data
+        # create a callable for adding data 
+        #
+        # robertc says- this is a closure rather than a method on the object
+        # so that the variables are locals, and faster than accessing object
+        # members.
         def _write_data(bytes, flush=False, _buffer=self._buffer,
             _write=self.write_stream.write, _update=self._hash.update):
             _buffer[0].append(bytes)
@@ -281,11 +288,10 @@ class NewPack(Pack):
 
     def data_inserted(self):
         """True if data has been added to this pack."""
-        return 0 != sum((self.get_revision_count(),
-            self.inventory_index.key_count(),
-            self.text_index.key_count(),
-            self.signature_index.key_count(),
-            ))
+        return bool(self.get_revision_count() or
+            self.inventory_index.key_count() or
+            self.text_index.key_count() or
+            self.signature_index.key_count())
 
     def finish(self):
         """Finish the new pack.
@@ -303,8 +309,10 @@ class NewPack(Pack):
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
         # write indices
-        # XXX: should rename each index too rather than just uploading blind
-        # under the chosen name.
+        # XXX: It'd be better to write them all to temporary names, then
+        # rename them all into place, so that the window when only some are
+        # visible is smaller.  On the other hand none will be seen until
+        # they're in the names list.
         self.index_sizes = [None, None, None, None]
         self._write_index('revision', self.revision_index, 'revision')
         self._write_index('inventory', self.inventory_index, 'inventory')
@@ -333,13 +341,6 @@ class NewPack(Pack):
                 self.pack_transport, self.name,
                 time.time() - self.start_time)
 
-    def make_index(self, index_type):
-        """Construct a GraphIndex object for this pack index 'index_type'."""
-        setattr(self, index_type + '_index',
-            GraphIndex(self.index_transport,
-                self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)]))
-
     def index_name(self, index_type, name):
         """Get the disk name of an index type for pack name 'name'."""
         return name + NewPack.index_definitions[index_type][0]
@@ -347,6 +348,12 @@ class NewPack(Pack):
     def index_offset(self, index_type):
         """Get the position in a index_size array for a given index type."""
         return NewPack.index_definitions[index_type][1]
+
+    def _replace_index_with_readonly(self, index_type):
+        setattr(self, index_type + '_index',
+            GraphIndex(self.index_transport,
+                self.index_name(index_type, self.name),
+                self.index_sizes[self.index_offset(index_type)]))
 
     def set_write_cache_size(self, size):
         self._cache_limit = size
@@ -366,11 +373,11 @@ class NewPack(Pack):
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
                 time.ctime(), label, self.upload_transport.base,
                 self.random_name, time.time() - self.start_time)
-        # As we have no current protection against erroneous additional
-        # insertions, load the index from disk on further use. We should alter
-        # the index layer to make it's finish() error if add_node is
+        # Replace the writable index on this object with a readonly, 
+        # presently unloaded index. We should alter
+        # the index layer to make its finish() error if add_node is
         # subsequently used. RBC
-        self.make_index(index_type)
+        self._replace_index_with_readonly(index_type)
 
 
 class AggregateIndex(object):
