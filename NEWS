@@ -39,6 +39,10 @@ IN DEVELOPMENT
      remote bzr locations than BZR_REMOTE_PATH environment variable.
      (Aaron Bentley)
 
+   * New ``launchpad-login`` command to tell Bazaar your Launchpad
+     user ID.  This can then be used by other functions of the
+     Launchpad plugin. (James Henstridge)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
@@ -46,6 +50,11 @@ IN DEVELOPMENT
 
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
+
+   * Commit with many automatically found deleted paths no longer performs
+     linear scanning for the children of those paths during inventory
+     iteration. This should fix commit performance blowing out when many such
+     paths occur during commit. (Robert Collins, #156491)
 
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
@@ -94,6 +103,9 @@ IN DEVELOPMENT
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
+
+   * The hooks reference documentation is now converted to html as expected.
+     (Ian Clatworthy)
 
   BUG FIXES:
 
@@ -144,6 +156,8 @@ IN DEVELOPMENT
    * Fix 'unprintable error' message when displaying BzrCheckError and 
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
+
+   * Fix ``Inventory.copy()`` and add test for it. (Jelmer Vernooij)
 
    * Handles default value for ListOption in cmd_commit.
      (Vincent Ladeuil, #140432)
@@ -276,6 +290,9 @@ IN DEVELOPMENT
      contains an inventory delta item if the entry changed from the basis, and a
      boolean indicating whether a new file graph node was recorded.
      (Robert Collins)
+
+   * The python path used in the Makefile can now be overridden.
+     (Andrew Bennetts, Ian Clatworthy)
 
   TESTING:
 

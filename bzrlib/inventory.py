@@ -951,7 +951,7 @@ class Inventory(object):
         other = Inventory(entries.next()[1].file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
-        for path, entry in entries():
+        for path, entry in entries:
             other.add(entry.copy())
         return other
 
