@@ -1098,15 +1098,7 @@ class WorkingTree4(WorkingTree3):
         :param path: The path.
         :param stat_result: The stat result being looked up.
         """
-        state = self.current_dirstate()
-        # XXX: should we make the path be passed in as utf8 ?
-        entry = state._get_entry(0, path_utf8=cache_utf8.encode(path))
-        tree_details = entry[1][0]
-        packed_stat = dirstate.pack_stat(stat_result)
-        if tree_details[4] == packed_stat:
-            return tree_details[1]
-        else:
-            return None
+        return self.current_dirstate().sha1_from_stat(path, stat_result)
 
     @needs_read_lock
     def supports_tree_reference(self):
