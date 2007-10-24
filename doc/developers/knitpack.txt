@@ -1,0 +1,143 @@
+KnitPack repository format
+==========================
+
+Bazaar 0.92 adds a new format (experimental at first) implemented in
+``bzrlib.repofmt.pack_repo.py``.  
+
+This format provides a knit-like interface which is quite compatible
+with knit format repositories: you can get a VersionedFile for a
+particular file-id, or for revisions, or for the inventory, even though
+these do not correspond to single files on disk.
+
+The on-disk format is that the repository directory contains these
+files and subdirectories:
+
+==================== =============================================
+packs/               completed readonly packs
+indices/             indices for completed packs
+upload/              temporary files for packs currently being 
+                     written
+obsolete_packs/      packs that have been repacked and are no 
+                     longer normally needed
+pack-names           index of all live packs
+lock/                lockdir
+==================== =============================================
+
+Note that for consistency we always write "indices" not "indexes".
+
+This is implemented on top of pack files, which are written once from
+start to end, then left alone.  A pack consists of a body file, plus
+several index files.  There are four index files for each pack, which
+have the same basename and an extension indicating the purpose of the
+index:
+
+======== ========== ======================== ==========================
+extn     Purpose    Key                      References
+======== ========== ======================== ==========================
+``.tix`` File texts ``file_id, revision_id`` per-file parents,
+                                             compression basis
+                                             per-file parents
+``.six`` Signatures ``revision_id,``         -
+``.rix`` Revisions  ``revision_id,``         revision parents
+``.iix`` Inventory  ``revision_id,``         revision parents,
+                                             compression base
+======== ========== ======================== ==========================
+
+Indices are accessed through the ``bzrlib.index.GraphIndex`` class.  
+Indices are stored as sorted files on disk.  Each line is one record,
+and contains:
+
+ * key fields
+ * a value string - for all these indices, this is an ascii decimal pair
+   of "offset length" giving the position of the refenced data within 
+   the pack body file
+ * a list of zero or more reference lists
+
+The reference lists let a graph be stored within the index.  Each
+reference list entry points to another entry in the same index.  The
+references are represented as a byte offset for the target within the
+index file.
+
+When a compression base is given, it indicates that the body of the text
+or inventory is a forward delta from the referenced revision.  The
+compression base list must have length 0 or 1.
+
+Like packs, indexes are written only once and then unmodified.  A
+GraphIndex builder is a mutable in-memory graph that can be sorted,
+cross-referenced and written out when the write group completes.
+
+There can also be index entries with a value of 'a' for absent.  These
+records exist just to be pointed to in a graph.  This is used, for
+example, to give the revision-parent pointer when the parent revision is
+in a previous pack.
+
+The data content for each record is a knit data chunk.  The knits are
+always unannotated - the annotations must be generated when needed.
+(We'd like to cache/memoize the annotations.)  The data hunks can be
+moved between packs without needing to recompress them.
+
+It is not possible to regenerate an index from the body file, because it
+contains information stored in the knit index that's not in the body.
+(In particular, the per-file graph is only stored in the index.) 
+We would like to change this in a future format.
+
+The lock is a regular LockDir lock.  The lock is only held for a much
+reduced scope, while updating the pack-names file.  The bulk of the
+insertion can be done without the repository locked.  This is an
+implementation detail; the repository user should still call
+``repository.lock_write`` at the regular time but be aware this does not
+correspond to a physical mutex. 
+
+Read locks control caching but do not affect writers.
+
+The newly-added repository write group concept is very important to
+KnitPack repositories.  When ``start_write_group`` is called, a new
+temporary pack is created and all modifications to the repository will 
+go into it until either ``commit_write_group`` or ``abort_write_group``
+is called, at which time it is either finished and moved into place or
+discarded respectively.  Write groups cannot be nested, only one can be
+underway at a time on a Repository instance and they must occur within a
+write lock.
+
+Normally the data for each revision will be entirely within a single
+pack but this is not required.
+
+When a pack is finished, it gets a final name based on the md5 of all
+the data written into the pack body file.
+
+The ``pack-names`` file gives the list of all finished non-obsolete
+packs.  (This should always be the same as the list of files in the
+``packs/`` directory, but the file is needed for readonly http clients
+that can't easily list directories, and it includes other information.)
+The constraint on the ``pack-names`` list is that every file mentioned
+must exist in the ``packs/`` directory.  
+
+In rare cases, when a writer is interrupted, about-to-be-removed packs
+may still be present in the directory but removed from the list.
+
+As well as the list of names, the pack-names file also contains the
+size, in bytes, of each of the four indices.  This is used to bootstrap
+bisection search within the indices.
+
+In normal use, one pack will be created for each commit to a repository.
+This would build up to an inefficient number of files over time, so a
+``repack`` operation is available to recombine them, by producing larger
+files containing data on multiple revisions.  This can be done manually
+by running ``bzr pack``, and it also may happen automatically when a
+write group is committed.
+
+The repacking strategy used at the moment tries to balance not doing too
+much work during commit with not having too many small files left in the
+repository.  The algorithm is roughly this: the total number of
+revisions in the repository is expressed as a decimal number, e.g.
+"532".  Then we'll repack until we have five packs containing a hundred
+revisions each, three packs containing ten revisions each, and two packs
+with single revisions.  This means that each revision will normally
+initially be created in a single-revision pack, then moved to a
+ten-revision pack, then to a 100-pack, and so on.
+
+As with other repositories, in normal use data is only inserted.
+However, in some circumstances we may want to garbage-collect or prune
+existing data, or reconcile indexes.
+
+  vim: tw=72 ft=rest expandtab

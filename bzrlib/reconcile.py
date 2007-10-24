@@ -17,19 +17,22 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
+__all__ = [
+    'KnitReconciler',
+    'PackReconciler',
+    'reconcile',
+    'Reconciler',
+    'RepoReconciler',
+    ]
 
 
 from bzrlib import (
     errors,
-    graph,
     ui,
     repository,
     )
-from bzrlib import errors
-from bzrlib import ui
 from bzrlib.trace import mutter, note
-from bzrlib.tsort import TopoSorter, topo_sort
+from bzrlib.tsort import TopoSorter
 
 
 def reconcile(dir, other=None):
@@ -397,9 +400,30 @@ class KnitReconciler(RepoReconciler):
             else:
                 parents = vf.get_parents(version)
             new_parents[version] = parents
-        for version in topo_sort(new_parents.items()):
+        for version in TopoSorter(new_parents.items()).iter_topo_order():
             new_vf.add_lines(version, new_parents[version],
                              vf.get_lines(version))
         self.repo.weave_store.copy(new_vf, file_id, self.transaction)
         self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 
+
+class PackReconciler(RepoReconciler):
+    """Reconciler that reconciles a pack based repository.
+
+    Garbage inventories do not affect ancestry queries, and removal is
+    considerably more expensive as there is no separate versioned file for
+    them, so they are not cleaned. In short it is currently a no-op.
+
+    In future this may be a good place to hook in annotation cache checking,
+    index recreation etc.
+    """
+
+    # XXX: The index corruption that _fix_text_parents performs is needed for
+    # packs, but not yet implemented. The basic approach is to:
+    #  - lock the names list
+    #  - perform a customised pack() that regenerates data as needed
+    #  - unlock the names list
+    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""

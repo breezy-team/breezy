@@ -103,8 +103,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                     "Format does not support text parent reconciliation")
 
     def file_parents(self, repo, revision_id):
-        return repo.weave_store.get_weave('a-file-id',
-            repo.get_transaction()).get_parents(revision_id)
+        return tuple(repo.weave_store.get_weave('a-file-id',
+            repo.get_transaction()).get_parents(revision_id))
 
     def assertParentsMatch(self, expected_parents_for_versions, repo,
                            when_description):

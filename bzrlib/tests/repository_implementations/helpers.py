@@ -48,13 +48,23 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
                 "%s isn't a knit format" % self.repository_format)
 
         repo = self.make_repository('broken')
-        inv = inventory.Inventory(revision_id='revision-id')
-        inv.root.revision = 'revision-id'
-        repo.add_inventory('revision-id', inv, [])
-        revision = _mod_revision.Revision('revision-id',
-            committer='jrandom@example.com', timestamp=0,
-            inventory_sha1='', timezone=0, message='message', parent_ids=[])
-        repo.add_revision('revision-id',revision, inv)
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            inv = inventory.Inventory(revision_id='revision-id')
+            inv.root.revision = 'revision-id'
+            repo.add_inventory('revision-id', inv, [])
+            revision = _mod_revision.Revision('revision-id',
+                committer='jrandom@example.com', timestamp=0,
+                inventory_sha1='', timezone=0, message='message', parent_ids=[])
+            repo.add_revision('revision-id',revision, inv)
+        except:
+            repo.abort_write_group()
+            repo.unlock()
+            raise
+        else:
+            repo.commit_write_group()
+            repo.unlock()
 
         # Change the knit index's record of the parents for 'revision-id' to
         # claim it has a parent, 'incorrect-parent', that doesn't exist in this
