@@ -1212,6 +1212,9 @@ class RepositoryPackCollection(object):
             self._new_pack)
 
         # reused revision and signature knits may need updating
+        #
+        # "Hysterical raisins. client code in bzrlib grabs those knits outside
+        # of write groups and then mutates it inside the write group."
         if self.repo._revision_knit is not None:
             self.repo._revision_knit._index._add_callback = \
                 self.revision_index.add_callback
@@ -1258,7 +1261,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
         """Create a KnitPackRevisionStore on repo with revisionstore.
 
         This will store its state in the Repository, use the
-        indices FileNames to provide a KnitGraphIndex,
+        indices to provide a KnitGraphIndex,
         and at the end of transactions write new indices.
         """
         KnitRevisionStore.__init__(self, revisionstore.versioned_file_store)
@@ -1304,13 +1307,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
 
 
 class KnitPackTextStore(VersionedFileStore):
-    """An object to adapt access from VersionedFileStore's to use KnitPacks.
-
-    This should not live through to production: by production time we should
-    have fully integrated the new indexing and have new data for the
-    repository classes; also we may choose not to do a Knit1 compatible
-    new repository, just a Knit3 one. If neither of these happen, this 
-    should definately be cleaned up before merging.
+    """Presents a TextStore abstraction on top of packs.
 
     This class works by replacing the original VersionedFileStore.
     We need to do this because the KnitPackRevisionStore is less
