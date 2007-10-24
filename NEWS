@@ -39,6 +39,10 @@ IN DEVELOPMENT
      remote bzr locations than BZR_REMOTE_PATH environment variable.
      (Aaron Bentley)
 
+   * New ``launchpad-login`` command to tell Bazaar your Launchpad
+     user ID.  This can then be used by other functions of the
+     Launchpad plugin. (James Henstridge)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
