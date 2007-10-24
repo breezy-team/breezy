@@ -392,6 +392,8 @@ class AggregateIndex(object):
     to provide a knit access layer, and allows having up to one writable
     index within the collection.
     """
+    # XXX: Probably 'can be written to' could/should be separated from 'acts
+    # like a knit index' -- mbp 20071024
 
     def __init__(self):
         """Create an AggregateIndex."""
@@ -435,6 +437,9 @@ class AggregateIndex(object):
 
     def add_writable_index(self, index, pack):
         """Add an index which is able to have data added to it.
+
+        There can be at most one writable index at any time.  Any
+        modifications made to the knit are put into this index.
         
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
@@ -507,8 +512,8 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
-        self.packs.append(pack)
         assert pack.name not in self._packs_by_name
+        self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
         self.inventory_index.add_index(pack.inventory_index, pack)
@@ -781,7 +786,7 @@ class RepositoryPackCollection(object):
 
         :param existing_packs: The packs to pack. (A list of (revcount, Pack)
             tuples).
-        :parma pack_distribution: A list with the number of revisions desired
+        :param pack_distribution: A list with the number of revisions desired
             in each pack.
         """
         if len(existing_packs) <= len(pack_distribution):
