@@ -1210,17 +1210,17 @@ class DirState(object):
         # expanding them recursively as needed.
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
-        
+        root_only = ('', '')
         for old_path, new_path, file_id, inv_entry in delta:
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
-                    inv_to_entry(inv_entry)))
+                    inv_to_entry(inv_entry), True))
             elif new_path is None:
-                deletes.append((encode(old_path), None, file_id, None))
-            elif old_path != new_path:
+                deletes.append((encode(old_path), None, file_id, None, True))
+            elif (old_path, new_path) != root_only:
                 # Renames:
                 # Because renames must preserve their children we must have
-                # processed all reloations and removes before hand. The sort
+                # processed all relocations and removes before hand. The sort
                 # order ensures we've examined the child paths, but we also
                 # have to execute the removals, or the split to an add/delete
                 # pair will result in the deleted item being reinserted, or
@@ -1235,28 +1235,40 @@ class DirState(object):
                 new_path_utf8 = encode(new_path)
                 # Split into an add/delete pair recursively.
                 adds.append((None, new_path_utf8, file_id,
-                    inv_to_entry(inv_entry)))
+                    inv_to_entry(inv_entry), False))
+                # Expunge deletes that we've seen so that deleted/renamed
+                # children of a rename directory are handled correctly.
+                new_deletes = reversed(list(self._iter_child_entries(1,
+                    encode(old_path))))
                 # Remove the current contents of the tree at orig_path, and
                 # reinsert at the correct new path.
-                new_deletes = list(reversed(list(self._iter_child_entries(1,
-                    encode(old_path)))))
                 for entry in new_deletes:
-                    source_path = '/'.join(entry[0][0:2])
+                    if entry[0][0]:
+                        source_path = entry[0][0] + '/' + entry[0][1]
+                    else:
+                        source_path = entry[0][1]
                     target_path = new_path_utf8 + source_path[len(old_path):]
-                    adds.append((None, target_path, entry[0][2], entry[1][1]))
-                    deletes.append((source_path,  None, entry[0][2], None))
-                deletes.append((encode(old_path), None, file_id, None))
+                    adds.append((None, target_path, entry[0][2], entry[1][1], False))
+                    deletes.append(
+                        (source_path, target_path, entry[0][2], None, False))
+                deletes.append(
+                    (encode(old_path), new_path, file_id, None, False))
             else:
+                # changes to just the root should not require remove/insertion
+                # of everything.
                 changes.append((encode(old_path), encode(new_path), file_id,
                     inv_to_entry(inv_entry)))
 
+        # Finish expunging deletes/first half of renames.
         self._update_basis_apply_deletes(deletes)
-        self._update_basis_apply_changes(changes)
+        # Reinstate second half of renames and new paths.
         self._update_basis_apply_adds(adds)
+        # Apply in-situ changes.
+        self._update_basis_apply_changes(changes)
 
-        # remove all deletes
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._id_index = None
         return
 
     def _update_basis_apply_adds(self, adds):
@@ -1273,8 +1285,8 @@ class DirState(object):
         adds.sort()
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
-        absent = ('r', 'a')
-        for old_path, new_path, file_id, new_details in adds:
+        absent = 'ar'
+        for old_path, new_path, file_id, new_details, real_add in adds:
             assert old_path is None
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
@@ -1282,7 +1294,7 @@ class DirState(object):
                 raise errors.BzrError('dirstate: cannot apply delta, working'
                     ' tree does not contain new entry %r %r' %
                     (new_path, file_id))
-            if entry[1][1][0] not in absent:
+            if real_add and entry[1][1][0] not in absent:
                 raise errors.BzrError('dirstate: inconsistent delta, with '
                     'tree 0. %r %r' % (new_path, file_id))
             # We don't need to update the target of an 'r' because the handling
@@ -1296,7 +1308,7 @@ class DirState(object):
         :param adds: A sequence of changes. Each change is a tuple:
             (path_utf8, path_utf8, file_id, (entry_details))
         """
-        absent = ('a', 'r')
+        absent = 'ar'
         for old_path, new_path, file_id, new_details in changes:
             assert old_path == new_path
             # the entry for this file_id must be in tree 0.
@@ -1318,12 +1330,17 @@ class DirState(object):
         pairs.
 
         :param adds: A sequence of deletes. Each delete is a tuple:
-            (old_path_utf8, None, file_id, None)
+            (old_path_utf8, new_path_utf8, file_id, None, real_delete).
+            real_delete is True when the desired outcome is an actual deletion
+            rather than the rename handling logic temporarily deleting a path
+            during the replacement of a parent.
         """
-        absent = ('r', 'a')
-        # Deletes are accumulated in lexographical order.
-        for old_path, new_path, file_id, _ in deletes:
-            assert new_path is None
+        null = DirState.NULL_PARENT_DETAILS
+        for old_path, new_path, file_id, _, real_delete in deletes:
+            if real_delete:
+                assert new_path is None
+            else:
+                assert new_path is not None
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
             block_index, entry_index, dir_present, file_present = \
@@ -1336,10 +1353,21 @@ class DirState(object):
             if entry[0][2] != file_id:
                 raise errors.BzrError('mismatched file_id in tree 1 %r %r' %
                     (old_path, file_id))
-            if entry[1][0][0] not in absent:
-                raise errors.BzrError('dirstate: inconsistent delta, with '
-                    'tree 0. %r %r' % (old_path, file_id))
-            del self._dirblocks[block_index][1][entry_index]
+            if real_delete:
+                if entry[1][0][0] != 'a':
+                    raise errors.BzrError('dirstate: inconsistent delta, with '
+                        'tree 0. %r %r' % (old_path, file_id))
+                del self._dirblocks[block_index][1][entry_index]
+            else:
+                if entry[1][0][0] == 'a':
+                    raise errors.BzrError('dirstate: inconsistent delta, with '
+                        'tree 0. %r %r' % (old_path, file_id))
+                elif entry[1][0][0] == 'r':
+                    # implement the rename
+                    del self._dirblocks[block_index][1][entry_index]
+                else:
+                    # it is being resurrected here, so blank it out temporarily.
+                    self._dirblocks[block_index][1][entry_index][1][1] = null
 
     def update_entry(self, entry, abspath, stat_value,
                      _stat_to_minikind=_stat_to_minikind,
@@ -1600,8 +1628,8 @@ class DirState(object):
         # linear search through entries at this path to find the one
         # requested.
         while entry_index < len(block) and block[entry_index][0][1] == basename:
-            if block[entry_index][1][tree_index][0] not in \
-                       ('a', 'r'): # absent, relocated
+            if block[entry_index][1][tree_index][0] not in 'ar':
+                # neither absent or relocated
                 return block_index, entry_index, True, True
             entry_index += 1
         return block_index, entry_index, True, False
@@ -1753,13 +1781,19 @@ class DirState(object):
         """
         pending_dirs = []
         next_pending_dirs = [path_utf8]
-        absent = ('r', 'a')
+        absent = 'ar'
         while next_pending_dirs:
             pending_dirs = next_pending_dirs
             next_pending_dirs = []
             for path in pending_dirs:
                 block_index, present = self._find_block_index_from_key(
                     (path, '', ''))
+                if block_index == 0:
+                    block_index = 1
+                    if len(self._dirblocks) == 1:
+                        # asked for the children of the root with no other
+                        # contents.
+                        return
                 if not present:
                     # children of a non-directory asked for.
                     continue
@@ -1769,7 +1803,11 @@ class DirState(object):
                     if kind not in absent:
                         yield entry
                     if kind == 'd':
-                        next_pending_dirs.append('/'.join(entry[0][0:2]))
+                        if entry[0][0]:
+                            path = entry[0][0] + '/' + entry[0][1]
+                        else:
+                            path = entry[0][1]
+                        next_pending_dirs.append(path)
     
     def _iter_entries(self):
         """Iterate over all the entries in the dirstate.
@@ -2043,7 +2081,7 @@ class DirState(object):
         # one: the current tree
         for entry in self._iter_entries():
             # skip entries not in the current tree
-            if entry[1][0][0] in ('a', 'r'): # absent, relocated
+            if entry[1][0][0] in 'ar': # absent, relocated
                 continue
             by_path[entry[0]] = [entry[1][0]] + \
                 [DirState.NULL_PARENT_DETAILS] * parent_count
@@ -2179,7 +2217,7 @@ class DirState(object):
                 return None
         while current_new or current_old:
             # skip entries in old that are not really there
-            if current_old and current_old[1][0][0] in ('r', 'a'):
+            if current_old and current_old[1][0][0] in 'ar':
                 # relocated or absent
                 current_old = advance(old_iterator)
                 continue
@@ -2261,7 +2299,7 @@ class DirState(object):
         all_remaining_keys = set()
         # Dont check the working tree, because it's going.
         for details in current_old[1][1:]:
-            if details[0] not in ('a', 'r'): # absent, relocated
+            if details[0] not in 'ar': # absent, relocated
                 all_remaining_keys.add(current_old[0])
             elif details[0] == 'r': # relocated
                 # record the key for the real path.
@@ -2367,7 +2405,7 @@ class DirState(object):
                         self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
                     assert present, 'could not find entry for %s' % (other_key,)
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
-                    if update_details[0] in ('r', 'a'): # relocated, absent
+                    if update_details[0] in 'ar': # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
                         # it as is.
                         new_entry[1].append(update_details)
@@ -2468,7 +2506,6 @@ class DirState(object):
                     "dirblock for %r is not sorted:\n%s" % \
                     (dirblock[0], pformat(dirblock)))
 
-
         def check_valid_parent():
             """Check that the current entry has a valid parent.
 
@@ -2509,12 +2546,15 @@ class DirState(object):
                 "wrong number of entry details for row\n%s" \
                 ",\nexpected %d" % \
                 (pformat(entry), tree_count))
+            absent_positions = 0
             for tree_index, tree_state in enumerate(entry[1]):
                 this_tree_map = id_path_maps[tree_index]
                 minikind = tree_state[0]
+                if minikind in 'ar':
+                    absent_positions += 1
                 # have we seen this id before in this column?
                 if file_id in this_tree_map:
-                    previous_path = this_tree_map[file_id]
+                    previous_path, previous_loc = this_tree_map[file_id]
                     # any later mention of this file must be consistent with
                     # what was said before
                     if minikind == 'a':
@@ -2534,19 +2574,23 @@ class DirState(object):
                         # pointed to by a relocation, which must point here
                         if previous_path != this_path:
                             raise AssertionError(
-                            "entry %r inconsistent with previous path %r" % \
-                            (entry, previous_path))
+                                "entry %r inconsistent with previous path %r "
+                                "seen at %r" %
+                                (entry, previous_path, previous_loc))
                         check_valid_parent()
                 else:
                     if minikind == 'a':
                         # absent; should not occur anywhere else
-                        this_tree_map[file_id] = None
+                        this_tree_map[file_id] = None, this_path
                     elif minikind == 'r':
                         # relocation, must occur at expected location 
-                        this_tree_map[file_id] = tree_state[1]
+                        this_tree_map[file_id] = tree_state[1], this_path
                     else:
-                        this_tree_map[file_id] = this_path
+                        this_tree_map[file_id] = this_path, this_path
                         check_valid_parent()
+            if absent_positions == tree_count:
+                raise AssertionError(
+                    "entry %r has no data for any tree." % (entry,))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
