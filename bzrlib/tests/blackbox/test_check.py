@@ -22,5 +22,14 @@ from bzrlib.tests.blackbox import ExternalBase
 class TestCheck(ExternalBase):
 
     def test_check_no_tree(self):
-        branch = self.make_branch('.')
+        self.make_branch('.')
+        self.run_bzr('check')
+
+    def test_check_initial_tree(self):
+        self.make_branch_and_tree('.')
+        self.run_bzr('check')
+
+    def test_check_one_commit_tree(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('hallelujah')
         self.run_bzr('check')
