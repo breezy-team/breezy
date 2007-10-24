@@ -2367,16 +2367,12 @@ class InterPackRepo(InterSameDataRepository):
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
-        source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target.all_revision_ids())
-        actually_present_revisions = target_ids.intersection(source_ids_set)
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
-        return required_topo_revisions
+        return [r for r in source_ids if (r not in target_ids)]
 
 
 class InterModel1and2(InterRepository):
