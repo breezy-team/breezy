@@ -66,7 +66,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def make_one_file_inventory(self, repo, revision, parents,
                                 inv_revision=None, root_revision=None,
-                                file_contents=None):
+                                file_contents=None, make_file_version=True):
         """Make an inventory containing a version of a file with ID 'a-file'.
 
         The file's ID will be 'a-file', and its filename will be 'a file name',
@@ -97,9 +97,10 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             file_contents = '%sline\n' % entry.revision
         entry.text_sha1 = sha.sha(file_contents).hexdigest()
         inv.add(entry)
-        vf = repo.weave_store.get_weave_or_empty(file_id,
-                                                 repo.get_transaction())
-        vf.add_lines(revision, parents, [file_contents])
+        if make_file_version:
+            vf = repo.weave_store.get_weave_or_empty(file_id,
+                                                     repo.get_transaction())
+            vf.add_lines(revision, parents, [file_contents])
         return inv
 
     def require_repo_suffers_text_parent_corruption(self, repo):

@@ -128,10 +128,11 @@ class BrokenRepoScenario(object):
 
     def make_one_file_inventory(self, repo, revision, parents,
                                 inv_revision=None, root_revision=None,
-                                file_contents=None):
+                                file_contents=None, make_file_version=True):
         return self.test_case.make_one_file_inventory(
             repo, revision, parents, inv_revision=inv_revision,
-            root_revision=root_revision, file_contents=file_contents)
+            root_revision=root_revision, file_contents=file_contents,
+            make_file_version=make_file_version)
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         return self.test_case.add_revision(repo, revision_id, inv, parent_ids)
@@ -379,23 +380,23 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     """
 
     def all_versions(self):
-        return ['rev1a', 'rev1b', 'rev2', 'rev3', 'rev4']
+        return ['rev1a', 'rev1b', 'rev2', 'rev4']
 
     def populated_parents(self):
         return [
             ([], 'rev1a'),
             ([], 'rev1b'),
             (['rev1a', 'rev1b'], 'rev2'),
-            (['rev2'], 'rev3'),
-            (['rev3'], 'rev4'),
+            (None, 'rev3'),
+            (['rev2'], 'rev4'),
             ]
 
     def corrected_parents(self):
         return [
             ([], 'rev1a'),
             ([], 'rev1b'),
-            #([], 'rev2'),
-            (['rev1a', 'rev1b'], 'rev3'),
+            ([], 'rev2'),
+            (None, 'rev3'),
             (['rev2'], 'rev4'),
             ]
 
@@ -434,11 +435,11 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
         # file in its inventory.
         inv = self.make_one_file_inventory(
             repo, 'rev3', ['rev2'], inv_revision='rev2',
-            file_contents=file_contents)
+            file_contents=file_contents, make_file_version=False)
         self.add_revision(repo, 'rev3', inv, ['rev2'])
 
         # rev4: a modification of a-file on top of rev3.
-        inv = self.make_one_file_inventory(repo, 'rev4', ['rev3'])
+        inv = self.make_one_file_inventory(repo, 'rev4', ['rev2'])
         self.add_revision(repo, 'rev4', inv, ['rev3'])
 
 
