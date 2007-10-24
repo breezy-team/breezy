@@ -943,12 +943,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     raise
                 r2.commit_write_group()
                 # tell r1 to reload from disk
-                r1._packs.reset()
+                r1._pack_collection.reset()
                 # Now both repositories should know about both names
-                r1._packs.ensure_loaded()
-                r2._packs.ensure_loaded()
-                self.assertEqual(r1._packs.names(), r2._packs.names())
-                self.assertEqual(2, len(r1._packs.names()))
+                r1._pack_collection.ensure_loaded()
+                r2._pack_collection.ensure_loaded()
+                self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
+                self.assertEqual(2, len(r1._pack_collection.names()))
             finally:
                 r1.unlock()
         finally:
@@ -970,8 +970,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                 raise
             else:
                 r1.commit_write_group()
-            r1._packs.ensure_loaded()
-            name_to_drop = r1._packs.all_packs()[0].name
+            r1._pack_collection.ensure_loaded()
+            name_to_drop = r1._pack_collection.all_packs()[0].name
         finally:
             r1.unlock()
         r1.lock_write()
@@ -982,20 +982,20 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
             try:
                 # access enough data to load the names list
                 list(r2.all_revision_ids())
-                r1._packs.ensure_loaded()
+                r1._pack_collection.ensure_loaded()
                 try:
                     r2.start_write_group()
                     try:
                         # in r1, drop the pack
-                        r1._packs.remove_pack_from_memory(
-                            r1._packs.get_pack_by_name(name_to_drop))
+                        r1._pack_collection.remove_pack_from_memory(
+                            r1._pack_collection.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
                         self._add_text(r2, 'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
                 except:
-                    r1._packs.reset()
+                    r1._pack_collection.reset()
                     raise
                 # r1 has a changed names list, and r2 an open write groups with
                 # changes.
@@ -1003,8 +1003,8 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                 # merge to the pack-names, which should not reinstate
                 # name_to_drop
                 try:
-                    r1._packs._save_pack_names()
-                    r1._packs.reset()
+                    r1._pack_collection._save_pack_names()
+                    r1._pack_collection.reset()
                 except:
                     r2.abort_write_group()
                     raise
@@ -1014,11 +1014,11 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                     r2.abort_write_group()
                     raise
                 # Now both repositories should now about just one name.
-                r1._packs.ensure_loaded()
-                r2._packs.ensure_loaded()
-                self.assertEqual(r1._packs.names(), r2._packs.names())
-                self.assertEqual(1, len(r1._packs.names()))
-                self.assertFalse(name_to_drop in r1._packs.names())
+                r1._pack_collection.ensure_loaded()
+                r2._pack_collection.ensure_loaded()
+                self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
+                self.assertEqual(1, len(r1._pack_collection.names()))
+                self.assertFalse(name_to_drop in r1._pack_collection.names())
             finally:
                 r1.unlock()
         finally:
@@ -1042,7 +1042,7 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())
-        repo._packs.lock_names()
+        repo._pack_collection.lock_names()
         repo2 = repository.Repository.open('.')
         self.assertTrue(repo.get_physical_lock_status())
         self.prepare_for_break_lock()
@@ -1051,12 +1051,12 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
 
     def test_broken_physical_locks_error_on_release_names_lock(self):
         repo = self.make_repository('.', format=self.get_format())
-        repo._packs.lock_names()
+        repo._pack_collection.lock_names()
         self.assertTrue(repo.get_physical_lock_status())
         repo2 = repository.Repository.open('.')
         self.prepare_for_break_lock()
         repo2.break_lock()
-        self.assertRaises(errors.LockBroken, repo._packs.release_names)
+        self.assertRaises(errors.LockBroken, repo._pack_collection.release_names)
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
@@ -1078,7 +1078,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         """The maximum pack count is a function of the number of revisions."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         # no revisions - one pack, so that we can have a revision free repo
         # without it blowing up
         self.assertEqual(1, packs._max_pack_count(0))
@@ -1104,13 +1104,13 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_pack_distribution_zero(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         self.assertEqual([0], packs.pack_distribution(0))
         
     def test_pack_distribution_one_to_nine(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         self.assertEqual([1],
             packs.pack_distribution(1))
         self.assertEqual([1, 1],
@@ -1134,7 +1134,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         """When there are multi-rev packs the counts are stable."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         # in 10s:
         self.assertEqual([10], packs.pack_distribution(10))
         self.assertEqual([10, 1], packs.pack_distribution(11))
@@ -1151,7 +1151,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_plan_pack_operations_2009_revisions_skip_all_packs(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         existing_packs = [(2000, "big"), (9, "medium")]
         # rev count - 2009 -> 2x1000 + 9x1
         pack_operations = packs.plan_autopack_combinations(
@@ -1161,7 +1161,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_plan_pack_operations_2010_revisions_skip_all_packs(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         existing_packs = [(2000, "big"), (9, "medium"), (1, "single")]
         # rev count - 2010 -> 2x1000 + 1x10
         pack_operations = packs.plan_autopack_combinations(
@@ -1171,7 +1171,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_plan_pack_operations_2010_combines_smallest_two(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._packs
+        packs = repo._pack_collection
         existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
             (1, "single1")]
         # rev count - 2010 -> 2x1000 + 1x10 (3)
@@ -1184,7 +1184,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format=format)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        packs = tree.branch.repository._packs
+        packs = tree.branch.repository._pack_collection
         packs.ensure_loaded()
         self.assertEqual([], packs.all_packs())
 
@@ -1194,7 +1194,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.commit('start')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        packs = tree.branch.repository._packs
+        packs = tree.branch.repository._pack_collection
         packs.ensure_loaded()
         self.assertEqual([
             packs.get_pack_by_name(packs.names()[0])],
@@ -1207,7 +1207,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.commit('continue')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        packs = tree.branch.repository._packs
+        packs = tree.branch.repository._pack_collection
         packs.ensure_loaded()
         self.assertEqual([
             packs.get_pack_by_name(packs.names()[0]),
@@ -1220,7 +1220,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.commit('start')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        packs = tree.branch.repository._packs
+        packs = tree.branch.repository._pack_collection
         packs.ensure_loaded()
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)

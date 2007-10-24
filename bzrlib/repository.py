@@ -2344,16 +2344,16 @@ class InterPackRepo(InterSameDataRepository):
                 revision_ids = self.missing_revision_ids(revision_id)
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
-        packs = self.source._packs.all_packs()
-        pack = self.target._packs.create_pack_from_packs(
+        packs = self.source._pack_collection.all_packs()
+        pack = self.target._pack_collection.create_pack_from_packs(
             packs, '.fetch', revision_ids,
             )
         if pack is not None:
-            self.target._packs._save_pack_names()
+            self.target._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._packs.autopack()
+            self.target._pack_collection.autopack()
             return pack.get_revision_count()
         else:
             return 0
