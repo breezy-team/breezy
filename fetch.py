@@ -530,37 +530,41 @@ class InterFromSvnRepository(InterRepository):
                              self.source._log.get_revision_info(revnum),
                              id_map, scheme)
 
-                pool = Pool()
+                try:
+                    pool = Pool()
 
-                if parent_revid is None:
-                    branch_url = urlutils.join(repos_root, branch)
-                    transport.reparent(branch_url)
-                    assert transport.svn_url == branch_url.rstrip("/"), \
-                        "Expected %r, got %r" % (transport.svn_url, branch_url)
-                    reporter = transport.do_update(revnum, True, editor,
-                                                   pool)
+                    if parent_revid is None:
+                        branch_url = urlutils.join(repos_root, branch)
+                        transport.reparent(branch_url)
+                        assert transport.svn_url == branch_url.rstrip("/"), \
+                            "Expected %r, got %r" % (transport.svn_url, branch_url)
+                        reporter = transport.do_update(revnum, True, editor,
+                                                       pool)
 
-                    # Report status of existing paths
-                    reporter.set_path("", revnum, True, None, pool)
-                else:
-                    (parent_branch, parent_revnum, scheme) = \
-                            self.source.lookup_revision_id(parent_revid)
-                    transport.reparent(urlutils.join(repos_root, parent_branch))
-
-                    if parent_branch != branch:
-                        reporter = transport.do_switch(
-                                   revnum, True, 
-                                   urlutils.join(repos_root, branch), 
-                                   editor, pool)
+                        # Report status of existing paths
+                        reporter.set_path("", revnum, True, None, pool)
                     else:
-                        reporter = transport.do_update(revnum, True, editor)
+                        (parent_branch, parent_revnum, scheme) = \
+                                self.source.lookup_revision_id(parent_revid)
+                        transport.reparent(urlutils.join(repos_root, parent_branch))
 
-                    # Report status of existing paths
-                    reporter.set_path("", parent_revnum, False, None, pool)
+                        if parent_branch != branch:
+                            reporter = transport.do_switch(
+                                       revnum, True, 
+                                       urlutils.join(repos_root, branch), 
+                                       editor, pool)
+                        else:
+                            reporter = transport.do_update(revnum, True, editor)
 
-                lock = transport.lock_read(".")
-                reporter.finish_report(pool)
-                lock.unlock()
+                        # Report status of existing paths
+                        reporter.set_path("", parent_revnum, False, None, pool)
+
+                    lock = transport.lock_read(".")
+                    reporter.finish_report(pool)
+                    lock.unlock()
+                except:
+                    editor.abort_edit()
+                    raise
 
                 prev_inv = editor.inventory
                 prev_revid = revid
