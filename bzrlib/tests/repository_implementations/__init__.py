@@ -285,16 +285,21 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     """
 
     def all_versions(self):
-        return ['rev1a', 'rev2', 'rev2b', 'rev2c', 'rev4', 'rev5']
+        return ['rev1a', 'rev2c', 'rev4', 'rev5']
 
     def populated_parents(self):
         return [
+            (['rev1a'], 'rev2'),
+            (['rev1a'], 'rev2b'),
             (['rev2'], 'rev3'),
             (['rev2'], 'rev4'),
             (['rev2', 'rev2c'], 'rev5')]
 
     def corrected_parents(self):
         return [
+            # rev2 and rev2b have been removed.
+            (None, 'rev2'),
+            (None, 'rev2b'),
             # rev3's accessible parent inventories all have rev1a as the last
             # modifier.
             (['rev1a'], 'rev3'),
@@ -497,7 +502,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
     """
 
     def all_versions(self):
-        return ['basis', 'modified-something-else', 'current']
+        return ['basis', 'current']
 
     def populated_parents(self):
         return [
@@ -508,7 +513,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
     def corrected_parents(self):
         return [
             ([], 'basis'),
-            (['basis'], 'modified-something-else'),
+            (None, 'modified-something-else'),
             (['basis'], 'current')]
 
     def check_regexes(self):

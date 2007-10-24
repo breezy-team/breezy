@@ -421,8 +421,9 @@ class KnitReconciler(RepoReconciler):
                 parents = vf.get_parents(version)
             new_parents[version] = parents
         for version in topo_sort(new_parents.items()):
-#            if version in unused_versions:
-#                continue
+            if version in unused_versions:
+                mutter('Omitting %s from %s', version, file_id)
+                continue
             lines = vf.get_lines(version)
             parents = new_parents[version]
             if parents and (parents[0] in full_text_versions):
