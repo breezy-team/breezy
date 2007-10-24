@@ -94,6 +94,9 @@ IN DEVELOPMENT
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
 
+   * The hooks reference documentation is now converted to html as expected.
+     (Ian Clatworthy)
+
   BUG FIXES:
 
    * Make sure to use ``O_BINARY`` when opening files to check their
@@ -275,6 +278,9 @@ IN DEVELOPMENT
      contains an inventory delta item if the entry changed from the basis, and a
      boolean indicating whether a new file graph node was recorded.
      (Robert Collins)
+
+   * The python path used in the Makefile can now be overridden.
+     (Andrew Bennetts, Ian Clatworthy)
 
   TESTING:
 
