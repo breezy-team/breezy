@@ -416,13 +416,14 @@ class PackReconciler(RepoReconciler):
 
     In future this may be a good place to hook in annotation cache checking,
     index recreation etc.
-
-    XXX: The index corruption that _fix_text_parents performs is needed for
-    packs, but not yet implemented. The basic approach is to:
-     - lock the names list
-     - perform a customised pack() that regenerates data as needed
-     - unlock the names list
     """
+
+    # XXX: The index corruption that _fix_text_parents performs is needed for
+    # packs, but not yet implemented. The basic approach is to:
+    #  - lock the names list
+    #  - perform a customised pack() that regenerates data as needed
+    #  - unlock the names list
+    # https://bugs.edge.launchpad.net/bzr/+bug/154173
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""

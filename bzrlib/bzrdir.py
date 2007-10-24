@@ -2479,7 +2479,7 @@ format_registry.register_metadir('dirstate-with-subtree',
     hidden=True,
     )
 format_registry.register_metadir('experimental',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatGraphKnit1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in XXX: Experimental format with data compatible with dirstate '
         'format repositories. Cannot be read except with bzr.dev. '
         'WARNING: This format is unstable and data in it will not be upgradable'
@@ -2489,7 +2489,7 @@ format_registry.register_metadir('experimental',
     hidden=True,
     )
 format_registry.register_metadir('experimental-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatGraphKnit3',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in XXX: Experimental format with data compatible with '
         'dirstate-with-subtree format repositories. Cannot be read except with'
         ' bzr.dev. WARNING: This format is unstable and data in it will not be'

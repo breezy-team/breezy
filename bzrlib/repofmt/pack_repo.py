@@ -73,7 +73,7 @@ class PackCommitBuilder(CommitBuilder):
     """
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
-        return self.repository._packs._add_text_to_weave(file_id,
+        return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
 
@@ -86,7 +86,7 @@ class PackRootCommitBuilder(RootCommitBuilder):
     """
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
-        return self.repository._packs._add_text_to_weave(file_id,
+        return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
 
@@ -179,11 +179,11 @@ class NewPack(Pack):
 
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
-    indices = {
-        'revision':('.rix', 0),
-        'inventory':('.iix', 1),
-        'text':('.tix', 2),
-        'signature':('.six', 3),
+    index_definitions = {
+        'revision': ('.rix', 0),
+        'inventory': ('.iix', 1),
+        'text': ('.tix', 2),
+        'signature': ('.six', 3),
         }
 
     def __init__(self, upload_transport, index_transport, pack_transport,
@@ -200,6 +200,8 @@ class NewPack(Pack):
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
         """
+        # The relative locations of the packs are constrained, but all are
+        # passed in because the caller has them, so as to avoid object churn.
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             InMemoryGraphIndex(reference_lists=1),
@@ -238,12 +240,19 @@ class NewPack(Pack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
+        # A list of byte sequences to be written to the new pack, and the 
+        # aggregate size of them.  Stored as a list rather than separate 
+        # variables so that the _write_data closure below can update them.
         self._buffer = [[], 0]
-        # create a callable for adding data
+        # create a callable for adding data 
+        #
+        # robertc says- this is a closure rather than a method on the object
+        # so that the variables are locals, and faster than accessing object
+        # members.
         def _write_data(bytes, flush=False, _buffer=self._buffer,
             _write=self.write_stream.write, _update=self._hash.update):
             _buffer[0].append(bytes)
@@ -279,11 +288,10 @@ class NewPack(Pack):
 
     def data_inserted(self):
         """True if data has been added to this pack."""
-        return 0 != sum((self.get_revision_count(),
-            self.inventory_index.key_count(),
-            self.text_index.key_count(),
-            self.signature_index.key_count(),
-            ))
+        return bool(self.get_revision_count() or
+            self.inventory_index.key_count() or
+            self.text_index.key_count() or
+            self.signature_index.key_count())
 
     def finish(self):
         """Finish the new pack.
@@ -301,8 +309,10 @@ class NewPack(Pack):
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
         # write indices
-        # XXX: should rename each index too rather than just uploading blind
-        # under the chosen name.
+        # XXX: It'd be better to write them all to temporary names, then
+        # rename them all into place, so that the window when only some are
+        # visible is smaller.  On the other hand none will be seen until
+        # they're in the names list.
         self.index_sizes = [None, None, None, None]
         self._write_index('revision', self.revision_index, 'revision')
         self._write_index('inventory', self.inventory_index, 'inventory')
@@ -324,27 +334,26 @@ class NewPack(Pack):
         self.upload_transport.rename(self.random_name,
                 '../packs/' + self.name + '.pack')
         self._state = 'finished'
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 self.pack_transport, self.name,
                 time.time() - self.start_time)
 
-    def make_index(self, index_type):
-        """Construct a GraphIndex object for this pack index 'index_type'."""
+    def index_name(self, index_type, name):
+        """Get the disk name of an index type for pack name 'name'."""
+        return name + NewPack.index_definitions[index_type][0]
+
+    def index_offset(self, index_type):
+        """Get the position in a index_size array for a given index type."""
+        return NewPack.index_definitions[index_type][1]
+
+    def _replace_index_with_readonly(self, index_type):
         setattr(self, index_type + '_index',
             GraphIndex(self.index_transport,
                 self.index_name(index_type, self.name),
                 self.index_sizes[self.index_offset(index_type)]))
-
-    def index_name(self, index_type, name):
-        """Get the disk name of an index type for pack name 'name'."""
-        return name + NewPack.indices[index_type][0]
-
-    def index_offset(self, index_type):
-        """Get the position in a index_size array for a given index type."""
-        return NewPack.indices[index_type][1]
 
     def set_write_cache_size(self, size):
         self._cache_limit = size
@@ -359,16 +368,16 @@ class NewPack(Pack):
         index_name = self.index_name(index_type, self.name)
         self.index_sizes[self.index_offset(index_type)] = \
             self.index_transport.put_file(index_name, index.finish())
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
                 time.ctime(), label, self.upload_transport.base,
                 self.random_name, time.time() - self.start_time)
-        # As we have no current protection against erroneous additional
-        # insertions, load the index from disk on further use. We should alter
-        # the index layer to make it's finish() error if add_node is
+        # Replace the writable index on this object with a readonly, 
+        # presently unloaded index. We should alter
+        # the index layer to make its finish() error if add_node is
         # subsequently used. RBC
-        self.make_index(index_type)
+        self._replace_index_with_readonly(index_type)
 
 
 class AggregateIndex(object):
@@ -377,7 +386,14 @@ class AggregateIndex(object):
     AggregateIndex is reponsible for managing the PackAccess object,
     Index-To-Pack mapping, and all indices list for a specific type of index
     such as 'revision index'.
+
+    A CombinedIndex provides an index on a single key space built up
+    from several on-disk indices.  The AggregateIndex builds on this 
+    to provide a knit access layer, and allows having up to one writable
+    index within the collection.
     """
+    # XXX: Probably 'can be written to' could/should be separated from 'acts
+    # like a knit index' -- mbp 20071024
 
     def __init__(self):
         """Create an AggregateIndex."""
@@ -407,8 +423,11 @@ class AggregateIndex(object):
 
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
+
+        Future searches on the aggregate index will seach this new index
+        before all previously inserted indices.
         
-        :param index: An index from the pack parameter.
+        :param index: An Index for the pack.
         :param pack: A Pack instance.
         """
         # expose it to the index map
@@ -418,11 +437,16 @@ class AggregateIndex(object):
 
     def add_writable_index(self, index, pack):
         """Add an index which is able to have data added to it.
+
+        There can be at most one writable index at any time.  Any
+        modifications made to the knit are put into this index.
         
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None
+        assert self.add_callback is None, \
+            "%s already has a writable index through %s" % \
+            (self, self.add_callback)
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -459,7 +483,7 @@ class RepositoryPackCollection(object):
 
         :param transport: Addresses the repository base directory 
             (typically .bzr/repository/).
-        :param index_transport: Addresses the directory containing indexes.
+        :param index_transport: Addresses the directory containing indices.
         :param upload_transport: Addresses the directory into which packs are written
             while they're being created.
         :param pack_transport: Addresses the directory of existing complete packs.
@@ -469,10 +493,10 @@ class RepositoryPackCollection(object):
         self._index_transport = index_transport
         self._upload_transport = upload_transport
         self._pack_transport = pack_transport
-        self._suffix_offsets = {'.rix':0, '.iix':1, '.tix':2, '.six':3}
+        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3}
         self.packs = []
         # name:Pack mapping
-        self._packs = {}
+        self._packs_by_name = {}
         # the previous pack-names content
         self._packs_at_load = None
         # when a pack is being created by this object, the state of that pack.
@@ -488,9 +512,9 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
+        assert pack.name not in self._packs_by_name
         self.packs.append(pack)
-        assert pack.name not in self._packs
-        self._packs[pack.name] = pack
+        self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
         self.inventory_index.add_index(pack.inventory_index, pack)
         self.text_index.add_index(pack.text_index, pack)
@@ -600,7 +624,7 @@ class RepositoryPackCollection(object):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024*1024)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
                 for a_pack in packs]
             if revision_ids is not None:
@@ -624,7 +648,7 @@ class RepositoryPackCollection(object):
         # copy revision keys and adjust values
         list(self._copy_nodes_graph(revision_nodes, revision_index_map,
             new_pack._writer, new_pack.revision_index))
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.revision_index.key_count(),
@@ -653,7 +677,7 @@ class RepositoryPackCollection(object):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             text_filter = None
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.inventory_index.key_count(),
@@ -681,7 +705,7 @@ class RepositoryPackCollection(object):
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map,
             new_pack._writer, new_pack.text_index))
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.text_index.key_count(),
@@ -695,7 +719,7 @@ class RepositoryPackCollection(object):
         # copy signature keys and adjust values
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
             new_pack.signature_index)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
@@ -720,7 +744,7 @@ class RepositoryPackCollection(object):
             # have a progress bar?
             self.create_pack_from_packs(packs, '.autopack')
             for pack in packs:
-                self.remove_pack_from_memory(pack)
+                self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
         self._save_pack_names()
@@ -762,7 +786,7 @@ class RepositoryPackCollection(object):
 
         :param existing_packs: The packs to pack. (A list of (revcount, Pack)
             tuples).
-        :parma pack_distribution: A list with the number of revisions desired
+        :param pack_distribution: A list with the number of revisions desired
             in each pack.
         """
         if len(existing_packs) <= len(pack_distribution):
@@ -912,7 +936,7 @@ class RepositoryPackCollection(object):
         :return: A Pack object.
         """
         try:
-            return self._packs[name]
+            return self._packs_by_name[name]
         except KeyError:
             rev_index = self._make_index(name, '.rix')
             inv_index = self._make_index(name, '.iix')
@@ -934,7 +958,7 @@ class RepositoryPackCollection(object):
             # a collision with the packs we know about (not the only possible
             # collision, see NewPack.finish() for some discussion). Remove our
             # prior reference to it.
-            self.remove_pack_from_memory(a_new_pack)
+            self._remove_pack_from_memory(a_new_pack)
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -989,8 +1013,8 @@ class RepositoryPackCollection(object):
         for pack in packs:
             pack.pack_transport.rename(pack.file_name(),
                 '../obsolete_packs/' + pack.file_name())
-            # TODO: Probably needs to know all possible indexes for this pack
-            # - or maybe list the directory and move all indexes matching this
+            # TODO: Probably needs to know all possible indices for this pack
+            # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
             for suffix in ('.iix', '.six', '.tix', '.rix'):
                 self._index_transport.rename(pack.name + suffix,
@@ -1016,13 +1040,13 @@ class RepositoryPackCollection(object):
         """Return a tuple with the transport and file name for a pack name."""
         return self._pack_transport, name + '.pack'
 
-    def remove_pack_from_memory(self, pack):
+    def _remove_pack_from_memory(self, pack):
         """Remove pack from the packs accessed by this repository.
         
         Only affects memory state, until self._save_pack_names() is invoked.
         """
         self._names.pop(pack.name)
-        self._packs.pop(pack.name)
+        self._packs_by_name.pop(pack.name)
         self._remove_pack_indices(pack)
 
     def _remove_pack_indices(self, pack):
@@ -1050,11 +1074,11 @@ class RepositoryPackCollection(object):
         # information about packs.
         self._names = None
         self.packs = []
-        self._packs = {}
+        self._packs_by_name = {}
         self._packs_at_load = None
 
     def _make_index_map(self, index_suffix):
-        """Return information on existing indexes.
+        """Return information on existing indices.
 
         :param suffix: Index suffix added to pack name.
 
@@ -1064,10 +1088,10 @@ class RepositoryPackCollection(object):
         """
         # TODO: stop using this; it creates new indices unnecessarily.
         self.ensure_loaded()
-        suffix_map = {'.rix':'revision_index',
-            '.six':'signature_index',
-            '.iix':'inventory_index',
-            '.tix':'text_index',
+        suffix_map = {'.rix': 'revision_index',
+            '.six': 'signature_index',
+            '.iix': 'inventory_index',
+            '.tix': 'text_index',
         }
         return self._packs_list_to_pack_map_and_index_list(self.all_packs(),
             suffix_map[index_suffix])
@@ -1104,7 +1128,7 @@ class RepositoryPackCollection(object):
         else:
             return all_index.iter_entries(key_filter)
 
-    def release_names(self):
+    def _unlock_names(self):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
@@ -1141,13 +1165,13 @@ class RepositoryPackCollection(object):
             # move the baseline forward
             self._packs_at_load = disk_nodes
         finally:
-            self.release_names()
+            self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         new_names = dict(disk_nodes)
         # drop no longer present nodes
         for pack in self.all_packs():
             if (pack.name,) not in new_names:
-                self.remove_pack_from_memory(pack)
+                self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
         for key, value in disk_nodes:
             name = key[0]
@@ -1163,7 +1187,7 @@ class RepositoryPackCollection(object):
                     # the only index shows up as deleted by the set difference
                     # - which it may. Until there is a specific test for this,
                     # assume its broken. RBC 20071017.
-                    self.remove_pack_from_memory(self.get_pack_by_name(name))
+                    self._remove_pack_from_memory(self.get_pack_by_name(name))
                     self._names[name] = sizes
                     self.get_pack_by_name(name)
             else:
@@ -1188,6 +1212,9 @@ class RepositoryPackCollection(object):
             self._new_pack)
 
         # reused revision and signature knits may need updating
+        #
+        # "Hysterical raisins. client code in bzrlib grabs those knits outside
+        # of write groups and then mutates it inside the write group."
         if self.repo._revision_knit is not None:
             self.repo._revision_knit._index._add_callback = \
                 self.revision_index.add_callback
@@ -1222,19 +1249,19 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
 
 
-class GraphKnitRevisionStore(KnitRevisionStore):
-    """An object to adapt access from RevisionStore's to use GraphKnits.
+class KnitPackRevisionStore(KnitRevisionStore):
+    """An object to adapt access from RevisionStore's to use KnitPacks.
 
     This class works by replacing the original RevisionStore.
-    We need to do this because the GraphKnitRevisionStore is less
+    We need to do this because the KnitPackRevisionStore is less
     isolated in its layering - it uses services from the repo.
     """
 
     def __init__(self, repo, transport, revisionstore):
-        """Create a GraphKnitRevisionStore on repo with revisionstore.
+        """Create a KnitPackRevisionStore on repo with revisionstore.
 
         This will store its state in the Repository, use the
-        indices FileNames to provide a KnitGraphIndex,
+        indices to provide a KnitGraphIndex,
         and at the end of transactions write new indices.
         """
         KnitRevisionStore.__init__(self, revisionstore.versioned_file_store)
@@ -1246,62 +1273,56 @@ class GraphKnitRevisionStore(KnitRevisionStore):
         """Get the revision versioned file object."""
         if getattr(self.repo, '_revision_knit', None) is not None:
             return self.repo._revision_knit
-        self.repo._packs.ensure_loaded()
-        add_callback = self.repo._packs.revision_index.add_callback
+        self.repo._pack_collection.ensure_loaded()
+        add_callback = self.repo._pack_collection.revision_index.add_callback
         # setup knit specific objects
         knit_index = KnitGraphIndex(
-            self.repo._packs.revision_index.combined_index,
+            self.repo._pack_collection.revision_index.combined_index,
             add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._packs.revision_index.knit_access)
+            access_method=self.repo._pack_collection.revision_index.knit_access)
         return self.repo._revision_knit
 
     def get_signature_file(self, transaction):
         """Get the signature versioned file object."""
         if getattr(self.repo, '_signature_knit', None) is not None:
             return self.repo._signature_knit
-        self.repo._packs.ensure_loaded()
-        add_callback = self.repo._packs.signature_index.add_callback
+        self.repo._pack_collection.ensure_loaded()
+        add_callback = self.repo._pack_collection.signature_index.add_callback
         # setup knit specific objects
         knit_index = KnitGraphIndex(
-            self.repo._packs.signature_index.combined_index,
+            self.repo._pack_collection.signature_index.combined_index,
             add_callback=add_callback, parents=False)
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._packs.signature_index.knit_access)
+            access_method=self.repo._pack_collection.signature_index.knit_access)
         return self.repo._signature_knit
 
 
-class GraphKnitTextStore(VersionedFileStore):
-    """An object to adapt access from VersionedFileStore's to use GraphKnits.
-
-    This should not live through to production: by production time we should
-    have fully integrated the new indexing and have new data for the
-    repository classes; also we may choose not to do a Knit1 compatible
-    new repository, just a Knit3 one. If neither of these happen, this 
-    should definately be cleaned up before merging.
+class KnitPackTextStore(VersionedFileStore):
+    """Presents a TextStore abstraction on top of packs.
 
     This class works by replacing the original VersionedFileStore.
-    We need to do this because the GraphKnitRevisionStore is less
+    We need to do this because the KnitPackRevisionStore is less
     isolated in its layering - it uses services from the repo and shares them
     with all the data written in a single write group.
     """
 
     def __init__(self, repo, transport, weavestore):
-        """Create a GraphKnitTextStore on repo with weavestore.
+        """Create a KnitPackTextStore on repo with weavestore.
 
         This will store its state in the Repository, use the
         indices FileNames to provide a KnitGraphIndex,
         and at the end of transactions write new indices.
         """
-        # don't call base class constructor - its not suitable.
+        # don't call base class constructor - it's not suitable.
         # no transient data stored in the transaction
         # cache.
         self._precious = False
@@ -1316,11 +1337,11 @@ class GraphKnitTextStore(VersionedFileStore):
 
         The transaction parameter is ignored.
         """
-        self.repo._packs.ensure_loaded()
-        add_callback = self.repo._packs.text_index.add_callback
+        self.repo._pack_collection.ensure_loaded()
+        add_callback = self.repo._pack_collection.text_index.add_callback
         # setup knit specific objects
         file_id_index = GraphIndexPrefixAdapter(
-            self.repo._packs.text_index.combined_index,
+            self.repo._pack_collection.text_index.combined_index,
             (file_id, ), 1, add_nodes_callback=add_callback)
         knit_index = KnitGraphIndex(file_id_index,
             add_callback=file_id_index.add_nodes,
@@ -1329,17 +1350,17 @@ class GraphKnitTextStore(VersionedFileStore):
             self.transport.clone('..'),
             None,
             index=knit_index,
-            access_method=self.repo._packs.text_index.knit_access,
+            access_method=self.repo._pack_collection.text_index.knit_access,
             factory=knit.KnitPlainFactory())
 
     get_weave = get_weave_or_empty
 
     def __iter__(self):
         """Generate a list of the fileids inserted, for use by check."""
-        self.repo._packs.ensure_loaded()
+        self.repo._pack_collection.ensure_loaded()
         ids = set()
         for index, key, value, refs in \
-            self.repo._packs.text_index.combined_index.iter_all_entries():
+            self.repo._pack_collection.text_index.combined_index.iter_all_entries():
             ids.add(key[0])
         return iter(ids)
 
@@ -1359,21 +1380,21 @@ class InventoryKnitThunk(object):
 
     def get_weave(self):
         """Get a 'Knit' that contains inventory data."""
-        self.repo._packs.ensure_loaded()
-        add_callback = self.repo._packs.inventory_index.add_callback
+        self.repo._pack_collection.ensure_loaded()
+        add_callback = self.repo._pack_collection.inventory_index.add_callback
         # setup knit specific objects
         knit_index = KnitGraphIndex(
-            self.repo._packs.inventory_index.combined_index,
+            self.repo._pack_collection.inventory_index.combined_index,
             add_callback=add_callback, deltas=True, parents=True)
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
             self.repo.control_files._file_mode,
             create=False, access_mode=self.repo._access_mode(),
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._packs.inventory_index.knit_access)
+            access_method=self.repo._pack_collection.inventory_index.knit_access)
 
 
-class GraphKnitRepository(KnitRepository):
+class KnitPackRepository(KnitRepository):
     """Experimental graph-knit using repository."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
@@ -1382,12 +1403,12 @@ class GraphKnitRepository(KnitRepository):
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
         index_transport = control_files._transport.clone('indices')
-        self._packs = RepositoryPackCollection(self, control_files._transport,
+        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
             index_transport,
             control_files._transport.clone('upload'),
             control_files._transport.clone('packs'))
-        self._revision_store = GraphKnitRevisionStore(self, index_transport, self._revision_store)
-        self.weave_store = GraphKnitTextStore(self, index_transport, self.weave_store)
+        self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
+        self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.) 
@@ -1401,7 +1422,7 @@ class GraphKnitRepository(KnitRepository):
         self._reconcile_fixes_text_parents = False
 
     def _abort_write_group(self):
-        self._packs._abort_write_group()
+        self._pack_collection._abort_write_group()
 
     def _access_mode(self):
         """Return 'w' or 'r' for depending on whether a write lock is active.
@@ -1418,7 +1439,7 @@ class GraphKnitRepository(KnitRepository):
         This implementation accesses the combined revision index to provide
         answers.
         """
-        index = self._packs.revision_index.combined_index
+        index = self._pack_collection.revision_index.combined_index
         search_keys = set()
         for revision_id in revision_ids:
             if revision_id != _mod_revision.NULL_REVISION:
@@ -1443,17 +1464,17 @@ class GraphKnitRepository(KnitRepository):
         return self
 
     def _refresh_data(self):
-        if self._write_lock_count==1 or self.control_files._lock_count==1:
+        if self._write_lock_count == 1 or self.control_files._lock_count == 1:
             # forget what names there are
-            self._packs.reset()
+            self._pack_collection.reset()
             # XXX: Better to do an in-memory merge when acquiring a new lock -
             # factor out code from _save_pack_names.
 
     def _start_write_group(self):
-        self._packs._start_write_group()
+        self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
-        return self._packs._commit_write_group()
+        return self._pack_collection._commit_write_group()
 
     def get_inventory_weave(self):
         return self._inv_thunk.get_weave()
@@ -1501,7 +1522,7 @@ class GraphKnitRepository(KnitRepository):
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._packs.pack()
+        self._pack_collection.pack()
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -1558,7 +1579,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             prefixed=False,
             file_mode=control_files._file_mode,
             versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
+            versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
             )
 
     def _get_revision_store(self, repo_transport, control_files):
@@ -1569,8 +1590,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             prefixed=False,
             precious=True,
             versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'delta':False,
-                                  'factory':knit.KnitPlainFactory(),
+            versionedfile_kwargs={'delta': False,
+                                  'factory': knit.KnitPlainFactory(),
                                  },
             escaped=True,
             )
@@ -1583,9 +1604,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
                                   control_files,
                                   versionedfile_class=knit.KnitVersionedFile,
                                   versionedfile_kwargs={
-                                      'create_parent_dir':True,
-                                      'delay_create':True,
-                                      'dir_mode':control_files._dir_mode,
+                                      'create_parent_dir': True,
+                                      'delay_create': True,
+                                      'dir_mode': control_files._dir_mode,
                                   },
                                   escaped=True)
 
@@ -1635,13 +1656,13 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
                               _serializer=self._serializer)
 
 
-class RepositoryFormatGraphKnit1(RepositoryFormatPack):
+class RepositoryFormatKnitPack1(RepositoryFormatPack):
     """A no-subtrees parameterised Pack repository.
 
     This format was introduced in bzr.dev.
     """
 
-    repository_class = GraphKnitRepository
+    repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
     _serializer = xml5.serializer_v5
 
@@ -1665,7 +1686,7 @@ class RepositoryFormatGraphKnit1(RepositoryFormatPack):
         pass
 
 
-class RepositoryFormatGraphKnit3(RepositoryFormatPack):
+class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """A subtrees parameterised Pack repository.
 
     This repository format uses the xml7 serializer to get:
@@ -1675,7 +1696,7 @@ class RepositoryFormatGraphKnit3(RepositoryFormatPack):
     This format was introduced in bzr.dev.
     """
 
-    repository_class = GraphKnitRepository
+    repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True

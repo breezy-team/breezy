@@ -1974,12 +1974,12 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     'Bazaar Experimental no-subtrees\n',
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatGraphKnit1',
+    'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar Experimental subtrees\n',
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatGraphKnit3',
+    'RepositoryFormatKnitPack3',
     )
 
 
@@ -2298,7 +2298,7 @@ class InterPackRepo(InterSameDataRepository):
     @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatGraphKnit1()
+        return pack_repo.RepositoryFormatKnitPack1()
 
     @staticmethod
     def is_compatible(source, target):
@@ -2344,16 +2344,16 @@ class InterPackRepo(InterSameDataRepository):
                 revision_ids = self.missing_revision_ids(revision_id)
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
-        packs = self.source._packs.all_packs()
-        pack = self.target._packs.create_pack_from_packs(
+        packs = self.source._pack_collection.all_packs()
+        pack = self.target._pack_collection.create_pack_from_packs(
             packs, '.fetch', revision_ids,
             )
         if pack is not None:
-            self.target._packs._save_pack_names()
+            self.target._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._packs.autopack()
+            self.target._pack_collection.autopack()
             return pack.get_revision_count()
         else:
             return 0
@@ -2367,16 +2367,12 @@ class InterPackRepo(InterSameDataRepository):
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
-        source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target.all_revision_ids())
-        actually_present_revisions = target_ids.intersection(source_ids_set)
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
-        return required_topo_revisions
+        return [r for r in source_ids if (r not in target_ids)]
 
 
 class InterModel1and2(InterRepository):
@@ -2436,12 +2432,12 @@ class InterKnit1and2(InterKnitRepo):
         try:
             from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
                 RepositoryFormatKnit3)
-            from bzrlib.repofmt.pack_repo import (RepositoryFormatGraphKnit1,
-                RepositoryFormatGraphKnit3)
+            from bzrlib.repofmt.pack_repo import (RepositoryFormatKnitPack1,
+                RepositoryFormatKnitPack3)
             return (isinstance(source._format,
-                    (RepositoryFormatKnit1, RepositoryFormatGraphKnit1)) and
+                    (RepositoryFormatKnit1, RepositoryFormatKnitPack1)) and
                 isinstance(target._format,
-                    (RepositoryFormatKnit3, RepositoryFormatGraphKnit3))
+                    (RepositoryFormatKnit3, RepositoryFormatKnitPack3))
                 )
         except AttributeError:
             return False

@@ -1934,7 +1934,7 @@ class DirState(object):
             index = {}
             for key, tree_details in self._iter_entries():
                 if tree_details[0][0] == 'f':
-                    index.setdefault(tree_details[0][4], tree_details[0][1])
+                    index[tree_details[0][4]] = tree_details[0][1]
             self._packed_stat_index = index
         return self._packed_stat_index
 
@@ -2318,7 +2318,7 @@ class DirState(object):
             if self._id_index is not None:
                 self._id_index[current_old[0][2]].remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
-        # existing details may either be the record we are making as deleted
+        # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
         # be relocations.
         for update_key in all_remaining_keys:

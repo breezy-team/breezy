@@ -286,7 +286,6 @@ class Graph(object):
                     # or it may have been just reached by all the searchers:
                     for searcher in searchers.itervalues():
                         if ancestor not in searcher.seen:
-                            common = False
                             break
                     else:
                         # The final active searcher has just reached this node,
