@@ -23,23 +23,27 @@ pack-names           index of all live packs
 lock/                lockdir
 ==================== =============================================
 
+Note that for consistency we always write "indices" not "indexes".
+
 This is implemented on top of pack files, which are written once from
 start to end, then left alone.  A pack consists of a body file, plus
 several index files.  There are four index files for each pack, which
 have the same basename and an extension indicating the purpose of the
 index:
 
-==== ========== ======================== ==========================
-extn Purpose    Key                      References
-==== ========== ======================== ==========================
-.tix File texts ``file_id, revision_id`` compression base,
-                                         per-file parents
-.six Signatures ``revision_id,``         -
-.rix Revisions  ``revision_id,``         revision parents
-.iix Inventory  ``revision_id,``         compression base,
-                                         revision parents
-==== ========== ======================== ==========================
+======== ========== ======================== ==========================
+extn     Purpose    Key                      References
+======== ========== ======================== ==========================
+``.tix`` File texts ``file_id, revision_id`` per-file parents,
+                                             compression basis
+                                             per-file parents
+``.six`` Signatures ``revision_id,``         -
+``.rix`` Revisions  ``revision_id,``         revision parents
+``.iix`` Inventory  ``revision_id,``         revision parents,
+                                             compression base
+======== ========== ======================== ==========================
 
+Indices are accessed through the ``bzrlib.index.GraphIndex`` class.  
 Indices are stored as sorted files on disk.  Each line is one record,
 and contains:
 
@@ -58,20 +62,24 @@ When a compression base is given, it indicates that the body of the text
 or inventory is a forward delta from the referenced revision.  The
 compression base list must have length 0 or 1.
 
-The data content for each record is a knit data chunk.  The knits are
-always unannotated - the annotations must be generated when needed.
-(We'd like to cache/memoize the annotations.)  The data hunks can be
-moved between packs without needing to recompress them.
+Like packs, indexes are written only once and then unmodified.  A
+GraphIndex builder is a mutable in-memory graph that can be sorted,
+cross-referenced and written out when the write group completes.
 
 There can also be index entries with a value of 'a' for absent.  These
 records exist just to be pointed to in a graph.  This is used, for
 example, to give the revision-parent pointer when the parent revision is
 in a previous pack.
 
+The data content for each record is a knit data chunk.  The knits are
+always unannotated - the annotations must be generated when needed.
+(We'd like to cache/memoize the annotations.)  The data hunks can be
+moved between packs without needing to recompress them.
+
 It is not possible to regenerate an index from the body file, because it
 contains information stored in the knit index that's not in the body.
 (In particular, the per-file graph is only stored in the index.) 
-We would like to change this in a future format
+We would like to change this in a future format.
 
 The lock is a regular LockDir lock.  The lock is only held for a much
 reduced scope, while updating the pack-names file.  The bulk of the
@@ -101,8 +109,15 @@ The ``pack-names`` file gives the list of all finished non-obsolete
 packs.  (This should always be the same as the list of files in the
 ``packs/`` directory, but the file is needed for readonly http clients
 that can't easily list directories, and it includes other information.)
-The ``pack-names`` file can be recreated by looking at the packs on disk.
-As well as the list of names, it also contains the size in bytes of th`d
+The constraint on the ``pack-names`` list is that every file mentioned
+must exist in the ``packs/`` directory.  
+
+In rare cases, when a writer is interrupted, about-to-be-removed packs
+may still be present in the directory but removed from the list.
+
+As well as the list of names, the pack-names file also contains the
+size, in bytes, of each of the four indices.  This is used to bootstrap
+bisection search within the indices.
 
 In normal use, one pack will be created for each commit to a repository.
 This would build up to an inefficient number of files over time, so a
@@ -121,56 +136,8 @@ with single revisions.  This means that each revision will normally
 initially be created in a single-revision pack, then moved to a
 ten-revision pack, then to a 100-pack, and so on.
 
-
-
-
-Sketched notes on packs
-~~~~~~~~~~~~~~~~~~~~~~~
-
- fast pull:
-
- - query and pull revs
- - query and pull references
- - query and pull further references
- - etc
- - for now:
- - query and pull revs and sigs
- - query and pull inventory with cache on
- - query and pull all of texts
-
- pack:
-
-  - two modes - complete and incremental
-  - complete:
-
-    - grab all revisions, regenerate deltas, etc.
-    - may want data grouping by recreation not by
-      origin. i.e. 'tip' pack has everything to construct
-      revision -1, older packs have data that is not needed
-      for current revisions.
-
-  - incremental:
-
-    - leave most data untouched most of the time
-    - therefore can't really promote old data to be current.
-    - possible approach:
-
-      upper number of packs = sum of digits in the commit count
-      so we need to combine packs whenever a commit rolls over a power
-      of 10 - at most once every 10 commit, possibly much less.
-      exponential backoff of commits per pack file. So the number of
-      revisions per pack is log10(revisions in repository).
-      up to 10 commits - 1 revision per pack
-      up to 100 commits - 2 revisions per pack
-      10 commits - 1 packs, 100 commits - 2 packs
- 
-      - count number of 1-revision packs, if 10 group them
-        into one larger pack.
-      - count number of 10-unit packs. if 10, group those 
-        into one larger pack.
-      - etc
-
-      this approach reads 10 entire packs every 10 commits,
-      100 every 100, 1000 every 1000
+As with other repositories, in normal use data is only inserted.
+However, in some circumstances we may want to garbage-collect or prune
+existing data, or reconcile indexes.
 
   vim: tw=72 ft=rest expandtab
