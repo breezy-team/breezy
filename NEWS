@@ -144,6 +144,8 @@ IN DEVELOPMENT
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
 
+   * Fix ``Inventory.copy()`` and add test for it. (Jelmer Vernooij)
+
    * Handles default value for ListOption in cmd_commit.
      (Vincent Ladeuil, #140432)
 
