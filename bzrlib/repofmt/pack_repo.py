@@ -274,6 +274,7 @@ class NewPack(Pack):
     def abort(self):
         """Cancel creating this pack."""
         self._state = 'aborted'
+        self.write_stream.close()
         # Remove the temporary pack file.
         self.upload_transport.delete(self.random_name)
         # The indices have no state on disk.
