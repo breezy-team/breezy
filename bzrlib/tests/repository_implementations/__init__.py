@@ -312,7 +312,11 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
 
     def check_regexes(self):
         return [
-            "3 inconsistent parents",
+            "5 inconsistent parents",
+            r"a-file-id version rev2 has parents \['rev1a'\] "
+            r"but should have \[\]",
+            r"a-file-id version rev2b has parents \['rev1a'\] "
+            r"but should have \[\]",
             r"a-file-id version rev3 has parents \['rev2'\] "
             r"but should have \['rev1a'\]",
             r"a-file-id version rev5 has parents \['rev2', 'rev2c'\] "
@@ -518,9 +522,12 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
 
     def check_regexes(self):
         return [
-            '1 inconsistent parents',
+            '2 inconsistent parents',
             r"\* a-file-id version current has parents "
-            r"\['modified-something-else'\] but should have \['basis'\]"]
+            r"\['modified-something-else'\] but should have \['basis'\]",
+            r"\* a-file-id version modified-something-else has parents "
+            r"\['basis'\] but should have \[\]",
+            ]
 
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(repo, 'basis', [])
