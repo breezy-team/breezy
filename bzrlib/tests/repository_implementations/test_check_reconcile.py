@@ -158,17 +158,11 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             vf_shas,
             self.shas_for_versions_of_file(repo, scenario.all_versions()))
 
-        corrected_inventories = scenario.corrected_inventories()
-        for inventory_revision, file_version in corrected_inventories:
-            inv = repo.get_inventory(inventory_revision)
-            self.assertEqual(file_version, inv['a-file-id'].revision)
-        
         for file_version in scenario.corrected_fulltexts():
             vf = repo.weave_store.get_weave(
                 'a-file-id', repo.get_transaction())
             self.assertEqual('fulltext', vf._index.get_method(file_version),
                 '%r should be fulltext' % (file_version,))
-
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""

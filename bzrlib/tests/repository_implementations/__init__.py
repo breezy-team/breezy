@@ -119,8 +119,11 @@ class BrokenRepoScenario(object):
             of the file is verified to have the given parents after the
             reconcile.  i.e. this is used to assert that reconcile made the
             changes we expect it to make.
-        :corrected_inventories: XXX, probably remove
-        :corrected_fulltexts: XXX
+    
+    A subclass may define the following optional method as well:
+        :corrected_fulltexts: a list of file versions that should be stored as
+            fulltexts (not deltas) after reconcile.  run_test will verify that
+            this occurs.
     """
 
     def __init__(self, test_case):
@@ -399,9 +402,6 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
             (None, 'rev3'),
             (['rev2'], 'rev4'),
             ]
-
-    def corrected_inventories(self):
-        return [('rev2', 'rev1a')]
 
     def corrected_fulltexts(self):
         return ['rev4']
