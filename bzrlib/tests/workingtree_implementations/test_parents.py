@@ -362,6 +362,10 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         tree._write_inventory(new_shape)
         self.assertDeltaApplicationResultsInExpectedBasis(tree, new_revid,
             delta, new_shape)
+        # The tree should be internally consistent; while this is a moderately
+        # large hammer, this is a particularly sensitive area of code, so the
+        # extra assurance is well worth it.
+        tree._validate()
         osutils.rmtree('tree')
 
     def test_no_parents_just_root(self):
@@ -490,6 +494,23 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         self.add_new_root(new_shape, old_revid, new_revid)
         self.add_dir(new_shape, new_revid, 'parent-id', 'root-id', 'newdir')
         self.add_dir(new_shape, new_revid, 'dir-id', 'parent-id', 'newdir')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_parent_child_swap(self):
+        # test a A->A/B and A/B->A path swap.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_new_root(new_shape, old_revid, new_revid)
+        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
+        self.add_dir(new_shape, new_revid, 'dir-id-A', 'dir-id-B', 'B')
+        self.add_link(new_shape, new_revid, 'link-id-C', 'dir-id-A', 'C', 'C')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
