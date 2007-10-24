@@ -1653,7 +1653,7 @@ class DirState(object):
             index = {}
             for key, tree_details in self._iter_entries():
                 if tree_details[0][0] == 'f':
-                    index.setdefault(tree_details[0][4], tree_details[0][1])
+                    index[tree_details[0][4]] = tree_details[0][1]
             self._packed_stat_index = index
         return self._packed_stat_index
 
