@@ -1049,14 +1049,14 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
         repo2.break_lock()
         self.assertFalse(repo.get_physical_lock_status())
 
-    def test_broken_physical_locks_error_on_release_names_lock(self):
+    def test_broken_physical_locks_error_on__unlock_names_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo._pack_collection.lock_names()
         self.assertTrue(repo.get_physical_lock_status())
         repo2 = repository.Repository.open('.')
         self.prepare_for_break_lock()
         repo2.break_lock()
-        self.assertRaises(errors.LockBroken, repo._pack_collection.release_names)
+        self.assertRaises(errors.LockBroken, repo._pack_collection._unlock_names)
 
 
 class TestExperimentalSubtrees(TestExperimentalNoSubtrees):
