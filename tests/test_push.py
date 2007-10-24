@@ -515,7 +515,58 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertFalse(tree.inventory.has_filename("registry.moved/generic.c"))
         os.mkdir("n")
         BzrDir.open(repos_url+"/trunk").sprout("n")
+
+    def test_rename_dir_changing_contents(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/registry/generic.c': "Tour"})
+        bzrwt.add("registry", "dirid")
+        bzrwt.add("registry/generic.c", "origid")
+        revid1 = bzrwt.commit("Add initial directory + file")
+        bzrwt.rename_one("registry/generic.c", "registry/c.c")
+        self.build_tree({'c/registry/generic.c': "Tour2"})
+        bzrwt.add("registry/generic.c", "newid")
+        revid2 = bzrwt.commit("Other change")
+        bzrwt.rename_one("registry", "registry.moved")
+        revid3 = bzrwt.commit("Rename")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        def check(b):
+            self.assertEquals([revid1, revid2, revid3], b.revision_history())
+            tree = b.repository.revision_tree(revid3)
+            self.assertEquals("origid", tree.path2id("registry.moved/c.c"))
+            self.assertEquals("newid", tree.path2id("registry.moved/generic.c"))
+            self.assertEquals("dirid", tree.path2id("registry.moved"))
+        check(newbranch)
+        os.mkdir("n")
+        BzrDir.open(repos_url+"/trunk").sprout("n")
+        copybranch = Branch.open("n")
+        check(copybranch)
     
+    def test_rename_dir(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/registry/generic.c': "Tour"})
+        bzrwt.add("registry", "dirid")
+        bzrwt.add("registry/generic.c", "origid")
+        revid1 = bzrwt.commit("Add initial directory + file")
+        bzrwt.rename_one("registry", "registry.moved")
+        revid2 = bzrwt.commit("Rename")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newbranch = newdir.import_branch(bzrwt.branch)
+        def check(b):
+            self.assertEquals([revid1, revid2], b.revision_history())
+            tree = b.repository.revision_tree(revid2)
+            self.assertEquals("origid", tree.path2id("registry.moved/generic.c"))
+            self.assertEquals("dirid", tree.path2id("registry.moved"))
+        check(newbranch)
+        os.mkdir("n")
+        BzrDir.open(repos_url+"/trunk").sprout("n")
+        copybranch = Branch.open("n")
+        check(copybranch)
+
     def test_push_non_lhs_parent(self):        
         repos_url = self.make_client("a", "dc")
         bzrwt = BzrDir.create_standalone_workingtree("c", 

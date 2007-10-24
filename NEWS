@@ -54,6 +54,9 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Show proper exception when lightweight checkout is out of date.
 
+   * Fix pulling in changes push earlier by bzr-svn with directory renames 
+     of directories containing files. (#153347)
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)

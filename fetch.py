@@ -22,7 +22,6 @@ from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
 
-from copy import copy
 from cStringIO import StringIO
 import md5
 
@@ -58,7 +57,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                  svn_revprops, id_map, scheme):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
-        self.inventory = copy(prev_inventory)
+        self.inventory = prev_inventory.copy()
         self.revid = revid
         self.id_map = id_map
         self.scheme = scheme
@@ -136,10 +135,21 @@ class RevisionBuildEditor(svn.delta.Editor):
             return self.id_map[new_path]
         return generate_file_id(self.source, self.revid, new_path)
 
+    def _rename(self, file_id, parent_id, path):
+        # Only rename if not right yet
+        if (self.inventory[file_id].parent_id == parent_id and 
+            self.inventory[file_id].name == urlutils.basename(path)):
+            return
+        self.inventory.rename(file_id, parent_id, urlutils.basename(path))
+
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")
         if path in self._premature_deletes:
+            # Delete recursively
             self._premature_deletes.remove(path)
+            for p in self._premature_deletes.copy():
+                if p.startswith("%s/" % path):
+                    self._premature_deletes.remove(p)
         else:
             self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
 
@@ -159,12 +169,13 @@ class RevisionBuildEditor(svn.delta.Editor):
             # This directory was moved here from somewhere else, but the 
             # other location hasn't been removed yet. 
             if copyfrom_path is None:
-                # FIXME: This should never happen!
+                # This should ideally never happen!
                 copyfrom_path = self.old_inventory.id2path(file_id)
+                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
-            self.inventory.rename(file_id, parent_id, urlutils.basename(path))
+            self._rename(file_id, parent_id, path)
             ie = self.inventory[file_id]
         else:
             ie = self.inventory.add_path(path, 'directory', file_id)
@@ -266,12 +277,14 @@ class RevisionBuildEditor(svn.delta.Editor):
             # This file was moved here from somewhere else, but the 
             # other location hasn't been removed yet. 
             if copyfrom_path is None:
-                # FIXME: This should never happen!
+                # This should ideally never happen
                 copyfrom_path = self.old_inventory.id2path(self.file_id)
+                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(self.file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
-            self.inventory.rename(self.file_id, parent_id, urlutils.basename(path))
+            # No need to rename if it's already in the right spot
+            self._rename(self.file_id, parent_id, path)
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
