@@ -20,9 +20,8 @@ That is, tests for reconcile and check.
 """
 
 
-import sha
-
 from bzrlib.inventory import Inventory, InventoryFile
+from bzrlib.osutils import sha
 from bzrlib.revision import Revision
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
@@ -90,7 +89,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             entry.revision = revision
         entry.text_size = 0
         file_contents = '%sline\n' % entry.revision
-        entry.text_sha1 = sha.sha(file_contents).hexdigest()
+        entry.text_sha1 = sha(file_contents).hexdigest()
         inv.add(entry)
         vf = repo.weave_store.get_weave_or_empty(file_id,
                                                  repo.get_transaction())

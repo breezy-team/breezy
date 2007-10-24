@@ -136,7 +136,7 @@ class RevisionSpec(object):
 
     def __new__(cls, spec, _internal=False):
         if _internal:
-            return object.__new__(cls, spec, _internal=_internal)
+            return object.__new__(cls)
 
         symbol_versioning.warn('Creating a RevisionSpec directly has'
                                ' been deprecated in version 0.11. Use'

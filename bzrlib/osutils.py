@@ -35,7 +35,6 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
-import sha
 import shutil
 from shutil import (
     rmtree,
@@ -52,6 +51,17 @@ from bzrlib import (
     win32utils,
     )
 """)
+
+# sha is deprecated in python2.6 but haslib is available as of 2.5
+if sys.version_info < (2, 5):
+    import md5
+    import sha
+else:
+    from hashlib import (
+        md5,
+        sha1 as sha,
+        )
+
 
 import bzrlib
 from bzrlib import symbol_versioning
@@ -580,7 +590,7 @@ def file_iterator(input_file, readsize=32768):
 def sha_file(f):
     if getattr(f, 'tell', None) is not None:
         assert f.tell() == 0
-    s = sha.new()
+    s = sha()
     BUFSIZE = 128<<10
     while True:
         b = f.read(BUFSIZE)
@@ -592,7 +602,7 @@ def sha_file(f):
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha.new()
+    s = sha()
     f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
@@ -604,21 +614,21 @@ def sha_file_by_name(fname):
         os.close(f)
 
 
-def sha_strings(strings, _factory=sha.new):
+def sha_strings(strings, _factory=sha):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f, _factory=sha.new):
+def sha_string(f, _factory=sha):
     return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha.new(b).hexdigest()}
+            'sha1': sha(b).hexdigest()}
 
 
 def compare_files(a, b):

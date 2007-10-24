@@ -19,7 +19,6 @@
 from cStringIO import StringIO
 import difflib
 import gzip
-import sha
 import sys
 
 from bzrlib import (
@@ -50,7 +49,7 @@ from bzrlib.knit import (
     WeaveToKnit,
     KnitSequenceMatcher,
     )
-from bzrlib.osutils import split_lines
+from bzrlib.osutils import sha, split_lines
 from bzrlib.tests import (
     Feature,
     TestCase,
@@ -370,7 +369,7 @@ class LowLevelKnitDataTests(TestCase):
         return sio.getvalue()
 
     def test_valid_knit_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -388,7 +387,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
 
     def test_not_enough_lines(self):
-        sha1sum = sha.new('foo\n').hexdigest()
+        sha1sum = sha('foo\n').hexdigest()
         # record says 2 lines data says 1
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
@@ -405,7 +404,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
 
     def test_too_many_lines(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = sha('foo\nbar\n').hexdigest()
         # record says 1 lines data says 2
         gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
                                         'foo\n'
@@ -423,7 +422,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
 
     def test_mismatched_version_id(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -441,7 +440,7 @@ class LowLevelKnitDataTests(TestCase):
                           data.read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = sha('foo\nbar\n').hexdigest()
         txt = ('version rev-id-1 2 %s\n'
                'foo\n'
                'bar\n'
@@ -460,7 +459,7 @@ class LowLevelKnitDataTests(TestCase):
                           data.read_records_iter_raw(records))
 
     def test_corrupted_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'

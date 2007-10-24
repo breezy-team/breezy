@@ -19,12 +19,11 @@
 # TODO: Testaments with x-bits
 
 import os
-from sha import sha
 
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.testament import Testament, StrictTestament, StrictTestament3
 from bzrlib.transform import TreeTransform
-from bzrlib.osutils import has_symlinks
+from bzrlib.osutils import sha, has_symlinks
 
 
 class TestamentSetup(TestCaseWithTransport):

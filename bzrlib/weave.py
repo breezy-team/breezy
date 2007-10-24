@@ -71,7 +71,6 @@
 from copy import copy
 from cStringIO import StringIO
 import os
-import sha
 import time
 import warnings
 
@@ -86,7 +85,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionNotPresent,
         )
 import bzrlib.errors as errors
-from bzrlib.osutils import sha_strings
+from bzrlib.osutils import sha, sha_strings
 import bzrlib.patiencediff
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -697,7 +696,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = sha.new()
+            sha1s[name] = sha()
             texts[name] = []
             new_inc = set([name])
             for p in self._parents[i]:

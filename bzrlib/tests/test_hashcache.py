@@ -15,18 +15,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-import sha
 import stat
 import sys
 import time
 
+from bzrlib import osutils
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 
 
 def sha1(t):
-    return sha.new(t).hexdigest()
+    return osutils.sha(t).hexdigest()
 
 
 def pause():
