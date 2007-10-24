@@ -44,6 +44,9 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Support svn+ hack when committing in bound branches. (#150699)
 
+   * Give proper error when changes can't be pushed to root of repository. 
+     (#145148)
+
    * Encode = in list branching scheme names (unusable in Subversion property 
      names). (#125751)
 
