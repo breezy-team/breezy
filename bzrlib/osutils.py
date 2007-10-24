@@ -54,8 +54,10 @@ from bzrlib import (
 
 # sha is deprecated in python2.6 but haslib is available as of 2.5
 if sys.version_info < (2, 5):
-    import md5
-    import sha
+    import md5 as _md5
+    md5 = _md5.new
+    import sha as _sha
+    sha = _sha.new
 else:
     from hashlib import (
         md5,
