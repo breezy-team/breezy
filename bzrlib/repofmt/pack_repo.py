@@ -1128,7 +1128,7 @@ class RepositoryPackCollection(object):
         else:
             return all_index.iter_entries(key_filter)
 
-    def release_names(self):
+    def _unlock_names(self):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
@@ -1165,7 +1165,7 @@ class RepositoryPackCollection(object):
             # move the baseline forward
             self._packs_at_load = disk_nodes
         finally:
-            self.release_names()
+            self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         new_names = dict(disk_nodes)
         # drop no longer present nodes
