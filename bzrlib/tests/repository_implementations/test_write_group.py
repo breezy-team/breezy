@@ -61,7 +61,7 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual(None, repo.commit_write_group())
         repo.unlock()
 
-    def test_unlock_after_start_errors(self):
+    def test_unlock_in_write_group(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()

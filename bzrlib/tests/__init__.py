@@ -1090,6 +1090,34 @@ class TestCase(unittest.TestCase):
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
 
+    def callCatchWarnings(self, fn, *args, **kw):
+        """Call a callable that raises python warnings.
+
+        The caller's responsible for examining the returned warnings.
+
+        If the callable raises an exception, the exception is not
+        caught and propagates up to the caller.  In that case, the list
+        of warnings is not available.
+
+        :returns: ([warning_object, ...], fn_result)
+        """
+        # XXX: This is not perfect, because it doesn't override the warnings
+        # filters, and they'll often want to show a warning only once per
+        # source origin.  That might be a problem for repeated tests of
+        # similar situations.  -- mbp 20071024
+        wlist = []
+        def _catcher(message, category, filename, lineno, file=None):
+            # despite the name, 'message' is normally(?) a Warning subclass
+            # instance
+            wlist.append(message)
+        saved_showwarning = warnings.showwarning
+        try:
+            warnings.showwarning = _catcher
+            result = fn(*args, **kw)
+        finally:
+            warnings.showwarning = saved_showwarning
+        return wlist, result
+
     def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
 
@@ -1099,7 +1127,8 @@ class TestCase(unittest.TestCase):
         and will ensure that that is issued for the function being called.
 
         Note that this only captures warnings raised by symbol_versioning.warn,
-        not other callers that go direct to the warning module.
+        not other callers that go direct to the warning module.  To catch
+        general warnings, use callCatchWarnings.
 
         :param expected: a list of the deprecation warnings expected, in order
         :param callable: The callable to call

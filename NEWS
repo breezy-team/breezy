@@ -276,6 +276,9 @@ IN DEVELOPMENT
      makes this behavior available to other users.
      (Martin Pool)
 
+   * New method ``TestCase.call_catch_warnings`` for testing methods that 
+     raises a Python warning.  (Martin Pool)
+
 
 bzr 0.91 2007-09-26
 ===================
