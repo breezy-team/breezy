@@ -240,7 +240,7 @@ class NewPack(Pack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
@@ -334,7 +334,7 @@ class NewPack(Pack):
         self.upload_transport.rename(self.random_name,
                 '../packs/' + self.name + '.pack')
         self._state = 'finished'
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack renamed into place: %s%s->%s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
@@ -368,7 +368,7 @@ class NewPack(Pack):
         index_name = self.index_name(index_type, self.name)
         self.index_sizes[self.index_offset(index_type)] = \
             self.index_transport.put_file(index_name, index.finish())
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
                 time.ctime(), label, self.upload_transport.base,
@@ -619,7 +619,7 @@ class RepositoryPackCollection(object):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024*1024)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
                 for a_pack in packs]
             if revision_ids is not None:
@@ -643,7 +643,7 @@ class RepositoryPackCollection(object):
         # copy revision keys and adjust values
         list(self._copy_nodes_graph(revision_nodes, revision_index_map,
             new_pack._writer, new_pack.revision_index))
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.revision_index.key_count(),
@@ -672,7 +672,7 @@ class RepositoryPackCollection(object):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             text_filter = None
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.inventory_index.key_count(),
@@ -700,7 +700,7 @@ class RepositoryPackCollection(object):
         # copy text keys and adjust values
         list(self._copy_nodes_graph(text_nodes, text_index_map,
             new_pack._writer, new_pack.text_index))
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.text_index.key_count(),
@@ -714,7 +714,7 @@ class RepositoryPackCollection(object):
         # copy signature keys and adjust values
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
             new_pack.signature_index)
-        if 'fetch' in debug.debug_flags:
+        if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
