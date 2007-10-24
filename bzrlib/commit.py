@@ -71,7 +71,9 @@ from bzrlib.errors import (BzrError, PointlessCommit,
 from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
                             minimum_path_selection,
-                            quotefn, sha_file, split_lines)
+                            quotefn, sha_file, split_lines,
+                            splitpath,
+                            )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
@@ -703,7 +705,7 @@ class Commit(object):
                
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
-        deleted_paths = set()
+        deleted_paths = {}
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
         work_inv = self.work_tree.inventory
@@ -717,16 +719,36 @@ class Commit(object):
             if kind == 'directory':
                 self._next_progress_entry()
             # Skip files that have been deleted from the working tree.
-            # The deleted files/directories are also recorded so they
-            # can be explicitly unversioned later. Note that when a
-            # filter of specific files is given, we must only skip/record
-            # deleted files matching that filter.
-            if is_inside_any(deleted_paths, path):
-                continue
+            # The deleted path ids are also recorded so they can be explicitly
+            # unversioned later.
+            if deleted_paths:
+                path_segments = splitpath(path)
+                deleted_dict = deleted_paths
+                for segment in path_segments:
+                    deleted_dict = deleted_dict.get(segment, None)
+                    if deleted_dict is None:
+                        # We took a path not present in the dict.
+                        break
+                    if not deleted_dict:
+                        # We've reached an empty child dir in the dict, so are now
+                        # a sub-path.
+                        break
+                else:
+                    deleted_dict = None
+                if deleted_dict is not None:
+                    # the path has a deleted parent, do not add it.
+                    continue
             content_summary = self.work_tree.path_content_summary(path)
+            # Note that when a filter of specific files is given, we must only
+            # skip/record deleted files matching that filter.
             if not specific_files or is_inside_any(specific_files, path):
                 if content_summary[0] == 'missing':
-                    deleted_paths.add(path)
+                    if not deleted_paths:
+                        # path won't have been split yet.
+                        path_segments = splitpath(path)
+                    deleted_dict = deleted_paths
+                    for segment in path_segments:
+                        deleted_dict = deleted_dict.setdefault(segment, {})
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
                     continue
