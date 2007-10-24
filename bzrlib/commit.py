@@ -422,8 +422,10 @@ class Commit(object):
             raise PointlessCommit()
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
-        if len(self.builder.new_inventory) != 1 and (self.any_entries_changed
-            or self.any_entries_deleted):
+        # unless deletes occured, in which case the length is irrelevant.
+        if (self.any_entries_deleted or 
+            (len(self.builder.new_inventory) != 1 and
+             self.any_entries_changed)):
             return
         raise PointlessCommit()
 
