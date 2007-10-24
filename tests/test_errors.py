@@ -20,7 +20,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
 from bzrlib.tests import TestCase
 
 from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
-                    SVN_ERR_UNKNOWN_HOSTNAME, UpToDateMappings)
+                    SVN_ERR_UNKNOWN_HOSTNAME)
 
 import svn.core
 from svn.core import SubversionException
@@ -73,11 +73,4 @@ class TestConvertError(TestCase):
 
         self.assertEqual(
           "Invalid property value for Subversion property svn:foobar: corrupt", 
-          str(error))
-
-    def test_up_to_date_mappings(self):
-        error = UpToDateMappings("location", 42)
-
-        self.assertEqual(
-          "Branch location is already using the latest bzr-svn mapping version 42.",
           str(error))

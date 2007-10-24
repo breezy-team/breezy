@@ -229,6 +229,7 @@ class cmd_svn_upgrade(Command):
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
+        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
         try:
             wt_to = WorkingTree.open(".")
@@ -252,11 +253,14 @@ class cmd_svn_upgrade(Command):
             from_repository = Repository.open(from_repository)
 
         if wt_to is not None:
-            upgrade_workingtree(wt_to, from_repository, allow_changes=True,
-                                verbose=verbose)
+            renames = upgrade_workingtree(wt_to, from_repository, 
+                                          allow_changes=True, verbose=verbose)
         else:
-            upgrade_branch(branch_to, from_repository, allow_changes=True, 
-                           verbose=verbose)
+            renames = upgrade_branch(branch_to, from_repository, 
+                                     allow_changes=True, verbose=verbose)
+
+        if renames == {}:
+            info("Nothing to do.")
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())

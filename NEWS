@@ -13,6 +13,9 @@ bzr-svn 0.4.4	UNRELEASED
    
    * Make svn-push support --remember.
 
+   * No longer gives trackeback when already upgraded revisions are present.
+     (#130471)
+
   INTERNALS
 
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 

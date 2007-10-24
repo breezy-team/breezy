@@ -66,14 +66,6 @@ def convert_error(err):
         return err
 
 
-class UpToDateMappings(BzrError):
-    _fmt = """Branch %(branch)s is already using the latest bzr-svn mapping version %(mapping_version)s."""
-
-    def __init__(self, branch, mapping_version):
-        self.branch = branch
-        self.mapping_version = mapping_version
-
-
 def convert_svn_error(unbound):
     """Decorator that catches particular Subversion exceptions and 
     converts them to Bazaar exceptions.

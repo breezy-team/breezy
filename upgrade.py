@@ -19,7 +19,7 @@ from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
-from errors import RebaseNotPresent
+from errors import RebaseNotPresent, UpToDateMappings
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
 from scheme import BranchingScheme, guess_scheme_from_branch_path
@@ -81,10 +81,11 @@ def create_upgraded_revid(revid):
 
 
 def upgrade_workingtree(wt, svn_repository, allow_changes=False, verbose=False):
-    upgrade_branch(wt.branch, svn_repository, allow_changes=allow_changes, verbose=verbose)
+    renames = upgrade_branch(wt.branch, svn_repository, allow_changes=allow_changes, verbose=verbose)
     last_revid = wt.branch.last_revision()
     wt.set_parent_trees([(last_revid, wt.branch.repository.revision_tree(last_revid))])
     # TODO: Should also adjust file ids in working tree if necessary
+    return renames
 
 
 def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
@@ -100,6 +101,7 @@ def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
               revid, allow_changes=allow_changes, verbose=verbose)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
+    return renames
 
 
 def check_revision_changed(oldrev, newrev):
@@ -129,6 +131,8 @@ def generate_upgrade_map(revs):
             if scheme is None:
                 scheme = guess_scheme_from_branch_path(bp)
             newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
+            if revid == newrevid:
+                continue
             rename_map[revid] = newrevid
     finally:
         pb.finished()
