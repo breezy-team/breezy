@@ -2581,7 +2581,10 @@ class VersionedFileChecker(object):
                 continue
             text_revision = self.revision_versions.get_text_version(
                 file_id, revision_id)
-            knit_parents = weave.get_parents(revision_id)
+            try:
+                knit_parents = weave.get_parents(revision_id)
+            except errors.RevisionNotPresent:
+                knit_parents = None
             if text_revision != revision_id:
                 # This file version is not referenced by its corresponding
                 # inventory!

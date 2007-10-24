@@ -214,10 +214,13 @@ class Check(object):
             weave_checker = self.repository.get_versioned_file_checker(
                 self.planned_revisions, self.revision_versions)
             result = weave_checker.check_file_version_parents(w, weave_id)
-
-            for revision_id, (weave_parents,correct_parents) in result.items():
+            bad_parents, dangling_versions = result
+            bad_parents = bad_parents.items()
+            for revision_id, (weave_parents,correct_parents) in bad_parents:
                 self.inconsistent_parents.append(
                     (revision_id, weave_id, weave_parents, correct_parents))
+                if weave_parents is None:
+                    weave_parents = []
                 unreferenced_parents = set(weave_parents)-set(correct_parents)
                 for unreferenced_parent in unreferenced_parents:
                     self.unreferenced_ancestors.add(
