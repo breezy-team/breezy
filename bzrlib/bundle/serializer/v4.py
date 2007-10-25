@@ -167,7 +167,10 @@ class BundleReader(object):
         """Iterate through decoded fragments of the file"""
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
-            yield decompressor.decompress(line)
+            try:
+                yield decompressor.decompress(line)
+            except EOFError:
+                return
 
     @staticmethod
     def decode_name(name):
