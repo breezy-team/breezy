@@ -765,7 +765,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack')
+        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -780,7 +780,8 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.check_databases(t)
 
     def check_format(self, t):
-        self.assertEqualDiff('Bazaar knitpack no-subtrees\n',
+        self.assertEqualDiff(
+            "Bazaar Packs Containing Knits Format (bzr 0.92)\n",
                              t.get('format').read())
 
     def assertHasKndx(self, t, knit_name):
@@ -1087,17 +1088,19 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
 class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-subtree')
+        return bzrdir.format_registry.make_bzrdir(
+            'knitpack-subtree-experimental')
 
     def check_format(self, t):
-        self.assertEqualDiff('Bazaar knitpack subtrees\n',
-                             t.get('format').read())
+        self.assertEqualDiff(
+            "Bazaar Packs Containing Knits With Subtrees Format (bzr 0.92)\n",
+            t.get('format').read())
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack')
+        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
 
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""

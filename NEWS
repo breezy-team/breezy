@@ -30,7 +30,7 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * New ``knitpack`` experimental directory format. This is compatible with
+   * New ``knitpack-experimental`` directory format. This is compatible with
      the dirstate-tags format but uses a smarter storage design that greatly
      speeds up many operations, both local and remote. (Robert Collins)
 

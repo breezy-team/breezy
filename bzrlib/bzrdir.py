@@ -2489,25 +2489,26 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('knitpack',
+format_registry.register_metadir('knitpack-experimental',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Incompatible with bzr < 0.92. '
-        'WARNING: This format is experimental so data in it may '
-        'not be upgradable to release formats of bzr.',
+        'NOTE: This format is experimental. Before using it, please read '
+        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     )
-format_registry.register_metadir('knitpack-subtree',
+format_registry.register_metadir('knitpack-subtree-experimental',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. '
         'Incompatible with bzr < 0.92. '
-        'WARNING: This format is experimental so data in it may '
-        'not be upgradable to release formats of bzr.',
+        'NOTE: This format is experimental. Before using it, please read '
+        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
+    experimental=True,
     )
 format_registry.set_default('dirstate-tags')

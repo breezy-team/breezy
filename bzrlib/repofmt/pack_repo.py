@@ -1668,7 +1668,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack')
+        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1677,7 +1677,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar knitpack no-subtrees\n"
+        return "Bazaar Packs Containing Knits Format (bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -1704,7 +1704,8 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     _serializer = xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-subtree')
+        return bzrdir.format_registry.make_bzrdir(
+            'knitpack-subtree-experimental')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1721,7 +1722,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
             
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar knitpack subtrees\n"
+        return "Bazaar Packs Containing Knits With Subtrees Format (bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
