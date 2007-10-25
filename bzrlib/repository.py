@@ -885,6 +885,8 @@ class Repository(object):
         if (self.control_files._lock_count == 1 and
             self.control_files._lock_mode == 'w'):
             if self._write_group is not None:
+                self.abort_write_group()
+                self.control_files.unlock()
                 raise errors.BzrError(
                     'Must end write groups before releasing write locks.')
         self.control_files.unlock()
