@@ -394,8 +394,17 @@ class KnitReconciler(RepoReconciler):
                 version = dangling_version[1]
                 if dangling_version in used_file_versions:
                     # This version *is* used by some revision, even though it
-                    # isn't used by its own revision!  Make sure any revision
-                    # referencing it is stored as a fulltext so that XXX
+                    # isn't used by its own revision!  We make sure any
+                    # revision referencing it is stored as a fulltext
+                    # This avoids bug 155730: it means that clients looking at
+                    # inventories to determine the versions to fetch will not
+                    # miss a required version.  (So clients can assume that if
+                    # they have a complete revision graph, and fetch all file
+                    # versions named by those revisions inventories, then they
+                    # will not have any missing parents for 'delta' knit
+                    # records.)
+                    # XXX: A better, but more difficult and slower fix would be
+                    # to rewrite the inventories referencing this version.
                     full_text_versions.add(version)
                 else:
                     # This version is totally unreferenced.  It should be
@@ -422,13 +431,11 @@ class KnitReconciler(RepoReconciler):
             new_parents[version] = parents
         for version in topo_sort(new_parents.items()):
             if version in unused_versions:
-                mutter('Omitting %s from %s', version, file_id)
                 continue
             lines = vf.get_lines(version)
             parents = new_parents[version]
             if parents and (parents[0] in full_text_versions):
-                # Force a fulltext
-                mutter('forcing fulltext for %s', version)
+                # Force this record to be a fulltext, not a delta.
                 new_vf._add(version, lines, parents, False,
                     None, None, None, False)
             else:

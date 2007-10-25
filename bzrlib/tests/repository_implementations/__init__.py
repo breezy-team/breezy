@@ -140,9 +140,6 @@ class BrokenRepoScenario(object):
     def add_revision(self, repo, revision_id, inv, parent_ids):
         return self.test_case.add_revision(repo, revision_id, inv, parent_ids)
 
-    def corrected_inventories(self):
-        return []
-    
     def corrected_fulltexts(self):
         return []
 

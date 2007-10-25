@@ -2536,6 +2536,13 @@ class _RevisionTextVersionCache(object):
             return parents
 
     def used_file_versions(self):
+        """Return a set of (revision_id, file_id) pairs for each file version
+        referenced by any inventory cached by this _RevisionTextVersionCache.
+
+        If the entire repository has been cached, this can be used to find all
+        file versions that are actually referenced by inventories.  Thus any
+        other file version is completely unused and can be removed safely.
+        """
         result = set()
         for inventory_summary in self.revision_versions.itervalues():
             result.update(inventory_summary.items())
@@ -2550,6 +2557,9 @@ class VersionedFileChecker(object):
         self.repository = repository
     
     def calculate_file_version_parents(self, revision_id, file_id):
+        """Calculate the correct parents for a file version according to
+        the inventories.
+        """
         text_revision = self.revision_versions.get_text_version(
             file_id, revision_id)
         if text_revision is None:
@@ -2572,6 +2582,18 @@ class VersionedFileChecker(object):
         return new_parents
 
     def check_file_version_parents(self, weave, file_id):
+        """Check the parents stored in a versioned file are correct.
+
+        It also detects file versions that are not referenced by their
+        corresponding revision's inventory.
+
+        :returns: A tuple of (wrong_parents, dangling_file_version).
+            wrong_parents is a dict mapping {revision_id: (stored_parents,
+            correct_parents)} for each revision_id where the stored parents
+            are not correct.  dangling_file_version is a set of revision_ids
+            for versions that are present in this versioned file, but not used
+            by the corresponding inventory.
+        """
         wrong_parents = {}
         dangling_file_version = set()
         for num, revision_id in enumerate(self.planned_revisions):
@@ -2588,9 +2610,6 @@ class VersionedFileChecker(object):
             if text_revision != revision_id:
                 # This file version is not referenced by its corresponding
                 # inventory!
-                mutter('File %s version %s not referenced by '
-                       'corresponding inventory.',
-                       file_id, revision_id)
                 dangling_file_version.add((file_id, revision_id))
             if correct_parents != knit_parents:
                 wrong_parents[revision_id] = (knit_parents, correct_parents)
