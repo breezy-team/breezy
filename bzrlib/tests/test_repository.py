@@ -975,9 +975,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                 self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
                 self.assertEqual(2, len(r1._pack_collection.names()))
             finally:
-                r1.unlock()
+                r2.unlock()
         finally:
-            r2.unlock()
+            r1.unlock()
 
     def test_concurrent_writer_second_preserves_dropping_a_pack(self):
         format = self.get_format()
@@ -1045,9 +1045,9 @@ class TestExperimentalNoSubtrees(TestCaseWithTransport):
                 self.assertEqual(1, len(r1._pack_collection.names()))
                 self.assertFalse(name_to_drop in r1._pack_collection.names())
             finally:
-                r1.unlock()
+                r2.unlock()
         finally:
-            r2.unlock()
+            r1.unlock()
 
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
