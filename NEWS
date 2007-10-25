@@ -34,7 +34,7 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Fix compatibility with 0.92.
 
-   * Fix compatibility with packs.
+   * Fix compatibility with packs. (#139442)
 
    * Handle long file names with unicode characters correctly on 
      python2.4 (#129334)

@@ -19,7 +19,7 @@ from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
-from errors import RebaseNotPresent, UpToDateMappings
+from errors import RebaseNotPresent
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
 from scheme import BranchingScheme, guess_scheme_from_branch_path

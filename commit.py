@@ -28,6 +28,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from copy import deepcopy
+from errors import ChangesRootLHSHistory
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
@@ -399,7 +400,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             name = "/".join(elements)
             if replace_existing:
                 if name == "":
-                    raise BzrError("changing lhs branch history not possible on repository root")
+                    raise ChangesRootLHSHistory()
                 self.mutter("removing branch dir %r" % name)
                 self.editor.delete_entry(name, -1, ret[-1])
             if base_path is not None:
@@ -452,9 +453,12 @@ class SvnCommitBuilder(RootCommitBuilder):
                     replace_existing = True
 
             # TODO: Accept create_prefix argument (#118787)
-            branch_batons = self.open_branch_batons(root, bp_parts,
-                existing_bp_parts, self.base_path, self.base_revnum, 
-                replace_existing)
+            try:
+                branch_batons = self.open_branch_batons(root, bp_parts,
+                    existing_bp_parts, self.base_path, self.base_revnum, 
+                    replace_existing)
+            except ChangesRootLHSHistory:
+                raise BzrError("Revision %r changes left hand side history. Use rebase and push again or push to a path inside the repository.")
 
             # Make sure the root id is stored properly
             if (self.old_inv.root is None or 

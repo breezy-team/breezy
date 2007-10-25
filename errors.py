@@ -42,6 +42,10 @@ class NoSvnRepositoryPresent(NoRepositoryPresent):
         self.path = url
 
 
+class ChangesRootLHSHistory(BzrError):
+    _fmt = """changing lhs branch history not possible on repository root"""
+
+
 def convert_error(err):
     """Convert a Subversion exception to the matching BzrError.
 
