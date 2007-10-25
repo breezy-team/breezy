@@ -71,10 +71,18 @@ Upgrading an existing branch or repository to knitpack format
 If you have an existing branch and wish to migrate it to
 a ``knitpack`` format, use the ``upgrade`` command like this::
 
-  bzr upgrade path-to-my-branch
+  bzr upgrade --knitpack-experimental path-to-my-branch
 
-If branches are within a shared repository, each branch needs to be
-upgraded separately.
+If you are using a shared repository, run::
+
+  bzr upgrade --knitpack-experimental ROOT_OF_REPOSITORY
+
+to upgrade the history database. Note that this will not
+alter the branch format of each branch, so
+you will need to also upgrade each branch individually
+if you are upgrading from an old (e.g. < 0.17) bzr.
+More modern bzr's will already have the branch format at
+our latest branch format which adds support for tags.
 
 Starting a new knitpack branch from one in an older format
 ----------------------------------------------------------
@@ -108,8 +116,8 @@ As a reminder, any of the above approaches can fail if the source branch
 has inconsistent data within it and hasn't been reconciled yet. Please
 be sure to check that before reporting problems.
 
-Testing the knitpack-subtree-experimental format
-------------------------------------------------
+Testing packs for bzr-svn users
+-------------------------------
 
 If you are using ``bzr-svn`` or are testing the prototype subtree support,
 you can still use and assist in testing KnitPacks. The commands to use
