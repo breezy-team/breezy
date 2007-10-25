@@ -53,16 +53,12 @@ class RevisionBuildEditor(svn.delta.Editor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
-    def __init__(self, source, target, branch_path, prev_inventory, revid, 
-                 svn_revprops, id_map, scheme):
-        self.branch_path = branch_path
+    def __init__(self, source, target, prev_inventory, svn_revprops, id_map):
+        self.target = target
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
-        self.revid = revid
         self.id_map = id_map
-        self.scheme = scheme
         self.source = source
-        self.target = target
         self.transact = target.get_transaction()
         self.dir_baserev = {}
         self._bzr_merges = []
@@ -71,6 +67,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._svn_revprops = svn_revprops
         self._premature_deletes = set()
         self.pool = Pool()
+
+    def start_revision(self, revid, scheme, branch_path):
+        self.revid = revid
+        self.scheme = scheme
+        self.branch_path = branch_path
 
     def _get_parent_ids(self):
         return self.source.revision_parents(self.revid, self._bzr_merges)
@@ -370,10 +371,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
-    def __init__(self, source, target, branch_path, prev_inventory, revid,
-                 svn_revprops, id_map, scheme):
+    def __init__(self, source, target, prev_inventory, 
+                 svn_revprops, id_map):
         RevisionBuildEditor.__init__(self, source, target, 
-            branch_path, prev_inventory, revid, svn_revprops, id_map, scheme)
+            prev_inventory, svn_revprops, id_map)
         self.weave_store = target.weave_store
         self.target.start_write_group()
 
@@ -406,10 +407,10 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
 class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
     """Revision Build Editor for Subversion that is specific for the packs API.
     """
-    def __init__(self, source, target, branch_path, prev_inventory, revid,
+    def __init__(self, source, target, prev_inventory, 
                  svn_revprops, id_map, scheme):
         WeaveRevisionBuildEditor.__init__(self, source, target, 
-            branch_path, prev_inventory, revid, svn_revprops, id_map, scheme)
+            prev_inventory, svn_revprops, id_map)
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
         return self.target._packs._add_text_to_weave(file_id,
@@ -429,7 +430,7 @@ class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
     def __init__(self, source, target, branch_path, prev_inventory, revid,
                  svn_revprops, id_map, scheme):
         RevisionBuildEditor.__init__(self, source, target, 
-            branch_path, prev_inventory, revid, svn_revprops, id_map, scheme)
+            branch_path, prev_inventory, svn_revprops, id_map, scheme)
         raise NotImplementedError(self)
 
 
@@ -516,7 +517,6 @@ class InterFromSvnRepository(InterRepository):
         self.target.lock_write()
         try:
             for revid in reversed(needed):
-                (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
                 parent_revid = parents[revid]
@@ -529,6 +529,7 @@ class InterFromSvnRepository(InterRepository):
                     assert prev_inv is not None
                     parent_inv = prev_inv
 
+                (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
                 changes = self.source._log.get_revision_paths(revnum, branch)
                 renames = self.source.revision_fileid_renames(revid)
                 id_map = self.source.transform_fileid_map(self.source.uuid, 
@@ -539,9 +540,11 @@ class InterFromSvnRepository(InterRepository):
                     revbuildklass = PackRevisionBuildEditor
 
                 editor = revbuildklass(self.source, self.target, 
-                             branch, parent_inv, revid, 
+                             parent_inv, 
                              self.source._log.get_revision_info(revnum),
-                             id_map, scheme)
+                             id_map)
+
+                editor.start_revision(revid, scheme, branch)
 
                 try:
                     pool = Pool()
