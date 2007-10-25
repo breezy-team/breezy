@@ -30,6 +30,18 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``knitpack-experimental`` repository format. This is interoperable with
+     the ``dirstate-tags`` format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. This new format can be
+     used as an option to the ``init``, ``init-repository`` and ``upgrade``
+     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     for further details. (Robert Collins)
+
+   * For users of bzr-svn (and those testing the prototype subtree support) that
+     wish to try packs, a new ``knitpack-subtree-experimental`` format has also
+     been added. This is interoperable with the ``dirstate-subtrees`` format.
+     (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -89,6 +101,9 @@ IN DEVELOPMENT
 
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
+
+   * Experimental directory formats can now be marked with
+     ``experimental = True`` during registration. (Ian Clatworthy)
 
   DOCUMENTATION:
 

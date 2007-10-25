@@ -1660,7 +1660,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
 class RepositoryFormatKnitPack1(RepositoryFormatPack):
     """A no-subtrees parameterised Pack repository.
 
-    This format was introduced in bzr.dev.
+    This format was introduced in 0.92.
     """
 
     repository_class = KnitPackRepository
@@ -1668,7 +1668,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('experimental')
+        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1677,11 +1677,11 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Experimental no-subtrees\n"
+        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return "Experimental no-subtrees"
+        return "Packs containing knits without subtree support"
 
     def check_conversion_target(self, target_format):
         pass
@@ -1694,7 +1694,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
      - support for recording full info about the tree root
      - support for recording tree-references
 
-    This format was introduced in bzr.dev.
+    This format was introduced in 0.92.
     """
 
     repository_class = KnitPackRepository
@@ -1704,7 +1704,8 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     _serializer = xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('experimental-subtree')
+        return bzrdir.format_registry.make_bzrdir(
+            'knitpack-subtree-experimental')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1721,8 +1722,8 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
             
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Experimental subtrees\n"
+        return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return "Experimental subtrees\n"
+        return "Packs containing knits with subtree support\n"
