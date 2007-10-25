@@ -397,20 +397,22 @@ class ContainerPushParser(object):
         self._buffer += bytes
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
-        buffer_length = None
-        while len(self._buffer) != buffer_length:
-            buffer_length = len(self._buffer)
+        last_buffer_length = None
+        cur_buffer_length = len(self._buffer)
+        while cur_buffer_length != last_buffer_length:
+            last_buffer_length = cur_buffer_length
             self._state_handler()
+            cur_buffer_length = len(self._buffer)
 
     def read_pending_records(self):
         records = self._parsed_records
         self._parsed_records = []
         return records
     
-    def _consume_until_byte(self, byte):
-        """Take all bytes up to the given out of the buffer, and return it.
+    def _consume_line(self):
+        """Take a line out of the buffer, and return the line.
 
-        If the specified byte is not found in the buffer, the buffer is
+        If a newline byte is not found in the buffer, the buffer is
         unchanged and this returns None instead.
         """
         newline_pos = self._buffer.find('\n')
@@ -420,9 +422,6 @@ class ContainerPushParser(object):
             return line
         else:
             return None
-
-    def _consume_line(self):
-        return self._consume_until_byte('\n')
 
     def _state_expecting_format_line(self):
         line = self._consume_line()
@@ -435,9 +434,12 @@ class ContainerPushParser(object):
         if len(self._buffer) >= 1:
             record_type = self._buffer[0]
             self._buffer = self._buffer[1:]
-            if record_type != 'B':
-                raise NotImplementedError('XXX')
-            self._state_handler = self._state_expecting_length
+            if record_type == 'B':
+                self._state_handler = self._state_expecting_length
+            elif record_type == 'E':
+                self._state_handler = self._state_expecting_nothing
+            else:
+                raise errors.UnknownRecordTypeError(record_type)
 
     def _state_expecting_length(self):
         line = self._consume_line()
@@ -451,14 +453,13 @@ class ContainerPushParser(object):
 
     def _state_expecting_name(self):
         encoded_name_parts = self._consume_line()
-        if encoded_name_parts is not None:
-            if encoded_name_parts == '':
-                self._state_handler = self._state_expecting_body
-            else:
-                name_parts = tuple(encoded_name_parts.split('\x00'))
-                for name_part in name_parts:
-                    _check_name(name_part)
-                self._current_record_names.append(name_parts)
+        if encoded_name_parts == '':
+            self._state_handler = self._state_expecting_body
+        elif encoded_name_parts:
+            name_parts = tuple(encoded_name_parts.split('\x00'))
+            for name_part in name_parts:
+                _check_name(name_part)
+            self._current_record_names.append(name_parts)
             
     def _state_expecting_body(self):
         if len(self._buffer) >= self._current_record_length:
@@ -469,4 +470,45 @@ class ContainerPushParser(object):
             self._reset_current_record()
             self._state_handler = self._state_expecting_record_type
 
+    def _state_expecting_nothing(self):
+        pass
+
+    def bytes_to_read(self):
+        newline_terminated_states = [
+            self._state_expecting_name,
+            self._state_expecting_length,
+            self._state_expecting_format_line,
+            ]
+        if self._state_handler in newline_terminated_states:
+            return 'line', None
+        elif self._state_handler == self._state_expecting_record_type:
+            return 'bytes', 1
+        elif self._state_handler == self._state_expecting_body:
+            remaining = self._current_record_length - len(self._buffer)
+            if remaining < 0:
+                remaining = 0
+            return 'bytes', remaining
+        elif self._state_handler == self._state_expecting_nothing:
+            return 'end', None
+        else:
+            raise AssertionError, (
+                'Unknown ContainerPushParser state %r' % self._state_handler)
+
+
+def iter_records_from_file(source_file):
+    parser = ContainerPushParser()
+    while True:
+        read_what, read_how_much = parser.bytes_to_read()
+        if read_what == 'line':
+            bytes = source_file.readline()
+        elif read_what == 'bytes':
+            read_how_much = max(read_how_much, 16384)
+            bytes = source_file.read(read_how_much)
+        elif read_what == 'end':
+            break
+        else:
+            raise AssertionError, "Bad bytes_to_read: %r" % (bytes_to_read,)
+        parser.accept_bytes(bytes)
+        for record in parser.read_pending_records():
+            yield record
 
