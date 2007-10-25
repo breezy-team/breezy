@@ -388,6 +388,7 @@ class ContainerPushParser(object):
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
         self._reset_current_record()
+        self.finished = False
 
     def _reset_current_record(self):
         self._current_record_length = None
@@ -437,6 +438,7 @@ class ContainerPushParser(object):
             if record_type == 'B':
                 self._state_handler = self._state_expecting_length
             elif record_type == 'E':
+                self.finished = True
                 self._state_handler = self._state_expecting_nothing
             else:
                 raise errors.UnknownRecordTypeError(record_type)
@@ -473,42 +475,23 @@ class ContainerPushParser(object):
     def _state_expecting_nothing(self):
         pass
 
-    def bytes_to_read(self):
-        newline_terminated_states = [
-            self._state_expecting_name,
-            self._state_expecting_length,
-            self._state_expecting_format_line,
-            ]
-        if self._state_handler in newline_terminated_states:
-            return 'line', None
-        elif self._state_handler == self._state_expecting_record_type:
-            return 'bytes', 1
-        elif self._state_handler == self._state_expecting_body:
+    def read_size_hint(self):
+        hint = 16384
+        if self._state_handler == self._state_expecting_body:
             remaining = self._current_record_length - len(self._buffer)
             if remaining < 0:
                 remaining = 0
-            return 'bytes', remaining
-        elif self._state_handler == self._state_expecting_nothing:
-            return 'end', None
-        else:
-            raise AssertionError, (
-                'Unknown ContainerPushParser state %r' % self._state_handler)
+            return max(hint, remaining)
+        return hint
 
 
 def iter_records_from_file(source_file):
     parser = ContainerPushParser()
     while True:
-        read_what, read_how_much = parser.bytes_to_read()
-        if read_what == 'line':
-            bytes = source_file.readline()
-        elif read_what == 'bytes':
-            read_how_much = max(read_how_much, 16384)
-            bytes = source_file.read(read_how_much)
-        elif read_what == 'end':
-            break
-        else:
-            raise AssertionError, "Bad bytes_to_read: %r" % (bytes_to_read,)
+        bytes = source_file.read(parser.read_size_hint())
         parser.accept_bytes(bytes)
         for record in parser.read_pending_records():
             yield record
+        if parser.finished:
+            break
 
