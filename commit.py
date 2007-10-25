@@ -453,12 +453,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                     replace_existing = True
 
             # TODO: Accept create_prefix argument (#118787)
-            try:
-                branch_batons = self.open_branch_batons(root, bp_parts,
-                    existing_bp_parts, self.base_path, self.base_revnum, 
-                    replace_existing)
-            except ChangesRootLHSHistory:
-                raise BzrError("Revision %r changes left hand side history. Use rebase and push again or push to a path inside the repository.")
+            branch_batons = self.open_branch_batons(root, bp_parts,
+                existing_bp_parts, self.base_path, self.base_revnum, 
+                replace_existing)
 
             # Make sure the root id is stored properly
             if (self.old_inv.root is None or 
@@ -683,6 +680,9 @@ def push(target, source, revision_id, validate=False):
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
+    except ChangesRootLHSHistory:
+        raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
+
     if validate:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)

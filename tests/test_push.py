@@ -16,7 +16,7 @@
 
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import AlreadyBranchError, DivergedBranches
+from bzrlib.errors import AlreadyBranchError, BzrError, DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.merge import Merger, Merge3Merger
 from bzrlib.progress import DummyProgress
@@ -28,6 +28,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import svn.core
+from errors import ChangesRootLHSHistory
 from time import sleep
 from commit import push
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
@@ -356,8 +357,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         finally:
             wt.unlock()
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
-        raise KnownFailure("can't work for repository root")
-        wt.branch.push(Branch.open(repos_url))
+        self.assertRaises(BzrError, 
+                lambda: wt.branch.push(Branch.open(repos_url)))
 
     def test_push_replace_existing_branch(self):
         repos_url = self.make_client("test", "svnco")
