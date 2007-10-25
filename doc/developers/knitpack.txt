@@ -7,6 +7,18 @@ KnitPack repository format
 Using KnitPack repositories
 ===========================
 
+Motivation
+----------
+
+KnitPack is a new repository format for Bazaar, which is expected to be
+faster both locally and over the network, is usually more compact, and
+will work with more FTP servers.
+
+Our benchmarking results to date have been very promising. We fully expect
+to make a pack-based format the default in the near future.  We would
+therefore like as many people as possible using KnitPack repositories,
+benchmarking the results and telling us where improvements are still needed.
+
 Preparation
 -----------
 
@@ -56,13 +68,13 @@ In other words, use the normal sequence of commands but add the
 Upgrading an existing branch or repository to knitpack format
 -------------------------------------------------------------
 
-If you have an existing branch or repository and wish to migrate it to
+If you have an existing branch and wish to migrate it to
 a ``knitpack`` format, use the ``upgrade`` command like this::
 
-  bzr upgrade path-to-my-repo
+  bzr upgrade path-to-my-branch
 
-If ``path-to-my-repo`` is not provided, the current repository - and
-all branches within it - will be upgraded.
+If branches are within a shared repository, each branch needs to be
+upgraded separately.
 
 Starting a new knitpack branch from one in an older format
 ----------------------------------------------------------
@@ -83,7 +95,7 @@ Here are the commands for using the ``upgrade`` approach::
 
     bzr branch my-source-branch my-new-branch
     cd my-new-branch
-    bzr upgrade --knitpack-experimental
+    bzr upgrade --knitpack-experimental .
 
 Here are the commands for the shared repository approach::
 
