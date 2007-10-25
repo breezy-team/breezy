@@ -2478,22 +2478,23 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('experimental',
+format_registry.register_metadir('knitpack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
-    help='New in XXX: Experimental format with data compatible with dirstate '
-        'format repositories. Cannot be read except with bzr.dev. '
-        'WARNING: This format is unstable and data in it will not be upgradable'
-        ' to release formats of bzr.',
+    help='New in 0.92: Pack-based format with data compatible with '
+        'dirstate-tags format repositories. Incompatible with bzr < 0.92. '
+        'WARNING: This format is experimental so data in it may '
+        'not be upgradable to release formats of bzr.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('experimental-subtree',
+format_registry.register_metadir('knitpack-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
-    help='New in XXX: Experimental format with data compatible with '
-        'dirstate-with-subtree format repositories. Cannot be read except with'
-        ' bzr.dev. WARNING: This format is unstable and data in it will not be'
-        ' upgradable to release formats of bzr.',
+    help='New in 0.92: Pack-based format with data compatible with '
+        'dirstate-with-subtree format repositories. '
+        'Incompatible with bzr < 0.92. '
+        'WARNING: This format is experimental so data in it may '
+        'not be upgradable to release formats of bzr.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,

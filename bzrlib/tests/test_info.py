@@ -138,7 +138,8 @@ class TestInfo(tests.TestCaseWithTransport):
                 # these are typically hidden or aliases for other formats
                 continue
             expected = None
-            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
+            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
+                'knitpack', 'knitpack-subtree'):
                 expected = 'dirstate or dirstate-tags'
             if key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
