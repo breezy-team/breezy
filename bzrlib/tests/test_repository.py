@@ -781,7 +781,7 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def check_format(self, t):
         self.assertEqualDiff(
-            "Bazaar Packs Containing Knits Format (bzr 0.92)\n",
+            "Bazaar pack repository format 1 (needs bzr 0.92)\n",
                              t.get('format').read())
 
     def assertHasKndx(self, t, knit_name):
@@ -1093,7 +1093,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
     def check_format(self, t):
         self.assertEqualDiff(
-            "Bazaar Packs Containing Knits With Subtrees Format (bzr 0.92)\n",
+            "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n",
             t.get('format').read())
 
 
