@@ -30,6 +30,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``knitpack`` experimental directory format. This is compatible with
+     the dirstate-tags format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -89,6 +93,9 @@ IN DEVELOPMENT
 
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
+
+   * Experimental directory formats can now be clearly marked as such.
+     (Ian Clatworthy)
 
   DOCUMENTATION:
 
