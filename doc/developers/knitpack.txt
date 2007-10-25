@@ -1,5 +1,126 @@
+==========================
 KnitPack repository format
 ==========================
+
+.. contents::
+
+Using KnitPack repositories
+===========================
+
+Preparation
+-----------
+
+A small percentage of existing repositories may have some inconsistent
+data within them. It's is a good idea to check the integrity of your
+repositories before migrating them to knitpack format. To do this, run::
+
+  bzr check
+
+If that reports a problem, run this command::
+
+  bzr reconcile
+
+Note that this can take many hours for repositories with deep history
+so be sure to set aside some time for this if it is required.
+
+Creating a new knitpack branch
+------------------------------
+
+If you're starting a project from scratch, it's easy to make it a
+``knitpack`` one. Here's how::
+
+  cd my-stuff
+  bzr init --knitpack-experimental
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--knitpack-experimental`` option to the ``init`` command.
+
+Creating a new knitpack repository
+----------------------------------
+
+If you're starting a project from scratch and wish to use a shared repository
+for branches, you can make it a ``knitpack`` repository like this::
+
+  cd my-repo
+  bzr init-repo --knitpack-experimental .
+  cd my-stuff
+  bzr init
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--knitpack-experimental`` option to the ``init-repo`` command.
+
+Upgrading an existing branch or repository to knitpack format
+-------------------------------------------------------------
+
+If you have an existing branch or repository and wish to migrate it to
+a ``knitpack`` format, use the ``upgrade`` command like this::
+
+  bzr upgrade path-to-my-repo
+
+If ``path-to-my-repo`` is not provided, the current repository - and
+all branches within it - will be upgraded.
+
+Starting a new knitpack branch from one in an older format
+----------------------------------------------------------
+
+This can be done in one of several ways:
+
+1. Create a new branch and pull into it
+2. Create a standalone branch and upgrade its format
+3. Create a knitpack shared repository and branch into it
+
+Here are the commands for using the ``pull`` approach::
+
+    bzr init --knitpack-experimental my-new-branch
+    cd my-new-branch
+    bzr pull my-source-branch
+
+Here are the commands for using the ``upgrade`` approach::
+
+    bzr branch my-source-branch my-new-branch
+    cd my-new-branch
+    bzr upgrade --knitpack-experimental
+
+Here are the commands for the shared repository approach::
+
+  cd my-repo
+  bzr init-repo --knitpack-experimental .
+  bzr branch my-source-branch my-new-branch
+  cd my-new-branch
+ 
+As a reminder, any of the above approaches can fail if the source branch
+has inconsistent data within it and hasn't been reconciled yet. Please
+be sure to check that before reporting problems.
+
+Testing the knitpack-subtree-experimental format
+------------------------------------------------
+
+If you are using ``bzr-svn`` or are testing the prototype subtree support,
+you can still use and assist in testing KnitPacks. The commands to use
+are identical to the ones given above except that the name of the format
+to use is ``knitpack-subtree-experimental``.
+
+WARNING: Note that the subtree formats, ``distate-subtree`` and
+``knitpack-subtree-experimental``, are **not** production strength yet and
+may cause unexpected problems. They are required for the bzr-svn
+plug-in but should otherwise ony be used by people happy to live on the
+bleeding edge. If you are using bzr-svn, you're on the bleeding edge anyway.
+:-)
+
+Reporting problems
+------------------
+
+If you need any help or encounter any problems, please contact the developers
+via the usual ways, i.e. chat to us on IRC or send a message to our mailing
+list. See http://bazaar-vcs.org/BzrSupport for contact details.
+
+
+Technical notes
+===============
 
 Bazaar 0.92 adds a new format (experimental at first) implemented in
 ``bzrlib.repofmt.pack_repo.py``.  
