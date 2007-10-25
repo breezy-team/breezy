@@ -1677,7 +1677,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Packs Containing Knits Format (bzr 0.92)\n"
+        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -1722,7 +1722,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
             
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Packs Containing Knits With Subtrees Format (bzr 0.92)\n"
+        return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

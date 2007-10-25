@@ -1972,12 +1972,12 @@ format_registry.register_lazy(
 # post-subtrees to allow ease of testing.
 # NOTE: These are experimental in 0.92.
 format_registry.register_lazy(
-    'Bazaar Packs Containing Knits Format (bzr 0.92)\n',
+    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
-    'Bazaar Packs Containing Knits With Subtrees Format (bzr 0.92)\n',
+    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack3',
     )
