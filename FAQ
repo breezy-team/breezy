@@ -44,7 +44,7 @@ or, if you would like to try the experimental packs format:
 
 ::
 
- $ bzr upgrade --experimental-subtree 
+ $ bzr upgrade --knitpack-subtree 
 
 ===========================================================================
 Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
