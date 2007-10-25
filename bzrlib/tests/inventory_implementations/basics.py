@@ -75,6 +75,12 @@ class TestInventoryBasics(TestCase):
         self.assertEqual('some-tree-root', inv2.root.file_id)
         self.assertEqual('hello', inv2['hello-id'].name)
 
+    def test_copy_empty(self):
+        """Make sure an empty inventory can be copied."""
+        inv = self.make_inventory(root_id=None)
+        inv2 = inv.copy()
+        self.assertIs(None, inv2.root)
+
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""
         inv = self.make_inventory('TREE_ROOT')

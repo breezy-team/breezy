@@ -948,6 +948,8 @@ class Inventory(object):
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
         entries = self.iter_entries()
+        if self.root is None:
+            return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
