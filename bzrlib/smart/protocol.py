@@ -401,13 +401,9 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             new_char = self._request.read_bytes(1)
             if new_char == '':
                 # end of file encountered reading from server
-                if len(line) == 0:
-                    # disconnected before any data read
-                    raise errors.ConnectionErrorOnStartUp(
-                        "please check connectivity and permissions")
-                else:
-                    # disconnected after some data received
-                    raise errors.ConnectionReset("connection timeout")
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
             line += new_char
         return line
 

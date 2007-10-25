@@ -1424,25 +1424,18 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
 
-    def test_connection_error_on_startup(self):
+    def test_connection_closed_reporting(self):
         input = StringIO()
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
         request = client_medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call('hello')
-        self.assertRaises(errors.ConnectionErrorOnStartUp, 
+        ex = self.assertRaises(errors.ConnectionReset, 
             smart_protocol.read_response_tuple)
-
-    def test_connection_error_during_line(self):
-        input = StringIO("line with no newline")
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('hello')
-        self.assertRaises(errors.ConnectionReset, 
-            smart_protocol.read_response_tuple)
+        self.assertEqual("Connection closed: "
+            "please check connectivity and permissions "
+            "(and try -Dhpss if further diagnosis is required)", str(ex))
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()

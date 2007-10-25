@@ -1416,11 +1416,6 @@ class ConnectionError(TransportError):
     _fmt = "Connection error: %(msg)s %(orig_error)s"
 
 
-class ConnectionErrorOnStartUp(TransportError):
-
-    _fmt = "Disconnected from server during negotiation: %(msg)s %(orig_error)s"
-
-
 class SocketConnectionError(ConnectionError):
 
     _fmt = "%(msg)s %(host)s%(port)s%(orig_error)s"
