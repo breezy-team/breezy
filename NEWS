@@ -30,6 +30,18 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``knitpack-experimental`` repository format. This is interoperable with
+     the ``dirstate-tags`` format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. This new format can be
+     used as an option to the ``init``, ``init-repository`` and ``upgrade``
+     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     for further details. (Robert Collins)
+
+   * For users of bzr-svn (and those testing the prototype subtree support) that
+     wish to try packs, a new ``knitpack-subtree-experimental`` format has also
+     been added. This is interoperable with the ``dirstate-subtrees`` format.
+     (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -100,6 +112,9 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+   * Experimental directory formats can now be marked with
+     ``experimental = True`` during registration. (Ian Clatworthy)
+
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
@@ -108,6 +123,10 @@ IN DEVELOPMENT
      (Ian Clatworthy)
 
   BUG FIXES:
+
+   * Connection error reporting for the smart server has been fixed to
+     display a user friendly message instead of a traceback.
+     (Ian Clatworthy, #115601)
 
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)

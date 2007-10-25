@@ -1968,16 +1968,16 @@ format_registry.register_lazy(
     'RepositoryFormatKnit3',
     )
 
-# Experimental formats. These make no guarantee about data stability.
-# There is one format for pre-subtrees, and one for post-subtrees to
-# allow ease of testing.
+# Pack-based formats. There is one format for pre-subtrees, and one for
+# post-subtrees to allow ease of testing.
+# NOTE: These are experimental in 0.92.
 format_registry.register_lazy(
-    'Bazaar Experimental no-subtrees\n',
+    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
-    'Bazaar Experimental subtrees\n',
+    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack3',
     )
