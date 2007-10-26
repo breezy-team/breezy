@@ -1538,7 +1538,7 @@ class TestWarningTests(TestCase):
         # eq well
         w0, = wlist
         self.assertIsInstance(w0, UserWarning)
-        self.assertEquals("this is your last warning", w0.message)
+        self.assertEquals("this is your last warning", str(w0))
 
 
 class TestConvenienceMakers(TestCaseWithTransport):
