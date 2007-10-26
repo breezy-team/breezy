@@ -167,9 +167,14 @@ installer: exe copy-docs
 
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
-python-installer: docs
+py-inst-24: docs
 	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+py-inst-25: docs
 	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+python-installer: py-inst-24 py-inst-25
+
 
 copy-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytodir README win32_bzr.exe/doc
