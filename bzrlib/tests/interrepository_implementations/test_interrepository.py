@@ -148,6 +148,8 @@ class TestInterRepository(TestCaseWithInterRepository):
             # check that b now has all the data from a's first commit.
             rev = repo.get_revision('rev1')
             tree = repo.revision_tree('rev1')
+            tree.lock_read()
+            self.addCleanup(tree.unlock)
             tree.get_file_text('file1')
             for file_id in tree:
                 if tree.inventory[file_id].kind == "file":

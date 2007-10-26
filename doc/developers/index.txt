@@ -31,5 +31,11 @@ Specifications
 
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
+Data formats
+============
+
+* `Knit pack repositories <knitpack.html>`_ |--| KnitPack repositories 
+  (new in Bazaar 0.92).
+
 
 .. |--| unicode:: U+2014

@@ -30,6 +30,18 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``knitpack-experimental`` repository format. This is interoperable with
+     the ``dirstate-tags`` format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. This new format can be
+     used as an option to the ``init``, ``init-repository`` and ``upgrade``
+     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     for further details. (Robert Collins)
+
+   * For users of bzr-svn (and those testing the prototype subtree support) that
+     wish to try packs, a new ``knitpack-subtree-experimental`` format has also
+     been added. This is interoperable with the ``dirstate-subtrees`` format.
+     (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -38,6 +50,10 @@ IN DEVELOPMENT
    * New ``bzr_remote_path`` configuration variable allows finer control of
      remote bzr locations than BZR_REMOTE_PATH environment variable.
      (Aaron Bentley)
+
+   * New ``launchpad-login`` command to tell Bazaar your Launchpad
+     user ID.  This can then be used by other functions of the
+     Launchpad plugin. (James Henstridge)
 
   PERFORMANCE:
 
@@ -69,6 +85,9 @@ IN DEVELOPMENT
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
 
+   * Graph ``heads()`` queries have been fixed to no longer access all history
+     unnecessarily. (Robert Collins)
+
   IMPROVEMENTS:
 
    * ``bzr+https://`` smart server across https now supported. 
@@ -83,11 +102,21 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+   * Experimental directory formats can now be marked with
+     ``experimental = True`` during registration. (Ian Clatworthy)
+
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
 
+   * The hooks reference documentation is now converted to html as expected.
+     (Ian Clatworthy)
+
   BUG FIXES:
+
+   * Connection error reporting for the smart server has been fixed to
+     display a user friendly message instead of a traceback.
+     (Ian Clatworthy, #115601)
 
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
@@ -136,6 +165,8 @@ IN DEVELOPMENT
    * Fix 'unprintable error' message when displaying BzrCheckError and 
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
+
+   * Fix ``Inventory.copy()`` and add test for it. (Jelmer Vernooij)
 
    * Handles default value for ListOption in cmd_commit.
      (Vincent Ladeuil, #140432)
@@ -268,6 +299,9 @@ IN DEVELOPMENT
      contains an inventory delta item if the entry changed from the basis, and a
      boolean indicating whether a new file graph node was recorded.
      (Robert Collins)
+
+   * The python path used in the Makefile can now be overridden.
+     (Andrew Bennetts, Ian Clatworthy)
 
   TESTING:
 

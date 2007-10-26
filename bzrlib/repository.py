@@ -494,6 +494,7 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        assert self.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)
         assert inv.revision_id is None or inv.revision_id == revision_id, \
             "Mismatch between inventory revision" \
@@ -758,6 +759,11 @@ class Repository(object):
         raise NotImplementedError(self.get_data_stream)
 
     def insert_data_stream(self, stream):
+        """XXX What does this really do? 
+        
+        Is it a substitute for fetch? 
+        Should it manage its own write group ?
+        """
         for item_key, bytes in stream:
             if item_key[0] == 'file':
                 (file_id,) = item_key[1:]
@@ -1043,19 +1049,18 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
-        """Find the file ids and versions affected by revisions.
+    def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
+        revision_ids):
+        """Helper routine for fileids_altered_by_revision_ids.
 
-        :param revisions: an iterable containing revision ids.
+        This performs the translation of xml lines to revision ids.
+
+        :param line_iterator: An iterator of lines
+        :param revision_ids: The revision ids to filter for.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
-        assert self._serializer.support_altered_by_hack, \
-            ("fileids_altered_by_revision_ids only supported for branches " 
-             "which store inventory as unnested xml, not on %r" % self)
-        selected_revision_ids = set(revision_ids)
-        w = self.get_inventory_weave()
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -1077,44 +1082,61 @@ class Repository(object):
         search = self._file_ids_altered_regex.search
         unescape = _unescape_xml
         setdefault = result.setdefault
+        for line in line_iterator:
+            match = search(line)
+            if match is None:
+                continue
+            # One call to match.group() returning multiple items is quite a
+            # bit faster than 2 calls to match.group() each returning 1
+            file_id, revision_id = match.group('file_id', 'revision_id')
+
+            # Inlining the cache lookups helps a lot when you make 170,000
+            # lines and 350k ids, versus 8.4 unique ids.
+            # Using a cache helps in 2 ways:
+            #   1) Avoids unnecessary decoding calls
+            #   2) Re-uses cached strings, which helps in future set and
+            #      equality checks.
+            # (2) is enough that removing encoding entirely along with
+            # the cache (so we are using plain strings) results in no
+            # performance improvement.
+            try:
+                revision_id = unescape_revid_cache[revision_id]
+            except KeyError:
+                unescaped = unescape(revision_id)
+                unescape_revid_cache[revision_id] = unescaped
+                revision_id = unescaped
+
+            if revision_id in revision_ids:
+                try:
+                    file_id = unescape_fileid_cache[file_id]
+                except KeyError:
+                    unescaped = unescape(file_id)
+                    unescape_fileid_cache[file_id] = unescaped
+                    file_id = unescaped
+                setdefault(file_id, set()).add(revision_id)
+        return result
+
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """Find the file ids and versions affected by revisions.
+
+        :param revisions: an iterable containing revision ids.
+        :return: a dictionary mapping altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        """
+        assert self._serializer.support_altered_by_hack, \
+            ("fileids_altered_by_revision_ids only supported for branches " 
+             "which store inventory as unnested xml, not on %r" % self)
+        selected_revision_ids = set(revision_ids)
+        w = self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for line in w.iter_lines_added_or_present_in_versions(
-                                        selected_revision_ids, pb=pb):
-                match = search(line)
-                if match is None:
-                    continue
-                # One call to match.group() returning multiple items is quite a
-                # bit faster than 2 calls to match.group() each returning 1
-                file_id, revision_id = match.group('file_id', 'revision_id')
-
-                # Inlining the cache lookups helps a lot when you make 170,000
-                # lines and 350k ids, versus 8.4 unique ids.
-                # Using a cache helps in 2 ways:
-                #   1) Avoids unnecessary decoding calls
-                #   2) Re-uses cached strings, which helps in future set and
-                #      equality checks.
-                # (2) is enough that removing encoding entirely along with
-                # the cache (so we are using plain strings) results in no
-                # performance improvement.
-                try:
-                    revision_id = unescape_revid_cache[revision_id]
-                except KeyError:
-                    unescaped = unescape(revision_id)
-                    unescape_revid_cache[revision_id] = unescaped
-                    revision_id = unescaped
-
-                if revision_id in selected_revision_ids:
-                    try:
-                        file_id = unescape_fileid_cache[file_id]
-                    except KeyError:
-                        unescaped = unescape(file_id)
-                        unescape_fileid_cache[file_id] = unescaped
-                        file_id = unescaped
-                    setdefault(file_id, set()).add(revision_id)
+            return self._find_file_ids_from_xml_inventory_lines(
+                w.iter_lines_added_or_present_in_versions(
+                    selected_revision_ids, pb=pb),
+                selected_revision_ids)
         finally:
             pb.finished()
-        return result
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -1595,6 +1617,18 @@ for _name in [
 
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
+    repository.start_write_group()
+    try:
+        _install_revision(repository, rev, revision_tree)
+    except:
+        repository.abort_write_group()
+        raise
+    else:
+        repository.commit_write_group()
+
+
+def _install_revision(repository, rev, revision_tree):
+    """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
     for p_id in rev.parent_ids:
@@ -1934,6 +1968,20 @@ format_registry.register_lazy(
     'RepositoryFormatKnit3',
     )
 
+# Pack-based formats. There is one format for pre-subtrees, and one for
+# post-subtrees to allow ease of testing.
+# NOTE: These are experimental in 0.92.
+format_registry.register_lazy(
+    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack1',
+    )
+format_registry.register_lazy(
+    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack3',
+    )
+
 
 class InterRepository(InterObject):
     """This class represents operations taking place between two repositories.
@@ -2244,6 +2292,89 @@ class InterKnitRepo(InterSameDataRepository):
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
+class InterPackRepo(InterSameDataRepository):
+    """Optimised code paths between Pack based repositories."""
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        from bzrlib.repofmt import pack_repo
+        return pack_repo.RepositoryFormatKnitPack1()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Pack formats.
+        
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be 
+        overly general.
+        """
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        try:
+            are_packs = (isinstance(source._format, RepositoryFormatPack) and
+                isinstance(target._format, RepositoryFormatPack))
+        except AttributeError:
+            return False
+        return are_packs and InterRepository._same_model(source, target)
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        self.count_copied = 0
+        if revision_id is None:
+            # TODO:
+            # everything to do - use pack logic
+            # to fetch from all packs to one without
+            # inventory parsing etc, IFF nothing to be copied is in the target.
+            # till then:
+            revision_ids = self.source.all_revision_ids()
+            # implementing the TODO will involve:
+            # - detecting when all of a pack is selected
+            # - avoiding as much as possible pre-selection, so the
+            # more-core routines such as create_pack_from_packs can filter in
+            # a just-in-time fashion. (though having a HEADS list on a
+            # repository might make this a lot easier, because we could
+            # sensibly detect 'new revisions' without doing a full index scan.
+        elif _mod_revision.is_null(revision_id):
+            # nothing to do:
+            return
+        else:
+            try:
+                revision_ids = self.missing_revision_ids(revision_id)
+            except errors.NoSuchRevision:
+                raise errors.InstallFailed([revision_id])
+        packs = self.source._pack_collection.all_packs()
+        pack = self.target._pack_collection.create_pack_from_packs(
+            packs, '.fetch', revision_ids,
+            )
+        if pack is not None:
+            self.target._pack_collection._save_pack_names()
+            # Trigger an autopack. This may duplicate effort as we've just done
+            # a pack creation, but for now it is simpler to think about as
+            # 'upload data, then repack if needed'.
+            self.target._pack_collection.autopack()
+            return pack.get_revision_count()
+        else:
+            return 0
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """See InterRepository.missing_revision_ids()."""
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids[0] is None
+            source_ids.pop(0)
+        else:
+            source_ids = self.source.all_revision_ids()
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target.all_revision_ids())
+        return [r for r in source_ids if (r not in target_ids)]
+
+
 class InterModel1and2(InterRepository):
 
     @classmethod
@@ -2299,10 +2430,15 @@ class InterKnit1and2(InterKnitRepo):
         """Be compatible with Knit1 source and Knit3 target"""
         from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
-            from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1, \
-                    RepositoryFormatKnit3
-            return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit3)))
+            from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
+                RepositoryFormatKnit3)
+            from bzrlib.repofmt.pack_repo import (RepositoryFormatKnitPack1,
+                RepositoryFormatKnitPack3)
+            return (isinstance(source._format,
+                    (RepositoryFormatKnit1, RepositoryFormatKnitPack1)) and
+                isinstance(target._format,
+                    (RepositoryFormatKnit3, RepositoryFormatKnitPack3))
+                )
         except AttributeError:
             return False
 
@@ -2394,6 +2530,7 @@ InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
+InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterRemoteToOther)
 InterRepository.register_optimiser(InterOtherToRemote)
 
@@ -2579,7 +2716,7 @@ class VersionedFileChecker(object):
         for parent in parents_from_inventories:
             if parent in heads and parent not in new_parents:
                 new_parents.append(parent)
-        return new_parents
+        return tuple(new_parents)
 
     def check_file_version_parents(self, weave, file_id):
         """Check the parents stored in a versioned file are correct.
@@ -2604,7 +2741,7 @@ class VersionedFileChecker(object):
             text_revision = self.revision_versions.get_text_version(
                 file_id, revision_id)
             try:
-                knit_parents = weave.get_parents(revision_id)
+                knit_parents = tuple(weave.get_parents(revision_id))
             except errors.RevisionNotPresent:
                 knit_parents = None
             if text_revision != revision_id:

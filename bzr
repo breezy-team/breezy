@@ -94,6 +94,7 @@ else:
 import bzrlib.commands
 import bzrlib.trace
 
+
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
     exit_val = bzrlib.commands.main(sys.argv)
