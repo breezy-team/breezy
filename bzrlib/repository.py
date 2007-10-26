@@ -2658,6 +2658,7 @@ class _RevisionTextVersionCache(object):
         # XXX: this loop is very similar to
         # bzrlib.fetch.Inter1and2Helper.iter_rev_trees.
         while revs:
+            mutter('%d revisions left to prepopulate', len(revs))
             for tree in self.repository.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:
                     tree.inventory.revision_id = tree.get_revision_id()
