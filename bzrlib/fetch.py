@@ -347,7 +347,7 @@ class Inter1and2Helper(object):
         to_store = self.target.weave_store
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
-            root_id = tree.inventory.root.file_id
+            root_id = tree.path2id('')
             parents = inventory_weave.get_parents(revision_id)
             if root_id not in versionedfile:
                 versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 

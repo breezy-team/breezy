@@ -679,7 +679,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree1.add('')
             revid1 = tree1.commit('foo').encode('utf8')
-            root_id = tree1.inventory.root.file_id
+            root_id = tree1.path2id('')
             inv = tree1.inventory
         finally:
             tree1.unlock()
@@ -893,7 +893,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree2.lock_write()
         try:
             revid2 = tree2.commit('foo')
-            root_id = tree2.inventory.root.file_id
+            root_id = tree2.path2id('')
         finally:
             tree2.unlock()
         state = dirstate.DirState.initialize('dirstate')
@@ -963,7 +963,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree2.put_file_bytes_non_atomic('file-id', 'new file-content')
             revid2 = tree2.commit('foo')
-            root_id = tree2.inventory.root.file_id
+            root_id = tree2.path2id('')
         finally:
             tree2.unlock()
         # check the layout in memory

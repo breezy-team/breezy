@@ -174,7 +174,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def fileids_altered_by_revision_ids(self, revision_ids):
         """This is a wrapper to strip TREE_ROOT if it occurs"""
         repo = self.branch.repository
-        root_id = self.branch.basis_tree().inventory.root.file_id
+        root_id = self.branch.basis_tree().path2id('')
         result = repo.fileids_altered_by_revision_ids(revision_ids)
         if root_id in result:
             del result[root_id]
