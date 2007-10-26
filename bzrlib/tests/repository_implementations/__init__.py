@@ -108,9 +108,9 @@ class BrokenRepoScenario(object):
     A subclass needs to define the following methods:
         :populate_repository: a method to use to populate a repository with
             sample revisions, inventories and file versions.
-        :all_versions: all the versions in repository.  run_test verifies
-            that the text of each of these versions of the file is unchanged
-            by the reconcile.
+        :all_versions_after_reconcile: all the versions in repository after
+            reconcile.  run_test verifies that the text of each of these
+            versions of the file is unchanged by the reconcile.
         :populated_parents: a list of (parents list, revision).  Each version
             of the file is verified to have the given parents before running
             the reconcile.  i.e. this is used to assert that the repo from the
@@ -150,7 +150,7 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
     It has a single revision, 'rev1a', with a single file.
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('rev1a', )
 
     def populated_parents(self):
@@ -178,7 +178,7 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     'rev2', preserving 'rev1a' as a parent.
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('rev1a', 'rev1b', 'rev2')
 
     def populated_parents(self):
@@ -228,7 +228,7 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     inaccessbile (i.e. remove 'rev1c' from the parents of a-file's rev3).
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('rev2', 'rev3')
 
     def populated_parents(self):
@@ -281,7 +281,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     inventory.
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('rev1a', 'rev2c', 'rev4', 'rev5')
 
     def populated_parents(self):
@@ -389,7 +389,7 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     There is a a-file:rev2 file version, not referenced by the inventory.
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('rev1a', 'rev1b', 'rev2', 'rev4')
 
     def populated_parents(self):
@@ -457,7 +457,7 @@ class TooManyParentsScenario(BrokenRepoScenario):
     ['good-parent'].
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('bad-parent', 'good-parent', 'broken-revision')
 
     def populated_parents(self):
@@ -503,7 +503,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
     'modified-something-else' is the parent file version.
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ('basis', 'current')
 
     def populated_parents(self):
@@ -558,7 +558,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
     iteration order is arbitrary, it is also consistent within a single test).
     """
 
-    def all_versions(self):
+    def all_versions_after_reconcile(self):
         return ['parent-1', 'parent-2', 'broken-revision-1-2',
                 'broken-revision-2-1']
 

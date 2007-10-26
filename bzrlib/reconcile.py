@@ -388,11 +388,11 @@ class KnitReconciler(RepoReconciler):
                 vf.versions(), revision_versions)
             versions_with_bad_parents, dangling_file_versions = \
                 vf_checker.check_file_version_parents(vf, file_id)
-            full_text_versions = set()
-            unused_versions = set()
             if (len(versions_with_bad_parents) == 0 and
                 len(dangling_file_versions) == 0):
                 continue
+            full_text_versions = set()
+            unused_versions = set()
             for dangling_version in dangling_file_versions:
                 version = dangling_version[1]
                 if dangling_version in used_file_versions:

@@ -148,14 +148,16 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo = self.make_populated_repository(scenario.populate_repository)
         self.require_repo_suffers_text_parent_corruption(repo)
         self.assertParentsMatch(scenario.populated_parents(), repo, 'before')
-        vf_shas = self.shas_for_versions_of_file(repo, scenario.all_versions())
+        vf_shas = self.shas_for_versions_of_file(
+            repo, scenario.all_versions_after_reconcile())
         result = repo.reconcile(thorough=True)
         self.assertParentsMatch(scenario.corrected_parents(), repo, 'after')
         # The contents of the versions in the versionedfile should be the same
         # after the reconcile.
         self.assertEqual(
             vf_shas,
-            self.shas_for_versions_of_file(repo, scenario.all_versions()))
+            self.shas_for_versions_of_file(
+                repo, scenario.all_versions_after_reconcile()))
 
         for file_version in scenario.corrected_fulltexts():
             vf = repo.weave_store.get_weave(
