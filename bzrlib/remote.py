@@ -571,12 +571,10 @@ class RemoteRepository(object):
         builder.repository = self
         return builder
 
-    @needs_write_lock
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
         return self._real_repository.add_inventory(revid, inv, parents)
 
-    @needs_write_lock
     def add_revision(self, rev_id, rev, inv=None, config=None):
         self._ensure_real()
         return self._real_repository.add_revision(

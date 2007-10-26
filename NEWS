@@ -7,6 +7,15 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  LIBRARY API BREAKS:
+
+   * ``Repository.add_inventory`` and ``add_revision`` now require the caller
+     to previously take a write lock (and start a write group.)
+     (Martin Pool)
+
+IN DEVELOPMENT
+==============
+
   NOTES WHEN UPGRADING:
 
   CHANGES:
