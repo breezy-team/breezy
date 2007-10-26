@@ -53,25 +53,27 @@ class RevisionBuildEditor(svn.delta.Editor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
-    def __init__(self, source, target, prev_inventory, svn_revprops, id_map):
+    def __init__(self, source, target, prev_inventory):
         self.target = target
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
-        self.id_map = id_map
         self.source = source
         self.transact = target.get_transaction()
         self.dir_baserev = {}
         self._bzr_merges = []
         self._svk_merges = []
         self._revinfo = None
-        self._svn_revprops = svn_revprops
         self._premature_deletes = set()
         self.pool = Pool()
 
-    def start_revision(self, revid, scheme, branch_path):
+    def start_revision(self, revid):
         self.revid = revid
-        self.scheme = scheme
-        self.branch_path = branch_path
+        (self.branch_path, self.revnum, self.scheme) = self.source.lookup_revision_id(revid)
+        changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
+        renames = self.source.revision_fileid_renames(revid)
+        self.id_map = self.source.transform_fileid_map(self.source.uuid, 
+                              self.revnum, self.branch_path, changes, renames, 
+                              self.scheme)
 
     def _get_parent_ids(self):
         return self.source.revision_parents(self.revid, self._bzr_merges)
@@ -85,17 +87,18 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
-        if self._svn_revprops[2] is not None:
+        _svn_revprops = self.source._log.get_revision_info(self.revnum)
+        if _svn_revprops[2] is not None:
             rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-                self._svn_revprops[2], None) #date
+                _svn_revprops[2], None) #date
         else:
             rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
 
-        rev.committer = self._svn_revprops[0] # author
+        rev.committer = _svn_revprops[0] # author
         if rev.committer is None:
             rev.committer = ""
-        rev.message = self._svn_revprops[1] # message
+        rev.message = _svn_revprops[1] # message
 
         if self._revinfo:
             parse_revision_metadata(self._revinfo, rev)
@@ -371,10 +374,9 @@ class RevisionBuildEditor(svn.delta.Editor):
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
-    def __init__(self, source, target, prev_inventory, 
-                 svn_revprops, id_map):
+    def __init__(self, source, target, prev_inventory):
         RevisionBuildEditor.__init__(self, source, target, 
-            prev_inventory, svn_revprops, id_map)
+            prev_inventory)
         self.weave_store = target.weave_store
         self.target.start_write_group()
 
@@ -407,10 +409,9 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
 class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
     """Revision Build Editor for Subversion that is specific for the packs API.
     """
-    def __init__(self, source, target, prev_inventory, 
-                 svn_revprops, id_map, scheme):
+    def __init__(self, source, target, prev_inventory):
         WeaveRevisionBuildEditor.__init__(self, source, target, 
-            prev_inventory, svn_revprops, id_map)
+            prev_inventory)
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
         return self.target._packs._add_text_to_weave(file_id,
@@ -427,10 +428,8 @@ class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
 class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
     """Revision Build Editor for Subversion that uses the CommitBuilder API.
     """
-    def __init__(self, source, target, branch_path, prev_inventory, revid,
-                 svn_revprops, id_map, scheme):
-        RevisionBuildEditor.__init__(self, source, target, 
-            branch_path, prev_inventory, svn_revprops, id_map, scheme)
+    def __init__(self, source, target, prev_inventory, revid):
+        RevisionBuildEditor.__init__(self, source, target, prev_inventory)
         raise NotImplementedError(self)
 
 
@@ -526,51 +525,41 @@ class InterFromSvnRepository(InterRepository):
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:
-                    assert prev_inv is not None
                     parent_inv = prev_inv
-
-                (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
-                changes = self.source._log.get_revision_paths(revnum, branch)
-                renames = self.source.revision_fileid_renames(revid)
-                id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                      revnum, branch, changes, renames, scheme)
 
                 revbuildklass = WeaveRevisionBuildEditor
                 if hasattr(self.target, '_packs'):
                     revbuildklass = PackRevisionBuildEditor
 
-                editor = revbuildklass(self.source, self.target, 
-                             parent_inv, 
-                             self.source._log.get_revision_info(revnum),
-                             id_map)
-
-                editor.start_revision(revid, scheme, branch)
+                editor = revbuildklass(self.source, self.target, parent_inv)
+                editor.start_revision(revid)
 
                 try:
                     pool = Pool()
 
                     if parent_revid is None:
-                        branch_url = urlutils.join(repos_root, branch)
+                        branch_url = urlutils.join(repos_root, 
+                                                   editor.branch_path)
                         transport.reparent(branch_url)
                         assert transport.svn_url == branch_url.rstrip("/"), \
                             "Expected %r, got %r" % (transport.svn_url, branch_url)
-                        reporter = transport.do_update(revnum, True, editor,
+                        reporter = transport.do_update(editor.revnum, True, editor,
                                                        pool)
 
                         # Report status of existing paths
-                        reporter.set_path("", revnum, True, None, pool)
+                        reporter.set_path("", editor.revnum, True, None, pool)
                     else:
                         (parent_branch, parent_revnum, scheme) = \
                                 self.source.lookup_revision_id(parent_revid)
                         transport.reparent(urlutils.join(repos_root, parent_branch))
 
-                        if parent_branch != branch:
+                        if parent_branch != editor.branch_path:
                             reporter = transport.do_switch(
-                                       revnum, True, 
-                                       urlutils.join(repos_root, branch), 
-                                       editor, pool)
+                                editor.revnum, True, 
+                                urlutils.join(repos_root, editor.branch_path), 
+                                editor, pool)
                         else:
-                            reporter = transport.do_update(revnum, True, editor)
+                            reporter = transport.do_update(editor.revnum, True, editor)
 
                         # Report status of existing paths
                         reporter.set_path("", parent_revnum, False, None, pool)
