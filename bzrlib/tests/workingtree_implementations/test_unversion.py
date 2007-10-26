@@ -118,7 +118,7 @@ class TestUnversion(TestCaseWithWorkingTree):
 
         tree.lock_read()
         try:
-            root_id = tree.path2id('')
+            root_id = tree.get_root_id()
             paths = [(path, ie.file_id)
                      for path, ie in tree.iter_entries_by_dir()]
         finally:
@@ -149,7 +149,7 @@ class TestUnversion(TestCaseWithWorkingTree):
 
         tree_a.lock_read()
         try:
-            root_id = tree_a.path2id('')
+            root_id = tree_a.get_root_id()
         finally:
             tree_a.unlock()
 

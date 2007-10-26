@@ -262,7 +262,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
             self.build_tree(paths[1:])
         except UnicodeError:
             raise tests.TestSkipped('filesystem does not support unicode.')
-        if tree.path2id('') is None:
+        if tree.get_root_id() is None:
             # Some trees do not have a root yet.
             tree.add(paths, file_ids)
         else:
