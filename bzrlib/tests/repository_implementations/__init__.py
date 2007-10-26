@@ -320,6 +320,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \('rev2c',\)",
             r"a-file-id version rev4 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
+            "2 file versions are not referenced by their inventory",
             ]
 
     def populate_repository(self, repo):
