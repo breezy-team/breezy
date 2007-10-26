@@ -53,20 +53,12 @@ class RevisionBuildEditor(svn.delta.Editor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
-    def __init__(self, source, target, prev_inventory):
+    def __init__(self, source, target):
         self.target = target
-        self.old_inventory = prev_inventory
-        self.inventory = prev_inventory.copy()
         self.source = source
         self.transact = target.get_transaction()
-        self.dir_baserev = {}
-        self._bzr_merges = []
-        self._svk_merges = []
-        self._revinfo = None
-        self._premature_deletes = set()
-        self.pool = Pool()
 
-    def start_revision(self, revid):
+    def start_revision(self, revid, prev_inventory):
         self.revid = revid
         (self.branch_path, self.revnum, self.scheme) = self.source.lookup_revision_id(revid)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
@@ -74,6 +66,15 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 
                               self.scheme)
+        self.dir_baserev = {}
+        self._revinfo = None
+        self._bzr_merges = []
+        self._svk_merges = []
+        self._premature_deletes = set()
+        self.pool = Pool()
+        self.old_inventory = prev_inventory
+        self.inventory = prev_inventory.copy()
+        self._start_revision()
 
     def _get_parent_ids(self):
         return self.source.revision_parents(self.revid, self._bzr_merges)
@@ -370,14 +371,18 @@ class RevisionBuildEditor(svn.delta.Editor):
     def abort_edit(self):
         pass
 
+    def _start_revision(self):
+        pass
+
 
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
-    def __init__(self, source, target, prev_inventory):
-        RevisionBuildEditor.__init__(self, source, target, 
-            prev_inventory)
+    def __init__(self, source, target):
+        RevisionBuildEditor.__init__(self, source, target)
         self.weave_store = target.weave_store
+
+    def _start_revision(self):
         self.target.start_write_group()
 
     def _store_directory(self, file_id, parents):
@@ -409,9 +414,8 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
 class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
     """Revision Build Editor for Subversion that is specific for the packs API.
     """
-    def __init__(self, source, target, prev_inventory):
-        WeaveRevisionBuildEditor.__init__(self, source, target, 
-            prev_inventory)
+    def __init__(self, source, target):
+        WeaveRevisionBuildEditor.__init__(self, source, target)
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
         return self.target._packs._add_text_to_weave(file_id,
@@ -428,8 +432,8 @@ class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
 class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
     """Revision Build Editor for Subversion that uses the CommitBuilder API.
     """
-    def __init__(self, source, target, prev_inventory, revid):
-        RevisionBuildEditor.__init__(self, source, target, prev_inventory)
+    def __init__(self, source, target):
+        RevisionBuildEditor.__init__(self, source, target)
         raise NotImplementedError(self)
 
 
@@ -492,9 +496,9 @@ class InterFromSvnRepository(InterRepository):
         self.target.lock_read()
         try:
             if revision_id is None:
-                (needed, parents) = self._find_all()
+                (needed, lhs_parent) = self._find_all()
             else:
-                (needed, parents) = self._find_until(revision_id)
+                (needed, lhs_parent) = self._find_until(revision_id)
         finally:
             self.target.unlock()
 
@@ -502,6 +506,15 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
+        self._copy_revisions(needed, pb, lhs_parent)
+
+    def _copy_revisions(self, revids, pb=None, lhs_parent=None):
+        """Copy a set of related revisions.
+
+        :param revids: List of revision ids of revisions to copy, 
+                       newest first.
+        :param pb: Optional progress bar.
+        """
         repos_root = self.source.transport.get_svn_repos_root()
 
         prev_revid = None
@@ -513,12 +526,19 @@ class InterFromSvnRepository(InterRepository):
             nested_pb = None
         num = 0
         prev_inv = None
-        self.target.lock_write()
-        try:
-            for revid in reversed(needed):
-                pb.update('copying revision', num, len(needed))
 
-                parent_revid = parents[revid]
+        self.target.lock_write()
+        revbuildklass = WeaveRevisionBuildEditor
+        if hasattr(self.target, '_packs'):
+            revbuildklass = PackRevisionBuildEditor
+
+        editor = revbuildklass(self.source, self.target)
+
+        try:
+            for revid in reversed(revids):
+                pb.update('copying revision', num, len(revids))
+
+                parent_revid = lhs_parent[revid]
 
                 if parent_revid is None:
                     parent_inv = Inventory(root_id=None)
@@ -527,12 +547,7 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                revbuildklass = WeaveRevisionBuildEditor
-                if hasattr(self.target, '_packs'):
-                    revbuildklass = PackRevisionBuildEditor
-
-                editor = revbuildklass(self.source, self.target, parent_inv)
-                editor.start_revision(revid)
+                editor.start_revision(revid, parent_inv)
 
                 try:
                     pool = Pool()
@@ -554,8 +569,7 @@ class InterFromSvnRepository(InterRepository):
                         transport.reparent(urlutils.join(repos_root, parent_branch))
 
                         if parent_branch != editor.branch_path:
-                            reporter = transport.do_switch(
-                                editor.revnum, True, 
+                            reporter = transport.do_switch(editor.revnum, True, 
                                 urlutils.join(repos_root, editor.branch_path), 
                                 editor, pool)
                         else:
