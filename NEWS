@@ -108,7 +108,7 @@ IN DEVELOPMENT
    * ``bzr tags`` now prints the revision number for each tag, instead of
      the revision id, unless --show-ids is passed. In addition, tags can be
      sorted chronologically instead of lexicographically with --sort=time.
-     (Adeodato Simó)
+     (Adeodato Simó, #120231)
 
   DOCUMENTATION:
 
