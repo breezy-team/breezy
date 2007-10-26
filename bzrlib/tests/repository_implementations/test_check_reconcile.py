@@ -65,7 +65,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo.add_revision(revision_id,revision, inv)
 
     def make_one_file_inventory(self, repo, revision, parents,
-                                inv_revision=None, root_revision=None):
+                                inv_revision=None, root_revision=None,
+                                file_contents=None, make_file_version=True):
         """Make an inventory containing a version of a file with ID 'a-file'.
 
         The file's ID will be 'a-file', and its filename will be 'a file name',
@@ -78,6 +79,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             inventory entry.  Otherwise, this defaults to revision.
         :param root_revision: if not None, the inventory's root.revision will
             be set to this.
+        :param file_contents: if not None, the contents of this file version.
+            Otherwise a unique default (based on revision ID) will be
+            generated.
         """
         inv = Inventory(revision_id=revision)
         if root_revision is not None:
@@ -89,12 +93,14 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         else:
             entry.revision = revision
         entry.text_size = 0
-        file_contents = '%sline\n' % entry.revision
+        if file_contents is None:
+            file_contents = '%sline\n' % entry.revision
         entry.text_sha1 = sha.sha(file_contents).hexdigest()
         inv.add(entry)
-        vf = repo.weave_store.get_weave_or_empty(file_id,
-                                                 repo.get_transaction())
-        vf.add_lines(revision, parents, [file_contents])
+        if make_file_version:
+            vf = repo.weave_store.get_weave_or_empty(file_id,
+                                                     repo.get_transaction())
+            vf.add_lines(revision, parents, [file_contents])
         return inv
 
     def require_repo_suffers_text_parent_corruption(self, repo):
@@ -106,14 +112,22 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         return tuple(repo.weave_store.get_weave('a-file-id',
             repo.get_transaction()).get_parents(revision_id))
 
+    def assertFileVersionAbsent(self, repo, revision_id):
+        self.assertFalse(repo.weave_store.get_weave('a-file-id',
+            repo.get_transaction()).has_version(revision_id),
+            'File version %s wrongly present.' % (revision_id,))
+
     def assertParentsMatch(self, expected_parents_for_versions, repo,
                            when_description):
         for expected_parents, version in expected_parents_for_versions:
-            found_parents = self.file_parents(repo, version)
-            self.assertEqual(expected_parents, found_parents,
-                "Expected version %s of a-file-id to have parents %s %s "
-                "reconcile, but it has %s instead."
-                % (version, expected_parents, when_description, found_parents))
+            if expected_parents is None:
+                self.assertFileVersionAbsent(repo, version)
+            else:
+                found_parents = self.file_parents(repo, version)
+                self.assertEqual(expected_parents, found_parents,
+                    "%s reconcile %s has parents %s, should have %s."
+                    % (when_description, version, found_parents,
+                       expected_parents))
 
     def shas_for_versions_of_file(self, repo, versions):
         """Get the SHA-1 hashes of the versions of 'a-file' in the repository.
@@ -134,14 +148,22 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo = self.make_populated_repository(scenario.populate_repository)
         self.require_repo_suffers_text_parent_corruption(repo)
         self.assertParentsMatch(scenario.populated_parents(), repo, 'before')
-        vf_shas = self.shas_for_versions_of_file(repo, scenario.all_versions())
+        vf_shas = self.shas_for_versions_of_file(
+            repo, scenario.all_versions_after_reconcile())
         result = repo.reconcile(thorough=True)
         self.assertParentsMatch(scenario.corrected_parents(), repo, 'after')
         # The contents of the versions in the versionedfile should be the same
         # after the reconcile.
         self.assertEqual(
             vf_shas,
-            self.shas_for_versions_of_file(repo, scenario.all_versions()))
+            self.shas_for_versions_of_file(
+                repo, scenario.all_versions_after_reconcile()))
+
+        for file_version in scenario.corrected_fulltexts():
+            vf = repo.weave_store.get_weave(
+                'a-file-id', repo.get_transaction())
+            self.assertEqual('fulltext', vf._index.get_method(file_version),
+                '%r should be fulltext' % (file_version,))
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""
