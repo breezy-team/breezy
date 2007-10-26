@@ -1101,21 +1101,24 @@ class TestCase(unittest.TestCase):
 
         :returns: ([warning_object, ...], fn_result)
         """
-        # XXX: This is not perfect, because it doesn't override the warnings
-        # filters, and they'll often want to show a warning only once per
-        # source origin.  That might be a problem for repeated tests of
-        # similar situations.  -- mbp 20071024
+        # XXX: This is not perfect, because it completely overrides the
+        # warnings filters, and some code may depend on suppressing particular
+        # warnings.  It's the easiest way to insulate ourselves from -Werror,
+        # though.  -- Andrew, 20071062
         wlist = []
         def _catcher(message, category, filename, lineno, file=None):
             # despite the name, 'message' is normally(?) a Warning subclass
             # instance
             wlist.append(message)
         saved_showwarning = warnings.showwarning
+        saved_filters = warnings.filters
         try:
             warnings.showwarning = _catcher
+            warnings.filters = []
             result = fn(*args, **kw)
         finally:
             warnings.showwarning = saved_showwarning
+            warnings.filters = saved_filters
         return wlist, result
 
     def callDeprecated(self, expected, callable, *args, **kwargs):
