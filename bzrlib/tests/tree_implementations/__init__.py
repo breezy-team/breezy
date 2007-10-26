@@ -323,6 +323,7 @@ def test_suite():
     result = TestSuite()
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
+        'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
         'bzrlib.tests.tree_implementations.test_list_files',
