@@ -450,6 +450,15 @@ class SvnRaTransport(Transport):
             raise
 
     @convert_svn_error
+    def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
+        self._open_real_transport()
+        self.mutter('svn replay -r%r:%r' % (low_water_mark, revision))
+        self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
+        svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
+                      edit, edit_baton, pool)
+
+    @convert_svn_error
     def do_update(self, revnum, recurse, editor, pool=None):
         self._open_real_transport()
         self.mutter('svn update -r %r' % revnum)

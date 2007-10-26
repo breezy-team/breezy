@@ -437,6 +437,13 @@ class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
         raise NotImplementedError(self)
 
 
+def get_revision_build_editor(repository):
+    """Obtain a RevisionBuildEditor for a particular target repository."""
+    if hasattr(repository, '_packs'):
+        return PackRevisionBuildEditor
+    return WeaveRevisionBuildEditor
+
+
 class InterFromSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
@@ -447,6 +454,9 @@ class InterFromSvnRepository(InterRepository):
         return None
 
     def _find_all(self):
+        """Find all revisions from the source repository that are not 
+        yet in the target repository.
+        """
         parents = {}
         needed = filter(lambda x: not self.target.has_revision(x), 
                         self.source.all_revision_ids())
@@ -506,10 +516,18 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        self._copy_revisions(needed, pb, lhs_parent)
+        self._copy_revisions_switch(needed, pb, lhs_parent)
 
-    def _copy_revisions(self, revids, pb=None, lhs_parent=None):
-        """Copy a set of related revisions.
+    def _copy_revisions_replay(self, revids, pb=none):
+        """Copy a set of related revisions using svn.ra.replay.
+
+        :param revids: Revision ids to copy.
+        :param pb: Optional progress bar
+        """
+        raise NotImplementedError(self._copy_revisions_replay)
+
+    def _copy_revisions_switch(self, revids, pb=None, lhs_parent=None):
+        """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
                        newest first.
@@ -528,10 +546,7 @@ class InterFromSvnRepository(InterRepository):
         prev_inv = None
 
         self.target.lock_write()
-        revbuildklass = WeaveRevisionBuildEditor
-        if hasattr(self.target, '_packs'):
-            revbuildklass = PackRevisionBuildEditor
-
+        revbuildklass = get_revision_build_editor(self.target)
         editor = revbuildklass(self.source, self.target)
 
         try:
@@ -558,8 +573,8 @@ class InterFromSvnRepository(InterRepository):
                         transport.reparent(branch_url)
                         assert transport.svn_url == branch_url.rstrip("/"), \
                             "Expected %r, got %r" % (transport.svn_url, branch_url)
-                        reporter = transport.do_update(editor.revnum, True, editor,
-                                                       pool)
+                        reporter = transport.do_update(editor.revnum, True, 
+                                                       editor, pool)
 
                         # Report status of existing paths
                         reporter.set_path("", editor.revnum, True, None, pool)
@@ -603,6 +618,5 @@ class InterFromSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         # FIXME: Also check target uses VersionedFile
-        return isinstance(source, SvnRepository) and \
-                target.supports_rich_root()
+        return isinstance(source, SvnRepository) and target.supports_rich_root()
 
