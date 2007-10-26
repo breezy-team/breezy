@@ -49,7 +49,6 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
-    hashcache,
     ignores,
     merge,
     osutils,
@@ -159,8 +158,6 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
             f = f.strip('/')
-            assert '//' not in f
-            assert '..' not in f
             if self.path2id(f):
                 # special case tree root handling.
                 if f == '' and self.path2id(f) == ROOT_ID:
@@ -270,21 +267,6 @@ class WorkingTree4(WorkingTree3):
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
-
-    def _directory_is_tree_reference(self, relpath):
-        # as a special case, if a directory contains control files then 
-        # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
-        # TODO: We could ask all the control formats whether they
-        # recognize this directory, but at the moment there's no cheap api
-        # to do that.  Since we probably can only nest bzr checkouts and
-        # they always use this name it's ok for now.  -- mbp 20060306
-        #
-        # FIXME: There is an unhandled case here of a subdirectory
-        # containing .bzr but not a branch; that will probably blow up
-        # when you try to commit it.  It might happen if there is a
-        # checkout in a subdirectory.  This can be avoided by not adding
-        # it.  mbp 20070306
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -469,7 +451,6 @@ class WorkingTree4(WorkingTree3):
 
     def has_id(self, file_id):
         state = self.current_dirstate()
-        file_id = osutils.safe_file_id(file_id)
         row, parents = self._get_entry(file_id=file_id)
         if row is None:
             return False
@@ -479,7 +460,6 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
-        file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
         if entry == (None, None):
@@ -487,17 +467,25 @@ class WorkingTree4(WorkingTree3):
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
+            return False # Missing entries are not executable
+        return entry[1][0][3] # Executable?
+
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
 
             Note: The caller is expected to take a read-lock before calling this.
             """
-            file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
@@ -505,7 +493,6 @@ class WorkingTree4(WorkingTree3):
             Note: The caller is expected to take a read-lock before calling this.
             """
             if not path:
-                file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -946,12 +933,7 @@ class WorkingTree4(WorkingTree3):
             if not all_versioned:
                 raise errors.PathsNotVersionedError(paths)
         # -- remove redundancy in supplied paths to prevent over-scanning --
-        search_paths = set()
-        for path in paths:
-            other_paths = paths.difference(set([path]))
-            if not osutils.is_inside_any(other_paths, path):
-                # this is a top level path, we must check it.
-                search_paths.add(path)
+        search_paths = osutils.minimum_path_selection(paths)
         # sketch: 
         # for all search_indexs in each path at or under each element of
         # search_paths, if the detail is relocated: add the id, and add the
@@ -1025,7 +1007,6 @@ class WorkingTree4(WorkingTree3):
 
         WorkingTree4 supplies revision_trees for any basis tree.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         dirstate = self.current_dirstate()
         parent_ids = dirstate.get_parent_ids()
         if revision_id not in parent_ids:
@@ -1038,7 +1019,6 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
-        new_revision = osutils.safe_revision_id(new_revision)
         parents = self.get_parent_ids()
         if new_revision in (NULL_REVISION, None):
             assert len(parents) < 2, (
@@ -1062,7 +1042,6 @@ class WorkingTree4(WorkingTree3):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
-        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         trees = []
         for revision_id in revision_ids:
             try:
@@ -1094,7 +1073,6 @@ class WorkingTree4(WorkingTree3):
         # convert absent trees to the null tree, which we convert back to
         # missing on access.
         for rev_id, tree in parents_list:
-            rev_id = osutils.safe_revision_id(rev_id)
             _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
@@ -1111,6 +1089,16 @@ class WorkingTree4(WorkingTree3):
         state.set_path_id('', file_id)
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
+
+    def _sha_from_stat(self, path, stat_result):
+        """Get a sha digest from the tree's stat cache.
+
+        The default implementation assumes no stat cache is present.
+
+        :param path: The path.
+        :param stat_result: The stat result being looked up.
+        """
+        return self.current_dirstate().sha1_from_stat(path, stat_result)
 
     @needs_read_lock
     def supports_tree_reference(self):
@@ -1157,9 +1145,7 @@ class WorkingTree4(WorkingTree3):
             return
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
-        ids_to_unversion = set()
-        for file_id in file_ids:
-            ids_to_unversion.add(osutils.safe_file_id(file_id))
+        ids_to_unversion = set(file_ids)
         paths_to_unversion = set()
         # sketch:
         # check if the root is to be unversioned, if so, assert for now.
@@ -1195,7 +1181,8 @@ class WorkingTree4(WorkingTree3):
                     # Mark this file id as having been removed
                     entry = block[1][entry_index]
                     ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] == 'a'
+                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
+                                               # entries
                         or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
@@ -1272,7 +1259,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
@@ -1344,7 +1330,7 @@ class DirStateRevisionTree(Tree):
 
     def __init__(self, dirstate, revision_id, repository):
         self._dirstate = dirstate
-        self._revision_id = osutils.safe_revision_id(revision_id)
+        self._revision_id = revision_id
         self._repository = repository
         self._inventory = None
         self._locked = 0
@@ -1402,7 +1388,6 @@ class DirStateRevisionTree(Tree):
         """
         if file_id is None and path is None:
             raise errors.BzrError('must supply file_id or path')
-        file_id = osutils.safe_file_id(file_id)
         if path is not None:
             path = path.encode('utf8')
         parent_index = self._get_parent_index()
@@ -1573,6 +1558,20 @@ class DirStateRevisionTree(Tree):
 
     def kind(self, file_id):
         return self.inventory[file_id].kind
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.inventory.path2id(path)
+        if id is None:
+            return ('missing', None, None, None)
+        entry = self._inventory[id]
+        kind = entry.kind
+        if kind == 'file':
+            return (kind, entry.text_size, entry.executable, entry.text_sha1)
+        elif kind == 'symlink':
+            return (kind, None, None, entry.symlink_target)
+        else:
+            return (kind, None, None, None)
 
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]

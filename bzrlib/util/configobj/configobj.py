@@ -678,7 +678,8 @@ class Section(dict):
         >>> def testuni(val):
         ...     for entry in val:
         ...         if not isinstance(entry, unicode):
-        ...             print >> sys.stderr, type(entry)
+        ...             sys.stderr.write(type(entry))
+        ...             sys.stderr.write('\n')
         ...             raise AssertionError, 'decode failed.'
         ...         if isinstance(val[entry], dict):
         ...             testuni(val[entry])
@@ -1308,7 +1309,7 @@ class ConfigObj(Section):
             reset_comment = True
             # first we check if it's a section marker
             mat = self._sectionmarker.match(line)
-##            print >> sys.stderr, sline, mat
+##            sys.stderr.write('%s %s\n' % (sline, mat))
             if mat is not None:
                 # is a section line
                 (indent, sect_open, sect_name, sect_close, comment) = (
@@ -1345,7 +1346,8 @@ class ConfigObj(Section):
                 #
                 sect_name = self._unquote(sect_name)
                 if sect_name in parent:
-##                    print >> sys.stderr, sect_name
+##                    sys.stderr.write(sect_name)
+##                    sys.stderr.write('\n')
                     self._handle_error(
                         'Duplicate section name at line %s.',
                         DuplicateError, infile, cur_index)
@@ -1359,13 +1361,14 @@ class ConfigObj(Section):
                 parent[sect_name] = this_section
                 parent.inline_comments[sect_name] = comment
                 parent.comments[sect_name] = comment_list
-##                print >> sys.stderr, parent[sect_name] is this_section
+##                sys.stderr.write(parent[sect_name] is this_section)
+##                sys.stderr.write('\n')
                 continue
             #
             # it's not a section marker,
             # so it should be a valid ``key = value`` line
             mat = self._keyword.match(line)
-##            print >> sys.stderr, sline, mat
+##            sys.stderr.write('%s %s\n' % (sline, mat))
             if mat is not None:
                 # is a keyword value
                 # value will include any inline comment
@@ -1392,7 +1395,8 @@ class ConfigObj(Section):
                             ParseError, infile, cur_index)
                         continue
                 #
-##                print >> sys.stderr, sline
+##                sys.stderr.write(sline)
+##                sys.stderr.write('\n')
                 key = self._unquote(key)
                 if key in this_section:
                     self._handle_error(
@@ -1400,15 +1404,16 @@ class ConfigObj(Section):
                         DuplicateError, infile, cur_index)
                     continue
                 # add the key
-##                print >> sys.stderr, this_section.name
+##                sys.stderr.write(this_section.name + '\n')
                 this_section[key] = value
                 this_section.inline_comments[key] = comment
                 this_section.comments[key] = comment_list
-##                print >> sys.stderr, key, this_section[key]
+##                sys.stderr.write('%s %s\n' % (key, this_section[key]))
 ##                if this_section.name is not None:
-##                    print >> sys.stderr, this_section
-##                    print >> sys.stderr, this_section.parent
-##                    print >> sys.stderr, this_section.parent[this_section.name]
+##                    sys.stderr.write(this_section + '\n')
+##                    sys.stderr.write(this_section.parent + '\n')
+##                    sys.stderr.write(this_section.parent[this_section.name])
+##                    sys.stderr.write('\n')
                 continue
             #
             # it neither matched as a keyword
@@ -1451,6 +1456,7 @@ class ConfigObj(Section):
         The error will have occured at ``cur_index``
         """
         line = infile[cur_index]
+        cur_index += 1
         message = text % cur_index
         error = ErrorClass(message, cur_index, line)
         if self.raise_errors:
@@ -2007,7 +2013,7 @@ class ConfigObj(Section):
         >>> try:
         ...     from validate import Validator
         ... except ImportError:
-        ...     print >> sys.stderr, 'Cannot import the Validator object, skipping the related tests'
+        ...     sys.stderr.write('Cannot import the Validator object, skipping the related tests\n')
         ... else:
         ...     config = '''
         ...     test1=40

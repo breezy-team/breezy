@@ -22,14 +22,11 @@ from StringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
-import errno
 import sys
-import tempfile
 import time
 
 import bzrlib
 from bzrlib import (
-    branch,
     bugtracker,
     bundle,
     bzrdir,
@@ -43,10 +40,7 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
-    registry,
-    repository,
     revision as _mod_revision,
-    revisionspec,
     symbol_versioning,
     transport,
     tree as _mod_tree,
@@ -62,8 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet, info
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -211,8 +204,6 @@ class cmd_cat_revision(Command):
     
     @display_command
     def run(self, revision_id=None, revision=None):
-
-        revision_id = osutils.safe_revision_id(revision_id, warn=False)
         if revision_id is not None and revision is not None:
             raise errors.BzrCommandError('You can only supply one of'
                                          ' revision_id or --revision')
@@ -223,6 +214,7 @@ class cmd_cat_revision(Command):
 
         # TODO: jam 20060112 should cat-revision always output utf-8?
         if revision_id is not None:
+            revision_id = osutils.safe_revision_id(revision_id, warn=False)
             self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
         elif revision is not None:
             for rev in revision:
@@ -605,8 +597,10 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
 
+        possible_transports = []
         if location is not None:
             mergeable, location_transport = _get_mergeable_helper(location)
+            possible_transports.append(location_transport)
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -618,7 +612,8 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-                location_transport = transport.get_transport(location)
+                location_transport = transport.get_transport(
+                    location, possible_transports=possible_transports)
 
         if mergeable is not None:
             if revision is not None:
@@ -644,8 +639,11 @@ class cmd_pull(Command):
         if verbose:
             old_rh = branch_to.revision_history()
         if tree_to is not None:
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=tree_to.is_ignored)
             result = tree_to.pull(branch_from, overwrite, revision_id,
-                delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
+                                  change_reporter,
+                                  possible_transports=possible_transports)
         else:
             result = branch_to.pull(branch_from, overwrite, revision_id)
 
@@ -1430,7 +1428,7 @@ class cmd_diff(Command):
                help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
-               help='Set prefixes to added to old and new filenames, as '
+               help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         'revision',
         'change',
@@ -2254,10 +2252,6 @@ class cmd_commit(Command):
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False):
-        from bzrlib.commit import (
-            NullCommitReporter,
-            ReportCommitToLog
-        )
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2283,6 +2277,8 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
+        if fixes is None:
+            fixes = []
         bug_property = self._get_bug_fix_properties(fixes, tree.branch)
         if bug_property:
             properties['bugs'] = bug_property
@@ -2341,6 +2337,22 @@ class cmd_check(Command):
 
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
+
+    Output fields:
+
+        revisions: This is just the number of revisions checked.  It doesn't
+            indicate a problem.
+        versionedfiles: This is just the number of versionedfiles checked.  It
+            doesn't indicate a problem.
+        unreferenced ancestors: Texts that are ancestors of other texts, but
+            are not properly referenced by the revision ancestry.  This is a
+            subtle problem that Bazaar can work around.
+        unique file texts: This is the total number of unique file contents
+            seen in the checked revisions.  It does not indicate a problem.
+        repeated file texts: This is the total number of repeated texts seen
+            in the checked revisions.  Texts can be repeated when their file
+            entries are modified, but the file contents are not.  It does not
+            indicate a problem.
     """
 
     _see_also = ['reconcile']
@@ -2350,8 +2362,7 @@ class cmd_check(Command):
     def run(self, branch=None, verbose=False):
         from bzrlib.check import check
         if branch is None:
-            tree = WorkingTree.open_containing()[0]
-            branch = tree.branch
+            branch = Branch.open_containing('.')[0]
         else:
             branch = Branch.open(branch)
         check(branch, verbose)
@@ -2638,7 +2649,7 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import ensure_null, MultipleRevisionSources
+        from bzrlib.revision import ensure_null
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
@@ -2701,6 +2712,7 @@ class cmd_merge(Command):
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
+        'change',
         'revision',
         Option('force',
                help='Merge even if the destination tree has uncommitted changes.'),
@@ -2728,7 +2740,6 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             ):
-        from bzrlib.tag import _merge_tags_if_possible
         # This is actually a branch (or merge-directive) *location*.
         location = branch
         del branch
@@ -2789,7 +2800,7 @@ class cmd_merge(Command):
                 return 0
             if pull:
                 if merger.interesting_files is not None:
-                    raise BzrCommandError('Cannot pull individual files')
+                    raise errors.BzrCommandError('Cannot pull individual files')
                 if (merger.base_rev_id == tree.last_revision()):
                     result = tree.pull(merger.other_branch, False,
                                        merger.other_rev_id)
@@ -3044,23 +3055,36 @@ class cmd_revert(Command):
     Any files that have been newly added since that revision will be deleted,
     with a backup kept if appropriate.  Directories containing unknown files
     will not be deleted.
+
+    The working tree contains a list of pending merged revisions, which will
+    be included as parents in the next commit.  Normally, revert clears that
+    list as well as reverting the files.  If any files, are specified, revert
+    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    revert ." in the tree root to revert all files but keep the merge record,
+    and "bzr revert --forget-merges" to clear the pending merge list without
+    reverting any files.
     """
 
     _see_also = ['cat', 'export']
     takes_options = [
-            'revision',
-            Option('no-backup', "Do not save backups of reverted files."),
-            ]
+        'revision',
+        Option('no-backup', "Do not save backups of reverted files."),
+        Option('forget-merges',
+               'Remove pending merge marker, without changing any files.'),
+        ]
     takes_args = ['file*']
 
-    def run(self, revision=None, no_backup=False, file_list=None):
-        if file_list is not None:
-            if len(file_list) == 0:
-                raise errors.BzrCommandError("No files specified")
-        
+    def run(self, revision=None, no_backup=False, file_list=None,
+            forget_merges=None):
         tree, file_list = tree_files(file_list)
+        if forget_merges:
+            tree.set_parent_ids(tree.get_parent_ids()[:1])
+        else:
+            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+
+    @staticmethod
+    def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         if revision is None:
-            # FIXME should be tree.last_revision
             rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
@@ -3068,7 +3092,7 @@ class cmd_revert(Command):
             rev_id = revision[0].in_history(tree.branch).rev_id
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            tree.revert(file_list, 
+            tree.revert(file_list,
                         tree.branch.repository.revision_tree(rev_id),
                         not no_backup, pb, report_changes=True)
         finally:
@@ -3160,7 +3184,6 @@ class cmd_missing(Command):
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False, this=False, other=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
-        from bzrlib.log import log_formatter
 
         if this:
           mine_only = this
@@ -3475,7 +3498,6 @@ class cmd_uncommit(Command):
             dry_run=False, verbose=False,
             revision=None, force=False):
         from bzrlib.log import log_formatter, show_log
-        import sys
         from bzrlib.uncommit import uncommit
 
         if location is None:
@@ -3901,7 +3923,7 @@ class cmd_send(Command):
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message):
-        from bzrlib.revision import ensure_null, NULL_REVISION
+        from bzrlib.revision import NULL_REVISION
         if output is None:
             outfile = StringIO()
         elif output == '-':
@@ -4196,7 +4218,7 @@ class cmd_reconfigure(Command):
     def run(self, location=None, target_type=None, bind_to=None, force=False):
         directory = bzrdir.BzrDir.open(location)
         if target_type is None:
-            raise BzrCommandError('No target configuration specified')
+            raise errors.BzrCommandError('No target configuration specified')
         elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
         elif target_type == 'tree':

@@ -29,7 +29,7 @@ class TestMerge(TestCaseWithConnectionHookedTransport):
         wt2.pull(wt1.branch)
         wt2.commit('empty commit too')
 
-        self.install_hooks()
+        self.start_logging_connections()
 
         cmd = cmd_merge()
         # We don't care about the ouput but 'outf' should be defined

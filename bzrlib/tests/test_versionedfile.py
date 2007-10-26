@@ -351,7 +351,6 @@ class VersionedFileTestMixIn(object):
         f.transaction_finished()
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
-        self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
         self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
@@ -598,43 +597,6 @@ class VersionedFileTestMixIn(object):
         self.assertTrue(lines['child\n'] > 0)
         self.assertTrue(lines['otherchild\n'] > 0)
 
-    def test_fix_parents(self):
-        # some versioned files allow incorrect parents to be corrected after
-        # insertion - this may not fix ancestry..
-        # if they do not supported, they just do not implement it.
-        # we test this as an interface test to ensure that those that *do*
-        # implementent it get it right.
-        vf = self.get_file()
-        vf.add_lines('notbase', [], [])
-        vf.add_lines('base', [], [])
-        try:
-            vf.fix_parents('notbase', ['base'])
-        except NotImplementedError:
-            return
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # open again, check it stuck.
-        vf = self.get_file()
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-
-    def test_fix_parents_with_ghosts(self):
-        # when fixing parents, ghosts that are listed should not be ghosts
-        # anymore.
-        vf = self.get_file()
-
-        try:
-            vf.add_lines_with_ghosts('notbase', ['base', 'stillghost'], [])
-        except NotImplementedError:
-            return
-        vf.add_lines('base', [], [])
-        vf.fix_parents('notbase', ['base', 'stillghost'])
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # open again, check it stuck.
-        vf = self.get_file()
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        # and check the ghosts
-        self.assertEqual(['base', 'stillghost'],
-                         vf.get_parents_with_ghosts('notbase'))
-
     def test_add_lines_with_ghosts(self):
         # some versioned file formats allow lines to be added with parent
         # information that is > than that in the format. Formats that do
@@ -661,38 +623,30 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([], vf.get_parents('notbxbfse'))
         self.assertEqual({'notbxbfse':()}, vf.get_graph())
-        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
-                         vf.has_version, parent_id_unicode))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
         self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
-        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
-                        vf.has_ghost, parent_id_unicode))
         self.assertTrue(vf.has_ghost(parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
-        self.callDeprecated([osutils._revision_id_warning],
-                            vf.add_lines, parent_id_unicode, [], [])
+        vf.add_lines(parent_id_utf8, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8, ),
                           },
                          vf.get_graph())
-        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
-                        vf.has_version, parent_id_unicode))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
+        self.assertEqual([parent_id_utf8, 'notbxbfse'],
+            vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
         self.assertEqual({parent_id_utf8:[],
                           'notbxbfse':[parent_id_utf8],
                           },
                          vf.get_graph_with_ghosts())
-        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
-                         vf.has_ghost, parent_id_unicode))
         self.assertFalse(vf.has_ghost(parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
@@ -726,7 +680,6 @@ class VersionedFileTestMixIn(object):
                           'base',
                           [],
                           [])
-        self.assertRaises(errors.ReadOnlyError, vf.fix_parents, 'base', [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
         self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
     

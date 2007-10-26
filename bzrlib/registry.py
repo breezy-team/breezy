@@ -69,6 +69,11 @@ class _LazyObjectGetter(_ObjectGetter):
         self._obj = obj
         self._imported = True
 
+    def __repr__(self):
+        return "<%s.%s object at %x, module=%r attribute=%r>" % (
+            self.__class__.__module__, self.__class__.__name__, id(self),
+            self._module_name, self._member_name)
+
 
 class Registry(object):
     """A class that registers objects to a name.

@@ -277,7 +277,6 @@ class TestOSUtils(TestCaseInTempDir):
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
-
     def test_changing_access(self):
         f = file('file', 'w')
         f.write('monkey')
@@ -298,7 +297,6 @@ class TestOSUtils(TestCaseInTempDir):
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
 
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
@@ -350,6 +348,7 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
+        # this shouldn't give a warning because it's getting an ascii string
         self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
@@ -476,6 +475,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
         self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
+
+    def test_minimum_path_selection(self):
+        self.assertEqual(set(),
+            osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a', 'b']),
+            osutils.minimum_path_selection(['a', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -1039,3 +1048,17 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestShaFileByName(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))

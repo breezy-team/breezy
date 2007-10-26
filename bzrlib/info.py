@@ -131,13 +131,13 @@ def gather_location_info(repository, branch=None, working=None):
 def _show_location_info(locs):
     """Show known locations for working, branch and repository."""
     print 'Location:'
-    path_list = LocationList(os.getcwd())
+    path_list = LocationList(osutils.getcwd())
     for name, loc in locs:
         path_list.add_url(name, loc)
     sys.stdout.writelines(path_list.get_lines())
 
 def _gather_related_branches(branch):
-    locs = LocationList(os.getcwd())
+    locs = LocationList(osutils.getcwd())
     locs.add_url('public branch', branch.get_public_branch())
     locs.add_url('push branch', branch.get_push_location())
     locs.add_url('parent branch', branch.get_parent())
@@ -148,8 +148,8 @@ def _show_related_info(branch, outfile):
     """Show parent and push location of branch."""
     locs = _gather_related_branches(branch)
     if len(locs.locs) > 0:
-        print >> outfile
-        print >> outfile, 'Related branches:'
+        outfile.write('\n')
+        outfile.write('Related branches:\n')
         outfile.writelines(locs.get_lines())
 
 

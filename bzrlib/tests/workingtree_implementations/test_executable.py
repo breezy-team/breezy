@@ -18,6 +18,9 @@
 
 import os
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.inventory import InventoryFile
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -175,3 +178,22 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.wt.revert(old_tree=rev_tree, backups=False)
         self.check_exist(self.wt)
 
+    def test_commit_with_exec_from_basis(self):
+        self.wt._is_executable_from_path_and_stat = \
+            self.wt._is_executable_from_path_and_stat_from_basis
+        rev_id1 = self.wt.commit('one')
+        rev_tree1 = self.wt.branch.repository.revision_tree(rev_id1)
+        a_executable = rev_tree1.inventory[self.a_id].executable
+        b_executable = rev_tree1.inventory[self.b_id].executable
+        self.assertIsNot(None, a_executable)
+        self.assertTrue(a_executable)
+        self.assertIsNot(None, b_executable)
+        self.assertFalse(b_executable)
+
+    def test_use_exec_from_basis(self):
+        if osutils.supports_executable():
+            self.assertEqual(self.wt._is_executable_from_path_and_stat_from_stat,
+                             self.wt._is_executable_from_path_and_stat)
+        else:
+            self.assertEqual(self.wt._is_executable_from_path_and_stat_from_basis,
+                             self.wt._is_executable_from_path_and_stat)

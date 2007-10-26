@@ -8,7 +8,7 @@ documentation site, http://doc.bazaar-vcs.org.
 Core Documentation
 ==================
 
-* `Mini Tutorial <en/mini-tutorial/index.html>`_ 
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
 
 * `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
 

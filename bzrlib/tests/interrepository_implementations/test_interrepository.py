@@ -148,6 +148,8 @@ class TestInterRepository(TestCaseWithInterRepository):
             # check that b now has all the data from a's first commit.
             rev = repo.get_revision('rev1')
             tree = repo.revision_tree('rev1')
+            tree.lock_read()
+            self.addCleanup(tree.unlock)
             tree.get_file_text('file1')
             for file_id in tree:
                 if tree.inventory[file_id].kind == "file":
@@ -178,7 +180,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
     
-        # start by adding a file so the data for hte file exists.
+        # start by adding a file so the data knit for the file exists in
+        # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')
@@ -242,22 +245,27 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
-        inv_file = tree_a.branch.repository.control_weaves.get_weave(
-            'inventory', 
-            tree_a.branch.repository.get_transaction())
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        inv_file = tree_a.branch.repository.get_inventory_weave()
         inv_file.add_lines('orphan', [], [])
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
         # and sign 'rev2'
-        tree_a.branch.repository.sign_revision('rev2',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        tree_a.branch.repository.sign_revision('rev2', bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
 
     def test_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
         # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
+        # as some formats keyed off inventory data in the past.)
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.bzrdir.open_repository()
@@ -276,7 +284,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(['rev1'],
                          repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
         
-    def test_fetch_preserves_signatures(self):
+    def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
         from_signature = from_repo.get_signature_text('rev2')
         to_repo = self.make_to_repository('target')
@@ -300,7 +308,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
             committer="Foo Bar <foo@example.com>",
             revision_id='ghost')
         ie = bzrlib.inventory.InventoryDirectory('TREE_ROOT', '', None)
-        builder.record_entry_contents(ie, [], '', None)
+        builder.record_entry_contents(ie, [], '', None,
+            ('directory', None, None, None))
         builder.finish_inventory()
         builder.commit("Message")
         repo.unlock()
@@ -308,6 +317,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo = self.make_to_repository('missing_ghost')
         inv = Inventory(revision_id='with_ghost')
         inv.root.revision = 'with_ghost'
+        repo.lock_write()
+        repo.start_write_group()
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -317,6 +328,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                                        revision_id='with_ghost')
         rev.parent_ids = ['ghost']
         repo.add_revision('with_ghost', rev)
+        repo.commit_write_group()
+        repo.unlock()
 
     def test_fetch_all_fixes_up_ghost(self):
         # fetching from a repo with a current ghost unghosts it in referencing

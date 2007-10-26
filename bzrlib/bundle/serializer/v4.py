@@ -330,7 +330,7 @@ class BundleWriteOperation(object):
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
-        for vf, file_id, revision_ids in self.iter_file_revisions_aggressive():
+        for vf, file_id, revision_ids in self.iter_file_revisions():
             self.add_mp_records('file', file_id, vf, revision_ids)
 
     def write_revisions(self):
@@ -466,7 +466,20 @@ class RevisionInstaller(object):
         self._info = None
 
     def install(self):
-        """Perform the installation"""
+        """Perform the installation.
+        
+        Must be called with the Repository locked.
+        """
+        self._repository.start_write_group()
+        try:
+            result = self._install_in_write_group()
+        except:
+            self._repository.abort_write_group()
+            raise
+        self._repository.commit_write_group()
+        return result
+
+    def _install_in_write_group(self):
         current_file = None
         current_versionedfile = None
         pending_file_records = []

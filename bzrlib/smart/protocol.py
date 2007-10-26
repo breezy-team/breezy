@@ -399,8 +399,12 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         while not line or line[-1] != '\n':
             # TODO: this is inefficient - but tuples are short.
             new_char = self._request.read_bytes(1)
+            if new_char == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
             line += new_char
-            assert new_char != '', "end of file reading from server."
         return line
 
     def query_version(self):

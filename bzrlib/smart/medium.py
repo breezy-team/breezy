@@ -28,7 +28,10 @@ import os
 import socket
 import sys
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    symbol_versioning,
+    )
 from bzrlib.smart.protocol import (
     REQUEST_VERSION_TWO,
     SmartServerRequestProtocolOne,
@@ -443,7 +446,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH."""
     
     def __init__(self, host, port=None, username=None, password=None,
-            vendor=None):
+            vendor=None, bzr_remote_path=None):
         """Creates a client that will connect on the first use.
         
         :param vendor: An optional override for the ssh vendor to use. See
@@ -459,6 +462,12 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._ssh_connection = None
         self._vendor = vendor
         self._write_to = None
+        self._bzr_remote_path = bzr_remote_path
+        if self._bzr_remote_path is None:
+            symbol_versioning.warn(
+                'bzr_remote_path is required as of bzr 0.92',
+                DeprecationWarning, stacklevel=2)
+            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
@@ -478,15 +487,14 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
         if self._vendor is None:
             vendor = ssh._get_ssh_vendor()
         else:
             vendor = self._vendor
         self._ssh_connection = vendor.connect_ssh(self._username,
                 self._password, self._host, self._port,
-                command=[executable, 'serve', '--inet', '--directory=/',
-                         '--allow-writes'])
+                command=[self._bzr_remote_path, 'serve', '--inet',
+                         '--directory=/', '--allow-writes'])
         self._read_from, self._write_to = \
             self._ssh_connection.get_filelike_channels()
         self._connected = True

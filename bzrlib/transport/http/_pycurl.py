@@ -44,12 +44,10 @@ from bzrlib.errors import (NoSuchFile,
                            ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (
     ca_bundle,
     _extract_headers,
     HttpTransportBase,
-    _pycurl_errors,
     response,
     )
 
@@ -75,7 +73,26 @@ except pycurl.error, e:
     raise DependencyNotPresent('pycurl', e)
 
 
-register_urlparse_netloc_protocol('http+pycurl')
+
+
+def _get_pycurl_errcode(symbol, default):
+    """
+    Returns the numerical error code for a symbol defined by pycurl.
+
+    Different pycurl implementations define different symbols for error
+    codes. Old versions never define some symbols (wether they can return the
+    corresponding error code or not). The following addresses the problem by
+    defining the symbols we care about.  Note: this allows to define symbols
+    for errors that older versions will never return, which is fine.
+    """
+    return pycurl.__dict__.get(symbol, default)
+
+CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
+CURLE_COULDNT_CONNECT = _get_pycurl_errcode('E_COULDNT_CONNECT', 7)
+CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
+CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
+CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
+CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -269,14 +286,15 @@ class PyCurlTransport(HttpTransportBase):
         except pycurl.error, e:
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             mutter('got pycurl error: %s, %s, %s, url: %s ',
-                    e[0], _pycurl_errors.errorcode[e[0]], e, url)
-            if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
-                        _pycurl_errors.CURLE_COULDNT_CONNECT,
-                        _pycurl_errors.CURLE_GOT_NOTHING,
-                        _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY):
+                    e[0], e[1], e, url)
+            if e[0] in (CURLE_SSL_CACERT_BADFILE,
+                        CURLE_COULDNT_RESOLVE_HOST,
+                        CURLE_COULDNT_CONNECT,
+                        CURLE_GOT_NOTHING,
+                        CURLE_COULDNT_RESOLVE_PROXY,):
                 raise ConnectionError('curl connection error (%s)\non %s'
                               % (e[1], url))
-            elif e[0] == _pycurl_errors.CURLE_PARTIAL_FILE:
+            elif e[0] == CURLE_PARTIAL_FILE:
                 # Pycurl itself has detected a short read.  We do
                 # not have all the information for the
                 # ShortReadvError, but that should be enough
