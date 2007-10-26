@@ -105,9 +105,10 @@ IN DEVELOPMENT
    * Experimental directory formats can now be marked with
      ``experimental = True`` during registration. (Ian Clatworthy)
 
-   * ``bzr tags`` now prints the revision number for each tag, instead
-     of the revision id, unless --show-ids is passed. In addition, tags
-     are sorted by revision number, and not by name. (Adeodato Simó)
+   * ``bzr tags`` now prints the revision number for each tag, instead of
+     the revision id, unless --show-ids is passed. In addition, tags can be
+     sorted chronologically instead of lexicographically with --sort=time.
+     (Adeodato Simó)
 
   DOCUMENTATION:
 
