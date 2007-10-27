@@ -27,6 +27,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 # type mismatches - file to link, dir, dir to file, link, link to file, dir
 
 class DirBlock:
+    """Object representation of the tuples returned by dirstate."""
 
     def __init__(self, tree, file_path, file_name=None, id=None,
                  inventory_kind=None, stat=None, disk_kind='unknown'):
