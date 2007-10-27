@@ -36,7 +36,7 @@ editing the configuration file. The first value you need to set is the
 ``export-upstream`` value. When this value is given then it enables
 export-upstream mode. The value that you set for this should be the URI of
 the branch that you wish to build against. This can be any URI or path, as
-you would use for ``bzr branch`` say. The second value to set is
+you would use for ``bzr branch``. The second value to set is
 ``export-upstream-revision``. This is the revision of the upstream branch
 that you would like to build the package against. It can be specified in any
 format that can be passed to a ``--r`` argument to a Bazaar command. This
@@ -90,7 +90,7 @@ The next step is to update the version recorded in ``debian/changelog``. The
 
 The last step is to adapt the packaging to any changes in the upstream code.
 If you are using merge mode then this section in the documentation of
-``merge mode`` may be useful here.
+`merge mode`_ may be useful here.
 
 .. _merge mode: merge.html
 

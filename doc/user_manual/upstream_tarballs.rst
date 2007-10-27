@@ -2,7 +2,7 @@ Upstream tarballs
 -----------------
 
 When you are building a version of a package that uses a version of the
-upstream package that you have not used in a build before the upstream
+upstream package that you have not used in a build yet the upstream
 tarball for that version needs to be fetched from somewhere. It can be
 tedious to track the correct file down, download it and rename or repack it
 to have the correct name and be in the correct format.

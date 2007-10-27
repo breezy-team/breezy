@@ -11,7 +11,7 @@ packages from a bzr branch.
 .. _Debian: http://www.debian.org/
 
 Note that there is a user manual available at
-/usr/share/doc/bzr-builddeb/docs/user_manual/index.html that gives more
+/usr/share/doc/bzr-builddeb/user_manual/index.html that gives more
 information than this file.
 
 Installation
