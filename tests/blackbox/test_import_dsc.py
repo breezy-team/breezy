@@ -84,5 +84,4 @@ class TestImportDsc(BuilddebTestCase):
     finally:
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
-    import pdb; pdb.set_trace()
 
