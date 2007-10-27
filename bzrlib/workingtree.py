@@ -2316,7 +2316,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for
-                    relpath, basename, kind, stat, top_path in 
+                    relpath, basename, kind, stat, top_path in
                     cur_disk_dir_content]
                 yield (cur_disk_dir_relpath, None), dirblock
                 try:
@@ -2326,7 +2326,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             elif direction < 0:
                 # inventory is before disk - missing.
                 dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
-                    for relpath, basename, dkind, stat, fileid, kind in 
+                    for relpath, basename, dkind, stat, fileid, kind in
                     current_inv[1]]
                 yield (current_inv[0][0], current_inv[0][1]), dirblock
                 try:
@@ -2338,7 +2338,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # merge the inventory and disk data together
                 dirblock = []
                 for relpath, subiterator in itertools.groupby(sorted(
-                    current_inv[1] + cur_disk_dir_content, 
+                    current_inv[1] + cur_disk_dir_content,
                     key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
                     if len(path_elements) == 2:
