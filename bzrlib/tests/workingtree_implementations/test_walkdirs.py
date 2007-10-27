@@ -26,38 +26,32 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 # tests to write:
 # type mismatches - file to link, dir, dir to file, link, link to file, dir
 
-class TestWalkdirs(TestCaseWithWorkingTree):
+class DirBlock:
 
-    added='added'
-    missing='missing'
-    unknown='unknown'
+    def __init__(self, tree, file_path, file_name=None, id=None,
+                 inventory_kind=None, stat=None, disk_kind='unknown'):
+        self.file_path = file_path
+        self.abspath = tree.abspath(file_path)
+        self.relpath = tree.relpath(file_path)
+        if file_name == None:
+           file_name = os.path.split(file_path)[-1]
+           if len(file_name) == 0:
+               file_name = os.path.split(file_path)[-2]
+        self.file_name = file_name
+        self.id = id
+        self.inventory_kind = inventory_kind
+        self.stat = stat
+        self.disk_kind = disk_kind
 
-    class DirBlock:
+    def as_tuple(self):
+         return (self.relpath, self.file_name, self.disk_kind,
+                 self.stat, self.id, self.inventory_kind)
 
-        def __init__(self, tree, file_path, file_name=None, id=None,
-                     inventory_kind=None, stat=None, disk_kind='unknown'):
-            self.file_path = file_path
-            self.abspath = tree.abspath(file_path)
-            self.relpath = tree.relpath(file_path)
-            if file_name == None:
-               file_name = os.path.split(file_path)[-1]
-               if len(file_name) == 0:
-                   file_name = os.path.split(file_path)[-2]
-            self.file_name = file_name
-            self.id = id
-            self.inventory_kind = inventory_kind
-            self.stat = stat
-            self.disk_kind = disk_kind
+    def as_dir_tuple(self):
+         return (self.relpath, self.id)
 
-        def as_tuple(self):
-             return (self.relpath, self.file_name, self.disk_kind,
-                     self.stat, self.id, self.inventory_kind)
-
-        def as_dir_tuple(self):
-             return (self.relpath, self.id)
-
-        def __str__(self):
-            return """
+    def __str__(self):
+        return """
 file_path      = %r
 abspath        = %r
 relpath        = %r
@@ -66,8 +60,15 @@ id             = %r
 inventory_kind = %r
 stat           = %r
 disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
-            self.file_name, self.id, self.inventory_kind, self.stat,
-            self.disk_kind)
+        self.file_name, self.id, self.inventory_kind, self.stat,
+        self.disk_kind)
+
+
+class TestWalkdirs(TestCaseWithWorkingTree):
+
+    added='added'
+    missing='missing'
+    unknown='unknown'
 
     def get_tree(self, file_status, prefix=None):
         tree = self.make_branch_and_tree('.')
@@ -81,7 +82,7 @@ disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
         self.build_tree(paths)
 
         def add_dirblock(path, kind):
-            dirblock = TestWalkdirs.DirBlock(tree, path)
+            dirblock = DirBlock(tree, path)
             if file_status != self.unknown:
                 dirblock.id = 'a ' + str(path).replace('/','-') + '-id'
                 dirblock.inventory_kind = kind
