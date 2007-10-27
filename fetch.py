@@ -518,7 +518,7 @@ class InterFromSvnRepository(InterRepository):
 
         self._copy_revisions_switch(needed, pb, lhs_parent)
 
-    def _copy_revisions_replay(self, revids, pb=none):
+    def _copy_revisions_replay(self, revids, pb=None):
         """Copy a set of related revisions using svn.ra.replay.
 
         :param revids: Revision ids to copy.
