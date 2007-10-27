@@ -25,6 +25,7 @@ from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     has_symlinks,
     )
+from bzrlib.symbol_versioning import zero_ninetyone
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
@@ -36,16 +37,16 @@ class TestEntryDiffing(TestCaseWithTree):
         super(TestEntryDiffing, self).setUp()
         self.wt = self.make_branch_and_tree('.')
         self.branch = self.wt.branch
-        print >> open('file', 'wb'), 'foo'
-        print >> open('binfile', 'wb'), 'foo'
+        open('file', 'wb').write('foo\n')
+        open('binfile', 'wb').write('foo\n')
         self.wt.add(['file'], ['fileid'])
         self.wt.add(['binfile'], ['binfileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
-        print >> open('file', 'wb'), 'bar'
-        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
+        open('file', 'wb').write('bar\n')
+        open('binfile', 'wb').write('x' * 1023 + '\x00\n')
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
@@ -177,8 +178,9 @@ class TestPreviousHeads(TestCaseWithTree):
             self.branch.repository.get_transaction())
         
     def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(
-            inventories, 
+        return self.applyDeprecated(zero_ninetyone,
+            self.file_active.find_previous_heads,
+            inventories,
             self.branch.repository.weave_store,
             self.branch.repository.get_transaction())
         

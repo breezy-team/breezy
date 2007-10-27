@@ -53,42 +53,41 @@ def write_weave(weave, f, format=None):
 
 def write_weave_v5(weave, f):
     """Write weave to file f."""
-    print >>f, FORMAT_1,
+    f.write(FORMAT_1)
 
     for version, included in enumerate(weave._parents):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
-            print >>f, 'i',
-            for i in mininc:
-                print >>f, i,
-            print >>f
+            f.write('i ')
+            f.write(' '.join(str(i) for i in mininc))
+            f.write('\n')
         else:
-            print >>f, 'i'
-        print >>f, '1', weave._sha1s[version]
-        print >>f, 'n', weave._names[version]
-        print >>f
+            f.write('i\n')
+        f.write('1 ' + weave._sha1s[version] + '\n')
+        f.write('n ' + weave._names[version] + '\n')
+        f.write('\n')
 
-    print >>f, 'w'
+    f.write('w\n')
 
     for l in weave._weave:
         if isinstance(l, tuple):
             assert l[0] in '{}[]'
             if l[0] == '}':
-                print >>f, '}'
+                f.write('}\n')
             else:
-                print >>f, '%s %d' % l
+                f.write('%s %d\n' % l)
         else: # text line
             if not l:
-                print >>f, ', '
+                f.write(', \n')
             elif l[-1] == '\n':
                 assert l.find('\n', 0, -1) == -1
-                print >>f, '.', l,
+                f.write('. ' + l)
             else:
                 assert l.find('\n') == -1
-                print >>f, ',', l
+                f.write(', ' + l + '\n')
 
-    print >>f, 'W'
+    f.write('W\n')
 
 
 

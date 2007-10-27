@@ -23,6 +23,7 @@ import sys
 import bzrlib
 from bzrlib import (
     bzrdir,
+    errors,
     osutils,
     repository,
     urlutils,
@@ -41,7 +42,7 @@ class TestInfo(ExternalBase):
             location = "/i/do/not/exist/"
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: %s\n' % location)
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -483,7 +484,7 @@ Repository:
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate or knit)
+"""Standalone branch (format: dirstate-tags)
 Location:
   branch root: branch
 
@@ -1131,7 +1132,7 @@ Repository:
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
             try:
-                return osutils.relpath(os.getcwd(), path)
+                return osutils.relpath(osutils.getcwd(), path)
             except errors.PathNotChild:
                 return path
 
@@ -1139,8 +1140,7 @@ Repository:
             # We expect this to fail because of locking errors. (A write-locked
             # file cannot be read-locked in the same process).
             # This should be removed when the locking errors are fixed.
-            args = command_string.split(' ')
-            self.run_bzr_error([], 'info', *args)
+            self.run_bzr_error([], 'info ' + command_string)
             return
         out, err = self.run_bzr('info %s' % command_string)
         description = {

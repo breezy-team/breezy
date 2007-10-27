@@ -700,6 +700,70 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
 
+    def test_set_state_from_inventory_preserves_hashcache(self):
+        # https://bugs.launchpad.net/bzr/+bug/146176
+        # set_state_from_inventory should preserve the stat and hash value for
+        # workingtree files that are not changed by the inventory.
+       
+        tree = self.make_branch_and_tree('.')
+        # depends on the default format using dirstate...
+        tree.lock_write()
+        try:
+            # make a dirstate with some valid hashcache data 
+            # file on disk, but that's not needed for this test
+            foo_contents = 'contents of foo'
+            self.build_tree_contents([('foo', foo_contents)])
+            tree.add('foo', 'foo-id')
+
+            foo_stat = os.stat('foo')
+            foo_packed = dirstate.pack_stat(foo_stat)
+            foo_sha = osutils.sha_string(foo_contents)
+            foo_size = len(foo_contents)
+
+            # should not be cached yet, because the file's too fresh
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', '', 0, False, dirstate.DirState.NULLSTAT)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
+            # poke in some hashcache information - it wouldn't normally be
+            # stored because it's too fresh
+            tree._dirstate.update_minimal(
+                ('', 'foo', 'foo-id'),
+                'f', False, foo_sha, foo_packed, foo_size, 'foo')
+            # now should be cached
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', foo_sha, foo_size, False, foo_packed)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
+           
+            # extract the inventory, and add something to it
+            inv = tree._get_inventory()
+            # should see the file we poked in...
+            self.assertTrue(inv.has_id('foo-id'))
+            self.assertTrue(inv.has_filename('foo'))
+            inv.add_path('bar', 'file', 'bar-id')
+            tree._dirstate._validate()
+            # this used to cause it to lose its hashcache
+            tree._dirstate.set_state_from_inventory(inv)
+            tree._dirstate._validate()
+        finally:
+            tree.unlock()
+
+        tree.lock_read()
+        try:
+            # now check that the state still has the original hashcache value
+            state = tree._dirstate
+            state._validate()
+            foo_tuple = state._get_entry(0, path_utf8='foo')
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', foo_sha, len(foo_contents), False,
+                   dirstate.pack_stat(foo_stat))]),
+                foo_tuple)
+        finally:
+            tree.unlock()
+
+
     def test_set_state_from_inventory_mixed_paths(self):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
@@ -1399,14 +1463,16 @@ class InstrumentedDirState(dirstate.DirState):
         super(InstrumentedDirState, self).__init__(path)
         self._time_offset = 0
         self._log = []
+        # member is dynamically set in DirState.__init__ to turn on trace
+        self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _sha1_file(self, abspath, entry):
+    def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
-        return super(InstrumentedDirState, self)._sha1_file(abspath, entry)
+        return osutils.sha_file_by_name(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
@@ -2120,3 +2186,22 @@ class TestDirstateValidation(TestCaseWithDirState):
         self.assertContainsRe(str(e),
             'file a-id is absent in row')
 
+
+class TestDirstateTreeReference(TestCaseWithDirState):
+
+    def test_reference_revision_is_none(self):
+        tree = self.make_branch_and_tree('tree', format='dirstate-with-subtree')
+        subtree = self.make_branch_and_tree('tree/subtree',
+                            format='dirstate-with-subtree')
+        subtree.set_root_id('subtree')
+        tree.add_reference(subtree)
+        tree.add('subtree')
+        state = dirstate.DirState.from_tree(tree, 'dirstate')
+        key = ('', 'subtree', 'subtree')
+        expected = ('', [(key,
+            [('t', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])])
+
+        try:
+            self.assertEqual(expected, state._find_block(key))
+        finally:
+            state.unlock()

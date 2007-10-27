@@ -194,7 +194,6 @@ class BundleInfo(object):
         raise KeyError(revision_id)
 
     def revision_tree(self, repository, revision_id, base=None):
-        revision_id = osutils.safe_revision_id(revision_id)
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
         assert base != revision_id
@@ -457,8 +456,12 @@ class BundleInfo(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-    def install_revisions(self, target_repo):
-        """Install revisions and return the target revision"""
+    def install_revisions(self, target_repo, stream_input=True):
+        """Install revisions and return the target revision
+
+        :param target_repo: The repository to install into
+        :param stream_input: Ignored by this implementation.
+        """
         apply_bundle.install_bundle(target_repo, self)
         return self.target
 

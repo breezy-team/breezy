@@ -14,23 +14,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-from bzrlib.tests.blackbox import ExternalBase
 import os
+
+from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestFindMergeBase(ExternalBase):
 
     def test_find_merge_base(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
-        self.run_bzr('commit -m foo --unchanged')
-        self.run_bzr('branch . ../b')
-        q = self.run_bzr('find-merge-base . ../b')[0]
-        self.run_bzr('commit -m bar --unchanged')
-        os.chdir('../b')
-        self.run_bzr('commit -m baz --unchanged')
-        r = self.run_bzr('find-merge-base . ../a')[0]
+        a_tree = self.make_branch_and_tree('a')
+        a_tree.commit(message='foo', allow_pointless=True)
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        q = self.run_bzr('find-merge-base a b')[0]
+        a_tree.commit(message='bar', allow_pointless=True)
+        b_tree.commit(message='baz', allow_pointless=True)
+        r = self.run_bzr('find-merge-base b a')[0]
         self.assertEqual(q, r)
         
     def test_find_null_merge_base(self):

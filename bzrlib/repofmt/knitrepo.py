@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    debug,
+    )
+from bzrlib.store import revision
+from bzrlib.store.revision.knit import KnitRevisionStore
+""")
 from bzrlib import (
     bzrdir,
     deprecated_graph,
@@ -29,6 +37,7 @@ from bzrlib import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
+    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -36,7 +45,8 @@ from bzrlib.repository import (
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite
+from bzrlib.util import bencode
 
 
 class _KnitParentsProvider(object):
@@ -67,14 +77,28 @@ class _KnitParentsProvider(object):
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
-    _serializer = xml5.serializer_v5
+    # These attributes are inherited from the Repository base class. Setting
+    # them to None ensures that if the constructor is changed to not initialize
+    # them, or a subclass fails to call the constructor, that an error will
+    # occur rather than the system working but generating incorrect data.
+    _commit_builder_class = None
+    _serializer = None
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+        control_store, text_store, _commit_builder_class, _serializer):
+        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files,
+            _revision_store, control_store, text_store)
+        self._commit_builder_class = _commit_builder_class
+        self._serializer = _serializer
+        self._reconcile_fixes_text_parents = True
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
         pass
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
+        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
+            check_content=check_content)[0]
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -89,8 +113,6 @@ class KnitRepository(MetaDirRepository):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
-        from_revid = osutils.safe_revision_id(from_revid)
-        to_revid = osutils.safe_revision_id(to_revid)
         vf = self._get_revision_vf()
         from_set = set(vf.get_ancestry(from_revid))
         to_set = set(vf.get_ancestry(to_revid))
@@ -119,12 +141,33 @@ class KnitRepository(MetaDirRepository):
         """
         if _mod_revision.is_null(revision_id):
             return [None]
-        revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()
         try:
             return [None] + vf.get_ancestry(revision_id, topo_sorted)
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
+
+    @needs_read_lock
+    def get_data_stream(self, revision_ids):
+        """See Repository.get_data_stream."""
+        item_keys = self.item_keys_introduced_by(revision_ids)
+        for knit_kind, file_id, versions in item_keys:
+            name = (knit_kind,)
+            if knit_kind == 'file':
+                name = ('file', file_id)
+                knit = self.weave_store.get_weave_or_empty(
+                    file_id, self.get_transaction())
+            elif knit_kind == 'inventory':
+                knit = self.get_inventory_weave()
+            elif knit_kind == 'revisions':
+                knit = self._revision_store.get_revision_file(
+                    self.get_transaction())
+            elif knit_kind == 'signatures':
+                knit = self._revision_store.get_signature_file(
+                    self.get_transaction())
+            else:
+                raise AssertionError('Unknown knit kind %r' % (knit_kind,))
+            yield name, _get_stream_as_bytes(knit, versions)
 
     @needs_read_lock
     def get_revision(self, revision_id):
@@ -141,14 +184,16 @@ class KnitRepository(MetaDirRepository):
         operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph scales with size of history.")
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self._get_revision_vf()
         if revision_id is None:
             return a_weave.get_graph()
-        elif revision_id not in a_weave:
+        if revision_id not in a_weave:
             raise errors.NoSuchRevision(self, revision_id)
         else:
             # add what can be reached from revision_id
@@ -161,6 +206,9 @@ class KnitRepository(MetaDirRepository):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph_with_ghosts scales with size of history.")
         result = deprecated_graph.Graph()
         vf = self._get_revision_vf()
         versions = set(vf.versions())
@@ -168,7 +216,7 @@ class KnitRepository(MetaDirRepository):
             pending = set(self.all_revision_ids())
             required = set([])
         else:
-            pending = set(osutils.safe_revision_id(r) for r in revision_ids)
+            pending = set(revision_ids)
             # special case NULL_REVISION
             if _mod_revision.NULL_REVISION in pending:
                 pending.remove(_mod_revision.NULL_REVISION)
@@ -216,60 +264,39 @@ class KnitRepository(MetaDirRepository):
         return reconciler
     
     def revision_parents(self, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         return self._get_revision_vf().get_parents(revision_id)
 
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
 
+    def _find_inconsistent_revision_parents(self):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
 
-class KnitRepository3(KnitRepository):
-
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-                              _revision_store, control_store, text_store)
-        self._serializer = xml7.serializer_v7
-
-    def deserialise_inventory(self, revision_id, xml):
-        """Transform the xml into an inventory object. 
-
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
         """
-        result = self._serializer.read_inventory_from_string(xml)
-        assert result.root.revision is not None
-        return result
+        assert self.is_locked()
+        vf = self._get_revision_vf()
+        for index_version in vf.versions():
+            parents_according_to_index = tuple(vf.get_parents_with_ghosts(
+                index_version))
+            revision = self.get_revision(index_version)
+            parents_according_to_revision = tuple(revision.parent_ids)
+            if parents_according_to_index != parents_according_to_revision:
+                yield (index_version, parents_according_to_index,
+                    parents_according_to_revision)
 
-    def serialise_inventory(self, inv):
-        """Transform the inventory object into XML text.
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
 
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
-        """
-        assert inv.revision_id is not None
-        assert inv.root.revision is not None
-        return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        revision_id = osutils.safe_revision_id(revision_id)
-        result = RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
-        self.start_write_group()
-        return result
+    def revision_graph_can_have_wrong_parents(self):
+        # The revision.kndx could potentially claim a revision has a different
+        # parent to the revision text.
+        return True
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -286,6 +313,17 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
      - a LockDir lock
     """
 
+    # Set this attribute in derived classes to control the repository class
+    # created by open and initialize.
+    repository_class = None
+    # Set this attribute in derived classes to control the
+    # _commit_builder_class that the repository objects will have passed to
+    # their constructor.
+    _commit_builder_class = None
+    # Set this attribute in derived clases to control the _serializer that the
+    # repository objects will have passed to their constructor.
+    _serializer = xml5.serializer_v5
+
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
         return VersionedFileStore(
@@ -298,7 +336,6 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
-        from bzrlib.store.revision.knit import KnitRevisionStore
         versioned_file_store = VersionedFileStore(
             repo_transport,
             file_mode=control_files._file_mode,
@@ -334,7 +371,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                        repository.
         """
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'knits']
+        dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
         
@@ -372,12 +409,14 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository(_format=self,
+        return self.repository_class(_format=self,
                               a_bzrdir=a_bzrdir,
                               control_files=control_files,
                               _revision_store=_revision_store,
                               control_store=control_store,
-                              text_store=text_store)
+                              text_store=text_store,
+                              _commit_builder_class=self._commit_builder_class,
+                              _serializer=self._serializer)
 
 
 class RepositoryFormatKnit1(RepositoryFormatKnit):
@@ -395,6 +434,10 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     This format was introduced in bzr 0.8.
     """
+
+    repository_class = KnitRepository
+    _commit_builder_class = CommitBuilder
+    _serializer = xml5.serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -427,9 +470,11 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
      - support for recording tree-references
     """
 
-    repository_class = KnitRepository3
+    repository_class = KnitRepository
+    _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
+    _serializer = xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
@@ -455,28 +500,25 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 3"
 
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
-        """See RepositoryFormat.open().
-        
-        :param _override_transport: INTERNAL USE ONLY. Allows opening the
-                                    repository at a slightly different url
-                                    than normal. I.e. during 'upgrade'.
-        """
-        if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
-        if _override_transport is not None:
-            repo_transport = _override_transport
-        else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport, 'lock',
-                                                     lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return self.repository_class(_format=self,
-                                     a_bzrdir=a_bzrdir,
-                                     control_files=control_files,
-                                     _revision_store=_revision_store,
-                                     control_store=control_store,
-                                     text_store=text_store)
+
+def _get_stream_as_bytes(knit, required_versions):
+    """Generate a serialised data stream.
+
+    The format is a bencoding of a list.  The first element of the list is a
+    string of the format signature, then each subsequent element is a list
+    corresponding to a record.  Those lists contain:
+
+      * a version id
+      * a list of options
+      * a list of parents
+      * the bytes
+
+    :returns: a bencoded list.
+    """
+    knit_stream = knit.get_data_stream(required_versions)
+    format_signature, data_list, callable = knit_stream
+    data = []
+    data.append(format_signature)
+    for version, options, length, parents in data_list:
+        data.append([version, options, parents, callable(length)])
+    return bencode.bencode(data)

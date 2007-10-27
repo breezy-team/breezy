@@ -93,7 +93,7 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
         opts, args = self.parse(options, [])
-        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
+        self.assertFalse(hasattr(opts, 'hello'))
         opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(False, opts.hello)
         options = [option.Option('number', type=int)]
@@ -133,6 +133,18 @@ class OptionTests(TestCase):
                    enum_switch=False)]
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--format', 'two'])
+
+    def test_override(self):
+        options = [option.Option('hello', type=str),
+                   option.Option('hi', type=str, param_name='hello')]
+        opts, args = self.parse(options, ['--hello', 'a', '--hello', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'a', '--hi', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hi', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
@@ -202,6 +214,37 @@ class OptionTests(TestCase):
                           ('two', None, None, 'two help'),
                           ])
 
+    def test_option_callback_bool(self):
+        "Test booleans get True and False passed correctly to a callback."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            cb_calls.append((option,name,value,parser))
+        options = [option.Option('hello', custom_callback=cb)]
+        opts, args = self.parse(options, ['--hello', '--no-hello'])
+        self.assertEqual(2, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertTrue(value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertFalse(value)
+
+    def test_option_callback_str(self):
+        """Test callbacks work for string options both long and short."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            cb_calls.append((option,name,value,parser))
+        options = [option.Option('hello', type=str, custom_callback=cb,
+            short_name='h')]
+        opts, args = self.parse(options, ['--hello', 'world', '-h', 'mars'])
+        self.assertEqual(2, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertEqual('world', value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertEqual('mars', value)
+
 
 class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
@@ -237,6 +280,26 @@ class TestListOptions(TestCase):
         opts, args = self.parse(
             options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
         self.assertEqual(['c'], opts.hello)
+
+    def test_option_callback_list(self):
+        """Test callbacks work for list options."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            # Note that the value is a reference so copy to keep it
+            cb_calls.append((option,name,value[:],parser))
+        options = [option.ListOption('hello', type=str, custom_callback=cb)]
+        opts, args = self.parse(options, ['--hello=world', '--hello=mars',
+            '--hello=-'])
+        self.assertEqual(3, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertEqual(['world'], value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertEqual(['world', 'mars'], value)
+        opt,name,value,parser = cb_calls[2]
+        self.assertEqual('hello', name)
+        self.assertEqual([], value)
 
 
 class TestOptionDefinitions(TestCase):
@@ -296,3 +359,41 @@ class TestOptionDefinitions(TestCase):
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
+
+    def test_is_hidden(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('hidden', 'HiddenFormat',
+            'hidden help text', hidden=True)
+        registry.register_metadir('visible', 'VisibleFormat',
+            'visible help text', hidden=False)
+        format = option.RegistryOption('format', '', registry, str)
+        self.assertTrue(format.is_hidden('hidden'))
+        self.assertFalse(format.is_hidden('visible'))
+
+    def test_option_custom_help(self):
+        the_opt = option.Option.OPTIONS['help']
+        orig_help = the_opt.help[:]
+        my_opt = option.custom_help('help', 'suggest lottery numbers')
+        # Confirm that my_opt has my help and the original is unchanged
+        self.assertEqual('suggest lottery numbers', my_opt.help)
+        self.assertEqual(orig_help, the_opt.help)
+
+
+class TestVerboseQuietLinkage(TestCase):
+
+    def check(self, parser, level, args):
+        option._verbosity_level = 0
+        opts, args = parser.parse_args(args)
+        self.assertEqual(level, option._verbosity_level)
+
+    def test_verbose_quiet_linkage(self):
+        parser = option.get_optparser(option.Option.STD_OPTIONS)
+        self.check(parser, 0, [])
+        self.check(parser, 1, ['-v'])
+        self.check(parser, 2, ['-v', '-v'])
+        self.check(parser, -1, ['-q'])
+        self.check(parser, -2, ['-qq'])
+        self.check(parser, -1, ['-v', '-v', '-q'])
+        self.check(parser, 2, ['-q', '-v', '-v'])
+        self.check(parser, 0, ['--no-verbose'])
+        self.check(parser, 0, ['-v', '-q', '--no-quiet'])

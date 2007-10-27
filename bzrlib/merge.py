@@ -209,7 +209,7 @@ class Merger(object):
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
-                raise BzrCommandError("Working tree has uncommitted changes.")
+                raise errors.UncommittedChanges(self.this_tree)
 
     def compare_basis(self):
         try:
@@ -304,8 +304,7 @@ class Merger(object):
                                                   self.this_branch)
 
     def _maybe_fetch(self, source, target, revision_id):
-        if (source.repository.bzrdir.root_transport.base !=
-            target.repository.bzrdir.root_transport.base):
+        if not source.repository.has_same_location(target.repository):
             target.fetch(source, revision_id)
 
     def find_base(self):

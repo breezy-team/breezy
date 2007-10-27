@@ -42,12 +42,10 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
     if to_file is None:
         to_file = sys.stdout
 
-    prevanno=''
+    # Handle the show_ids case
     last_rev_id = None
     if show_ids:
-        w = branch.repository.weave_store.get_weave(file_id,
-            branch.repository.get_transaction())
-        annotations = list(w.annotate_iter(rev_id))
+        annotations = _annotations(branch.repository, file_id, rev_id)
         max_origin_len = max(len(origin) for origin, text in annotations)
         for origin, text in annotations:
             if full or last_rev_id != origin:
@@ -58,6 +56,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             last_rev_id = origin
         return
 
+    # Calculate the lengths of the various columns
     annotation = list(_annotate_file(branch, rev_id, file_id))
     if len(annotation) == 0:
         max_origin_len = max_revno_len = max_revid_len = 0
@@ -65,11 +64,14 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         max_origin_len = max(len(x[1]) for x in annotation)
         max_revno_len = max(len(x[0]) for x in annotation)
         max_revid_len = max(len(x[3]) for x in annotation)
-
     if not verbose:
         max_revno_len = min(max_revno_len, 12)
     max_revno_len = max(max_revno_len, 3)
 
+    # Output the annotations
+    prevanno = ''
+    encoding = getattr(to_file, 'encoding', None) or \
+            osutils.get_terminal_encoding()
     for (revno_str, author, date_str, line_rev_id, text) in annotation:
         if verbose:
             anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
@@ -78,8 +80,8 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             if len(revno_str) > max_revno_len:
                 revno_str = revno_str[:max_revno_len-1] + '>'
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
-
-        if anno.lstrip() == "" and full: anno = prevanno
+        if anno.lstrip() == "" and full:
+            anno = prevanno
         try:
             to_file.write(anno)
         except UnicodeEncodeError:
@@ -89,24 +91,26 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             # a user function (non-scripting), so shouldn't die because of
             # unrepresentable annotation characters. So encode using 'replace',
             # and write them again.
-            encoding = getattr(to_file, 'encoding', None) or \
-                    osutils.get_terminal_encoding()
             to_file.write(anno.encode(encoding, 'replace'))
-        print >>to_file, '| %s' % (text,)
-        prevanno=anno
+        to_file.write('| %s\n' % (text,))
+        prevanno = anno
+
+
+def _annotations(repo, file_id, rev_id):
+    """Return the list of (origin,text) for a revision of a file in a repository."""
+    w = repo.weave_store.get_weave(file_id, repo.get_transaction())
+    return list(w.annotate_iter(rev_id))
 
 
 def _annotate_file(branch, rev_id, file_id):
     """Yield the origins for each line of a file.
 
-    This includes detailed information, such as the committer name, and
+    This includes detailed information, such as the author name, and
     date string for the commit, rather than just the revision id.
     """
     revision_id_to_revno = branch.get_revision_id_to_revno_map()
-    w = branch.repository.weave_store.get_weave(file_id,
-        branch.repository.get_transaction())
+    annotations = _annotations(branch.repository, file_id, rev_id)
     last_origin = None
-    annotations = list(w.annotate_iter(rev_id))
     revision_ids = set(o for o, t in annotations)
     revision_ids = [o for o in revision_ids if 
                     branch.repository.has_revision(o)]
@@ -129,7 +133,7 @@ def _annotate_file(branch, rev_id, file_id):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.committer
+            author = rev.get_apparent_author()
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
@@ -137,20 +141,29 @@ def _annotate_file(branch, rev_id, file_id):
         yield (revno_str, author, date_str, origin, text)
 
 
-def reannotate(parents_lines, new_lines, new_revision_id):
+def reannotate(parents_lines, new_lines, new_revision_id,
+               _left_matching_blocks=None):
     """Create a new annotated version from new lines and parent annotations.
     
     :param parents_lines: List of annotated lines for all parents
     :param new_lines: The un-annotated new lines
     :param new_revision_id: The revision-id to associate with new lines
         (will often be CURRENT_REVISION)
+    :param left_matching_blocks: a hint about which areas are common
+        between the text and its left-hand-parent.  The format is
+        the SequenceMatcher.get_matching_blocks format.
     """
-    if len(parents_lines) == 1:
-        for data in _reannotate(parents_lines[0], new_lines, new_revision_id):
+    if len(parents_lines) == 0:
+        for line in new_lines:
+            yield new_revision_id, line
+    elif len(parents_lines) == 1:
+        for data in _reannotate(parents_lines[0], new_lines, new_revision_id,
+                                _left_matching_blocks):
             yield data
     else:
-        reannotations = [list(_reannotate(p, new_lines, new_revision_id)) for
-                         p in parents_lines]
+        block_list = [_left_matching_blocks] + [None] * len(parents_lines)
+        reannotations = [list(_reannotate(p, new_lines, new_revision_id, b))
+                         for p, b in zip(parents_lines, block_list)]
         for annos in zip(*reannotations):
             origins = set(a for a, l in annos)
             line = annos[0][1]
@@ -162,12 +175,15 @@ def reannotate(parents_lines, new_lines, new_revision_id):
                 yield new_revision_id, line
 
 
-def _reannotate(parent_lines, new_lines, new_revision_id):
-    plain_parent_lines = [l for r, l in parent_lines]
-    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines,
-                                                   new_lines)
+def _reannotate(parent_lines, new_lines, new_revision_id,
+                matching_blocks=None):
     new_cur = 0
-    for i, j, n in matcher.get_matching_blocks():
+    if matching_blocks is None:
+        plain_parent_lines = [l for r, l in parent_lines]
+        matcher = patiencediff.PatienceSequenceMatcher(None,
+            plain_parent_lines, new_lines)
+        matching_blocks = matcher.get_matching_blocks()
+    for i, j, n in matching_blocks:
         for line in new_lines[new_cur:j]:
             yield new_revision_id, line
         for data in parent_lines[i:i+n]:

@@ -59,7 +59,12 @@ def _check_name_encoding(name):
 
 
 class ContainerWriter(object):
-    """A class for writing containers."""
+    """A class for writing containers.
+
+    :attribute records_written: The number of user records added to the
+        container. This does not count the prelude or suffix of the container
+        introduced by the begin() and end() methods.
+    """
 
     def __init__(self, write_func):
         """Constructor.
@@ -69,6 +74,7 @@ class ContainerWriter(object):
         """
         self._write_func = write_func
         self.current_offset = 0
+        self.records_written = 0
 
     def begin(self):
         """Begin writing a container."""
@@ -98,20 +104,30 @@ class ContainerWriter(object):
         """
         current_offset = self.current_offset
         # Kind marker
-        self.write_func("B")
+        byte_sections = ["B"]
         # Length
-        self.write_func(str(len(bytes)) + "\n")
+        byte_sections.append(str(len(bytes)) + "\n")
         # Names
         for name_tuple in names:
             # Make sure we're writing valid names.  Note that we will leave a
             # half-written record if a name is bad!
             for name in name_tuple:
                 _check_name(name)
-            self.write_func('\x00'.join(name_tuple) + "\n")
+            byte_sections.append('\x00'.join(name_tuple) + "\n")
         # End of headers
-        self.write_func("\n")
+        byte_sections.append("\n")
         # Finally, the contents.
-        self.write_func(bytes)
+        byte_sections.append(bytes)
+        # XXX: This causes a memory copy of bytes in size, but is usually
+        # faster than two write calls (12 vs 13 seconds to output a gig of
+        # 1k records.) - results may differ on significantly larger records
+        # like .iso's but as they should be rare in any case and thus not
+        # likely to be the common case. The biggest issue is causing extreme
+        # memory pressure in that case. One possibly improvement here is to
+        # check the size of the content before deciding to join here vs call
+        # write twice.
+        self.write_func(''.join(byte_sections))
+        self.records_written += 1
         # return a memo of where we wrote data to allow random access.
         return current_offset, self.current_offset - current_offset
 

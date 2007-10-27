@@ -31,10 +31,6 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_eight,
-    )
 from bzrlib.ui import CLIUIFactory
 
 
@@ -66,13 +62,6 @@ class TextUIFactory(CLIUIFactory):
         """Emit prompt on the CLI."""
         self.stdout.write(prompt)
         
-    @deprecated_method(zero_eight)
-    def progress_bar(self):
-        """See UIFactory.nested_progress_bar()."""
-        # this in turn is abstract, and creates either a tty or dots
-        # bar depending on what we think of the terminal
-        return progress.ProgressBar()
-
     def nested_progress_bar(self):
         """Return a nested progress bar.
         

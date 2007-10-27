@@ -54,14 +54,6 @@ class TestJoin(TestCaseWithTransport):
         self.assertRaises(errors.RevisionNotPresent,
             f2.join, f1, version_ids=['r3'])
 
-        #f3 = self.get_file('1')
-        #f3.add_lines('r0', ['a\n', 'b\n'], [])
-        #f3.add_lines('r1', ['c\n', 'b\n'], ['r0'])
-        #f4 = self.get_file('2')
-        #f4.join(f3, ['r0'])
-        #self.assertTrue(f4.has_version('r0'))
-        #self.assertFalse(f4.has_version('r1'))
-
     def test_gets_expected_inter_worker(self):
         source = self.get_source()
         target = self.get_target()
@@ -87,25 +79,25 @@ class TestJoin(TestCaseWithTransport):
         self.assertTrue(target.has_version('namedleft'))
         self.assertTrue(target.has_version('namedright'))
 
-    def test_join_add_parents(self):
-        """Join inserting new parents into existing versions
-        
-        The new version must have the right parent list and must identify
-        lines originating in another parent.
-        """
+    def test_join_different_parents_existing_version(self):
+        """This may either ignore or error."""
         w1 = self.get_target('w1')
         w2 = self.get_source('w2')
         w1.add_lines('v-1', [], ['line 1\n'])
         w2.add_lines('v-2', [], ['line 2\n'])
         w1.add_lines('v-3', ['v-1'], ['line 1\n'])
         w2.add_lines('v-3', ['v-2'], ['line 1\n'])
-        w1.join(w2)
+        try:
+            w1.join(w2)
+        except errors.WeaveParentMismatch:
+            # Acceptable behaviour:
+            return
         self.assertEqual(sorted(w1.versions()),
                          'v-1 v-2 v-3'.split())
         self.assertEqualDiff(w1.get_text('v-3'),
                 'line 1\n')
         self.assertEqual(sorted(w1.get_parents('v-3')),
-                ['v-1', 'v-2'])
+                ['v-1'])
         ann = list(w1.annotate('v-3'))
         self.assertEqual(len(ann), 1)
         self.assertEqual(ann[0][0], 'v-1')
@@ -148,36 +140,34 @@ class TestJoin(TestCaseWithTransport):
         t.join(s)
         self.assertEqual(['base'], t.get_parents('text'))
 
-    def test_join_with_ghosts_merges_parents(self):
-        """Join combined parent lists"""
-        wa = self.build_weave1()
-        wb = self.get_target()
-        wb.add_lines('x1', [], ['line from x1\n'])
-        wb.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        wa.join(wb)
-        self.assertEqual(['v1','x1'], wa.get_parents('v2'))
-
     def test_join_with_ghosts(self):
         """Join that inserts parents of an existing revision.
 
-        This can happen when merging from another branch who
-        knows about revisions the destination does not.  In 
-        this test the second weave knows of an additional parent of 
-        v2.  Any revisions which are in common still have to have the 
-        same text.
+        This can happen when merging from another branch who knows about
+        revisions the destination does not, and the destinations index is
+        incorrect because it was or is using a ghost-unaware format to
+        represent the index. In this test the second weave knows of an
+        additional parent of v2.
+        
+        However v2 must not be changed because we consider indexes immutable:
+        instead a check or reconcile operation locally should pickup that v2 is
+        wrong and regenerate the index at a later time. So either this errors,
+        or leaves v2 unaltered.
         """
         w1 = self.build_weave1()
         wb = self.get_target()
         wb.add_lines('x1', [], ['line from x1\n'])
         wb.add_lines('v1', [], ['hello\n'])
         wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        w1.join(wb)
-        eq = self.assertEquals
-        eq(sorted(w1.versions()), ['v1', 'v2', 'v3', 'x1',])
-        eq(w1.get_text('x1'), 'line from x1\n')
-        eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        eq(w1.get_parents('v2'), ['v1', 'x1'])
+        try:
+            w1.join(wb)
+        except errors.WeaveParentMismatch:
+            # Acceptable behaviour:
+            return
+        self.assertEqual(['v1', 'v2', 'v3', 'x1',], sorted(w1.versions()))
+        self.assertEqual('line from x1\n', w1.get_text('x1'))
+        self.assertEqual(['hello\n', 'world\n'], w1.get_lines('v2'))
+        self.assertEqual(['v1'], w1.get_parents('v2'))
 
     def test_join_with_ignore_missing_versions(self):
         # test that ignore_missing=True makes a listed but absent version id
@@ -205,38 +195,6 @@ class TestJoin(TestCaseWithTransport):
         for version, parents in pattern:
             w.add_lines(version, parents, [])
         return w
-
-    def test_join_reorder(self):
-        """Reweave requiring reordering of versions.
-
-        Weaves must be stored such that parents come before children.  When
-        reweaving, we may add new parents to some children, but it is required
-        that there must be *some* valid order that can be found, otherwise the
-        ancestries are contradictory.  (For the specific case of inserting
-        ghost revisions there will be no disagreement, only partial knowledge
-        of the history.)
-
-        Note that the weaves are only partially ordered: when there are two
-        versions where neither is an ancestor of the other the order in which
-        they occur is unconstrained.  When we join those versions into
-        another weave, they may become more constrained and it may be
-        necessary to change their order.
-
-        One simple case of this is 
-
-        w1: (c[], a[], b[a])
-        w2: (b[], c[b], a[])
-        
-        We need to recognize that the final weave must show the ordering
-        a[], b[a], c[b].  The version that must be first in the result is 
-        not first in either of the input weaves.
-        """
-        w1 = self.build_target_weave('1', ('c', []), ('a', []), ('b', ['a']))
-        w2 = self.build_source_weave('2', ('b', []), ('c', ['b']), ('a', []))
-        w1.join(w2)
-        self.assertEqual([], w1.get_parents('a'))
-        self.assertEqual(['a'], w1.get_parents('b'))
-        self.assertEqual(['b'], w1.get_parents('c'))
         
     def test_joining_ghosts(self):
         # some versioned file formats allow lines to be added with parent

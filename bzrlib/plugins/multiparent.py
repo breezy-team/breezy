@@ -56,12 +56,12 @@ class cmd_mp_regen(commands.Command):
             size=False, build=False):
         file_weave = get_file_weave(file)
         url = file_weave.transport.abspath(file_weave.filename)
-        print >> sys.stderr, 'Importing: %s' % \
-            urlutils.local_path_from_url(url)
+        sys.stderr.write('Importing: %s\n' % \
+            urlutils.local_path_from_url(url))
         if sync_snapshots:
-            print >> sys.stderr, 'Snapshots follow input'
+            sys.stderr.write('Snapshots follow input\n')
         else:
-            print >> sys.stderr, 'Snapshot interval: %d' % snapshot_interval
+            sys.stderr.write('Snapshot interval: %d\n' % snapshot_interval)
         if not memory:
             if outfile is None:
                 filename = 'pknit'
@@ -80,8 +80,8 @@ class cmd_mp_regen(commands.Command):
             to_sync = set()
         else:
             to_sync = vf.select_snapshots(file_weave)
-        print >> sys.stderr, "%d fulltext(s)" % len(old_snapshots)
-        print >> sys.stderr, "%d planned snapshots" % len(to_sync)
+        sys.stderr.write("%d fulltext(s)\n" % len(old_snapshots))
+        sys.stderr.write("%d planned snapshots\n" % len(to_sync))
 
         try:
             vf.import_versionedfile(file_weave, to_sync, single_parent=single,
@@ -100,7 +100,7 @@ class cmd_mp_regen(commands.Command):
             vf.destroy()
             raise
         try:
-            print >> sys.stderr, "%d actual snapshots" % len(vf._snapshots)
+            sys.stderr.write("%d actual snapshots\n" % len(vf._snapshots))
             if not cache:
                 vf.clear_cache()
             if memory:
@@ -146,7 +146,8 @@ class cmd_mp_extract(commands.Command):
             vf = MultiVersionedFile(filename)
             vf.load()
             vf.get_line_list(revisions)
-        print >> sys.stderr, time.clock() - start
+        sys.stderr.write(time.clock() - start)
+        sys.stderr.write('\n')
         if lsprof_timed:
             from bzrlib.lsprof import profile
             vf.clear_cache()
@@ -157,7 +158,8 @@ class cmd_mp_extract(commands.Command):
         for revisions in revisions_list:
             file_weave = get_file_weave(vfile)
             file_weave.get_line_list(revisions)
-        print >> sys.stderr, time.clock() - start
+        sys.stderr.write(time.clock() - start)
+        sys.stderr.write('\n')
 
 
 def get_file_weave(filename=None, wt=None):

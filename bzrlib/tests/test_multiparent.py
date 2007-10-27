@@ -49,6 +49,11 @@ class TestMulti(TestCase):
                           multiparent.ParentText(0, 1, 2, 3)],
                          diff.hunks)
 
+        diff = multiparent.MultiParent.from_lines(LINES_2, [LINES_1])
+        self.assertEqual([multiparent.ParentText(0, 0, 0, 1),
+                          multiparent.ParentText(0, 2, 1, 3)],
+                         diff.hunks)
+
     def test_compare_two_parents(self):
         diff = multiparent.MultiParent.from_lines(LINES_1, [LINES_2, LINES_3])
         self.assertEqual([multiparent.ParentText(1, 0, 0, 4),
@@ -63,6 +68,15 @@ class TestMulti(TestCase):
         self.assertEqual([multiparent.ParentText(1, 0, 0, 4),
                           multiparent.ParentText(0, 3, 4, 1)],
                          diff.hunks)
+
+    def test_get_matching_blocks(self):
+        diff = multiparent.MultiParent.from_lines(LINES_1, [LINES_2])
+        self.assertEqual([(0, 0, 1), (1, 2, 3), (4, 5, 0)],
+                         list(diff.get_matching_blocks(0, len(LINES_2))))
+
+        diff = multiparent.MultiParent.from_lines(LINES_2, [LINES_1])
+        self.assertEqual([(0, 0, 1), (2, 1, 3), (5, 4, 0)],
+                         list(diff.get_matching_blocks(0, len(LINES_1))))
 
     def test_range_iterator(self):
         diff = multiparent.MultiParent.from_lines(LINES_1, [LINES_2, LINES_3])

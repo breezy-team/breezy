@@ -51,23 +51,31 @@ from bzrlib import errors
 
 class Serializer(object):
     """Abstract object serialize/deserialize"""
+
     def write_inventory(self, inv, f):
         """Write inventory to a file"""
-        elt = self._pack_inventory(inv)
-        self._write_element(elt, f)
+        raise NotImplementedError(self.write_inventory)
 
     def write_inventory_to_string(self, inv):
-        return tostring(self._pack_inventory(inv)) + '\n'
+        raise NotImplementedError(self.write_inventory_to_string)
 
-    def read_inventory_from_string(self, xml_string):
+    def read_inventory_from_string(self, xml_string, revision_id=None):
+        """Read xml_string into an inventory object.
+
+        :param xml_string: The xml to read.
+        :param revision_id: If not-None, the expected revision id of the
+            inventory. Some serialisers use this to set the results' root
+            revision.
+        """
         try:
-            return self._unpack_inventory(fromstring(xml_string))
+            return self._unpack_inventory(fromstring(xml_string), revision_id)
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
-    def read_inventory(self, f):
+    def read_inventory(self, f, revision_id=None):
         try:
-            return self._unpack_inventory(self._read_element(f))
+            return self._unpack_inventory(self._read_element(f),
+                revision_id=None)
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 

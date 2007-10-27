@@ -190,7 +190,7 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
+                info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
@@ -486,6 +486,7 @@ class MergeDirective2(_BaseMergeDirective):
                                                self.base_revision_id)
         # Convert line-endings to UNIX
         stored_patch = re.sub('\r\n?', '\n', self.patch)
+        calculated_patch = re.sub('\r\n?', '\n', calculated_patch)
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)

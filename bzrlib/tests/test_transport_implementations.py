@@ -45,7 +45,6 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
@@ -230,23 +229,28 @@ class TransportTests(TestTransportImplementation):
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
-    def test_put(self):
+    def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
-
         if t.is_readonly():
             return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('b')
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            handle.close()
 
-        self.applyDeprecated(zero_eleven, t.put, 'a', 'string\ncontents\n')
-        self.check_transport_contents('string\ncontents\n', t, 'a')
-
-        self.applyDeprecated(zero_eleven,
-                             t.put, 'b', StringIO('file-like\ncontents\n'))
-        self.check_transport_contents('file-like\ncontents\n', t, 'b')
-
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            zero_eleven,
-            t.put, 'path/doesnt/exist/c', StringIO('contents'))
+    def test_get_bytes_with_open_write_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('b')
+            self.assertEqual('b', t.get_bytes('foo'))
+            self.assertEqual('b', t.get('foo').read())
+        finally:
+            handle.close()
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -370,11 +374,14 @@ class TransportTests(TestTransportImplementation):
                     t.put_file, 'a', StringIO('some text for a\n'))
             return
 
-        t.put_file('a', StringIO('some text for a\n'))
+        result = t.put_file('a', StringIO('some text for a\n'))
+        # put_file returns the length of the data written
+        self.assertEqual(16, result)
         self.failUnless(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
-        t.put_file('a', StringIO('new\ncontents for\na\n'))
+        result = t.put_file('a', StringIO('new\ncontents for\na\n'))
+        self.assertEqual(19, result)
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
                           t.put_file, 'path/doesnt/exist/c',
@@ -436,12 +443,6 @@ class TransportTests(TestTransportImplementation):
         # Yes, you can put a file such that it becomes readonly
         t.put_file('mode400', StringIO('test text\n'), mode=0400)
         self.assertTransportMode(t, 'mode400', 0400)
-
-        # XXX: put_multi is deprecated, so do we really care anymore?
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_file('nomode', StringIO('test text\n'), mode=None)
@@ -511,58 +512,6 @@ class TransportTests(TestTransportImplementation):
         unicode_file = pyStringIO(u'\u1234')
         self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
 
-    def test_put_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
-                          ('d', StringIO('contents\nfor d\n'))]
-            ))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
-                [True, False, False, True])
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('contents\nfor d\n', t, 'd')
-
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
-            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
-                              ('d', StringIO('another contents\nfor d\n'))])
-            ))
-        self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('another contents\nfor d\n', t, 'd')
-
-    def test_put_permissions(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        if not t._can_roundtrip_unix_modebits():
-            # Can't roundtrip, so no need to run this test
-            return
-        self.applyDeprecated(zero_eleven, t.put, 'mode644',
-                             StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        self.applyDeprecated(zero_eleven, t.put, 'mode666',
-                             StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        self.applyDeprecated(zero_eleven, t.put, 'mode600',
-                             StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        # Yes, you can put a file such that it becomes readonly
-        self.applyDeprecated(zero_eleven, t.put, 'mode400',
-                             StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
-        self.applyDeprecated(zero_eleven, t.put_multi,
-                             [('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertTransportMode(t, 'mmode644', 0644)
-
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
-        self.applyDeprecated(zero_eleven, t.put, 'nomode',
-                             StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
     def test_mkdir(self):
         t = self.get_transport()
 
@@ -633,6 +582,33 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dnomode', mode=None)
         self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
 
+    def test_opening_a_file_stream_creates_file(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            self.assertEqual('', t.get_bytes('foo'))
+        finally:
+            handle.close()
+
+    def test_opening_a_file_stream_can_set_mode(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        def check_mode(name, mode, expected):
+            handle = t.open_write_stream(name, mode=mode)
+            handle.close()
+            self.assertTransportMode(t, name, expected)
+        check_mode('mode644', 0644, 0644)
+        check_mode('mode666', 0666, 0666)
+        check_mode('mode600', 0600, 0600)
+        # The default permissions should be based on the current umask
+        check_mode('nomode', None, 0666 & ~osutils.get_umask())
+
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
         # same protocol two servers
@@ -683,26 +659,6 @@ class TransportTests(TestTransportImplementation):
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)
 
-    def test_append(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        t.put_bytes('a', 'diff\ncontents for\na\n')
-        t.put_bytes('b', 'contents\nfor b\n')
-
-        self.assertEqual(20, self.applyDeprecated(zero_eleven,
-            t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
-            t, 'a')
-
-        # And we can create new files, too
-        self.assertEqual(0, self.applyDeprecated(zero_eleven,
-            t.append, 'c', StringIO('some text\nfor a missing file\n')))
-        self.check_transport_contents('some text\nfor a missing file\n',
-                                      t, 'c')
     def test_append_file(self):
         t = self.get_transport()
 
@@ -865,6 +821,11 @@ class TransportTests(TestTransportImplementation):
         # working directory, so we can just do a
         # plain "listdir".
         # self.assertEqual([], os.listdir('.'))
+
+    def test_recommended_page_size(self):
+        """Transports recommend a page size for partial access to files."""
+        t = self.get_transport()
+        self.assertIsInstance(t.recommended_page_size(), int)
 
     def test_rmdir(self):
         t = self.get_transport()
@@ -1526,6 +1487,97 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
+    def test_readv_with_adjust_for_latency(self):
+        transport = self.get_transport()
+        # the adjust for latency flag expands the data region returned
+        # according to a per-transport heuristic, so testing is a little
+        # tricky as we need more data than the largest combining that our
+        # transports do. To accomodate this we generate random data and cross
+        # reference the returned data with the random data. To avoid doing
+        # multiple large random byte look ups we do several tests on the same
+        # backing data.
+        content = osutils.rand_bytes(200*1024)
+        content_size = len(content)
+        if transport.is_readonly():
+            file('a', 'w').write(content)
+        else:
+            transport.put_bytes('a', content)
+        def check_result_data(result_vector):
+            for item in result_vector:
+                data_len = len(item[1])
+                self.assertEqual(content[item[0]:item[0] + data_len], item[1])
+
+        # start corner case
+        result = list(transport.readv('a', ((0, 30),),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 1 result, from 0, to something > 30
+        self.assertEqual(1, len(result))
+        self.assertEqual(0, result[0][0])
+        self.assertTrue(len(result[0][1]) >= 30)
+        check_result_data(result)
+        # end of file corner case
+        result = list(transport.readv('a', ((204700, 100),),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 1 result, from 204800- its length, to the end
+        self.assertEqual(1, len(result))
+        data_len = len(result[0][1])
+        self.assertEqual(204800-data_len, result[0][0])
+        self.assertTrue(data_len >= 100)
+        check_result_data(result)
+        # out of order ranges are made in order
+        result = list(transport.readv('a', ((204700, 100), (0, 50)),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 2 results, in order, start and end.
+        self.assertEqual(2, len(result))
+        # start
+        data_len = len(result[0][1])
+        self.assertEqual(0, result[0][0])
+        self.assertTrue(data_len >= 30)
+        # end
+        data_len = len(result[1][1])
+        self.assertEqual(204800-data_len, result[1][0])
+        self.assertTrue(data_len >= 100)
+        check_result_data(result)
+        # close ranges get combined (even if out of order)
+        for request_vector in [((400,50), (800, 234)), ((800, 234), (400,50))]:
+            result = list(transport.readv('a', request_vector,
+                adjust_for_latency=True, upper_limit=content_size))
+            self.assertEqual(1, len(result))
+            data_len = len(result[0][1])
+            # minimmum length is from 400 to 1034 - 634
+            self.assertTrue(data_len >= 634)
+            # must contain the region 400 to 1034
+            self.assertTrue(result[0][0] <= 400)
+            self.assertTrue(result[0][0] + data_len >= 1034)
+            check_result_data(result)
+        # test from observed failure case.
+        if transport.is_readonly():
+            file('a', 'w').write('a'*1024*1024)
+        else:
+            transport.put_bytes('a', 'a'*1024*1024)
+        broken_vector = [(465219, 800), (225221, 800), (445548, 800),
+            (225037, 800), (221357, 800), (437077, 800), (947670, 800),
+            (465373, 800), (947422, 800)]
+        results = list(transport.readv('a', broken_vector, True, 1024*1024))
+        found_items = [False]*9
+        for pos, (start, length) in enumerate(broken_vector):
+            # check the range is covered by the result
+            for offset, data in results:
+                if offset <= start and start + length <= offset + len(data):
+                    found_items[pos] = True
+        self.assertEqual([True]*9, found_items)
+
+    def test_get_with_open_write_stream_sees_all_content(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        handle = t.open_write_stream('foo')
+        try:
+            handle.write('bcd')
+            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0,1), (2,1)))))
+        finally:
+            handle.close()
 
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.

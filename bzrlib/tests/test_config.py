@@ -27,6 +27,7 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    mail_client,
     urlutils,
     trace,
     )
@@ -209,6 +210,21 @@ class TestConfigObj(TestCase):
         self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
         self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
 
+
+erroneous_config = """[section] # line 1
+good=good # line 2
+[section] # line 3
+whocares=notme # line 4
+"""
+class TestConfigObjErrors(TestCase):
+
+    def test_duplicate_section_name_error_line(self):
+        try:
+            co = ConfigObj(StringIO(erroneous_config), raise_errors=True)
+        except config.configobj.DuplicateError, e:
+            self.assertEqual(3, e.line_number)
+        else:
+            self.fail('Error in config file not detected')
 
 class TestConfig(TestCase):
 
@@ -886,6 +902,14 @@ class TestLocationConfig(TestCaseInTempDir):
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         
+    def test_get_bzr_remote_path(self):
+        my_config = config.LocationConfig('/a/c')
+        self.assertEqual('bzr', my_config.get_bzr_remote_path())
+        my_config.set_user_option('bzr_remote_path', '/path-bzr')
+        self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
+        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
+
 
 precedence_global = 'option = global'
 precedence_branch = 'option = branch'
@@ -1004,6 +1028,48 @@ class TestBranchConfigItems(TestCaseInTempDir):
                                       location_config=precedence_location,
                                       location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
+
+    def test_get_mail_client(self):
+        config = self.get_branch_config()
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        # Specific clients
+        config.set_user_option('mail_client', 'evolution')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Evolution)
+
+        config.set_user_option('mail_client', 'kmail')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.KMail)
+
+        config.set_user_option('mail_client', 'mutt')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Mutt)
+
+        config.set_user_option('mail_client', 'thunderbird')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Thunderbird)
+
+        # Generic options
+        config.set_user_option('mail_client', 'default')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.DefaultMail)
+
+        config.set_user_option('mail_client', 'editor')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.Editor)
+
+        config.set_user_option('mail_client', 'mapi')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.MAPIClient)
+
+        config.set_user_option('mail_client', 'xdg-email')
+        client = config.get_mail_client()
+        self.assertIsInstance(client, mail_client.XDGEmail)
+
+        config.set_user_option('mail_client', 'firebird')
+        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
 
 
 class TestMailAddressExtraction(TestCase):

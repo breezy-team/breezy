@@ -23,7 +23,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
 # TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
@@ -33,9 +32,6 @@ from bzrlib.transport.http._urllib2_wrappers import (
     extract_authentication_uri,
     extract_credentials,
     )
-
-
-register_urlparse_netloc_protocol('http+urllib')
 
 
 class HttpTransport_urllib(HttpTransportBase):
@@ -155,11 +151,6 @@ class HttpTransport_urllib(HttpTransportBase):
         # Close response to free the httplib.HTTPConnection pipeline
         self._get_connection().fake_close()
         return code, data
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
 
     def _head(self, relpath):
         """Request the HEAD of a file.

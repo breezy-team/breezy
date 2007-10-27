@@ -20,7 +20,7 @@ from bzrlib import (
     )
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
-from bzrlib.symbol_versioning import deprecated_function, zero_nine
+from bzrlib.symbol_versioning import deprecated_function
 
 
 class TreeDelta(object):
@@ -122,21 +122,21 @@ class TreeDelta(object):
                     path += '*'
 
                 if show_ids:
-                    print >>to_file, indent + '%s  %-30s %s' % (short_status_letter,
-                        path, fid)
+                    to_file.write(indent + '%s  %-30s %s\n' % (short_status_letter,
+                        path, fid))
                 else:
-                    print >>to_file, indent + '%s  %s' % (short_status_letter, path)
+                    to_file.write(indent + '%s  %s\n' % (short_status_letter, path))
             
         if self.removed:
             if not short_status:
-                print >>to_file, indent + 'removed:'
+                to_file.write(indent + 'removed:\n')
                 show_list(self.removed)
             else:
                 show_list(self.removed, 'D')
                 
         if self.added:
             if not short_status:
-                print >>to_file, indent + 'added:'
+                to_file.write(indent + 'added:\n')
                 show_list(self.added)
             else:
                 show_list(self.added, 'A')
@@ -146,7 +146,7 @@ class TreeDelta(object):
         if self.renamed:
             short_status_letter = 'R'
             if not short_status:
-                print >>to_file, indent + 'renamed:'
+                to_file.write(indent + 'renamed:\n')
                 short_status_letter = ''
             for (oldpath, newpath, fid, kind,
                  text_modified, meta_modified) in self.renamed:
@@ -156,43 +156,43 @@ class TreeDelta(object):
                 if meta_modified:
                     newpath += '*'
                 if show_ids:
-                    print >>to_file, indent + '%s  %s => %s %s' % (
-                        short_status_letter, oldpath, newpath, fid)
+                    to_file.write(indent + '%s  %s => %s %s\n' % (
+                        short_status_letter, oldpath, newpath, fid))
                 else:
-                    print >>to_file, indent + '%s  %s => %s' % (
-                        short_status_letter, oldpath, newpath)
+                    to_file.write(indent + '%s  %s => %s\n' % (
+                        short_status_letter, oldpath, newpath))
 
         if self.kind_changed:
             if short_status:
                 short_status_letter = 'K'
             else:
-                print >>to_file, indent + 'kind changed:'
+                to_file.write(indent + 'kind changed:\n')
                 short_status_letter = ''
             for (path, fid, old_kind, new_kind) in self.kind_changed:
                 if show_ids:
                     suffix = ' '+fid
                 else:
                     suffix = ''
-                print >>to_file, indent + '%s  %s (%s => %s)%s' % (
-                    short_status_letter, path, old_kind, new_kind, suffix)
+                to_file.write(indent + '%s  %s (%s => %s)%s\n' % (
+                    short_status_letter, path, old_kind, new_kind, suffix))
 
         if self.modified or extra_modified:
             short_status_letter = 'M'
             if not short_status:
-                print >>to_file, indent + 'modified:'
+                to_file.write(indent + 'modified:\n')
                 short_status_letter = ''
             show_list(self.modified, short_status_letter)
             show_list(extra_modified, short_status_letter)
             
         if show_unchanged and self.unchanged:
             if not short_status:
-                print >>to_file, indent + 'unchanged:'
+                to_file.write(indent + 'unchanged:\n')
                 show_list(self.unchanged)
             else:
                 show_list(self.unchanged, 'S')
 
         if self.unversioned:
-            print >>to_file, indent + 'unknown:'
+            to_file.write(indent + 'unknown:\n')
             show_list(self.unversioned)
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
@@ -201,18 +201,6 @@ class TreeDelta(object):
         output = StringIO.StringIO()
         self.show(output, show_ids, show_unchanged, short_status)
         return output.getvalue()
-
-@deprecated_function(zero_nine)
-def compare_trees(old_tree, new_tree, want_unchanged=False,
-                  specific_files=None, extra_trees=None,
-                  require_versioned=False):
-    """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
-    return new_tree.changes_from(old_tree,
-        want_unchanged=want_unchanged,
-        specific_files=specific_files,
-        extra_trees=extra_trees,
-        require_versioned=require_versioned,
-        include_root=False)
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
@@ -345,7 +333,7 @@ class _ChangeReporter(object):
                 # on a rename, we show old and new
                 old_path, path = paths
             else:
-                # if its not renamed, we're showing both for kind changes
+                # if it's not renamed, we're showing both for kind changes
                 # so only show the new path
                 old_path, path = paths[1], paths[1]
             # if the file is not missing in the source, we show its kind

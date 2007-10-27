@@ -45,7 +45,7 @@ class cmd_bundle_info(Command):
 
     hidden = True
     takes_args = ['location']
-    takes_options = []
+    takes_options = ['verbose']
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
@@ -55,7 +55,12 @@ class cmd_bundle_info(Command):
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
         if isinstance(bundle_info, merge_directive._BaseMergeDirective):
-            bundle_info = read_bundle(StringIO(bundle_info.get_raw_bundle()))
+            bundle_file = StringIO(bundle_info.get_raw_bundle())
+            bundle_info = read_bundle(bundle_file)
+        else:
+            if verbose:
+                raise errors.BzrCommandError('Verbose requires a merge'
+                                             ' directive')
         reader_method = getattr(bundle_info, 'get_bundle_reader', None)
         if reader_method is None:
             raise errors.BzrCommandError('Bundle format not supported')
@@ -68,13 +73,14 @@ class cmd_bundle_info(Command):
                 (bytes, parents, repo_kind, revision_id, file_id))
             if file_id is not None:
                 file_ids.add(file_id)
-        print >> self.outf, 'Records'
+        self.outf.write('Records\n')
         for kind, records in sorted(by_kind.iteritems()):
-            multiparent = sum(1 for b, p, k, r, f in records if len(p) > 1)
-            print >> self.outf, '%s: %d (%d multiparent)' % \
-                (kind, len(records), multiparent)
-        print >> self.outf, 'unique files: %d' % len(file_ids)
-        print >> self.outf
+            multiparent = sum(1 for b, m, k, r, f in records if
+                              len(m.get('parents', [])) > 1)
+            self.outf.write('%s: %d (%d multiparent)\n' % \
+                (kind, len(records), multiparent))
+        self.outf.write('unique files: %d\n' % len(file_ids))
+        self.outf.write('\n')
         nicks = set()
         committers = set()
         for revision in bundle_info.real_revisions:
@@ -82,17 +88,17 @@ class cmd_bundle_info(Command):
                 nicks.add(revision.properties['branch-nick'])
             committers.add(revision.committer)
 
-        print >> self.outf, 'Revisions'
-        print >> self.outf, ('nicks: %s'
-            % ', '.join(sorted(nicks))).encode(term_encoding, 'replace')
-        print >> self.outf, ('committers: \n%s' %
-        '\n'.join(sorted(committers)).encode(term_encoding, 'replace'))
+        self.outf.write('Revisions\n')
+        self.outf.write(('nicks: %s\n'
+            % ', '.join(sorted(nicks))).encode(term_encoding, 'replace'))
+        self.outf.write(('committers: \n%s\n' %
+        '\n'.join(sorted(committers)).encode(term_encoding, 'replace')))
         if verbose:
-            print >> self.outf
+            self.outf.write('\n')
             bundle_file.seek(0)
             line = bundle_file.readline()
             line = bundle_file.readline()
             content = bundle_file.read().decode('bz2')
-            print >> self.outf, "Decoded contents"
+            self.outf.write("Decoded contents\n")
             self.outf.write(content)
-            print >> self.outf
+            self.outf.write('\n')

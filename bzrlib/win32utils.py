@@ -287,3 +287,35 @@ def glob_expand(file_list):
             expanded_file_list += glob_files
             
     return [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
+
+
+def get_app_path(appname):
+    """Look up in Windows registry for full path to application executable.
+    Typicaly, applications create subkey with their basename
+    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
+
+    :param  appname:    name of application (if no filename extension
+                        is specified, .exe used)
+    :return:    full path to aplication executable from registry,
+                or appname itself if nothing found.
+    """
+    import _winreg
+    try:
+        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
+                               r'SOFTWARE\Microsoft\Windows'
+                               r'\CurrentVersion\App Paths')
+    except EnvironmentError:
+        return appname
+
+    basename = appname
+    if not os.path.splitext(basename)[1]:
+        basename = appname + '.exe'
+    try:
+        try:
+            fullpath = _winreg.QueryValue(hkey, basename)
+        except WindowsError:
+            fullpath = appname
+    finally:
+        _winreg.CloseKey(hkey)
+
+    return fullpath
