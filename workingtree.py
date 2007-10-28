@@ -556,7 +556,7 @@ class SvnWorkingTree(WorkingTree):
         return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None, 
-             delta_reporter=None):
+             delta_reporter=None, possible_transports=None):
         # FIXME: Use delta_reporter
         # FIXME: Use overwrite
         result = PullResult()
