@@ -1032,7 +1032,7 @@ class TestCase(unittest.TestCase):
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
 
-    def _capture_warnings(self, a_callable, *args, **kwargs):
+    def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
         :param a_callable: A callable to call.
@@ -1080,7 +1080,7 @@ class TestCase(unittest.TestCase):
         :param kwargs: The keyword arguments for the callable
         :return: The result of a_callable(``*args``, ``**kwargs``)
         """
-        call_warnings, result = self._capture_warnings(a_callable,
+        call_warnings, result = self._capture_deprecation_warnings(a_callable,
             *args, **kwargs)
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
@@ -1089,6 +1089,37 @@ class TestCase(unittest.TestCase):
                 a_callable)
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
+
+    def callCatchWarnings(self, fn, *args, **kw):
+        """Call a callable that raises python warnings.
+
+        The caller's responsible for examining the returned warnings.
+
+        If the callable raises an exception, the exception is not
+        caught and propagates up to the caller.  In that case, the list
+        of warnings is not available.
+
+        :returns: ([warning_object, ...], fn_result)
+        """
+        # XXX: This is not perfect, because it completely overrides the
+        # warnings filters, and some code may depend on suppressing particular
+        # warnings.  It's the easiest way to insulate ourselves from -Werror,
+        # though.  -- Andrew, 20071062
+        wlist = []
+        def _catcher(message, category, filename, lineno, file=None):
+            # despite the name, 'message' is normally(?) a Warning subclass
+            # instance
+            wlist.append(message)
+        saved_showwarning = warnings.showwarning
+        saved_filters = warnings.filters
+        try:
+            warnings.showwarning = _catcher
+            warnings.filters = []
+            result = fn(*args, **kw)
+        finally:
+            warnings.showwarning = saved_showwarning
+            warnings.filters = saved_filters
+        return wlist, result
 
     def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
@@ -1099,14 +1130,15 @@ class TestCase(unittest.TestCase):
         and will ensure that that is issued for the function being called.
 
         Note that this only captures warnings raised by symbol_versioning.warn,
-        not other callers that go direct to the warning module.
+        not other callers that go direct to the warning module.  To catch
+        general warnings, use callCatchWarnings.
 
         :param expected: a list of the deprecation warnings expected, in order
         :param callable: The callable to call
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         """
-        call_warnings, result = self._capture_warnings(callable,
+        call_warnings, result = self._capture_deprecation_warnings(callable,
             *args, **kwargs)
         self.assertEqual(expected, call_warnings)
         return result
@@ -2587,7 +2619,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             sys.stderr.write(('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%\n' % os.path.basename(dirname)))
+                                 '%s\n' % os.path.basename(dirname)))
         else:
             raise
 

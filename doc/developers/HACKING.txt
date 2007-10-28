@@ -470,6 +470,23 @@ should only test errors if there is something particular to the cli in how
 they're displayed or handled.
 
 
+Testing warnings
+----------------
+
+The Python ``warnings`` module is used to indicate a non-fatal code
+problem.  Code that's expected to raise a warning can be tested through
+callCatchWarnings.
+
+The test suite can be run with ``-Werror`` to check no unexpected errors
+occur.
+
+However, warnings should be used with discretion.  It's not an appropriate
+way to give messages to the user, because the warning is normally shown
+only once per source line that causes the problem.  You should also think
+about whether the warning is serious enought that it should be visible to
+users who may not be able to fix it.
+
+
 Interface implementation testing and test scenarios
 ---------------------------------------------------
 

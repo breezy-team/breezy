@@ -885,6 +885,8 @@ class Repository(object):
         if (self.control_files._lock_count == 1 and
             self.control_files._lock_mode == 'w'):
             if self._write_group is not None:
+                self.abort_write_group()
+                self.control_files.unlock()
                 raise errors.BzrError(
                     'Must end write groups before releasing write locks.')
         self.control_files.unlock()
@@ -2658,6 +2660,7 @@ class _RevisionTextVersionCache(object):
         # XXX: this loop is very similar to
         # bzrlib.fetch.Inter1and2Helper.iter_rev_trees.
         while revs:
+            mutter('%d revisions left to prepopulate', len(revs))
             for tree in self.repository.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:
                     tree.inventory.revision_id = tree.get_revision_id()
@@ -2672,6 +2675,19 @@ class _RevisionTextVersionCache(object):
             self.revision_parents[revision_id] = parents
             return parents
 
+    def used_file_versions(self):
+        """Return a set of (revision_id, file_id) pairs for each file version
+        referenced by any inventory cached by this _RevisionTextVersionCache.
+
+        If the entire repository has been cached, this can be used to find all
+        file versions that are actually referenced by inventories.  Thus any
+        other file version is completely unused and can be removed safely.
+        """
+        result = set()
+        for inventory_summary in self.revision_versions.itervalues():
+            result.update(inventory_summary.items())
+        return result
+
 
 class VersionedFileChecker(object):
 
@@ -2681,6 +2697,9 @@ class VersionedFileChecker(object):
         self.repository = repository
     
     def calculate_file_version_parents(self, revision_id, file_id):
+        """Calculate the correct parents for a file version according to
+        the inventories.
+        """
         text_revision = self.revision_versions.get_text_version(
             file_id, revision_id)
         if text_revision is None:
@@ -2703,7 +2722,20 @@ class VersionedFileChecker(object):
         return tuple(new_parents)
 
     def check_file_version_parents(self, weave, file_id):
-        result = {}
+        """Check the parents stored in a versioned file are correct.
+
+        It also detects file versions that are not referenced by their
+        corresponding revision's inventory.
+
+        :returns: A tuple of (wrong_parents, dangling_file_versions).
+            wrong_parents is a dict mapping {revision_id: (stored_parents,
+            correct_parents)} for each revision_id where the stored parents
+            are not correct.  dangling_file_versions is a set of (file_id,
+            revision_id) tuples for versions that are present in this versioned
+            file, but not used by the corresponding inventory.
+        """
+        wrong_parents = {}
+        dangling_file_versions = set()
         for num, revision_id in enumerate(self.planned_revisions):
             correct_parents = self.calculate_file_version_parents(
                 revision_id, file_id)
@@ -2711,7 +2743,14 @@ class VersionedFileChecker(object):
                 continue
             text_revision = self.revision_versions.get_text_version(
                 file_id, revision_id)
-            knit_parents = tuple(weave.get_parents(text_revision))
+            try:
+                knit_parents = tuple(weave.get_parents(revision_id))
+            except errors.RevisionNotPresent:
+                knit_parents = None
+            if text_revision != revision_id:
+                # This file version is not referenced by its corresponding
+                # inventory!
+                dangling_file_versions.add((file_id, revision_id))
             if correct_parents != knit_parents:
-                result[revision_id] = (knit_parents, correct_parents)
-        return result
+                wrong_parents[revision_id] = (knit_parents, correct_parents)
+        return wrong_parents, dangling_file_versions
