@@ -620,6 +620,7 @@ class RepositoryPackCollection(object):
         if revision_ids is not None and len(revision_ids) == 0:
             # silly fetch request.
             return None
+        revision_ids = frozenset(revision_ids)
         new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix=suffix)
         # buffer data - we won't be reading-back during the pack creation and
@@ -1440,6 +1441,7 @@ class KnitPackRepository(KnitRepository):
         This implementation accesses the combined revision index to provide
         answers.
         """
+        self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
         search_keys = set()
         for revision_id in revision_ids:
