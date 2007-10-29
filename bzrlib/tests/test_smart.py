@@ -795,16 +795,16 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
         response = request.execute(backing.local_abspath(''), rev_id2_utf8)
         self.assertEqual(('ok',), response.args)
         from cStringIO import StringIO
-        from bzrlib.remote import PackSource
-        unpacker = pack.ContainerReader(PackSource(response.body_stream))
+        parser = pack.ContainerPushParser()
         names = []
-        for [name], read_bytes in unpacker.iter_records():
-            names.append(name)
-            bytes = read_bytes(None)
-            # The bytes should be a valid bencoded string.
-            bencode.bdecode(bytes)
-            # XXX: assert that the bencoded knit records have the right
-            # contents?
+        for stream_bytes in response.body_stream:
+            parser.accept_bytes(stream_bytes)
+            for [name], record_bytes in parser.read_pending_records():
+                names.append(name)
+                # The bytes should be a valid bencoded string.
+                bencode.bdecode(record_bytes)
+                # XXX: assert that the bencoded knit records have the right
+                # contents?
         
     def test_no_such_revision_error(self):
         backing = self.get_transport()

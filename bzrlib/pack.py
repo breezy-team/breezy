@@ -16,7 +16,8 @@
 
 """Container format for Bazaar data.
 
-"Containers" and "records" are described in doc/developers/container-format.txt.
+"Containers" and "records" are described in
+doc/developers/container-format.txt.
 """
 
 from cStringIO import StringIO
@@ -59,17 +60,25 @@ def _check_name_encoding(name):
 
 
 class ContainerSerialiser(object):
-    """A class for serialising containers."""
+    """A helper class for serialising containers.
+    
+    It simply returns bytes from method calls to 'begin', 'end' and
+    'bytes_record'.  You may find ContainerWriter to be a more convenient
+    interface.
+    """
 
     def begin(self):
-        """Begin a container."""
+        """Return the bytes to begin a container."""
         return FORMAT_ONE + "\n"
 
     def end(self):
-        """Finish a container."""
+        """Return the bytes to finish a container."""
         return "E"
 
     def bytes_record(self, bytes, names):
+        """Return the bytes for a Bytes record with the given name and
+        contents.
+        """
         # Kind marker
         byte_sections = ["B"]
         # Length
@@ -380,6 +389,7 @@ class ContainerPushParser(object):
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
         self._reset_current_record()
+        self.finished = False
 
     def _reset_current_record(self):
         self._current_record_length = None
@@ -389,20 +399,22 @@ class ContainerPushParser(object):
         self._buffer += bytes
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
-        buffer_length = None
-        while len(self._buffer) != buffer_length:
-            buffer_length = len(self._buffer)
+        last_buffer_length = None
+        cur_buffer_length = len(self._buffer)
+        while cur_buffer_length != last_buffer_length:
+            last_buffer_length = cur_buffer_length
             self._state_handler()
+            cur_buffer_length = len(self._buffer)
 
     def read_pending_records(self):
         records = self._parsed_records
         self._parsed_records = []
         return records
     
-    def _consume_until_byte(self, byte):
-        """Take all bytes up to the given out of the buffer, and return it.
+    def _consume_line(self):
+        """Take a line out of the buffer, and return the line.
 
-        If the specified byte is not found in the buffer, the buffer is
+        If a newline byte is not found in the buffer, the buffer is
         unchanged and this returns None instead.
         """
         newline_pos = self._buffer.find('\n')
@@ -412,9 +424,6 @@ class ContainerPushParser(object):
             return line
         else:
             return None
-
-    def _consume_line(self):
-        return self._consume_until_byte('\n')
 
     def _state_expecting_format_line(self):
         line = self._consume_line()
@@ -427,9 +436,13 @@ class ContainerPushParser(object):
         if len(self._buffer) >= 1:
             record_type = self._buffer[0]
             self._buffer = self._buffer[1:]
-            if record_type != 'B':
-                raise NotImplementedError('XXX')
-            self._state_handler = self._state_expecting_length
+            if record_type == 'B':
+                self._state_handler = self._state_expecting_length
+            elif record_type == 'E':
+                self.finished = True
+                self._state_handler = self._state_expecting_nothing
+            else:
+                raise errors.UnknownRecordTypeError(record_type)
 
     def _state_expecting_length(self):
         line = self._consume_line()
@@ -443,14 +456,13 @@ class ContainerPushParser(object):
 
     def _state_expecting_name(self):
         encoded_name_parts = self._consume_line()
-        if encoded_name_parts is not None:
-            if encoded_name_parts == '':
-                self._state_handler = self._state_expecting_body
-            else:
-                name_parts = tuple(encoded_name_parts.split('\x00'))
-                for name_part in name_parts:
-                    _check_name(name_part)
-                self._current_record_names.append(name_parts)
+        if encoded_name_parts == '':
+            self._state_handler = self._state_expecting_body
+        elif encoded_name_parts:
+            name_parts = tuple(encoded_name_parts.split('\x00'))
+            for name_part in name_parts:
+                _check_name(name_part)
+            self._current_record_names.append(name_parts)
             
     def _state_expecting_body(self):
         if len(self._buffer) >= self._current_record_length:
@@ -461,4 +473,26 @@ class ContainerPushParser(object):
             self._reset_current_record()
             self._state_handler = self._state_expecting_record_type
 
+    def _state_expecting_nothing(self):
+        pass
+
+    def read_size_hint(self):
+        hint = 16384
+        if self._state_handler == self._state_expecting_body:
+            remaining = self._current_record_length - len(self._buffer)
+            if remaining < 0:
+                remaining = 0
+            return max(hint, remaining)
+        return hint
+
+
+def iter_records_from_file(source_file):
+    parser = ContainerPushParser()
+    while True:
+        bytes = source_file.read(parser.read_size_hint())
+        parser.accept_bytes(bytes)
+        for record in parser.read_pending_records():
+            yield record
+        if parser.finished:
+            break
 
