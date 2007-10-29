@@ -28,7 +28,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import svn.core
-from errors import ChangesRootLHSHistory
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
 from time import sleep
 from commit import push
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
@@ -402,7 +402,16 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
         wt.branch.push(Branch.open(repos_url+"/trunk"))
 
-
+    def test_missing_prefix_error(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/test': "Tour"})
+        bzrwt.add("test")
+        revid = bzrwt.commit("Do a commit")
+        newdir = BzrDir.open(repos_url+"/foo/trunk")
+        self.assertRaises(MissingPrefix, 
+                          lambda: newdir.import_branch(bzrwt.branch))
 
     def test_repeat(self):
         repos_url = self.make_client("a", "dc")

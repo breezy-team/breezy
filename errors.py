@@ -46,6 +46,14 @@ class ChangesRootLHSHistory(BzrError):
     _fmt = """changing lhs branch history not possible on repository root"""
 
 
+class MissingPrefix(BzrError):
+    _fmt = """Prefix missing for %(path)s; please create it before pushing. """
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
+
+
 def convert_error(err):
     """Convert a Subversion exception to the matching BzrError.
 

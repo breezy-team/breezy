@@ -28,7 +28,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from copy import deepcopy
-from errors import ChangesRootLHSHistory
+from errors import ChangesRootLHSHistory, MissingPrefix
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
@@ -383,8 +383,9 @@ class SvnCommitBuilder(RootCommitBuilder):
             ret.append(self.editor.open_directory(
                 "/".join(existing_elements[0:i+1]), ret[-1], -1, self.pool))
 
-        assert (len(existing_elements) == len(elements) or 
-                len(existing_elements)+1 == len(elements))
+        if (len(existing_elements) != len(elements) and
+            len(existing_elements)+1 != len(elements)):
+            raise MissingPrefix("/".join(elements))
 
         # Branch already exists and stayed at the same location, open:
         # TODO: What if the branch didn't change but the new revision 
