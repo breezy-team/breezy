@@ -659,7 +659,7 @@ class RepositoryPackCollection(object):
             packs, 'revision_index')[0]
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
-        pb.update("Copying revision texts.", 1)
+        pb.update("Copying revision texts", 1)
         list(self._copy_nodes_graph(revision_nodes, revision_index_map,
             new_pack._writer, new_pack.revision_index))
         if 'pack' in debug.debug_flags:
@@ -678,7 +678,7 @@ class RepositoryPackCollection(object):
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
-        pb.update("Copying inventory texts.", 2)
+        pb.update("Copying inventory texts", 2)
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
             new_pack._writer, new_pack.inventory_index, output_lines=True)
         if revision_ids:
@@ -718,7 +718,7 @@ class RepositoryPackCollection(object):
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
         # copy text keys and adjust values
-        pb.update("Copying content texts.", 3)
+        pb.update("Copying content texts", 3)
         list(self._copy_nodes_graph(text_nodes, text_index_map,
             new_pack._writer, new_pack.text_index))
         if 'pack' in debug.debug_flags:
@@ -733,7 +733,7 @@ class RepositoryPackCollection(object):
         signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
-        pb.update("Copying signature texts.", 4)
+        pb.update("Copying signature texts", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
             new_pack.signature_index)
         if 'pack' in debug.debug_flags:
@@ -744,7 +744,7 @@ class RepositoryPackCollection(object):
         if not new_pack.data_inserted():
             new_pack.abort()
             return None
-        pb.update("Finishing pack.", 5)
+        pb.update("Finishing pack", 5)
         new_pack.finish()
         self.allocate(new_pack)
         return new_pack
