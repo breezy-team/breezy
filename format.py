@@ -16,6 +16,7 @@
 """Subversion BzrDir formats."""
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
+from bzrlib.errors import UninitializableFormat
 from bzrlib.lazy_import import lazy_import
 from bzrlib.lockable_files import TransportLock
 

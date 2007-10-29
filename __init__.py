@@ -110,7 +110,7 @@ format_registry.register("subversion", format.SvnRemoteFormat,
                          native=False)
 format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat, 
                          "Subversion working copy. ", 
-                         native=False)
+                         native=False, hidden=True)
 
 versions_checked = False
 def lazy_check_versions():
