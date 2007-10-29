@@ -142,6 +142,10 @@ class ListScheme(TestCase):
         self.scheme = ListBranchingScheme('QlpoOTFBWSZTWXb2s-UAAADBAAAQAQCgACGYGYQYXckU4UJB29rPlA..')
         self.assertEquals(["foo"], self.scheme.branch_list)
 
+    def test_create_from_unicode(self):
+        self.scheme = ListBranchingScheme(u'QlpoOTFBWSZTWXb2s-UAAADBAAAQAQCgACGYGYQYXckU4UJB29rPlA..')
+        self.assertEquals(["foo"], self.scheme.branch_list)
+
     def test_is_tag_empty(self):
         self.assertFalse(self.scheme.is_tag(""))
 
