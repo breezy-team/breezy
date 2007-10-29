@@ -24,7 +24,7 @@ import tarfile
 
 from bzrlib.config import ConfigObj
 from bzrlib.conflicts import TextConflict
-from bzrlib.errors import FileExists
+from bzrlib.errors import FileExists, UncommittedChanges
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
@@ -867,6 +867,16 @@ Files:
     importer = DscImporter([self.dsc_1b, self.dsc_2])
     self.assertRaises(OnlyImportSingleDsc, importer.incremental_import_dsc,
       self.target)
+
+  def test_import_incremental_working_tree_changes(self):
+    self.import_dsc_1()
+    self.make_dsc_1b()
+    self.build_tree([os.path.join(self.target, 'a')])
+    tree = WorkingTree.open(self.target)
+    tree.add(['a'])
+    importer = DscImporter([self.dsc_1b])
+    self.assertRaises(UncommittedChanges, importer.incremental_import_dsc,
+            self.target)
 
   def test_incremental_with_upstream(self):
     self.import_dsc_1()

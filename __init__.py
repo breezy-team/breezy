@@ -26,7 +26,7 @@ import os
 import subprocess
 
 from bzrlib.commands import Command, register_command
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, NoWorkingTree, NotBranchError
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
@@ -412,6 +412,12 @@ class cmd_import_dsc(Command):
   files) to import. Each line is taken to be a URI or path to
   import. The sources specified in the file are used in addition
   to those specified by other methods.
+
+  If you have an existing branch containing packaging and you want to
+  import a .dsc from an upload done from outside the version control
+  system you can use this command. In this case you can only specify
+  one file on the command line, or use a file containing only a single
+  filename.
   """
 
   takes_args = ['files*']
@@ -437,21 +443,50 @@ class cmd_import_dsc(Command):
       for line in sources_file:
         line.strip()
         files_list.append(line)
+    incremental = True
+    inc_to = '.'
+    if to is not None:
+      inc_to = to
+    try:
+      tree = WorkingTree.open(inc_to)
+    except NoWorkingTree:
+      incremental = False
+    except NotBranchError:
+      incremental = False
     if snapshot is None:
-      if len(files_list) < 1:
-        raise BzrCommandError("You must give the location of at least one "
-                              "source package to install, or use the "
-                              "--file or --snapshot options.")
-      if to is None:
-        raise BzrCommandError("You must specify the name of the "
-                              "destination branch using the --to option.")
+      if incremental:
+        if len(files_list) != 1:
+          raise BzrCommandError("You must give the location of exactly one "
+                                "source package.")
+      else:
+        if len(files_list) < 1:
+          raise BzrCommandError("You must give the location of at least one "
+                                "source package to install, or use the "
+                                "--file or --snapshot options.")
+        if to is None:
+          raise BzrCommandError("You must specify the name of the "
+                                "destination branch using the --to option.")
       importer = DscImporter(files_list)
     else:
+      if incremental:
+        raise BzrCommandError("You cannot use the --snapshot option with an "
+            "existing branch")
       if to is None:
         to = snapshot
       importer = SnapshotImporter(snapshot, other_sources=files_list)
-    orig_target = os.path.join(to, '../tarballs')
-    importer.import_dsc(to, orig_target=orig_target)
+    if not incremental:
+      orig_target = os.path.join(to, '../tarballs')
+      importer.import_dsc(to, orig_target=orig_target)
+    else :
+      _local_conf = os.path.join(inc_to, local_conf)
+      _global_conf = os.path.join(inc_to, global_conf)
+      _default_conf = os.path.join(inc_to, default_conf)
+      config = DebBuildConfig([(_local_conf, True), (_global_conf, True),
+                             (_default_conf, False)])
+      orig_target = config.orig_dir
+      if orig_target is None:
+        orig_target = os.path.join(inc_to, '../tarballs')
+      importer.incremental_import_dsc(inc_to, orig_target=orig_target)
 
 
 register_command(cmd_import_dsc)

@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import tarfile
 
+from bzrlib.bzrdir import BzrDir
 from bzrlib.workingtree import WorkingTree
 
 from tests import BuilddebTestCase
@@ -85,4 +86,37 @@ class TestImportDsc(BuilddebTestCase):
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
 
+  def test_import_no_to(self):
+    self.make_real_source_package()
+    self.run_bzr_error(['You must specify the name of the destination branch '
+        'using the --to option.'], 'import-dsc %s' % self.dsc_name)
+
+  def test_import_snapshot_incremental(self):
+    self.make_branch_and_tree('.')
+    self.make_real_source_package()
+    self.run_bzr_error(['You cannot use the --snapshot option with an '
+        'existing branch'],
+        'import-dsc --snapshot %s %s' % (self.package_name, self.dsc_name))
+
+  def test_import_snapshot_incremental_with_to(self):
+    self.make_branch_and_tree('target')
+    self.make_real_source_package()
+    self.run_bzr_error(['You cannot use the --snapshot option with an '
+        'existing branch'],
+        'import-dsc --snapshot %s --to target %s' % \
+        (self.package_name, self.dsc_name))
+
+  def test_import_incremental_no_files(self):
+    self.make_branch_and_tree('.')
+    self.make_real_source_package()
+    self.run_bzr_error(['You must give the location of exactly one source '
+        'package.'], 'import-dsc')
+
+  def test_import_incremental_two_files(self):
+    self.make_branch_and_tree('.')
+    self.make_real_source_package()
+    self.run_bzr_error(['You must give the location of exactly one source '
+        'package.'], 'import-dsc %s %s' % (self.dsc_name, self.dsc_name))
+
 # vim: ts=2 sts=2 sw=2
+

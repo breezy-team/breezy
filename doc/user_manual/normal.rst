@@ -250,5 +250,34 @@ version. You should commit manually in this case.
   $ bzr commit -m 'New upstream version'
   $ bzr builddeb
 
+Importing a source package from elsewhere
+#########################################
+
+During the life of a package it is possible that an upload will be done
+where the changes are not included in the branch, perhaps if an NMU is done.
+This also applies to Ubuntu when merging packages with new Debian uploads.
+
+The plugin allows you to import a source package, and will merge the changes
+within allowing you to incorporate them as you like. It will also try and
+pull in the upstream changes as it would when doing an initial import,
+allowing you to use Bazaar to inspect differences with the upstream.
+
+To import the source package you again use the ``import-dsc`` command.
+Either run it from the base of your branch, or use the ``--to`` option to
+specify the base of the branch. Also on the command line specify the
+location of the ``.dsc`` file you would like to import. As well as using a
+local path this can be any URI that Bazaar supports, for instance a
+``http://`` URL. For instance::
+
+  $ bzr import-dsc ../scruff_0.2-1.1.dsc
+
+The command will import the changes and then leave you with a tree that is
+the result of merging the changes in the source package in to the tip of
+your branch before you started. You can then see the changes that were made
+by running ``bzr status`` and ``bzr diff``. There may also be conflicts
+from the merge (usually ``debian/changelog`` will conflict). You should
+edit the files to resolve the conflicts as normal. Once you have finished
+you should commit, and then you can carry on with your work.
+
 .. vim: set ft=rst tw=76 :
 

@@ -38,7 +38,7 @@ from bzrlib import (bzrdir,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
-from bzrlib.errors import FileExists, BzrError
+from bzrlib.errors import FileExists, BzrError, UncommittedChanges
 from bzrlib.osutils import file_iterator, isdir, basename
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info
@@ -560,6 +560,8 @@ class DscImporter(object):
   def incremental_import_dsc(self, target, orig_target=None):
     self.orig_target = orig_target
     tree = WorkingTree.open_containing(target)[0]
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise UncommittedChanges(tree)
     self.cache = DscCache(transport=self.transport)
     if len(self.dsc_files) > 1:
       raise OnlyImportSingleDsc
@@ -584,7 +586,7 @@ class DscImporter(object):
           tree.pull(tree.branch, overwrite=True, stop_revision=current_rev_id)
           tree.merge_from_branch(tree.branch, to_revision=dangling_revid,
                   from_revision=merge_base)
-        if type == 'orig':
+        elif type == 'orig':
           dangling_tree = None
           last_upstream, previous_upstream = \
               self._find_last_upstream(tree, version)
@@ -606,6 +608,8 @@ class DscImporter(object):
             merge_base = NULL_REVISION
             dangling_revid = current_rev_id
           info("imported %s" % filename)
+        elif type == 'native':
+          assert False, "Native packages not yet supported"
     finally:
       tree.unlock()
 
