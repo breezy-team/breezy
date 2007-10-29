@@ -751,7 +751,7 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names()
+        self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
@@ -1136,13 +1136,16 @@ class RepositoryPackCollection(object):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
-    def _save_pack_names(self):
+    def _save_pack_names(self, clear_obsolete_packs=False):
         """Save the list of packs.
 
         This will take out the mutex around the pack names list for the
         duration of the method call. If concurrent updates have been made, a
         three-way merge between the current list and the current in memory list
         is performed.
+
+        :param clear_obsolete_packs: If True, clear out the contents of the
+            obsolete_packs directory.
         """
         self.lock_names()
         try:
@@ -1168,6 +1171,10 @@ class RepositoryPackCollection(object):
             self.transport.put_file('pack-names', builder.finish())
             # move the baseline forward
             self._packs_at_load = disk_nodes
+            # now clear out the obsolete packs directory
+            if clear_obsolete_packs:
+                self.transport.clone('obsolete_packs').delete_multi(
+                    self.transport.list_dir('obsolete_packs'))
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:

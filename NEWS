@@ -121,6 +121,9 @@ IN DEVELOPMENT
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
 
+   * Obsolete packs are now cleaned up by pack and autopack operations.
+     (Robert Collins, #153789)
+
    * Fix a problem with Win32 handling of the executable bit.
      (John Arbash Meinel, #149113)
 

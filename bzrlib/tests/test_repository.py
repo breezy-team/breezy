@@ -888,6 +888,9 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         # there should be 9 packs:
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
+        # insert some files in obsolete_packs which should be removed by pack.
+        trans.put_bytes('obsolete_packs/foo', '123')
+        trans.put_bytes('obsolete_packs/bar', '321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = GraphIndex(trans, 'pack-names', None)
@@ -896,6 +899,11 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
+        # We should have 50 (10x5) files in the obsolete_packs directory.
+        obsolete_files = list(trans.list_dir('obsolete_packs'))
+        self.assertFalse('foo' in obsolete_files)
+        self.assertFalse('bar' in obsolete_files)
+        self.assertEqual(50, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
