@@ -65,6 +65,8 @@ bzr-svn 0.4.4	UNRELEASED
    * Fix pulling in changes push earlier by bzr-svn with directory renames 
      of directories containing files. (#153347)
 
+   * Handle special characters in committer name correctly. (#158347)
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
@@ -1210,6 +1212,11 @@ class MetadataMarshallerTests(TestCase):
         rev = Revision('someid')
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revision_metadata("bla", rev))
+
+    def test_parse_revision_metadata_specialchar(self):
+        rev = Revision('someid')
+        parse_revision_metadata("committer: Adeodato Simó <dato@net.com.org.es>", rev)
+        self.assertEquals(u"Adeodato Simó <dato@net.com.org.es>", rev.committer)
 
     def test_parse_revision_metadata_invalid_name(self):
         rev = Revision('someid')

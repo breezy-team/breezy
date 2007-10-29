@@ -175,13 +175,13 @@ def parse_revision_metadata(text, rev):
             raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
                     "Missing : in revision metadata")
         if key == "committer":
-            rev.committer = str(value)
+            rev.committer = value.decode("utf-8")
         elif key == "timestamp":
             (rev.timestamp, rev.timezone) = unpack_highres_date(value)
         elif key == "properties":
             in_properties = True
         elif key[0] == "\t" and in_properties:
-            rev.properties[str(key[1:])] = str(value)
+            rev.properties[str(key[1:])] = value.decode("utf-8")
         else:
             raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
                     "Invalid key %r" % key)

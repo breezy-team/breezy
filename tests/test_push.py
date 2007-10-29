@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
@@ -443,6 +445,19 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         newbranch = newdir.import_branch(bzrwt.branch)
         self.assertEquals(revid2, newbranch.last_revision())
         self.assertEquals([revid1, revid2], newbranch.revision_history())
+
+    def test_dato(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/foo.txt': "foo"})
+        bzrwt.add("foo.txt")
+        revid1 = bzrwt.commit("Do a commit", 
+                              committer=u"Adeodato Simó <dato@net.com.org.es>")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newdir.import_branch(bzrwt.branch)
+        self.assertEquals(u"Adeodato Simó <dato@net.com.org.es>", 
+                Repository.open(repos_url).get_revision(revid1).committer)
 
     def test_multiple_part_exists(self):
         repos_url = self.make_client("a", "dc")
