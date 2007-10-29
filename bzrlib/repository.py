@@ -1058,7 +1058,10 @@ class Repository(object):
         This performs the translation of xml lines to revision ids.
 
         :param line_iterator: An iterator of lines
-        :param revision_ids: The revision ids to filter for.
+        :param revision_ids: The revision ids to filter for. This should be a
+            set or other type which supports efficient __contains__ lookups, as
+            the revision id from each parsed line will be looked up in the
+            revision_ids filter.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
