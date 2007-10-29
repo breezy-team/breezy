@@ -124,6 +124,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * A progress bar has been added for knitpack -> knitpack fetching.
+     (Robert Collins, #157789)
+
    * Connection error reporting for the smart server has been fixed to
      display a user friendly message instead of a traceback.
      (Ian Clatworthy, #115601)

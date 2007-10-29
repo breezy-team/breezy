@@ -620,6 +620,15 @@ class RepositoryPackCollection(object):
         if revision_ids is not None and len(revision_ids) == 0:
             # silly fetch request.
             return None
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._create_pack_from_packs(packs, suffix, revision_ids,
+                pb)
+        finally:
+            pb.finished()
+
+    def _create_pack_from_packs(self, packs, suffix, revision_ids, pb):
+        pb.update("Opening pack", 0, 5)
         revision_ids = frozenset(revision_ids)
         new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix=suffix)
@@ -648,6 +657,7 @@ class RepositoryPackCollection(object):
             packs, 'revision_index')[0]
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
+        pb.update("Copying revision texts.", 1)
         list(self._copy_nodes_graph(revision_nodes, revision_index_map,
             new_pack._writer, new_pack.revision_index))
         if 'pack' in debug.debug_flags:
@@ -666,6 +676,7 @@ class RepositoryPackCollection(object):
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
+        pb.update("Copying inventory texts.", 2)
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
             new_pack._writer, new_pack.inventory_index, output_lines=True)
         if revision_ids:
@@ -705,6 +716,7 @@ class RepositoryPackCollection(object):
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
         # copy text keys and adjust values
+        pb.update("Copying content texts.", 3)
         list(self._copy_nodes_graph(text_nodes, text_index_map,
             new_pack._writer, new_pack.text_index))
         if 'pack' in debug.debug_flags:
@@ -719,6 +731,7 @@ class RepositoryPackCollection(object):
         signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
+        pb.update("Copying signature texts.", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
             new_pack.signature_index)
         if 'pack' in debug.debug_flags:
@@ -729,6 +742,7 @@ class RepositoryPackCollection(object):
         if not new_pack.data_inserted():
             new_pack.abort()
             return None
+        pb.update("Finishing pack.", 5)
         new_pack.finish()
         self.allocate(new_pack)
         return new_pack
@@ -864,6 +878,15 @@ class RepositoryPackCollection(object):
         :param output_lines: Return lines present in the copied data as
             an iterator.
         """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
+        output_lines, pb):
         # for record verification
         knit_data = _KnitData(None)
         # for line extraction when requested (inventories only)
@@ -877,6 +900,8 @@ class RepositoryPackCollection(object):
         # at this point - perhaps a helper library for the following code 
         # duplication points?
         request_groups = {}
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
         for index, key, value, references in nodes:
             if index not in request_groups:
                 request_groups[index] = []
@@ -912,6 +937,8 @@ class RepositoryPackCollection(object):
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                pb.update("Copied record", record_index)
+                record_index += 1
 
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
