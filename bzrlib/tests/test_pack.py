@@ -191,6 +191,12 @@ class TestContainerWriter(tests.TestCase):
 
 
 class TestContainerReader(tests.TestCase):
+    """Tests for the ContainerReader.
+
+    The ContainerReader reads format 1 containers, so these tests explicitly
+    test how it reacts to format 1 data.  If a new version of the format is
+    added, then separate tests for that format should be added.
+    """
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
@@ -323,7 +329,13 @@ class TestContainerReader(tests.TestCase):
         
 
 class TestBytesRecordReader(tests.TestCase):
-    """Tests for reading and validating Bytes records with BytesRecordReader."""
+    """Tests for reading and validating Bytes records with
+    BytesRecordReader.
+    
+    Like TestContainerReader, this explicitly tests the reading of format 1
+    data.  If a new version of the format is added, then a separate set of
+    tests for reading that format should be added.
+    """
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
@@ -550,6 +562,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
 
 
 class PushParserTestCase(tests.TestCase):
+    """Base class for TestCases involving ContainerPushParser."""
 
     def make_parser_expecting_record_type(self):
         parser = pack.ContainerPushParser()
@@ -562,6 +575,10 @@ class PushParserTestCase(tests.TestCase):
         return parser
 
     def assertRecordParsing(self, expected_record, bytes):
+        """Assert that 'bytes' is parsed as a given bytes record.
+
+        :param expected_record: A tuple of (names, bytes).
+        """
         parser = self.make_parser_expecting_bytes_record()
         parser.accept_bytes(bytes)
         parsed_records = parser.read_pending_records()
@@ -569,7 +586,12 @@ class PushParserTestCase(tests.TestCase):
 
         
 class TestContainerPushParser(PushParserTestCase):
-    """Tests for ContainerPushParser."""
+    """Tests for ContainerPushParser.
+    
+    The ContainerPushParser reads format 1 containers, so these tests
+    explicitly test how it reacts to format 1 data.  If a new version of the
+    format is added, then separate tests for that format should be added.
+    """
 
     def test_construct(self):
         """ContainerPushParser can be constructed."""
@@ -589,7 +611,12 @@ class TestContainerPushParser(PushParserTestCase):
 
 
 class TestContainerPushParserBytesParsing(PushParserTestCase):
-    """Tests for reading Bytes records with ContainerPushParser."""
+    """Tests for reading Bytes records with ContainerPushParser.
+    
+    The ContainerPushParser reads format 1 containers, so these tests
+    explicitly test how it reacts to format 1 data.  If a new version of the
+    format is added, then separate tests for that format should be added.
+    """
 
     def test_record_with_no_name(self):
         """Reading a Bytes record with no name returns an empty list of

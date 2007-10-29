@@ -16,7 +16,8 @@
 
 """Container format for Bazaar data.
 
-"Containers" and "records" are described in doc/developers/container-format.txt.
+"Containers" and "records" are described in
+doc/developers/container-format.txt.
 """
 
 from cStringIO import StringIO
