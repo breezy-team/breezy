@@ -840,10 +840,13 @@ class Repository(object):
         extent possible considering file system caching etc).
         """
 
-    def fetch(self, source, revision_id=None, pb=None):
+    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None all content is copied.
+        :param find_ghosts: Find and copy revisions in the source that are
+            ghosts in the target (and not reachable directly by walking out to
+            the first-present revision in target from revision_id).
         """
         # fast path same-url fetch operations
         if self.has_same_location(source):

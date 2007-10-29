@@ -337,7 +337,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo = repository.Repository.open('missing_ghost')
         rev = repo.get_revision('with_ghost')
         from_repo = repository.Repository.open('with_ghost_rev')
-        repo.fetch(from_repo)
+        repo.fetch(from_repo, find_ghosts=True)
         # rev must not be corrupt now
         rev = repo.get_revision('with_ghost')
         self.assertEqual([None, 'ghost', 'with_ghost'], repo.get_ancestry('with_ghost'))
