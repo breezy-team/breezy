@@ -632,7 +632,6 @@ class RepositoryPackCollection(object):
 
     def _create_pack_from_packs(self, packs, suffix, revision_ids, pb):
         pb.update("Opening pack", 0, 5)
-        revision_ids = frozenset(revision_ids)
         new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix=suffix)
         # buffer data - we won't be reading-back during the pack creation and
@@ -843,6 +842,17 @@ class RepositoryPackCollection(object):
         return pack_operations
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
+        """Copy knit nodes between packs with no graph references."""
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes(nodes, index_map, writer,
+                write_index, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
+        # for record verification
+        knit_data = _KnitData(None)
         # plan a readv on each source pack:
         # group by pack
         nodes = sorted(nodes)
@@ -855,6 +865,8 @@ class RepositoryPackCollection(object):
             if index not in request_groups:
                 request_groups[index] = []
             request_groups[index].append((key, value))
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
         for index, items in request_groups.iteritems():
             pack_readv_requests = []
             for key, value in items:
@@ -871,8 +883,13 @@ class RepositoryPackCollection(object):
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
+                # check the header only
+                df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
+                pb.update("Copied record", record_index)
+                record_index += 1
 
     def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
         output_lines=False):
