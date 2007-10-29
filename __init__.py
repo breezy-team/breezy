@@ -472,6 +472,9 @@ class cmd_import_dsc(Command):
       orig_target = os.path.join(to, '../tarballs')
       importer.import_dsc(to, orig_target=orig_target)
     else :
+      inc_to = '.'
+      if to is not None:
+        inc_to = to
       _local_conf = os.path.join(inc_to, local_conf)
       _global_conf = os.path.join(inc_to, global_conf)
       _default_conf = os.path.join(inc_to, default_conf)
