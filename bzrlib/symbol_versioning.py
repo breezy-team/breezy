@@ -61,6 +61,7 @@ zero_eighteen = "%s was deprecated in version 0.18."
 zero_ninety = "%s was deprecated in version 0.90."
 zero_ninetyone = "%s was deprecated in version 0.91."
 zero_ninetytwo = "%s was deprecated in version 0.92."
+zero_ninetythree = "%s was deprecated in version 0.93."
 
 
 def set_warning_method(method):
