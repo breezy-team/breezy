@@ -95,6 +95,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 # Mark this python module as being part of the implementation
@@ -115,6 +116,7 @@ MODULES_TO_DOCTEST = [
         bzrlib.merge3,
         bzrlib.option,
         bzrlib.store,
+        bzrlib.version_info_formats.format_custom,
         # quoted to avoid module-loading circularity
         'bzrlib.tests',
         ]

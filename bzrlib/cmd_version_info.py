@@ -54,7 +54,8 @@ class cmd_version_info(Command):
                      Option('include-history',
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
-                            help='Include the last revision for each file.')
+                            help='Include the last revision for each file.'),
+                     Option('template', type=str, help='Template for the output.'),
                      ]
     takes_args = ['location?']
 
@@ -62,7 +63,8 @@ class cmd_version_info(Command):
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
-            include_file_revisions=False):
+            include_file_revisions=False, template=None,
+            template_file=None):
 
         if location is None:
             location = '.'
@@ -86,5 +88,6 @@ class cmd_version_info(Command):
         builder = format(b, working_tree=wt,
                 check_for_clean=check_clean,
                 include_revision_history=include_history,
-                include_file_revisions=include_file_revisions)
+                include_file_revisions=include_file_revisions,
+                template=template)
         builder.generate(self.outf)

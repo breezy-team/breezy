@@ -48,6 +48,7 @@ class VersionInfoBuilder(object):
                 check_for_clean=False,
                 include_revision_history=False,
                 include_file_revisions=False,
+                template=None,
                 ):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
@@ -68,6 +69,7 @@ class VersionInfoBuilder(object):
         self._check = check_for_clean
         self._include_history = include_revision_history
         self._include_file_revs = include_file_revisions
+        self._template = template
 
         self._clean = None
         self._file_revisions = {}
@@ -210,3 +212,6 @@ register_builder('rio',
 register_builder('python',
                  'bzrlib.version_info_formats.format_python',
                  'PythonVersionInfoBuilder')
+register_builder('custom',
+                 'bzrlib.version_info_formats.format_custom',
+                 'CustomVersionInfoBuilder')
