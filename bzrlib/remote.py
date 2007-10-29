@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision,
 )
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -32,7 +33,6 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerReader
-from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -304,7 +304,7 @@ class RemoteRepository(object):
         """See Repository.get_revision_graph()."""
         if revision_id is None:
             revision_id = ''
-        elif revision_id == NULL_REVISION:
+        elif revision.is_null(revision_id):
             return {}
 
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -352,7 +352,7 @@ class RemoteRepository(object):
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        if revid in (None, NULL_REVISION):
+        if revision.is_null(revid):
             fmt_revid = ''
         else:
             fmt_revid = revid
@@ -621,7 +621,7 @@ class RemoteRepository(object):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+                not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         self._ensure_real()
