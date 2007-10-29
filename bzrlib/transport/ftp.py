@@ -560,4 +560,10 @@ def get_test_permutations():
         from bzrlib.tests import FTPServer
         return [(FtpTransport, FTPServer.FTPServer)]
     else:
-        return []
+        # Dummy server to have the test suite report the number of tests
+        # needing that feature.
+        class FTPServer(object):
+            def setUp(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
+
+        return [(FtpTransport, FTPServer)]
