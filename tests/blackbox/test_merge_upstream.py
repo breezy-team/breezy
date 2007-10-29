@@ -26,3 +26,4 @@ class TestMergeUpstream(BuilddebTestCase):
   def test_merge_upstream_available(self):
     self.run_bzr('merge-upstream --help')
 
+# vim: ts=2 sts=2 sw=2

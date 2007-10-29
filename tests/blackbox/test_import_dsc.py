@@ -85,3 +85,4 @@ class TestImportDsc(BuilddebTestCase):
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
 
+# vim: ts=2 sts=2 sw=2

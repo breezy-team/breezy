@@ -472,3 +472,4 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
     build_dir = self._properties.build_dir()
     return os.path.join(build_dir, self._tarball_name())
 
+# vim: ts=2 sts=2 sw=2

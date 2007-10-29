@@ -110,3 +110,4 @@ def repack_tarball(orig_name, new_name, target_dir=None):
     finally:
       trans_file.close()
 
+# vim: ts=2 sts=2 sw=2

@@ -186,3 +186,4 @@ class TestDo(ExternalBase):
     self.run_bzr(['bd-do', 'mkdir debian/dir'])
     self.failUnlessExists('debian/dir')
 
+# vim: ts=2 sts=2 sw=2

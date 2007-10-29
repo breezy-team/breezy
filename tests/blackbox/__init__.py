@@ -33,3 +33,4 @@ def test_suite():
                                        for i in testmod_names])
   return suite
 
+# vim: ts=2 sts=2 sw=2

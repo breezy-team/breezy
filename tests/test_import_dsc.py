@@ -23,11 +23,12 @@ import shutil
 import tarfile
 
 from bzrlib.config import ConfigObj
+from bzrlib.conflicts import TextConflict
 from bzrlib.errors import FileExists
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
-from errors import ImportError
+from errors import ImportError, OnlyImportSingleDsc
 from import_dsc import DscImporter
 
 def write_to_file(filename, contents):
@@ -50,14 +51,17 @@ class TestDscImporter(TestCaseWithTransport):
   target = 'target'
   orig_1 = 'package_0.1.orig.tar.gz'
   orig_2 = 'package_0.2.orig.tar.gz'
+  orig_3 = 'package_0.3.orig.tar.gz'
   diff_1 = 'package_0.1-1.diff.gz'
   diff_1b = 'package_0.1-2.diff.gz'
   diff_1c = 'package_0.1-3.diff.gz'
   diff_2 = 'package_0.2-1.diff.gz'
+  diff_3 = 'package_0.3-1.diff.gz'
   dsc_1 = 'package_0.1-1.dsc'
   dsc_1b = 'package_0.1-2.dsc'
   dsc_1c = 'package_0.1-3.dsc'
   dsc_2 = 'package_0.2-1.dsc'
+  dsc_3 = 'package_0.3-1.dsc'
   native_1 = 'package_0.1.tar.gz'
   native_2 = 'package_0.2.tar.gz'
   native_dsc_1 = 'package_0.1.dsc'
@@ -80,6 +84,9 @@ class TestDscImporter(TestCaseWithTransport):
     write_to_file(os.path.join(self.basedir, 'Makefile'), 'good command\n')
     write_to_file(os.path.join(self.basedir, 'from_debian'), 'from debian\n')
 
+  def extend_base_package2(self):
+    write_to_file(os.path.join(self.basedir, 'NEW_IN_3'), 'new release\n')
+
   def make_orig_1(self):
     self.make_base_package()
     tar = tarfile.open(self.orig_1, 'w:gz')
@@ -91,6 +98,14 @@ class TestDscImporter(TestCaseWithTransport):
   def make_orig_2(self):
     self.extend_base_package()
     tar = tarfile.open(self.orig_2, 'w:gz')
+    try:
+      tar.add(self.basedir)
+    finally:
+      tar.close()
+
+  def make_orig_3(self):
+    self.extend_base_package2()
+    tar = tarfile.open(self.orig_3, 'w:gz')
     try:
       tar.add(self.basedir)
     finally:
@@ -137,6 +152,16 @@ class TestDscImporter(TestCaseWithTransport):
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_2))
 
+  def make_diff_3(self):
+    diffdir = 'package-0.3'
+    shutil.copytree(self.basedir, diffdir)
+    os.mkdir(os.path.join(diffdir, 'debian'))
+    write_to_file(os.path.join(diffdir, 'debian', 'changelog'),
+          'version 1-1\nversion 1-2\nversion 1-3\nversion 2-1\nversion 3-1\n')
+    write_to_file(os.path.join(diffdir, 'debian', 'install'), 'install\n')
+    os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
+                                                   self.diff_3))
+
   def make_dsc(self, filename, version, file1, extra_files=[],
                package='package'):
     write_to_file(filename, """Format: 1.0
@@ -178,6 +203,11 @@ Files:
     self.make_orig_2()
     self.make_diff_2()
     self.make_dsc(self.dsc_2, '0.2-1', self.orig_2, [self.diff_2])
+
+  def make_dsc_3(self):
+    self.make_orig_3()
+    self.make_diff_3()
+    self.make_dsc(self.dsc_3, '0.3-1', self.orig_3, [self.diff_3])
 
   def import_dsc_1(self):
     self.make_dsc_1()
@@ -783,4 +813,208 @@ Files:
     config = self._get_tree_default_config(tree, fail_on_none=False)
     if config is not None:
       self.assertEqual(bool(config['BUILDDEB']['native']), False)
+
+  def test_import_incremental_simple(self):
+    # set up the branch using a simple single version non-native import.
+    self.import_dsc_1()
+    self.make_dsc_1b()
+    DscImporter([self.dsc_1b]).incremental_import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    tree = WorkingTree.open(self.target)
+    tree.lock_read()
+    expected_inv = ['README', 'CHANGELOG', 'Makefile', 'debian/',
+                    'debian/changelog', 'debian/control', 'debian/rules']
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    for path in expected_inv:
+      self.failUnlessExists(os.path.join(self.target, path))
+    self.assertContentsAre(os.path.join(self.target, 'Makefile'),
+                           'good command\n')
+    self.assertContentsAre(os.path.join(self.target, 'debian', 'changelog'),
+                           'version 1-1\nversion 1-2\n')
+    self.assertRulesExecutable(tree)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.check_revision_message(tree, rh[0],
+                          'import upstream from %s' % self.orig_1)
+    self.check_revision_message(tree, rh[1],
+                          'merge packaging changes from %s' % self.diff_1)
+    parents = tree.get_parent_ids()
+    self.assertEqual(len(parents), 2)
+    self.assertEqual(parents[0], rh[1])
+    self.check_revision_message(tree, parents[1],
+                          'merge packaging changes from %s' % self.diff_1b)
+    prev_tree = tree.branch.repository.revision_tree(parents[1])
+    current_tree = tree.branch.repository.revision_tree(rh[1])
+    changes = prev_tree.changes_from(current_tree)
+    expected_added = ['debian/control']
+    expected_removed = ['debian/install']
+    expected_modified = ['debian/changelog']
+    self.check_changes(changes, added=expected_added,
+                       removed=expected_removed, modified=expected_modified)
+    self.assertRulesExecutable(prev_tree)
+    self.assertEqual(len(tree.conflicts()), 0)
+    changes = tree.changes_from(tree.basis_tree())
+    self.check_changes(changes, added=expected_added,
+                       removed=expected_removed, modified=expected_modified)
+
+  def test_import_incremental_multiple_dscs_prohibited(self):
+    self.import_dsc_1()
+    self.make_dsc_1b()
+    self.make_dsc_2()
+    importer = DscImporter([self.dsc_1b, self.dsc_2])
+    self.assertRaises(OnlyImportSingleDsc, importer.incremental_import_dsc,
+      self.target)
+
+  def test_incremental_with_upstream(self):
+    self.import_dsc_1()
+    self.make_dsc_2()
+    DscImporter([self.dsc_2]).incremental_import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    tree = WorkingTree.open(self.target)
+    tree.lock_read()
+    expected_inv = ['README', 'CHANGELOG', 'Makefile', 'NEWS', 'from_debian',
+                    'debian/', 'debian/changelog', 'debian/install',
+                    'debian/rules']
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    for path in expected_inv:
+      self.failUnlessExists(os.path.join(self.target, path))
+    self.assertContentsAre(os.path.join(self.target, 'Makefile'),
+                           'good command\n')
+    self.assertContentsAre(os.path.join(self.target, 'debian', 'changelog'),
+        '<<<<<<< TREE\nversion 1-1\n=======\nversion 1-1\nversion 1-2\n'
+        'version 1-3\nversion 2-1\n>>>>>>> MERGE-SOURCE\n')
+    self.assertRulesExecutable(tree)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.check_revision_message(tree, rh[0],
+                          'import upstream from %s' % self.orig_1)
+    self.check_revision_message(tree, rh[1],
+                          'merge packaging changes from %s' % self.diff_1)
+    parents = tree.get_parent_ids()
+    self.assertEqual(len(parents), 2)
+    self.assertEqual(parents[0], rh[1])
+    self.check_revision_message(tree, parents[1],
+                          'merge packaging changes from %s' % self.diff_2)
+    prev_tree = tree.branch.repository.revision_tree(parents[1])
+    current_tree = tree.branch.repository.revision_tree(parents[0])
+    changes = prev_tree.changes_from(current_tree)
+    expected_added = ['from_debian', 'NEWS']
+    expected_modified = ['debian/changelog']
+    self.check_changes(changes, added=expected_added,
+                       removed=[], modified=expected_modified)
+    self.assertRulesExecutable(prev_tree)
+    self.assertEqual(len(tree.conflicts()), 1)
+    self.assertTrue(isinstance(tree.conflicts()[0], TextConflict))
+    self.assertEqual(tree.conflicts()[0].path, 'debian/changelog')
+    changes = tree.changes_from(tree.basis_tree())
+    self.check_changes(changes, added=expected_added,
+                       removed=[], modified=expected_modified)
+    merged_parents = prev_tree.get_parent_ids()
+    self.assertEqual(len(merged_parents), 1)
+    self.check_revision_message(tree, merged_parents[0],
+                          'import upstream from %s' % self.orig_2)
+    new_upstream_tree = tree.branch.repository.revision_tree(merged_parents[0])
+    new_upstream_parents = new_upstream_tree.get_parent_ids()
+    self.assertEqual(len(new_upstream_parents), 1)
+    self.assertEqual(new_upstream_parents[0], rh[0])
+
+  def test_incremental_with_upstream_older_than_all_in_branch(self):
+    self.make_dsc_1()
+    self.make_dsc_2()
+    DscImporter([self.dsc_2]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    DscImporter([self.dsc_1]).incremental_import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    tree = WorkingTree.open(self.target)
+    tree.lock_read()
+    expected_inv = ['README', 'CHANGELOG', 'Makefile', 'NEWS', 'from_debian',
+                    'debian/', 'debian/changelog',
+                    'debian/install', 'debian/rules']
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    for path in expected_inv:
+      self.failUnlessExists(os.path.join(self.target, path))
+    self.assertContentsAre(os.path.join(self.target, 'Makefile'),
+                           'good command\n')
+    self.assertContentsAre(os.path.join(self.target, 'debian', 'changelog'),
+        '<<<<<<< TREE\nversion 1-1\nversion 1-2\nversion 1-3\nversion 2-1\n'
+        '=======\nversion 1-1\n>>>>>>> MERGE-SOURCE\n')
+    self.assertRulesExecutable(tree)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.check_revision_message(tree, rh[0],
+                          'import upstream from %s' % self.orig_2)
+    self.check_revision_message(tree, rh[1],
+                          'merge packaging changes from %s' % self.diff_2)
+    parents = tree.get_parent_ids()
+    self.assertEqual(len(parents), 2)
+    self.assertEqual(parents[0], rh[1])
+    self.check_revision_message(tree, parents[1],
+                          'merge packaging changes from %s' % self.diff_1)
+    prev_tree = tree.branch.repository.revision_tree(parents[1])
+    merged_parents = prev_tree.get_parent_ids()
+    self.assertEqual(len(merged_parents), 1)
+    self.check_revision_message(tree, merged_parents[0],
+                          'import upstream from %s' % self.orig_1)
+
+  def test_incremental_with_upstream_older_than_lastest_in_branch(self):
+    self.make_dsc_1()
+    self.make_dsc_2()
+    self.make_dsc_3()
+    DscImporter([self.dsc_1, self.dsc_3]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    DscImporter([self.dsc_2,]).incremental_import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    tree = WorkingTree.open(self.target)
+    tree.lock_read()
+    expected_inv = ['README', 'CHANGELOG', 'Makefile', 'NEWS', 'from_debian',
+                    'NEW_IN_3', 'debian/', 'debian/changelog',
+                    'debian/install', 'debian/rules']
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    for path in expected_inv:
+      self.failUnlessExists(os.path.join(self.target, path))
+    self.assertContentsAre(os.path.join(self.target, 'Makefile'),
+                           'good command\n')
+    self.assertContentsAre(os.path.join(self.target, 'debian', 'changelog'),
+        '<<<<<<< TREE\nversion 1-1\nversion 1-2\nversion 1-3\nversion 2-1\n'
+        'version 3-1\n=======\nversion 1-1\nversion 1-2\nversion 1-3\n'
+        'version 2-1\n>>>>>>> MERGE-SOURCE\n')
+    self.assertRulesExecutable(tree)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 3)
+    self.check_revision_message(tree, rh[0],
+                          'import upstream from %s' % self.orig_1)
+    self.check_revision_message(tree, rh[1],
+                          'import upstream from %s' % self.orig_3)
+    self.check_revision_message(tree, rh[2],
+                          'merge packaging changes from %s' % self.diff_3)
+    parents = tree.get_parent_ids()
+    self.assertEqual(len(parents), 2)
+    self.assertEqual(parents[0], rh[2])
+    self.check_revision_message(tree, parents[1],
+                          'merge packaging changes from %s' % self.diff_2)
+    prev_tree = tree.branch.repository.revision_tree(parents[1])
+    merged_parents = prev_tree.get_parent_ids()
+    self.assertEqual(len(merged_parents), 1)
+    self.check_revision_message(tree, merged_parents[0],
+                          'import upstream from %s' % self.orig_2)
+    new_upstream_tree = tree.branch.repository.revision_tree(merged_parents[0])
+    new_upstream_parents = new_upstream_tree.get_parent_ids()
+    self.assertEqual(len(new_upstream_parents), 1)
+    self.assertEqual(new_upstream_parents[0], rh[0])
+    self.check_revision_message(tree, merged_parents[0],
+                          'import upstream from %s' % self.orig_2)
+
+# vim: sw=2 sts=2 ts=2 
 
