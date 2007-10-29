@@ -623,6 +623,15 @@ class RepositoryPackCollection(object):
                 return None
             else:
                 revision_ids = frozenset(revision_ids)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._create_pack_from_packs(packs, suffix, revision_ids,
+                pb)
+        finally:
+            pb.finished()
+
+    def _create_pack_from_packs(self, packs, suffix, revision_ids, pb):
+        pb.update("Opening pack", 0, 5)
         new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix=suffix)
         # buffer data - we won't be reading-back during the pack creation and
@@ -650,6 +659,7 @@ class RepositoryPackCollection(object):
             packs, 'revision_index')[0]
         revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
+        pb.update("Copying revision texts", 1)
         list(self._copy_nodes_graph(revision_nodes, revision_index_map,
             new_pack._writer, new_pack.revision_index))
         if 'pack' in debug.debug_flags:
@@ -668,6 +678,7 @@ class RepositoryPackCollection(object):
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
+        pb.update("Copying inventory texts", 2)
         inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
             new_pack._writer, new_pack.inventory_index, output_lines=True)
         if revision_ids:
@@ -707,6 +718,7 @@ class RepositoryPackCollection(object):
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
         # copy text keys and adjust values
+        pb.update("Copying content texts", 3)
         list(self._copy_nodes_graph(text_nodes, text_index_map,
             new_pack._writer, new_pack.text_index))
         if 'pack' in debug.debug_flags:
@@ -721,6 +733,7 @@ class RepositoryPackCollection(object):
         signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
+        pb.update("Copying signature texts", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
             new_pack.signature_index)
         if 'pack' in debug.debug_flags:
@@ -731,6 +744,7 @@ class RepositoryPackCollection(object):
         if not new_pack.data_inserted():
             new_pack.abort()
             return None
+        pb.update("Finishing pack", 5)
         new_pack.finish()
         self.allocate(new_pack)
         return new_pack
@@ -828,6 +842,17 @@ class RepositoryPackCollection(object):
         return pack_operations
 
     def _copy_nodes(self, nodes, index_map, writer, write_index):
+        """Copy knit nodes between packs with no graph references."""
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes(nodes, index_map, writer,
+                write_index, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
+        # for record verification
+        knit_data = _KnitData(None)
         # plan a readv on each source pack:
         # group by pack
         nodes = sorted(nodes)
@@ -840,6 +865,8 @@ class RepositoryPackCollection(object):
             if index not in request_groups:
                 request_groups[index] = []
             request_groups[index].append((key, value))
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
         for index, items in request_groups.iteritems():
             pack_readv_requests = []
             for key, value in items:
@@ -856,8 +883,13 @@ class RepositoryPackCollection(object):
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
+                # check the header only
+                df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
+                pb.update("Copied record", record_index)
+                record_index += 1
 
     def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
         output_lines=False):
@@ -866,6 +898,15 @@ class RepositoryPackCollection(object):
         :param output_lines: Return lines present in the copied data as
             an iterator.
         """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
+        output_lines, pb):
         # for record verification
         knit_data = _KnitData(None)
         # for line extraction when requested (inventories only)
@@ -879,6 +920,8 @@ class RepositoryPackCollection(object):
         # at this point - perhaps a helper library for the following code 
         # duplication points?
         request_groups = {}
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
         for index, key, value, references in nodes:
             if index not in request_groups:
                 request_groups[index] = []
@@ -914,6 +957,8 @@ class RepositoryPackCollection(object):
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                pb.update("Copied record", record_index)
+                record_index += 1
 
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
