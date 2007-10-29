@@ -81,7 +81,7 @@ run
 
 ::
 
-  $ bzr import-dsc --to scruff *.dsc
+  $ bzr import-dsc --initial --to scruff *.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
@@ -94,7 +94,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc --to scruff \
+  $ bzr import-dsc --initial --to scruff \
     http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
@@ -106,7 +106,7 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc --to scruff -F package-sources
+  $ bzr import-dsc --initial --to scruff -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
@@ -123,7 +123,7 @@ option takes the name of the source package as it is known to
 
 ::
 
-  $ bzr import-dsc --to scruff --snapshot scruff *.dsc
+  $ bzr import-dsc --initial --to scruff --snapshot scruff *.dsc
 
 to have all those versions automatically imported. If you use the
 ``--snapshot`` option then it is possible to omit all of the source packages

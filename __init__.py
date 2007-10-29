@@ -392,7 +392,8 @@ class cmd_import_dsc(Command):
   Provide a number of source packages (.dsc files), and they will
   be imported to create a branch with history that reflects those
   packages. You must provide the --to option with the name of the
-  branch that will be created.
+  branch that will be created, and the --initial option to indicate
+  this is an initial import.
 
   If there are packages that are available on snapshot.debian.net
   then you can use the --snapshot option to supplement the packages
@@ -400,7 +401,7 @@ class cmd_import_dsc(Command):
   of the source package as on snapshot.debian.net as this option,
   i.e. to import all versions of apt
 
-    import-dsc --snapshot apt
+    import-dsc --initial --snapshot apt
 
   If you use the --snapshot option then you don't have to provide
   any source packages on the command line, and if you omit the
@@ -417,7 +418,7 @@ class cmd_import_dsc(Command):
   import a .dsc from an upload done from outside the version control
   system you can use this command. In this case you can only specify
   one file on the command line, or use a file containing only a single
-  filename.
+  filename, and do not use the --initial option.
   """
 
   takes_args = ['files*']
@@ -428,10 +429,13 @@ class cmd_import_dsc(Command):
   filename_opt = Option('file', help="File containing URIs of source "
                         "packages to import.", type=str, argname="filename",
                         short_name='F')
+  initial_opt = Option('initial',
+        help="Perform an initial import to create a new branch.")
 
-  takes_options = [to_opt, snapshot_opt, filename_opt]
+  takes_options = [to_opt, snapshot_opt, filename_opt, initial_opt]
 
-  def run(self, files_list, to=None, snapshot=None, filename=None):
+  def run(self, files_list, to=None, snapshot=None, filename=None,
+          initial=False):
     from import_dsc import DscImporter, SnapshotImporter
     if files_list is None:
       files_list = []
@@ -443,18 +447,8 @@ class cmd_import_dsc(Command):
       for line in sources_file:
         line.strip()
         files_list.append(line)
-    incremental = True
-    inc_to = '.'
-    if to is not None:
-      inc_to = to
-    try:
-      tree = WorkingTree.open(inc_to)
-    except NoWorkingTree:
-      incremental = False
-    except NotBranchError:
-      incremental = False
     if snapshot is None:
-      if incremental:
+      if not initial:
         if len(files_list) != 1:
           raise BzrCommandError("You must give the location of exactly one "
                                 "source package.")
@@ -468,13 +462,13 @@ class cmd_import_dsc(Command):
                                 "destination branch using the --to option.")
       importer = DscImporter(files_list)
     else:
-      if incremental:
-        raise BzrCommandError("You cannot use the --snapshot option with an "
-            "existing branch")
+      if not initial:
+        raise BzrCommandError("You cannot use the --snapshot option without "
+            "the --initial option.")
       if to is None:
         to = snapshot
       importer = SnapshotImporter(snapshot, other_sources=files_list)
-    if not incremental:
+    if initial:
       orig_target = os.path.join(to, '../tarballs')
       importer.import_dsc(to, orig_target=orig_target)
     else :

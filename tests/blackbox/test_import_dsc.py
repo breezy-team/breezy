@@ -76,7 +76,8 @@ class TestImportDsc(BuilddebTestCase):
 
   def test_import_dsc(self):
     self.make_real_source_package()
-    self.run_bzr('import-dsc --to %s %s' % (self.package_name, self.dsc_name))
+    self.run_bzr('import-dsc --initial --to %s %s' % \
+        (self.package_name, self.dsc_name))
     tree = WorkingTree.open(self.package_name)
     tree.lock_read()
     try:
@@ -89,20 +90,20 @@ class TestImportDsc(BuilddebTestCase):
   def test_import_no_to(self):
     self.make_real_source_package()
     self.run_bzr_error(['You must specify the name of the destination branch '
-        'using the --to option.'], 'import-dsc %s' % self.dsc_name)
+        'using the --to option.'], 'import-dsc --initial %s' % self.dsc_name)
 
   def test_import_snapshot_incremental(self):
     self.make_branch_and_tree('.')
     self.make_real_source_package()
-    self.run_bzr_error(['You cannot use the --snapshot option with an '
-        'existing branch'],
+    self.run_bzr_error(['You cannot use the --snapshot option without the '
+        '--initial option'],
         'import-dsc --snapshot %s %s' % (self.package_name, self.dsc_name))
 
   def test_import_snapshot_incremental_with_to(self):
     self.make_branch_and_tree('target')
     self.make_real_source_package()
-    self.run_bzr_error(['You cannot use the --snapshot option with an '
-        'existing branch'],
+    self.run_bzr_error(['You cannot use the --snapshot option without the '
+        '--initial option'],
         'import-dsc --snapshot %s --to target %s' % \
         (self.package_name, self.dsc_name))
 

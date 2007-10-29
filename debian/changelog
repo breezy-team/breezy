@@ -1,3 +1,10 @@
+bzr-builddeb (0.92) unstable; urgency=low
+
+  * Support incremental imports of normal mode packages from source packages
+    for uploads done outside the VCS.
+
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 29 Oct 2007 22:03:26 +0000
+
 bzr-builddeb (0.91) unstable; urgency=low
 
   [ Frédéric Brin ]
