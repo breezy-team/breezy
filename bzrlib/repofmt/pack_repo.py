@@ -617,10 +617,12 @@ class RepositoryPackCollection(object):
         if self._new_pack is not None:
             raise errors.BzrError('call to create_pack_from_packs while '
                 'another pack is being written.')
-        if revision_ids is not None and len(revision_ids) == 0:
-            # silly fetch request.
-            return None
-        revision_ids = frozenset(revision_ids)
+        if revision_ids is not None:
+            if len(revision_ids) == 0:
+                # silly fetch request.
+                return None
+            else:
+                revision_ids = frozenset(revision_ids)
         new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix=suffix)
         # buffer data - we won't be reading-back during the pack creation and
