@@ -466,10 +466,11 @@ class InterFromSvnRepository(InterRepository):
                                                revnum, scheme)
         return (needed, parents)
 
-    def _find_until(self, revision_id):
+    def _find_until(self, revision_id, find_ghosts=False):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
+        :param find_ghosts: Find ghosts
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
@@ -490,35 +491,17 @@ class InterFromSvnRepository(InterRepository):
 
             if not self.target.has_revision(revid):
                 needed.append(revid)
+            elif not find_ghosts:
+                break
 
         parents[prev_revid] = None
         return (needed, parents)
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
-        if revision_id == NULL_REVISION:
-            return
-        # Dictionary with paths as keys, revnums as values
+        self.fetch(revision_id, pb, find_ghosts=False)
 
-        # Loop over all the revnums until revision_id
-        # (or youngest_revnum) and call self.target.add_revision() 
-        # or self.target.add_inventory() each time
-        self.target.lock_read()
-        try:
-            if revision_id is None:
-                (needed, lhs_parent) = self._find_all()
-            else:
-                (needed, lhs_parent) = self._find_until(revision_id)
-        finally:
-            self.target.unlock()
-
-        if len(needed) == 0:
-            # Nothing to fetch
-            return
-
-        self._copy_revisions_switch(needed, pb, lhs_parent)
-
-    def _copy_revisions_replay(self, revids, pb=None):
+    def _fetch_replay(self, revids, pb=None):
         """Copy a set of related revisions using svn.ra.replay.
 
         :param revids: Revision ids to copy.
@@ -526,7 +509,7 @@ class InterFromSvnRepository(InterRepository):
         """
         raise NotImplementedError(self._copy_revisions_replay)
 
-    def _copy_revisions_switch(self, revids, pb=None, lhs_parent=None):
+    def _fetch_switch(self, revids, pb=None, lhs_parent=None):
         """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
@@ -610,9 +593,30 @@ class InterFromSvnRepository(InterRepository):
                 nested_pb.finished()
         self.source.transport.reparent_root()
 
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """Fetch revisions. """
-        self.copy_content(revision_id=revision_id, pb=pb)
+        if revision_id == NULL_REVISION:
+            return
+        # Dictionary with paths as keys, revnums as values
+
+        # Loop over all the revnums until revision_id
+        # (or youngest_revnum) and call self.target.add_revision() 
+        # or self.target.add_inventory() each time
+        self.target.lock_read()
+        try:
+            if revision_id is None:
+                (needed, lhs_parent) = self._find_all()
+            else:
+                (needed, lhs_parent) = self._find_until(revision_id, 
+                                                        find_ghosts)
+        finally:
+            self.target.unlock()
+
+        if len(needed) == 0:
+            # Nothing to fetch
+            return
+
+        self._fetch_switch(needed, pb, lhs_parent)
 
     @staticmethod
     def is_compatible(source, target):

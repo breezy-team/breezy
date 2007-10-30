@@ -20,6 +20,8 @@ from bzrlib.errors import UninitializableFormat
 from bzrlib.lazy_import import lazy_import
 from bzrlib.lockable_files import TransportLock
 
+import os
+
 lazy_import(globals(), """
 import errors
 import remote
@@ -91,6 +93,10 @@ class SvnRemoteFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         svn.repos.create(local_path, '', '', None, None)
+        # All revision property changes
+        revprop_hook = os.path.join(local_path, "hooks", "pre-revprop-change")
+        open(revprop_hook, 'w').write("#!/bin/sh")
+        os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
         return self.open(get_svn_ra_transport(transport), _found=True)
 
     def is_supported(self):

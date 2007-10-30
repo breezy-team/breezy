@@ -734,47 +734,51 @@ class InterToSvnRepository(InterRepository):
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
-        assert revision_id is not None, "fetching all revisions not supported"
-        # Go back over the LHS parent until we reach a revid we know
-        todo = []
-        while not self.target.has_revision(revision_id):
-            todo.append(revision_id)
-            revision_id = self.source.revision_parents(revision_id)[0]
-            if revision_id == NULL_REVISION:
-                raise UnrelatedBranches()
-        if todo == []:
-            # Nothing to do
-            return
-        mutter("pushing %r into svn" % todo)
-        target_branch = None
-        for revision_id in todo:
-            if pb is not None:
-                pb.update("pushing revisions", todo.index(revision_id), len(todo))
-            rev = self.source.get_revision(revision_id)
+        self.source.lock_read()
+        try:
+            assert revision_id is not None, "fetching all revisions not supported"
+            # Go back over the LHS parent until we reach a revid we know
+            todo = []
+            while not self.target.has_revision(revision_id):
+                todo.append(revision_id)
+                revision_id = self.source.revision_parents(revision_id)[0]
+                if revision_id == NULL_REVISION:
+                    raise UnrelatedBranches()
+            if todo == []:
+                # Nothing to do
+                return
+            mutter("pushing %r into svn" % todo)
+            target_branch = None
+            for revision_id in todo:
+                if pb is not None:
+                    pb.update("pushing revisions", todo.index(revision_id), len(todo))
+                rev = self.source.get_revision(revision_id)
 
-            mutter('pushing %r' % (revision_id))
+                mutter('pushing %r' % (revision_id))
 
-            old_tree = self.source.revision_tree(revision_id)
-            parent_revid = rev.parent_ids[0]
-            base_tree = self.source.revision_tree(parent_revid)
+                old_tree = self.source.revision_tree(revision_id)
+                parent_revid = rev.parent_ids[0]
+                base_tree = self.source.revision_tree(parent_revid)
 
-            (bp, _, _) = self.target.lookup_revision_id(parent_revid)
-            if target_branch is None:
-                target_branch = Branch.open(urlutils.join(self.target.base, bp))
-            if target_branch.get_branch_path() != bp:
-                target_branch.set_branch_path(bp)
+                (bp, _, _) = self.target.lookup_revision_id(parent_revid)
+                if target_branch is None:
+                    target_branch = Branch.open(urlutils.join(self.target.base, bp))
+                if target_branch.get_branch_path() != bp:
+                    target_branch.set_branch_path(bp)
 
-            builder = SvnCommitBuilder(self.target, target_branch, 
-                               rev.parent_ids, target_branch.get_config(),
-                               rev.timestamp, rev.timezone, rev.committer,
-                               rev.properties, revision_id, base_tree.inventory)
-                         
-            builder.new_inventory = self.source.get_inventory(revision_id)
-            replay_delta(builder, base_tree, old_tree)
-            builder.commit(rev.message)
+                builder = SvnCommitBuilder(self.target, target_branch, 
+                                   rev.parent_ids, target_branch.get_config(),
+                                   rev.timestamp, rev.timezone, rev.committer,
+                                   rev.properties, revision_id, base_tree.inventory)
+                             
+                builder.new_inventory = self.source.get_inventory(revision_id)
+                replay_delta(builder, base_tree, old_tree)
+                builder.commit(rev.message)
+        finally:
+            self.source.unlock()
  
 
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """Fetch revisions. """
         self.copy_content(revision_id=revision_id, pb=pb)
 
