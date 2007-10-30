@@ -82,6 +82,9 @@ IN DEVELOPMENT
    * Partial commits are now approximately 40% faster by walking over the
      unselected current tree more efficiently. (Robert Collins)
 
+   * Revert takes out an appropriate lock when reverting to a basis tree, and
+     does not read the basis inventory twice. (Robert Collins)
+
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
 
