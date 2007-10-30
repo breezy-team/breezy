@@ -63,6 +63,19 @@ class SvnRepositoryConfig(IniBasedConfig):
         """
         return BranchingScheme.find_scheme(self._get_user_option("branching-scheme", use_global=False))
 
+    def get_override_svn_revprops(self):
+        """Check whether or not bzr-svn should attempt to override Subversion revision 
+        properties after committing."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "override-svn-revprops")
+        except KeyError:
+            pass
+        global_config = GlobalConfig()
+        try:
+            return global_config._get_parser().get_bool(global_config._get_section(), "override-svn-revprops")
+        except KeyError:
+            return None
+
     def get_locations(self):
         """Find the locations this repository has been seen at.
 
