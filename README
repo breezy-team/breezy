@@ -91,9 +91,6 @@ In the future, I also hope to support:
 - use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of 
   roundtrips when fetching history.
 
-- implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on 
-  a specific directory all at once.
-
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
 
