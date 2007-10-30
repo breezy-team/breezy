@@ -113,16 +113,8 @@ class LaunchpadTransport(Transport):
         """See Transport.get()."""
         self._request_redirect(relpath)
 
-    def has(self, relpath):
-        """See Transport.has()."""
-        self._request_redirect(relpath)
-
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
-        self._request_redirect(relpath)
-
-    def put_file(self, relpath, f, mode=None):
-        """See Transport.put_file()."""
         self._request_redirect(relpath)
 
 

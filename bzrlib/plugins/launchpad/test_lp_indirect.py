@@ -151,21 +151,9 @@ class IndirectUrlTests(TestCase):
         self.assertEqual(
             'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
 
-    def test_redirect_on_has(self):
-        exc = self.catch_redirect('has', '.bzr/branch-format')
-        self.assertEqual('lp:///apt/.bzr/branch-format', exc.source)
-        self.assertEqual(
-            'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
-
     def test_redirect_on_mkdir(self):
         exc = self.catch_redirect('mkdir', '.')
         self.assertEqual('lp:///apt', exc.source)
         self.assertEqual(
             'http://example.com/~apt/apt/devel', exc.target)
-
-    def test_redirect_on_put_file(self):
-        exc = self.catch_redirect('put_file', '.bzr/branch-format', None)
-        self.assertEqual('lp:///apt/.bzr/branch-format', exc.source)
-        self.assertEqual(
-            'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
 
