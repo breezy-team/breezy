@@ -78,6 +78,9 @@ IN DEVELOPMENT
      this reduces the wall clock time for commit by roughly a 30%.
      (Robert Collins, Martin Pool)
 
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
+
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
