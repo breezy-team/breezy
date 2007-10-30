@@ -858,7 +858,7 @@ class Repository(object):
             return 0, []
         inter = InterRepository.get(source, self)
         try:
-            return inter.fetch(revision_id=revision_id, pb=pb)
+            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
@@ -1774,6 +1774,10 @@ class RepositoryFormat(object):
     parameterisation.
     """
 
+    # Set to True or False in derived classes. True indicates that the format
+    # supports ghosts gracefully.
+    supports_ghosts = None
+
     def __str__(self):
         return "<%s>" % self.__class__.__name__
 
@@ -2009,7 +2013,7 @@ class InterRepository(InterObject):
     def copy_content(self, revision_id=None):
         raise NotImplementedError(self.copy_content)
 
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -2101,7 +2105,7 @@ class InterSameDataRepository(InterRepository):
         self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2180,7 +2184,7 @@ class InterWeaveRepo(InterSameDataRepository):
             self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2258,7 +2262,7 @@ class InterKnitRepo(InterSameDataRepository):
         return are_knits and InterRepository._same_model(source, target)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import KnitRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2325,7 +2329,7 @@ class InterPackRepo(InterSameDataRepository):
         return are_packs and InterRepository._same_model(source, target)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
@@ -2349,7 +2353,8 @@ class InterPackRepo(InterSameDataRepository):
             return
         else:
             try:
-                revision_ids = self.missing_revision_ids(revision_id)
+                revision_ids = self.missing_revision_ids(revision_id,
+                    find_ghosts=find_ghosts)
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
         packs = self.source._pack_collection.all_packs()
@@ -2367,9 +2372,31 @@ class InterPackRepo(InterSameDataRepository):
             return 0
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
-        """See InterRepository.missing_revision_ids()."""
-        if revision_id is not None:
+    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
+        """See InterRepository.missing_revision_ids().
+        
+        :param find_ghosts: Find ghosts throughough the ancestry of
+            revision_id.
+        """
+        if not find_ghosts and revision_id is not None:
+            graph = self.source.get_graph()
+            missing_revs = set()
+            searcher = graph._make_breadth_first_searcher([revision_id])
+            target_index = \
+                self.target._pack_collection.revision_index.combined_index
+            null_set = frozenset([_mod_revision.NULL_REVISION])
+            while True:
+                try:
+                    next_revs = set(searcher.next())
+                except StopIteration:
+                    break
+                next_revs.difference_update(null_set)
+                target_keys =list ((key,) for key in next_revs)
+                have_revs = frozenset(node[1][0] for node in target_index.iter_entries(target_keys))
+                missing_revs.update(next_revs - have_revs)
+                searcher.stop_searching_any(have_revs)
+            return missing_revs
+        elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
             source_ids.pop(0)
@@ -2397,7 +2424,7 @@ class InterModel1and2(InterRepository):
             return False
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import Model1toKnit2Fetcher
         f = Model1toKnit2Fetcher(to_repository=self.target,
@@ -2451,7 +2478,7 @@ class InterKnit1and2(InterKnitRepo):
             return False
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import Knit1to2Fetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2484,7 +2511,7 @@ class InterRemoteToOther(InterRepository):
         return real_source._format == target._format
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import RemoteToOtherFetcher
         mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
@@ -2524,7 +2551,7 @@ class InterOtherToRemote(InterRepository):
         self._ensure_real_inter()
         self._real_inter.copy_content(revision_id=revision_id)
 
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
         self._real_inter.fetch(revision_id=revision_id, pb=pb)
 

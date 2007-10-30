@@ -1252,7 +1252,7 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions."
+    _fmt = "Parents are mismatched between two revisions. %(message)s"
     
 
 class WeaveInvalidChecksum(WeaveError):

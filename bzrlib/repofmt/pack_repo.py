@@ -1519,6 +1519,7 @@ class KnitPackRepository(KnitRepository):
             self._pack_collection.reset()
             # XXX: Better to do an in-memory merge when acquiring a new lock -
             # factor out code from _save_pack_names.
+            self._pack_collection.ensure_loaded()
 
     def _start_write_group(self):
         self._pack_collection._start_write_group()
