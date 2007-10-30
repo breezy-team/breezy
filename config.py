@@ -16,7 +16,7 @@
 """Stores per-repository settings."""
 
 from bzrlib import osutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig
 
 import os
 
@@ -29,6 +29,7 @@ from scheme import BranchingScheme
 def subversion_config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'subversion.conf')
+
 
 class SvnRepositoryConfig(IniBasedConfig):
     """Per-repository settings."""
@@ -47,25 +48,30 @@ class SvnRepositoryConfig(IniBasedConfig):
         """
         self.set_user_option('branching-scheme', str(scheme))
 
+    def _get_user_option(self, name, use_global=True):
+        try:
+            return self._get_parser()[self.uuid][name]
+        except KeyError:
+            if not use_global:
+                return None
+            return GlobalConfig()._get_user_option(name)
+
     def get_branching_scheme(self):
         """Get the branching scheme.
 
         :return: BranchingScheme instance.
         """
-        try:
-            return BranchingScheme.find_scheme(self._get_parser()[self.uuid]['branching-scheme'])
-        except KeyError:
-            return None
+        return BranchingScheme.find_scheme(self._get_user_option("branching-scheme", use_global=False))
 
     def get_locations(self):
         """Find the locations this repository has been seen at.
 
         :return: Set with URLs.
         """
-        try:
-            return set(self._get_parser()[self.uuid]['locations'].split(";"))
-        except KeyError:
+        val = self._get_user_option("locations", use_global=False)
+        if val is None:
             return set()
+        return set(val.split(";"))
 
     def add_location(self, location):
         """Add a location for this repository.
