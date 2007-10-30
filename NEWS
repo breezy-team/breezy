@@ -4,6 +4,9 @@
 
   * "bzr replay" now supports revision ranges.
 
+  * Don't require "bzr replay" and "bzr rebase" to be run in 
+    the branch root.
+
  BUG FIXES
 
   * Fix "bzr replay", add test.

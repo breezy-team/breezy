@@ -122,7 +122,7 @@ class cmd_rebase(Command):
         if upstream_location is None:
             upstream_location = wt.branch.get_parent()
             info("Rebasing on %s" % upstream_location)
-        upstream = Branch.open(upstream_location)
+        upstream = Branch.open_containing(upstream_location)[0]
         upstream_repository = upstream.repository
         upstream_revision = upstream.last_revision()
         try:
@@ -295,7 +295,7 @@ class cmd_rebase_todo(Command):
             wt.unlock()
 
 class cmd_replay(Command):
-    """Replay a commit on top of a different branch.
+    """Replay commits from another branch on top of this one.
 
     """
     
@@ -308,7 +308,7 @@ class cmd_replay(Command):
         from bzrlib import ui
         from rebase import regenerate_default_revid, replay_delta_workingtree
 
-        from_branch = Branch.open(location)
+        from_branch = Branch.open_containing(location)[0]
 
         if revision is not None:
             if len(revision) == 1:
