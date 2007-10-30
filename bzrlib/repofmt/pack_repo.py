@@ -1626,6 +1626,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # Packs are not confused by ghosts.
+    supports_ghosts = True
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
