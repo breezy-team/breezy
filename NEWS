@@ -68,6 +68,9 @@ IN DEVELOPMENT
      changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
 
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
+
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
