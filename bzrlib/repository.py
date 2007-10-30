@@ -2391,7 +2391,7 @@ class InterPackRepo(InterSameDataRepository):
                 except StopIteration:
                     break
                 next_revs.difference_update(null_set)
-                target_keys = ((key,) for key in next_revs)
+                target_keys = [(key,) for key in next_revs]
                 have_revs = frozenset(node[1][0] for node in
                     target_index.iter_entries(target_keys))
                 missing_revs.update(next_revs - have_revs)
