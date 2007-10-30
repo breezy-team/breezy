@@ -61,7 +61,10 @@ class SvnRepositoryConfig(IniBasedConfig):
 
         :return: BranchingScheme instance.
         """
-        return BranchingScheme.find_scheme(self._get_user_option("branching-scheme", use_global=False))
+        schemename = self._get_user_option("branching-scheme", use_global=False)
+        if schemename is not None:
+            return BranchingScheme.find_scheme(schemename)
+        return None
 
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 

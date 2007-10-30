@@ -78,3 +78,14 @@ previous versions. In other words, existing bzr-svn branches created with
 0.3.x can not be used directly with 0.4.0 but will have to be upgraded to 
 work with 0.4.0 using the "bzr svn-upgrade" command. The bzr-rebase package 
 has to be installed for this command to work correctly.
+
+============================================================================
+Is it possible to keep the author name when pushing changes into Subversion?
+============================================================================
+Yes, but this requires the repository to allow revision property changes. 
+
+See hooks/pre-revprop-change in the Subversion repository for 
+more information about how to do this.
+
+You also need to enable support for this in bzr-svn by setting 
+pre-revprop-change to True in ~/.bazaar/bazaar.conf.

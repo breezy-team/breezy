@@ -557,9 +557,9 @@ class RevpropTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My commit")
 
         transport = SvnRaTransport(repos_url)
-        set_svn_revprops(transport, 1, "2007-11-11", "Somebody")
+        set_svn_revprops(transport, 1, "Somebody", 473382000, 3600)
 
-        self.assertEquals(("Somebody", "2007-11-11", "My commit"), 
+        self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
                           self.client_log("dc")[1][1:])
 
     def test_change_revprops_disallowed(self):
@@ -570,4 +570,4 @@ class RevpropTests(TestCaseWithSubversionRepository):
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
-            lambda: set_svn_revprops(transport, 1, "2007-11-11", "Somebody"))
+            lambda: set_svn_revprops(transport, 1, "Somebody", 473382000, 3600))

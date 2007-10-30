@@ -16,7 +16,7 @@
 """Committing and pushing to Subversion repositories."""
 
 import svn.delta
-from svn.core import Pool, SubversionException
+from svn.core import Pool, SubversionException, svn_time_to_cstring
 
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
@@ -54,18 +54,19 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     return []
 
 
-def set_svn_revprops(transport, revnum, date, author):
+def set_svn_revprops(transport, revnum, author, timestamp, timezone):
     """Attempt to change the revision properties on the
     specified revision.
 
     :param transport: SvnRaTransport connected to target repository
     :param revnum: Revision number of revision to change metadata of.
-    :param date: New date
     :param author: New author
+    :param timestamp: Timestamp
+    :param timezone: Timezone
     """
     revprops = {
         svn.core.SVN_PROP_REVISION_AUTHOR: author,
-        svn.core.SVN_PROP_REVISION_DATE: date
+        svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*(timestamp+timezone))
     }
     for (name, value) in revprops.items():
         try:
@@ -513,6 +514,11 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
                (self.revnum, self.author, self.date, revid))
+
+        if self.repository.get_config().get_override_svn_revprops():
+            set_svn_revprops(self.repository.transport, 
+                             self.revnum, self._committer, 
+                             self._timestamp, self._timezone)
 
         return revid
 
