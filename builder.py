@@ -25,6 +25,10 @@ import tarfile
 import tempfile
 import os
 
+import apt_pkg
+
+from debian_bundle.changelog import Version
+
 from bzrlib.branch import Branch
 from bzrlib.errors import NoWorkingTree
 from bzrlib.export import export
@@ -205,6 +209,27 @@ class DebBuild(object):
                    target_dir=self._properties.tarball_dir())
     os.unlink(fetched_tarball)
 
+  def _get_upstream_from_archive(self):
+    apt_pkg.init()
+    sources = apt_pkg.GetPkgSrcRecords()
+    sources.Restart()
+    package = self._properties.package()
+    version = self._properties.upstream_version()
+    found = False
+    while sources.Lookup(package):
+      if version == Version(sources.Version).upstream_version:
+        tarball_dir = self._properties.tarball_dir()
+        command = 'apt-get source -y --tar-only %s=%s' % \
+            (package, sources.Version)
+        proc = subprocess.Popen(command, shell=True, cwd=tarball_dir)
+        proc.wait()
+        if proc.returncode != 0:
+          return False
+        return True
+    if not found:
+      return False
+
+
   def _find_tarball(self):
     """Find the upstream tarball and return it's location.
 
@@ -215,6 +240,8 @@ class DebBuild(object):
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
     if not os.path.exists(tarball):
+      if self._get_upstream_from_archive():
+        return tarball
       if not self._has_watch():
         raise DebianError('Could not find upstream tarball at '+tarball)
       else:
