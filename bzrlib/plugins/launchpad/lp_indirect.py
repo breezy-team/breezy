@@ -27,6 +27,7 @@ import xmlrpclib
 
 from bzrlib import (
     errors,
+    urlutils,
     )
 from bzrlib.transport import (
     get_transport,
@@ -57,12 +58,12 @@ class LaunchpadTransport(Transport):
         if not (base.startswith('lp:///') or
                 base.startswith('lp:') and base[3] != '/'):
             raise errors.InvalidURL(path=base)
-        self._base_transport = None
 
-    def _resolve_base(self, _request_factory=ResolveLaunchpadPathRequest,
-                      _lp_login=None):
+    def _resolve(self, abspath,
+                 _request_factory=ResolveLaunchpadPathRequest,
+                 _lp_login=None):
         """Resolve the base URL for this transport."""
-        path = self.base[3:].lstrip('/')
+        path = abspath[3:].lstrip('/')
         # Perform an XMLRPC request to resolve the path
         resolve = _request_factory(path)
         service = LaunchpadService()
@@ -70,7 +71,7 @@ class LaunchpadTransport(Transport):
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
             raise errors.InvalidURL(
-                path=self.base, extra=fault.faultString)
+                path=abspath, extra=fault.faultString)
 
         if _lp_login is None:
             _lp_login = get_lp_login()
@@ -88,32 +89,30 @@ class LaunchpadTransport(Transport):
             elif scheme in ['bzr+ssh', 'bzr+http', 'http']:
                 break
         else:
-            raise errors.InvalidURL(path=self.base,
+            raise errors.InvalidURL(path=abspath,
                                     extra='no supported schemes')
         return url
 
-    @property
-    def _transport(self):
-        if self._base_transport is None:
-            url = self._resolve_base()
-            self._base_transport = get_transport(url)
-        return self._base_transport
+    def _request_redirect(self, relpath):
+        source = urlutils.join(self.base, relpath)
+        # Split the source location into the branch location, and the
+        # extra path components.
+        pos = source.find('/.bzr/')
+        if pos >= 0:
+            branchpath = source[:pos]
+            extra = source[pos:]
+        else:
+            branchpath = source
+            extra = ''
+        target = self._resolve(branchpath) + extra
+        raise errors.RedirectRequested(
+            source=source,
+            target=target)
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
         return self._transport.abspath(relpath)
 
-    def append_file(self, relpath, f, mode=None):
-        """See Transport.append_file()."""
-        return self._transport.append_file(relpath, f, mode=mode)
-
-    def append_bytes(self, relpath, bytes, mode=None):
-        """See Transport.append_bytes()."""
-        return self._transport.append_bytes(relpath, f, mode=mode)
-
-    def _can_roundtrip_unix_modebits(self):
-        """See Transport._can_roundtrip_unix_modebits()."""
-        return self._transport._can_roundtrip_unix_modebits()
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -122,93 +121,33 @@ class LaunchpadTransport(Transport):
         # namespace.
         return self._transport.clone(offset)
 
-    def delete(self, relpath):
-        """See Transport.delete()."""
-        return self._transport.delete(relpath)
-
-    def delete_tree(self, relpath):
-        """See Transport.delete_tree()."""
-        return self._transport.delete_tree(relpath)
-
     def external_url(self):
         """See Transport.external_url()."""
         return self._transport.external_url()
 
     def get(self, relpath):
         """See Transport.get()."""
-        return self._transport.get(relpath)
-
-    def get_smart_client(self):
-        return self._transport.get_smart_client()
-
-    def get_smart_medium(self):
-        return self._transport.get_smart_medium()
-
-    def get_shared_medium(self):
-        return self._transport.get_shared_medium()
+        self._request_redirect(relpath)
 
     def has(self, relpath):
         """See Transport.has()."""
-        return self._transport.has(relpath)
+        self._request_redirect(relpath)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
-        return self._transport.is_readonly()
+        return False
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
-        return self._transport.mkdir(relpath, mode)
-
-    def open_write_stream(self, relpath, mode=None):
-        """See Transport.open_write_stream."""
-        return self._transport.open_write_stream(relpath, mode=mode)
+        self._request_redirect(relpath)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
-        return self._transport.put_file(relpath, f, mode)
-
-    def put_bytes(self, relpath, bytes, mode=None):
-        """See Transport.put_bytes()."""
-        return self._transport.put_bytes(relpath, bytes, mode)
-
-    def listable(self):
-        """See Transport.listable."""
-        return self._transport.listable()
-
-    def iter_files_recursive(self):
-        """See Transport.iter_files_recursive()."""
-        return self._transport.iter_files_recursive()
-
-    def list_dir(self, relpath):
-        """See Transport.list_dir()."""
-        return self._transport.list_dir(relpath)
-
-    def _readv(self, relpath, offsets):
-        """See Transport._readv."""
-        return self._transport._readv(relpath, offsets)
-
-    def recommended_page_size(self):
-        """See Transport.recommended_page_size()."""
-        return self._transport.recommended_page_size()
-
-    def rename(self, rel_from, rel_to):
-        return self._transport.rename(rel_from, rel_to)
-
-    def rmdir(self, relpath):
-        """See Transport.rmdir."""
-        return self._transport.rmdir(relpath)
+        self._request_redirect(relpath)
 
     def stat(self, relpath):
         """See Transport.stat()."""
-        return self._transport.stat(relpath)
-
-    def lock_read(self, relpath):
-        """See Transport.lock_read."""
-        return self._transport.lock_read(relpath)
-
-    def lock_write(self, relpath):
-        """See Transport.lock_write."""
-        return self._transport.lock_write(relpath)
+        self._request_redirect(relpath)
 
 
 def get_test_permutations():

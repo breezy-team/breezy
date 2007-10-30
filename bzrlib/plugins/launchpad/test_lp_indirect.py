@@ -49,18 +49,18 @@ class IndirectUrlTests(TestCase):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
-                          transport._resolve_base(factory))
+                          transport._resolve('lp:apt', factory))
 
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:///apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
-                          transport._resolve_base(factory))
+                          transport._resolve('lp:///apt', factory))
 
     def test_indirect_skip_bad_schemes(self):
         factory = FakeResolveFactory(
@@ -68,9 +68,9 @@ class IndirectUrlTests(TestCase):
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel',
                     'http://another/location']))
-        transport = LaunchpadTransport('lp:///apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
-                          transport._resolve_base(factory))
+                          transport._resolve('lp:///apt', factory))
 
     def test_indirect_no_matching_schemes(self):
         # If the XMLRPC call does not return any protocols we support,
@@ -78,8 +78,9 @@ class IndirectUrlTests(TestCase):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:///apt')
-        self.assertRaises(errors.InvalidURL, transport._resolve_base, factory)
+        transport = LaunchpadTransport('lp:///')
+        self.assertRaises(errors.InvalidURL,
+                          transport._resolve, 'lp:///apt', factory)
 
     def test_indirect_fault(self):
         # Test that XMLRPC faults get converted to InvalidURL errors.
@@ -87,8 +88,9 @@ class IndirectUrlTests(TestCase):
         def submit(service):
             raise xmlrpclib.Fault(42, 'something went wrong')
         factory.submit = submit
-        transport = LaunchpadTransport('lp:///apt')
-        self.assertRaises(errors.InvalidURL, transport._resolve_base, factory)
+        transport = LaunchpadTransport('lp:///')
+        self.assertRaises(errors.InvalidURL,
+                          transport._resolve, 'lp:///apt', factory)
 
     def test_skip_bzr_ssh_launchpad_net_when_anonymous(self):
         # Test that bzr+ssh://bazaar.launchpad.net gets skipped if
@@ -98,9 +100,9 @@ class IndirectUrlTests(TestCase):
             self, 'apt', dict(urls=[
                     'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:///apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
-                          transport._resolve_base(factory))
+                          transport._resolve('lp:///apt', factory))
 
     def test_rewrite_bzr_ssh_launchpad_net(self):
         # Test that bzr+ssh URLs get rewritten to include the user's
@@ -109,10 +111,10 @@ class IndirectUrlTests(TestCase):
             self, 'apt', dict(urls=[
                     'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:///apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals(
             'bzr+ssh://username@bazaar.launchpad.net/~apt/apt/devel',
-            transport._resolve_base(factory, _lp_login='username'))
+            transport._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
         # Test that we don't rewrite bzr+ssh URLs for other 
@@ -121,9 +123,9 @@ class IndirectUrlTests(TestCase):
             self, 'apt', dict(urls=[
                     'bzr+ssh://example.com/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
-        transport = LaunchpadTransport('lp:///apt')
+        transport = LaunchpadTransport('lp:///')
         self.assertEquals('bzr+ssh://example.com/~apt/apt/devel',
-                          transport._resolve_base(factory))
+                          transport._resolve('lp:///apt', factory))
 
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_indirection(self):
