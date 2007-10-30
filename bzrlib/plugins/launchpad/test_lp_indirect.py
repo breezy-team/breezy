@@ -131,3 +131,41 @@ class IndirectUrlTests(TestCase):
     def test_error_for_bad_indirection(self):
         self.assertRaises(errors.InvalidURL,
             LaunchpadTransport, 'lp://ratotehunoahu')
+
+    def catch_redirect(self, methodname, *args):
+        transport = LaunchpadTransport('lp:///apt')
+        def _resolve(abspath):
+            self.assertEqual('lp:///apt', abspath)
+            return 'http://example.com/~apt/apt/devel'
+        transport._resolve = _resolve
+        try:
+            getattr(transport, methodname)(*args)
+        except errors.RedirectRequested, exc:
+            return exc
+        else:
+            raise self.failException('RedirectRequested not raised')
+
+    def test_redirect_on_get(self):
+        exc = self.catch_redirect('get', '.bzr/branch-format')
+        self.assertEqual('lp:///apt/.bzr/branch-format', exc.source)
+        self.assertEqual(
+            'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
+
+    def test_redirect_on_has(self):
+        exc = self.catch_redirect('has', '.bzr/branch-format')
+        self.assertEqual('lp:///apt/.bzr/branch-format', exc.source)
+        self.assertEqual(
+            'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
+
+    def test_redirect_on_mkdir(self):
+        exc = self.catch_redirect('mkdir', '.')
+        self.assertEqual('lp:///apt', exc.source)
+        self.assertEqual(
+            'http://example.com/~apt/apt/devel', exc.target)
+
+    def test_redirect_on_put_file(self):
+        exc = self.catch_redirect('put_file', '.bzr/branch-format', None)
+        self.assertEqual('lp:///apt/.bzr/branch-format', exc.source)
+        self.assertEqual(
+            'http://example.com/~apt/apt/devel/.bzr/branch-format', exc.target)
+

@@ -109,22 +109,6 @@ class LaunchpadTransport(Transport):
             source=source,
             target=target)
 
-    def abspath(self, relpath):
-        """See Transport.abspath()."""
-        return self._transport.abspath(relpath)
-
-
-    def clone(self, offset=None):
-        """See Transport.clone()."""
-        # We clone the underlying transport here so that e.g. ".." is
-        # relative to the real branch rather than the virtual lp:
-        # namespace.
-        return self._transport.clone(offset)
-
-    def external_url(self):
-        """See Transport.external_url()."""
-        return self._transport.external_url()
-
     def get(self, relpath):
         """See Transport.get()."""
         self._request_redirect(relpath)
@@ -133,20 +117,12 @@ class LaunchpadTransport(Transport):
         """See Transport.has()."""
         self._request_redirect(relpath)
 
-    def is_readonly(self):
-        """See Transport.is_readonly."""
-        return False
-
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
         self._request_redirect(relpath)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
-        self._request_redirect(relpath)
-
-    def stat(self, relpath):
-        """See Transport.stat()."""
         self._request_redirect(relpath)
 
 
