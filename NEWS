@@ -20,6 +20,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Support optionally overriding svn:author and svn:date (#140001)
 
+   * Convert errno's returned by the remote server into OSError exceptions.
+
   INTERNALS
 
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
