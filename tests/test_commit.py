@@ -22,9 +22,12 @@ from bzrlib.errors import DivergedBranches, BzrError
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
+from commit import set_svn_revprops
 from copy import copy
+from errors import RevpropChangeFailed
 from repository import MAPPING_VERSION
 import os
+from remote import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 
 class TestNativeCommit(TestCaseWithSubversionRepository):
@@ -544,3 +547,27 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         self.assertEquals("dir\t%s\n" % dirid +
                           "dir/file\t%s\n" % fileid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 1))
+
+
+class RevpropTests(TestCaseWithSubversionRepository):
+    def test_change_revprops(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({"dc/foo.txt": "txt"})
+        self.client_add("dc/foo.txt")
+        self.client_commit("dc", "My commit")
+
+        transport = SvnRaTransport(repos_url)
+        set_svn_revprops(transport, 1, "Somebody", 473382000, 3600)
+
+        self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
+                          self.client_log("dc")[1][1:])
+
+    def test_change_revprops_disallowed(self):
+        repos_url = self.make_client("d", "dc", allow_revprop_changes=False)
+        self.build_tree({"dc/foo.txt": "txt"})
+        self.client_add("dc/foo.txt")
+        self.client_commit("dc", "My commit")
+
+        transport = SvnRaTransport(repos_url)
+        self.assertRaises(RevpropChangeFailed, 
+            lambda: set_svn_revprops(transport, 1, "Somebody", 473382000, 3600))

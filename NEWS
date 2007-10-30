@@ -18,6 +18,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Clearer error when prefix is missing during push.
 
+   * Support optionally overriding svn:author and svn:date (#140001)
+
   INTERNALS
 
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 

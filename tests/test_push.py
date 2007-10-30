@@ -120,6 +120,18 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.svndir.open_branch().last_revision())
 
+    def test_override_revprops(self):
+        self.svndir.find_repository().get_config().set_user_option("override-svn-revprops", "True")
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr", committer="Sombody famous", timestamp=1012604400, timezone=0)
+
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
+        self.assertEquals(("Sombody famous", "2002-02-01T23:00:00.000000Z", "Commit from Bzr"), 
+            self.client_log(self.repos_url)[2][1:])
+
     def test_empty_file(self):
         self.build_tree({'dc/file': ''})
         wt = self.bzrdir.open_workingtree()

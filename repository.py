@@ -287,8 +287,7 @@ class SvnRepository(Repository):
         self._serializer = None
         self.dir_cache = {}
         self.pool = Pool()
-        self.config = SvnRepositoryConfig(self.uuid)
-        self.config.add_location(self.base)
+        self.get_config().add_location(self.base)
         self._revids_seen = {}
         cache_dir = self.create_cache_dir()
         cachedir_transport = get_transport(cache_dir)
@@ -327,7 +326,7 @@ class SvnRepository(Repository):
         if self._scheme is not None:
             return self._scheme
 
-        scheme = self.config.get_branching_scheme()
+        scheme = self.get_config().get_branching_scheme()
         if scheme is not None:
             self._scheme = scheme
             return scheme
@@ -375,7 +374,7 @@ class SvnRepository(Repository):
     def set_branching_scheme(self, scheme, store=True):
         self._scheme = scheme
         if store:
-            self.config.set_branching_scheme(str(scheme))
+            self.get_config().set_branching_scheme(str(scheme))
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -944,6 +943,9 @@ class SvnRepository(Repository):
                 return
                      
             yield (bp, paths, revnum)
+
+    def get_config(self):
+        return SvnRepositoryConfig(self.uuid)
 
     def has_signature_for_revision_id(self, revision_id):
         """Check whether a signature exists for a particular revision id.

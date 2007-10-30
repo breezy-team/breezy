@@ -342,6 +342,10 @@ class SvnRaTransport(Transport):
             self.reparent(self.get_repos_root())
 
     @convert_svn_error
+    def change_rev_prop(self, revnum, name, value, pool=None):
+        svn.ra.change_rev_prop(self._ra, revnum, name, value)
+
+    @convert_svn_error
     @needs_busy
     def reparent(self, url):
         url = url.rstrip("/")
