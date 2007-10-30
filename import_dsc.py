@@ -39,7 +39,7 @@ from bzrlib import (bzrdir,
                     )
 from bzrlib.config import ConfigObj
 from bzrlib.errors import FileExists, BzrError, UncommittedChanges
-from bzrlib.osutils import file_iterator, isdir, basename
+from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
@@ -96,6 +96,14 @@ def import_archive(tree, archive_file, file_ids_from=None):
             relative_path = relative_path[len(prefix)+1:]
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
+            continue
+        parts = splitpath(relative_path)
+        if parts:
+          check_part = parts[0]
+          if prefix is not None and len(parts) > 1:
+            if parts[0] == prefix:
+              check_part = parts[1]
+          if check_part == '.bzr':
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
@@ -327,20 +335,34 @@ class DscImporter(object):
     finally:
       f.close()
 
-  def _patch_tree(self, patch, basedir):
-    cmd = ['patch', '--strip', '1', '--quiet', '--directory', basedir]
-    child_proc = Popen(cmd, stdin=PIPE)
+  def _filter_patch(self, patch):
+    filter_cmd = ['filterdiff', '-x', '*/.bzr/*']
+    filter_proc = Popen(filter_cmd, stdin=PIPE, stdout=PIPE)
     for line in patch:
-      child_proc.stdin.write(line)
-    child_proc.stdin.close()
-    r = child_proc.wait()
+      filter_proc.stdin.write(line)
+    filter_proc.stdin.close()
+    r = filter_proc.wait()
+    if r != 0:
+      raise BzrError('filtering patch failed')
+    filtered_patch = filter_proc.stdout.readlines()
+    return filtered_patch
+
+
+  def _patch_tree(self, patch, basedir):
+    patch_cmd =  ['patch', '--strip', '1', '--quiet', '-f', '--directory',
+                  basedir]
+    patch_proc = Popen(patch_cmd, stdin=PIPE)
+    for line in self._filter_patch(patch):
+      patch_proc.stdin.write(line)
+    patch_proc.stdin.close()
+    r = patch_proc.wait()
     if r != 0:
       raise BzrError('patch failed')
 
   def _get_touched_paths(self, patch):
     cmd = ['lsdiff', '--strip', '1']
     child_proc = Popen(cmd, stdin=PIPE, stdout=PIPE)
-    for line in patch:
+    for line in self._filter_patch(patch):
       child_proc.stdin.write(line)
     child_proc.stdin.close()
     r = child_proc.wait()

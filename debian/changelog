@@ -4,8 +4,11 @@ bzr-builddeb (0.92) unstable; urgency=low
     for uploads done outside the VCS.
   * Also look for upstream tarballs in the archives. Do this in preference
     to the watch file, for the case where the upstream was repacked.
+  * Filter out any changes to .bzr in packages that are being imported as they
+    will totally mess things up. If the branch is in the source package then
+    just use apt-get source. (LP: #156003)
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 30 Oct 2007 14:33:50 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 30 Oct 2007 20:58:46 +0000
 
 bzr-builddeb (0.91) unstable; urgency=low
 

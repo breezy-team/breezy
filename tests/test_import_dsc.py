@@ -97,6 +97,10 @@ class TestDscImporter(TestCaseWithTransport):
 
   def make_orig_2(self):
     self.extend_base_package()
+    if not os.path.exists(os.path.join(self.basedir, '.bzr')):
+      os.mkdir(os.path.join(self.basedir, '.bzr'))
+      write_to_file(os.path.join(self.basedir, '.bzr', 'branch-format'),
+          'broken format')
     tar = tarfile.open(self.orig_2, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -105,6 +109,7 @@ class TestDscImporter(TestCaseWithTransport):
 
   def make_orig_3(self):
     self.extend_base_package2()
+    shutil.rmtree(os.path.join(self.basedir, '.bzr'))
     tar = tarfile.open(self.orig_3, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -155,6 +160,9 @@ class TestDscImporter(TestCaseWithTransport):
   def make_diff_3(self):
     diffdir = 'package-0.3'
     shutil.copytree(self.basedir, diffdir)
+    os.mkdir(os.path.join(diffdir, '.bzr'))
+    write_to_file(os.path.join(diffdir, '.bzr', 'branch-format'),
+        'broken format')
     os.mkdir(os.path.join(diffdir, 'debian'))
     write_to_file(os.path.join(diffdir, 'debian', 'changelog'),
           'version 1-1\nversion 1-2\nversion 1-3\nversion 2-1\nversion 3-1\n')
@@ -539,18 +547,28 @@ Files:
       self.failUnlessExists(os.path.join(self.target, path))
     self.assertRulesExecutable(tree)
 
-  def make_native_dsc_1(self):
-    self.make_base_package()
+  def _add_debian_to_native(self):
     os.mkdir(os.path.join(self.basedir, 'debian'))
     write_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
                   'version 1\n')
     write_to_file(os.path.join(self.basedir, 'debian', 'rules'), '\n')
-    tar = tarfile.open(self.native_1, 'w:gz')
+
+  def _make_native(self, tarball_name, dsc_name):
+    tar = tarfile.open(tarball_name, 'w:gz')
     try:
       tar.add(self.basedir)
     finally:
       tar.close()
-    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    self.make_dsc(dsc_name, '0.1', tarball_name)
+
+
+  def make_native_dsc_1(self):
+    self.make_base_package()
+    self._add_debian_to_native()
+    os.mkdir(os.path.join(self.basedir, '.bzr'))
+    write_to_file(os.path.join(self.basedir, '.bzr', 'branch-format'),
+        'broken format')
+    self._make_native(self.native_1, self.native_dsc_1)
 
   def make_native_dsc_2(self):
     self.extend_base_package()
