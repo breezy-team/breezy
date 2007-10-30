@@ -28,7 +28,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from copy import deepcopy
-from errors import ChangesRootLHSHistory, MissingPrefix
+from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
@@ -52,6 +52,26 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
         if transport.check_path(path, base_rev) == svn.core.svn_node_dir:
             return current
     return []
+
+
+def set_svn_revprops(transport, revnum, date, author):
+    """Attempt to change the revision properties on the
+    specified revision.
+
+    :param transport: SvnRaTransport connected to target repository
+    :param revnum: Revision number of revision to change metadata of.
+    :param date: New date
+    :param author: New author
+    """
+    revprops = {
+        svn.core.SVN_PROP_REVISION_AUTHOR: author,
+        svn.core.SVN_PROP_REVISION_DATE: date
+    }
+    for (name, value) in revprops.items():
+        try:
+            transport.change_rev_prop(revnum, name, value)
+        except SubversionException, (_, svn.core.SVN_ERR_REPOS_DISABLED_FEATURE):
+            raise RevpropChangeFailed(name)
 
 
 class SvnCommitBuilder(RootCommitBuilder):

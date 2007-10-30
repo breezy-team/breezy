@@ -54,6 +54,14 @@ class MissingPrefix(BzrError):
         self.path = path
 
 
+class RevpropChangeFailed(BzrError):
+    _fmt = """Unable to set revision property %(name)s."""
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
+
+
 def convert_error(err):
     """Convert a Subversion exception to the matching BzrError.
 
