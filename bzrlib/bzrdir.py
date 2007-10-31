@@ -1300,7 +1300,10 @@ class BzrDirFormat(object):
         try:
             return klass._formats[format_string]
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+	    if format_string[-2:] == "\r\n":
+	        raise errors.LineEndingError(file=".bzr/branch-format")
+	    else:
+	        raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):

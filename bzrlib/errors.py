@@ -670,6 +670,10 @@ class UnknownFormatError(BzrError):
     _fmt = "Unknown branch format: %(format)r"
 
 
+class LineEndingError(BzrError)
+
+    _fmt = "Line ending corrupted for file: %(file)s\nMaybe your files got corrupted in transport?"
+
 class IncompatibleFormat(BzrError):
     
     _fmt = "Format %(format)s is not compatible with .bzr version %(bzrdir)s."
