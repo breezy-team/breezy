@@ -20,6 +20,9 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
+__version__ = '0.92.0'
+version_info = tuple(int(n) for n in __version__.split('.'))
+
 # Don't go further if we are not compatible
 import bzrlib
 major, minor, micro, releaselevel = bzrlib.version_info[:4]

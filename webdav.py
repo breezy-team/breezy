@@ -110,6 +110,7 @@ transport.register_urlparse_netloc_protocol('http+webdav')
 transport.register_urlparse_netloc_protocol('https+webdav')
 
 class PUTRequest(_urllib2_wrappers.Request):
+
     def __init__(self, url, data, more_headers={}, accepted_errors=None):
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
         headers = {'Accept': '*/*',
@@ -132,12 +133,10 @@ class DavResponse(_urllib2_wrappers.Response):
 
     DAV have some reponses for which the body is of no interest.
     """
-
-    accepted_errors = [201, 204,
-                       405, 409, 412,
-                       999, # FIXME: <cough>
-                       ]
-
+    _body_ignored_responses = (
+        _urllib2_wrappers.Response._body_ignored_responses
+        + [201, 204, 405, 409, 412,]
+        )
 
 # Takes DavResponse into account:
 class DavHTTPConnection(_urllib2_wrappers.HTTPConnection):

@@ -70,10 +70,12 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                         continue
                     trace.mutter("Hmm, that's worse than I thought")
                     raise
+            # Let's try a last time ant let it die naturally if it fails
+            return func(*args)
 
     def _read(self, length):
         """Read the client socket"""
-        return self._retry_if_not_available(self.rfile.read,length)
+        return self._retry_if_not_available(self.rfile.read, length)
 
     def _readline(self):
         """Read a full line on the client socket"""
