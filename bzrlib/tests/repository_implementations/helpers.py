@@ -16,9 +16,11 @@
 
 """Helper classes for repository implementation tests."""
 
+from cStringIO import StringIO
 
 from bzrlib import (
     inventory,
+    osutils,
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
@@ -53,11 +55,24 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
         try:
             inv = inventory.Inventory(revision_id='revision-id')
             inv.root.revision = 'revision-id'
-            repo.add_inventory('revision-id', inv, [])
+            inv_sha1 = repo.add_inventory('revision-id', inv, [])
+            root_id = inv.root.file_id
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines('revision-id', [], [])
             revision = _mod_revision.Revision('revision-id',
                 committer='jrandom@example.com', timestamp=0,
-                inventory_sha1='', timezone=0, message='message', parent_ids=[])
-            repo.add_revision('revision-id',revision, inv)
+                inventory_sha1=inv_sha1, timezone=0, message='message',
+                parent_ids=[])
+            # Manually add the revision text using the RevisionStore API, with
+            # bad parents.
+            rev_tmp = StringIO()
+            repo._revision_store._serializer.write_revision(revision, rev_tmp)
+            rev_tmp.seek(0)
+            repo._revision_store.get_revision_file(repo.get_transaction()
+                ).add_lines_with_ghosts(revision.revision_id,
+                ['incorrect-parent'],
+                osutils.split_lines(rev_tmp.read()))
         except:
             repo.abort_write_group()
             repo.unlock()
@@ -66,15 +81,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-        # Change the knit index's record of the parents for 'revision-id' to
-        # claim it has a parent, 'incorrect-parent', that doesn't exist in this
-        # knit at all.
         repo.lock_write()
         self.addCleanup(repo.unlock)
-        rev_knit = repo._get_revision_vf()
-        index_cache = rev_knit._index._cache
-        cached_index_entry = list(index_cache['revision-id'])
-        cached_index_entry[4] = ['incorrect-parent']
-        index_cache['revision-id'] = tuple(cached_index_entry)
         return repo
 

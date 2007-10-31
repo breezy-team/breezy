@@ -479,12 +479,20 @@ class Packer(object):
     """Create a pack from packs."""
 
     def __init__(self, pack_collection, packs, suffix, revision_ids=None):
+        """Create a Packer.
+
+        :param pack_collection: A RepositoryPackCollection object where the
+            new pack is being written to.
+        :param packs: The packs to combine.
+        :param suffix: The suffix to use on the temporary files for the pack.
+        :param revision_ids: Revision ids to limit the pack to.
+        """
         self.packs = packs
         self.suffix = suffix
         self.revision_ids = revision_ids
         self._pack_collection = pack_collection
 
-    def pack(self):
+    def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
 
         This does little more than a bulk copy of data. One key difference
@@ -494,10 +502,8 @@ class Packer(object):
         source packs are not altered and are not required to be in the current
         pack collection.
 
-        :param packs: An iterable of Packs to combine.
-        :param revision_ids: Either None, to copy all data, or a list
-            of revision_ids to limit the copied data to the data they
-            introduced.
+        :param pb: An optional progress bar to use. A nested bar is created if
+            this is None.
         :return: A Pack object, or None if nothing was copied.
         """
         # open a pack - using the same name as the last temporary file
@@ -513,11 +519,15 @@ class Packer(object):
                 return None
             else:
                 self.revision_ids = frozenset(self.revision_ids)
-        self.pb = ui.ui_factory.nested_progress_bar()
+        if pb is None:
+            self.pb = ui.ui_factory.nested_progress_bar()
+        else:
+            self.pb = pb
         try:
             return self._create_pack_from_packs()
         finally:
-            self.pb.finished()
+            if pb is None:
+                self.pb.finished()
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
@@ -762,6 +772,13 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
+
+class ReconcilePacker(Packer):
+    """A packer which regenerates indices etc as it copies.
+    
+    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    regenerated.
+    """
 
 
 class RepositoryPackCollection(object):
@@ -1482,8 +1499,9 @@ class KnitPackRepository(KnitRepository):
         self._write_lock_count = 0
         self._transaction = None
         # for tests
-        self._reconcile_does_inventory_gc = False
+        self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
+        self._reconcile_backsup_inventory = False
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()

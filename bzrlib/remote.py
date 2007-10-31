@@ -261,6 +261,9 @@ class RemoteRepository(object):
         # for tests
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
+        # This depends on the actual remote format, so force it off for maximum
+        # compatibility.
+        self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
 
     def __str__(self):

@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     ui,
     repository,
+    repofmt,
     )
 from bzrlib.trace import mutter, note
 from bzrlib.tsort import TopoSorter
@@ -469,28 +470,36 @@ class PackReconciler(RepoReconciler):
         """Perform the steps to reconcile this repository."""
         if not self.thorough:
             return
-        self.repo.lock_write()
+        collection = self.repo._pack_collection
+        collection.ensure_loaded()
+        collection.lock_names()
         try:
-            self.repo._pack_collection.ensure_loaded()
-            self.repo._pack_collection.lock_names()
-            try:
-                self.repo.start_write_group()
-                try:
-                    self._new_pack = self.repo._pack_collection._new_pack
-                    self._copy_revisions()
-                except:
-                    self.repo.abort_write_group()
-                    raise
-                else:
-                    self.repo.commit_write_group()
-            finally:
-                self.repo._pack_collection._unlock_names()
+            packs = collection.all_packs()
+            all_revisions = self.repo.all_revision_ids()
+            total_inventories = len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+            if len(all_revisions):
+                self._packer = repofmt.pack_repo.ReconcilePacker(
+                    collection, packs, ".reconcile", all_revisions)
+                new_pack = self._packer.pack(pb=self.pb)
+                if new_pack is not None:
+                    self._discard_packs(packs)
+            else:
+                # only make a new pack when there is data to copy.
+                self._discard_packs(packs)
+            self.garbage_inventories = total_inventories - len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
         finally:
-            self.repo.unlock()
+            collection._unlock_names()
 
-    def _copy_revisions(self):
-        """Copy revisions, regenerating the index as we go."""
+    def _discard_packs(self, packs):
+        """Discard some packs from the repository.
 
-    def _pack_correcting_data(self):
-        """Perform a total pack, regenerating as much data as possible."""
-        revisions = self.repo.all_revision_ids()
+        This removes them from the memory index and renames them into the
+        obsolete packs directory.
+        :param packs: The packs to discard.
+        """
+        for pack in packs:
+            self.repo._pack_collection._remove_pack_from_memory(pack)
+        self.repo._pack_collection._save_pack_names()
+        self.repo._pack_collection._obsolete_packs(packs)

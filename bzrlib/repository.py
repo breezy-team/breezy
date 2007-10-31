@@ -616,6 +616,7 @@ class Repository(object):
         # for tests
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
+        self._reconcile_backsup_inventory = True
         # not right yet - should be more semantically clear ? 
         # 
         self.control_store = control_store
