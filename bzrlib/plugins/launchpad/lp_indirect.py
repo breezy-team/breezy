@@ -26,7 +26,9 @@ from urlparse import urlsplit, urlunsplit
 import xmlrpclib
 
 from bzrlib import (
+    debug,
     errors,
+    trace,
     urlutils,
     )
 from bzrlib.transport import (
@@ -43,7 +45,7 @@ from bzrlib.plugins.launchpad.account import get_lp_login
 # As bzrlib.transport.remote may not be loaded yet, make sure bzr+ssh
 # is counted as a netloc protocol.
 register_urlparse_netloc_protocol('bzr+ssh')
-
+register_urlparse_netloc_protocol('lp')
 
 
 class LaunchpadTransport(Transport):
@@ -55,15 +57,16 @@ class LaunchpadTransport(Transport):
 
     def __init__(self, base):
         super(LaunchpadTransport, self).__init__(base)
-        if not (base.startswith('lp:///') or
-                base.startswith('lp:') and base[3] != '/'):
+        # We only support URLs without a netloc
+        netloc = urlsplit(base)[1]
+        if netloc != '':
             raise errors.InvalidURL(path=base)
 
     def _resolve(self, abspath,
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
-        path = abspath[3:].lstrip('/')
+        path = urlsplit(abspath)[2].lstrip('/')
         # Perform an XMLRPC request to resolve the path
         resolve = _request_factory(path)
         service = LaunchpadService()
@@ -72,6 +75,9 @@ class LaunchpadTransport(Transport):
         except xmlrpclib.Fault, fault:
             raise errors.InvalidURL(
                 path=abspath, extra=fault.faultString)
+
+        if 'launchpad' in debug.debug_flags:
+            trace.mutter("resolve_lp_path(%r) == %r", path, result)
 
         if _lp_login is None:
             _lp_login = get_lp_login()
