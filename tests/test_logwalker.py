@@ -167,6 +167,17 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(0, walker.find_latest_change("", 1, include_parents=True))
+    
+    def test_find_latest_children_root(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': "bla"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, 
+            walker.find_latest_change("", 1, include_children=True))
 
     def test_find_latest_parent(self):
         repos_url = self.make_client("a", "dc")

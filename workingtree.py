@@ -20,7 +20,8 @@ from bzrlib import urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent, BzrError, UninitializableFormat)
+                           NoRepositoryPresent, BzrError, UninitializableFormat,
+                           OutOfDateTree)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
@@ -41,7 +42,8 @@ from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                         revision_id_to_svk_feature, generate_revision_metadata) 
 from revids import escape_svn_path
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client) 
+from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
+                       svn_config) 
 from tree import SvnBasisTree
 
 import os
@@ -226,7 +228,7 @@ class SvnWorkingTree(WorkingTree):
         assert isinstance(revnum, int) and revnum >= 0
         assert isinstance(path, basestring)
 
-        (_, rp) = self.branch.scheme.unprefix(path)
+        rp = self.branch.unprefix(path)
         entry = self.base_tree.id_map[rp]
         assert entry[0] is not None
         assert isinstance(entry[0], str), "fileid %r for %r is not a string" % (entry[0], path)
@@ -448,8 +450,13 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
 
         try:
-            commit_info = svn.client.commit3(specific_files, True, False, 
-                                         self.client_ctx)
+            try:
+                commit_info = svn.client.commit3(specific_files, True, False, 
+                                                 self.client_ctx)
+            except SubversionException, (_, num):
+                if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+                    raise OutOfDateTree(self)
+                raise
         except:
             # Reset properties so the next subversion commit won't 
             # accidently set these properties.
@@ -549,7 +556,7 @@ class SvnWorkingTree(WorkingTree):
         return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None, 
-             delta_reporter=None):
+             delta_reporter=None, possible_transports=None):
         # FIXME: Use delta_reporter
         # FIXME: Use overwrite
         result = PullResult()
@@ -675,6 +682,9 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def unlock(self):
+        # non-implementation specific cleanup
+        self._cleanup()
+
         # reverse order of locking.
         try:
             return self._control_files.unlock()

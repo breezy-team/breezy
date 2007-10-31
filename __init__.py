@@ -37,7 +37,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(0, 90), (0, 91)]
+COMPATIBLE_BZR_VERSIONS = [(0, 92)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -52,17 +52,15 @@ def check_bzrlib_version(desired):
         ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
          bzrlib.version_info[3] == 'dev')):
         return
+    from bzrlib.errors import BzrError
     if bzrlib_version < desired[0]:
-        warning('Installed bzr version %s is too old to be used with bzr-svn'
-                ' %s.' % (bzrlib.__version__, __version__))
-        # Not using BzrNewError, because it may not exist.
-        raise Exception, ('Version mismatch', desired)
+        raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
                 ' \nThere should be a newer version of bzr-svn available.' 
                 % (bzrlib.__version__))
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
-            raise Exception, 'Version mismatch'
+            raise BzrError('Version mismatch')
 
 def check_bzrsvn_version():
     """Warn about use of experimental mappings."""
@@ -112,7 +110,7 @@ format_registry.register("subversion", format.SvnRemoteFormat,
                          native=False)
 format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat, 
                          "Subversion working copy. ", 
-                         native=False)
+                         native=False, hidden=True)
 
 versions_checked = False
 def lazy_check_versions():
@@ -231,6 +229,7 @@ class cmd_svn_upgrade(Command):
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
+        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
         try:
             wt_to = WorkingTree.open(".")
@@ -254,11 +253,14 @@ class cmd_svn_upgrade(Command):
             from_repository = Repository.open(from_repository)
 
         if wt_to is not None:
-            upgrade_workingtree(wt_to, from_repository, allow_changes=True,
-                                verbose=verbose)
+            renames = upgrade_workingtree(wt_to, from_repository, 
+                                          allow_changes=True, verbose=verbose)
         else:
-            upgrade_branch(branch_to, from_repository, allow_changes=True, 
-                           verbose=verbose)
+            renames = upgrade_branch(branch_to, from_repository, 
+                                     allow_changes=True, verbose=verbose)
+
+        if renames == {}:
+            info("Nothing to do.")
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())
@@ -274,15 +276,27 @@ class cmd_svn_push(Command):
     This command is experimental and will be removed in the future when all 
     functionality is included in "bzr push".
     """
-    takes_args = ['location']
-    takes_options = ['revision']
+    takes_args = ['location?']
+    takes_options = ['revision', 'remember']
 
-    def run(self, location, revision=None):
+    def run(self, location=None, revision=None, remember=False):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
-        bzrdir = BzrDir.open(location)
+        from bzrlib import urlutils
+
         source_branch = Branch.open_containing(".")[0]
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
         if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError(
@@ -296,6 +310,9 @@ class cmd_svn_push(Command):
             target_branch.pull(source_branch, revision_id)
         except NotBranchError:
             target_branch = bzrdir.import_branch(source_branch, revision_id)
+        # We successfully created the target, remember it
+        if source_branch.get_push_location() is None or remember:
+            source_branch.set_push_location(target_branch.base)
 
 register_command(cmd_svn_push)
 

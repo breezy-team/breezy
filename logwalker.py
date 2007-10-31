@@ -100,7 +100,10 @@ class LogWalker(object):
 
         :param to_revnum: End of range to fetch information for
         """
-        to_revnum = max(self._get_transport().get_latest_revnum(), to_revnum)
+        if to_revnum <= self.saved_revnum:
+            return
+        latest_revnum = self._get_transport().get_latest_revnum()
+        to_revnum = max(latest_revnum, to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 
@@ -208,8 +211,7 @@ class LogWalker(object):
             assert path is None or path == ""
             return {'': ('A', None, -1)}
                 
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+        self.fetch_revisions(revnum)
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
         if path is not None and path != "":
@@ -232,8 +234,7 @@ class LogWalker(object):
         assert revnum >= 0
         if revnum == 0:
             return (None, None, None)
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+        self.fetch_revisions(revnum)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
         if message is not None:
             message = _escape_commit_message(base64.b64decode(message))
@@ -248,15 +249,17 @@ class LogWalker(object):
         """
         assert isinstance(path, basestring)
         assert isinstance(revnum, int) and revnum >= 0
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+        self.fetch_revisions(revnum)
 
         extra = ""
         if include_children:
-            extra += " or path like '%s/%%'" % path.strip("/")
+            if path == "":
+                extra += " OR path LIKE '%'"
+            else:
+                extra += " OR path LIKE '%s/%%'" % path.strip("/")
         if include_parents:
-            extra += " or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))" % path.strip("/")
-        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+            extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
+        query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":
@@ -273,8 +276,7 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+        self.fetch_revisions(revnum)
         if revnum == 0:
             return (path == "")
         return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
@@ -332,12 +334,11 @@ class LogWalker(object):
                 pass
         pool = Pool()
         editor = TreeLister(path)
-        edit, baton = svn.delta.make_editor(editor, pool)
         old_base = transport.base
         try:
             root_repos = transport.get_svn_repos_root()
             transport.reparent(urlutils.join(root_repos, path))
-            reporter = transport.do_update(revnum,  True, edit, baton, pool)
+            reporter = transport.do_update(revnum, True, editor, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:
@@ -351,8 +352,7 @@ class LogWalker(object):
         :param revnum:  Revision to check
         """
         assert revnum >= 0
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+        self.fetch_revisions(revnum)
         if revnum == 0:
             return (None, -1)
         row = self.db.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()

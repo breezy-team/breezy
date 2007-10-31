@@ -17,7 +17,7 @@
 """Working tree tests."""
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
 from bzrlib.tests import KnownFailure
 from bzrlib.trace import mutter
@@ -625,3 +625,16 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.commit("message")
         self.assertEqual(None, tree.branch.nick)
 
+    def test_out_of_date(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/some strange file': 'data'})
+        self.client_add("dc/some strange file")
+        self.client_commit("dc", "msg")
+        self.client_update("dc")
+        self.make_checkout(repos_url, 'de')
+        self.build_tree({'dc/some strange file': 'data-x'})
+        self.client_commit("dc", "msg")
+        self.client_update("dc")
+        tree = self.open_checkout("de")
+        self.build_tree({'de/some strange file': 'data-y'})
+        self.assertRaises(OutOfDateTree, lambda: tree.commit("bar"))

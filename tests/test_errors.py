@@ -40,6 +40,10 @@ class TestConvertError(TestCase):
 
         self.assertRaises(ConnectionReset, test_throws_svn)
 
+    def test_convert_error_oserror(self):
+        self.assertIsInstance(convert_error(SubversionException("foo", 13)),
+                OSError)
+
     def test_convert_error_unknown(self):
         self.assertIsInstance(convert_error(SubversionException("foo", -4)),
                 SubversionException)

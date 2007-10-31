@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
@@ -18,6 +20,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
+from bzrlib.config import GlobalConfig
 from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
@@ -71,6 +74,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.make_working_trees())
+
+    def test_get_config_global_set(self):
+        repos_url = self.make_client("a", "dc")
+        cfg = GlobalConfig()
+        cfg.set_user_option("foo", "Still Life")
+
+        repos = Repository.open(repos_url)
+        self.assertEquals("Still Life", 
+                repos.get_config().get_user_option("foo"))
+
+    def test_get_config(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        repos.get_config().set_user_option("foo", "Van Der Graaf Generator")
+
+        repos = Repository.open(repos_url)
+        self.assertEquals("Van Der Graaf Generator", 
+                repos.get_config().get_user_option("foo"))
+
 
     def test_get_physical_lock_status(self):
         repos_url = self.make_client("a", "dc")
@@ -149,8 +171,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
-        self.assertEquals([('pykleur/trunk', 1)], list(repos.follow_branch("pygments/trunk", 3,
-                                      TrunkBranchingScheme(1))))
+        self.assertEquals([('pygments/trunk', 3), ('pykleur/trunk', 2), ('pykleur/trunk', 1)], 
+                list(repos.follow_branch("pygments/trunk", 3, TrunkBranchingScheme(1))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -1210,6 +1232,11 @@ class MetadataMarshallerTests(TestCase):
         rev = Revision('someid')
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revision_metadata("bla", rev))
+
+    def test_parse_revision_metadata_specialchar(self):
+        rev = Revision('someid')
+        parse_revision_metadata("committer: Adeodato Simó <dato@net.com.org.es>", rev)
+        self.assertEquals(u"Adeodato Simó <dato@net.com.org.es>", rev.committer)
 
     def test_parse_revision_metadata_invalid_name(self):
         rev = Revision('someid')

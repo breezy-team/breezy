@@ -307,13 +307,20 @@ class SvnRaTransport(Transport):
         self.mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
+    def _make_editor(self, editor, pool=None):
+        edit, edit_baton = svn.delta.make_editor(editor, pool)
+        self._edit = edit
+        self._edit_baton = edit_baton
+        return self._edit, self._edit_baton
+
     @convert_svn_error
-    def do_switch(self, switch_rev, recurse, switch_url, *args, **kwargs):
+    def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
         self._open_real_transport()
         self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
         self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
         return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
-                             recurse, switch_url, *args, **kwargs))
+                             recurse, switch_url, edit, edit_baton, pool))
 
     @convert_svn_error
     @needs_busy
@@ -333,6 +340,10 @@ class SvnRaTransport(Transport):
             self.base = self.get_repos_root()
         else:
             self.reparent(self.get_repos_root())
+
+    @convert_svn_error
+    def change_rev_prop(self, revnum, name, value, pool=None):
+        svn.ra.change_rev_prop(self._ra, revnum, name, value)
 
     @convert_svn_error
     @needs_busy
@@ -443,12 +454,22 @@ class SvnRaTransport(Transport):
             raise
 
     @convert_svn_error
-    def do_update(self, revnum, *args, **kwargs):
+    def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
+        self._open_real_transport()
+        self.mutter('svn replay -r%r:%r' % (low_water_mark, revision))
+        self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
+        svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
+                      edit, edit_baton, pool)
+
+    @convert_svn_error
+    def do_update(self, revnum, recurse, editor, pool=None):
         self._open_real_transport()
         self.mutter('svn update -r %r' % revnum)
         self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
         return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
-                             *args, **kwargs))
+                             recurse, edit, edit_baton, pool))
 
     def supports_custom_revprops(self):
         return has_attr(svn.ra, 'get_commit_editor3')

@@ -42,6 +42,26 @@ class NoSvnRepositoryPresent(NoRepositoryPresent):
         self.path = url
 
 
+class ChangesRootLHSHistory(BzrError):
+    _fmt = """changing lhs branch history not possible on repository root"""
+
+
+class MissingPrefix(BzrError):
+    _fmt = """Prefix missing for %(path)s; please create it before pushing. """
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
+
+
+class RevpropChangeFailed(BzrError):
+    _fmt = """Unable to set revision property %(name)s."""
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
+
+
 def convert_error(err):
     """Convert a Subversion exception to the matching BzrError.
 
@@ -62,6 +82,8 @@ def convert_error(err):
         return TransportError("Malformed data", msg)
     elif num == SVN_ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
+    elif num > 0 and num < 1000:
+        return OSError(num, msg)
     else:
         return err
 

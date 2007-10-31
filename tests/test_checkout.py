@@ -17,7 +17,7 @@
 """Checkout tests."""
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoRepositoryPresent
+from bzrlib.errors import NoRepositoryPresent, UninitializableFormat
 from bzrlib.tests import TestCase
 
 from convert import SvnConverter
@@ -47,6 +47,10 @@ class TestCheckoutFormat(TestCase):
 
     def test_get_converter(self):
         self.assertRaises(NotImplementedError, self.format.get_converter)
+
+    def test_initialize(self):
+        self.assertRaises(UninitializableFormat, 
+                          self.format.initialize_on_transport, None)
 
 
 class TestCheckout(TestCaseWithSubversionRepository):

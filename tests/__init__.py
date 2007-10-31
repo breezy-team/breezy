@@ -42,7 +42,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def log_message_func(self, items, pool):
         return self.next_message
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, allow_revprop_changes=True):
         """Create a repository.
 
         :return: Handle to the repository.
@@ -52,11 +52,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         svn.repos.create(abspath, '', '', None, None)
 
-        revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
-
-        open(revprop_hook, 'w').write("#!/bin/sh")
-
-        os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+        if allow_revprop_changes:
+            revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+            open(revprop_hook, 'w').write("#!/bin/sh")
+            os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
         return repos_url
 
@@ -155,7 +154,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         olddir = os.path.abspath('.')
         self.next_message = message
         os.chdir(dir)
-        info = svn.client.commit3(["."], recursive, False, self.client_ctx)
+        info = svn.client.commit2(["."], recursive, False, self.client_ctx)
         os.chdir(olddir)
         assert info is not None
         return (info.revision, info.date, info.author)
@@ -238,14 +237,16 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         return BzrDir.open("svn+%s" % repos_url)
 
-    def make_client(self, repospath, clientpath):
+    def make_client(self, repospath, clientpath, allow_revprop_changes=True):
         """Create a repository and a checkout. Return the checkout.
 
         :param relpath: Optional relpath to check out if not the full 
             repository.
+        :param clientpath: Path to checkout
         :return: Repository URL.
         """
-        repos_url = self.make_repository(repospath)
+        repos_url = self.make_repository(repospath, 
+            allow_revprop_changes=allow_revprop_changes)
         self.make_checkout(repos_url, clientpath)
         return repos_url
 

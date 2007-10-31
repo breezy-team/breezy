@@ -65,13 +65,12 @@ class SvnRevisionTree(RevisionTree):
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 scheme)
-        self.editor = TreeBuildEditor(self, pool)
+        editor = TreeBuildEditor(self, pool)
         self.file_data = {}
-        editor, baton = svn.delta.make_editor(self.editor, pool)
         root_repos = repository.transport.get_svn_repos_root()
         reporter = repository.transport.do_switch(
                 self.revnum, True, 
-                urlutils.join(root_repos, self.branch_path), editor, baton, pool)
+                urlutils.join(root_repos, self.branch_path), editor, pool)
         reporter.set_path("", 0, True, None, pool)
         reporter.finish_report(pool)
         pool.destroy()
@@ -254,7 +253,7 @@ class SvnBasisTree(RevisionTree):
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
-                return self.id_map[workingtree.branch.scheme.unprefix(relpath)[1]]
+                return self.id_map[workingtree.branch.unprefix(relpath)]
             return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):

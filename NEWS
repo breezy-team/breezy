@@ -9,6 +9,19 @@ bzr-svn 0.4.4	UNRELEASED
    
    * Avoid tracebacks on "Malformed data" errors.
 
+   * Make push location optional for svn-push. 
+   
+   * Make svn-push support --remember.
+
+   * No longer gives trackeback when already upgraded revisions are present.
+     (#130471)
+
+   * Clearer error when prefix is missing during push.
+
+   * Support optionally overriding svn:author and svn:date (#140001)
+
+   * Convert errno's returned by the remote server into OSError exceptions.
+
   INTERNALS
 
    * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
@@ -18,9 +31,19 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Use revprop lists rather than just commit message when committing.
 
+   * The version of bzr-rebase is now checked before it's being used.
+
+   * Handle checks of modified children correctly when path is the root 
+     in LogWalker.find_latest_change().
+
   BUG FIXES
 
-   * Handle long file names with unicode characters correctly on python2.4 (#129334)
+   * Fix compatibility with 0.92.
+
+   * Fix compatibility with packs. (#139442)
+
+   * Handle long file names with unicode characters correctly on 
+     python2.4 (#129334)
 
    * Give proper warning message when running 'bzr svn-branching-scheme' on 
      something that is not a Subversion repository. (#145159)
@@ -30,11 +53,23 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Support svn+ hack when committing in bound branches. (#150699)
 
+   * Give proper error when changes can't be pushed to root of repository. 
+     (#145148)
+
    * Encode = in list branching scheme names (unusable in Subversion property 
      names). (#125751)
 
    * Fix 'bzr checkout --lightweight' for http and https branches. 
      (#144032)
+
+   * Don't print traceback when raising errors about bzr versions.
+
+   * Show proper exception when lightweight checkout is out of date.
+
+   * Fix pulling in changes push earlier by bzr-svn with directory renames 
+     of directories containing files. (#153347)
+
+   * Handle special characters in committer name correctly. (#158347)
 
   DOCUMENTATION
 

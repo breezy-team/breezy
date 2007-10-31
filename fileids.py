@@ -114,7 +114,7 @@ class FileIdMap(object):
         :param revnum: Revno for revision in which changes happened
         :param branch: Branch path where changes happened
         :param global_changes: Dict with global changes that happened
-        :param renames: List of renames
+        :param renames: List of renames (known file ids for particular paths)
         :param scheme: Branching scheme
         """
         changes = get_local_changes(global_changes, scheme,
@@ -130,11 +130,11 @@ class FileIdMap(object):
         revid = self.repos.generate_revision_id(revnum, branch, str(scheme))
 
         def new_file_id(x):
-            if renames.has_key(x):
-                return renames[x]
             return generate_file_id(self.repos, revid, x)
          
-        return self._apply_changes(new_file_id, changes, get_children)
+        idmap = self._apply_changes(new_file_id, changes, get_children)
+        idmap.update(renames)
+        return idmap
 
     def get_map(self, uuid, revnum, branch, renames_cb, scheme):
         """Make sure the map is up to date until revnum."""
@@ -190,14 +190,12 @@ class FileIdMap(object):
 
                 parent_revs = next_parent_revs
 
-                renames = renames_cb(revid)
-
                 def new_file_id(x):
-                    if renames.has_key(x):
-                        return renames[x]
                     return generate_file_id(self.repos, revid, x)
                 
                 revmap = self._apply_changes(new_file_id, changes, find_children)
+                revmap.update(renames_cb(revid))
+
                 for p in changes:
                     if changes[p][0] == 'M' and not revmap.has_key(p):
                         revmap[p] = map[p][0]

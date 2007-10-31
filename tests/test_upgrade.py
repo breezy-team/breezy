@@ -129,8 +129,8 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
-                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
+                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
 
     @skip_no_rebase
     def test_single_keep_parent_fileid(self):
@@ -185,16 +185,22 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         tree = newrepos.revision_tree("svn-v1:1@%s-" % oldrepos.uuid)
 
+        newrepos.lock_write()
+        newrepos.start_write_group()
+
         vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
         vf.clone_text("customrev-svn%d-upgrade" % MAPPING_VERSION,
                 "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
+
+        newrepos.commit_write_group()
+        newrepos.unlock()
 
         upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
-                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
+                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
 
     @skip_no_rebase
     def test_more_custom(self):
@@ -226,10 +232,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
-                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue(["customrev-svn%d-upgrade" % MAPPING_VERSION],
-                        newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
+                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
+        self.assertTrue(("customrev-svn%d-upgrade" % MAPPING_VERSION,),
+                        tuple(newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION)))
 
     @skip_no_rebase
     def test_more_custom_branch(self):

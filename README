@@ -14,12 +14,13 @@ to and view logs of Subversion branches from Bazaar.
 Dependencies
 ============
 
-You will need at least version 0.90 of Bazaar or higher.
+You will need at least version 0.92 of Bazaar or higher.
 
-You also need a fairly recent version of the Python bindings to the 
+You also need a fairly recent version of the official Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5 (trunk). The python-subversion package in Ubuntu Feisty and 
-Gutsy and Debian Etch, Lenny and Sid also contain the required changes. 
+Subversion 1.5 (trunk). The python-subversion (not python-svn!) package 
+in Ubuntu Feisty and Gutsy and Debian Etch, Lenny and Sid also contain the 
+required changes. 
 
 If you are running an older version of Python (under 2.5), you will also 
 need to have the pysqlite package installed.
@@ -89,9 +90,6 @@ In the future, I also hope to support:
 	
 - use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of 
   roundtrips when fetching history.
-
-- implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on 
-  a specific directory all at once.
 
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:

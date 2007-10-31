@@ -92,6 +92,14 @@ class SvnBranch(Branch):
         """
         self._branch_path = branch_path.strip("/")
 
+    def unprefix(self, relpath):
+        """Remove the branch path from a relpath.
+
+        :param relpath: path from the repository root.
+        """
+        assert relpath.startswith(self.get_branch_path())
+        return relpath[len(self.get_branch_path()):].strip("/")
+
     def get_branch_path(self, revnum=None):
         """Find the branch path of this branch in the specified revnum.
 
