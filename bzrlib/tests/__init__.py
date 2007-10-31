@@ -2734,7 +2734,7 @@ class _FTPServerFeature(Feature):
 
     def _probe(self):
         try:
-            import bzrlib.tests.FTPServer
+            import bzrlib.tests.ftp_server
             return True
         except ImportError:
             return False
