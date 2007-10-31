@@ -92,8 +92,14 @@ class LaunchpadTransport(Transport):
                 url = urlunsplit((scheme, '%s@%s' % (_lp_login, netloc),
                                   path, query, fragment))
                 break
-            elif scheme in ['bzr+ssh', 'bzr+http', 'http']:
-                break
+            else:
+                # Use the URL if we can create a transport for it.
+                try:
+                    get_transport(url)
+                except (errors.PathError, errors.TransportError):
+                    pass
+                else:
+                    break
         else:
             raise errors.InvalidURL(path=abspath,
                                     extra='no supported schemes')
