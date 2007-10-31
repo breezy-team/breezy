@@ -112,7 +112,7 @@ register_command(cmd_register_branch)
 
 
 class cmd_launchpad_login(Command):
-    """Show or set the Launchpad user id.
+    """Show or set the Launchpad user ID.
 
     When communicating with Launchpad, some commands need to know your
     Launchpad user ID.  This command can be used to set or show the

@@ -55,7 +55,7 @@ def set_lp_login(username, _config=None):
 def check_lp_login(username, _transport=None):
     """Check whether the given Launchpad username is okay.
 
-    This will check for both existance and whether the user has
+    This will check for both existence and whether the user has
     uploaded SSH keys.
     """
     if _transport is None:
