@@ -158,3 +158,4 @@ class TestBuilddeb(BuilddebTestCase):
     self.assertInBuildDir(['a'])
     self.assertNotInBuildDir(['b'])
 
+# vim: ts=2 sts=2 sw=2

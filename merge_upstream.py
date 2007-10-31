@@ -29,7 +29,7 @@ from bz2 import BZ2File
 import os
 from StringIO import StringIO
 
-from debian_bundle.changelog import Changelog
+from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.errors import (BzrCommandError,
                            NoSuchFile,
@@ -46,9 +46,20 @@ from errors import AddChangelogError
 # TODO: way of working out new version number.
 # TODO: support using an explicit standalone upstream branch.
 
+
+TAG_PREFIX = "upstream-"
+
+
 def make_upstream_tag(version):
   """Make the name of the tag corresponding to the given version."""
-  return "upstream-%s" % str(version)
+  return  TAG_PREFIX + "%s" % str(version)
+
+
+def upstream_tag_to_version(tag_name):
+  """Take a tag name and return the upstream version, or None."""
+  if tag_name.startswith(TAG_PREFIX):
+    return Version(tag_name[len(TAG_PREFIX):])
+  return None
 
 
 def lookup_tag(tree):
@@ -167,3 +178,4 @@ def merge_upstream(tree, source, version_number):
     tree.branch.tags.set_tag(make_upstream_tag(version_number),
                              tree.branch.last_revision())
 
+# vim: ts=2 sts=2 sw=2

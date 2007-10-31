@@ -34,3 +34,4 @@ class TestRepackTarballExtra(TestCaseInTempDir):
     self.assertRaises(BzrCommandError, repack_tarball, old_tarball,
                       'package_0.2.orig.tar.gz')
 
+# vim: ts=2 sts=2 sw=2

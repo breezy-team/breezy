@@ -38,19 +38,21 @@ from bzrlib import (bzrdir,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
-from bzrlib.errors import FileExists, BzrError
-from bzrlib.osutils import file_iterator, isdir, basename
+from bzrlib.errors import FileExists, BzrError, UncommittedChanges
+from bzrlib.osutils import file_iterator, isdir, basename, splitpath
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import get_transport
+from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.bzrtools.upstream_import import (common_directory,
                                                      names_of_files,
                                                      add_implied_parents,
                                                      )
 
-from errors import ImportError
-from merge_upstream import make_upstream_tag
+from errors import ImportError, OnlyImportSingleDsc
+from merge_upstream import make_upstream_tag, upstream_tag_to_version
 
 # TODO: support explicit upstream branch.
 # TODO: support incremental importing.
@@ -94,6 +96,14 @@ def import_archive(tree, archive_file, file_ids_from=None):
             relative_path = relative_path[len(prefix)+1:]
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
+            continue
+        parts = splitpath(relative_path)
+        if parts:
+          check_part = parts[0]
+          if prefix is not None and len(parts) > 1:
+            if parts[0] == prefix:
+              check_part = parts[1]
+          if check_part == '.bzr':
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
@@ -213,10 +223,11 @@ class DscImporter(object):
     self.dsc_files = dsc_files
 
   def import_orig(self, tree, origname, version, last_upstream=None,
-                  transport=None, base_dir=None):
+                  transport=None, base_dir=None, dangling_tree=None):
     f = open_file(origname, transport, base_dir=base_dir)[0]
     try:
       if self.orig_target is not None:
+        # Make the orig dir and copy the orig tarball in to it
         if not os.path.isdir(self.orig_target):
           os.mkdir(self.orig_target)
         new_filename = os.path.join(self.orig_target,
@@ -229,7 +240,6 @@ class DscImporter(object):
         f.close()
         f = open(new_filename)
       dangling_revid = None
-      dangling_tree = None
       if last_upstream is not None:
         dangling_revid = tree.branch.last_revision()
         dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
@@ -325,20 +335,34 @@ class DscImporter(object):
     finally:
       f.close()
 
-  def _patch_tree(self, patch, basedir):
-    cmd = ['patch', '--strip', '1', '--quiet', '--directory', basedir]
-    child_proc = Popen(cmd, stdin=PIPE)
+  def _filter_patch(self, patch):
+    filter_cmd = ['filterdiff', '-x', '*/.bzr/*']
+    filter_proc = Popen(filter_cmd, stdin=PIPE, stdout=PIPE)
     for line in patch:
-      child_proc.stdin.write(line)
-    child_proc.stdin.close()
-    r = child_proc.wait()
+      filter_proc.stdin.write(line)
+    filter_proc.stdin.close()
+    r = filter_proc.wait()
+    if r != 0:
+      raise BzrError('filtering patch failed')
+    filtered_patch = filter_proc.stdout.readlines()
+    return filtered_patch
+
+
+  def _patch_tree(self, patch, basedir):
+    patch_cmd =  ['patch', '--strip', '1', '--quiet', '-f', '--directory',
+                  basedir]
+    patch_proc = Popen(patch_cmd, stdin=PIPE)
+    for line in self._filter_patch(patch):
+      patch_proc.stdin.write(line)
+    patch_proc.stdin.close()
+    r = patch_proc.wait()
     if r != 0:
       raise BzrError('patch failed')
 
   def _get_touched_paths(self, patch):
     cmd = ['lsdiff', '--strip', '1']
     child_proc = Popen(cmd, stdin=PIPE, stdout=PIPE)
-    for line in patch:
+    for line in self._filter_patch(patch):
       child_proc.stdin.write(line)
     child_proc.stdin.close()
     r = child_proc.wait()
@@ -389,17 +413,21 @@ class DscImporter(object):
         else:
           tree.add([path], [file_id])
 
-  def import_diff(self, tree, diffname, version, dangling_revid=None,
-                  transport=None, base_dir=None):
+  def _get_upstream_tree(self, version, tree):
     upstream_version = version.upstream_version
     up_revid = tree.branch.tags.lookup_tag(make_upstream_tag(upstream_version))
-    up_tree = tree.branch.repository.revision_tree(up_revid)
+    return tree.branch.repository.revision_tree(up_revid)
+
+
+  def import_diff(self, tree, diffname, version, dangling_revid=None,
+                  transport=None, base_dir=None, no_add_extra_parent=False):
+    up_tree = self._get_upstream_tree(version, tree)
     if dangling_revid is None:
       current_revid = tree.branch.last_revision()
     else:
       current_revid = dangling_revid
     current_tree = tree.branch.repository.revision_tree(current_revid)
-    tree.revert(None, tree.branch.repository.revision_tree(up_revid))
+    tree.revert(None, up_tree)
     f = open_file(diffname, transport, base_dir=base_dir)[0]
     f = gzip.GzipFile(fileobj=f)
     try:
@@ -411,7 +439,7 @@ class DscImporter(object):
       f.seek(0)
       touched_paths = self._get_touched_paths(f)
       self._update_path_info(tree, touched_paths, current_tree, up_tree)
-      if dangling_revid is not None:
+      if (not no_add_extra_parent and dangling_revid is not None):
         tree.add_parent_tree_id(dangling_revid)
       tree.commit('merge packaging changes from %s' % \
                   (os.path.basename(diffname)))
@@ -446,7 +474,7 @@ class DscImporter(object):
                         % (self.package_name, name))
     self.package_name = name
 
-  def _decode_dsc(self, dsc, dscname):
+  def _decode_dsc(self, dsc, dscname, incremental=False):
     orig_file = None
     diff_file = None
     native_file = None
@@ -483,7 +511,8 @@ class DscImporter(object):
                           ".diff.gz as well" % dscname)
       if orig_file is not None:
         self._add_to_safe(orig_file, version, 'orig', base_dir, dsc_transport)
-      self._check_orig_exists(version)
+      if not incremental:
+        self._check_orig_exists(version)
       self._add_to_safe(diff_file, version, 'diff', base_dir, dsc_transport)
 
   def import_dsc(self, target_dir, orig_target=None):
@@ -532,6 +561,77 @@ class DscImporter(object):
           last_upstream = version.upstream_version
           last_native = True
           info("imported %s" % filename)
+    finally:
+      tree.unlock()
+
+  def _find_last_upstream(self, tree, version):
+    last_upstream = None
+    previous_upstream = None
+    tag_dict = tree.branch.tags.get_reverse_tag_dict()
+    for rev in reversed(tree.branch.revision_history()):
+      if rev in tag_dict:
+        for poss_tag in tag_dict[rev]:
+          poss_version = upstream_tag_to_version(poss_tag)
+          if poss_version is None:
+            continue
+          if poss_version < version:
+            return poss_version, previous_upstream
+          previous_upstream = poss_version
+    return None, previous_upstream
+
+  def incremental_import_dsc(self, target, orig_target=None):
+    self.orig_target = orig_target
+    tree = WorkingTree.open_containing(target)[0]
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise UncommittedChanges(tree)
+    self.cache = DscCache(transport=self.transport)
+    if len(self.dsc_files) > 1:
+      raise OnlyImportSingleDsc
+    self.safe_files = []
+    self.package_name = None
+    dsc = self.cache.get_dsc(self.dsc_files[0])
+    self._decode_dsc(dsc, self.dsc_files[0], incremental=True)
+    tree.lock_write()
+    try:
+      current_rev_id = tree.branch.last_revision()
+      current_revno = tree.branch.revision_id_to_revno(current_rev_id)
+      dangling_revid = None
+      merge_base = None
+      for (filename, version, type, base_dir, transport) in self.safe_files:
+        if type == 'diff':
+          self.import_diff(tree, filename, version,
+                           dangling_revid=dangling_revid,
+                           transport=transport, base_dir=base_dir,
+                           no_add_extra_parent=True)
+          info("imported %s" % filename)
+          dangling_revid = tree.branch.last_revision()
+          tree.pull(tree.branch, overwrite=True, stop_revision=current_rev_id)
+          tree.merge_from_branch(tree.branch, to_revision=dangling_revid,
+                  from_revision=merge_base)
+        elif type == 'orig':
+          dangling_tree = None
+          last_upstream, previous_upstream = \
+              self._find_last_upstream(tree, version)
+          if last_upstream is None:
+            dangling_revid = tree.branch.tags.lookup_tag(
+                make_upstream_tag(previous_upstream))
+            dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
+            tree.revert(None,
+                tree.branch.repository.revision_tree(NULL_REVISION),
+                backups=False)
+            tree.set_parent_ids([])
+            tree.branch.set_last_revision_info(0, NULL_REVISION)
+          dangling_revid = self.import_orig(tree, filename, version,
+                                            last_upstream=last_upstream,
+                                            transport=transport,
+                                            dangling_tree=dangling_tree,
+                                            base_dir=base_dir)
+          if last_upstream is None:
+            merge_base = NULL_REVISION
+            dangling_revid = current_rev_id
+          info("imported %s" % filename)
+        elif type == 'native':
+          assert False, "Native packages not yet supported"
     finally:
       tree.unlock()
 
@@ -599,4 +699,6 @@ class SnapshotImporter(SourcesImporter):
           if day < 13:
             return False
     return True
+
+# vim: ts=2 sts=2 sw=2
 

@@ -30,3 +30,4 @@ class VersionTests(TestCase):
     if version.version_info != bzrlib.version_info:
       raise KnownFailure("builddeb version doesn't match bzrlib version")
 
+# vim: ts=2 sts=2 sw=2

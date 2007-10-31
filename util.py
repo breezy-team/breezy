@@ -85,3 +85,4 @@ def tarball_name(package, version):
 
   return "%s_%s.orig.tar.gz" % (package, str(version))
 
+# vim: ts=2 sts=2 sw=2

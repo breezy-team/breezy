@@ -105,3 +105,4 @@ class HookTests(TestCaseInTempDir):
     self.failIfExists('a')
     self.failUnlessExists('b')
 
+# vim: ts=2 sts=2 sw=2

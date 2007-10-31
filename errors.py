@@ -75,3 +75,8 @@ class HookFailedError(BzrError):
     BzrError.__init__(self)
     self.hook_name = hook_name
 
+
+class OnlyImportSingleDsc(BzrError):
+  _fmt = """You are only allowed to import one version in incremental mode."""
+
+# vim: ts=2 sts=2 sw=2

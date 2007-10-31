@@ -156,3 +156,4 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     self.write_changelog('debian/changelog')
     self.assertRaises(AddChangelogError, find_changelog, tree, False)
 
+# vim: ts=2 sts=2 sw=2

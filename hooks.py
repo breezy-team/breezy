@@ -38,3 +38,4 @@ def run_hook(hook_name, config, wd=None):
   if proc.returncode != 0:
     raise HookFailedError(hook_name)
 
+# vim: ts=2 sts=2 sw=2

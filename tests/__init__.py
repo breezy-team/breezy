@@ -233,3 +233,5 @@ class BuilddebTestCase(TestCaseWithTransport):
     finally:
       tar.close()
 
+# vim: ts=2 sts=2 sw=2
+

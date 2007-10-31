@@ -201,3 +201,4 @@ def _test():
 if __name__ == '__main__':
   _test()
 
+# vim: ts=2 sts=2 sw=2

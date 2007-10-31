@@ -1004,3 +1004,4 @@ class TestUpstreamExporter(BuilddebTestCase):
     exporter = self.get_exporter()
     self.assertEqual(exporter.export(), True)
 
+# vim: ts=2 sts=2 sw=2

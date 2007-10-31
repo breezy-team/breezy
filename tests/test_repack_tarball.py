@@ -122,3 +122,4 @@ class TestRepackTarball(TestCaseInTempDir):
     self.failIfExists(os.path.join(target_dir, self.new_tarball))
     self.failUnlessExists(target_dir)
 
+# vim: ts=2 sts=2 sw=2

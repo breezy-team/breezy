@@ -137,7 +137,7 @@ run
 
 ::
 
-  $ bzr import-dsc --to scruff *.dsc
+  $ bzr import-dsc --initial --to scruff *.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
@@ -150,7 +150,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc --to scruff \
+  $ bzr import-dsc --initial --to scruff \
     http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
@@ -162,7 +162,7 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc --to scruff -F package-sources
+  $ bzr import-dsc --initial --to scruff -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
@@ -179,7 +179,7 @@ option takes the name of the source package as it is known to
 
 ::
 
-  $ bzr import-dsc --to scruff --snapshot scruff *.dsc
+  $ bzr import-dsc --initial --to scruff --snapshot scruff *.dsc
 
 to have all those versions automatically imported. If you use the
 ``--snapshot`` option then it is possible to omit all of the source packages
@@ -249,6 +249,35 @@ version. You should commit manually in this case.
 
   $ bzr commit -m 'New upstream version'
   $ bzr builddeb
+
+Importing a source package from elsewhere
+#########################################
+
+During the life of a package it is possible that an upload will be done
+where the changes are not included in the branch, perhaps if an NMU is done.
+This also applies to Ubuntu when merging packages with new Debian uploads.
+
+The plugin allows you to import a source package, and will merge the changes
+within allowing you to incorporate them as you like. It will also try and
+pull in the upstream changes as it would when doing an initial import,
+allowing you to use Bazaar to inspect differences with the upstream.
+
+To import the source package you again use the ``import-dsc`` command.
+Either run it from the base of your branch, or use the ``--to`` option to
+specify the base of the branch. Also on the command line specify the
+location of the ``.dsc`` file you would like to import. As well as using a
+local path this can be any URI that Bazaar supports, for instance a
+``http://`` URL. For instance::
+
+  $ bzr import-dsc ../scruff_0.2-1.1.dsc
+
+The command will import the changes and then leave you with a tree that is
+the result of merging the changes in the source package in to the tip of
+your branch before you started. You can then see the changes that were made
+by running ``bzr status`` and ``bzr diff``. There may also be conflicts
+from the merge (usually ``debian/changelog`` will conflict). You should
+edit the files to resolve the conflicts as normal. Once you have finished
+you should commit, and then you can carry on with your work.
 
 .. vim: set ft=rst tw=76 :
 

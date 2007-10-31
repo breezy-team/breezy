@@ -26,7 +26,7 @@ import os
 import subprocess
 
 from bzrlib.commands import Command, register_command
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, NoWorkingTree, NotBranchError
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
@@ -355,8 +355,8 @@ class cmd_merge_upstream(Command):
         package = find_changelog(tree, False)[0].package
       except MissingChangelogError:
         raise BzrCommandError("There is no changelog to rertrieve the package "
-                              "information from, please use the --package option "
-                              "to give the name of the package")
+                              "information from, please use the --package "
+                              "option to give the name of the package")
 
     orig_dir = config.orig_dir or '../tarballs'
     orig_dir = os.path.join(tree.basedir, orig_dir)
@@ -392,7 +392,8 @@ class cmd_import_dsc(Command):
   Provide a number of source packages (.dsc files), and they will
   be imported to create a branch with history that reflects those
   packages. You must provide the --to option with the name of the
-  branch that will be created.
+  branch that will be created, and the --initial option to indicate
+  this is an initial import.
 
   If there are packages that are available on snapshot.debian.net
   then you can use the --snapshot option to supplement the packages
@@ -400,7 +401,7 @@ class cmd_import_dsc(Command):
   of the source package as on snapshot.debian.net as this option,
   i.e. to import all versions of apt
 
-    import-dsc --snapshot apt
+    import-dsc --initial --snapshot apt
 
   If you use the --snapshot option then you don't have to provide
   any source packages on the command line, and if you omit the
@@ -412,6 +413,12 @@ class cmd_import_dsc(Command):
   files) to import. Each line is taken to be a URI or path to
   import. The sources specified in the file are used in addition
   to those specified by other methods.
+
+  If you have an existing branch containing packaging and you want to
+  import a .dsc from an upload done from outside the version control
+  system you can use this command. In this case you can only specify
+  one file on the command line, or use a file containing only a single
+  filename, and do not use the --initial option.
   """
 
   takes_args = ['files*']
@@ -422,10 +429,13 @@ class cmd_import_dsc(Command):
   filename_opt = Option('file', help="File containing URIs of source "
                         "packages to import.", type=str, argname="filename",
                         short_name='F')
+  initial_opt = Option('initial',
+        help="Perform an initial import to create a new branch.")
 
-  takes_options = [to_opt, snapshot_opt, filename_opt]
+  takes_options = [to_opt, snapshot_opt, filename_opt, initial_opt]
 
-  def run(self, files_list, to=None, snapshot=None, filename=None):
+  def run(self, files_list, to=None, snapshot=None, filename=None,
+          initial=False):
     from import_dsc import DscImporter, SnapshotImporter
     if files_list is None:
       files_list = []
@@ -438,20 +448,42 @@ class cmd_import_dsc(Command):
         line.strip()
         files_list.append(line)
     if snapshot is None:
-      if len(files_list) < 1:
-        raise BzrCommandError("You must give the location of at least one "
-                              "source package to install, or use the "
-                              "--file or --snapshot options.")
-      if to is None:
-        raise BzrCommandError("You must specify the name of the "
-                              "destination branch using the --to option.")
+      if not initial:
+        if len(files_list) != 1:
+          raise BzrCommandError("You must give the location of exactly one "
+                                "source package.")
+      else:
+        if len(files_list) < 1:
+          raise BzrCommandError("You must give the location of at least one "
+                                "source package to install, or use the "
+                                "--file or --snapshot options.")
+        if to is None:
+          raise BzrCommandError("You must specify the name of the "
+                                "destination branch using the --to option.")
       importer = DscImporter(files_list)
     else:
+      if not initial:
+        raise BzrCommandError("You cannot use the --snapshot option without "
+            "the --initial option.")
       if to is None:
         to = snapshot
       importer = SnapshotImporter(snapshot, other_sources=files_list)
-    orig_target = os.path.join(to, '../tarballs')
-    importer.import_dsc(to, orig_target=orig_target)
+    if initial:
+      orig_target = os.path.join(to, '../tarballs')
+      importer.import_dsc(to, orig_target=orig_target)
+    else :
+      inc_to = '.'
+      if to is not None:
+        inc_to = to
+      _local_conf = os.path.join(inc_to, local_conf)
+      _global_conf = os.path.join(inc_to, global_conf)
+      _default_conf = os.path.join(inc_to, default_conf)
+      config = DebBuildConfig([(_local_conf, True), (_global_conf, True),
+                             (_default_conf, False)])
+      orig_target = config.orig_dir
+      if orig_target is None:
+        orig_target = os.path.join(inc_to, '../tarballs')
+      importer.incremental_import_dsc(inc_to, orig_target=orig_target)
 
 
 register_command(cmd_import_dsc)
@@ -575,3 +607,4 @@ else:
   import sys
   sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# vim: ts=2 sts=2 sw=2

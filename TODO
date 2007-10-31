@@ -16,3 +16,6 @@
 
 - New changelog stanza command for after tagging.
 
+- Check whether epochs are handled sanely, especially in import-dsc and
+merge-upstream.
+

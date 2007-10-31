@@ -56,3 +56,4 @@ class BuildProperties(object):
   def larstiq(self):
     return self._larstiq
 
+# vim: ts=2 sts=2 sw=2
