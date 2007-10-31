@@ -124,10 +124,10 @@ you can still use and assist in testing KnitPacks. The commands to use
 are identical to the ones given above except that the name of the format
 to use is ``knitpack-subtree-experimental``.
 
-WARNING: Note that the subtree formats, ``distate-subtree`` and
+WARNING: Note that the subtree formats, ``dirstate-subtree`` and
 ``knitpack-subtree-experimental``, are **not** production strength yet and
 may cause unexpected problems. They are required for the bzr-svn
-plug-in but should otherwise ony be used by people happy to live on the
+plug-in but should otherwise only be used by people happy to live on the
 bleeding edge. If you are using bzr-svn, you're on the bleeding edge anyway.
 :-)
 
@@ -190,7 +190,7 @@ and contains:
 
  * key fields
  * a value string - for all these indices, this is an ascii decimal pair
-   of "offset length" giving the position of the refenced data within 
+   of "offset length" giving the position of the referenced data within 
    the pack body file
  * a list of zero or more reference lists
 
