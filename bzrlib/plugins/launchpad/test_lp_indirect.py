@@ -21,7 +21,9 @@ import xmlrpclib
 from bzrlib import (
     errors,
     )
-from bzrlib.tests import TestCase
+from bzrlib.branch import Branch
+from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad.lp_indirect import (
     LaunchpadTransport)
 from bzrlib.plugins.launchpad.account import get_lp_login
@@ -157,3 +159,16 @@ class IndirectUrlTests(TestCase):
         self.assertEqual(
             'http://example.com/~apt/apt/devel', exc.target)
 
+
+class IndirectOpenBranchTests(TestCaseWithMemoryTransport):
+
+    def test_indirect_open_branch(self):
+        # Test that opening an lp: branch redirects to the real location.
+        target_branch = self.make_branch('target')
+        transport = get_transport('lp:///apt')
+        def _resolve(abspath):
+            self.assertEqual('lp:///apt', abspath)
+            return target_branch.base.rstrip('/')
+        transport._resolve = _resolve
+        branch = Branch.open_from_transport(transport)
+        self.assertEqual(target_branch.base, branch.base)
