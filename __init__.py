@@ -369,10 +369,11 @@ class cmd_merge_upstream(Command):
       merge_upstream(tree, filename, version)
     # TODO: tidy all of this up, and be more precise in what is wrong and
     #       what can be done.
-    except NoSuchTag:
+    except NoSuchTag, e:
       raise BzrCommandError("The tag of the last upstream import can not be "
                             "found. You should tag the revision that matches "
-                            "the last upstream version")
+                            "the last upstream version. Expected to find %s." % \
+                            e.tag_name)
     except TagAlreadyExists:
       raise BzrCommandError("It appears as though this merge has already "
                             "been performed, as there is already a tag "
