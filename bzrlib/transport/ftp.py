@@ -557,13 +557,13 @@ def get_test_permutations():
     """Return the permutations to be used in testing."""
     from bzrlib import tests
     if tests.FTPServerFeature.available():
-        from bzrlib.tests import FTPServer
-        return [(FtpTransport, FTPServer.FTPServer)]
+        from bzrlib.tests import ftp_server
+        return [(FtpTransport, ftp_server.FTPServer)]
     else:
         # Dummy server to have the test suite report the number of tests
         # needing that feature.
-        class FTPServer(object):
+        class UnavailableFTPServer(object):
             def setUp(self):
                 raise tests.UnavailableFeature(tests.FTPServerFeature)
 
-        return [(FtpTransport, FTPServer)]
+        return [(FtpTransport, UnavailableFTPServer)]

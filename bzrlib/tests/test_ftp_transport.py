@@ -28,8 +28,8 @@ class TestCaseWithFTPServer(tests.TestCaseWithTransport):
     _test_needs_features = [tests.FTPServerFeature]
 
     def setUp(self):
-        from bzrlib.tests import FTPServer
-        self.transport_server = FTPServer.FTPServer
+        from bzrlib.tests import ftp_server
+        self.transport_server = ftp_server.FTPServer
         super(TestCaseWithFTPServer, self).setUp()
 
 
