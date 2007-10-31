@@ -2331,6 +2331,7 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
+        from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -2358,9 +2359,8 @@ class InterPackRepo(InterSameDataRepository):
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
         packs = self.source._pack_collection.all_packs()
-        pack = self.target._pack_collection.create_pack_from_packs(
-            packs, '.fetch', revision_ids,
-            )
+        pack = Packer(self.target._pack_collection, packs, '.fetch',
+            revision_ids).pack()
         if pack is not None:
             self.target._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done

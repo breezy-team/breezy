@@ -467,3 +467,30 @@ class PackReconciler(RepoReconciler):
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
+        if not self.thorough:
+            return
+        self.repo.lock_write()
+        try:
+            self.repo._pack_collection.ensure_loaded()
+            self.repo._pack_collection.lock_names()
+            try:
+                self.repo.start_write_group()
+                try:
+                    self._new_pack = self.repo._pack_collection._new_pack
+                    self._copy_revisions()
+                except:
+                    self.repo.abort_write_group()
+                    raise
+                else:
+                    self.repo.commit_write_group()
+            finally:
+                self.repo._pack_collection._unlock_names()
+        finally:
+            self.repo.unlock()
+
+    def _copy_revisions(self):
+        """Copy revisions, regenerating the index as we go."""
+
+    def _pack_correcting_data(self):
+        """Perform a total pack, regenerating as much data as possible."""
+        revisions = self.repo.all_revision_ids()
