@@ -127,6 +127,9 @@ IN DEVELOPMENT
      display a user friendly message instead of a traceback.
      (Ian Clatworthy, #115601)
 
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
 
