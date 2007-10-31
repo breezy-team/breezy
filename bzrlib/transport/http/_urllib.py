@@ -106,7 +106,7 @@ class HttpTransport_urllib(HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
         if request.redirected_to is not None:
