@@ -88,4 +88,4 @@ See hooks/pre-revprop-change in the Subversion repository for
 more information about how to do this.
 
 You also need to enable support for this in bzr-svn by setting 
-pre-revprop-change to True in ~/.bazaar/bazaar.conf.
+override-svn-revprops to True in ~/.bazaar/bazaar.conf.
