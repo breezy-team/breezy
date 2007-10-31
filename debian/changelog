@@ -7,8 +7,9 @@ bzr-builddeb (0.92) unstable; urgency=low
   * Filter out any changes to .bzr in packages that are being imported as they
     will totally mess things up. If the branch is in the source package then
     just use apt-get source. (LP: #156003)
+  * bzr 0.92 is required.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 30 Oct 2007 20:58:46 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 31 Oct 2007 18:44:43 +0000
 
 bzr-builddeb (0.91) unstable; urgency=low
 
