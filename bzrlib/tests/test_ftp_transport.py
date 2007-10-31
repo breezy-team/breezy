@@ -23,36 +23,14 @@ from bzrlib import (
     )
 
 
-class _MedusaFeature(tests.Feature):
-    """Some tests want an FTP Server, check if one is available.
-
-    Right now, the only way this is available is if 'medusa' is installed.
-    """
-
-    def _probe(self):
-        try:
-            import medusa
-            import medusa.filesys
-            import medusa.ftp_server
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'medusa'
-
-MedusaFeature = _MedusaFeature()
-
-
 class TestCaseWithFTPServer(tests.TestCaseWithTransport):
 
-    _test_needs_features = [MedusaFeature]
+    _test_needs_features = [tests.FTPServerFeature]
 
     def setUp(self):
-        from bzrlib.transport.ftp import FtpServer
-        self.transport_server = FtpServer
+        from bzrlib.tests import ftp_server
+        self.transport_server = ftp_server.FTPServer
         super(TestCaseWithFTPServer, self).setUp()
-
 
 
 class TestCaseAFTP(tests.TestCaseWithTransport):
