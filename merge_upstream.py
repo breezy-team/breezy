@@ -128,7 +128,7 @@ def merge_upstream(tree, source, version_number):
       current_revision = tree.last_revision()
       rev_id = lookup_tag(tree)
       if rev_id != tree.branch.last_revision():
-        tree.revert(None, tree.branch.repository.revision_tree(rev_id))
+        tree.pull(tree.branch, stop_revision=rev_id, overwrite=True)
         if os.path.isdir(source):
           s = StringIO(source)
           s.seek(0)
@@ -147,9 +147,6 @@ def merge_upstream(tree, source, version_number):
               tar_input.close()
           elif source.endswith('.zip'):
               import_zip(tree, open(source, 'rb'))
-        tree.set_parent_ids([rev_id])
-        tree.branch.set_last_revision_info(
-                       tree.branch.revision_id_to_revno(rev_id), rev_id)
         tree.commit('import upstream from %s' % os.path.basename(source))
         tree.branch.tags.set_tag(make_upstream_tag(version_number),
                                  tree.branch.last_revision())
