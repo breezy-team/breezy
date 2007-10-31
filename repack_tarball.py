@@ -22,6 +22,7 @@ import gzip
 import os
 import tarfile
 import bz2
+import sha
 
 from bzrlib.errors import (
                            FileExists,
@@ -56,8 +57,8 @@ def repack_tarball(orig_name, new_name, target_dir=None):
   :warning: .zip files are currently unsupported.
   :throws NoSuchFile: if orig_name doesn't exist.
   :throws NotADirectory: if target_dir exists and is not a directory.
-  :throws FileExists: if the target filename (after considering target_dir
-                      exists.
+  :throws FileExists: if the target filename (after considering target_dir)
+                      exists, and is not identical to the source.
   :throes BzrCommandError: if the source isn't supported for repacking.
   """
   if target_dir is not None:
@@ -68,7 +69,21 @@ def repack_tarball(orig_name, new_name, target_dir=None):
         raise NotADirectory(target_dir)
     new_name = os.path.join(target_dir, new_name)
   if os.path.exists(new_name):
-    raise FileExists(new_name)
+    if not orig_name.endswith('.tar.gz'):
+      raise FileExists(new_name)
+    f = open(orig_name)
+    try:
+      orig_sha = sha.sha(f.read()).hexdigest()
+    finally:
+      f.close()
+    f = open(new_name)
+    try:
+      new_sha = sha.sha(f.read()).hexdigest()
+    finally:
+      f.close()
+    if orig_sha != new_sha:
+      raise FileExists(new_name)
+    return
   if os.path.isdir(orig_name):
     tar = tarfile.open(new_name, 'w:gz')
     try:
@@ -111,3 +126,4 @@ def repack_tarball(orig_name, new_name, target_dir=None):
       trans_file.close()
 
 # vim: ts=2 sts=2 sw=2
+

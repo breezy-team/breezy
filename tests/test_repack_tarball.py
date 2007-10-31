@@ -19,6 +19,7 @@
 #
 
 import os
+import shutil
 import tarfile
 
 from bzrlib.errors import (NoSuchFile,

@@ -26,7 +26,11 @@ import os
 import subprocess
 
 from bzrlib.commands import Command, register_command
-from bzrlib.errors import BzrCommandError, NoWorkingTree, NotBranchError
+from bzrlib.errors import (BzrCommandError,
+                           NoWorkingTree,
+                           NotBranchError,
+                           FileExists,
+                           )
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
@@ -362,7 +366,13 @@ class cmd_merge_upstream(Command):
     orig_dir = os.path.join(tree.basedir, orig_dir)
 
     dest_name = tarball_name(package, version)
-    repack_tarball(path, dest_name, target_dir=orig_dir)
+    try:
+      repack_tarball(path, dest_name, target_dir=orig_dir)
+    except FileExists:
+      raise BzrCommandError("The target file %s already exists, and is either "
+                            "different to the new upstream tarball, or they "
+                            "are of different formats. Either delete the target "
+                            "file, or use it as the argument to import.")
     filename = os.path.join(orig_dir, dest_name)
 
     try:
