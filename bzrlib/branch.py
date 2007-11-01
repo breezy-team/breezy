@@ -1191,7 +1191,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
-        
+
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
@@ -1208,7 +1208,9 @@ class BranchReferenceFormat(BranchFormat):
         branch_transport.put_bytes('location',
             target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
-        return self.open(a_bzrdir, _found=True)
+        return self.open(
+            a_bzrdir, _found=True,
+            possible_transports=[target_branch.bzrdir.root_transport])
 
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
@@ -1224,7 +1226,8 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False, location=None):
+    def open(self, a_bzrdir, _found=False, location=None,
+             possible_transports=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -1235,7 +1238,8 @@ class BranchReferenceFormat(BranchFormat):
             assert format.__class__ == self.__class__
         if location is None:
             location = self.get_reference(a_bzrdir)
-        real_bzrdir = bzrdir.BzrDir.open(location)
+        real_bzrdir = bzrdir.BzrDir.open(
+            location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
