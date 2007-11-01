@@ -40,9 +40,15 @@ from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle,
                            NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
-from bzrlib.osutils import has_symlinks, sha_file
-from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
-                          TestCase, TestSkipped, test_commit)
+from bzrlib.osutils import sha_file
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCase,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    TestSkipped,
+    test_commit,
+    )
 from bzrlib.transform import TreeTransform
 
 
@@ -641,8 +647,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
 
     def test_symlink_bundle(self):
-        if not has_symlinks():
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)

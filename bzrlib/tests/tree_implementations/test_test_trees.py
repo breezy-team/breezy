@@ -16,8 +16,7 @@
 
 """Tests for the test trees used by the tree_implementations tests."""
 
-from bzrlib.osutils import has_symlinks
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import SymlinkFeature
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
@@ -148,8 +147,7 @@ class TestTreeShapes(TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)

@@ -937,10 +937,12 @@ class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
         # pycurl do not check HTTP_PROXY for security reasons
         # (for use in a CGI context that we do not care
         # about. Should we ?)
-        raise TestSkipped()
+        raise TestSkipped('pycurl do not check HTTP_PROXY '
+            'for security reasons')
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
-        raise TestSkipped()
+        raise TestSkipped('pycurl do not check HTTP_PROXY '
+            'for security reasons')
 
     def test_http_proxy_without_scheme(self):
         # pycurl *ignores* invalid proxy env variables. If that
