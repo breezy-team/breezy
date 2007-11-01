@@ -3523,7 +3523,7 @@ class cmd_uncommit(Command):
 
         if revno <= b.revno():
             rev_id = b.get_rev_id(revno)
-        if rev_id is None:
+        if _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
 
