@@ -257,9 +257,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.new_inventory[child_ie.file_id].name != child_name):
                     self.mutter('removing %r(%r)' % (child_name, child_ie.file_id))
                     self.editor.delete_entry(
-                            urlutils.join(
-                                self.branch.get_branch_path(), path, child_name), 
-                            self.base_revnum, baton, self.pool)
+                        urlutils.join(self.branch.get_branch_path(), path, child_name), 
+                        self.base_revnum, baton, self.pool)
 
         # Loop over file children of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -540,8 +539,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
+        :param content_summary: Summary data from the tree about the paths
+                content - stat, length, exec, sha/link target. This is only
+                accessed when the entry has a revision of None - that is when 
+                it is a candidate to commit.
         """
-        assert self.new_inventory.root is not None or ie.parent_id is None
+        self.mutter("record entry %r, %r, %r" % (ie, path, content_summary))
         self.new_inventory.add(ie)
 
 
@@ -552,6 +555,10 @@ def replay_delta(builder, old_tree, new_tree):
     :param old_tree: Original tree on top of which the delta should be applied
     :param new_tree: New tree that should be committed
     """
+    for path, ie in new_tree.inventory.iter_entries():
+        builder.record_entry_contents(ie.copy(), [old_tree.inventory], 
+                                      path, new_tree, None)
+    builder.finish_inventory()
     delta = new_tree.changes_from(old_tree)
     def touch_id(id):
         ie = builder.new_inventory[id]
@@ -588,8 +595,6 @@ def replay_delta(builder, old_tree, new_tree):
         old_parent_id = old_tree.inventory.path2id(urlutils.dirname(path))
         if old_parent_id in builder.new_inventory:
             touch_id(old_parent_id)
-
-    builder.finish_inventory()
 
 
 def push_new(target_repository, target_branch_path, source, 
@@ -695,7 +700,6 @@ def push(target, source, revision_id, validate=False):
                                    rev.timezone, rev.committer, rev.properties, 
                                    revision_id, base_tree.inventory)
                              
-        builder.new_inventory = source.repository.get_inventory(revision_id)
         replay_delta(builder, base_tree, old_tree)
     finally:
         source.unlock()
@@ -769,7 +773,6 @@ class InterToSvnRepository(InterRepository):
                                    rev.timestamp, rev.timezone, rev.committer,
                                    rev.properties, revision_id, base_tree.inventory)
                              
-                builder.new_inventory = self.source.get_inventory(revision_id)
                 replay_delta(builder, base_tree, old_tree)
                 builder.commit(rev.message)
         finally:
