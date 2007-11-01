@@ -1250,7 +1250,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1266,7 +1266,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')

@@ -2709,11 +2709,14 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         control_files.put_bytes('pending-merges', '')
         
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         branch.lock_write()
@@ -2798,7 +2801,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return LockableFiles(transport, self._lock_file_name, 
                              self._lock_class)
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize().
         
         revision_id allows creating a working tree at a different
@@ -2811,7 +2814,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         # WorkingTree3 can handle an inventory which has a unique root id.

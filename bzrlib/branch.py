@@ -771,7 +771,7 @@ class Branch(object):
         if lightweight:
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
-            BranchReferenceFormat().initialize(checkout, self)
+            from_branch = BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
@@ -781,7 +781,9 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        tree = checkout.create_workingtree(revision_id)
+            from_branch=None
+        tree = checkout.create_workingtree(revision_id,
+                                           from_branch=from_branch)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
