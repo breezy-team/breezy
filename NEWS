@@ -71,6 +71,8 @@ bzr-svn 0.4.4	UNRELEASED
 
    * Handle special characters in committer name correctly. (#158347)
 
+   * Avoid crashes on sending empty diffs over http/svn+SCHEME (#159111)
+
   DOCUMENTATION
 
    * Add simple FAQ file. (#144388)

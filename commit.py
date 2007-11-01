@@ -28,6 +28,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from copy import deepcopy
+from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
@@ -225,13 +226,11 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param baton: Baton under which the file is known to the editor.
         """
         assert baton is not None
-        if contents == "" and not file_id in self.old_inv:
-            # Don't send diff if a new file with empty contents is 
-            # added, because it created weird exceptions over svn+ssh:// 
-            # or https://
-            return
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
-        svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
+        digest = svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton, self.pool)
+        if 'validate' in debug.debug_flags:
+            from fetch import md5_strings
+            assert digest == md5_strings(contents)
 
     def _dir_process(self, path, file_id, baton):
         """Pass the changes to a directory to the commit editor.
@@ -598,7 +597,7 @@ def replay_delta(builder, old_tree, new_tree):
 
 
 def push_new(target_repository, target_branch_path, source, 
-             stop_revision=None, validate=False):
+             stop_revision=None):
     """Push a revision into Subversion, creating a new branch.
 
     This will do a new commit in the target branch.
@@ -606,8 +605,6 @@ def push_new(target_repository, target_branch_path, source,
     :param target_branch_path: Path to create new branch at
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
-    :param validate: Whether to check the committed revision matches 
-        the source revision.
     """
     assert isinstance(source, Branch)
     if stop_revision is None:
@@ -665,11 +662,10 @@ def push_new(target_repository, target_branch_path, source,
                 revnum, self.get_branch_path(revnum), 
                 str(self.repository.get_scheme()))
 
-    push(ImaginaryBranch(target_repository), source, start_revid, 
-         validate=validate)
+    push(ImaginaryBranch(target_repository), source, start_revid)
 
 
-def push(target, source, revision_id, validate=False):
+def push(target, source, revision_id):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
@@ -677,8 +673,6 @@ def push(target, source, revision_id, validate=False):
     :param target: Branch to push to
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
-    :param validate: Whether to check the committed revision matches 
-        the source revision.
     """
     assert isinstance(source, Branch)
     rev = source.repository.get_revision(revision_id)
@@ -712,7 +706,7 @@ def push(target, source, revision_id, validate=False):
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
 
-    if validate:
+    if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
         treedelta = ctree.changes_from(old_tree)
