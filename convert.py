@@ -19,6 +19,7 @@ from bzrlib.bzrdir import BzrDir, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
                            NoRepositoryPresent, NoSuchRevision)
+from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
 
@@ -122,8 +123,6 @@ def convert_repository(source_repos, output_url, scheme=None,
         except NoRepositoryPresent:
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)
-        if all:
-            source_repos.copy_content_into(target_repos)
 
     if filter_branch is None:
         filter_branch = lambda (bp, rev, exists): exists
@@ -132,13 +131,27 @@ def convert_repository(source_repos, output_url, scheme=None,
             filter(filter_branch,
                    source_repos.find_branches(source_repos.get_scheme()))]
 
+    def is_dir((branch, revnum)):
+        return source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_dir
+
+    existing_branches = filter(is_dir, existing_branches)
+
+    if create_shared_repo:
+        inter = InterRepository.get(source_repos, target_repos)
+
+        if all:
+            inter.fetch()
+        elif (target_repos.is_shared() and 
+              hasattr(inter, '_supports_branches') and 
+              inter._supports_branches):
+            inter.fetch(branches=[source_repos.generate_revision_id(revnum, branch, str(source_repos.get_scheme())) for (branch, revnum) in existing_branches])
+
+
     source_graph = source_repos.get_graph()
     pb = ui.ui_factory.nested_progress_bar()
     try:
         i = 0
         for (branch, revnum) in existing_branches:
-            if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
-                continue
             pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
             revid = source_repos.generate_revision_id(revnum, branch, 
                                           str(source_repos.get_scheme()))
