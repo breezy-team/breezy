@@ -312,7 +312,7 @@ class PyCurlTransport(HttpTransportBase):
             redirected_to = headers['Location']
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
 

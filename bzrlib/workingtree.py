@@ -1968,7 +1968,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         try:
             conflicts = transform.revert(self, old_tree, filenames, backups, pb,
                                          report_changes)
-            if filenames is None:
+            if filenames is None and len(self.get_parent_ids()) > 1:
                 parent_trees = []
                 last_revision = self.last_revision()
                 if last_revision != NULL_REVISION:

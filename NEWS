@@ -208,6 +208,9 @@ IN DEVELOPMENT
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
 
+   * Wrap medusa ftp test server as an FTPServer feature.
+     (Vincent Ladeuil, #157752)
+
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
 
