@@ -1,12 +1,10 @@
 bzr (0.92~rc1-1) unstable; urgency=low
 
-  [ Adeodato Simó ]
+  * First release candidate for the upcoming 0.92 version.
+
   * Dropped Andres Salomon from the Uploaders field, at his request.
 
-  [ Reinhard Tartler ]
-  * new upstream release.
-
- -- Reinhard Tartler <siretart@tauware.de>  Tue, 30 Oct 2007 14:02:55 -0400
+ -- Adeodato Simó <dato@net.com.org.es>  Fri, 02 Nov 2007 22:29:16 +0100
 
 bzr (0.91-2) unstable; urgency=low
 
