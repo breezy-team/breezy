@@ -2663,6 +2663,17 @@ class _SymlinkFeature(Feature):
 SymlinkFeature = _SymlinkFeature()
 
 
+class _OsFifoFeature(Feature):
+
+    def _probe(self):
+        return getattr(os, 'mkfifo', None)
+
+    def feature_name(self):
+        return 'filesystem fifos'
+
+OsFifoFeature = _OsFifoFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 

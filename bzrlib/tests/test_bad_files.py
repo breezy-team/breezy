@@ -25,7 +25,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.status import show_tree_status
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import OsFifoFeature, TestCaseWithTransport
 
 
 def verify_status(tester, tree, value):
@@ -40,8 +40,7 @@ class TestBadFiles(TestCaseWithTransport):
 
     def test_bad_files(self):
         """Test that bzr will ignore files it doesn't like"""
-        if getattr(os, 'mkfifo', None) is None:
-            raise TestSkipped('OS does not support mkfifo')
+        self.requireFeature(OsFifoFeature)
 
         wt = self.make_branch_and_tree('.')
         b = wt.branch
