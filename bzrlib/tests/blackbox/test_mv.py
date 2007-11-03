@@ -24,8 +24,8 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    SymlinkFeature,
     TestCaseWithTransport,
-    TestSkipped,
     )
 
 
@@ -135,8 +135,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('rename b a')
 
     def test_mv_through_symlinks(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')

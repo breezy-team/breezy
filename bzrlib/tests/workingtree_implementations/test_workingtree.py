@@ -642,7 +642,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.set_conflicts(ConflictList())
         except UnsupportedOperation:
-            raise TestSkipped
+            raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
@@ -650,7 +650,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.add_conflicts([TextConflict('path_a')])
         except UnsupportedOperation:
-            raise TestSkipped()
+            raise TestSkipped('unsupported operation')
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
