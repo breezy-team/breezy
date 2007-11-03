@@ -1295,6 +1295,7 @@ class RepositoryPackCollection(object):
                 self._save_pack_names()
         else:
             self._new_pack.abort()
+            self._new_pack = None
         self.repo._text_knit = None
 
 
@@ -1514,7 +1515,9 @@ class KnitPackRepository(KnitRepository):
         return self
 
     def _refresh_data(self):
-        if self._write_lock_count == 1 or self.control_files._lock_count == 1:
+        if self._write_lock_count == 1 or (
+            self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'r'):
             # forget what names there are
             self._pack_collection.reset()
             # XXX: Better to do an in-memory merge when acquiring a new lock -
