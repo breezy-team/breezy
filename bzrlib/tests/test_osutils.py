@@ -284,12 +284,12 @@ class TestOSUtils(TestCaseInTempDir):
 
         # Make a file readonly
         osutils.make_readonly('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode & 0777555)
 
         # Make a file writable
         osutils.make_writable('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0200)
 
         if osutils.has_symlinks():
