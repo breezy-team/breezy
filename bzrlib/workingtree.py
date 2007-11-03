@@ -64,7 +64,6 @@ from bzrlib import (
     hashcache,
     ignores,
     merge,
-    osutils,
     revision as _mod_revision,
     revisiontree,
     repository,
@@ -90,6 +89,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
+from bzrlib import osutils
 from bzrlib.osutils import (
     compact_date,
     file_kind,
@@ -703,7 +703,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=osutils.lstat,
+    def path_content_summary(self, path, _lstat=os.lstat,
         _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
         abspath = self.abspath(path)
@@ -1968,7 +1968,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         try:
             conflicts = transform.revert(self, old_tree, filenames, backups, pb,
                                          report_changes)
-            if filenames is None:
+            if filenames is None and len(self.get_parent_ids()) > 1:
                 parent_trees = []
                 last_revision = self.last_revision()
                 if last_revision != NULL_REVISION:

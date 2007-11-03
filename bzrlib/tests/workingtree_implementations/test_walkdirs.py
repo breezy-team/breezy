@@ -19,8 +19,7 @@
 import os
 
 from bzrlib import transform
-from bzrlib.osutils import has_symlinks
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import SymlinkFeature
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 # tests to write:
@@ -139,8 +138,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         ids = ['file1', 'file2', 'dir1', 'dir2']
