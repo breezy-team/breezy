@@ -29,7 +29,7 @@ class TestConvertError(TestCase):
     def test_decorator_unknown(self):
         @convert_svn_error
         def test_throws_svn():
-            raise SubversionException("foo", 100)
+            raise SubversionException("foo", 2000)
 
         self.assertRaises(SubversionException, test_throws_svn)
 

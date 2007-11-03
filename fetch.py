@@ -449,6 +449,8 @@ class InterFromSvnRepository(InterRepository):
 
     _matching_repo_format = SvnRepositoryFormat()
 
+    _supports_branches = True
+
     @staticmethod
     def _get_repo_format_to_test():
         return None
@@ -464,7 +466,21 @@ class InterFromSvnRepository(InterRepository):
             (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
             parents[revid] = self.source._mainline_revision_parent(branch, 
                                                revnum, scheme)
+        needed.reverse()
         return (needed, parents)
+
+    def _find_branches(self, branches, find_ghosts=False):
+        set_needed = set()
+        ret_needed = list()
+        ret_parents = dict()
+        for revid in branches:
+            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts)
+            for rev in needed:
+                if not rev in set_needed:
+                    ret_needed.append(rev)
+                    set_needed.add(rev)
+            ret_parents.update(parents)
+        return ret_needed, ret_parents
 
     def _find_until(self, revision_id, find_ghosts=False):
         """Find all missing revisions until revision_id
@@ -495,6 +511,7 @@ class InterFromSvnRepository(InterRepository):
                 break
 
         parents[prev_revid] = None
+        needed.reverse()
         return (needed, parents)
 
     def copy_content(self, revision_id=None, pb=None):
@@ -533,7 +550,7 @@ class InterFromSvnRepository(InterRepository):
         editor = revbuildklass(self.source, self.target)
 
         try:
-            for revid in reversed(revids):
+            for revid in revids:
                 pb.update('copying revision', num, len(revids))
 
                 parent_revid = lhs_parent[revid]
@@ -593,7 +610,8 @@ class InterFromSvnRepository(InterRepository):
                 nested_pb.finished()
         self.source.transport.reparent_root()
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
+              branches=None):
         """Fetch revisions. """
         if revision_id == NULL_REVISION:
             return
@@ -604,7 +622,10 @@ class InterFromSvnRepository(InterRepository):
         # or self.target.add_inventory() each time
         self.target.lock_read()
         try:
-            if revision_id is None:
+            if branches is not None:
+                (needed, lhs_parent) = self._find_branches(branches, 
+                                                           find_ghosts)
+            elif revision_id is None:
                 (needed, lhs_parent) = self._find_all()
             else:
                 (needed, lhs_parent) = self._find_until(revision_id, 

@@ -28,6 +28,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from copy import deepcopy
+from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
@@ -54,19 +55,18 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     return []
 
 
-def set_svn_revprops(transport, revnum, author, timestamp, timezone):
+def set_svn_revprops(transport, revnum, author, timestamp):
     """Attempt to change the revision properties on the
     specified revision.
 
     :param transport: SvnRaTransport connected to target repository
     :param revnum: Revision number of revision to change metadata of.
     :param author: New author
-    :param timestamp: Timestamp
-    :param timezone: Timezone
+    :param timestamp: UTC timestamp
     """
     revprops = {
         svn.core.SVN_PROP_REVISION_AUTHOR: author,
-        svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*(timestamp+timezone))
+        svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*timestamp)
     }
     for (name, value) in revprops.items():
         try:
@@ -226,13 +226,11 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param baton: Baton under which the file is known to the editor.
         """
         assert baton is not None
-        if contents == "" and not file_id in self.old_inv:
-            # Don't send diff if a new file with empty contents is 
-            # added, because it created weird exceptions over svn+ssh:// 
-            # or https://
-            return
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
-        svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
+        digest = svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton, self.pool)
+        if 'validate' in debug.debug_flags:
+            from fetch import md5_strings
+            assert digest == md5_strings(contents)
 
     def _dir_process(self, path, file_id, baton):
         """Pass the changes to a directory to the commit editor.
@@ -258,9 +256,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.new_inventory[child_ie.file_id].name != child_name):
                     self.mutter('removing %r(%r)' % (child_name, child_ie.file_id))
                     self.editor.delete_entry(
-                            urlutils.join(
-                                self.branch.get_branch_path(), path, child_name), 
-                            self.base_revnum, baton, self.pool)
+                        urlutils.join(self.branch.get_branch_path(), path, child_name), 
+                        self.base_revnum, baton, self.pool)
 
         # Loop over file children of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -517,8 +514,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if self.repository.get_config().get_override_svn_revprops():
             set_svn_revprops(self.repository.transport, 
-                             self.revnum, self._committer, 
-                             self._timestamp, self._timezone)
+                             self.revnum, self._committer, self._timestamp)
 
         return revid
 
@@ -542,8 +538,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
+        :param content_summary: Summary data from the tree about the paths
+                content - stat, length, exec, sha/link target. This is only
+                accessed when the entry has a revision of None - that is when 
+                it is a candidate to commit.
         """
-        assert self.new_inventory.root is not None or ie.parent_id is None
+        self.mutter("record entry %r, %r, %r" % (ie, path, content_summary))
         self.new_inventory.add(ie)
 
 
@@ -554,6 +554,10 @@ def replay_delta(builder, old_tree, new_tree):
     :param old_tree: Original tree on top of which the delta should be applied
     :param new_tree: New tree that should be committed
     """
+    for path, ie in new_tree.inventory.iter_entries():
+        builder.record_entry_contents(ie.copy(), [old_tree.inventory], 
+                                      path, new_tree, None)
+    builder.finish_inventory()
     delta = new_tree.changes_from(old_tree)
     def touch_id(id):
         ie = builder.new_inventory[id]
@@ -591,11 +595,9 @@ def replay_delta(builder, old_tree, new_tree):
         if old_parent_id in builder.new_inventory:
             touch_id(old_parent_id)
 
-    builder.finish_inventory()
-
 
 def push_new(target_repository, target_branch_path, source, 
-             stop_revision=None, validate=False):
+             stop_revision=None):
     """Push a revision into Subversion, creating a new branch.
 
     This will do a new commit in the target branch.
@@ -603,8 +605,6 @@ def push_new(target_repository, target_branch_path, source,
     :param target_branch_path: Path to create new branch at
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
-    :param validate: Whether to check the committed revision matches 
-        the source revision.
     """
     assert isinstance(source, Branch)
     if stop_revision is None:
@@ -662,11 +662,10 @@ def push_new(target_repository, target_branch_path, source,
                 revnum, self.get_branch_path(revnum), 
                 str(self.repository.get_scheme()))
 
-    push(ImaginaryBranch(target_repository), source, start_revid, 
-         validate=validate)
+    push(ImaginaryBranch(target_repository), source, start_revid)
 
 
-def push(target, source, revision_id, validate=False):
+def push(target, source, revision_id):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
@@ -674,8 +673,6 @@ def push(target, source, revision_id, validate=False):
     :param target: Branch to push to
     :param source: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
-    :param validate: Whether to check the committed revision matches 
-        the source revision.
     """
     assert isinstance(source, Branch)
     rev = source.repository.get_revision(revision_id)
@@ -697,7 +694,6 @@ def push(target, source, revision_id, validate=False):
                                    rev.timezone, rev.committer, rev.properties, 
                                    revision_id, base_tree.inventory)
                              
-        builder.new_inventory = source.repository.get_inventory(revision_id)
         replay_delta(builder, base_tree, old_tree)
     finally:
         source.unlock()
@@ -710,7 +706,7 @@ def push(target, source, revision_id, validate=False):
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
 
-    if validate:
+    if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
         treedelta = ctree.changes_from(old_tree)
@@ -771,7 +767,6 @@ class InterToSvnRepository(InterRepository):
                                    rev.timestamp, rev.timezone, rev.committer,
                                    rev.properties, revision_id, base_tree.inventory)
                              
-                builder.new_inventory = self.source.get_inventory(revision_id)
                 replay_delta(builder, base_tree, old_tree)
                 builder.commit(rev.message)
         finally:

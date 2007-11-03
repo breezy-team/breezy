@@ -1,4 +1,6 @@
-bzr-svn 0.4.4	UNRELEASED
+bzr-svn 0.4.5	UNRELEASED
+
+bzr-svn 0.4.4	2007-11-02
 
   PERFORMANCE
 
@@ -70,6 +72,10 @@ bzr-svn 0.4.4	UNRELEASED
      of directories containing files. (#153347)
 
    * Handle special characters in committer name correctly. (#158347)
+
+   * Avoid crashes on sending empty diffs over http/svn+SCHEME (#159111)
+
+   * Decent progress bar for "svn-import". (#127933)
 
   DOCUMENTATION
 
