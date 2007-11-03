@@ -56,10 +56,11 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             inv = inventory.Inventory(revision_id='revision-id')
             inv.root.revision = 'revision-id'
             inv_sha1 = repo.add_inventory('revision-id', inv, [])
-            root_id = inv.root.file_id
-            vf = repo.weave_store.get_weave_or_empty(root_id,
-                repo.get_transaction())
-            vf.add_lines('revision-id', [], [])
+            if repo.supports_rich_root():
+                root_id = inv.root.file_id
+                vf = repo.weave_store.get_weave_or_empty(root_id,
+                    repo.get_transaction())
+                vf.add_lines('revision-id', [], [])
             revision = _mod_revision.Revision('revision-id',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1=inv_sha1, timezone=0, message='message',

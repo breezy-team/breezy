@@ -259,10 +259,10 @@ class RemoteRepository(object):
         self._lock_count = 0
         self._leave_lock = False
         # for tests
-        self._reconcile_does_inventory_gc = True
-        self._reconcile_fixes_text_parents = True
-        # This depends on the actual remote format, so force it off for maximum
+        # These depend on the actual remote format, so force it off for maximum
         # compatibility.
+        self._reconcile_does_inventory_gc = False
+        self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
 

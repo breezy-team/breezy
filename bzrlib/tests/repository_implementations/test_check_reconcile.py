@@ -58,10 +58,11 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         """
         inv.revision_id = revision_id
         inv.root.revision = revision_id
-        root_id = inv.root.file_id
-        vf = repo.weave_store.get_weave_or_empty(root_id,
-            repo.get_transaction())
-        vf.add_lines(revision_id, [], [])
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines(revision_id, [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
             timestamp=0, inventory_sha1='', timezone=0, message='foo',
