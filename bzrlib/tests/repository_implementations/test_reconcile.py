@@ -323,10 +323,11 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-secondary-parent')
         inv.root.revision = 'wrong-secondary-parent'
-        root_id = inv.root.file_id
-        vf = repo.weave_store.get_weave_or_empty(root_id,
-            repo.get_transaction())
-        vf.add_lines('wrong-secondary-parent', [], [])
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines('wrong-secondary-parent', [], [])
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,

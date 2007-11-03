@@ -188,7 +188,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         self.require_repo_suffers_text_parent_corruption(repo)
         check_result = repo.check()
         check_result.report_results(verbose=True)
-        for pattern in scenario.check_regexes():
+        for pattern in scenario.check_regexes(repo):
             self.assertContainsRe(
                 self._get_log(keep_log_file=True),
                 pattern)
