@@ -1391,3 +1391,6 @@ class TestNewPack(TestCaseWithTransport):
 
 class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
+
+    # To date, this class has been factored out and nothing new added to it;
+    # thus there are not yet any tests.

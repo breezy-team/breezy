@@ -1535,8 +1535,9 @@ class KnitPackRepository(KnitRepository):
                     tuple(parent[0] for parent in refs[0])))
                 pb.update("Reading revision index.", 0, 0)
             index_positions.sort()
-            total = len(index_positions) / 1000 + 1
-            for offset in xrange(total):
+            batch_count = len(index_positions) / 1000 + 1
+            pb.update("Checking cached revision graph.", 0, batch_count)
+            for offset in xrange(batch_count):
                 pb.update("Checking cached revision graph.", offset)
                 to_query = index_positions[offset * 1000:(offset + 1) * 1000]
                 if not to_query:

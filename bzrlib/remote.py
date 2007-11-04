@@ -258,9 +258,11 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        # for tests
-        # These depend on the actual remote format, so force it off for maximum
-        # compatibility.
+        # For tests:
+        # These depend on the actual remote format, so force them off for
+        # maximum compatibility. XXX: In future these should depend on the
+        # remote repository instance, but this is irrelevant until we perform
+        # reconcile via an RPC call.
         self._reconcile_does_inventory_gc = False
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False

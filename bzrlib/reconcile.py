@@ -484,20 +484,23 @@ class PackReconciler(RepoReconciler):
                     collection, packs, ".reconcile", all_revisions)
                 new_pack = self._packer.pack(pb=self.pb)
                 if new_pack is not None:
-                    self._discard_packs(packs)
+                    self._discard_and_save(packs)
             else:
                 # only make a new pack when there is data to copy.
-                self._discard_packs(packs)
+                self._discard_and_save(packs)
             self.garbage_inventories = total_inventories - len(list(
                 collection.inventory_index.combined_index.iter_all_entries()))
         finally:
             collection._unlock_names()
 
-    def _discard_packs(self, packs):
+    def _discard_and_save(self, packs):
         """Discard some packs from the repository.
 
-        This removes them from the memory index and renames them into the
+        This removes them from the memory index, saves the in-memory index
+        which makes the newly reconciled pack visible and hides the packs to be
+        discarded, and finally renames the packs being discarded into the
         obsolete packs directory.
+
         :param packs: The packs to discard.
         """
         for pack in packs:
