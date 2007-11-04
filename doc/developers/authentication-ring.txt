@@ -70,7 +70,8 @@ pass-phrases, but the mechanisms presented *can* be used to provide users.
 Authentication definitions
 --------------------------
 
-There are two kinds of authentication used by the various schemes:
+There are two kinds of authentication used by the various schemes supported by
+bzr:
 
 1. user and password
 
@@ -109,7 +110,7 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``port`` can be empty (useful when an host provides several servers for the
     same scheme), only numerical values are allowed, this should be used only
-    when the server use a port different than the scheme standard port,
+    when the server uses a port different than the scheme standard port,
 
   * ``path``: can be empty (FTP or SFTP will never user it),
 
@@ -137,8 +138,8 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
  3. ``scheme`` matches even if decorators are used in the requested URL,
 
  4. ``host`` matches exactly or act as a domain if it starts with '.'
-   (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
-   will not match ``bzr.sf.net``).
+    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
+    will not match ``bzr.sf.net``).
 
  5. ``port`` matches if included in the requested URL (exact matches only)
 
@@ -188,7 +189,7 @@ reasons:
 ``~/.bazaar/authentication.conf`` will use the same file format than
 ``~/.bazaar/bazaar.conf``.
 
-Each section will define an authentication definition.
+Each section describes an authentication definition.
 
 The section name is an arbitrary string, only the ``DEFAULT`` value is reserved
 and should appear as the *last* section.

@@ -236,13 +236,6 @@ class Config(object):
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
-        v = os.environ.get('BZREMAIL')
-        if v:
-            # FIXME: Seems to have been deprecated since more than a year now,
-            # time to delete ? -- vila 20071019
-            trace.warning('BZREMAIL is deprecated in favor of BZR_EMAIL.'
-                          ' Please update your configuration.')
-            return v.decode(bzrlib.user_encoding)
 
         v = self._get_user_id()
         if v:
@@ -947,13 +940,13 @@ class AuthenticationConfig(object):
     """
 
     def __init__(self, _file=None):
-        super(AuthenticationConfig, self).__init__()
         self._config = None # The ConfigObj
         if _file is None:
-            self._get_filename = authentication_config_filename
-            self._input = self._get_filename()
+            self._filename = authentication_config_filename()
+            self._input = self._filename = authentication_config_filename()
         else:
-            self._get_filename = None
+            # Tests can provide a string as _file
+            self._filename = None
             self._input = _file
 
     def _get_config(self):
@@ -1049,10 +1042,9 @@ class AuthenticationConfig(object):
             if a_user is None:
                 # Can't find a user
                 continue
-            credentials = {'name': auth_def_name,
-                           'user': a_user, 'password': auth_def['password'],
-                           'verify_certificates': a_verify_certificates,
-                           }
+            credentials = dict(name=auth_def_name,
+                               user=a_user, password=auth_def['password'],
+                               verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
             if 'auth' in debug.debug_flags:

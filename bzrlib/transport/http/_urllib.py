@@ -79,11 +79,16 @@ class HttpTransport_urllib(HttpTransportBase):
             # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
             user = self._user
             password = self._password
+            auth = dict(host=self._host, port=self._port,
+                        user=user, password=password,
+                        protocol=self._unqualified_scheme,
+                        path=self._path)
             auth = {'host': self._host, 'port': self._port,
                     'user': user, 'password': password,
                     'protocol': self._unqualified_scheme,
                     'path': self._path}
             # Proxy initialization will be done by first proxied request
+            proxy_auth = dict()
             proxy_auth = {}
         # Ensure authentication info is provided
         request.auth = auth
