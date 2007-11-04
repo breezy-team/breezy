@@ -490,7 +490,12 @@ class Packer(object):
         self.packs = packs
         self.suffix = suffix
         self.revision_ids = revision_ids
+        # The pack object we are creating.
+        self.new_pack = None
         self._pack_collection = pack_collection
+        # The index layer keys for the revisions being copied. None for 'all
+        # objects'.
+        self._revision_keys = None
 
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
@@ -535,9 +540,33 @@ class Packer(object):
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix)
 
+    def _copy_revision_texts(self):
+        """Copy revision data to the new pack."""
+        # select revisions
+        if self.revision_ids:
+            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
+        else:
+            revision_keys = None
+        # select revision keys
+        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'revision_index')[0]
+        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
+        # copy revision keys and adjust values
+        self.pb.update("Copying revision texts", 1)
+        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
+            self.new_pack._writer, self.new_pack.revision_index))
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.revision_index.key_count(),
+                time.time() - self.new_pack.start_time)
+        self._revision_keys = revision_keys
+
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
-        new_pack = self.open_pack()
+        self.new_pack = self.open_pack()
+        new_pack = self.new_pack
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024*1024)
@@ -552,27 +581,9 @@ class Packer(object):
                 '%s%s %s revisions wanted %s t=0',
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 plain_pack_list, rev_count)
-        # select revisions
-        if self.revision_ids:
-            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
-        else:
-            revision_keys = None
-
-        # select revision keys
-        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'revision_index')[0]
-        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
-        # copy revision keys and adjust values
-        self.pb.update("Copying revision texts", 1)
-        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
-            new_pack._writer, new_pack.revision_index))
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                new_pack.revision_index.key_count(),
-                time.time() - new_pack.start_time)
+        self._copy_revision_texts()
         # select inventory keys
-        inv_keys = revision_keys # currently the same keyspace, and note that
+        inv_keys = self._revision_keys # currently the same keyspace, and note that
         # querying for keys here could introduce a bug where an inventory item
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
@@ -631,7 +642,7 @@ class Packer(object):
                 new_pack.text_index.key_count(),
                 time.time() - new_pack.start_time)
         # select signature keys
-        signature_filter = revision_keys # same keyspace
+        signature_filter = self._revision_keys # same keyspace
         signature_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
             self.packs, 'signature_index')[0]
         signature_nodes = self._pack_collection._index_contents(signature_index_map,
