@@ -30,6 +30,11 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
    * Wrap medusa ftp test server as an FTPServer feature.
      (Vincent Ladeuil, #157752)
 

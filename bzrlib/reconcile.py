@@ -78,6 +78,7 @@ class Reconciler(object):
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
+        self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories

@@ -29,9 +29,7 @@ from bzrlib.tests.tree_implementations import TestCaseWithTree
 class TestGetSymlinkTarget(TestCaseWithTree):
 
     def get_tree_with_symlinks(self):
-        if not osutils.has_symlinks():
-            raise tests.TestSkipped('platform does not support symlinks.')
-
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')

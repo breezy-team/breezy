@@ -167,7 +167,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
+        raise TestSkipped('XXX branch cloning is not yet tested.')
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
