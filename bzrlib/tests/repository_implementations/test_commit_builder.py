@@ -213,11 +213,15 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(rev_id, basis_tree.inventory.root.revision)
 
     def _get_revtrees(self, tree, revision_ids):
-        trees = list(tree.branch.repository.revision_trees(revision_ids))
-        for tree in trees:
-            tree.lock_read()
-            self.addCleanup(tree.unlock)
-        return trees
+        tree.lock_read()
+        try:
+            trees = list(tree.branch.repository.revision_trees(revision_ids))
+            for _tree in trees:
+                _tree.lock_read()
+                self.addCleanup(_tree.unlock)
+            return trees
+        finally:
+            tree.unlock()
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
         # commiting without changing the root does not change the 

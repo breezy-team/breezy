@@ -61,7 +61,7 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual(None, repo.commit_write_group())
         repo.unlock()
 
-    def test_unlock_after_start_errors(self):
+    def test_unlock_in_write_group(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
@@ -69,9 +69,11 @@ class TestWriteGroup(TestCaseWithRepository):
         # really to be sure it's used right, not for signalling
         # semantic information.
         self.assertRaises(errors.BzrError, repo.unlock)
-        self.assertTrue(repo.is_locked())
-        repo.commit_write_group()
-        repo.unlock()
+        # after this error occurs, the repository is unlocked, and the write
+        # group is gone.  you've had your chance, and you blew it. ;-)
+        self.assertFalse(repo.is_locked())
+        self.assertRaises(errors.BzrError, repo.commit_write_group)
+        self.assertRaises(errors.BzrError, repo.unlock)
 
     def test_is_in_write_group(self):
         repo = self.make_repository('.')

@@ -22,11 +22,9 @@ import os
 
 from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
-from bzrlib.osutils import (
-    has_symlinks,
-    )
+from bzrlib.osutils import has_symlinks
 from bzrlib.symbol_versioning import zero_ninetyone
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
 
@@ -109,9 +107,9 @@ class TestEntryDiffing(TestCaseWithTree):
                           output)
         self.assertEqual(output.getvalue(), 
                          "Binary files /dev/null and new_label differ\n")
+
     def test_link_diff_deleted(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "old_label", self.tree_1,
@@ -121,8 +119,7 @@ class TestEntryDiffing(TestCaseWithTree):
                          "=== target was 'target1'\n")
 
     def test_link_diff_added(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "new_label", self.tree_1,
@@ -132,8 +129,7 @@ class TestEntryDiffing(TestCaseWithTree):
                          "=== target is 'target1'\n")
 
     def test_link_diff_changed(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "/dev/null", self.tree_1, 
@@ -222,8 +218,7 @@ class TestInventory(TestCaseWithTree):
         self.inv = self.tree.inventory
 
     def test_symlink_target(self):
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         self._set_up()
         if isinstance(self.tree, MutableTree):
             raise TestSkipped(
@@ -232,8 +227,7 @@ class TestInventory(TestCaseWithTree):
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink(self):
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         self._set_up()
         entry = self.inv[self.inv.path2id('symlink')]
         self.assertEqual(entry.kind, 'symlink')

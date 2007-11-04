@@ -23,7 +23,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
 # TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
@@ -31,9 +30,6 @@ from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
     )
-
-
-register_urlparse_netloc_protocol('http+urllib')
 
 
 class HttpTransport_urllib(HttpTransportBase):
@@ -113,7 +109,7 @@ class HttpTransport_urllib(HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
         if request.redirected_to is not None:

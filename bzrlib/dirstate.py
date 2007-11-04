@@ -337,6 +337,8 @@ class DirState(object):
         self._lock_token = None
         self._lock_state = None
         self._id_index = None
+        # a map from packed_stat to sha's.
+        self._packed_stat_index = None
         self._end_of_header = None
         self._cutoff_time = None
         self._split_path_cache = {}
@@ -1641,6 +1643,20 @@ class DirState(object):
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
         self._num_entries = int(num_entries_line[len('num_entries: '):-1])
 
+    def sha1_from_stat(self, path, stat_result, _pack_stat=pack_stat):
+        """Find a sha1 given a stat lookup."""
+        return self._get_packed_stat_index().get(_pack_stat(stat_result), None)
+
+    def _get_packed_stat_index(self):
+        """Get a packed_stat index of self._dirblocks."""
+        if self._packed_stat_index is None:
+            index = {}
+            for key, tree_details in self._iter_entries():
+                if tree_details[0][0] == 'f':
+                    index[tree_details[0][4]] = tree_details[0][1]
+            self._packed_stat_index = index
+        return self._packed_stat_index
+
     def save(self):
         """Save any pending changes created during this session.
 
@@ -1702,6 +1718,7 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._parents = list(parent_ids)
         self._id_index = None
+        self._packed_stat_index = None
 
     def set_path_id(self, path, new_id):
         """Change the id of path to new_id in the current working tree.
@@ -1987,6 +2004,7 @@ class DirState(object):
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = None
+        self._packed_stat_index = None
 
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
@@ -2019,7 +2037,7 @@ class DirState(object):
             if self._id_index is not None:
                 self._id_index[current_old[0][2]].remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
-        # existing details may either be the record we are making as deleted
+        # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
         # be relocations.
         for update_key in all_remaining_keys:
@@ -2295,6 +2313,7 @@ class DirState(object):
         self._ghosts = []
         self._dirblocks = []
         self._id_index = None
+        self._packed_stat_index = None
         self._end_of_header = None
         self._cutoff_time = None
         self._split_path_cache = {}
