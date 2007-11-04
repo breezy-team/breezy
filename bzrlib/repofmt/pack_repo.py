@@ -496,6 +496,9 @@ class Packer(object):
         # The index layer keys for the revisions being copied. None for 'all
         # objects'.
         self._revision_keys = None
+        # What text keys to copy. None for 'all texts'. This is set by
+        # _copy_inventory_texts
+        self._text_filter = None
 
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
@@ -563,6 +566,46 @@ class Packer(object):
                 time.time() - self.new_pack.start_time)
         self._revision_keys = revision_keys
 
+    def _copy_inventory_texts(self):
+        """Copy the inventory texts to the new pack.
+
+        self._revision_keys is used to determine what inventories to copy.
+
+        Sets self._text_filter appropriately.
+        """
+        # select inventory keys
+        inv_keys = self._revision_keys # currently the same keyspace, and note that
+        # querying for keys here could introduce a bug where an inventory item
+        # is missed, so do not change it to query separately without cross
+        # checking like the text key check below.
+        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'inventory_index')[0]
+        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
+        # copy inventory keys and adjust values
+        # XXX: Should be a helper function to allow different inv representation
+        # at this point.
+        self.pb.update("Copying inventory texts", 2)
+        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
+            self.new_pack._writer, self.new_pack.inventory_index, output_lines=True)
+        if self.revision_ids:
+            fileid_revisions = self._pack_collection.repo._find_file_ids_from_xml_inventory_lines(
+                inv_lines, self.revision_ids)
+            text_filter = []
+            for fileid, file_revids in fileid_revisions.iteritems():
+                text_filter.extend(
+                    [(fileid, file_revid) for file_revid in file_revids])
+        else:
+            # eat the iterator to cause it to execute.
+            list(inv_lines)
+            text_filter = None
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.inventory_index.key_count(),
+                time.time() - new_pack.start_time)
+        self._text_filter = text_filter
+
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -582,41 +625,13 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 plain_pack_list, rev_count)
         self._copy_revision_texts()
-        # select inventory keys
-        inv_keys = self._revision_keys # currently the same keyspace, and note that
-        # querying for keys here could introduce a bug where an inventory item
-        # is missed, so do not change it to query separately without cross
-        # checking like the text key check below.
-        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'inventory_index')[0]
-        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
-        # copy inventory keys and adjust values
-        # XXX: Should be a helper function to allow different inv representation
-        # at this point.
-        self.pb.update("Copying inventory texts", 2)
-        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            new_pack._writer, new_pack.inventory_index, output_lines=True)
-        if self.revision_ids:
-            fileid_revisions = self._pack_collection.repo._find_file_ids_from_xml_inventory_lines(
-                inv_lines, self.revision_ids)
-            text_filter = []
-            for fileid, file_revids in fileid_revisions.iteritems():
-                text_filter.extend(
-                    [(fileid, file_revid) for file_revid in file_revids])
-        else:
-            # eat the iterator to cause it to execute.
-            list(inv_lines)
-            text_filter = None
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+        self._copy_inventory_texts()
         # select text keys
         text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
             self.packs, 'text_index')[0]
-        text_nodes = self._pack_collection._index_contents(text_index_map, text_filter)
-        if text_filter is not None:
+        text_nodes = self._pack_collection._index_contents(text_index_map,
+            self._text_filter)
+        if self._text_filter is not None:
             # We could return the keys copied as part of the return value from
             # _copy_nodes_graph but this doesn't work all that well with the
             # need to get line output too, so we check separately, and as we're
@@ -625,7 +640,7 @@ class Packer(object):
             # mising records.
             text_nodes = set(text_nodes)
             present_text_keys = set(_node[1] for _node in text_nodes)
-            missing_text_keys = set(text_filter) - present_text_keys
+            missing_text_keys = set(self._text_filter) - present_text_keys
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
                 # keys.
