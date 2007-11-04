@@ -966,10 +966,9 @@ class AuthenticationConfig(object):
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
-        file_name = self._get_filename()
-        conf_dir = os.path.dirname(file_name)
+        conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        self._get_config().write(file(file_name, 'wb'))
+        self._get_config().write(file(self._filename, 'wb'))
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""

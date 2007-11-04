@@ -79,13 +79,8 @@ class HttpTransport_urllib(HttpTransportBase):
                         user=user, password=password,
                         protocol=self._unqualified_scheme,
                         path=self._path)
-            auth = {'host': self._host, 'port': self._port,
-                    'user': user, 'password': password,
-                    'protocol': self._unqualified_scheme,
-                    'path': self._path}
             # Proxy initialization will be done by first proxied request
             proxy_auth = dict()
-            proxy_auth = {}
         # Ensure authentication info is provided
         request.auth = auth
         request.proxy_auth = proxy_auth
