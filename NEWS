@@ -30,6 +30,11 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
    * New ``knitpack-experimental`` repository format. This is interoperable with
      the ``dirstate-tags`` format but uses a smarter storage design that greatly
      speeds up many operations, both local and remote. This new format can be
