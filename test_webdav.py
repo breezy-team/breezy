@@ -20,10 +20,13 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
+# TODO: Move the server into its own file
+
 # TODO: Implement the testing of the range header for PUT requests (GET request
 # are already heavily tested in bzr). Test servers are available there too.
 
 import errno
+import httplib
 import os
 import os.path
 import re
@@ -34,11 +37,20 @@ import sys
 import time
 import urlparse
 
-from bzrlib import trace
+from bzrlib import (
+    tests,
+    trace,
+    )
+from bzrlib.plugins.webdav import webdav
 from bzrlib.tests.HttpServer import (
     HttpServer,
     TestingHTTPRequestHandler,
     )
+from bzrlib.tests import (
+    HTTPTestUtil,
+    TestUtil,
+    )
+from bzrlib.transport.http import _urllib2_wrappers
 
 
 class TestingDAVRequestHandler(TestingHTTPRequestHandler):
@@ -52,34 +64,14 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
     _RANGE_HEADER_RE = re.compile(
         r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
 
-    # On Mac OS X >= 10.3 we get EAGAIN (resource temporary unavailable)...
-    # permanently :) when reading the client socket.  The following helps, but
-    # still, some tests fail with a "Broken pipe".  I guess it may be a problem
-    # in the test framework, but more investigations are still neeeded.
-    def _retry_if_not_available(self,func,*args):
-        if sys.platform != 'darwin':
-            return func(*args)
-        else:
-            for i in range(1,10):
-                try:
-                    if i > 1: trace.mutter('DAV request retry : [%d]' % i)
-                    return func(*args)
-                except socket.error, e:
-                    if e.args[0] == errno.EAGAIN:
-                        time.sleep(0.05)
-                        continue
-                    trace.mutter("Hmm, that's worse than I thought")
-                    raise
-            # Let's try a last time ant let it die naturally if it fails
-            return func(*args)
 
     def _read(self, length):
         """Read the client socket"""
-        return self._retry_if_not_available(self.rfile.read, length)
+        return self.rfile.read(length)
 
     def _readline(self):
         """Read a full line on the client socket"""
-        return self._retry_if_not_available(self.rfile.readline)
+        return self.rfile.readline()
 
     def read_body(self):
         """Read the body either by chunk or as a whole."""
@@ -411,3 +403,59 @@ class DAVServer_append(DAVServer):
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
+
+
+class TestCaseWithDAVServer(HTTPTestUtil.TestCaseWithTransport):
+    """A support class that provides urls that are http+webdav://.
+
+    This is done by forcing the server to be an http DAV one.
+    """
+    def setUp(self):
+        super(TestCaseWithDAVServer, self).setUp()
+        self.transport_server = DAVServer
+
+
+# The following classes are defined only to test TestBrokenPipeline, and
+# desmonstrate why urllib2 was *not* such a good design for our needs :-/
+# Bug filled as #160012.
+class BrokenDavResponse(webdav.DavResponse):
+
+    _body_ignored_responses = []
+
+
+class BrokenDavHTTPConnection(webdav.DavHTTPConnection):
+
+    response_class = BrokenDavResponse
+
+
+class BrokenDavConnectionHandler(webdav.DavConnectionHandler):
+
+    def http_request(self, request):
+        return self.capture_connection(request, BrokenDavHTTPConnection)
+
+class BrokenDavOpener(_urllib2_wrappers.Opener):
+
+    def __init__(self):
+        super(BrokenDavOpener, self).__init__(
+            connection=BrokenDavConnectionHandler)
+
+
+class BrokenDAVTransport(webdav.HttpDavTransport):
+
+    _opener_class = BrokenDavOpener
+
+
+class TestBrokenPipeline(TestCaseWithDAVServer):
+
+    def get_transport(self, relpath=None):
+        url = self.get_url(relpath)
+        t = BrokenDAVTransport(url)
+        return t
+
+    def test_wrong_pipeline_use(self):
+        import pdb; pdb.set_trace()
+        t = self.get_transport()
+        # put_bytes issues several requests to the server, so that's enough to
+        # get the pipeline dirty
+        self.assertRaises(httplib.ResponseNotReady,
+                          t.put_bytes, 'a', 'contents of a\n')

@@ -30,7 +30,7 @@ major, minor, micro, releaselevel = bzrlib.version_info[:4]
 if major != 0 or minor < 92:
     # We need bzr 0.92
     from bzrlib import trace
-    trace.note('not installing http+webdav:// support'
+    trace.note('not installing http[s]+webdav:// support'
                ' (only supported for bzr 0.92 and above)')
 else:
     from bzrlib import transport
@@ -42,3 +42,16 @@ else:
                                       'bzrlib.plugins.webdav.webdav',
                                       'HttpDavTransport')
 
+
+    def test_suite():
+        from bzrlib.tests import TestUtil
+
+        suite = TestUtil.TestSuite()
+        loader = TestUtil.TestLoader()
+        testmod_names = [
+            'test_webdav',
+            ]
+
+        suite.addTest(loader.loadTestsFromModuleNames(
+                ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        return suite

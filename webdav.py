@@ -84,6 +84,18 @@ This should enable remote push operations.
 
 # TODO: Factor out the error handling.
 
+# TODO: implement list_dir, it's currently used by the pack format
+# The pack format is still experimental but may become the default
+# format in the near future (2007-11-04).
+# 
+# list_dir is considered usable for writable transports:
+# 
+# <lifeless> there is no technical reason I know of yet to avoid
+#    list_dir for writable transports
+# <lifeless> I plan in a future packs format to see if we can remove list_dir
+# <lifeless> but for the current format there is no alternative
+# <lifeless> that isn't worse.
+
 # TODO: Implement the redirection scheme described in:
 # http://thread.gmane.org/gmane.comp.version-control.bazaar-ng.general/14881/
 
@@ -135,8 +147,18 @@ class DavResponse(_urllib2_wrappers.Response):
     """
     _body_ignored_responses = (
         _urllib2_wrappers.Response._body_ignored_responses
-        + [201, 204, 405, 409, 412,]
+        + [201, 405, 409, 412,]
         )
+
+    def  begin(self):
+        """Begin to read the response from the server.
+
+        httplib incorrectly close the connection far too easily. Let's try to
+        workaround that (as _urllib2 does, but for more cases...).
+        """
+        _urllib2_wrappers.Response.begin(self)
+        if self.status in (201, 204):
+            self.will_close = False
 
 # Takes DavResponse into account:
 class DavHTTPConnection(_urllib2_wrappers.HTTPConnection):
