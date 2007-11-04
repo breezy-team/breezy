@@ -1549,6 +1549,7 @@ class KnitPackRepository(KnitRepository):
         """
         assert self.is_locked()
         pb = ui.ui_factory.nested_progress_bar()
+        result = []
         try:
             revision_nodes = self._pack_collection.revision_index \
                 .combined_index.iter_all_entries()
@@ -1574,9 +1575,10 @@ class KnitPackRepository(KnitRepository):
                     index_parents = item[3]
                     rev_parents = tuple(revision.parent_ids)
                     if index_parents != rev_parents:
-                        yield (revision.revision_id, index_parents, rev_parents)
+                        result.append((revision.revision_id, index_parents, rev_parents))
         finally:
             pb.finished()
+        return result
 
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents.
