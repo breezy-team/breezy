@@ -191,6 +191,8 @@ IN DEVELOPMENT
      directory to detect leaking tests.
      (Vincent Ladeuil, #147986)
 
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
    * The basename, not the full path, is now used when checking whether
      the profiling dump file begins with ``callgrind.out`` or not. This
      fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
