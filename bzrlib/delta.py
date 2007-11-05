@@ -333,7 +333,7 @@ class _ChangeReporter(object):
                 # on a rename, we show old and new
                 old_path, path = paths
             else:
-                # if its not renamed, we're showing both for kind changes
+                # if it's not renamed, we're showing both for kind changes
                 # so only show the new path
                 old_path, path = paths[1], paths[1]
             # if the file is not missing in the source, we show its kind

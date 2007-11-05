@@ -1110,7 +1110,7 @@ class TransportTests(TestTransportImplementation):
 
         def new_url(scheme=None, user=None, password=None,
                     host=None, port=None, path=None):
-            """Build a new url from t.base chaging only parts of it.
+            """Build a new url from t.base changing only parts of it.
 
             Only the parameters different from None will be changed.
             """
@@ -1123,7 +1123,11 @@ class TransportTests(TestTransportImplementation):
             if path     is None: path     = t._path
             return t._unsplit_url(scheme, user, password, host, port, path)
 
-        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._scheme == 'ftp':
+            scheme = 'sftp'
+        else:
+            scheme = 'ftp'
+        self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
         if t._user == 'me':
             user = 'you'
         else:

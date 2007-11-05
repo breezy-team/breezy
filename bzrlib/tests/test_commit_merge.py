@@ -19,8 +19,8 @@ import os
 import shutil
 
 from bzrlib.tests import (
+    SymlinkFeature,
     TestCaseWithTransport,
-    TestSkipped,
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import PointlessCommit, BzrError
@@ -102,8 +102,7 @@ class TestCommitMerge(TestCaseWithTransport):
         by.repository.check([by.last_revision()])
 
     def test_merge_with_symlink(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         tree_a = self.make_branch_and_tree('tree_a')
         os.symlink('target', osutils.pathjoin('tree_a', 'link'))
         tree_a.add('link')

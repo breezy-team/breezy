@@ -57,7 +57,6 @@ from bzrlib.transport import (
     FileFileStream,
     _file_streams,
     local,
-    register_urlparse_netloc_protocol,
     Server,
     ssh,
     ConnectedTransport,
@@ -86,9 +85,6 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-
-
-register_urlparse_netloc_protocol('sftp')
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))

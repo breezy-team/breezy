@@ -28,7 +28,7 @@ class TestSprout(TestCaseWithBranch):
 
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
-        raise tests.TestSkipped('XXX branch sprouting is not yet tested..')
+        raise tests.TestSkipped('XXX branch sprouting is not yet tested.')
 
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')

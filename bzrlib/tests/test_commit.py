@@ -30,7 +30,7 @@ from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -584,8 +584,7 @@ class TestCommit(TestCaseWithTransport):
             basis.unlock()
 
     def test_commit_kind_changes(self):
-        if not osutils.has_symlinks():
-            raise tests.TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
         tree.add('name', 'a-file-id')

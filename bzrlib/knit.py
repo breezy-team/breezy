@@ -836,7 +836,7 @@ class KnitVersionedFile(VersionedFile):
                 if method == 'fulltext':
                     next = None
                 else:
-                    next = self.get_parents(cursor)[0]
+                    next = self.get_parents_with_ghosts(cursor)[0]
                 index_memo = self._index.get_position(cursor)
                 component_data[cursor] = (method, index_memo, next)
                 cursor = next
@@ -1984,7 +1984,8 @@ class _PackAccess(object):
 
     def set_writer(self, writer, index, (transport, packname)):
         """Set a writer to use for adding data."""
-        self.indices[index] = (transport, packname)
+        if index is not None:
+            self.indices[index] = (transport, packname)
         self.container_writer = writer
         self.write_index = index
 

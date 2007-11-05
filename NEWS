@@ -30,6 +30,23 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
+   * New ``knitpack-experimental`` repository format. This is interoperable with
+     the ``dirstate-tags`` format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. This new format can be
+     used as an option to the ``init``, ``init-repository`` and ``upgrade``
+     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     for further details. (Robert Collins)
+
+   * For users of bzr-svn (and those testing the prototype subtree support) that
+     wish to try packs, a new ``knitpack-subtree-experimental`` format has also
+     been added. This is interoperable with the ``dirstate-subtrees`` format.
+     (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -39,6 +56,10 @@ IN DEVELOPMENT
      remote bzr locations than BZR_REMOTE_PATH environment variable.
      (Aaron Bentley)
 
+   * New ``launchpad-login`` command to tell Bazaar your Launchpad
+     user ID.  This can then be used by other functions of the
+     Launchpad plugin. (James Henstridge)
+
   PERFORMANCE:
 
    * Commit in quiet mode is now slightly faster as the information to
@@ -47,15 +68,18 @@ IN DEVELOPMENT
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
 
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
      changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
 
-   * Commit updates the state of the working tree via a delta rather than
-     supplying entirely new basis trees. For commit of a single specified file
-     this reduces the wall clock time for commit by roughly a 30%.
-     (Robert Collins, Martin Pool)
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
 
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
@@ -70,6 +94,9 @@ IN DEVELOPMENT
 
    * Partial commits are now approximately 40% faster by walking over the
      unselected current tree more efficiently. (Robert Collins)
+
+   * Revert takes out an appropriate lock when reverting to a basis tree, and
+     does not read the basis inventory twice. (Robert Collins)
 
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
@@ -91,11 +118,27 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+   * Experimental directory formats can now be marked with
+     ``experimental = True`` during registration. (Ian Clatworthy)
+
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
 
+   * The hooks reference documentation is now converted to html as expected.
+     (Ian Clatworthy)
+
   BUG FIXES:
+
+   * A progress bar has been added for knitpack -> knitpack fetching.
+     (Robert Collins, #157789)
+
+   * Connection error reporting for the smart server has been fixed to
+     display a user friendly message instead of a traceback.
+     (Ian Clatworthy, #115601)
+
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
 
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
@@ -145,6 +188,8 @@ IN DEVELOPMENT
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
 
+   * Fix ``Inventory.copy()`` and add test for it. (Jelmer Vernooij)
+
    * Handles default value for ListOption in cmd_commit.
      (Vincent Ladeuil, #140432)
 
@@ -156,6 +201,8 @@ IN DEVELOPMENT
      directory to detect leaking tests.
      (Vincent Ladeuil, #147986)
 
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
    * The basename, not the full path, is now used when checking whether
      the profiling dump file begins with ``callgrind.out`` or not. This
      fixes a bug reported by Aaron Bentley on IRC. (Ian Clatworthy)
@@ -165,6 +212,9 @@ IN DEVELOPMENT
 
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
+
+   * Wrap medusa ftp test server as an FTPServer feature.
+     (Vincent Ladeuil, #157752)
 
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
@@ -277,6 +327,9 @@ IN DEVELOPMENT
      boolean indicating whether a new file graph node was recorded.
      (Robert Collins)
 
+   * The python path used in the Makefile can now be overridden.
+     (Andrew Bennetts, Ian Clatworthy)
+
   TESTING:
 
    * New transport implementation ``trace+`` which is useful for testing,
@@ -287,6 +340,9 @@ IN DEVELOPMENT
      up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
      makes this behavior available to other users.
      (Martin Pool)
+
+   * New method ``TestCase.call_catch_warnings`` for testing methods that 
+     raises a Python warning.  (Martin Pool)
 
 
 bzr 0.91 2007-09-26
