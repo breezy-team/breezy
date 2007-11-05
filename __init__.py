@@ -85,30 +85,39 @@ def collapse_by_author(committers):
             for revs, email, fname in counter_to_info.values()), reverse=True)
 
 
-def get_info(a_repo, revision):
-    """Get all of the information for a particular revision"""
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+def sort_by_committer(a_repo, revids):
     committers = {}
-    a_repo.lock_read()
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
-        pb.note('getting ancestry')
-        ancestry = a_repo.get_ancestry(revision)[1:]
         pb.note('getting revisions')
-        revisions = a_repo.get_revisions(ancestry)
-
+        revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
-            pb.update('checking', count, len(ancestry))
+            pb.update('checking', count, len(revids))
             try:
                 email = extract_email_address(rev.committer)
             except errors.BzrError:
                 email = rev.committer
             committers.setdefault(email, []).append(rev)
     finally:
+        pb.finished()
+    
+    return committers
+
+
+def get_info(a_repo, revision):
+    """Get all of the information for a particular revision"""
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    a_repo.lock_read()
+    try:
+        pb.note('getting ancestry')
+        ancestry = a_repo.get_ancestry(revision)[1:]
+
+        committers = sort_by_committer(a_repo, ancestry)
+    finally:
         a_repo.unlock()
         pb.finished()
 
-    info = collapse_by_author(committers)
-    return info
+    return collapse_by_author(committers)
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
