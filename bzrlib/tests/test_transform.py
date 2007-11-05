@@ -33,9 +33,14 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            PathsNotVersionedError, ExistingLimbo,
                            ExistingPendingDeletion, ImmortalLimbo,
                            ImmortalPendingDeletion, LockError)
-from bzrlib.osutils import file_kind, has_symlinks, pathjoin
+from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
-from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCase,
+    TestCaseInTempDir,
+    TestSkipped,
+    )
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
@@ -385,8 +390,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         replace.apply()
 
     def test_symlinks(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         transform,root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
         wizard = transform.new_symlink('wizard', oz_id, 'wizard-target', 
@@ -1055,8 +1059,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.wt.revert()
 
     def test_file_merge(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -1165,8 +1168,7 @@ class TestTransformMerge(TestCaseInTempDir):
 class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_build_tree(self):
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
@@ -1220,8 +1222,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_symlink_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
         source.add('symlink', 'new-symlink')

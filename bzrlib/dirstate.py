@@ -1278,7 +1278,9 @@ class DirState(object):
         pairs.
 
         :param adds: A sequence of adds. Each add is a tuple:
-            (None, new_path_utf8, file_id, (entry_details))
+            (None, new_path_utf8, file_id, (entry_details), real_add). real_add
+            is False when the add is the second half of a remove-and-reinsert
+            pair created to handle renames and deletes.
         """
         # Adds are accumulated partly from renames, so can be in any input
         # order - sort it.
@@ -1329,7 +1331,7 @@ class DirState(object):
         They may be deletes, or renames that have been split into add/delete
         pairs.
 
-        :param adds: A sequence of deletes. Each delete is a tuple:
+        :param deletes: A sequence of deletes. Each delete is a tuple:
             (old_path_utf8, new_path_utf8, file_id, None, real_delete).
             real_delete is True when the desired outcome is an actual deletion
             rather than the rename handling logic temporarily deleting a path

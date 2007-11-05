@@ -30,6 +30,11 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
    * New ``knitpack-experimental`` repository format. This is interoperable with
      the ``dirstate-tags`` format but uses a smarter storage design that greatly
      speeds up many operations, both local and remote. This new format can be
@@ -63,6 +68,11 @@ IN DEVELOPMENT
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
 
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
    * Commit with many automatically found deleted paths no longer performs
      linear scanning for the children of those paths during inventory
      iteration. This should fix commit performance blowing out when many such
@@ -72,11 +82,6 @@ IN DEVELOPMENT
      files in the tree is faster by utilising the data about whether files are
      changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
-
-   * Commit updates the state of the working tree via a delta rather than
-     supplying entirely new basis trees. For commit of a single specified file
-     this reduces the wall clock time for commit by roughly a 30%.
-     (Robert Collins, Martin Pool)
 
    * Fetch with pack repositories will no longer read the entire history graph.
      (Robert Collins, #88319)
@@ -136,6 +141,13 @@ IN DEVELOPMENT
    * Connection error reporting for the smart server has been fixed to
      display a user friendly message instead of a traceback.
      (Ian Clatworthy, #115601)
+
+   * Don't catch the exceptions related to the http pipeline status before
+     retrying an http request or some programming errors may be masked.
+     (Vincent Ladeuil, #160012)
+
+   * Don't use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
 
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
@@ -197,6 +209,8 @@ IN DEVELOPMENT
    * Monitor the .bzr directory created in the top level test
      directory to detect leaking tests.
      (Vincent Ladeuil, #147986)
+
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
 
    * The basename, not the full path, is now used when checking whether
      the profiling dump file begins with ``callgrind.out`` or not. This

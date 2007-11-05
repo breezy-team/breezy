@@ -29,7 +29,6 @@ from bzrlib import (
 from bzrlib.tests import (
         StringIOWrapper,
         TestCase, 
-        TestSkipped,
         )
 
 

@@ -1385,6 +1385,12 @@ class cmd_diff(Command):
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
+    :Exit values:
+        1 - changed
+        2 - unrepresentable changes
+        3 - error
+        0 - no change
+
     :Examples:
         Shows the difference in the working tree versus the last commit::
 
@@ -2384,7 +2390,7 @@ class cmd_check(Command):
                 try:
                     repo_basis = tree.branch.repository.revision_tree(
                         tree.last_revision())
-                    if len(list(tree_basis._iter_changes(repo_basis))):
+                    if len(list(repo_basis._iter_changes(tree_basis))):
                         raise errors.BzrCheckError(
                             "Mismatched basis inventory content.")
                     tree._validate()
