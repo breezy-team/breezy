@@ -639,8 +639,12 @@ class SvnRepository(Repository):
             rev.committer = ""
 
         rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
+
         if rev.message:
-            rev.message = rev.message.decode("utf-8")
+            try:
+                rev.message = rev.message.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
 
         if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
             rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
