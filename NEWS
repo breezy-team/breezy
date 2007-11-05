@@ -13,6 +13,11 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
   PERFORMANCE:
 
    * Fetch with pack repositories will no longer read the entire history graph.

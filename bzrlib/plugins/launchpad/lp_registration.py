@@ -21,8 +21,11 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-import bzrlib.config
-import bzrlib.errors as errors
+from bzrlib import (
+    config,
+    errors,
+    __version__ as _bzrlib_version,
+    )
 
 # for testing, do
 '''
@@ -53,7 +56,7 @@ class LaunchpadService(object):
             else:
                 transport = xmlrpclib.Transport()
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
-                    % (bzrlib.__version__, xmlrpclib.__version__)
+                    % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
 
 
@@ -92,12 +95,17 @@ class LaunchpadService(object):
 
     def gather_user_credentials(self):
         """Get the password from the user."""
-        config = bzrlib.config.GlobalConfig()
+        config = config.GlobalConfig()
         self.registrant_email = config.user_email()
         if self.registrant_password is None:
+            auth = config.AuthenticationConfig()
+            scheme, hostinfo = urlsplit(self.service_url)[:2]
             prompt = 'launchpad.net password for %s: ' % \
                     self.registrant_email
-            self.registrant_password = getpass(prompt)
+            # We will reuse http[s] credentials if we can, prompt user
+            # otherwise
+            self.registrant_password = auth.get_password(scheme, hostinfo,
+                                                         prompt=prompt)
 
     def send_request(self, method_name, method_params):
         proxy = self.get_proxy()
