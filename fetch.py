@@ -438,7 +438,11 @@ class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
 
 
 def get_revision_build_editor(repository):
-    """Obtain a RevisionBuildEditor for a particular target repository."""
+    """Obtain a RevisionBuildEditor for a particular target repository.
+    
+    :param repository: Repository to obtain the buildeditor for.
+    :return: Class object of class descending from RevisionBuildEditor
+    """
     if hasattr(repository, '_packs'):
         return PackRevisionBuildEditor
     return WeaveRevisionBuildEditor
