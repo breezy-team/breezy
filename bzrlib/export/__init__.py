@@ -92,7 +92,11 @@ def export(tree, dest, format=None, root=None):
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
-    return _exporters[format](tree, dest, root)
+    tree.lock_read()
+    try:
+        return _exporters[format](tree, dest, root)
+    finally:
+        tree.unlock()
 
 
 def get_root_name(dest):
