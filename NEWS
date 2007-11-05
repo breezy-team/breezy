@@ -68,6 +68,11 @@ IN DEVELOPMENT
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
 
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are
      changed to determine if the tree is unchanged rather than recalculating
