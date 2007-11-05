@@ -117,7 +117,7 @@ class cmd_rebase(Command):
                             workingtree_replay, write_rebase_plan,
                             regenerate_default_revid,
                             rebase_todo)
-        wt = WorkingTree.open(".")
+        wt = WorkingTree.open_containing(".")[0]
         wt.lock_write()
         if upstream_location is None:
             upstream_location = wt.branch.get_parent()
