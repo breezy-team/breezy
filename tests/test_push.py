@@ -471,6 +471,18 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals(u"Adeodato Simó <dato@net.com.org.es>", 
                 Repository.open(repos_url).get_revision(revid1).committer)
 
+    def test_utf8_commit_msg(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/foo.txt': "foo"})
+        bzrwt.add("foo.txt")
+        revid1 = bzrwt.commit(u"Do á commït")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newdir.import_branch(bzrwt.branch)
+        self.assertEquals(u"Do á commït",
+                Repository.open(repos_url).get_revision(revid1).message)
+
     def test_multiple_part_exists(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/myfile': "data", 'dc/branches': None})

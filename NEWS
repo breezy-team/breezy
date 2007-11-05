@@ -1,5 +1,15 @@
 bzr-svn 0.4.5	UNRELEASED
 
+  INTERNALS
+
+   * No longer store svn:author, svn:date and svn:log in the bzr-svn cache. 
+     This should make it easier to use bzr-specific revprops later on and 
+	 saves some disk space.
+
+  BUG FIXES
+
+   * Properly decode unicode commit messages. 
+
 bzr-svn 0.4.4	2007-11-02
 
   PERFORMANCE

@@ -475,6 +475,11 @@ class SvnRaTransport(Transport):
         return has_attr(svn.ra, 'get_commit_editor3')
 
     @convert_svn_error
+    def revprop_list(self, revnum, pool=None):
+        self.mutter('svn revprop-list -r %r' % revnum)
+        return svn.ra.rev_proplist(self._ra, revnum, pool)
+
+    @convert_svn_error
     def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         self._open_real_transport()
         self._mark_busy()

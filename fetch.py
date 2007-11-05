@@ -38,6 +38,27 @@ from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
 from tree import apply_txdelta_handler
 
 
+def _escape_commit_message(message):
+    """Replace xml-incompatible control characters."""
+    if message is None:
+        return None
+    import re
+    # FIXME: RBC 20060419 this should be done by the revision
+    # serialiser not by commit. Then we can also add an unescaper
+    # in the deserializer and start roundtripping revision messages
+    # precisely. See repository_implementations/test_repository.py
+    
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    message, _ = re.subn(
+        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        lambda match: match.group(0).encode('unicode_escape'),
+        message)
+    return message
+
+
 def md5_strings(strings):
     """Return the MD5sum of the concatenation of strings.
 
@@ -88,18 +109,25 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
-        _svn_revprops = self.source._log.get_revision_info(self.revnum)
-        if _svn_revprops[2] is not None:
+        svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
             rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-                _svn_revprops[2], None) #date
+                svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
         else:
             rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
 
-        rev.committer = _svn_revprops[0] # author
-        if rev.committer is None:
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+            rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
+        else:
             rev.committer = ""
-        rev.message = _svn_revprops[1] # message
+        rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
+        if rev.message is not None:
+            assert isinstance(rev.message, str)
+            try:
+                rev.message = rev.message.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
 
         if self._revinfo:
             parse_revision_metadata(self._revinfo, rev)
@@ -402,6 +430,8 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
     def _finish_commit(self):
         rev = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
+        # Escaping the commit message is really the task of the serialiser
+        rev.message = _escape_commit_message(rev.message)
         rev.inventory_sha1 = osutils.sha_string(
                 self.target.serialise_inventory(self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
@@ -438,7 +468,11 @@ class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
 
 
 def get_revision_build_editor(repository):
-    """Obtain a RevisionBuildEditor for a particular target repository."""
+    """Obtain a RevisionBuildEditor for a particular target repository.
+    
+    :param repository: Repository to obtain the buildeditor for.
+    :return: Class object of class descending from RevisionBuildEditor
+    """
     if hasattr(repository, '_packs'):
         return PackRevisionBuildEditor
     return WeaveRevisionBuildEditor
