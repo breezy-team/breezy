@@ -53,15 +53,13 @@ class LogWalker(object):
             self.db = cache_db
 
         self.db.executescript("""
-          create table if not exists revision(revno integer unique);
-          create unique index if not exists revision_revno on revision (revno);
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
           create index if not exists path_rev on changed_path(rev);
           create unique index if not exists path_rev_path on changed_path(rev, path);
           create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
         """)
         self.db.commit()
-        self.saved_revnum = self.db.execute("SELECT MAX(revno) FROM revision").fetchone()[0]
+        self.saved_revnum = self.db.execute("SELECT MAX(rev) FROM changed_path").fetchone()[0]
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
@@ -96,8 +94,6 @@ class LogWalker(object):
                 self.db.execute(
                      "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
                      (rev, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
-
-            self.db.execute("replace into revision (revno) values (?)", (rev,))
 
             self.saved_revnum = rev
             if self.saved_revnum % 1000 == 0:
