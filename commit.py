@@ -34,7 +34,11 @@ from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
                         generate_revision_metadata, SvnRepositoryFormat, 
-                        SvnRepository)
+                        SvnRepository,
+                        SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
+                        SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
+                        SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
+                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_TIMEZONE)
 import urllib
 
 
@@ -105,6 +109,16 @@ class SvnCommitBuilder(RootCommitBuilder):
             timestamp, timezone, committer, revprops)
         self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
 
+        self._svn_revprops = {
+            SVN_REVPROP_BZR_FILEIDS: "",
+            SVN_REVPROP_BZR_TIMESTAMP: timestamp,
+            SVN_REVPROP_BZR_TIMEZONE: timezone,
+            SVN_REVPROP_BZR_COMMITTER: committer
+        }
+
+        for name, value in revprops.items():
+            self._svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value
+
         # Gather information about revision on top of which the commit is 
         # happening
         if parents == []:
@@ -164,6 +178,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self._svnprops[SVN_PROP_BZR_REVISION_ID+str(self.base_scheme)] = \
                 old + "%d %s\n" % (self.base_revno+1, revid)
+        self._svn_revprops[SVN_REVPROP_BZR_REVISION_ID] = revid
 
     def _record_merges(self, merges):
         """Store the extra merges (non-LHS parents) in a file property.
@@ -195,6 +210,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if new != "":
             self._svnprops[SVN_PROP_SVK_MERGE] = old + new
+
+        self._svn_revprops[SVN_REVPROP_BZR_MERGE] = "".join(map(lambda x: x + "\n", merges))
         
     def _generate_revision_if_needed(self):
         """See CommitBuilder._generate_revision_if_needed()."""
@@ -448,6 +465,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
         
+        self._svn_revprops[SVN_REVPROP_BZR_ROOT] = self.branch.get_branch_path()
         bp_parts = self.branch.get_branch_path().split("/")
         repository_latest_revnum = self.repository.transport.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
@@ -456,8 +474,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
             self.revnum = None
-            self.editor = self.repository.transport.get_commit_editor(
-                  {svn.core.SVN_PROP_REVISION_LOG: message.encode("utf-8")}, 
+            self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
+            self.editor = self.repository.transport.get_commit_editor(self._svn_revprops,
                   done, None, False)
 
             root = self.editor.open_root(self.base_revnum)

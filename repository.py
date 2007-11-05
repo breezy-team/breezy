@@ -62,8 +62,9 @@ SVN_REVPROP_BZR_MERGE = 'bzr:merge'
 SVN_REVPROP_BZR_REVISION_ID = 'bzr:revision-id'
 SVN_REVPROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_ROOT = 'bzr:root'
-SVN_REVPROP_BZR_SCHEME = 'bzr:scheme'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+SVN_REVPROP_BZR_TIMESTAMP = 'bzr:timestamp'
+SVN_REVPROP_BZR_TIMEZONE = 'bzr:timezone'
 
 # The following two functions don't use day names (which can vary by 
 # locale) unlike the alternatives in bzrlib.timestamp
