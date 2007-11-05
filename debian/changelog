@@ -1,5 +1,6 @@
 bzr-builddeb (0.92) unstable; urgency=low
 
+  [ James Westby ]
   * Support incremental imports of normal mode packages from source packages
     for uploads done outside the VCS.
   * Also look for upstream tarballs in the archives. Do this in preference
@@ -14,7 +15,11 @@ bzr-builddeb (0.92) unstable; urgency=low
   * Don't complain when repacking the tarball if the target exists, but is the
     same as the source. Only .tar.gz can be considered identical.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 31 Oct 2007 21:06:58 +0000
+  [ Reinhard Tartler ]
+  * (Build-)Depend on python-apt
+  * bump dependency on bzrtools
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 05 Nov 2007 22:01:09 +0100
 
 bzr-builddeb (0.91) unstable; urgency=low
 
