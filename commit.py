@@ -543,7 +543,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                 accessed when the entry has a revision of None - that is when 
                 it is a candidate to commit.
         """
-        self.mutter("record entry %r, %r, %r" % (ie, path, content_summary))
         self.new_inventory.add(ie)
 
 
