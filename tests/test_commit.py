@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
@@ -97,14 +99,14 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
-        revid = wt.commit(message=u"\xe6\xf8\xe5")
+        revid = wt.commit(message=u"føø")
         self.assertEqual(revid, wt.branch.generate_revision_id(1))
         self.assertEqual(
                 wt.branch.generate_revision_id(1), wt.branch.last_revision())
         new_revision = wt.branch.repository.get_revision(
                             wt.branch.last_revision())
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
-        self.assertEqual(u"\xe6\xf8\xe5", new_revision.message.decode("utf-8"))
+        self.assertEqual(u"føø", new_revision.message)
 
     def test_commit_update(self):
         self.make_client('d', 'dc')
@@ -379,7 +381,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.olddir.find_repository()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
-            repos.generate_revision_id(2, "", "none")).message.decode("utf-8"))
+            repos.generate_revision_id(2, "", "none")).message)
 
     def test_commit_rename_file(self):
         self.build_tree({'dc/vla': "data"})

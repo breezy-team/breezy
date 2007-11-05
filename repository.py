@@ -631,12 +631,19 @@ class SvnRepository(Repository):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
-        (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
-        if rev.committer is None:
+        svn_revprops = self.transport.revprop_list(revnum)
+
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+            rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
+        else:
             rev.committer = ""
 
-        if date is not None:
-            rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
+        rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
+        if rev.message:
+            rev.message = rev.message.decode("utf-8")
+
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
         else:
             rev.timestamp = 0.0 # FIXME: Obtain repository creation time
         rev.timezone = None

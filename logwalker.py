@@ -24,32 +24,9 @@ from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
 import svn.core
 
-import base64
-
 from cache import sqlite3
 
 LOG_CHUNK_LIMIT = 1000
-
-def _escape_commit_message(message):
-    """Replace xml-incompatible control characters."""
-    if message is None:
-        return None
-    import re
-    # FIXME: RBC 20060419 this should be done by the revision
-    # serialiser not by commit. Then we can also add an unescaper
-    # in the deserializer and start roundtripping revision messages
-    # precisely. See repository_implementations/test_repository.py
-    
-    # Python strings can include characters that can't be
-    # represented in well-formed XML; escape characters that
-    # aren't listed in the XML specification
-    # (http://www.w3.org/TR/REC-xml/#NT-Char).
-    message, _ = re.subn(
-        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-        lambda match: match.group(0).encode('unicode_escape'),
-        message)
-    return message
-
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
@@ -76,7 +53,7 @@ class LogWalker(object):
             self.db = cache_db
 
         self.db.executescript("""
-          create table if not exists revision(revno integer unique, author text, message text, date text);
+          create table if not exists revision(revno integer unique);
           create unique index if not exists revision_revno on revision (revno);
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
           create index if not exists path_rev on changed_path(rev);
@@ -120,10 +97,7 @@ class LogWalker(object):
                      "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
                      (rev, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
 
-            if message is not None:
-                message = base64.b64encode(message)
-
-            self.db.execute("replace into revision (revno, author, date, message) values (?,?,?,?)", (rev, author, date, message))
+            self.db.execute("replace into revision (revno) values (?)", (rev,))
 
             self.saved_revnum = rev
             if self.saved_revnum % 1000 == 0:
@@ -224,21 +198,6 @@ class LogWalker(object):
         for p, act, cf, cr in self.db.execute(query):
             paths[p.encode("utf-8")] = (act, cf, cr)
         return paths
-
-    def get_revision_info(self, revnum):
-        """Obtain basic information for a specific revision.
-
-        :param revnum: Revision number.
-        :returns: Tuple with author, log message and date of the revision.
-        """
-        assert revnum >= 0
-        if revnum == 0:
-            return (None, None, None)
-        self.fetch_revisions(revnum)
-        (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
-        if message is not None:
-            message = _escape_commit_message(base64.b64decode(message))
-        return (author, message, date)
 
     def find_latest_change(self, path, revnum, include_parents=False,
                            include_children=False):

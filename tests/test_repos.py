@@ -539,7 +539,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("", rev.committer)
         self.assertEqual({}, rev.properties)
         self.assertEqual(None, rev.timezone)
-        self.assertEqual(0.0, rev.timestamp)
 
     def test_store_branching_scheme(self):
         repos_url = self.make_client('d', 'dc')
@@ -969,7 +968,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         rev = newrepos.get_revision(
             oldrepos.generate_revision_id(2, "trunk", "trunk0"))
-        self.assertEqual(u'bla\xfcbla', rev.message)
+        self.assertEqual('bla\xc3\xbcbla', rev.message.encode("utf-8"))
 
         rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", "trunk0"))
         self.assertEqual(u"a\\x0cb", rev.message)

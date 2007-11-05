@@ -464,30 +464,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(("trunk", 1), walker.get_previous("anotherfile", 2))
 
-    def test_get_revision_info_zero(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        info = walker.get_revision_info(0)
-
-        self.assertEqual(None, info[0])
-        self.assertEqual(None, info[1])
-        self.assertEqual(None, info[2])
-
-    def test_get_revision_info(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        info = walker.get_revision_info(1)
-
-        self.assertEqual("", info[0])
-        self.assertEqual("My Message", info[1])
-
     def test_find_children_empty(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk': None})
