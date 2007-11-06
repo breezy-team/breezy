@@ -223,6 +223,9 @@ IN DEVELOPMENT
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
 
+   * Removing an already-removed file reports the file does not exist. (Daniel
+     Watkins, #152811)
+
   API BREAKS:
 
    * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
