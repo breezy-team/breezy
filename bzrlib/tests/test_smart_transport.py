@@ -230,7 +230,8 @@ class SmartClientMediumTests(tests.TestCase):
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
         client_medium = medium.SmartSSHClientMedium('127.0.0.1', unopened_port,
-            username=None, password=None, vendor="not a vendor")
+            username=None, password=None, vendor="not a vendor",
+            bzr_remote_path='bzr')
         sock.close()
 
     def test_ssh_client_connects_on_first_use(self):
@@ -239,7 +240,7 @@ class SmartClientMediumTests(tests.TestCase):
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', 'a port', 'a username', 'a password', vendor)
+            'a hostname', 'a port', 'a username', 'a password', vendor, 'bzr')
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
@@ -257,7 +258,9 @@ class SmartClientMediumTests(tests.TestCase):
             osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
         self.addCleanup(cleanup_environ)
         os.environ['BZR_REMOTE_PATH'] = 'fugly'
-        client_medium = medium.SmartSSHClientMedium('a hostname', 'a port', 'a username',
+        client_medium = self.callDeprecated(
+            ['bzr_remote_path is required as of bzr 0.92'],
+            medium.SmartSSHClientMedium, 'a hostname', 'a port', 'a username',
             'a password', vendor)
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
@@ -266,13 +269,29 @@ class SmartClientMediumTests(tests.TestCase):
             ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
             vendor.calls)
     
+    def test_ssh_client_changes_command_when_bzr_remote_path_passed(self):
+        # The only thing that initiates a connection from the medium is giving
+        # it bytes.
+        output = StringIO()
+        vendor = StringIOSSHVendor(StringIO(), output)
+        client_medium = medium.SmartSSHClientMedium('a hostname', 'a port',
+            'a username', 'a password', vendor, bzr_remote_path='fugly')
+        client_medium._accept_bytes('abc')
+        self.assertEqual('abc', output.getvalue())
+        self.assertEqual([('connect_ssh', 'a username', 'a password',
+            'a hostname', 'a port',
+            ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
+            vendor.calls)
+
     def test_ssh_client_disconnect_does_so(self):
         # calling disconnect should disconnect both the read_from and write_to
         # file-like object it from the ssh connection.
         input = StringIO()
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
-        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium = medium.SmartSSHClientMedium('a hostname',
+                                                    vendor=vendor,
+                                                    bzr_remote_path='bzr')
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         self.assertTrue(input.closed)
@@ -292,7 +311,8 @@ class SmartClientMediumTests(tests.TestCase):
         input = StringIO()
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
-        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium = medium.SmartSSHClientMedium('a hostname',
+            vendor=vendor, bzr_remote_path='bzr')
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         # the disconnect has closed output, so we need a new output for the
@@ -320,15 +340,19 @@ class SmartClientMediumTests(tests.TestCase):
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
-        client_medium = medium.SmartSSHClientMedium(None)
+        client_medium = medium.SmartSSHClientMedium(None,
+                                                    bzr_remote_path='bzr')
         client_medium.disconnect()
 
     def test_ssh_client_raises_on_read_when_not_connected(self):
         # Doing a read on a new (and thus unconnected) SSH medium raises
         # MediumNotConnected.
-        client_medium = medium.SmartSSHClientMedium(None)
-        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 0)
-        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 1)
+        client_medium = medium.SmartSSHClientMedium(None,
+                                                    bzr_remote_path='bzr')
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
+                          0)
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
+                          1)
 
     def test_ssh_client_supports__flush(self):
         # invoking _flush on a SSHClientMedium should flush the output 
@@ -341,7 +365,9 @@ class SmartClientMediumTests(tests.TestCase):
         def logging_flush(): flush_calls.append('flush')
         output.flush = logging_flush
         vendor = StringIOSSHVendor(input, output)
-        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium = medium.SmartSSHClientMedium('a hostname',
+                                                    vendor=vendor,
+                                                    bzr_remote_path='bzr')
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
         client_medium._accept_bytes('abc')
@@ -1208,6 +1234,14 @@ class RemoteTransportRegistration(tests.TestCase):
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
+    def test_bzr_https(self):
+        # https://bugs.launchpad.net/bzr/+bug/128456
+        t = get_transport('bzr+https://example.com/path')
+        self.assertIsInstance(t, remote.RemoteHTTPTransport)
+        self.assertStartsWith(
+            t._http_transport.base,
+            'https://')
+
 
 class TestRemoteTransport(tests.TestCase):
         
@@ -1389,6 +1423,19 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
             self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
+
+    def test_connection_closed_reporting(self):
+        input = StringIO()
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call('hello')
+        ex = self.assertRaises(errors.ConnectionReset, 
+            smart_protocol.read_response_tuple)
+        self.assertEqual("Connection closed: "
+            "please check connectivity and permissions "
+            "(and try -Dhpss if further diagnosis is required)", str(ex))
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
@@ -2011,8 +2058,10 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
         http_transport = self.get_readonly_transport()
         medium = http_transport.get_smart_medium()
-        #remote_transport = RemoteTransport('fake_url', medium)
-        remote_transport = remote.RemoteTransport('/', medium=medium)
+        # Since we provide the medium, the url below will be mostly ignored
+        # during the test, as long as the path is '/'.
+        remote_transport = remote.RemoteTransport('bzr://fake_host/',
+                                                  medium=medium)
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 

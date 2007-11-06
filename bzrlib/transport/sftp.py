@@ -57,7 +57,6 @@ from bzrlib.transport import (
     FileFileStream,
     _file_streams,
     local,
-    register_urlparse_netloc_protocol,
     Server,
     ssh,
     ConnectedTransport,
@@ -86,9 +85,6 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-
-
-register_urlparse_netloc_protocol('sftp')
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
@@ -247,7 +243,7 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         """See Transport.readv()"""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
@@ -386,7 +382,7 @@ class SFTPTransport(ConnectedTransport):
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)
-        self._put(final_path, f, mode=mode)
+        return self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
@@ -397,7 +393,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             try:
                 fout.set_pipelined(True)
-                self._pump(f, fout)
+                length = self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
             # XXX: This doesn't truly help like we would like it to.
@@ -418,6 +414,7 @@ class SFTPTransport(ConnectedTransport):
             fout.close()
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
+            return length
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception

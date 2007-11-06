@@ -15,30 +15,25 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os
-import sys
-import stat
 from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
-from bzrlib.errors import (ConnectionError,
-                           DependencyNotPresent,
+from bzrlib.errors import (DependencyNotPresent,
                            FileExists,
                            InvalidURLJoin,
                            NoSuchFile,
                            PathNotChild,
-                           TransportNotPossible,
-                           ConnectionError,
-                           DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_CoalescedOffset,
+from bzrlib.transport import (_clear_protocol_handlers,
+                              _CoalescedOffset,
                               ConnectedTransport,
                               _get_protocol_handlers,
                               _set_protocol_handlers,
@@ -47,13 +42,16 @@ from bzrlib.transport import (_CoalescedOffset,
                               LateReadError,
                               register_lazy_transport,
                               register_transport_proto,
-                              _clear_protocol_handlers,
                               Transport,
                               )
 from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
+from bzrlib.transport.remote import (
+    BZR_DEFAULT_PORT,
+    RemoteTCPTransport
+    )
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -73,6 +71,8 @@ class TestTransport(TestCase):
 
     def test_get_transport_modules(self):
         handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         try:
@@ -89,6 +89,8 @@ class TestTransport(TestCase):
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         try:
             register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
@@ -572,26 +574,26 @@ class TestTransportImplementation(TestCaseInTempDir):
 class TestLocalTransports(TestCase):
 
     def test_get_transport_from_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport('.')
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
 
     def test_get_transport_from_local_url(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         here_url = urlutils.local_path_to_url(here) + '/'
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
 
     def test_local_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertEquals(t.local_abspath(''), here)
 
@@ -615,14 +617,14 @@ class TestConnectedTransport(TestCase):
     """Tests for connected to remote server transports"""
 
     def test_parse_url(self):
-        t = ConnectedTransport('sftp://simple.example.com/home/source')
+        t = ConnectedTransport('http://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, None)
+        self.assertEquals(t._port, 80)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
 
-        self.assertEquals(t.base, 'sftp://simple.example.com/home/source/')
+        self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
     def test_parse_quoted_url(self):
         t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')
@@ -661,11 +663,13 @@ class TestConnectedTransport(TestCase):
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing_propagate_credentials(self):
-        t = ConnectedTransport('foo://user@host.com/abs/path')
+        t = ConnectedTransport('ftp://user@host.com/abs/path')
+        self.assertEquals('user', t._user)
+        self.assertEquals('host.com', t._host)
         self.assertIs(None, t._get_connection())
         self.assertIs(None, t._password)
         c = t.clone('subdir')
-        self.assertEquals(None, c._get_connection())
+        self.assertIs(None, c._get_connection())
         self.assertIs(None, t._password)
 
         # Simulate the user entering a password
@@ -712,11 +716,161 @@ class TestReusedTransports(TestCase):
         self.assertIsNot(t1, t2)
 
 
-def get_test_permutations():
-    """Return transport permutations to be used in testing.
+class TestRemoteTCPTransport(TestCase):
+    """Tests for bzr:// transport (RemoteTCPTransport)."""
 
-    This module registers some transports, but they're only for testing
-    registration.  We don't really want to run all the transport tests against
-    them.
+    def test_relpath_with_implicit_port(self):
+        """Connected transports with the same URL are the same, even if the
+        port is implicit.
+
+        So t.relpath(url) should always be '' if t.base is the same as url, or
+        if the only difference is that one explicitly specifies the default
+        port and the other doesn't specify a port.
+        """
+        t_implicit_port = RemoteTCPTransport('bzr://host.com/')
+        self.assertEquals('', t_implicit_port.relpath('bzr://host.com/'))
+        self.assertEquals('', t_implicit_port.relpath('bzr://host.com:4155/'))
+        t_explicit_port = RemoteTCPTransport('bzr://host.com:4155/')
+        self.assertEquals('', t_explicit_port.relpath('bzr://host.com/'))
+        self.assertEquals('', t_explicit_port.relpath('bzr://host.com:4155/'))
+
+    def test_construct_uses_default_port(self):
+        """If no port is specified, then RemoteTCPTransport uses
+        BZR_DEFAULT_PORT.
+        """
+        t = get_transport('bzr://host.com/')
+        self.assertEquals(BZR_DEFAULT_PORT, t._port)
+
+    def test_url_omits_default_port(self):
+        """If a RemoteTCPTransport uses the default port, then its base URL
+        will omit the port.
+
+        This is like how ":80" is omitted from "http://example.com/".
+        """
+        t = get_transport('bzr://host.com:4155/')
+        self.assertEquals('bzr://host.com/', t.base)
+
+    def test_url_includes_non_default_port(self):
+        """Non-default ports are included in the transport's URL.
+
+        Contrast this to `test_url_omits_default_port`.
+        """
+        t = get_transport('bzr://host.com:666/')
+        self.assertEquals('bzr://host.com:666/', t.base)
+
+
+class SSHPortTestMixin(object):
+    """Mixin class for testing SSH-based transports' use of ports in URLs.
+    
+    Unlike other connected transports, SSH-based transports (sftp, bzr+ssh)
+    don't have a default port, because the user may have OpenSSH configured to
+    use a non-standard port.
     """
-    return []
+
+    def make_url(self, netloc):
+        """Make a url for the given netloc, using the scheme defined on the
+        TestCase.
+        """
+        return '%s://%s/' % (self.scheme, netloc)
+
+    def test_relpath_with_implicit_port(self):
+        """SSH-based transports with the same URL are the same.
+        
+        Note than an unspecified port number is different to port 22 (because
+        OpenSSH may be configured to use a non-standard port).
+
+        So t.relpath(url) should always be '' if t.base is the same as url, but
+        raise PathNotChild if the ports in t and url are not both specified (or
+        both unspecified).
+        """
+        url_implicit_port = self.make_url('host.com')
+        url_explicit_port = self.make_url('host.com:22')
+
+        t_implicit_port = get_transport(url_implicit_port)
+        self.assertEquals('', t_implicit_port.relpath(url_implicit_port))
+        self.assertRaises(
+            PathNotChild, t_implicit_port.relpath, url_explicit_port)
+        
+        t_explicit_port = get_transport(url_explicit_port)
+        self.assertRaises(
+            PathNotChild, t_explicit_port.relpath, url_implicit_port)
+        self.assertEquals('', t_explicit_port.relpath(url_explicit_port))
+
+    def test_construct_with_no_port(self):
+        """If no port is specified, then the SSH-based transport's _port will
+        be None.
+        """
+        t = get_transport(self.make_url('host.com'))
+        self.assertEquals(None, t._port)
+
+    def test_url_with_no_port(self):
+        """If no port was specified, none is shown in the base URL."""
+        t = get_transport(self.make_url('host.com'))
+        self.assertEquals(self.make_url('host.com'), t.base)
+
+    def test_url_includes_port(self):
+        """An SSH-based transport's base will show the port if one was
+        specified, even if that port is 22, because we do not assume 22 is the
+        default port.
+        """
+        # 22 is the "standard" port for SFTP.
+        t = get_transport(self.make_url('host.com:22'))
+        self.assertEquals(self.make_url('host.com:22'), t.base)
+        # 666 is not a standard port.
+        t = get_transport(self.make_url('host.com:666'))
+        self.assertEquals(self.make_url('host.com:666'), t.base)
+
+
+class SFTPTransportPortTest(TestCase, SSHPortTestMixin):
+    """Tests for sftp:// transport (SFTPTransport)."""
+
+    scheme = 'sftp'
+
+
+class BzrSSHTransportPortTest(TestCase, SSHPortTestMixin):
+    """Tests for bzr+ssh:// transport (RemoteSSHTransport)."""
+
+    scheme = 'bzr+ssh'
+
+
+class TestTransportTrace(TestCase):
+
+    def test_get(self):
+        transport = get_transport('trace+memory://')
+        self.assertIsInstance(
+            transport, bzrlib.transport.trace.TransportTraceDecorator)
+
+    def test_clone_preserves_activity(self):
+        transport = get_transport('trace+memory://')
+        transport2 = transport.clone('.')
+        self.assertTrue(transport is not transport2)
+        self.assertTrue(transport._activity is transport2._activity)
+
+    # the following specific tests are for the operations that have made use of
+    # logging in tests; we could test every single operation but doing that
+    # still won't cause a test failure when the top level Transport API
+    # changes; so there is little return doing that.
+    def test_get(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        transport.get('foo')
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # get records the file name only.
+        expected_result.append(('get', 'foo'))
+        self.assertEqual(expected_result, transport._activity)
+
+    def test_readv(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        list(transport.readv('foo', [(0, 1), (3, 2)], adjust_for_latency=True,
+            upper_limit=6))
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # readv records the supplied offset request
+        expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
+        self.assertEqual(expected_result, transport._activity)

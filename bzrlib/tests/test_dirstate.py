@@ -26,11 +26,10 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.osutils import has_symlinks
 from bzrlib.tests import (
+        SymlinkFeature,
         TestCase,
         TestCaseWithTransport,
-        TestSkipped,
         )
 
 
@@ -700,6 +699,70 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
 
+    def test_set_state_from_inventory_preserves_hashcache(self):
+        # https://bugs.launchpad.net/bzr/+bug/146176
+        # set_state_from_inventory should preserve the stat and hash value for
+        # workingtree files that are not changed by the inventory.
+       
+        tree = self.make_branch_and_tree('.')
+        # depends on the default format using dirstate...
+        tree.lock_write()
+        try:
+            # make a dirstate with some valid hashcache data 
+            # file on disk, but that's not needed for this test
+            foo_contents = 'contents of foo'
+            self.build_tree_contents([('foo', foo_contents)])
+            tree.add('foo', 'foo-id')
+
+            foo_stat = os.stat('foo')
+            foo_packed = dirstate.pack_stat(foo_stat)
+            foo_sha = osutils.sha_string(foo_contents)
+            foo_size = len(foo_contents)
+
+            # should not be cached yet, because the file's too fresh
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', '', 0, False, dirstate.DirState.NULLSTAT)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
+            # poke in some hashcache information - it wouldn't normally be
+            # stored because it's too fresh
+            tree._dirstate.update_minimal(
+                ('', 'foo', 'foo-id'),
+                'f', False, foo_sha, foo_packed, foo_size, 'foo')
+            # now should be cached
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', foo_sha, foo_size, False, foo_packed)]),
+                tree._dirstate._get_entry(0, 'foo-id'))
+           
+            # extract the inventory, and add something to it
+            inv = tree._get_inventory()
+            # should see the file we poked in...
+            self.assertTrue(inv.has_id('foo-id'))
+            self.assertTrue(inv.has_filename('foo'))
+            inv.add_path('bar', 'file', 'bar-id')
+            tree._dirstate._validate()
+            # this used to cause it to lose its hashcache
+            tree._dirstate.set_state_from_inventory(inv)
+            tree._dirstate._validate()
+        finally:
+            tree.unlock()
+
+        tree.lock_read()
+        try:
+            # now check that the state still has the original hashcache value
+            state = tree._dirstate
+            state._validate()
+            foo_tuple = state._get_entry(0, path_utf8='foo')
+            self.assertEqual(
+                (('', 'foo', 'foo-id',),
+                 [('f', foo_sha, len(foo_contents), False,
+                   dirstate.pack_stat(foo_stat))]),
+                foo_tuple)
+        finally:
+            tree.unlock()
+
+
     def test_set_state_from_inventory_mixed_paths(self):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
@@ -1013,8 +1076,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
-        if not has_symlinks():
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         os.symlink('target', 'a link')
         stat = os.lstat('a link')
         expected_entries = [
@@ -1330,6 +1392,122 @@ class TestGetEntry(TestCaseWithDirState):
             state.unlock()
 
 
+class TestIterChildEntries(TestCaseWithDirState):
+
+    def create_dirstate_with_two_trees(self):
+        """This dirstate contains multiple files and directories.
+
+         /        a-root-value
+         a/       a-dir
+         b/       b-dir
+         c        c-file
+         d        d-file
+         a/e/     e-dir
+         a/f      f-file
+         b/g      g-file
+         b/h\xc3\xa5  h-\xc3\xa5-file  #This is u'\xe5' encoded into utf-8
+
+        Notice that a/e is an empty directory.
+
+        There is one parent tree, which has the same shape with the following variations:
+        b/g in the parent is gone.
+        b/h in the parent has a different id
+        b/i is new in the parent 
+        c is renamed to b/j in the parent
+
+        :return: The dirstate, still write-locked.
+        """
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
+        root_entry = ('', '', 'a-root-value'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        a_entry = ('', 'a', 'a-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        b_entry = ('', 'b', 'b-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        c_entry = ('', 'c', 'c-file'), [
+            ('f', null_sha, 10, False, packed_stat),
+            ('r', 'b/j', 0, False, ''),
+            ]
+        d_entry = ('', 'd', 'd-file'), [
+            ('f', null_sha, 20, False, packed_stat),
+            ('f', 'd', 20, False, 'parent-revid'),
+            ]
+        e_entry = ('a', 'e', 'e-dir'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, 'parent-revid'),
+            ]
+        f_entry = ('a', 'f', 'f-file'), [
+            ('f', null_sha, 30, False, packed_stat),
+            ('f', 'f', 20, False, 'parent-revid'),
+            ]
+        g_entry = ('b', 'g', 'g-file'), [
+            ('f', null_sha, 30, False, packed_stat),
+            NULL_PARENT_DETAILS,
+            ]
+        h_entry1 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file1'), [
+            ('f', null_sha, 40, False, packed_stat),
+            NULL_PARENT_DETAILS,
+            ]
+        h_entry2 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file2'), [
+            NULL_PARENT_DETAILS,
+            ('f', 'h', 20, False, 'parent-revid'),
+            ]
+        i_entry = ('b', 'i', 'i-file'), [
+            NULL_PARENT_DETAILS,
+            ('f', 'h', 20, False, 'parent-revid'),
+            ]
+        j_entry = ('b', 'j', 'c-file'), [
+            ('r', 'c', 0, False, ''),
+            ('f', 'j', 20, False, 'parent-revid'),
+            ]
+        dirblocks = []
+        dirblocks.append(('', [root_entry]))
+        dirblocks.append(('', [a_entry, b_entry, c_entry, d_entry]))
+        dirblocks.append(('a', [e_entry, f_entry]))
+        dirblocks.append(('b', [g_entry, h_entry1, h_entry2, i_entry, j_entry]))
+        state = dirstate.DirState.initialize('dirstate')
+        state._validate()
+        try:
+            state._set_data(['parent'], dirblocks)
+        except:
+            state.unlock()
+            raise
+        return state, dirblocks
+
+    def test_iter_children_b(self):
+        state, dirblocks = self.create_dirstate_with_two_trees()
+        self.addCleanup(state.unlock)
+        expected_result = []
+        expected_result.append(dirblocks[3][1][2]) # h2
+        expected_result.append(dirblocks[3][1][3]) # i
+        expected_result.append(dirblocks[3][1][4]) # j
+        self.assertEqual(expected_result,
+            list(state._iter_child_entries(1, 'b')))
+
+    def test_iter_child_root(self):
+        state, dirblocks = self.create_dirstate_with_two_trees()
+        self.addCleanup(state.unlock)
+        expected_result = []
+        expected_result.append(dirblocks[1][1][0]) # a
+        expected_result.append(dirblocks[1][1][1]) # b
+        expected_result.append(dirblocks[1][1][3]) # d
+        expected_result.append(dirblocks[2][1][0]) # e
+        expected_result.append(dirblocks[2][1][1]) # f
+        expected_result.append(dirblocks[3][1][2]) # h2
+        expected_result.append(dirblocks[3][1][3]) # i
+        expected_result.append(dirblocks[3][1][4]) # j
+        self.assertEqual(expected_result,
+            list(state._iter_child_entries(1, '')))
+
+
 class TestDirstateSortOrder(TestCaseWithTransport):
     """Test that DirState adds entries in the right order."""
 
@@ -1399,14 +1577,16 @@ class InstrumentedDirState(dirstate.DirState):
         super(InstrumentedDirState, self).__init__(path)
         self._time_offset = 0
         self._log = []
+        # member is dynamically set in DirState.__init__ to turn on trace
+        self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _sha1_file(self, abspath, entry):
+    def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
-        return super(InstrumentedDirState, self)._sha1_file(abspath, entry)
+        return osutils.sha_file_by_name(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
@@ -1532,9 +1712,7 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1691,9 +1869,7 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
         state.adjust_time(+10)
@@ -1712,9 +1888,7 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)
@@ -1724,8 +1898,7 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
-        if not has_symlinks():
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
         state.adjust_time(+10)
@@ -1735,8 +1908,7 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
-        if not has_symlinks():
-            raise TestSkipped("No symlink support")
+        self.requireFeature(SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)

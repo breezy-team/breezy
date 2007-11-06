@@ -127,13 +127,13 @@ def show_tree_status(wt, show_unchanged=None,
                 conflicts = conflicts.select_conflicts(new, specific_files,
                     ignore_misses=True, recurse=True)[1]
             if len(conflicts) > 0 and not short:
-                print >> to_file, "conflicts:"
+                to_file.write("conflicts:\n")
             for conflict in conflicts:
                 if short:
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                print >> to_file, "%s %s" % (prefix, conflict)
+                to_file.write("%s %s\n" % (prefix, conflict))
             if new_is_working_tree and show_pending:
                 show_pending_merges(new, to_file, short)
         finally:
@@ -151,7 +151,7 @@ def show_pending_merges(new, to_file, short=False):
     branch = new.branch
     last_revision = parents[0]
     if not short:
-        print >>to_file, 'pending merges:'
+        to_file.write('pending merges:\n')
     if last_revision is not None:
         try:
             ignore = set(branch.repository.get_ancestry(last_revision,
@@ -174,7 +174,8 @@ def show_pending_merges(new, to_file, short=False):
                 prefix = 'P  '
             else:
                 prefix = ' '
-            print >> to_file, prefix, line_log(m_revision, width - 4)
+            to_file.write(prefix + ' ' + line_log(m_revision, width - 4))
+            to_file.write('\n')
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
             inner_merges.pop(0)
@@ -187,11 +188,13 @@ def show_pending_merges(new, to_file, short=False):
                     prefix = 'P.  '
                 else:
                     prefix = '   '
-                print >> to_file, prefix, line_log(mm_revision, width - 5)
+                to_file.write(prefix + ' ' + line_log(mm_revision, width - 5))
+                to_file.write('\n')
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             if short:
                 prefix = 'P  '
             else:
                 prefix = ' '
-            print >> to_file, prefix, merge
+            to_file.write(prefix + ' ' + merge)
+            to_file.write('\n')

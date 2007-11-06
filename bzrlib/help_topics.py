@@ -261,10 +261,12 @@ See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
 development.
 
+-Dauth         Trace authentication sections used.
 -Derror        Instead of normal error handling, always print a traceback on
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
                operations.
+-Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.

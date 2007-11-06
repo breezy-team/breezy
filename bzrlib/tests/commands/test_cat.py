@@ -47,7 +47,7 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         wt1.add('foo')
         wt1.commit('add foo')
 
-        self.install_hooks()
+        self.start_logging_connections()
 
         cmd = cmd_cat()
         cmd.run(self.get_url('branch/foo'))

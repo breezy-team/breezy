@@ -68,23 +68,37 @@ from bzrlib.trace import mutter
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
-# On posix, use lstat instead of stat so that we can
-# operate on broken symlinks. On Windows revert to stat.
-lstat = getattr(os, 'lstat', os.stat)
 
 def make_readonly(filename):
     """Make a filename read-only."""
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
         os.chmod(filename, mod)
 
 
 def make_writable(filename):
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
         os.chmod(filename, mod)
+
+
+def minimum_path_selection(paths):
+    """Return the smallset subset of paths which are outside paths.
+
+    :param paths: A container (and hence not None) of paths.
+    :return: A set of paths sufficient to include everything in paths via
+        is_inside_any, drawn from the paths parameter.
+    """
+    search_paths = set()
+    paths = set(paths)
+    for path in paths:
+        other_paths = paths.difference([path])
+        if not is_inside_any(other_paths, path):
+            # this is a top level path, we must check it.
+            search_paths.add(path)
+    return search_paths
 
 
 _QUOTE_RE = None
@@ -537,13 +551,19 @@ def is_inside_or_parent_of_any(dir_list, fname):
 
 
 def pumpfile(fromfile, tofile):
-    """Copy contents of one file to another."""
+    """Copy contents of one file to another.
+    
+    :return: The number of bytes copied.
+    """
     BUFSIZE = 32768
+    length = 0
     while True:
         b = fromfile.read(BUFSIZE)
         if not b:
             break
         tofile.write(b)
+        length += len(b)
+    return length
 
 
 def file_iterator(input_file, readsize=32768):
@@ -567,27 +587,35 @@ def sha_file(f):
     return s.hexdigest()
 
 
-
-def sha_strings(strings):
-    """Return the sha-1 of concatenation of strings"""
+def sha_file_by_name(fname):
+    """Calculate the SHA1 of a file by reading the full text"""
     s = sha.new()
+    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    try:
+        while True:
+            b = os.read(f, 1<<16)
+            if not b:
+                return s.hexdigest()
+            s.update(b)
+    finally:
+        os.close(f)
+
+
+def sha_strings(strings, _factory=sha.new):
+    """Return the sha-1 of concatenation of strings"""
+    s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f):
-    s = sha.new()
-    s.update(f)
-    return s.hexdigest()
+def sha_string(f, _factory=sha.new):
+    return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
-    s = sha.new()
     b = f.read()
-    s.update(b)
-    size = len(b)
-    return {'size': size,
-            'sha1': s.hexdigest()}
+    return {'size': len(b),
+            'sha1': sha.new(b).hexdigest()}
 
 
 def compare_files(a, b):
@@ -792,15 +820,18 @@ def link_or_copy(src, dest):
             raise
         shutil.copyfile(src, dest)
 
-def delete_any(full_path):
+
+# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+# Forgiveness than Permission (EAFP) because:
+# - root can damage a solaris file system by using unlink,
+# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+#   EACCES, OSX: EPERM) when invoked on a directory.
+def delete_any(path):
     """Delete a file or directory."""
-    try:
-        os.unlink(full_path)
-    except OSError, e:
-    # We may be renaming a dangling inventory id
-        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
-            raise
-        os.rmdir(full_path)
+    if isdir(path): # Takes care of symlinks
+        os.rmdir(path)
+    else:
+        os.unlink(path)
 
 
 def has_symlinks():
@@ -808,7 +839,7 @@ def has_symlinks():
         return True
     else:
         return False
-        
+
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""

@@ -194,7 +194,6 @@ class BundleInfo(object):
         raise KeyError(revision_id)
 
     def revision_tree(self, repository, revision_id, base=None):
-        revision_id = osutils.safe_revision_id(revision_id)
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
         assert base != revision_id

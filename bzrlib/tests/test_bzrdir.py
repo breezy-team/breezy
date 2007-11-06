@@ -93,7 +93,8 @@ class TestFormatRegistry(TestCase):
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='bzrlib.branch.BzrBranchFormat6')
+            branch_format='bzrlib.branch.BzrBranchFormat6',
+            experimental=True)
         my_format_registry.register_metadir(
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
@@ -140,10 +141,13 @@ class TestFormatRegistry(TestCase):
         topics.register('formats', self.make_format_registry().help_topic, 
                         'Directory formats')
         topic = topics.get_detail('formats')
-        new, deprecated = topic.split('Deprecated formats')
+        new, rest = topic.split('Experimental formats')
+        experimental, deprecated = rest.split('Deprecated formats')
         self.assertContainsRe(new, 'These formats can be used')
         self.assertContainsRe(new, 
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
+        self.assertContainsRe(experimental, 
+                ':branch6:\n    \(native\) Experimental successor to knit')
         self.assertContainsRe(deprecated, 
                 ':lazy:\n    \(native\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
@@ -201,9 +205,8 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Sample .bzr dir format."
 
-    def initialize(self, url, possible_transports=None):
+    def initialize_on_transport(self, t):
         """Create a bzr dir."""
-        t = get_transport(url, possible_transports)
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)

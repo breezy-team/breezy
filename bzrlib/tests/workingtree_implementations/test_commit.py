@@ -21,7 +21,9 @@ import os
 from bzrlib import (
     branch,
     bzrdir,
+    conflicts,
     errors,
+    osutils,
     revision as _mod_revision,
     ui,
     uncommit,
@@ -29,8 +31,8 @@ from bzrlib import (
     )
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped, TestCase
+from bzrlib.osutils import pathjoin, getcwd
+from bzrlib.tests import TestCase
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -88,16 +90,120 @@ class TestCapturingUI(TestCase):
 
 class TestCommit(TestCaseWithWorkingTree):
 
+    def test_autodelete_renamed(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2'], ['dir-id', 'f1-id', 'f2-id'])
+        rev_id1 = tree_a.commit('init')
+        # Start off by renaming entries,
+        # but then actually auto delete the whole tree
+        # https://bugs.launchpad.net/bzr/+bug/114615
+        tree_a.rename_one('dir/f1', 'dir/a')
+        tree_a.rename_one('dir/f2', 'dir/z')
+        osutils.rmtree('a/dir')
+        tree_a.commit('autoremoved')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.inventory.root.file_id
+            paths = [(path, ie.file_id)
+                     for path, ie in tree_a.iter_entries_by_dir()]
+        finally:
+            tree_a.unlock()
+        # The only paths left should be the root
+        self.assertEqual([('', root_id)], paths)
+
+    def test_no_autodelete_renamed_away(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir2/'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'],
+                   ['dir-id', 'f1-id', 'f2-id', 'dir2-id'])
+        rev_id1 = tree_a.commit('init')
+        # Rename one entry out of this directory
+        tree_a.rename_one('dir/f1', 'dir2/a')
+        osutils.rmtree('a/dir')
+        tree_a.commit('autoremoved')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.inventory.root.file_id
+            paths = [(path, ie.file_id)
+                     for path, ie in tree_a.iter_entries_by_dir()]
+        finally:
+            tree_a.unlock()
+        # The only paths left should be the root
+        self.assertEqual([('', root_id), ('dir2', 'dir2-id'),
+                          ('dir2/a', 'f1-id'),
+                         ], paths)
+
+    def test_no_autodelete_alternate_renamed(self):
+        # Test for bug #114615
+        tree_a = self.make_branch_and_tree('A')
+        self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
+        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.commit('init')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.inventory.root.file_id
+        finally:
+            tree_a.unlock()
+
+        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        self.build_tree(['B/xyz/'])
+        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.rename_one('a/m', 'xyz/m')
+        osutils.rmtree('B/a')
+        tree_b.commit('delete in B')
+
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
+        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        tree_a.commit('change n in A')
+
+        # Merging from A should introduce conflicts because 'n' was modified
+        # and removed, so 'a' needs to be restored.
+        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(3, num_conflicts)
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('a', 'a-id'),
+                          ('xyz', 'xyz-id'),
+                          ('a/n.OTHER', 'n-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+        osutils.rmtree('B/a')
+        try:
+            # bzr resolve --all
+            tree_b.set_conflicts(conflicts.ConflictList())
+        except errors.UnsupportedOperation:
+            # On WT2, set_conflicts is unsupported, but the rmtree has the same
+            # effect.
+            pass
+        tree_b.commit('autoremove a, without touching xyz/m')
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo')
         self.assertEqual(['foo'], tree.get_parent_ids())
         # the commit should have returned the same id we asked for.
         self.assertEqual('foo', committed_id)
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
-        committed_id = tree.commit('message', allow_pointless=True)
+        committed_id = tree.commit('message')
         self.assertTrue(tree.branch.repository.has_revision(committed_id))
         self.assertNotEqual(None, committed_id)
 
@@ -322,6 +428,22 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertEqual(subtree.last_revision(),
             basis.get_reference_revision(basis.path2id('subtree')))
         self.assertNotEqual(rev_id, rev_id2)
+
+    def test_nested_pointless_commits_are_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'])
+        # record the reference.
+        rev_id = tree.commit('added reference')
+        child_revid = subtree.last_revision()
+        # now do a no-op commit with allow_pointless=False
+        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+            allow_pointless=False)
+        self.assertEqual(child_revid, subtree.last_revision())
+        self.assertEqual(rev_id, tree.last_revision())
 
 
 class TestCommitProgress(TestCaseWithWorkingTree):

@@ -374,11 +374,14 @@ class TransportTests(TestTransportImplementation):
                     t.put_file, 'a', StringIO('some text for a\n'))
             return
 
-        t.put_file('a', StringIO('some text for a\n'))
+        result = t.put_file('a', StringIO('some text for a\n'))
+        # put_file returns the length of the data written
+        self.assertEqual(16, result)
         self.failUnless(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
-        t.put_file('a', StringIO('new\ncontents for\na\n'))
+        result = t.put_file('a', StringIO('new\ncontents for\na\n'))
+        self.assertEqual(19, result)
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
                           t.put_file, 'path/doesnt/exist/c',
@@ -1107,7 +1110,7 @@ class TransportTests(TestTransportImplementation):
 
         def new_url(scheme=None, user=None, password=None,
                     host=None, port=None, path=None):
-            """Build a new url from t.base chaging only parts of it.
+            """Build a new url from t.base changing only parts of it.
 
             Only the parameters different from None will be changed.
             """
@@ -1120,7 +1123,11 @@ class TransportTests(TestTransportImplementation):
             if path     is None: path     = t._path
             return t._unsplit_url(scheme, user, password, host, port, path)
 
-        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._scheme == 'ftp':
+            scheme = 'sftp'
+        else:
+            scheme = 'ftp'
+        self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
         if t._user == 'me':
             user = 'you'
         else:
@@ -1484,6 +1491,86 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
+    def test_readv_with_adjust_for_latency(self):
+        transport = self.get_transport()
+        # the adjust for latency flag expands the data region returned
+        # according to a per-transport heuristic, so testing is a little
+        # tricky as we need more data than the largest combining that our
+        # transports do. To accomodate this we generate random data and cross
+        # reference the returned data with the random data. To avoid doing
+        # multiple large random byte look ups we do several tests on the same
+        # backing data.
+        content = osutils.rand_bytes(200*1024)
+        content_size = len(content)
+        if transport.is_readonly():
+            file('a', 'w').write(content)
+        else:
+            transport.put_bytes('a', content)
+        def check_result_data(result_vector):
+            for item in result_vector:
+                data_len = len(item[1])
+                self.assertEqual(content[item[0]:item[0] + data_len], item[1])
+
+        # start corner case
+        result = list(transport.readv('a', ((0, 30),),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 1 result, from 0, to something > 30
+        self.assertEqual(1, len(result))
+        self.assertEqual(0, result[0][0])
+        self.assertTrue(len(result[0][1]) >= 30)
+        check_result_data(result)
+        # end of file corner case
+        result = list(transport.readv('a', ((204700, 100),),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 1 result, from 204800- its length, to the end
+        self.assertEqual(1, len(result))
+        data_len = len(result[0][1])
+        self.assertEqual(204800-data_len, result[0][0])
+        self.assertTrue(data_len >= 100)
+        check_result_data(result)
+        # out of order ranges are made in order
+        result = list(transport.readv('a', ((204700, 100), (0, 50)),
+            adjust_for_latency=True, upper_limit=content_size))
+        # we expect 2 results, in order, start and end.
+        self.assertEqual(2, len(result))
+        # start
+        data_len = len(result[0][1])
+        self.assertEqual(0, result[0][0])
+        self.assertTrue(data_len >= 30)
+        # end
+        data_len = len(result[1][1])
+        self.assertEqual(204800-data_len, result[1][0])
+        self.assertTrue(data_len >= 100)
+        check_result_data(result)
+        # close ranges get combined (even if out of order)
+        for request_vector in [((400,50), (800, 234)), ((800, 234), (400,50))]:
+            result = list(transport.readv('a', request_vector,
+                adjust_for_latency=True, upper_limit=content_size))
+            self.assertEqual(1, len(result))
+            data_len = len(result[0][1])
+            # minimmum length is from 400 to 1034 - 634
+            self.assertTrue(data_len >= 634)
+            # must contain the region 400 to 1034
+            self.assertTrue(result[0][0] <= 400)
+            self.assertTrue(result[0][0] + data_len >= 1034)
+            check_result_data(result)
+        # test from observed failure case.
+        if transport.is_readonly():
+            file('a', 'w').write('a'*1024*1024)
+        else:
+            transport.put_bytes('a', 'a'*1024*1024)
+        broken_vector = [(465219, 800), (225221, 800), (445548, 800),
+            (225037, 800), (221357, 800), (437077, 800), (947670, 800),
+            (465373, 800), (947422, 800)]
+        results = list(transport.readv('a', broken_vector, True, 1024*1024))
+        found_items = [False]*9
+        for pos, (start, length) in enumerate(broken_vector):
+            # check the range is covered by the result
+            for offset, data in results:
+                if offset <= start and start + length <= offset + len(data):
+                    found_items[pos] = True
+        self.assertEqual([True]*9, found_items)
 
     def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()

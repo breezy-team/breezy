@@ -118,10 +118,12 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
+        LockFailed,
         LockNotHeld,
         NoSuchFile,
         PathError,
         ResourceBusy,
+        TransportError,
         UnlockableTransport,
         )
 from bzrlib.trace import mutter, note
@@ -192,10 +194,12 @@ class LockDir(object):
         This is typically only called when the object/directory containing the 
         directory is first created.  The lock is not held when it's created.
         """
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
         self._trace("create lock directory")
-        self.transport.mkdir(self.path, mode=mode)
+        try:
+            self.transport.mkdir(self.path, mode=mode)
+        except (TransportError, PathError), e:
+            raise LockFailed(self, e)
+
 
     def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
@@ -214,10 +218,15 @@ class LockDir(object):
         """
         self._trace("lock_write...")
         start_time = time.time()
-        tmpname = self._create_pending_dir()
+        try:
+            tmpname = self._create_pending_dir()
+        except (errors.TransportError, PathError), e:
+            self._trace("... failed to create pending dir, %s", e)
+            raise LockFailed(self, e)
         try:
             self.transport.rename(tmpname, self._held_dir)
-        except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
+        except (errors.TransportError, PathError, DirectoryNotEmpty,
+                FileExists, ResourceBusy), e:
             self._trace("... contention, %s", e)
             self._remove_pending_dir(tmpname)
             raise LockContention(self)
@@ -446,8 +455,6 @@ class LockDir(object):
         """
         if self._fake_read_lock:
             raise LockContention(self)
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
         return self._attempt_lock()
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
