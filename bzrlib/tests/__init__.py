@@ -2619,7 +2619,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             sys.stderr.write(('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%\n' % os.path.basename(dirname)))
+                                 '%s\n' % os.path.basename(dirname)))
         else:
             raise
 
@@ -2661,6 +2661,17 @@ class _SymlinkFeature(Feature):
         return 'symlinks'
 
 SymlinkFeature = _SymlinkFeature()
+
+
+class _OsFifoFeature(Feature):
+
+    def _probe(self):
+        return getattr(os, 'mkfifo', None)
+
+    def feature_name(self):
+        return 'filesystem fifos'
+
+OsFifoFeature = _OsFifoFeature()
 
 
 class TestScenarioApplier(object):
@@ -2723,3 +2734,23 @@ def probe_bad_non_ascii(encoding):
         except UnicodeDecodeError:
             return char
     return None
+
+
+class _FTPServerFeature(Feature):
+    """Some tests want an FTP Server, check if one is available.
+
+    Right now, the only way this is available is if 'medusa' is installed.
+    http://www.amk.ca/python/code/medusa.html
+    """
+
+    def _probe(self):
+        try:
+            import bzrlib.tests.ftp_server
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'FTPServer'
+
+FTPServerFeature = _FTPServerFeature()

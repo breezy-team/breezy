@@ -160,7 +160,7 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
         # Same as the populated parents, because there was nothing wrong.
         return self.populated_parents()
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
         return ["0 unreferenced text ancestors"]
 
     def populate_repository(self, repo):
@@ -193,7 +193,7 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
             ((), 'rev1b'),
             (('rev1a',), 'rev2'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
                 r"but should have \('rev1a',\)",
                 "1 unreferenced text ancestors",
@@ -241,7 +241,7 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
             ((), 'rev2'),
             ((), 'rev3'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
         return [r"\* a-file-id version rev3 has parents "
                 r"\('rev1c',\) but should have \(\)",
                 # Also check reporting of unreferenced ancestors
@@ -307,9 +307,15 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             # per-file last-modified revisions.
             (('rev2c',), 'rev5'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
+        if repo.supports_rich_root():
+            # TREE_ROOT will be wrong; but we're not testing it. so just adjust
+            # the expected count of errors.
+            count = 11
+        else:
+            count = 5
         return [
-            "5 inconsistent parents",
+            "%d inconsistent parents" % count,
             r"a-file-id version rev2 has parents \('rev1a',\) "
             r"but should have \(\)",
             r"a-file-id version rev2b has parents \('rev1a',\) "
@@ -413,7 +419,7 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     def corrected_fulltexts(self):
         return ['rev4']
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
         return []
 
     def populate_repository(self, repo):
@@ -472,9 +478,15 @@ class TooManyParentsScenario(BrokenRepoScenario):
             (('bad-parent',), 'good-parent'),
             (('good-parent',), 'broken-revision'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
+        if repo.supports_rich_root():
+            # TREE_ROOT will be wrong; but we're not testing it. so just adjust
+            # the expected count of errors.
+            count = 3
+        else:
+            count = 1
         return (
-            '     1 inconsistent parents',
+            '     %d inconsistent parents' % count,
             (r"      \* a-file-id version broken-revision has parents "
              r"\('good-parent', 'bad-parent'\) but "
              r"should have \('good-parent',\)"))
@@ -518,9 +530,15 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
             (None, 'modified-something-else'),
             (('basis',), 'current'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
+        if repo.supports_rich_root():
+            # TREE_ROOT will be wrong; but we're not testing it. so just adjust
+            # the expected count of errors.
+            count = 4
+        else:
+            count = 2
         return (
-            '2 inconsistent parents',
+            "%d inconsistent parents" % count,
             r"\* a-file-id version current has parents "
             r"\('modified-something-else',\) but should have \('basis',\)",
             r"\* a-file-id version modified-something-else has parents "
@@ -576,9 +594,15 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
             (('parent-1', 'parent-2'), 'broken-revision-1-2'),
             (('parent-2', 'parent-1'), 'broken-revision-2-1'))
 
-    def check_regexes(self):
+    def check_regexes(self, repo):
+        if repo.supports_rich_root():
+            # TREE_ROOT will be wrong; but we're not testing it. so just adjust
+            # the expected count of errors.
+            count = 4
+        else:
+            count = 2
         return (
-            "2 inconsistent parents",
+            "%d inconsistent parents" % count,
             r"\* a-file-id version broken-revision-1-2 has parents "
             r"\('parent-2', 'parent-1'\) but should have "
             r"\('parent-1', 'parent-2'\)",

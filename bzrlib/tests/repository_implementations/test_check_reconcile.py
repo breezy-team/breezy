@@ -58,6 +58,11 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         """
         inv.revision_id = revision_id
         inv.root.revision = revision_id
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines(revision_id, [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
             timestamp=0, inventory_sha1='', timezone=0, message='foo',
@@ -147,23 +152,34 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         scenario = self.scenario_class(self)
         repo = self.make_populated_repository(scenario.populate_repository)
         self.require_repo_suffers_text_parent_corruption(repo)
-        self.assertParentsMatch(scenario.populated_parents(), repo, 'before')
-        vf_shas = self.shas_for_versions_of_file(
-            repo, scenario.all_versions_after_reconcile())
+        repo.lock_read()
+        try:
+            self.assertParentsMatch(scenario.populated_parents(), repo,
+                'before')
+            vf_shas = self.shas_for_versions_of_file(
+                repo, scenario.all_versions_after_reconcile())
+        finally:
+            repo.unlock()
         result = repo.reconcile(thorough=True)
-        self.assertParentsMatch(scenario.corrected_parents(), repo, 'after')
-        # The contents of the versions in the versionedfile should be the same
-        # after the reconcile.
-        self.assertEqual(
-            vf_shas,
-            self.shas_for_versions_of_file(
-                repo, scenario.all_versions_after_reconcile()))
+        repo.lock_read()
+        try:
+            self.assertParentsMatch(scenario.corrected_parents(), repo,
+                'after')
+            # The contents of the versions in the versionedfile should be the
+            # same after the reconcile.
+            self.assertEqual(
+                vf_shas,
+                self.shas_for_versions_of_file(
+                    repo, scenario.all_versions_after_reconcile()))
 
-        for file_version in scenario.corrected_fulltexts():
-            vf = repo.weave_store.get_weave(
-                'a-file-id', repo.get_transaction())
-            self.assertEqual('fulltext', vf._index.get_method(file_version),
-                '%r should be fulltext' % (file_version,))
+            for file_version in scenario.corrected_fulltexts():
+                vf = repo.weave_store.get_weave(
+                    'a-file-id', repo.get_transaction())
+                self.assertEqual('fulltext',
+                    vf._index.get_method(file_version),
+                    '%r should be fulltext' % (file_version,))
+        finally:
+            repo.unlock()
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""
@@ -172,7 +188,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         self.require_repo_suffers_text_parent_corruption(repo)
         check_result = repo.check()
         check_result.report_results(verbose=True)
-        for pattern in scenario.check_regexes():
+        for pattern in scenario.check_regexes(repo):
             self.assertContainsRe(
                 self._get_log(keep_log_file=True),
                 pattern)

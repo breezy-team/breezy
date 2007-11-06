@@ -1385,6 +1385,12 @@ class cmd_diff(Command):
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
+    :Exit values:
+        1 - changed
+        2 - unrepresentable changes
+        3 - error
+        0 - no change
+
     :Examples:
         Shows the difference in the working tree versus the last commit::
 
@@ -2362,10 +2368,36 @@ class cmd_check(Command):
     def run(self, branch=None, verbose=False):
         from bzrlib.check import check
         if branch is None:
-            branch = Branch.open_containing('.')[0]
+            branch_obj = Branch.open_containing('.')[0]
         else:
-            branch = Branch.open(branch)
-        check(branch, verbose)
+            branch_obj = Branch.open(branch)
+        check(branch_obj, verbose)
+        # bit hacky, check the tree parent is accurate
+        try:
+            if branch is None:
+                tree = WorkingTree.open_containing('.')[0]
+            else:
+                tree = WorkingTree.open(branch)
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+        else:
+            # This is a primitive 'check' for tree state. Currently this is not
+            # integrated into the main check logic as yet.
+            tree.lock_read()
+            try:
+                tree_basis = tree.basis_tree()
+                tree_basis.lock_read()
+                try:
+                    repo_basis = tree.branch.repository.revision_tree(
+                        tree.last_revision())
+                    if len(list(repo_basis._iter_changes(tree_basis))):
+                        raise errors.BzrCheckError(
+                            "Mismatched basis inventory content.")
+                    tree._validate()
+                finally:
+                    tree_basis.unlock()
+            finally:
+                tree.unlock()
 
 
 class cmd_upgrade(Command):

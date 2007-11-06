@@ -25,21 +25,18 @@ active, in which case aftp:// will be your friend.
 """
 
 from cStringIO import StringIO
-import asyncore
 import errno
 import ftplib
 import os
 import os.path
-import urllib
 import urlparse
-import select
 import stat
-import threading
 import time
 import random
 from warnings import warn
 
 from bzrlib import (
+    config,
     errors,
     osutils,
     urlutils,
@@ -47,14 +44,16 @@ from bzrlib import (
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     AppendBasedFileStream,
-    _file_streams,
-    Server,
     ConnectedTransport,
+    _file_streams,
+    register_urlparse_netloc_protocol,
+    Server,
     )
 from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
 
-_have_medusa = False
+
+register_urlparse_netloc_protocol('aftp')
 
 
 class FtpPathError(errors.PathError):
@@ -119,27 +118,33 @@ class FtpTransport(ConnectedTransport):
         in base url at transport creation time.
         """
         if credentials is None:
-            password = self._password
+            user, password = self._user, self._password
         else:
-            password = credentials
+            user, password = credentials
+
+        auth = config.AuthenticationConfig()
+        if user is None:
+            user = auth.get_user('ftp', self._host, port=self._port)
+            if user is None:
+                # Default to local user
+                user = getpass.getuser()
 
         mutter("Constructing FTP instance against %r" %
-               ((self._host, self._port, self._user, '********',
+               ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
             connection = ftplib.FTP()
             connection.connect(host=self._host, port=self._port)
-            if self._user and self._user != 'anonymous' and \
+            if user and user != 'anonymous' and \
                     password is None: # '' is a valid password
-                get_password = bzrlib.ui.ui_factory.get_password
-                password = get_password(prompt='FTP %(user)s@%(host)s password',
-                                        user=self._user, host=self._host)
-            connection.login(user=self._user, passwd=password)
+                password = auth.get_password('ftp', self._host, user,
+                                             port=self._port)
+            connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
         except ftplib.error_perm, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
-        return connection, password
+        return connection, (user, password)
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""
@@ -557,246 +562,17 @@ class FtpTransport(ConnectedTransport):
         return self.lock_read(relpath)
 
 
-class FtpServer(Server):
-    """Common code for FTP server facilities."""
-
-    def __init__(self):
-        self._root = None
-        self._ftp_server = None
-        self._port = None
-        self._async_thread = None
-        # ftp server logs
-        self.logs = []
-
-    def get_url(self):
-        """Calculate an ftp url to this server."""
-        return 'ftp://foo:bar@localhost:%d/' % (self._port)
-
-#    def get_bogus_url(self):
-#        """Return a URL which cannot be connected to."""
-#        return 'ftp://127.0.0.1:1'
-
-    def log(self, message):
-        """This is used by medusa.ftp_server to log connections, etc."""
-        self.logs.append(message)
-
-    def setUp(self, vfs_server=None):
-        if not _have_medusa:
-            raise RuntimeError('Must have medusa to run the FtpServer')
-
-        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
-            "FtpServer currently assumes local transport, got %s" % vfs_server
-
-        self._root = os.getcwdu()
-        self._ftp_server = _ftp_server(
-            authorizer=_test_authorizer(root=self._root),
-            ip='localhost',
-            port=0, # bind to a random port
-            resolver=None,
-            logger_object=self # Use FtpServer.log() for messages
-            )
-        self._port = self._ftp_server.getsockname()[1]
-        # Don't let it loop forever, or handle an infinite number of requests.
-        # In this case it will run for 1000s, or 10000 requests
-        self._async_thread = threading.Thread(
-                target=FtpServer._asyncore_loop_ignore_EBADF,
-                kwargs={'timeout':0.1, 'count':10000})
-        self._async_thread.setDaemon(True)
-        self._async_thread.start()
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._ftp_server.close()
-        asyncore.close_all()
-        self._async_thread.join()
-
-    @staticmethod
-    def _asyncore_loop_ignore_EBADF(*args, **kwargs):
-        """Ignore EBADF during server shutdown.
-
-        We close the socket to get the server to shutdown, but this causes
-        select.select() to raise EBADF.
-        """
-        try:
-            asyncore.loop(*args, **kwargs)
-            # FIXME: If we reach that point, we should raise an exception
-            # explaining that the 'count' parameter in setUp is too low or
-            # testers may wonder why their test just sits there waiting for a
-            # server that is already dead. Note that if the tester waits too
-            # long under pdb the server will also die.
-        except select.error, e:
-            if e.args[0] != errno.EBADF:
-                raise
-
-
-_ftp_channel = None
-_ftp_server = None
-_test_authorizer = None
-
-
-def _setup_medusa():
-    global _have_medusa, _ftp_channel, _ftp_server, _test_authorizer
-    try:
-        import medusa
-        import medusa.filesys
-        import medusa.ftp_server
-    except ImportError:
-        return False
-
-    _have_medusa = True
-
-    class test_authorizer(object):
-        """A custom Authorizer object for running the test suite.
-
-        The reason we cannot use dummy_authorizer, is because it sets the
-        channel to readonly, which we don't always want to do.
-        """
-
-        def __init__(self, root):
-            self.root = root
-            # If secured_user is set secured_password will be checked
-            self.secured_user = None
-            self.secured_password = None
-
-        def authorize(self, channel, username, password):
-            """Return (success, reply_string, filesystem)"""
-            if not _have_medusa:
-                return 0, 'No Medusa.', None
-
-            channel.persona = -1, -1
-            if username == 'anonymous':
-                channel.read_only = 1
-            else:
-                channel.read_only = 0
-
-            # Check secured_user if set
-            if (self.secured_user is not None
-                and username == self.secured_user
-                and password != self.secured_password):
-                return 0, 'Password invalid.', None
-            else:
-                return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
-
-
-    class ftp_channel(medusa.ftp_server.ftp_channel):
-        """Customized ftp channel"""
-
-        def log(self, message):
-            """Redirect logging requests."""
-            mutter('_ftp_channel: %s', message)
-
-        def log_info(self, message, type='info'):
-            """Redirect logging requests."""
-            mutter('_ftp_channel %s: %s', type, message)
-
-        def cmd_rnfr(self, line):
-            """Prepare for renaming a file."""
-            self._renaming = line[1]
-            self.respond('350 Ready for RNTO')
-            # TODO: jam 20060516 in testing, the ftp server seems to
-            #       check that the file already exists, or it sends
-            #       550 RNFR command failed
-
-        def cmd_rnto(self, line):
-            """Rename a file based on the target given.
-
-            rnto must be called after calling rnfr.
-            """
-            if not self._renaming:
-                self.respond('503 RNFR required first.')
-            pfrom = self.filesystem.translate(self._renaming)
-            self._renaming = None
-            pto = self.filesystem.translate(line[1])
-            if os.path.exists(pto):
-                self.respond('550 RNTO failed: file exists')
-                return
-            try:
-                os.rename(pfrom, pto)
-            except (IOError, OSError), e:
-                # TODO: jam 20060516 return custom responses based on
-                #       why the command failed
-                # (bialix 20070418) str(e) on Python 2.5 @ Windows
-                # sometimes don't provide expected error message;
-                # so we obtain such message via os.strerror()
-                self.respond('550 RNTO failed: %s' % os.strerror(e.errno))
-            except:
-                self.respond('550 RNTO failed')
-                # For a test server, we will go ahead and just die
-                raise
-            else:
-                self.respond('250 Rename successful.')
-
-        def cmd_size(self, line):
-            """Return the size of a file
-
-            This is overloaded to help the test suite determine if the 
-            target is a directory.
-            """
-            filename = line[1]
-            if not self.filesystem.isfile(filename):
-                if self.filesystem.isdir(filename):
-                    self.respond('550 "%s" is a directory' % (filename,))
-                else:
-                    self.respond('550 "%s" is not a file' % (filename,))
-            else:
-                self.respond('213 %d' 
-                    % (self.filesystem.stat(filename)[stat.ST_SIZE]),)
-
-        def cmd_mkd(self, line):
-            """Create a directory.
-
-            Overloaded because default implementation does not distinguish
-            *why* it cannot make a directory.
-            """
-            if len (line) != 2:
-                self.command_not_understood(''.join(line))
-            else:
-                path = line[1]
-                try:
-                    self.filesystem.mkdir (path)
-                    self.respond ('257 MKD command successful.')
-                except (IOError, OSError), e:
-                    # (bialix 20070418) str(e) on Python 2.5 @ Windows
-                    # sometimes don't provide expected error message;
-                    # so we obtain such message via os.strerror()
-                    self.respond ('550 error creating directory: %s' %
-                                  os.strerror(e.errno))
-                except:
-                    self.respond ('550 error creating directory.')
-
-
-    class ftp_server(medusa.ftp_server.ftp_server):
-        """Customize the behavior of the Medusa ftp_server.
-
-        There are a few warts on the ftp_server, based on how it expects
-        to be used.
-        """
-        _renaming = None
-        ftp_channel_class = ftp_channel
-
-        def __init__(self, *args, **kwargs):
-            mutter('Initializing _ftp_server: %r, %r', args, kwargs)
-            medusa.ftp_server.ftp_server.__init__(self, *args, **kwargs)
-
-        def log(self, message):
-            """Redirect logging requests."""
-            mutter('_ftp_server: %s', message)
-
-        def log_info(self, message, type='info'):
-            """Override the asyncore.log_info so we don't stipple the screen."""
-            mutter('_ftp_server %s: %s', type, message)
-
-    _test_authorizer = test_authorizer
-    _ftp_channel = ftp_channel
-    _ftp_server = ftp_server
-
-    return True
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    if not _setup_medusa():
-        warn("You must install medusa (http://www.amk.ca/python/code/medusa.html) for FTP tests")
-        return []
+    from bzrlib import tests
+    if tests.FTPServerFeature.available():
+        from bzrlib.tests import ftp_server
+        return [(FtpTransport, ftp_server.FTPServer)]
     else:
-        return [(FtpTransport, FtpServer)]
+        # Dummy server to have the test suite report the number of tests
+        # needing that feature.
+        class UnavailableFTPServer(object):
+            def setUp(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
+
+        return [(FtpTransport, UnavailableFTPServer)]

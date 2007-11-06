@@ -1252,7 +1252,7 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions."
+    _fmt = "Parents are mismatched between two revisions. %(message)s"
     
 
 class WeaveInvalidChecksum(WeaveError):
@@ -1482,14 +1482,13 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permament=False, qual_proto=None):
+    def __init__(self, source, target, is_permanent=False, qual_proto=None):
         self.source = source
         self.target = target
-        if is_permament:
+        if is_permanent:
             self.permanently = ' permanently'
         else:
             self.permanently = ''
-        self.is_permament = is_permament
         self._qualified_proto = qual_proto
         TransportError.__init__(self)
 
