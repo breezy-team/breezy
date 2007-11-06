@@ -52,6 +52,10 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * Unicode-safe output from ``bzr info``. The output will be encoded
+     using the terminal encoding and unrepresentable characters will be
+     replaced by '?'. (Lukáš Lalinský, #151844)
+
    * Wrap medusa ftp test server as an FTPServer feature.
      (Vincent Ladeuil, #157752)
 
