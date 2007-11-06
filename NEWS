@@ -223,6 +223,9 @@ IN DEVELOPMENT
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
 
+   * The error message when ``move --after`` should be used has been improved to
+     make it clearer that this is the case. (Daniel Watkins, #85237)
+
   API BREAKS:
 
    * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
