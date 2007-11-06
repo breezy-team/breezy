@@ -481,12 +481,11 @@ class TestNonAscii(TestCaseWithTransport):
 
         msg = self.info['message']
 
-        txt = self.run_bzr_decode('missing empty-tree', retcode=1)
+        txt = self.run_bzr_decode('missing empty-tree')
         self.assertNotEqual(-1, txt.find(self.info['committer']))
         self.assertNotEqual(-1, txt.find(msg))
 
         # Make sure missing doesn't fail even if we can't write out
-        txt = self.run_bzr_decode('missing empty-tree', encoding='ascii',
-                                  retcode=1)
+        txt = self.run_bzr_decode('missing empty-tree', encoding='ascii')
         self.assertEqual(-1, txt.find(msg))
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
