@@ -209,3 +209,12 @@ class TestRemove(ExternalBase):
                      error_regexes=["removed a", "removed b", "removed b/c"])
         tree = WorkingTree.open('.')
         self.assertFilesUnversioned(files)
+
+    def test_remove_uncommitted_removed_file(self):
+        # As per bug #152811
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit(message="add a")
+        tree.remove('a')
+        self.run_bzr('remove a')
