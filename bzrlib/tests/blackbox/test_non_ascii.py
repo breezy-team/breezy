@@ -546,3 +546,9 @@ class TestNonAscii(TestCaseWithTransport):
         txt = bzr('missing empty-tree', encoding='ascii', retcode=1)
         self.assertEqual(-1, txt.find(msg))
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
+
+    def test_info(self):
+        self.run_bzr_decode(['branch', u'.', self.info['directory']])
+        self.run_bzr_decode(['info', self.info['directory']])
+        self.run_bzr_decode(['info', self.info['directory']],
+                            encoding='ascii')
