@@ -721,7 +721,8 @@ class WorkingTree4(WorkingTree3):
                     move_file = False
                 elif not after:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                        extra="(Use --after to tell bzr about a rename that has"
+                               " already happened)")
 
             rollbacks = []
             def rollback_rename():
