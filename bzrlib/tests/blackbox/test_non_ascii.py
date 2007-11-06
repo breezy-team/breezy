@@ -47,7 +47,8 @@ class TestNonAscii(TestCaseWithTransport):
         bzrlib.user_encoding = self._orig_encoding
         super(TestNonAscii, self).tearDown()
 
-    def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None):
+    def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
+                        working_dir=None):
         """Run bzr and decode the output into a particular encoding.
 
         Returns a string containing the stdout output from bzr.
@@ -59,7 +60,7 @@ class TestNonAscii(TestCaseWithTransport):
             encoding = bzrlib.user_encoding
         try:
             out = self.run_bzr(args, output_encoding=encoding, encoding=encoding,
-                retcode=retcode)[0]
+                retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError, e:
             if not fail:
