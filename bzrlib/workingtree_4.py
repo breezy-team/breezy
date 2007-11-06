@@ -1719,10 +1719,7 @@ class InterDirStateTree(InterTree):
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
-        # TODO: handle comparisons as an empty tree as a different special
-        # case? mbp 20070226
-        if (extra_trees or (self.source._revision_id == NULL_REVISION)
-            or specific_files == []):
+        if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
@@ -1730,7 +1727,8 @@ class InterDirStateTree(InterTree):
                 yield f
             return
         parent_ids = self.target.get_parent_ids()
-        assert (self.source._revision_id in parent_ids), \
+        assert (self.source._revision_id in parent_ids
+                or self.source._revision_id == NULL_REVISION), \
                 "revision {%s} is not stored in {%s}, but %s " \
                 "can only be used for trees stored in the dirstate" \
                 % (self.source._revision_id, self.target, self._iter_changes)
@@ -1743,7 +1741,7 @@ class InterDirStateTree(InterTree):
                 "Failure: source._revision_id: %s not in target.parent_ids(%s)" % (
                 self.source._revision_id, parent_ids)
             source_index = 1 + parent_ids.index(self.source._revision_id)
-            indices = (source_index,target_index)
+            indices = (source_index, target_index)
         # -- make all specific_files utf8 --
         if specific_files:
             specific_files_utf8 = set()
