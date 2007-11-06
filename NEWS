@@ -223,6 +223,9 @@ IN DEVELOPMENT
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
 
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
   API BREAKS:
 
    * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
