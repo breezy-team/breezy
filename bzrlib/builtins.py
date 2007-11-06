@@ -1062,6 +1062,7 @@ class cmd_info(Command):
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
     takes_options = ['verbose']
+    encoding_type = 'replace'
 
     @display_command
     def run(self, location=None, verbose=False):
@@ -1071,7 +1072,7 @@ class cmd_info(Command):
             noise_level = 0
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
-                         verbose=noise_level)
+                         verbose=noise_level, outfile=self.outf)
 
 
 class cmd_remove(Command):
@@ -4196,15 +4197,42 @@ class cmd_tags(Command):
             short_name='d',
             type=unicode,
             ),
+        RegistryOption.from_kwargs('sort',
+            'Sort tags by different criteria.', title='Sorting',
+            alpha='Sort tags lexicographically (default).',
+            time='Sort tags chronologically.',
+            ),
+        'show-ids',
     ]
 
     @display_command
     def run(self,
             directory='.',
+            sort='alpha',
+            show_ids=False,
             ):
         branch, relpath = Branch.open_containing(directory)
-        for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
-            self.outf.write('%-20s %s\n' % (tag_name, target))
+        tags = branch.tags.get_tag_dict().items()
+        if sort == 'alpha':
+            tags.sort()
+        elif sort == 'time':
+            timestamps = {}
+            for tag, revid in tags:
+                try:
+                    revobj = branch.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    timestamp = sys.maxint # place them at the end
+                else:
+                    timestamp = revobj.timestamp
+                timestamps[revid] = timestamp
+            tags.sort(key=lambda x: timestamps[x[1]])
+        if not show_ids:
+            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+            revno_map = branch.get_revision_id_to_revno_map()
+            tags = [ (tag, '.'.join(map(str, revno_map.get(revid, ('?',)))))
+                        for tag, revid in tags ]
+        for tag, revspec in tags:
+            self.outf.write('%-20s %s\n' % (tag, revspec))
 
 
 class cmd_reconfigure(Command):
