@@ -1892,9 +1892,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                          want_unversioned=True, specific_files=files):
                     # Check if it's an unknown (but not ignored) OR
                     # changed (but not deleted) :
-                    if not self.is_ignored(path[1]) and (
-                        versioned == (False, False) or
-                        content_change and kind[1] != None):
+                    if ((versioned == (False, False) or
+                         content_change and kind[1] != None)
+                        and not self.is_ignored(path[1])):
                         has_changed_files = True
                         break
 
