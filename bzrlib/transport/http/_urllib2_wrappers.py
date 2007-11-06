@@ -109,7 +109,12 @@ class Response(httplib.HTTPResponse):
             # close the connection. Some cases are not correctly detected by
             # httplib.HTTPConnection.getresponse (called by
             # httplib.HTTPResponse.begin). The CONNECT response for the https
-            # through proxy case is one.
+            # through proxy case is one.  Note: the 'will_close' below refers
+            # to the "true" socket between us and the server, whereas the
+            # 'close()' above refers to the copy of that socket created by
+            # httplib for the response itself. So, in the if above we close the
+            # socket to indicate that we are done with the response whereas
+            # below we keep the socket with the server opened.
             self.will_close = False
 
 
@@ -353,6 +358,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             raise errors.ConnectionError("Couldn't resolve host '%s'"
                                          % request.get_origin_req_host(),
                                          orig_error=exc_val)
+        elif isinstance(exc_val, httplib.ImproperConnectionState):
+            # The httplib pipeline is in incorrect state, it's a bug in our
+            # implementation.
+            raise exc_type, exc_val, exc_tb
         else:
             if first_try:
                 if self._debuglevel > 0:
@@ -382,21 +391,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 else:
                     # All other exception are considered connection related.
 
-                    # httplib.HTTPException should indicate a bug in our
-                    # urllib-based implementation, somewhow the httplib
-                    # pipeline is in an incorrect state, we retry in hope that
-                    # this will correct the problem but that may need
-                    # investigation (note that no such bug is known as of
-                    # 20061005 --vila).
-
                     # socket errors generally occurs for reasons
                     # far outside our scope, so closing the
                     # connection and retrying is the best we can
                     # do.
-
-                    # FIXME: and then there is HTTPError raised by:
-                    # - HTTPDefaultErrorHandler (we define our own)
-                    # - HTTPRedirectHandler.redirect_request 
 
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
