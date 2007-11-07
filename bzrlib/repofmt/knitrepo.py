@@ -323,6 +323,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = xml5.serializer_v5
+    # Knit based repositories handle ghosts reasonably well.
+    supports_ghosts = True
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

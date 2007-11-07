@@ -21,7 +21,10 @@ import errno
 import smtplib
 import socket
 
-from bzrlib import ui
+from bzrlib import (
+    config,
+    ui,
+    )
 from bzrlib.errors import (
     NoDestinationAddress,
     SMTPError,
@@ -98,14 +101,15 @@ class SMTPConnection(object):
 
     def _authenticate(self):
         """If necessary authenticate yourself to the server."""
+        auth = config.AuthenticationConfig()
         if self._smtp_username is None:
-            return
+            self._smtp_username = auth.get_user('smtp', self._smtp_server)
+            if self._smtp_username is None:
+                return
 
         if self._smtp_password is None:
-            self._smtp_password = ui.ui_factory.get_password(
-                'Please enter the SMTP password: %(user)s@%(host)s',
-                user=self._smtp_username,
-                host=self._smtp_server)
+            self._smtp_password = auth.get_password(
+                'smtp', self._smtp_server, self._smtp_username)
 
         self._connection.login(self._smtp_username, self._smtp_password)
 

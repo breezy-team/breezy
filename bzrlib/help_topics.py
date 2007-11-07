@@ -261,6 +261,7 @@ See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
 development.
 
+-Dauth         Trace authentication sections used.
 -Derror        Instead of normal error handling, always print a traceback on
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
@@ -522,6 +523,7 @@ EDITOR           Editor for editing commit messages.
 BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
+BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 ================ =================================================================
 """
 

@@ -1356,6 +1356,9 @@ class ConnectedTransport(Transport):
             except ValueError:
                 raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                         (port, url))
+        if host == '':
+            raise errors.InvalidURL('Host empty in: %s' % url)
+
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
