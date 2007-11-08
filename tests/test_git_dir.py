@@ -14,18 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Test the GitDir class"""
+
+import subprocess
+
+from bzrlib import bzrdir
+
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import ids
+from bzrlib.plugins.git.gitlib import git_dir
 
 
-class TestRevidConversion(tests.TestCase):
+class TestGitDir(tests.TestCaseInTempDir):
 
-    def test_simple_git_to_bzr_revision_id(self):
-        self.assertEqual("git1r-c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
-                         ids.convert_revision_id_git_to_bzr(
-                            "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+    _test_needs_features = [tests.GitCommandFeature]
 
-    def test_simple_bzr_to_git_revision_id(self):
-        self.assertEqual("c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
-                         ids.convert_revision_id_bzr_to_git(
-                            "git1r-c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+    def test_open_existing(self):
+        p = subprocess.Popen(['git', 'init'],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.communicate()
+
+        gd = bzrdir.BzrDir.open('.')
+        self.assertIsInstance(gd, git_dir.GitDir)

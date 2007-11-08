@@ -14,18 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests for interfacing with a Git Branch"""
+
+import subprocess
+
+from bzrlib import branch
+
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import ids
+from bzrlib.plugins.git.gitlib import git_branch
 
 
-class TestRevidConversion(tests.TestCase):
+class TestGitBranch(tests.TestCaseInTempDir):
 
-    def test_simple_git_to_bzr_revision_id(self):
-        self.assertEqual("git1r-c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
-                         ids.convert_revision_id_git_to_bzr(
-                            "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+    _test_needs_features = [tests.GitCommandFeature]
 
-    def test_simple_bzr_to_git_revision_id(self):
-        self.assertEqual("c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
-                         ids.convert_revision_id_bzr_to_git(
-                            "git1r-c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+    def test_open_existing(self):
+        p = subprocess.Popen(['git', 'init'],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.communicate()
+
+        gd = branch.Branch.open('.')
+        self.assertIsInstance(gd, git_branch.GitBranch)
+
