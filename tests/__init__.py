@@ -18,11 +18,13 @@
 
 import subprocess
 import time
+import tempfile
 
 from bzrlib import (
     tests,
     trace,
     )
+from  bzrlib.plugins.git.gitlib import errors
 
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir
@@ -60,23 +62,61 @@ def run_git(*args):
 
 class GitBranchBuilder(object):
 
-    def __init__(self, stream):
+    def __init__(self, stream=None):
         self.commit_info = []
         self.stream = stream
+        self._process = None
         self._counter = 0
         self._branch = 'refs/head/master'
+        if stream is None:
+            self._marks_file = tempfile.NamedTemporaryFile(
+                prefix='tmp-git-marks')
+            self._process = subprocess.Popen(
+                ['git', 'fast-import', '--quiet',
+                 # GIT doesn't support '--export-marks foo'
+                 # it only supports '--export-marks=foo'
+                 # And gives a 'unknown option' otherwise.
+                 '--export-marks='+self._marks_file.name,
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                )
+            self.stream = self._process.stdin
+        else:
+            self._process = None
 
     def set_branch(self, branch):
         """Set the branch we are committing."""
         self._branch = branch
 
+    def _write(self, text):
+        try:
+            self.stream.write(text)
+        except IOError, e:
+            if self._process is None:
+                raise
+            raise errors.GitCommandError(self._process.returncode,
+                                         'git fast-import',
+                                         self._process.stderr.read())
+
+    def _writelines(self, lines):
+        try:
+            self.stream.writelines(lines)
+        except IOError, e:
+            if self._process is None:
+                raise
+            raise errors.GitCommandError(self._process.returncode,
+                                         'git fast-import',
+                                         self._process.stderr.read())
+
     def _create_blob(self, content):
         self._counter += 1
-        self.stream.write('blob\n')
-        self.stream.write('mark :%d\n' % (self._counter,))
-        self.stream.write('data %d\n' % (len(content),))
-        self.stream.write(content)
-        self.stream.write('\n')
+        self._write('blob\n')
+        self._write('mark :%d\n' % (self._counter,))
+        self._write('data %d\n' % (len(content),))
+        self._write(content)
+        self._write('\n')
         return self._counter
 
     def set_file(self, path, content, executable):
@@ -99,29 +139,64 @@ class GitBranchBuilder(object):
         """This will delete files or symlinks at the given location."""
         self.commit_info.append('D %s\n' % (path.encode('utf-8'),))
 
+    # TODO: Author
+    # TODO: Author timestamp+timezone
     def commit(self, committer, message, timestamp=None,
-               timezone='+0000', author=None):
+               timezone='+0000', author=None,
+               merge=None, base=None):
+        """Commit the new content.
+
+        :param committer: The name and address for the committer
+        :param message: The commit message
+        :param timestamp: The timestamp for the commit
+        :param timezone: The timezone of the commit, such as '+0000' or '-1000'
+        :param author: The name and address of the author (if different from
+            committer)
+        :param merge: A list of marks if this should merge in another commit
+        :param base: An id for the base revision (primary parent) if that
+            is not the last commit.
+        :return: A mark which can be used in the future to reference this
+            commit.
+        """
         self._counter += 1
         mark = self._counter
-        self.stream.write('commit %s\n' % (branch,))
-        self.stream.write('mark :%d\n' % (mark,))
-        self.stream.write('committer %s %s %s\n'
-                          % (committer, timestamp, timezone))
+        if timestamp is None:
+            timestamp = int(time.time())
+        self._write('commit %s\n' % (self._branch,))
+        self._write('mark :%d\n' % (mark,))
+        self._write('committer %s %s %s\n'
+                    % (committer, timestamp, timezone))
         message = message.encode('UTF-8')
-        self.stream.write('data %d\n' % (len(message),))
-        self.stream.write(message)
-        self.stream.write('\n')
-        self.stream.writelines(self.commit_info)
-        self.stream.write('\n')
+        self._write('data %d\n' % (len(message),))
+        self._write(message)
+        self._write('\n')
+        if base is not None:
+            self._write('from :%d\n' % (base,))
+        if merge is not None:
+            for m in merge:
+                self._write('merge :%d\n' % (m,))
+        self._writelines(self.commit_info)
+        self._write('\n')
         self.commit_info = []
         return mark
 
-
-class GitBranchBuilder(object):
-    """This uses git-fast-import to build up something directly."""
-
-    def __init__(self, git_dir):
-        self.git_dir = git_dir
+    def finish(self):
+        """We are finished building, close the stream, get the id mapping"""
+        self.stream.close()
+        if self._process is None:
+            return {}
+        if self._process.wait() != 0:
+            raise errors.GitCommandError(self._process.returncode,
+                                         'git fast-import',
+                                         self._process.stderr.read())
+        self._marks_file.seek(0)
+        mapping = {}
+        for line in self._marks_file:
+            mark, shasum = line.split()
+            assert mark.startswith(':')
+            mapping[int(mark[1:])] = shasum
+        self._marks_file.close()
+        return mapping
 
 
 def test_suite():

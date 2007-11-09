@@ -46,28 +46,37 @@ class TestGitRepository(tests.TestCaseInTempDir):
 
     def test_revision_graph(self):
         tests.run_git('init')
-        self.build_tree(['a'])
-        tests.run_git('add', 'a')
-        tests.run_git('commit', '-m', 'a')
-        tests.run_git('branch', 'foo')
-        self.build_tree_contents([('a', 'new a\n')])
-        tests.run_git('commit', '-a', '-m', 'new a')
-        tests.run_git('checkout', 'foo')
-        self.build_tree(['b'])
-        tests.run_git('add', 'b')
-        tests.run_git('commit', '-m', 'b')
-        tests.run_git('merge', 'master')
+        builder = tests.GitBranchBuilder()
+        file_handle = builder.set_file('a', 'text for a\n', False)
+        commit1_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        file2_handle = builder.set_file('a', 'new a\n', False)
+        commit2_handle = builder.commit('Joe Foo <joe@foo.com>', u'new a')
+        file3_handle = builder.set_file('b', 'text for b\n', False)
+        commit3_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'b',
+                                        base=commit1_handle)
+        commit4_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'merge',
+                                        base=commit3_handle,
+                                        merge=[commit2_handle],)
 
-        revisions = tests.run_git('rev-list', '--topo-order', 'HEAD')
-        revisions = [ids.convert_revision_id_git_to_bzr(r)
-                     for r in revisions.splitlines()]
-        graph = {revisions[0]:[revisions[2], revisions[1]],
-                 revisions[1]:[revisions[3]],
-                 revisions[2]:[revisions[3]],
-                 revisions[3]:[],
+        mapping = builder.finish()
+        commit1_id = mapping[commit1_handle]
+        commit2_id = mapping[commit2_handle]
+        commit3_id = mapping[commit3_handle]
+        commit4_id = mapping[commit4_handle]
+
+        revisions = tests.run_git('rev-list', '--topo-order',
+                                  commit4_id)
+        revisions = revisions.splitlines()
+        self.assertEqual([commit4_id, commit2_id, commit3_id, commit1_id],
+                         revisions)
+        bzr_revisions = [ids.convert_revision_id_git_to_bzr(r) for r in revisions]
+        graph = {bzr_revisions[0]:[bzr_revisions[2], bzr_revisions[1]],
+                 bzr_revisions[1]:[bzr_revisions[3]],
+                 bzr_revisions[2]:[bzr_revisions[3]],
+                 bzr_revisions[3]:[],
                 }
 
         repo = repository.Repository.open('.')
-        self.assertEqual(graph, repo.get_revision_graph(revisions[0]))
-        self.assertEqual({revisions[3]:[]},
-                         repo.get_revision_graph(revisions[3]))
+        self.assertEqual(graph, repo.get_revision_graph(bzr_revisions[0]))
+        self.assertEqual({bzr_revisions[3]:[]},
+                         repo.get_revision_graph(bzr_revisions[3]))
