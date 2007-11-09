@@ -36,20 +36,30 @@ class TestModel(tests.TestCaseInTempDir):
 
     def test_ancestors(self):
         tests.run_git('init')
-        self.build_tree(['a'])
-        tests.run_git('add', 'a')
-        tests.run_git('commit', '-m', 'a')
-        tests.run_git('branch', 'foo')
-        self.build_tree_contents([('a', 'new a\n')])
-        tests.run_git('commit', '-a', '-m', 'new a')
-        tests.run_git('checkout', 'foo')
-        self.build_tree(['b'])
-        tests.run_git('add', 'b')
-        tests.run_git('commit', '-m', 'b')
-        tests.run_git('merge', 'master')
+        builder = tests.GitBranchBuilder()
+        file_handle = builder.set_file('a', 'text for a\n', False)
+        commit1_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        file2_handle = builder.set_file('a', 'new a\n', False)
+        commit2_handle = builder.commit('Joe Foo <joe@foo.com>', u'new a')
+        file3_handle = builder.set_file('b', 'text for b\n', False)
+        commit3_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'b',
+                                        base=commit1_handle)
+        commit4_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'merge',
+                                        base=commit3_handle,
+                                        merge=[commit2_handle],)
 
-        revisions = tests.run_git('rev-list', '--topo-order', 'HEAD')
+        mapping = builder.finish()
+        commit1_id = mapping[commit1_handle]
+        commit2_id = mapping[commit2_handle]
+        commit3_id = mapping[commit3_handle]
+        commit4_id = mapping[commit4_handle]
+
+        revisions = tests.run_git('rev-list', '--topo-order',
+                                  commit4_id)
         revisions = revisions.splitlines()
+        self.assertEqual([commit4_id, commit2_id, commit3_id, commit1_id],
+                         revisions)
+
         graph = {revisions[0]:[revisions[2], revisions[1]],
                  revisions[1]:[revisions[3]],
                  revisions[2]:[revisions[3]],
@@ -57,5 +67,6 @@ class TestModel(tests.TestCaseInTempDir):
                 }
 
         themodel = model.GitModel('.git')
+        tests.run_git('reset', '--hard', commit4_id)
         self.assertEqual(revisions[0], themodel.get_head())
         self.assertEqual(graph, themodel.ancestry([revisions[0]]))
