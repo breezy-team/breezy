@@ -708,7 +708,7 @@ class Packer(object):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
-            an iterator.
+            an iterator of line,version_id.
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -762,7 +762,7 @@ class Packer(object):
                     else:
                         line_iterator = factory.get_linedelta_content(content)
                     for line in line_iterator:
-                        yield line
+                        yield line, key[-1]
                 else:
                     # check the header only
                     df, _ = knit_data._parse_record_header(key[-1], raw_data)
