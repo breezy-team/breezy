@@ -181,6 +181,7 @@ class TestScopeReplacer(TestCase):
         test_obj6.bar = 'test'
         self.assertNotEqual(lazy_import.ScopeReplacer,
                             object.__getattribute__(test_obj6, '__class__'))
+        self.assertEqual('test', test_obj6.bar)
 
     def test_replace_side_effects(self):
         """Creating a new object should only create one entry in globals.
