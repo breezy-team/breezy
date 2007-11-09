@@ -17,11 +17,15 @@
 """An adapter between a Git Repository and a Bazaar Branch"""
 
 from bzrlib import (
+    deprecated_graph,
     repository,
     urlutils,
     )
 
-from bzrlib.plugins.git.gitlib import model
+from bzrlib.plugins.git.gitlib import (
+    ids,
+    model,
+    )
 
 
 class GitRepository(repository.Repository):
@@ -53,10 +57,12 @@ class GitRepository(repository.Repository):
         return self.get_revision_graph_with_ghosts(revisions).get_ancestors()
 
     def get_revision_graph_with_ghosts(self, revision_ids=None):
-        result = deprecated_graph.Graph()
-        for revision in self._ancestor_revisions(revision_ids):
-            result.add_node(revision.revision_id, revision.parent_ids)
-            self._revision_cache[revision.revision_id] = revision
+        result = {}
+        for node, parents in self._git.ancestry(None).iteritems():
+            bzr_node = ids.convert_revision_id_git_to_bzr(node)
+            bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
+                           for n in parents]
+            result[bzr_node] = bzr_parents
         return result
 
     def get_revision(self, revision_id):

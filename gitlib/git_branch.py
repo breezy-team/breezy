@@ -23,6 +23,8 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 
+from bzrlib.plugins.git.gitlib import ids
+
 
 class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf"""
@@ -70,6 +72,8 @@ class GitBranch(branch.Branch):
     @needs_read_lock
     def revision_history(self):
         node = self.last_revision()
+        if node == revision.NULL_REVISION:
+            return []
         ancestors = self.repository.get_revision_graph(node)
         history = []
         while node is not None:

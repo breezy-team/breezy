@@ -21,7 +21,10 @@ import subprocess
 from bzrlib import branch, revision
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import git_branch
+from bzrlib.plugins.git.gitlib import (
+    git_branch,
+    ids,
+    )
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
@@ -41,3 +44,14 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
                          thebranch.last_revision_info())
+
+    def test_last_revision_is_valid(self):
+        tests.run_git('init')
+        self.build_tree(['a'])
+        tests.run_git('add', 'a')
+        tests.run_git('commit', '-m', 'a')
+        head = tests.run_git('rev-parse', 'HEAD').strip()
+
+        thebranch = branch.Branch.open('.')
+        self.assertEqual(ids.convert_revision_id_git_to_bzr(head),
+                         thebranch.last_revision())

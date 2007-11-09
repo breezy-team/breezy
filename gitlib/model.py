@@ -16,6 +16,7 @@
 
 """The model for interacting with the git process, etc."""
 
+import os
 import subprocess
 
 from bzrlib.plugins.git.gitlib import errors
@@ -28,13 +29,16 @@ class GitModel(object):
         self.git_dir = git_dir
 
     def git_command(self, command, args):
-        return ['git', '--git-dir', self.git_dir, command] + args
+        return ['git', command] + args
 
     def git_lines(self, command, args):
         cmd = self.git_command(command, args)
+        env = os.environ.copy()
+        env['GIT_DIR'] = self.git_dir
         p = subprocess.Popen(cmd,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             env=env)
         lines = p.stdout.readlines()
         if p.wait() != 0:
             raise errors.GitCommandError(cmd, p.returncode,
@@ -70,7 +74,7 @@ class GitModel(object):
 
     def rev_parse(self, git_id):
         args = ['--verify', git_id]
-        return self.git_line('rev-parse', args)
+        return self.git_line('rev-parse', args).strip()
 
     def get_head(self):
         try:

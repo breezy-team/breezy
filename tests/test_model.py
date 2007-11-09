@@ -57,4 +57,5 @@ class TestModel(tests.TestCaseInTempDir):
                 }
 
         themodel = model.GitModel('.git')
+        self.assertEqual(revisions[0], themodel.get_head())
         self.assertEqual(graph, themodel.ancestry([revisions[0]]))
