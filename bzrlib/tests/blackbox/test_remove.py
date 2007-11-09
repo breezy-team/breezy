@@ -215,15 +215,14 @@ class TestRemove(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit(message="add a")
+        tree.commit("add a")
         tree.remove('a')
         self.run_bzr('remove a')
 
     def test_remove_file_and_containing_dir(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['config%s' % (os.sep,),
-                         osutils.joinpath(['config', 'file'])])
-        tree.add(['config', osutils.joinpath(['config', 'file'])])
-        tree.commit(message="add files")
-        self.run_bzr(['remove', osutils.joinpath(['config', 'file'])])
+        self.build_tree(['config/', 'config/file'])
+        tree.add(['config', 'config/file'])
+        tree.commit("add files")
+        self.run_bzr(['remove', 'config/file'])
         self.run_bzr('remove config')
