@@ -17,6 +17,7 @@
 """The basic test suite for bzr-git."""
 
 import subprocess
+import time
 
 from bzrlib import (
     tests,
@@ -57,12 +58,79 @@ def run_git(*args):
     return out
 
 
+class GitBranchBuilder(object):
+
+    def __init__(self, stream):
+        self.commit_info = []
+        self.stream = stream
+        self._counter = 0
+        self._branch = 'refs/head/master'
+
+    def set_branch(self, branch):
+        """Set the branch we are committing."""
+        self._branch = branch
+
+    def _create_blob(self, content):
+        self._counter += 1
+        self.stream.write('blob\n')
+        self.stream.write('mark :%d\n' % (self._counter,))
+        self.stream.write('data %d\n' % (len(content),))
+        self.stream.write(content)
+        self.stream.write('\n')
+        return self._counter
+
+    def set_file(self, path, content, executable):
+        """Create or update content at a given path."""
+        mark = self._create_blob(content)
+        if executable:
+            mode = '100755'
+        else:
+            mode = '100644'
+        self.commit_info.append('M %s :%d %s\n'
+                                % (mode, mark, path.encode('utf-8')))
+
+    def set_link(self, path, link_target):
+        """Create or update a link at a given path."""
+        mark = self._create_blob(link_target)
+        self.commit_info.append('M 120000 :%d %s\n'
+                                % (mark, path.encode('utf-8')))
+
+    def delete_entry(self, path):
+        """This will delete files or symlinks at the given location."""
+        self.commit_info.append('D %s\n' % (path.encode('utf-8'),))
+
+    def commit(self, committer, message, timestamp=None,
+               timezone='+0000', author=None):
+        self._counter += 1
+        mark = self._counter
+        self.stream.write('commit %s\n' % (branch,))
+        self.stream.write('mark :%d\n' % (mark,))
+        self.stream.write('committer %s %s %s\n'
+                          % (committer, timestamp, timezone))
+        message = message.encode('UTF-8')
+        self.stream.write('data %d\n' % (len(message),))
+        self.stream.write(message)
+        self.stream.write('\n')
+        self.stream.writelines(self.commit_info)
+        self.stream.write('\n')
+        self.commit_info = []
+        return mark
+
+
+class GitBranchBuilder(object):
+    """This uses git-fast-import to build up something directly."""
+
+    def __init__(self, git_dir):
+        self.git_dir = git_dir
+
+
 def test_suite():
     loader = tests.TestLoader()
 
     suite = tests.TestSuite()
 
     testmod_names = [
+        'test_builder',
         'test_git_branch',
         'test_git_dir',
         'test_git_repository',
