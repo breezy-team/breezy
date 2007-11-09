@@ -102,5 +102,3 @@ class GitBranch(branch.Branch):
         """See Branch.set_push_location."""
         self.get_config().set_user_option('push_location', location,
                                           local=True)
-
-

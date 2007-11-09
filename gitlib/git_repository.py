@@ -50,20 +50,30 @@ class GitRepository(repository.Repository):
         return True
 
     def get_revision_graph(self, revision_id=None):
-        if revision_id is None:
-            revisions = None
-        else:
-            revisions = [revision_id]
-        return self.get_revision_graph_with_ghosts(revisions).get_ancestors()
-
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
         result = {}
-        for node, parents in self._git.ancestry(None).iteritems():
+        if revision_id is not None:
+            param = [ids.convert_revision_id_bzr_to_git(revision_id)]
+        else:
+            param = None
+        for node, parents in self._git.ancestry(param).iteritems():
             bzr_node = ids.convert_revision_id_git_to_bzr(node)
             bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
                            for n in parents]
             result[bzr_node] = bzr_parents
         return result
+
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        graph = deprecated_graph.Graph()
+        if revision_ids is not None:
+            revision_ids = [ids.convert_revision_id_bzr_to_git(r)
+                            for r in revision_ids]
+        for node, parents in self._git.ancestry(revision_ids).iteritems():
+            bzr_node = ids.convert_revision_id_git_to_bzr(node)
+            bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
+                           for n in parents]
+
+            graph.add_node(bzr_node, bzr_parents)
+        return graph
 
     def get_revision(self, revision_id):
         if revision_id in self._revision_cache:
