@@ -148,6 +148,8 @@ class TestInterRepository(TestCaseWithInterRepository):
             # check that b now has all the data from a's first commit.
             rev = repo.get_revision('rev1')
             tree = repo.revision_tree('rev1')
+            tree.lock_read()
+            self.addCleanup(tree.unlock)
             tree.get_file_text('file1')
             for file_id in tree:
                 if tree.inventory[file_id].kind == "file":
@@ -293,52 +295,58 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
 class TestCaseWithGhosts(TestCaseWithInterRepository):
 
-    def setUp(self):
-        super(TestCaseWithGhosts, self).setUp()
-        # we want two repositories at this point
+    def test_fetch_all_fixes_up_ghost(self):
+        # we want two repositories at this point:
         # one with a revision that is a ghost in the other
         # repository.
+        # 'ghost' is present in has_ghost, 'ghost' is absent in 'missing_ghost'.
+        # 'references' is present in both repositories, and 'tip' is present
+        # just in has_ghost.
+        # has_ghost       missing_ghost
+        #------------------------------
+        # 'ghost'             -
+        # 'references'    'references'
+        # 'tip'               -
+        # In this test we fetch 'tip' which should not fetch 'ghost'
+        has_ghost = self.make_repository('has_ghost')
+        missing_ghost = self.make_repository('missing_ghost')
+        if [True, True] != [repo._format.supports_ghosts for repo in
+            (has_ghost, missing_ghost)]:
+            raise TestNotApplicable("Need ghost support.")
 
-        # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        repo = self.make_repository('with_ghost_rev')
-        repo.lock_write()
-        builder = repo.get_commit_builder(None, [], None,
-            committer="Foo Bar <foo@example.com>",
-            revision_id='ghost')
-        ie = bzrlib.inventory.InventoryDirectory('TREE_ROOT', '', None)
-        builder.record_entry_contents(ie, [], '', None,
-            ('directory', None, None, None))
-        builder.finish_inventory()
-        builder.commit("Message")
-        repo.unlock()
-         
-        repo = self.make_to_repository('missing_ghost')
-        inv = Inventory(revision_id='with_ghost')
-        inv.root.revision = 'with_ghost'
-        repo.lock_write()
-        repo.start_write_group()
-        sha1 = repo.add_inventory('with_ghost', inv, [])
-        rev = bzrlib.revision.Revision(timestamp=0,
-                                       timezone=None,
-                                       committer="Foo Bar <foo@example.com>",
-                                       message="Message",
-                                       inventory_sha1=sha1,
-                                       revision_id='with_ghost')
-        rev.parent_ids = ['ghost']
-        repo.add_revision('with_ghost', rev)
-        repo.commit_write_group()
-        repo.unlock()
-
-    def test_fetch_all_fixes_up_ghost(self):
-        # fetching from a repo with a current ghost unghosts it in referencing
-        # revisions.
-        repo = repository.Repository.open('missing_ghost')
-        rev = repo.get_revision('with_ghost')
-        from_repo = repository.Repository.open('with_ghost_rev')
-        repo.fetch(from_repo)
+        def add_commit(repo, revision_id, parent_ids):
+            repo.lock_write()
+            repo.start_write_group()
+            inv = Inventory(revision_id=revision_id)
+            inv.root.revision = revision_id
+            root_id = inv.root.file_id
+            sha1 = repo.add_inventory(revision_id, inv, parent_ids)
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines(revision_id, [], [])
+            rev = bzrlib.revision.Revision(timestamp=0,
+                                           timezone=None,
+                                           committer="Foo Bar <foo@example.com>",
+                                           message="Message",
+                                           inventory_sha1=sha1,
+                                           revision_id=revision_id)
+            rev.parent_ids = parent_ids
+            repo.add_revision(revision_id, rev)
+            repo.commit_write_group()
+            repo.unlock()
+        add_commit(has_ghost, 'ghost', [])
+        add_commit(has_ghost, 'references', ['ghost'])
+        add_commit(missing_ghost, 'references', ['ghost'])
+        add_commit(has_ghost, 'tip', ['references'])
+        missing_ghost.fetch(has_ghost, 'tip', find_ghosts=True)
+        # missing ghost now has tip and ghost.
+        rev = missing_ghost.get_revision('tip')
+        inv = missing_ghost.get_inventory('tip')
+        rev = missing_ghost.get_revision('ghost')
+        inv = missing_ghost.get_inventory('ghost')
         # rev must not be corrupt now
-        rev = repo.get_revision('with_ghost')
-        self.assertEqual([None, 'ghost', 'with_ghost'], repo.get_ancestry('with_ghost'))
+        self.assertEqual([None, 'ghost', 'references', 'tip'],
+            missing_ghost.get_ancestry('tip'))
 
 
 class TestFetchDependentData(TestCaseWithInterRepository):

@@ -70,7 +70,8 @@ pass-phrases, but the mechanisms presented *can* be used to provide users.
 Authentication definitions
 --------------------------
 
-There are two kinds of authentication used by the various schemes:
+There are two kinds of authentication used by the various schemes supported by
+bzr:
 
 1. user and password
 
@@ -101,20 +102,25 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 ``password``).
 
   * ``scheme``: can be empty (meaning the rest of the definition can be used
-    for any scheme),
+    for any scheme), ``SFTP`` and ``bzr+ssh`` should not be used here, ``ssh``
+    should be used instead since this is the real scheme regarding
+    authentication,
 
   * ``host``: can be empty (to act as a default for any host),
 
   * ``port`` can be empty (useful when an host provides several servers for the
-    same scheme), only numerical values are allowed,
+    same scheme), only numerical values are allowed, this should be used only
+    when the server uses a port different than the scheme standard port,
 
   * ``path``: can be empty (FTP or SFTP will never user it),
 
-  * ``user``: can be empty (and will use the same default as ``bzr``, python's
-    ``getpass.get_user()``),
+  * ``user``: can be empty (``bzr`` will defaults to python's
+    ``getpass.get_user()`` and attempt another matching(see below)),
 
   * ``password``: can be empty (for security reasons, a user may use the
-    definitions without storing the passwords but want to be prompted).
+    definitions without storing the passwords but want to be prompted ; or the
+    password will be provided by an external plugin via the
+    ``password_encoding`` mechanism decribed below).
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
 
@@ -131,8 +137,9 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 
  3. ``scheme`` matches even if decorators are used in the requested URL,
 
- 4. ``host`` matches if included in the requested URL. ``foo.net`` will match a
-    requested ``bzr.foo.net``.
+ 4. ``host`` matches exactly or act as a domain if it starts with '.'
+    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
+    will not match ``bzr.sf.net``).
 
  5. ``port`` matches if included in the requested URL (exact matches only)
 
@@ -158,9 +165,10 @@ encodings [#password_encoding]_.
 
 .. [#password_encoding] Additional password encoding methods may be defined
    that will rely on external means to store the password which, in these
-   cases, will not appear anymore in the definition but be provided. An
-   encoding named ``netrc`` for example will provide passwords by using the
-   ``.netrc`` file.
+   cases, will not appear anymore in the definition. It is assumed that
+   additional password encodings will provide a storage outside of the file
+   described here. An encoding named ``netrc`` for example will provide
+   passwords by retrieving them in the ``.netrc`` file.
 
 File format
 -----------
@@ -181,7 +189,7 @@ reasons:
 ``~/.bazaar/authentication.conf`` will use the same file format than
 ``~/.bazaar/bazaar.conf``.
 
-Each section will define an authentication definition.
+Each section describes an authentication definition.
 
 The section name is an arbitrary string, only the ``DEFAULT`` value is reserved
 and should appear as the *last* section.
@@ -212,7 +220,8 @@ The default content of the file will be::
 
 This section could define:
 
-  * ``user``: default user to be used.
+  * ``user``: default user to be used (if not defined the usual
+    bzr way applies, see below).
 
   * ``password_encoding``: default password encoding.
 
@@ -236,28 +245,30 @@ The use cases described below use the file format defined above.
         bzr branch ftp://foo.net/bzr/branch
         bzr pull ftp://bzr.foo.net/bzr/product/branch/trunk
 
-  * all connections are done with the same ``user`` (the local one) and the
-    password is always prompted with some exceptions::
+  * all connections are done with the same ``user`` (the remote one for which
+    the default bzr one is not appropriate) and the password is always prompted
+    with some exceptions::
 
         # Pet projects on hobby.net
         [hobby]
-        scheme=https
         host=r.hobby.net
-        verify_certificates=no
         user=jim
         password=obvious1234
         
         # Home server
         [home]
+        scheme=https
         host=home.net
         user=joe
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
+        verify_certificates=no # Still searching a free certificate provider
         
         [DEFAULT]
+        # Our local user is barbaz, on all remote sites we're known as foobar
         user=foobar
         
-  * an HTTP server that also acts as a proxy (weird)::
+  * an HTTP server and a proxy::
 
         # development branches on dev server
         [dev]
@@ -275,15 +286,24 @@ The use cases described below use the file format defined above.
         user=user2
         password=pass2
         
-        # Pesky proxy
+        # proxy
         [proxy]
         scheme=http
-        host=dev.company.com
+        host=proxy.company.com
+        port=3128
         user=proxyuser1
         password=proxypass1
-        
-Note that the proxy should be specified last because it uses no path. An
-alternative is to specify the port used by the proxy.
+
+  * source hosting provider declaring sub-domains for each project::
+
+        [sfnet domain]
+        # we use sftp, but ssh is the scheme used for authentication
+        scheme=ssh
+        # The leading '.' ensures that 'sf.net' alone doesn't match
+        host=.sf.net
+        user=georges
+        password=ben...son
+
 
 UI Changes
 ----------
@@ -305,8 +325,8 @@ different ways:
   Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
   found. Continue as 2.
 
-Note: A user will be queried only if the server requires it for ``HTTP``, other
-protocols always require a user.
+Note: A user will be queried only if the server requires it for ``HTTP`` or
+``HTTPS``, other protocols always require a user.
 
 In any case, if the server refuses the authentication, bzr reports to the user
 and terminates.
@@ -315,7 +335,7 @@ Implementation constraints
 --------------------------
 
 * bzr should be able to prompt for a ``user`` for a given (``scheme``, ``host``
-  [, ``realm``]). Note that ``realm`` may be available only after a first
+  [, ``realm``]). Note that ``realm`` is available only after a first
   connection attempt to the server.
 
 * No assumptions should be made about the clients of this service

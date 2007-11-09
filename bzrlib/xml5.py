@@ -348,9 +348,9 @@ class Serializer_v5(Serializer):
             if format != '5':
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
-        revision_id = elt.get('revision_id')
-        if revision_id is not None:
-            revision_id = cache_utf8.encode(revision_id)
+        data_revision_id = elt.get('revision_id')
+        if data_revision_id is not None:
+            revision_id = cache_utf8.encode(data_revision_id)
         inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)

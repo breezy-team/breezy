@@ -17,19 +17,23 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
+__all__ = [
+    'KnitReconciler',
+    'PackReconciler',
+    'reconcile',
+    'Reconciler',
+    'RepoReconciler',
+    ]
 
 
 from bzrlib import (
     errors,
-    graph,
     ui,
     repository,
+    repofmt,
     )
-from bzrlib import errors
-from bzrlib import ui
 from bzrlib.trace import mutter, note
-from bzrlib.tsort import TopoSorter, topo_sort
+from bzrlib.tsort import TopoSorter
 
 
 def reconcile(dir, other=None):
@@ -75,6 +79,7 @@ class Reconciler(object):
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
+        self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
@@ -373,21 +378,53 @@ class KnitReconciler(RepoReconciler):
         transaction = self.repo.get_transaction()
         revision_versions = repository._RevisionTextVersionCache(self.repo)
         versions = self.revisions.versions()
+        mutter('Prepopulating revision text cache with %d revisions',
+                len(versions))
         revision_versions.prepopulate_revs(versions)
+        used_file_versions = revision_versions.used_file_versions()
         for num, file_id in enumerate(self.repo.weave_store):
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             vf_checker = self.repo.get_versioned_file_checker(
-                versions, revision_versions)
-            versions_with_bad_parents = vf_checker.check_file_version_parents(
-                vf, file_id)
-            if len(versions_with_bad_parents) == 0:
+                vf.versions(), revision_versions)
+            versions_with_bad_parents, dangling_file_versions = \
+                vf_checker.check_file_version_parents(vf, file_id)
+            if (len(versions_with_bad_parents) == 0 and
+                len(dangling_file_versions) == 0):
                 continue
-            self._fix_text_parent(file_id, vf, versions_with_bad_parents)
+            full_text_versions = set()
+            unused_versions = set()
+            for dangling_version in dangling_file_versions:
+                version = dangling_version[1]
+                if dangling_version in used_file_versions:
+                    # This version *is* used by some revision, even though it
+                    # isn't used by its own revision!  We make sure any
+                    # revision referencing it is stored as a fulltext
+                    # This avoids bug 155730: it means that clients looking at
+                    # inventories to determine the versions to fetch will not
+                    # miss a required version.  (So clients can assume that if
+                    # they have a complete revision graph, and fetch all file
+                    # versions named by those revisions inventories, then they
+                    # will not have any missing parents for 'delta' knit
+                    # records.)
+                    # XXX: A better, but more difficult and slower fix would be
+                    # to rewrite the inventories referencing this version.
+                    full_text_versions.add(version)
+                else:
+                    # This version is totally unreferenced.  It should be
+                    # removed.
+                    unused_versions.add(version)
+            self._fix_text_parent(file_id, vf, versions_with_bad_parents,
+                full_text_versions, unused_versions)
 
-    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents):
+    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents,
+            full_text_versions, unused_versions):
         """Fix bad versionedfile entries in a single versioned file."""
+        mutter('fixing text parent: %r (%d versions)', file_id,
+                len(versions_with_bad_parents))
+        mutter('(%d need to be full texts, %d are unused)',
+                len(full_text_versions), len(unused_versions))
         new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
             self.transaction)
         new_parents = {}
@@ -397,9 +434,76 @@ class KnitReconciler(RepoReconciler):
             else:
                 parents = vf.get_parents(version)
             new_parents[version] = parents
-        for version in topo_sort(new_parents.items()):
-            new_vf.add_lines(version, new_parents[version],
-                             vf.get_lines(version))
+        for version in TopoSorter(new_parents.items()).iter_topo_order():
+            if version in unused_versions:
+                continue
+            lines = vf.get_lines(version)
+            parents = new_parents[version]
+            if parents and (parents[0] in full_text_versions):
+                # Force this record to be a fulltext, not a delta.
+                new_vf._add(version, lines, parents, False,
+                    None, None, None, False)
+            else:
+                new_vf.add_lines(version, parents, lines)
         self.repo.weave_store.copy(new_vf, file_id, self.transaction)
         self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
 
+
+class PackReconciler(RepoReconciler):
+    """Reconciler that reconciles a pack based repository.
+
+    Garbage inventories do not affect ancestry queries, and removal is
+    considerably more expensive as there is no separate versioned file for
+    them, so they are not cleaned. In short it is currently a no-op.
+
+    In future this may be a good place to hook in annotation cache checking,
+    index recreation etc.
+    """
+
+    # XXX: The index corruption that _fix_text_parents performs is needed for
+    # packs, but not yet implemented. The basic approach is to:
+    #  - lock the names list
+    #  - perform a customised pack() that regenerates data as needed
+    #  - unlock the names list
+    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""
+        if not self.thorough:
+            return
+        collection = self.repo._pack_collection
+        collection.ensure_loaded()
+        collection.lock_names()
+        try:
+            packs = collection.all_packs()
+            all_revisions = self.repo.all_revision_ids()
+            total_inventories = len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+            if len(all_revisions):
+                self._packer = repofmt.pack_repo.ReconcilePacker(
+                    collection, packs, ".reconcile", all_revisions)
+                new_pack = self._packer.pack(pb=self.pb)
+                if new_pack is not None:
+                    self._discard_and_save(packs)
+            else:
+                # only make a new pack when there is data to copy.
+                self._discard_and_save(packs)
+            self.garbage_inventories = total_inventories - len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+        finally:
+            collection._unlock_names()
+
+    def _discard_and_save(self, packs):
+        """Discard some packs from the repository.
+
+        This removes them from the memory index, saves the in-memory index
+        which makes the newly reconciled pack visible and hides the packs to be
+        discarded, and finally renames the packs being discarded into the
+        obsolete packs directory.
+
+        :param packs: The packs to discard.
+        """
+        for pack in packs:
+            self.repo._pack_collection._remove_pack_from_memory(pack)
+        self.repo._pack_collection._save_pack_names()
+        self.repo._pack_collection._obsolete_packs(packs)

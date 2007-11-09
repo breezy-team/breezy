@@ -166,7 +166,7 @@ class TestShowLog(TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        print >> file('child/file2', 'wb'), 'hello'
+        file('child/file2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -357,7 +357,7 @@ message:
         wt.commit('first post')
         self.run_bzr('branch parent child')
         os.unlink('child/f1')
-        print >> file('child/f2', 'wb'), 'hello'
+        file('child/f2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'removed f1 and modified f2',
             'child'])
         os.chdir('parent')

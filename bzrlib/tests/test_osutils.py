@@ -37,6 +37,7 @@ from bzrlib.osutils import (
 from bzrlib.tests import (
         probe_unicode_in_user_encoding,
         StringIOWrapper,
+        SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
         TestSkipped,
@@ -250,8 +251,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_dereference_path(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -277,7 +277,6 @@ class TestOSUtils(TestCaseInTempDir):
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
-
     def test_changing_access(self):
         f = file('file', 'w')
         f.write('monkey')
@@ -285,12 +284,12 @@ class TestOSUtils(TestCaseInTempDir):
 
         # Make a file readonly
         osutils.make_readonly('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode & 0777555)
 
         # Make a file writable
         osutils.make_writable('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0200)
 
         if osutils.has_symlinks():
@@ -298,7 +297,6 @@ class TestOSUtils(TestCaseInTempDir):
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
 
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
@@ -939,8 +937,7 @@ class TestCopyTree(TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        if not osutils.has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1050,3 +1047,17 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestShaFileByName(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))

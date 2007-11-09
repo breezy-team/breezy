@@ -2293,10 +2293,11 @@ BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
 
 class BzrDirFormatInfo(object):
 
-    def __init__(self, native, deprecated, hidden):
+    def __init__(self, native, deprecated, hidden, experimental):
         self.deprecated = deprecated
         self.native = native
         self.hidden = hidden
+        self.experimental = experimental
 
 
 class BzrDirFormatRegistry(registry.Registry):
@@ -2310,7 +2311,8 @@ class BzrDirFormatRegistry(registry.Registry):
              repository_format, help, native=True, deprecated=False,
              branch_format=None,
              tree_format=None,
-             hidden=False):
+             hidden=False,
+             experimental=False):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
@@ -2348,10 +2350,11 @@ class BzrDirFormatRegistry(registry.Registry):
             if repository_format is not None:
                 bd.repository_format = _load(repository_format)
             return bd
-        self.register(key, helper, help, native, deprecated, hidden)
+        self.register(key, helper, help, native, deprecated, hidden,
+            experimental)
 
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False):
+                 hidden=False, experimental=False):
         """Register a BzrDirFormat factory.
         
         The factory must be a callable that takes one parameter: the key.
@@ -2361,12 +2364,12 @@ class BzrDirFormatRegistry(registry.Registry):
         supplied directly.
         """
         registry.Registry.register(self, key, factory, help, 
-            BzrDirFormatInfo(native, deprecated, hidden))
+            BzrDirFormatInfo(native, deprecated, hidden, experimental))
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
-                      deprecated=False, hidden=False):
+                      deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name, 
-            help, BzrDirFormatInfo(native, deprecated, hidden))
+            help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
@@ -2419,13 +2422,21 @@ class BzrDirFormatRegistry(registry.Registry):
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
         deprecated_pairs = []
+        experimental_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)
             if info.hidden:
                 continue
             elif info.deprecated:
                 deprecated_pairs.append((key, help))
+            elif info.experimental:
+                experimental_pairs.append((key, help))
             else:
+                output += wrapped(key, help, info)
+        if len(experimental_pairs) > 0:
+            output += "Experimental formats are shown below.\n\n"
+            for key, help in experimental_pairs:
+                info = self.get_info(key)
                 output += wrapped(key, help, info)
         if len(deprecated_pairs) > 0:
             output += "Deprecated formats are shown below.\n\n"
@@ -2477,5 +2488,28 @@ format_registry.register_metadir('dirstate-with-subtree',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
+    )
+format_registry.register_metadir('knitpack-experimental',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
+    help='New in 0.92: Pack-based format with data compatible with '
+        'dirstate-tags format repositories. Interoperates with '
+        'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
+        'NOTE: This format is experimental. Before using it, please read '
+        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    experimental=True,
+    )
+format_registry.register_metadir('knitpack-subtree-experimental',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
+    help='New in 0.92: Pack-based format with data compatible with '
+        'dirstate-with-subtree format repositories. Interoperates with '
+        'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
+        'NOTE: This format is experimental. Before using it, please read '
+        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
     )
 format_registry.set_default('dirstate-tags')
