@@ -18,7 +18,7 @@
 
 import subprocess
 
-from bzrlib import branch
+from bzrlib import branch, revision
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git.gitlib import git_branch
@@ -29,11 +29,15 @@ class TestGitBranch(tests.TestCaseInTempDir):
     _test_needs_features = [tests.GitCommandFeature]
 
     def test_open_existing(self):
-        p = subprocess.Popen(['git', 'init'],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        p.communicate()
+        tests.run_git('init')
 
-        gd = branch.Branch.open('.')
-        self.assertIsInstance(gd, git_branch.GitBranch)
+        thebranch = branch.Branch.open('.')
+        self.assertIsInstance(thebranch, git_branch.GitBranch)
 
+    def test_last_revision_is_null(self):
+        tests.run_git('init')
+
+        thebranch = branch.Branch.open('.')
+        self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
+        self.assertEqual((0, revision.NULL_REVISION),
+                         thebranch.last_revision_info())

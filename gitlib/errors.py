@@ -14,31 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for interfacing with a Git Repository"""
+"""A grouping of Exceptions for bzr-git"""
 
-import subprocess
-
-from bzrlib import repository
-
-from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import (
-    git_repository,
-    model,
-    )
+from bzrlib import errors as bzr_errors
 
 
-class TestGitRepository(tests.TestCaseInTempDir):
+class BzrGitError(bzr_errors.BzrError):
+    """The base-level exception for bzr-git errors."""
 
-    _test_needs_features = [tests.GitCommandFeature]
 
-    def test_open_existing(self):
-        tests.run_git('init')
+class GitCommandError(BzrGitError):
+    """Raised when spawning 'git' does not return normally."""
 
-        repo = repository.Repository.open('.')
-        self.assertIsInstance(repo, git_repository.GitRepository)
+    _fmt = 'Command failed (%(returncode)s): command %(command)s\n%(stderr)s'
 
-    def test_has_git_model(self):
-        tests.run_git('init')
-
-        repo = repository.Repository.open('.')
-        self.assertIsInstance(repo._git, model.GitModel)
+    def __init__(self, command, returncode, stderr):
+        self.command = command
+        self.returncode = returncode
+        self.stderr = stderr

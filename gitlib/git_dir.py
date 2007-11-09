@@ -16,17 +16,20 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
+from bzrlib.lazy_import import lazy_import
 from bzrlib import (
     bzrdir,
-    errors,
     lockable_files,
     urlutils,
     )
 
+lazy_import(globals(), """
 from bzrlib.plugins.git.gitlib import (
+    errors,
     git_branch,
     git_repository,
     )
+""")
 
 
 class GitLock(object):
@@ -66,7 +69,7 @@ class GitDir(bzrdir.BzrDir):
             return self.transport
         if isinstance(branch_format, GitBzrDirFormat):
             return self.transport
-        raise errors.IncompatibleFormat(branch_format, self._format)
+        raise errors.bzr_errors.IncompatibleFormat(branch_format, self._format)
 
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
@@ -84,7 +87,7 @@ class GitDir(bzrdir.BzrDir):
 
     def open_workingtree(self):
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-        raise errors.NoWorkingTree(loc)
+        raise errors.bzr_errors.NoWorkingTree(loc)
 
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
@@ -105,7 +108,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
             url = url[len('readonly+'):]
         path = urlutils.local_path_from_url(url)
         if not transport.has('.git'):
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.bzr_errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
         return GitDir(transport, lockfiles, self)
 
@@ -122,8 +125,8 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
             format.open(transport)
             return format
         except Exception, e:
-            raise errors.NotBranchError(path=transport.base)
-        raise errors.NotBranchError(path=transport.base)
+            raise errors.bzr_errors.NotBranchError(path=transport.base)
+        raise errors.bzr_errors.NotBranchError(path=transport.base)
 
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)

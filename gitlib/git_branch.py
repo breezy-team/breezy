@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     config,
+    revision,
     )
 from bzrlib.decorators import needs_read_lock
 
@@ -61,7 +62,10 @@ class GitBranch(branch.Branch):
     @needs_read_lock
     def last_revision(self):
         # perhaps should escape this ?
-        return bzrrevid_from_git(self.repository.git.get_head())
+        head_git_id = self.repository._git.get_head()
+        if head_git_id is None:
+            return revision.NULL_REVISION
+        return ids.convert_revision_id_git_to_bzr(head_git_id)
 
     @needs_read_lock
     def revision_history(self):
@@ -92,7 +96,7 @@ class GitBranch(branch.Branch):
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        self.get_config().set_user_option('push_location', location, 
+        self.get_config().set_user_option('push_location', location,
                                           local=True)
 
 

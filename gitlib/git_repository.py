@@ -17,12 +17,11 @@
 """An adapter between a Git Repository and a Bazaar Branch"""
 
 from bzrlib import (
-    errors,
     repository,
     urlutils,
     )
 
-from bzrlib.plugins.git import GitModel
+from bzrlib.plugins.git.gitlib import model
 
 
 class GitRepository(repository.Repository):
@@ -31,8 +30,8 @@ class GitRepository(repository.Repository):
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
-        gitdirectory = urlutils.local_path_from_url(gitdir.transport.base)
-        self.git = GitModel(gitdirectory)
+        gitdirectory = gitdir.transport.local_abspath('.')
+        self._git = model.GitModel(gitdirectory)
         self._revision_cache = {}
 
     def _ancestor_revisions(self, revision_ids):
@@ -40,7 +39,7 @@ class GitRepository(repository.Repository):
             git_revisions = [gitrevid_from_bzr(r) for r in revision_ids]
         else:
             git_revisions = None
-        for lines in self.git.ancestor_lines(git_revisions):
+        for lines in self._git.ancestor_lines(git_revisions):
             yield self.parse_rev(lines)
 
     def is_shared(self):
@@ -63,8 +62,8 @@ class GitRepository(repository.Repository):
     def get_revision(self, revision_id):
         if revision_id in self._revision_cache:
             return self._revision_cache[revision_id]
-        raw = self.git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
-                                header=True)
+        raw = self._git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
+                                 header=True)
         return self.parse_rev(raw)
 
     def has_revision(self, revision_id):
@@ -112,7 +111,7 @@ class GitRepository(repository.Repository):
         result.inventory_sha1 = ""
         result.timezone = timezone and int(timezone)
         result.timestamp = float(timestamp)
-        result.committer = committer 
+        result.committer = committer
         result.properties['git-tree-id'] = tree_id
         return result
 
@@ -129,7 +128,7 @@ class GitRepository(repository.Repository):
         tree_id = revision.properties['git-tree-id']
         type_map = {'blob': 'file', 'tree': 'directory' }
         def get_inventory(tree_id, prefix):
-            for perms, type, obj_id, name in self.git.get_inventory(tree_id):
+            for perms, type, obj_id, name in self._git.get_inventory(tree_id):
                 full_path = prefix + name
                 if type == 'blob':
                     text_sha1 = obj_id
@@ -153,11 +152,56 @@ class GitRevisionTree(object):
         self.inventory = repository.get_inventory(revision_id)
 
     def get_file(self, file_id):
+        return iterablefile.IterableFile(self.get_file_lines(file_id))
+
+    def get_file_lines(self, file_id):
         obj_id = self.inventory[file_id].text_sha1
-        lines = self.repository.git.cat_file('blob', obj_id)
-        return iterablefile.IterableFile(lines)
+        return self.repository._git.cat_file('blob', obj_id)
 
     def is_executable(self, file_id):
         return self.inventory[file_id].executable
+
+
+class GitInventory(object):
+
+    def __init__(self, revision_id):
+        self.entries = {}
+        self.root = GitEntry('', 'directory', revision_id)
+        self.entries[''] = self.root
+
+    def __getitem__(self, key):
+        return self.entries[key]
+
+    def iter_entries(self):
+        return iter(sorted(self.entries.items()))
+
+    def iter_entries_by_dir(self):
+        return self.iter_entries()
+
+    def __len__(self):
+        return len(self.entries)
+
+
+class GitEntry(object):
+
+    def __init__(self, path, kind, revision, text_sha1=None, executable=False,
+                 text_size=None):
+        self.path = path
+        self.file_id = path
+        self.kind = kind
+        self.executable = executable
+        self.name = osutils.basename(path)
+        if path == '':
+            self.parent_id = None
+        else:
+            self.parent_id = osutils.dirname(path)
+        self.revision = revision
+        self.symlink_target = None
+        self.text_sha1 = text_sha1
+        self.text_size = None
+
+    def __repr__(self):
+        return "GitEntry(%r, %r, %r, %r)" % (self.path, self.kind,
+                                             self.revision, self.parent_id)
 
 

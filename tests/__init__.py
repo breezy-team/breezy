@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""The basic test suite for bzr-git."""
+
+import subprocess
+
 from bzrlib import (
     tests,
     trace,
@@ -27,7 +31,6 @@ TestCaseWithTransport = tests.TestCaseWithTransport
 class _GitCommandFeature(tests.Feature):
 
     def _probe(self):
-        import subprocess
         try:
             p = subprocess.Popen(['git', '--version'], stdout=subprocess.PIPE)
         except IOError:
@@ -42,6 +45,18 @@ class _GitCommandFeature(tests.Feature):
 GitCommandFeature = _GitCommandFeature()
 
 
+def run_git(*args):
+    cmd = ['git'] + list(args)
+    p = subprocess.Popen(cmd,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    if p.returncode != 0:
+        raise AssertionError('Bad return code: %d for %s:\n%s'
+                             % (p.returncode, ' '.join(cmd), err))
+    return out
+
+
 def test_suite():
     loader = tests.TestLoader()
 
@@ -51,6 +66,7 @@ def test_suite():
         'test_git_branch',
         'test_git_dir',
         'test_git_repository',
+        'test_model',
         'test_ids',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]

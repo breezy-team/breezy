@@ -29,10 +29,7 @@ class TestGitDir(tests.TestCaseInTempDir):
     _test_needs_features = [tests.GitCommandFeature]
 
     def test_open_existing(self):
-        p = subprocess.Popen(['git', 'init'],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        p.communicate()
+        tests.run_git('init')
 
         gd = bzrdir.BzrDir.open('.')
         self.assertIsInstance(gd, git_dir.GitDir)
