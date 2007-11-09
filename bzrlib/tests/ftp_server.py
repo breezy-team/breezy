@@ -20,6 +20,7 @@ Based on medusa: http://www.amk.ca/python/code/medusa.html
 """
 
 import asyncore
+import errno
 import os
 import select
 import stat
