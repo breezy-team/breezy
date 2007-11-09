@@ -55,6 +55,9 @@ IN DEVELOPMENT
    * Don't use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
+   * Obsolete packs are now cleaned up by pack and autopack operations.
+     (Robert Collins, #153789)
+
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
    * Unicode-safe output from ``bzr info``. The output will be encoded
@@ -63,6 +66,9 @@ IN DEVELOPMENT
 
    * Wrap medusa ftp test server as an FTPServer feature.
      (Vincent Ladeuil, #157752)
+
+   * Fix exception when ScopeReplacer is assigned to before any members have
+     been retrieved.  (Aaron Bentley)
 
    * Removing an already-removed file reports the file does not exist. (Daniel
      Watkins, #152811)

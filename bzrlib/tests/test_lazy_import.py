@@ -150,6 +150,39 @@ class TestScopeReplacer(TestCase):
                           ('foo', 2),
                          ], actions)
 
+    def test_setattr_replaces(self):
+        """ScopeReplacer can create an instance in local scope.
+
+        An object should appear in globals() by constructing a ScopeReplacer,
+        and it will be replaced with the real object upon the first request.
+        """
+        def factory(replacer, scope, name):
+            return TestClass()
+        try:
+            test_obj6
+        except NameError:
+            # test_obj6 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj6 was not supposed to exist yet')
+
+        orig_globals = set(globals().keys())
+
+        lazy_import.ScopeReplacer(scope=globals(), name='test_obj6',
+                                  factory=factory)
+
+        new_globals = set(globals().keys())
+
+        # We can't use isinstance() because that uses test_obj6.__class__
+        # and that goes through __getattribute__ which would activate
+        # the replacement
+        self.assertEqual(lazy_import.ScopeReplacer,
+                         object.__getattribute__(test_obj6, '__class__'))
+        test_obj6.bar = 'test'
+        self.assertNotEqual(lazy_import.ScopeReplacer,
+                            object.__getattribute__(test_obj6, '__class__'))
+        self.assertEqual('test', test_obj6.bar)
+
     def test_replace_side_effects(self):
         """Creating a new object should only create one entry in globals.
 
