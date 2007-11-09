@@ -67,6 +67,9 @@ IN DEVELOPMENT
    * Wrap medusa ftp test server as an FTPServer feature.
      (Vincent Ladeuil, #157752)
 
+   * Fix exception when ScopeReplacer is assigned to before any members have
+     been retrieved.  (Aaron Bentley)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
