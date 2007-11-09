@@ -207,6 +207,8 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         self._write_func(_encode_tuple(response.args))
         if response.body is not None:
             assert isinstance(response.body, str), 'body must be a str'
+            assert response.body_stream is None, (
+                'body_stream and body cannot both be set')
             bytes = self._encode_bulk_data(response.body)
             self._write_func(bytes)
         elif response.body_stream is not None:
@@ -214,6 +216,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
 
 
 def _send_stream(stream, write_func):
+    write_func('chunked\n')
     _send_chunks(stream, write_func)
     write_func('END\n')
 
@@ -266,7 +269,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def __init__(self):
         _StatefulDecoder.__init__(self)
-        self.state_accept = self._state_accept_expecting_length
+        self.state_accept = self._state_accept_expecting_header
         self._in_buffer = ''
         self.chunk_in_progress = None
         self.chunks = collections.deque()
@@ -291,6 +294,8 @@ class ChunkedBodyDecoder(_StatefulDecoder):
                 return 1
         elif self.state_accept == self._state_accept_reading_unused:
             return 1
+        elif self.state_accept == self._state_accept_expecting_header:
+            return max(0, len('chunked\n') - len(self._in_buffer))
         else:
             raise AssertionError("Impossible state: %r" % (self.state_accept,))
 
@@ -320,6 +325,19 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.chunks.append(request.FailedSmartServerResponse(error_args))
             self.error_in_progress = None
         self.finished_reading = True
+
+    def _state_accept_expecting_header(self, bytes):
+        self._in_buffer += bytes
+        prefix = self._extract_line()
+        if prefix is None:
+            # We haven't read a complete length prefix yet, so there's nothing
+            # to do.
+            return
+        elif prefix == 'chunked':
+            self.state_accept = self._state_accept_expecting_length
+        else:
+            raise errors.SmartProtocolError(
+                'Bad chunked body header: "%s"' % (prefix,))
 
     def _state_accept_expecting_length(self, bytes):
         self._in_buffer += bytes

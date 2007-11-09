@@ -184,9 +184,9 @@ a lot like HTTP's chunked encoding::
 
 That is, the body consists of a series of chunks.  Each chunk starts with
 a length prefix in hexadecimal digits, followed by an ASCII newline byte.
-The end of the body is signaled by 'END\\n', or by 'ERR\\n' followed by
-error args, one per chunk.  Note that this allows an 8-bit clean error
-response.
+The end of the body is signaled by '``END\\n``', or by '``ERR\\n``'
+followed by error args, one per chunk.  Note that these args are 8-bit
+safe, unlike request args.
 
 A streamed body starts with the string "chunked" so that legacy clients
 and servers will not mistake the first chunk as the start of a version one
