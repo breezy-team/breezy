@@ -64,7 +64,6 @@ from bzrlib import (
     hashcache,
     ignores,
     merge,
-    osutils,
     revision as _mod_revision,
     revisiontree,
     repository,
@@ -90,6 +89,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
+from bzrlib import osutils
 from bzrlib.osutils import (
     compact_date,
     file_kind,
@@ -599,15 +599,29 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             path = self.inventory.id2path(file_id)
         return os.lstat(self.abspath(path)).st_mtime
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        file_id = self.path2id(path)
+        return self._inventory[file_id].executable
+
+    def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
+        mode = stat_result.st_mode
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
     if not supports_executable():
         def is_executable(self, file_id, path=None):
             return self._inventory[file_id].executable
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_stat
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -689,7 +703,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=osutils.lstat,
+    def path_content_summary(self, path, _lstat=os.lstat,
         _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
         abspath = self.abspath(path)
@@ -705,11 +719,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if kind == 'file':
             size = stat_result.st_size
             # try for a stat cache lookup
-            if not supports_executable():
-                executable = None # caller can decide policy.
-            else:
-                mode = stat_result.st_mode
-                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            executable = self._is_executable_from_path_and_stat(path, stat_result)
             return (kind, size, executable, self._sha_from_stat(
                 path, stat_result))
         elif kind == 'directory':
@@ -1950,14 +1960,29 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 ' as of bzr 0.91.  Please use None (the default) instead.',
                 DeprecationWarning, stacklevel=2)
         if old_tree is None:
-            old_tree = self.basis_tree()
-        conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                     report_changes)
-        if filenames is None:
-            self.set_parent_ids(self.get_parent_ids()[:1])
-            resolve(self)
+            basis_tree = self.basis_tree()
+            basis_tree.lock_read()
+            old_tree = basis_tree
         else:
-            resolve(self, filenames, ignore_misses=True)
+            basis_tree = None
+        try:
+            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                         report_changes)
+            if filenames is None and len(self.get_parent_ids()) > 1:
+                parent_trees = []
+                last_revision = self.last_revision()
+                if last_revision != NULL_REVISION:
+                    if basis_tree is None:
+                        basis_tree = self.basis_tree()
+                        basis_tree.lock_read()
+                    parent_trees.append((last_revision, basis_tree))
+                self.set_parent_trees(parent_trees)
+                resolve(self)
+            else:
+                resolve(self, filenames, ignore_misses=True)
+        finally:
+            if basis_tree is not None:
+                basis_tree.unlock()
         return conflicts
 
     def revision_tree(self, revision_id):

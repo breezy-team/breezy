@@ -138,6 +138,10 @@ class KnitContent(object):
         """Return a list of (origin, text) tuples."""
         return list(self.annotate_iter())
 
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        raise NotImplementedError(self.apply_delta)
+
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
         new_texts = new_lines.text()
@@ -189,6 +193,14 @@ class AnnotatedKnitContent(KnitContent):
         """Yield tuples of (origin, text) for each content line."""
         return iter(self._lines)
 
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        offset = 0
+        lines = self._lines
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+
     def strip_last_line_newline(self):
         line = self._lines[-1][1].rstrip('\n')
         self._lines[-1] = (self._lines[-1][0], line)
@@ -224,6 +236,15 @@ class PlainKnitContent(KnitContent):
         """Yield tuples of (origin, text) for each content line."""
         for line in self._lines:
             yield self._version_id, line
+
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        offset = 0
+        lines = self._lines
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        self._version_id = new_version_id
 
     def copy(self):
         return PlainKnitContent(self._lines[:], self._version_id)
@@ -815,7 +836,7 @@ class KnitVersionedFile(VersionedFile):
                 if method == 'fulltext':
                     next = None
                 else:
-                    next = self.get_parents(cursor)[0]
+                    next = self.get_parents_with_ghosts(cursor)[0]
                 index_memo = self._index.get_position(cursor)
                 component_data[cursor] = (method, index_memo, next)
                 cursor = next
@@ -1004,6 +1025,12 @@ class KnitVersionedFile(VersionedFile):
         the requested versions and content_map contains the KnitContents.
         Both dicts take version_ids as their keys.
         """
+        # FUTURE: This function could be improved for the 'extract many' case
+        # by tracking each component and only doing the copy when the number of
+        # children than need to apply delta's to it is > 1 or it is part of the
+        # final output.
+        version_ids = list(version_ids)
+        multiple_versions = len(version_ids) != 1
         record_map = self._get_record_map(version_ids)
 
         text_map = {}
@@ -1029,13 +1056,18 @@ class KnitVersionedFile(VersionedFile):
                         content = self.factory.parse_fulltext(data, version_id)
                     elif method == 'line-delta':
                         delta = self.factory.parse_line_delta(data, version_id)
-                        content = content.copy()
-                        content._lines = self._apply_delta(content._lines,
-                                                           delta)
-                    content_map[component_id] = content
+                        if multiple_versions:
+                            # only doing this when we want multiple versions
+                            # output avoids list copies - which reference and
+                            # dereference many strings.
+                            content = content.copy()
+                        content.apply_delta(delta, version_id)
+                    if multiple_versions:
+                        content_map[component_id] = content
 
             if 'no-eol' in self._index.get_options(version_id):
-                content = content.copy()
+                if multiple_versions:
+                    content = content.copy()
                 content.strip_last_line_newline()
             final_content[version_id] = content
 
@@ -1051,16 +1083,6 @@ class KnitVersionedFile(VersionedFile):
                     (actual_sha, digest, version_id))
             text_map[version_id] = text
         return text_map, final_content
-
-    @staticmethod
-    def _apply_delta(lines, delta):
-        """Apply delta to lines."""
-        lines = list(lines)
-        offset = 0
-        for start, end, count, delta_lines in delta:
-            lines[offset+start:offset+end] = delta_lines
-            offset = offset + (start - end) + count
-        return lines
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
@@ -1962,7 +1984,8 @@ class _PackAccess(object):
 
     def set_writer(self, writer, index, (transport, packname)):
         """Set a writer to use for adding data."""
-        self.indices[index] = (transport, packname)
+        if index is not None:
+            self.indices[index] = (transport, packname)
         self.container_writer = writer
         self.write_index = index
 

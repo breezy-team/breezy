@@ -94,6 +94,9 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
                        knitrepo.RepositoryFormatKnit3()))
+        result.append((InterModel1and2,
+                       knitrepo.RepositoryFormatKnit1(),
+                       knitrepo.RepositoryFormatKnit3()))
         result.append((InterKnit1and2,
                        knitrepo.RepositoryFormatKnit1(),
                        knitrepo.RepositoryFormatKnit3()))

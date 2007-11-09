@@ -663,11 +663,13 @@ class TestConnectedTransport(TestCase):
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing_propagate_credentials(self):
-        t = ConnectedTransport('foo://user@host.com/abs/path')
+        t = ConnectedTransport('ftp://user@host.com/abs/path')
+        self.assertEquals('user', t._user)
+        self.assertEquals('host.com', t._host)
         self.assertIs(None, t._get_connection())
         self.assertIs(None, t._password)
         c = t.clone('subdir')
-        self.assertEquals(None, c._get_connection())
+        self.assertIs(None, c._get_connection())
         self.assertIs(None, t._password)
 
         # Simulate the user entering a password

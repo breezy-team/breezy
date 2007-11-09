@@ -175,6 +175,16 @@ _inventory_utf8_v5 = """<inventory file_id="TRE&#233;_ROOT" format="5"
 </inventory>
 """
 
+# Before revision_id was always stored as an attribute
+_inventory_v5a = """<inventory format="5">
+</inventory>
+"""
+
+# Before revision_id was always stored as an attribute
+_inventory_v5b = """<inventory format="5" revision_id="a-rev-id">
+</inventory>
+"""
+
 
 class TestSerializer(TestCase):
     """Test XML serialization"""
@@ -246,6 +256,16 @@ class TestSerializer(TestCase):
         eq(ie.revision, 'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv[ie.parent_id].kind, 'directory')
+
+    def test_unpack_inventory_5a(self):
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(
+                _inventory_v5a, revision_id='test-rev-id')
+        self.assertEqual('test-rev-id', inv.root.revision)
+
+    def test_unpack_inventory_5b(self):
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(
+                _inventory_v5b, revision_id='test-rev-id')
+        self.assertEqual('a-rev-id', inv.root.revision)
 
     def test_repack_inventory_5(self):
         inp = StringIO(_committed_inv_v5)
