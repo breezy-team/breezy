@@ -888,6 +888,9 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         # there should be 9 packs:
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
+        # insert some files in obsolete_packs which should be removed by pack.
+        trans.put_bytes('obsolete_packs/foo', '123')
+        trans.put_bytes('obsolete_packs/bar', '321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = GraphIndex(trans, 'pack-names', None)
@@ -896,6 +899,11 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
+        # We should have 50 (10x5) files in the obsolete_packs directory.
+        obsolete_files = list(trans.list_dir('obsolete_packs'))
+        self.assertFalse('foo' in obsolete_files)
+        self.assertFalse('bar' in obsolete_files)
+        self.assertEqual(50, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
@@ -1083,6 +1091,56 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.prepare_for_break_lock()
         repo2.break_lock()
         self.assertRaises(errors.LockBroken, repo._pack_collection._unlock_names)
+
+    def test_fetch_without_find_ghosts_ignores_ghosts(self):
+        # we want two repositories at this point:
+        # one with a revision that is a ghost in the other
+        # repository.
+        # 'ghost' is present in has_ghost, 'ghost' is absent in 'missing_ghost'.
+        # 'references' is present in both repositories, and 'tip' is present
+        # just in has_ghost.
+        # has_ghost       missing_ghost
+        #------------------------------
+        # 'ghost'             -
+        # 'references'    'references'
+        # 'tip'               -
+        # In this test we fetch 'tip' which should not fetch 'ghost'
+        has_ghost = self.make_repository('has_ghost', format=self.get_format())
+        missing_ghost = self.make_repository('missing_ghost',
+            format=self.get_format())
+
+        def add_commit(repo, revision_id, parent_ids):
+            repo.lock_write()
+            repo.start_write_group()
+            inv = inventory.Inventory(revision_id=revision_id)
+            inv.root.revision = revision_id
+            root_id = inv.root.file_id
+            sha1 = repo.add_inventory(revision_id, inv, [])
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines(revision_id, [], [])
+            rev = bzrlib.revision.Revision(timestamp=0,
+                                           timezone=None,
+                                           committer="Foo Bar <foo@example.com>",
+                                           message="Message",
+                                           inventory_sha1=sha1,
+                                           revision_id=revision_id)
+            rev.parent_ids = parent_ids
+            repo.add_revision(revision_id, rev)
+            repo.commit_write_group()
+            repo.unlock()
+        add_commit(has_ghost, 'ghost', [])
+        add_commit(has_ghost, 'references', ['ghost'])
+        add_commit(missing_ghost, 'references', ['ghost'])
+        add_commit(has_ghost, 'tip', ['references'])
+        missing_ghost.fetch(has_ghost, 'tip')
+        # missing ghost now has tip and not ghost.
+        rev = missing_ghost.get_revision('tip')
+        inv = missing_ghost.get_inventory('tip')
+        self.assertRaises(errors.NoSuchRevision,
+            missing_ghost.get_revision, 'ghost')
+        self.assertRaises(errors.RevisionNotPresent,
+            missing_ghost.get_inventory, 'ghost')
 
 
 class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
@@ -1337,3 +1395,10 @@ class TestNewPack(TestCaseWithTransport):
         self.assertEqual(20, len(pack.random_name))
         self.assertIsInstance(pack.random_name, str)
         self.assertIsInstance(pack.start_time, float)
+
+
+class TestPacker(TestCaseWithTransport):
+    """Tests for the packs repository Packer class."""
+
+    # To date, this class has been factored out and nothing new added to it;
+    # thus there are not yet any tests.

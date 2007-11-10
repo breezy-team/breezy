@@ -40,6 +40,7 @@ __all__ = ['deprecated_function',
            'zero_ninety',
            'zero_ninetyone',
            'zero_ninetytwo',
+           'zero_ninetythree',
            ]
 
 from warnings import warn

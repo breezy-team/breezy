@@ -461,7 +461,8 @@ class ChildProgress(_BaseProgressBar):
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.current = current_cnt
-        self.total = total_cnt
+        if total_cnt is not None:
+            self.total = total_cnt
         self.message = msg
         self.child_fraction = 0
         self.tick()
@@ -548,7 +549,7 @@ class ProgressPhase(object):
             self.cur_phase = 0
         else:
             self.cur_phase += 1
-        assert self.cur_phase < self.total 
+        assert self.cur_phase < self.total
         self.pb.update(self.message, self.cur_phase, self.total)
 
 
