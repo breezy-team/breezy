@@ -18,6 +18,9 @@ IN DEVELOPMENT
      supported transports.
      (Vincent Ladeuil)
 
+   * New option to use custom template-based formats in  ``bzr version-info``.
+     (Lukáš Lalinský)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
