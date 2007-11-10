@@ -56,7 +56,7 @@ class cmd_version_info(Command):
     For example::
 
       bzr version-info --custom \\
-        --template="#define VERSION \\"Foo 1.2.3 (r{revno})\\"\\n"
+        --template="#define VERSION_INFO \\"Project 1.2.3 (r{revno})\\"\\n"
 
     will produce a C header file with formatted string containing the
     current revision number. Other supported variables in templates are:
@@ -66,8 +66,8 @@ class cmd_version_info(Command):
       * {revno} - revision number
       * {revision_id} - revision id
       * {branch_nick} - branch nickname
-      * {clean} - 1 if the source tree contains uncommitted changes,
-                  otherwise 0
+      * {clean} - 0 if the source tree contains uncommitted changes,
+                  otherwise 1
     """
 
     takes_options = [RegistryOption('format',
@@ -88,8 +88,7 @@ class cmd_version_info(Command):
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
-            include_file_revisions=False, template=None,
-            template_file=None):
+            include_file_revisions=False, template=None):
 
         if location is None:
             location = '.'

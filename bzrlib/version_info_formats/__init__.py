@@ -49,8 +49,7 @@ class VersionInfoBuilder(object):
                 check_for_clean=False,
                 include_revision_history=False,
                 include_file_revisions=False,
-                template=None,
-                ):
+                template=None):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -64,6 +63,8 @@ class VersionInfoBuilder(object):
             date and message
         :param include_file_revisions: The output should
             include the explicit last-changed revision for each file.
+        :param template: Template for the output formatting, not used by
+            all builders.
         """
         self._branch = branch
         self._working_tree = working_tree
