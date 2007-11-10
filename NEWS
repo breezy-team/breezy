@@ -77,6 +77,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
+
   TESTING:
 
 
