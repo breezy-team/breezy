@@ -39,7 +39,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repo_with_extra_ghost_index()
         self.assertEqual(
-            [('revision-id', ['incorrect-parent'], [])],
+            [('revision-id', ('incorrect-parent',), ())],
             list(repo._find_inconsistent_revision_parents()))
 
     def test__check_for_inconsistent_revision_parents(self):
@@ -59,7 +59,11 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         if not repo.revision_graph_can_have_wrong_parents():
             raise TestNotApplicable(
                 '%r cannot have corrupt revision index.' % repo)
-        repo._check_for_inconsistent_revision_parents()  # nothing happens
+        repo.lock_read()
+        try:
+            repo._check_for_inconsistent_revision_parents()  # nothing happens
+        finally:
+            repo.unlock()
 
     def test_check_reports_bad_ancestor(self):
         repo = self.make_repo_with_extra_ghost_index()
@@ -75,5 +79,5 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         self.assertContainsRe(
             log,
             "revision-id has wrong parents in index: "
-            r"\['incorrect-parent'\] should be \[\]")
+            r"\('incorrect-parent',\) should be \(\)")
 

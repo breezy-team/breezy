@@ -437,6 +437,13 @@ class MutableTree(tree.Tree):
         inventory for the parent new_revid, and all other parent trees are
         discarded.
 
+        All the changes in the delta should be changes synchronising the basis
+        tree with some or all of the working tree, with a change to a directory
+        requiring that its contents have been recursively included. That is,
+        this is not a general purpose tree modification routine, but a helper
+        for commit which is not required to handle situations that do not arise
+        outside of commit.
+
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing
             the changes from the current left most parent revision to new_revid.

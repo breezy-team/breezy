@@ -453,3 +453,57 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.heads(['rev2a', 'rev3b']))
         self.assertEqual(set(['rev2c', 'rev3a']),
                          graph.heads(['rev2c', 'rev3a']))
+
+    def _run_heads_break_deeper(self, graph_dict, search):
+        """Run heads on a graph-as-a-dict.
+        
+        If the search asks for the parents of 'deeper' the test will fail.
+        """
+        class stub(object):
+            pass
+        def get_parents(keys):
+            result = []
+            for key in keys:
+                if key == 'deeper':
+                    self.fail('key deeper was accessed')
+                result.append(graph_dict[key])
+            return result
+        an_obj = stub()
+        an_obj.get_parents = get_parents
+        graph = _mod_graph.Graph(an_obj)
+        return graph.heads(search)
+
+    def test_heads_limits_search(self):
+        # test that a heads query does not search all of history
+        graph_dict = {
+            'left':['common'],
+            'right':['common'],
+            'common':['deeper'],
+        }
+        self.assertEqual(set(['left', 'right']),
+            self._run_heads_break_deeper(graph_dict, ['left', 'right']))
+
+    def test_heads_limits_search_assymetric(self):
+        # test that a heads query does not search all of history
+        graph_dict = {
+            'left':['midleft'],
+            'midleft':['common'],
+            'right':['common'],
+            'common':['aftercommon'],
+            'aftercommon':['deeper'],
+        }
+        self.assertEqual(set(['left', 'right']),
+            self._run_heads_break_deeper(graph_dict, ['left', 'right']))
+
+    def test_heads_limits_search_common_search_must_continue(self):
+        # test that common nodes are still queried, preventing
+        # all-the-way-to-origin behaviour in the following graph:
+        graph_dict = {
+            'h1':['shortcut', 'common1'],
+            'h2':['common1'],
+            'shortcut':['common2'],
+            'common1':['common2'],
+            'common2':['deeper'],
+        }
+        self.assertEqual(set(['h1', 'h2']),
+            self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))

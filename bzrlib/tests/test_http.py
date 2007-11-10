@@ -29,6 +29,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    config,
     errors,
     osutils,
     ui,
@@ -78,7 +79,6 @@ from bzrlib.transport.http import (
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.http._urllib2_wrappers import (
-    PasswordManager,
     ProxyHandler,
     Request,
     )
@@ -204,7 +204,7 @@ class TestHttpTransportUrls(object):
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
         t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises((errors.InvalidURL, errors.ConnectionError),
+        self.assertRaises(errors.InvalidURL,
                           self._transport,
                           'http://http://bazaar-vcs.org/bzr/bzr.dev/')
 
@@ -797,7 +797,7 @@ class TestHttpProxyWhiteBox(TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        handler = ProxyHandler(PasswordManager())
+        handler = ProxyHandler()
         request = Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
@@ -831,10 +831,6 @@ class TestProxyHttpServer(object):
 
     # FIXME: We don't have an https server available, so we don't
     # test https connections.
-
-    # FIXME: Once the test suite is better fitted to test
-    # authorization schemes, test proxy authorizations too (see
-    # bug #83954).
 
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)
@@ -934,13 +930,15 @@ class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
         self.no_proxy_host = 'localhost'
 
     def test_HTTP_PROXY(self):
-        # pycurl do not check HTTP_PROXY for security reasons
+        # pycurl does not check HTTP_PROXY for security reasons
         # (for use in a CGI context that we do not care
         # about. Should we ?)
-        raise TestSkipped()
+        raise TestSkipped('pycurl does not check HTTP_PROXY '
+            'for security reasons')
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
-        raise TestSkipped()
+        raise TestSkipped('pycurl does not check HTTP_PROXY '
+            'for security reasons')
 
     def test_http_proxy_without_scheme(self):
         # pycurl *ignores* invalid proxy env variables. If that
@@ -1208,6 +1206,8 @@ class TestAuth(object):
     either TestCaseWithWebserver or TestCaseWithTwoWebservers.
     """
 
+    _password_prompt_prefix = ''
+
     def setUp(self):
         """Set up the test environment
 
@@ -1219,18 +1219,6 @@ class TestAuth(object):
         """
         self.build_tree_contents([('a', 'contents of a\n'),
                                   ('b', 'contents of b\n'),])
-        self.old_factory = ui.ui_factory
-        # The following has the unfortunate side-effect of hiding any ouput
-        # during the tests (including pdb prompts). Feel free to comment them
-        # for debugging purposes but leave them in place, there are needed to
-        # run the tests without any console
-        self.old_stdout = sys.stdout
-        sys.stdout = StringIOWrapper()
-        self.addCleanup(self.restoreUIFactory)
-
-    def restoreUIFactory(self):
-        ui.ui_factory = self.old_factory
-        sys.stdout = self.old_stdout
 
     def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
@@ -1284,10 +1272,13 @@ class TestAuth(object):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        ui.ui_factory = TestUIFactory(stdin='foo\n')
+        stdout = StringIOWrapper()
+        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=stdout)
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
+        self._check_password_prompt(t._unqualified_scheme, 'joe',
+                                    stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())
@@ -1296,6 +1287,36 @@ class TestAuth(object):
         self.assertEqual('contents of b\n',t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
+
+    def _check_password_prompt(self, scheme, user, actual_prompt):
+        expected_prompt = (self._password_prompt_prefix
+                           + ("%s %s@%s:%d, Realm: '%s' password: "
+                              % (scheme.upper(),
+                                 user, self.server.host, self.server.port,
+                                 self.server.auth_realm)))
+        self.assertEquals(expected_prompt, actual_prompt)
+
+    def test_no_prompt_for_password_when_using_auth_config(self):
+        user =' joe'
+        password = 'foo'
+        stdin_content = 'bar\n'  # Not the right password
+        self.server.add_user(user, password)
+        t = self.get_user_transport(user, None)
+        ui.ui_factory = TestUIFactory(stdin=stdin_content,
+                                      stdout=StringIOWrapper())
+        # Create a minimal config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'httptest': {'scheme': 'http', 'port': self.server.port,
+                          'user': user, 'password': password}})
+        conf._save()
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # stdin should have  been left untouched
+        self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
 
 
 class TestHTTPAuth(TestAuth):
@@ -1321,6 +1342,8 @@ class TestProxyAuth(TestAuth):
     Daughter classes MUST also inherit from TestCaseWithWebserver.
     """
     _auth_header = 'Proxy-authorization'
+    _password_prompt_prefix = 'Proxy '
+
 
     def setUp(self):
         TestCaseWithWebserver.setUp(self)

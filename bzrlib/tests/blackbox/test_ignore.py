@@ -31,7 +31,6 @@ from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
-    has_symlinks,
     pathjoin,
     terminal_width,
     )
