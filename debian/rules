@@ -23,7 +23,8 @@ build-python%:
 	python$* setup.py build
 ifeq (,$(findstring nocheck,$(DEBBUILDOPTS)))
 ifeq (,$(findstring notest,$(DEBBUILDOPTS)))
-	python$* __init__.py
+	# set home directory to effectively disable any user installed plugins
+	HOME=/tmp python$* __init__.py
 endif
 endif
 	touch $@

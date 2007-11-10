@@ -18,8 +18,10 @@ bzr-builddeb (0.92) unstable; urgency=low
   [ Reinhard Tartler ]
   * (Build-)Depend on python-apt
   * bump dependency on bzrtools
+  * when running the testsuite, set home directory to effectively disable
+    any user installed plugins
 
- -- Reinhard Tartler <siretart@tauware.de>  Mon, 05 Nov 2007 22:01:09 +0100
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 10 Nov 2007 23:35:57 +0100
 
 bzr-builddeb (0.91) unstable; urgency=low
 
