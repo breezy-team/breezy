@@ -93,6 +93,13 @@ class TestOSUtils(TestCaseInTempDir):
 
     # TODO: test fancy_rename using a MemoryTransport
 
+    def test_rename_win32_change_case(self):
+        self.build_tree(['a', 'b/'])
+        osutils.rename('a', 'A')
+        osutils.rename('b', 'B')
+        shape = sorted(os.listdir('.'))
+        self.assertEquals(['A', 'B'], shape)
+
     def test_01_rand_chars_empty(self):
         result = osutils.rand_chars(0)
         self.assertEqual(result, '')

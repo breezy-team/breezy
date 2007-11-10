@@ -340,6 +340,10 @@ def _win32_rename(old, new):
     On win32, if new exists, it must be moved out of the way first,
     and then deleted. 
     """
+    # to change case on win32 you don't need fancy rename
+    if old.lower() == new.lower():
+        os.rename(old,new)
+        return
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:

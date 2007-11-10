@@ -63,6 +63,9 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * Rename on Windows is able to change filename case.
+     (Alexander Belchenko, #77740)
+
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
      replaced by '?'. (Lukáš Lalinský, #151844)

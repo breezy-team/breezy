@@ -17,6 +17,7 @@
 """Test for 'bzr mv'"""
 
 import os
+import sys
 
 from bzrlib import (
     osutils,
@@ -26,6 +27,7 @@ from bzrlib import (
 from bzrlib.tests import (
     SymlinkFeature,
     TestCaseWithTransport,
+    TestSkipped,
     )
 
 
@@ -123,6 +125,19 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv sub2/hello.txt .')
         os.chdir('..')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
+
+    def test_mv_win32_change_case(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('Test require case insensitive filesystem')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['test.txt'])
+        tree.add(['test.txt'])
+        self.run_bzr('mv test.txt Test.txt')
+        # we can't use failUnlessExists so try to check shape of the tree
+        shape = sorted(os.listdir(u'.'))
+        self.assertEqual(['.bzr', 'Test.txt'], shape)
+        self.assertInWorkingTree('Test.txt')
+        self.assertNotInWorkingTree('test.txt')
 
     def test_mv_smoke_aliases(self):
         # just test that aliases for mv exist, if their behaviour is changed in
