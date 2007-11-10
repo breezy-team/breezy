@@ -63,6 +63,11 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * Stderr output via logging mechanism now goes through encoded wrapper
+     and no more uses utf-8, but terminal encoding instead. So all unicode
+     strings now should be readable in non-utf-8 terminal.
+     (Alexander Belchenko, #54173)
+
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
      replaced by '?'. (Lukáš Lalinský, #151844)
