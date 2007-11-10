@@ -319,13 +319,10 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
     rich_root_data = False
     supports_tree_reference = False
+    supports_ghosts = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
-        """Create a weave repository.
-        
-        TODO: when creating split out bzr branch formats, move this to a common
-        base for Format5, Format6. or something like that.
-        """
+        """Create a weave repository."""
         if shared:
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
 
@@ -519,6 +516,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
+    supports_ghosts = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

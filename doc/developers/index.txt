@@ -33,4 +33,10 @@ Specifications
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
+Data formats
+
+* `Knit pack repositories <knitpack.html>`_ |--| KnitPack repositories 
+  (new in Bazaar 0.92).
+
+
 .. |--| unicode:: U+2014

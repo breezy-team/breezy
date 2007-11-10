@@ -383,6 +383,11 @@ class BytesRecordReader(BaseReader):
 
 
 class ContainerPushParser(object):
+    """A "push" parser for container format 1.
+
+    It accepts bytes via the ``accept_bytes`` method, and parses them into
+    records which can be retrieved via the ``read_pending_records`` method.
+    """
 
     def __init__(self):
         self._buffer = ''

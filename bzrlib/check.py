@@ -60,6 +60,7 @@ class Check(object):
             self.repository)
         self.unreferenced_ancestors = set()
         self.inconsistent_parents = []
+        self.dangling_versions = set()
 
     def check(self):
         self.repository.lock_read()
@@ -156,6 +157,9 @@ class Check(object):
                         '       %s has wrong parents in index: '
                         '%r should be %r',
                         revision_id, index_parents, actual_parents)
+        if self.dangling_versions:
+            note('%6d file versions are not referenced by their inventory',
+                 len(self.dangling_versions))
 
     def check_one_rev(self, rev_id):
         """Check one revision.
@@ -214,14 +218,18 @@ class Check(object):
             weave_checker = self.repository.get_versioned_file_checker(
                 self.planned_revisions, self.revision_versions)
             result = weave_checker.check_file_version_parents(w, weave_id)
-
-            for revision_id, (weave_parents,correct_parents) in result.items():
+            bad_parents, dangling_versions = result
+            bad_parents = bad_parents.items()
+            for revision_id, (weave_parents,correct_parents) in bad_parents:
                 self.inconsistent_parents.append(
                     (revision_id, weave_id, weave_parents, correct_parents))
+                if weave_parents is None:
+                    weave_parents = []
                 unreferenced_parents = set(weave_parents)-set(correct_parents)
                 for unreferenced_parent in unreferenced_parents:
                     self.unreferenced_ancestors.add(
                         (weave_id, unreferenced_parent))
+            self.dangling_versions.update(dangling_versions)
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
