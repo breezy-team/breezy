@@ -291,6 +291,7 @@ def test_suite():
             'test_radir',
             'test_repos', 
             'test_revids',
+            'test_revspec',
             'test_scheme', 
             'test_transport',
             'test_tree',
