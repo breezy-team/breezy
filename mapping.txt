@@ -1,3 +1,5 @@
+#FORMAT rst
+
 This document specifies mapping between Subversion and Bazaar semantics.
 
 Revision: 4
@@ -73,7 +75,7 @@ subversion will not erase the property for subsequent commits.
 
 A (path,revnum) tuple is valid if:
 * path is valid according to the branching scheme
-* either path,revnum or one of its children was touched in the particular 
+* either path, revnum or one of its children was touched in the particular 
   revision
 
 If possible, the Subversion revision property ``bzr:revision-id`` should be 
