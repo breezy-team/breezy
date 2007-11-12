@@ -219,6 +219,23 @@ def make_commits_with_trailing_newlines(wt):
     return b
 
 
+def normalize_log(log):
+    """Replaces the variable lines of logs with fixed lines"""
+    author = 'author: Dolor Sit <test@example.com>'
+    committer = 'committer: Lorem Ipsum <test@example.com>'
+    lines = log.splitlines(True)
+    for idx,line in enumerate(lines):
+        stripped_line = line.lstrip()
+        indent = ' ' * (len(line) - len(stripped_line))
+        if stripped_line.startswith('author:'):
+            lines[idx] = indent + author + '\n'
+        elif stripped_line.startswith('committer:'):
+            lines[idx] = indent + committer + '\n'
+        elif stripped_line.startswith('timestamp:'):
+            lines[idx] = indent + 'timestamp: Just now\n'
+    return ''.join(lines)
+
+
 class TestShortLogFormatter(TestCaseWithTransport):
 
     def test_trailing_newlines(self):
@@ -243,22 +260,6 @@ class TestShortLogFormatter(TestCaseWithTransport):
 
 
 class TestLongLogFormatter(TestCaseWithTransport):
-
-    def normalize_log(self,log):
-        """Replaces the variable lines of logs with fixed lines"""
-        author = 'author: Dolor Sit <test@example.com>'
-        committer = 'committer: Lorem Ipsum <test@example.com>'
-        lines = log.splitlines(True)
-        for idx,line in enumerate(lines):
-            stripped_line = line.lstrip()
-            indent = ' ' * (len(line) - len(stripped_line))
-            if stripped_line.startswith('author:'):
-                lines[idx] = indent + author + '\n'
-            elif stripped_line.startswith('committer:'):
-                lines[idx] = indent + committer + '\n'
-            elif stripped_line.startswith('timestamp:'):
-                lines[idx] = indent + 'timestamp: Just now\n'
-        return ''.join(lines)
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -311,7 +312,7 @@ added:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
+        log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
@@ -367,7 +368,7 @@ message:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
+        log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
