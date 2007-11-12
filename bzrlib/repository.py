@@ -188,6 +188,14 @@ class CommitBuilder(object):
         else:
             self.random_revid = False
 
+    def heads(self, file_id, revision_ids):
+        """Calculate the graph heads for revision_ids in the graph of file_id.
+
+        This can use either a per-file graph or a global revision graph as we
+        have an identity relationship between the two graphs.
+        """
+        return self._heads(revision_ids)
+
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
 
@@ -285,7 +293,7 @@ class CommitBuilder(object):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(parent_candiate_entries.keys())
+        head_set = self.heads(ie.file_id, parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
             if ie.file_id in inv:
