@@ -93,10 +93,13 @@ class TestOSUtils(TestCaseInTempDir):
 
     # TODO: test fancy_rename using a MemoryTransport
 
-    def test_rename_win32_change_case(self):
+    def test_rename_change_case(self):
+        # on Windows we should be able to change filename case by rename
         self.build_tree(['a', 'b/'])
         osutils.rename('a', 'A')
         osutils.rename('b', 'B')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
 

@@ -234,10 +234,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
     success = False
     try:
-        # This may throw an exception, in which case success will
-        # not be set.
-        rename_func(old, new)
-        success = True
+        try:
+            # This may throw an exception, in which case success will
+            # not be set.
+            rename_func(old, new)
+            success = True
+        except (IOError, OSError), e:
+            # case insensitive filesystem may be?
+            if (not file_existed
+                or e.errno not in (None, errno.ENOENT, errno.ENOTDIR)
+                or old.lower() != new.lower()):
+                raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -340,10 +347,6 @@ def _win32_rename(old, new):
     On win32, if new exists, it must be moved out of the way first,
     and then deleted. 
     """
-    # to change case on win32 you don't need fancy rename
-    if old.lower() == new.lower():
-        os.rename(old,new)
-        return
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
