@@ -27,7 +27,7 @@ from bzrlib.workingtree import WorkingTree
 RENAMES = False
 
 import svn.repos, svn.wc
-from errors import NoCheckoutSupport
+from bzrlib.plugins.svn.errors import NoCheckoutSupport
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -42,7 +42,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def log_message_func(self, items, pool):
         return self.next_message
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, allow_revprop_changes=True):
         """Create a repository.
 
         :return: Handle to the repository.
@@ -52,11 +52,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         svn.repos.create(abspath, '', '', None, None)
 
-        revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
-
-        open(revprop_hook, 'w').write("#!/bin/sh")
-
-        os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+        if allow_revprop_changes:
+            revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+            open(revprop_hook, 'w').write("#!/bin/sh")
+            os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
         return repos_url
 
@@ -155,8 +154,9 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         olddir = os.path.abspath('.')
         self.next_message = message
         os.chdir(dir)
-        info = svn.client.commit3(["."], recursive, False, self.client_ctx)
+        info = svn.client.commit2(["."], recursive, False, self.client_ctx)
         os.chdir(olddir)
+        assert info is not None
         return (info.revision, info.date, info.author)
 
     def client_add(self, relpath, recursive=True):
@@ -165,6 +165,27 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param relpath: Path to the files to add.
         """
         svn.client.add3(relpath, recursive, False, False, self.client_ctx)
+
+    def revnum_to_opt_rev(self, revnum):
+        rev = svn.core.svn_opt_revision_t()
+        if revnum is None:
+            rev.kind = svn.core.svn_opt_revision_head
+        else:
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = revnum
+        return rev
+
+    def client_log(self, path, start_revnum=None, stop_revnum=None):
+        ret = {}
+        def rcvr(orig_paths, rev, author, date, message, pool):
+            ret[rev] = (orig_paths, author, date, message)
+        svn.client.log([path], self.revnum_to_opt_rev(start_revnum),
+                       self.revnum_to_opt_rev(stop_revnum),
+                       True,
+                       True,
+                       rcvr,
+                       self.client_ctx)
+        return ret
 
     def client_delete(self, relpath):
         """Remove specified files from working copy.
@@ -216,14 +237,16 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         return BzrDir.open("svn+%s" % repos_url)
 
-    def make_client(self, repospath, clientpath):
+    def make_client(self, repospath, clientpath, allow_revprop_changes=True):
         """Create a repository and a checkout. Return the checkout.
 
         :param relpath: Optional relpath to check out if not the full 
             repository.
+        :param clientpath: Path to checkout
         :return: Repository URL.
         """
-        repos_url = self.make_repository(repospath)
+        repos_url = self.make_repository(repospath, 
+            allow_revprop_changes=allow_revprop_changes)
         self.make_checkout(repos_url, clientpath)
         return repos_url
 
@@ -268,6 +291,7 @@ def test_suite():
             'test_radir',
             'test_repos', 
             'test_revids',
+            'test_revspec',
             'test_scheme', 
             'test_transport',
             'test_tree',

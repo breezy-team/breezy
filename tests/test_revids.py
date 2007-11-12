@@ -18,8 +18,8 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
-from repository import (MAPPING_VERSION, svk_feature_to_revision_id, 
-                        revision_id_to_svk_feature)
+from repository import (MAPPING_VERSION, parse_svk_feature, 
+                        revision_id_to_svk_feature, parse_merge_property)
 from revids import RevidMap, parse_svn_revision_id, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
@@ -125,16 +125,25 @@ class RevisionIdMappingTest(TestCase):
                          parse_svn_revision_id(
                      "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
 
-    def test_svk_revid_map_root(self):
-        self.assertEqual("svn-v%d-undef:auuid::6" % MAPPING_VERSION,
-                 svk_feature_to_revision_id("auuid:/:6", "undef"))
+    def test_parse_svk_feature_root(self):
+        self.assertEqual(("auuid", "", 6), 
+                 parse_svk_feature("auuid:/:6"))
 
     def test_svk_revid_map_nested(self):
-        self.assertEqual("svn-v%d-undef:auuid:bp:6" % MAPPING_VERSION,
-                         svk_feature_to_revision_id("auuid:/bp:6", "undef"))
+        self.assertEqual(("auuid", "bp", 6),
+                         parse_svk_feature("auuid:/bp:6"))
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 
               revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
+
+    def test_parse_merge_space(self):
+        self.assertEqual([], parse_merge_property("bla bla"))
+
+    def test_parse_merge_empty(self):
+        self.assertEqual([], parse_merge_property(""))
+
+    def test_parse_merge_simple(self):
+        self.assertEqual(["bla", "bloe"], parse_merge_property("bla\tbloe"))
 
 

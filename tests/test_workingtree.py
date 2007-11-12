@@ -17,9 +17,9 @@
 """Working tree tests."""
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
-from bzrlib.tests import TestCase
+from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -249,7 +249,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(tree.is_control_filename(".svn"))
         self.assertFalse(tree.is_control_filename(".bzr"))
 
-    def notest_revert(self):
+    def test_revert(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
@@ -257,6 +257,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_update("dc")
         tree = WorkingTree.open("dc")
         os.remove("dc/bl")
+        raise KnownFailure("revert not supported yet")
         tree.revert(["bl"])
         self.assertEqual("data", open('dc/bl').read())
 
@@ -454,7 +455,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
             "svn-v%d:1@a-uuid-foo-branch%%2fpath" % MAPPING_VERSION, "c"])
         self.assertEqual(
                 "svn-v%d:1@a-uuid-foo-branch%%2fpath\tc\n" % MAPPING_VERSION, 
-                self.client_get_prop("dc", "bzr:merge"))
+                self.client_get_prop("dc", "bzr:ancestry:v3-none"))
 
     def test_set_pending_merges_svk(self):
         self.make_client('a', 'dc')
@@ -527,6 +528,17 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.exists("dc/.svn"))
         self.assertFalse(os.path.exists("dc/.bzr"))
         tree.read_working_inventory()
+
+    def test_update(self):
+        repos_url = self.make_client('a', 'dc')
+        self.make_checkout(repos_url, "de")
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "msg")
+        tree = self.open_checkout("de")
+        tree.update()
+        self.assertTrue(os.path.exists("de/.svn"))
+        self.assertTrue(os.path.exists("de/bla"))
 
     def test_status_bzrdir(self):
         self.make_client('a', 'dc')
@@ -614,6 +626,20 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.commit("message")
         self.assertEqual(None, tree.branch.nick)
 
+    def test_out_of_date(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/some strange file': 'data'})
+        self.client_add("dc/some strange file")
+        self.client_commit("dc", "msg")
+        self.client_update("dc")
+        self.make_checkout(repos_url, 'de')
+        self.build_tree({'dc/some strange file': 'data-x'})
+        self.client_commit("dc", "msg")
+        self.client_update("dc")
+        tree = self.open_checkout("de")
+        self.build_tree({'de/some strange file': 'data-y'})
+        self.assertRaises(OutOfDateTree, lambda: tree.commit("bar"))
+
 
 class IgnoreListTests(TestCase):
     def test_empty(self):
@@ -630,3 +656,5 @@ class IgnoreListTests(TestCase):
     def test_multiple(self):
         self.assertEquals(["./twin*", "./twin/peaks"], 
                 generate_ignore_list({"twin": "peaks", "": "twin*"}))
+
+

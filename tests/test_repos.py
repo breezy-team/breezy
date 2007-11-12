@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
@@ -18,6 +20,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
+from bzrlib.config import GlobalConfig
 from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
@@ -31,14 +34,15 @@ import svn.fs
 from errors import InvalidPropertyValue
 from fileids import generate_svn_file_id, generate_file_id
 import format
-from scheme import TrunkBranchingScheme, NoBranchingScheme
+from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
+                    ListBranchingScheme)
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from tests.test_fileids import MockRepo
 from repository import (revision_id_to_svk_feature,
                         SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
                         generate_revision_metadata, parse_revision_metadata,
-                        parse_revid_property)
+                        parse_revid_property, SVN_PROP_BZR_BRANCHING_SCHEME)
 from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
                     parse_svn_revision_id, generate_svn_revision_id)
 
@@ -61,13 +65,34 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        self.assertEqual(2, 
-             len(list(repos.follow_branch_history("", 1, NoBranchingScheme()))))
+        self.assertEqual([
+            ('', {'foo': ('A', None, -1)}, 1), 
+            ('', {'': ('A', None, -1)}, 0)],
+             list(repos.follow_branch_history("", 1, NoBranchingScheme())))
 
     def test_make_working_trees(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.make_working_trees())
+
+    def test_get_config_global_set(self):
+        repos_url = self.make_client("a", "dc")
+        cfg = GlobalConfig()
+        cfg.set_user_option("foo", "Still Life")
+
+        repos = Repository.open(repos_url)
+        self.assertEquals("Still Life", 
+                repos.get_config().get_user_option("foo"))
+
+    def test_get_config(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        repos.get_config().set_user_option("foo", "Van Der Graaf Generator")
+
+        repos = Repository.open(repos_url)
+        self.assertEquals("Van Der Graaf Generator", 
+                repos.get_config().get_user_option("foo"))
+
 
     def test_get_physical_lock_status(self):
         repos_url = self.make_client("a", "dc")
@@ -132,6 +157,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         self.assertRaises(NoSuchRevision, list, 
                repos.follow_branch_history("/", 20, NoBranchingScheme()))
+
+    def test_follow_branch_switched_parents(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/pykleur/trunk/pykleur': None})
+        self.client_add("dc/pykleur")
+        self.client_commit("dc", "initial")
+        self.build_tree({'dc/pykleur/trunk/pykleur/afile': 'contents'})
+        self.client_add("dc/pykleur/trunk/pykleur/afile")
+        self.client_commit("dc", "add file")
+        self.client_copy("dc/pykleur", "dc/pygments", 1)
+        self.client_delete('dc/pykleur')
+        self.client_update("dc")
+        self.client_commit("dc", "commit")
+        repos = Repository.open(repos_url)
+        self.assertEquals([('pygments/trunk', 3), ('pykleur/trunk', 2), ('pykleur/trunk', 1)], 
+                list(repos.follow_branch("pygments/trunk", 3, TrunkBranchingScheme(1))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -398,6 +439,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:revision-info", "")
         self.client_set_prop("dc", "bzr:file-ids", "foo\tsomeid\n")
         self.client_commit("dc", "My Message")
         repository = Repository.open("svn+%s" % repos_url)
@@ -410,8 +452,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:merge", "ghostparent\n")
+        self.client_set_prop("dc", "bzr:ancestry:v3-none", "ghostparent\n")
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([],
@@ -425,6 +468,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repository.revision_parents(
                     repository.generate_revision_id(2, "", "none")))
  
+    def test_revision_svk_parent(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/foo': "data", 'dc/branches/foo': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.build_tree({'dc/trunk/foo': "data2"})
+        repository = Repository.open("svn+%s" % repos_url)
+        self.client_set_prop("dc/trunk", "svk:merge", 
+            "%s:/branches/foo:1\n" % repository.uuid)
+        self.client_commit("dc", "Second Message")
+        self.assertEqual([repository.generate_revision_id(1, "trunk", "trunk0"),
+            repository.generate_revision_id(1, "branches/foo", "trunk0")], 
+                repository.revision_parents(
+                    repository.generate_revision_id(2, "trunk", "trunk0")))
+ 
     
     def test_get_revision(self):
         repos_url = self.make_client('d', 'dc')
@@ -434,6 +494,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
@@ -454,8 +515,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
                             "3 myrevid\n")
+        self.client_update("dc")
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         revid = generate_svn_revision_id(repository.uuid, 2, "", "none")
@@ -477,7 +539,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("", rev.committer)
         self.assertEqual({}, rev.properties)
         self.assertEqual(None, rev.timezone)
-        self.assertEqual(0.0, rev.timestamp)
+
+    def test_store_branching_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open(repos_url)
+        repository.set_branching_scheme(TrunkBranchingScheme(42))
+        repository = Repository.open(repos_url)
+        self.assertEquals("trunk42", str(repository.get_scheme()))
 
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')
@@ -486,10 +554,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([None, 
             repository.generate_revision_id(0, "", "none"),
@@ -560,10 +631,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual({
             repository.generate_revision_id(0, "", "none"): [],
@@ -619,7 +693,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
-        self.client_set_prop("dc", "bzr:merge", "a-parent\n")
+        self.client_update("dc")
+        self.client_set_prop("dc", "bzr:ancestry:v3-none", "a-parent\n")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
@@ -645,19 +720,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data", 'dc/blah': "other data"})
         self.client_add("dc/foo")
         self.client_add("dc/blah")
-        self.client_commit("dc", "My Message")
+        self.client_commit("dc", "My Message") #1
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data2", "dc/bar/foo": "data3"})
         self.client_add("dc/bar")
-        self.client_commit("dc", "Second Message")
+        self.client_commit("dc", "Second Message") #2
+        self.client_update("dc")
         self.build_tree({'dc/foo': "data3"})
-        self.client_commit("dc", "Third Message")
+        self.client_commit("dc", "Third Message") #3
+        self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         inv = repository.get_inventory(
                 repository.generate_revision_id(1, "", "none"))
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
         inv = repository.get_inventory(
-                repository.generate_revision_id(2, "", "none"))
+            repository.generate_revision_id(2, "", "none"))
         self.assertEqual(repository.generate_revision_id(2, "", "none"), 
                          inv[inv.path2id("foo")].revision)
         self.assertEqual(repository.generate_revision_id(1, "", "none"), 
@@ -752,6 +830,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, 
                 repository.lookup_revision_id, "foobar")
 
+    def test_set_branching_scheme_property(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", SVN_PROP_BZR_BRANCHING_SCHEME, 
+            "trunk\nbranches/*\nbranches/tmp/*")
+        self.client_commit("dc", "set scheme")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEquals(ListBranchingScheme(["trunk", "branches/*", "branches/tmp/*"]).branch_list,
+                          repository.get_scheme().branch_list)
+
+    def test_set_property_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repos = Repository.open(repos_url)
+        repos.set_property_scheme(ListBranchingScheme(["bla/*"]))
+        self.client_update("dc")
+        self.assertEquals("bla/*\n", 
+                   self.client_get_prop("dc", SVN_PROP_BZR_BRANCHING_SCHEME))
+        self.assertEquals("Updating branching scheme for Bazaar.", 
+                self.client_log("dc", 1, 1)[1][3])
+
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
@@ -805,6 +902,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/test': "data"})
         self.client_add("dc/test")
+        self.client_set_prop("dc", "bzr:revision-info", "")
         self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
         self.client_commit("dc", "Msg")
 
@@ -825,7 +923,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_set_prop("dc/trunk", "some:property", "some other data\n")
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
-        self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
+        self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], 
+            list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')
@@ -869,7 +968,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         rev = newrepos.get_revision(
             oldrepos.generate_revision_id(2, "trunk", "trunk0"))
-        self.assertEqual(u'bla\xfcbla', rev.message)
+        self.assertEqual('bla\xc3\xbcbla', rev.message.encode("utf-8"))
 
         rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", "trunk0"))
         self.assertEqual(u"a\\x0cb", rev.message)
@@ -963,12 +1062,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/py")
         self.client_commit("dc", "Initial commit")
         self.assertRaises(NoSuchRevision, 
-                lambda: repos._mainline_revision_parent("trunk", 1, NoBranchingScheme()))
-
-    def test_get_scheme(self):
-        repos_url = self.make_client('d', 'dc')
-        oldrepos = Repository.open("svn+"+repos_url)
-        self.assertEquals("trunk1", str(oldrepos.get_scheme("trunk1")))
+                lambda: repos._mainline_revision_parent("trunk", 2, NoBranchingScheme()))
 
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
@@ -1095,7 +1189,7 @@ class MetadataMarshallerTests(TestCase):
                 generate_revision_metadata(None, None, "bla", None))
 
     def test_generate_revision_metadata_timestamp(self):
-        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52.350850105 +0000\n", 
+        self.assertEquals("timestamp: 2005-06-30 17:38:52.350850105 +0000\n", 
                 generate_revision_metadata(1120153132.350850105, 0, 
                     None, None))
             
@@ -1116,6 +1210,12 @@ class MetadataMarshallerTests(TestCase):
 
     def test_parse_revision_metadata_timestamp(self):
         rev = Revision('someid')
+        parse_revision_metadata("timestamp: 2005-06-30 12:38:52.350850105 -0500\n", rev)
+        self.assertEquals(1120153132.3508501, rev.timestamp)
+        self.assertEquals(-18000, rev.timezone)
+
+    def test_parse_revision_metadata_timestamp_day(self):
+        rev = Revision('someid')
         parse_revision_metadata("timestamp: Thu 2005-06-30 12:38:52.350850105 -0500\n", rev)
         self.assertEquals(1120153132.3508501, rev.timestamp)
         self.assertEquals(-18000, rev.timezone)
@@ -1131,6 +1231,11 @@ class MetadataMarshallerTests(TestCase):
         rev = Revision('someid')
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revision_metadata("bla", rev))
+
+    def test_parse_revision_metadata_specialchar(self):
+        rev = Revision('someid')
+        parse_revision_metadata("committer: Adeodato Simó <dato@net.com.org.es>", rev)
+        self.assertEquals(u"Adeodato Simó <dato@net.com.org.es>", rev.committer)
 
     def test_parse_revision_metadata_invalid_name(self):
         rev = Revision('someid')

@@ -17,7 +17,7 @@
 
 from bzrlib.inventory import Inventory
 
-import bzrlib.osutils as osutils
+from bzrlib import osutils, urlutils
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -29,20 +29,31 @@ import urllib
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
 
-def apply_txdelta_handler(src_stream, target_stream, pool):
-    assert hasattr(src_stream, 'read')
-    assert hasattr(target_stream, 'write')
-    ret = svn.delta.svn_txdelta_apply(
-            src_stream, 
-            target_stream,
-            None,
-            pool)
+# Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
+# slightly different).
 
-    def wrapper(window):
-        svn.delta.invoke_txdelta_window_handler(
-            ret[1], window, ret[2])
+if hasattr(svn.delta, 'tx_invoke_window_handler'):
+    def apply_txdelta_handler(src_stream, target_stream, pool):
+        assert hasattr(src_stream, 'read')
+        assert hasattr(target_stream, 'write')
+        window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
+                                                   None, pool)
 
-    return wrapper
+        def wrapper(window):
+            window_handler(window, baton)
+
+        return wrapper
+else:
+    def apply_txdelta_handler(src_stream, target_stream, pool):
+        assert hasattr(src_stream, 'read')
+        assert hasattr(target_stream, 'write')
+        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None, pool)
+
+        def wrapper(window):
+            svn.delta.invoke_txdelta_window_handler(
+                ret[1], window, ret[2])
+
+        return wrapper
 
 class SvnRevisionTree(RevisionTree):
     """A tree that existed in a historical Subversion revision."""
@@ -54,13 +65,12 @@ class SvnRevisionTree(RevisionTree):
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 scheme)
-        self.editor = TreeBuildEditor(self, pool)
+        editor = TreeBuildEditor(self, pool)
         self.file_data = {}
-        editor, baton = svn.delta.make_editor(self.editor, pool)
-        root_repos = repository.transport.get_repos_root()
+        root_repos = repository.transport.get_svn_repos_root()
         reporter = repository.transport.do_switch(
-                self.revnum, "", True, 
-                os.path.join(root_repos, self.branch_path), editor, baton, pool)
+                self.revnum, True, 
+                urlutils.join(root_repos, self.branch_path), editor, pool)
         reporter.set_path("", 0, True, None, pool)
         reporter.finish_report(pool)
         pool.destroy()
@@ -97,21 +107,22 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
+        from repository import (SVN_PROP_BZR_ANCESTRY, 
                         SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                        SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID)
+                        SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
+                        SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
 
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
-        elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
+        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
             if id != self.tree._inventory.root.file_id:
-                mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
+                mutter('%r set on non-root dir!' % name)
                 return
-        elif name == SVN_PROP_BZR_FILEIDS:
+        elif name in (SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_BRANCHING_SCHEME):
             if id != self.tree._inventory.root.file_id:
-                mutter('%r set on non-root dir!' % SVN_PROP_BZR_FILEIDS)
+                mutter('%r set on non-root dir!' % name)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
@@ -123,6 +134,8 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif (name == SVN_PROP_BZR_REVISION_INFO or 
               name.startswith(SVN_PROP_BZR_REVISION_ID)):
+            pass
+        elif name == SVN_PROP_BZR_MERGE:
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
@@ -209,13 +222,16 @@ class SvnBasisTree(RevisionTree):
         self._revision_id = workingtree.branch.generate_revision_id(
                                       workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
-                workingtree.base_revnum, workingtree.branch.branch_path, 
+                workingtree.base_revnum, 
+                workingtree.branch.get_branch_path(workingtree.base_revnum), 
                 workingtree.branch.scheme)
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, wc):
             props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
+            if isinstance(props, list): # Subversion 1.5
+                props = props[1]
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
@@ -237,7 +253,7 @@ class SvnBasisTree(RevisionTree):
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
-                return self.id_map[workingtree.branch.scheme.unprefix(relpath)[1]]
+                return self.id_map[workingtree.branch.unprefix(relpath)]
             return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):

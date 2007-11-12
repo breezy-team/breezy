@@ -17,6 +17,7 @@
 """Config tests."""
 
 from config import SvnRepositoryConfig
+from scheme import TrunkBranchingScheme
 
 from bzrlib.tests import TestCaseInTempDir
 
@@ -45,5 +46,13 @@ class ReposConfigTests(TestCaseInTempDir):
 
     def test_get_scheme_set(self):
         c = SvnRepositoryConfig("blabla2")
-        c.set_branching_scheme("random")
-        self.assertEquals("random", c.get_branching_scheme())
+        c.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEquals("trunk0", str(c.get_branching_scheme()))
+
+    def test_override_revprops(self):
+        c = SvnRepositoryConfig("blabla2")
+        self.assertEquals(None, c.get_override_svn_revprops())
+        c.set_user_option("override-svn-revprops", "True")
+        self.assertEquals(True, c.get_override_svn_revprops())
+        c.set_user_option("override-svn-revprops", "False")
+        self.assertEquals(False, c.get_override_svn_revprops())

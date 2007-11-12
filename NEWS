@@ -1,4 +1,193 @@
-bzr-svn 0.4	UNRELEASED
+bzr-svn 0.4.5	UNRELEASED
+
+  IMPROVEMENTS
+
+   * Add revision specifier for "svn:" that accepts a single revision number. (#160605)
+
+  INTERNALS
+
+   * No longer store svn:author, svn:date and svn:log in the bzr-svn cache. 
+     This should make it easier to use bzr-specific revprops later on and 
+	 saves some disk space.
+
+  BUG FIXES
+
+   * Properly decode unicode commit messages. 
+
+bzr-svn 0.4.4	2007-11-02
+
+  PERFORMANCE
+
+   * Improved import times, making bzr faster if bzr-svn is loaded but 
+     not used.
+
+  IMPROVEMENTS
+   
+   * Avoid tracebacks on "Malformed data" errors.
+
+   * Make push location optional for svn-push. 
+   
+   * Make svn-push support --remember.
+
+   * No longer gives trackeback when already upgraded revisions are present.
+     (#130471)
+
+   * Clearer error when prefix is missing during push.
+
+   * Support optionally overriding svn:author and svn:date (#140001)
+
+   * Convert errno's returned by the remote server into OSError exceptions.
+
+  INTERNALS
+
+   * Handle NULL_REVISION in SvnRepository.copy_content(). Fixes compatibility 
+     with bzr merge-into.
+
+   * Implement ListBranchingScheme.is_branch_parent(). (#144357)
+
+   * Use revprop lists rather than just commit message when committing.
+
+   * The version of bzr-rebase is now checked before it's being used.
+
+   * Handle checks of modified children correctly when path is the root 
+     in LogWalker.find_latest_change().
+
+  BUG FIXES
+
+   * Fix compatibility with 0.92.
+
+   * Fix compatibility with packs. (#139442)
+
+   * Handle long file names with unicode characters correctly on 
+     python2.4 (#129334)
+
+   * Give proper warning message when running 'bzr svn-branching-scheme' on 
+     something that is not a Subversion repository. (#145159)
+
+   * Give proper warning message when running 'bzr svn-import' on 
+     something that is not a Subversion repository. 
+
+   * Support svn+ hack when committing in bound branches. (#150699)
+
+   * Give proper error when changes can't be pushed to root of repository. 
+     (#145148)
+
+   * Encode = in list branching scheme names (unusable in Subversion property 
+     names). (#125751)
+
+   * Fix 'bzr checkout --lightweight' for http and https branches. 
+     (#144032)
+
+   * Don't print traceback when raising errors about bzr versions.
+
+   * Show proper exception when lightweight checkout is out of date.
+
+   * Fix pulling in changes push earlier by bzr-svn with directory renames 
+     of directories containing files. (#153347)
+
+   * Handle special characters in committer name correctly. (#158347)
+
+   * Avoid crashes on sending empty diffs over http/svn+SCHEME (#159111)
+
+   * Decent progress bar for "svn-import". (#127933)
+
+  DOCUMENTATION
+
+   * Add simple FAQ file. (#144388)
+
+bzr-svn 0.4.3	2007-09-15
+ 
+  PERFORMANCE
+
+   * Avoid extra RA connection in LogWalker if it isn't going to be used.
+
+  BUG FIXES
+
+   * Fix determination of relative URLs in SvnRaTransport._request_path(). 
+     (#139020)
+
+   * Mark as compatible with Bazaar 0.91.
+
+   * Use write groups in fetch as required by the packs branch.
+
+   * Handle pushing merges of which LHS parent is older revision of 
+     branch path.
+
+  INTERNALS
+
+   * Track moving parents correctly in follow_path().
+
+   * Implement SvnWorkingTreeDir.needs_format_conversion().
+
+bzr-svn 0.4.2	2007-09-09
+
+  BUG FIXES
+
+   * Fix regression that prevented the "svn+" prefix trick from working.
+
+   * Export version information so the version is displayed properly 
+     in "bzr plugins".
+
+   * Avoid deprecated static BzrDir.create_repository().
+
+   * Fix pushing of revisions of which only a non-left hand side parent
+     is present in the Subversion repository. (#131692)
+
+   * Fix some problems pushing to HTTP repositories because of 
+     the backing URL hack introduced to fix #80553. (#137176)
+
+   * Display unknown hostname errors properly without tracebacks.
+
+   * Handle files of which path didn't change but parent did when pushing. 
+     (#137455)
+
+   * Fix sqlite index that was causing indexing errors when a repository 
+     contains multiple copies of a single revision. 
+
+bzr-svn 0.4.1	2007-08-26
+
+  BUG FIXES
+
+   * Convert errors to bzr errors when fetching data (avoids backtraces).
+
+   * Raise proper exception when repository can't be found remotely. (#130633)
+
+   * Use knits to store file id maps.
+
+   * Don't try to open repository root for http:// or https:// URLs. (#80553)
+   
+   * Handle corner cases fetching renames.
+
+   * Support WorkingTree.update()
+
+   * Mark as supporting Bazaar 0.90 rather than 0.19. (#133388)
+
+   * Don't mutter during commit unless explicitly enabled with -Dcommit.
+
+   * Fix pushing while svk:merge properties are not found. 
+     (#133287, Lukáš Lalinský)
+
+   * Show proper exception when a svn dump file ends prematurely. 
+
+   * Don't try to open directories of which parents haven't yet been opened 
+     from commit. (#133288, Lukáš Lalinský)
+
+   * Timestamps in properties no longer include locale-specific data. (#131337)
+
+   * Handle copies of parent directories of branches correctly. (#131180)
+
+  INTERNALS
+
+   * Support `topo_sorted` argument to by Repository.get_ancestry().
+
+  FEATURES
+
+   * Support initializing Subversion repositories. 
+     `bzr init-repo --format=subversion` now works.
+
+   * Support reading gzip and bzip2 compressed dump files in svn-import.
+
+bzr-svn 0.4.0	2007-08-04	
   
   BUG FIXES
 
@@ -15,24 +204,41 @@ bzr-svn 0.4	UNRELEASED
 
    * Remove branches when they are being replaced. Fixes DivergedBranches 
      error when using svn-import (#81908).
-
-   * Support true push (#80612).
-
-   * Support commits in heavy checkouts (#79330).
-   
-   * Use shared repositories by default in svn-import command.
-
-   * Put branching schemes in revision ids.
-
-   * Support using custom branching schemes.
-
-   * Add blackbox test for svn-import with dumpfile. (#123493)
-
+ 
    * Consistently treat property changes as actual changes (#122115)
 
    * Be a bit less verbose when trying to connect (#124858)
 
    * Fix locking issues (#125212)
+
+   * Warn when used with experimental version of mappings. (#117198)
+
+   * Only warn about out of date mappings, bzr-svn version or 
+     experimental mappings when the plugin is being used. (#93319)
+
+   * Clearer warning when branch specified to svn-import. (#121391)
+
+   * Support pushing multiple revisions in a row. (#115494)
+
+   * Fix compatibility with Subversion 1.5. (#73918)
+
+   * Fix import of svk:merge properties (need to be sorted lexicographically).
+
+   * Support possible_transports argument to BzrDir.sprout(). (#128500)
+
+   * Fix incorrect delete when a child of a renamed directory is removed.
+
+   * Support pushing adding empty files. (#113667)
+
+  BEHAVIOUR CHANGES
+
+   * Use shared repositories by default in svn-import command.
+
+   * Avoid muttering when possible.
+
+  TESTS
+
+   * Add blackbox test for svn-import with dumpfile. (#123493)
 
   PERFORMANCE
 
@@ -40,9 +246,34 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+   * Support read locking for Branch.
+
   FEATURES
    
    * add -v option to svn-upgrade
+
+   * store and allow setting the branching scheme in subversion.conf
+
+   * allow setting the branching scheme from a file property 
+     on the repository root
+
+   * Support true push (#80612).
+
+   * Support commits in heavy checkouts (#79330).
+
+   * Support using custom branching schemes.
+
+   * Support pushing new branches.
+
+   * Add --prefix option to svn-import. (#125993)
+
+   * Add 'bzr help svn-branching-schemes'
+
+   * Branching schemes can now be autodetected using some simple heuristics. 
+     (#81976)
+
+   * Added command `svn-branching-scheme` for setting branching schemes.
+     (#127003)
 
   INTERNALS
 

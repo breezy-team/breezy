@@ -15,22 +15,59 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
-from bzrlib.errors import (BzrError, ConnectionReset, LockError, 
-                           PermissionDenied, DependencyNotPresent)
+from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset, 
+                           LockError, NotBranchError, PermissionDenied, 
+                           DependencyNotPresent, NoRepositoryPresent,
+                           TransportError, UnexpectedEndOfContainerError)
 
 import svn.core
 
-class NotSvnBranchPath(BzrError):
-    """Error raised when a path was specified that did not exist."""
-    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
+# APR define, not in svn.core
+SVN_ERR_UNKNOWN_HOSTNAME = 670002
 
-    def __init__(self, branch_path, revnum=None):
+class NotSvnBranchPath(NotBranchError):
+    """Error raised when a path was specified that did not exist."""
+    _fmt = """%(path)s is not a valid Subversion branch path. 
+See 'bzr help svn-branching-schemes' for details."""
+
+    def __init__(self, branch_path, scheme=None):
+        NotBranchError.__init__(self, branch_path)
+        self.scheme = scheme
+
+
+class NoSvnRepositoryPresent(NoRepositoryPresent):
+
+    def __init__(self, url):
         BzrError.__init__(self)
-        self.branch_path = branch_path
-        self.revnum = revnum
+        self.path = url
+
+
+class ChangesRootLHSHistory(BzrError):
+    _fmt = """changing lhs branch history not possible on repository root"""
+
+
+class MissingPrefix(BzrError):
+    _fmt = """Prefix missing for %(path)s; please create it before pushing. """
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
+
+
+class RevpropChangeFailed(BzrError):
+    _fmt = """Unable to set revision property %(name)s."""
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
 
 
 def convert_error(err):
+    """Convert a Subversion exception to the matching BzrError.
+
+    :param err: SubversionException.
+    :return: BzrError instance if it could be converted, err otherwise
+    """
     (msg, num) = err.args
 
     if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
@@ -39,6 +76,14 @@ def convert_error(err):
         return LockError(message=msg)
     elif num == svn.core.SVN_ERR_RA_NOT_AUTHORIZED:
         return PermissionDenied('.', msg)
+    elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
+        return UnexpectedEndOfContainerError()
+    elif num == svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA:
+        return TransportError("Malformed data", msg)
+    elif num == SVN_ERR_UNKNOWN_HOSTNAME:
+        return ConnectionError(msg=msg)
+    elif num > 0 and num < 1000:
+        return OSError(num, msg)
     else:
         return err
 

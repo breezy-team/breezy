@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
-                           NotBranchError, UninitializableFormat)
-from bzrlib.trace import mutter
+from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
 MAPPING_VERSION = 3
 REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
@@ -90,9 +88,9 @@ class RevidMap(object):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
-        create unique index if not exists revid on revmap (revid);
+        create unique index if not exists revid_path_scheme on revmap (revid, path, scheme);
         create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
-        create table if not exists revno_cache (revid text, dist_to_origin integer);
+        create table if not exists revno_cache (revid text unique, dist_to_origin integer);
         create index if not exists revid on revno_cache (revid);
         """)
         self.cachedb.commit()
@@ -105,7 +103,15 @@ class RevidMap(object):
         return (str(ret[0]), ret[1], ret[2], ret[3])
 
     def lookup_branch_revnum(self, revnum, path, scheme):
-        # FIXME: SCHEME MISSING
+        """Lookup a revision by revision number, branch path and branching scheme.
+
+        :param revnum: Subversion revision number.
+        :param path: Subversion branch path.
+        :param scheme: Branching scheme name
+        """
+        assert isinstance(revnum, int)
+        assert isinstance(path, basestring)
+        assert isinstance(scheme, basestring)
         revid = self.cachedb.execute(
                 "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
         if revid is not None:
@@ -116,12 +122,16 @@ class RevidMap(object):
                      dist_to_origin=None):
         assert revid is not None and revid != ""
         assert isinstance(scheme, basestring)
-        self.cachedb.execute(
-            "insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
-            (revid, branch, min_revnum, max_revnum, scheme))
+        cursor = self.cachedb.execute(
+            "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
+            (min_revnum, max_revnum, revid, branch, scheme))
+        if cursor.rowcount == 0:
+            self.cachedb.execute(
+                "insert into revmap (revid,path,min_revnum,max_revnum,scheme) VALUES (?,?,?,?,?)",
+                (revid, branch, min_revnum, max_revnum, scheme))
         if dist_to_origin is not None:
             self.cachedb.execute(
-                "insert into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
+                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
                 (revid, dist_to_origin))
 
     def lookup_dist_to_origin(self, revid):
@@ -135,7 +145,7 @@ class RevidMap(object):
         i = 1
         for revid in revhistory:
             self.cachedb.execute(
-                "insert into revno_cache (revid,dist_to_origin) VALUES (?,?)",
+                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)",
                 (revid, i))
             i += 1
         self.cachedb.commit()

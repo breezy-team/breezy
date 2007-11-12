@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Stores per-repository settings."""
 
-from bzrlib import osutils, urlutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists
+from bzrlib import osutils
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig
 
 import os
+
+from scheme import BranchingScheme
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -27,6 +29,7 @@ import os
 def subversion_config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'subversion.conf')
+
 
 class SvnRepositoryConfig(IniBasedConfig):
     """Per-repository settings."""
@@ -39,26 +42,68 @@ class SvnRepositoryConfig(IniBasedConfig):
             self._get_parser()[self.uuid] = {}
 
     def set_branching_scheme(self, scheme):
-        self.set_user_option('branching-scheme', scheme)
+        """Change the branching scheme.
+
+        :param scheme: New branching scheme.
+        """
+        self.set_user_option('branching-scheme', str(scheme))
+
+    def _get_user_option(self, name, use_global=True):
+        try:
+            return self._get_parser()[self.uuid][name]
+        except KeyError:
+            if not use_global:
+                return None
+            return GlobalConfig()._get_user_option(name)
 
     def get_branching_scheme(self):
+        """Get the branching scheme.
+
+        :return: BranchingScheme instance.
+        """
+        schemename = self._get_user_option("branching-scheme", use_global=False)
+        if schemename is not None:
+            return BranchingScheme.find_scheme(schemename)
+        return None
+
+    def get_override_svn_revprops(self):
+        """Check whether or not bzr-svn should attempt to override Subversion revision 
+        properties after committing."""
         try:
-            return self._get_parser()[self.uuid]['branching-scheme']
+            return self._get_parser().get_bool(self.uuid, "override-svn-revprops")
+        except KeyError:
+            pass
+        global_config = GlobalConfig()
+        try:
+            return global_config._get_parser().get_bool(global_config._get_section(), "override-svn-revprops")
         except KeyError:
             return None
 
     def get_locations(self):
-        try:
-            return set(self._get_parser()[self.uuid]['locations'].split(";"))
-        except KeyError:
+        """Find the locations this repository has been seen at.
+
+        :return: Set with URLs.
+        """
+        val = self._get_user_option("locations", use_global=False)
+        if val is None:
             return set()
+        return set(val.split(";"))
 
     def add_location(self, location):
+        """Add a location for this repository.
+
+        :param location: URL of location to add.
+        """
         locations = self.get_locations()
-        locations.add(location)
+        locations.add(location.rstrip("/"))
         self.set_user_option('locations', ";".join(list(locations)))
 
     def set_user_option(self, name, value):
+        """Change a user option.
+
+        :param name: Name of the option.
+        :param value: Value of the option.
+        """
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
         self._get_parser()[self.uuid][name] = value

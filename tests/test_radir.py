@@ -16,13 +16,15 @@
 
 """Remote access tests."""
 
+from bzrlib import osutils
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
-                           NoWorkingTree)
+                           NoWorkingTree, AlreadyBranchError)
 
 import svn
 
-from format import SvnFormat
+from format import SvnRemoteFormat
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
@@ -56,6 +58,14 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         b = x.create_branch()
         self.assertEquals(repos_url, b.base)
 
+    def test_create_branch_top_already_branch(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({'dc/bla': 'contents'})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "message")
+        x = BzrDir.open(repos_url)
+        self.assertRaises(AlreadyBranchError, x.create_branch)
+
     def test_create_branch_nested(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
@@ -70,12 +80,24 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.build_tree({"dc/foo": None})
         self.client_add("dc/foo")
         self.client_commit("dc", "msg")
-        self.assertRaises(NotBranchError, BzrDir.open, repos_url+"/foo")
+        BzrDir.open(repos_url+"/foo")
 
     def test_create(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)
         self.assertTrue(hasattr(x, 'svn_root_url'))
+
+    def test_import_branch(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        origb = BzrDir.create_standalone_workingtree("origb")
+        self.build_tree({'origb/twin': 'bla', 'origb/peaks': 'bloe'})
+        origb.add(["twin", "peaks"])
+        origb.commit("Message")
+        b = x.import_branch(source=origb.branch)
+        self.assertEquals(origb.branch.revision_history(), b.revision_history())
+        self.assertEquals(origb.branch.revision_history(), 
+                Branch.open(repos_url+"/trunk").revision_history())
 
     def test_open_repos_root(self):
         repos_url = self.make_client("d", "dc")
@@ -119,5 +141,11 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_needs_format_upgrade_self(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
-        self.assertTrue(x.needs_format_conversion(SvnFormat()))
+        self.assertTrue(x.needs_format_conversion(SvnRemoteFormat()))
+
+    def test_find_repository_not_found(self):
+        repos_url = self.make_client('d', 'dc')
+        osutils.rmtree("d")
+        self.assertRaises(NoRepositoryPresent, 
+                lambda: BzrDir.open("dc").find_repository())
 

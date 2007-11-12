@@ -178,6 +178,11 @@ class TestFileIdGenerator(TestCase):
         self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
                 generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), dir+"filename"))
 
+    def test_generate_file_id_long_nordic(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("2@uuid:bp;" + sha1((dir+u"filename\x2c\x8a").encode('utf-8')), 
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), dir+u"filename\x2c\x8a"))
+
     def test_generate_revid_special_char_ascii(self):
         self.assertEqual("2@uuid:bp:mypath%2C%8A", 
                 generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), "mypath\x2c\x8a"))
@@ -325,12 +330,15 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.build_tree({"dc/trunk/file": 'data', 'dc/trunk/bar': 'data2'})
         self.client_add("dc/trunk/file")
         self.client_add("dc/trunk/bar")
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
+        self.client_update("dc")
         self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk", "trunk0")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
 
     def test_copy(self):

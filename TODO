@@ -1,30 +1,27 @@
-mandatory before 0.4.0:
-- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
-- splittree support
-- nestedtree support
-
 todo:
-- intelligent guessing of branching scheme
-- be able to create new branches
-- make has_revision() more efficient - just call logwalker.touches_path() ?
-- simplify find_branches by using Transport.list_dir() ?
-- fix autorealm repository
+- generate deltas rather than fulltexts when creating file id maps
+- BzrDir.create_branch() should set the revision id to NULL_REVISION
 - avoid extra connect in logwalker?
-- allow branching scheme specified in magic property in repository root
-- free memory!
-- report changes to delta editor in Branch.pull()
+- free memory! (#54253)
+- tests for setting svk:merge from .bzr checkout
+- tests for http-specific SvnRaTransport._request_path() code
 - more blackbox tests
+ - svn-import without scheme specified should guess
+ - bzr missing
 - transform file ids in workingtree in svn-upgrade
-- more intelligent mechanism for finding branching scheme. Look at directory structure in current tree?
+- support tags (#81102)
+- more efficient implementation of get_revision_delta() to speed up bzr log -v
+- nestedtree support
+- lookup_revision_id()'s result depends on the current branching scheme, 
+  causing weird errors when pushing
 
-working trees:
-- custom implementation of WorkingTree.revert() / WorkingTree.merge()
+.svn working trees:
+- implement apply_inventory_delta()
+- support merge without requiring revisions to be added to svn repository
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
-- what happened to WorkingTree.add() ?
 - don't update all entries to the same revnum when opening working tree
 - when committing specific files in a lightweight checkout, make sure to 
-  also commit the file property changes for the tree root (except 
-  for pending merges).														   
+  also commit the file property changes for the tree root
 - faster "bzr status"
 
 for other things to do, see:

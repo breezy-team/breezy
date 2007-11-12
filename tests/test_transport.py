@@ -17,7 +17,7 @@
 """Subversion transport tests."""
 
 from tests import TestCaseWithSubversionRepository
-from bzrlib.errors import NotBranchError, NoSuchFile, FileExists
+from bzrlib.errors import NotBranchError, NoSuchFile, FileExists, InvalidURL
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
 
@@ -25,7 +25,8 @@ import os
 
 class SvnRaTest(TestCaseWithSubversionRepository):
     def test_open_nonexisting(self):
-        self.assertRaises(NotBranchError, SvnRaTransport, "svn+nonexisting://foo/bar")
+        self.assertRaises(InvalidURL, SvnRaTransport, 
+                          "svn+nonexisting://foo/bar")
 
     def test_create(self):
         repos_url = self.make_client('a', 'ac')
@@ -45,6 +46,18 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t.mkdir("foo")
         t.reparent("%s/foo" % repos_url)
         self.assertEqual("%s/foo" % repos_url, t.base)
+
+    def test_lock_read(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        lock = t.lock_read(".")
+        lock.unlock()
+
+    def test_lock_write(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        lock = t.lock_write(".")
+        lock.unlock()
 
     def test_listable(self):
         repos_url = self.make_client('d', 'dc')
@@ -154,7 +167,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Bla")
 
         t = SvnRaTransport("%s/dir" % repos_url)
-        root = t.get_repos_root()
+        root = t.get_svn_repos_root()
         self.assertEqual(repos_url, root)
 
     def test_local_abspath(self):
