@@ -244,7 +244,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
         sio = self.make_utf8_encoded_stringio()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
-        self.assertEquals(sio.getvalue(), """\
+        self.assertEqualDiff(sio.getvalue(), """\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
 
@@ -313,7 +313,7 @@ added:
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -349,7 +349,7 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
-""", log)
+""")
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -369,7 +369,7 @@ message:
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
         log = normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -402,7 +402,7 @@ message:
 added:
   f1
   f2
-""", log)
+""")
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -489,7 +489,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         logfile.flush()
         logfile.seek(0)
         log_contents = logfile.read()
-        self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
+        self.assertEqualDiff(log_contents,
+            '1: Line-Log-Formatte... 2005-11-23 add a\n')
 
     def test_short_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -511,14 +512,14 @@ class TestLineLogFormatter(TestCaseWithTransport):
             formatter = ShortLogFormatter(to_file=logfile)
             show_log(wt.branch, formatter)
             logfile.flush()
-            self.assertEqualDiff("""\
+            self.assertEqualDiff(logfile.getvalue(), """\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
     1 Joe Foo\t2005-11-22
       rev-1
 
-""", logfile.getvalue())
+""")
         finally:
             wt.unlock()
 
