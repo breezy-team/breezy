@@ -10,3 +10,7 @@ The following settings would be set on the revisions:
 * bzr:timestamp
 * bzr:properties:branch-nick
 * bzr:properties:*
+* bzr:root
+
+bzr-svn should not be looking at any file properties set on the branch root if any 
+of these revision properties is set.
