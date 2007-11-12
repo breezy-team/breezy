@@ -74,8 +74,8 @@ class CommitBuilder(object):
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
 
-    def __init__(self, repository, parents, config, timestamp=None, 
-                 timezone=None, committer=None, revprops=None, 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
                  revision_id=None):
         """Initiate a CommitBuilder.
 

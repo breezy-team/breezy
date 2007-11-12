@@ -19,7 +19,6 @@ from bzrlib import (
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
-from bzrlib.revision import NULL_REVISION
 
 # DIAGRAM of terminology
 #       A
