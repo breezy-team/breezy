@@ -57,6 +57,7 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
+    zero_ninetythree,
     )
 from bzrlib.trace import mutter
 
@@ -460,6 +461,7 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
+@deprecated_function(zero_ninetythree)
 def backup_file(fn):
     """Copy a file to a backup.
 

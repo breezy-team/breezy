@@ -64,10 +64,10 @@ class ScopeReplacer(object):
             It will be passed (self, scope, name)
         :param name: The variable name in the given scope.
         """
-        self._scope = scope
-        self._factory = factory
-        self._name = name
-        self._real_obj = None
+        object.__setattr__(self, '_scope', scope)
+        object.__setattr__(self, '_factory', factory)
+        object.__setattr__(self, '_name', name)
+        object.__setattr__(self, '_real_obj', None)
         scope[name] = self
 
     def _replace(self):
@@ -88,7 +88,7 @@ class ScopeReplacer(object):
                 extra=e)
         obj = factory(self, scope, name)
         if ScopeReplacer._should_proxy:
-            self._real_obj = obj
+            object.__setattr__(self, '_real_obj', obj)
         scope[name] = obj
         return obj
 
@@ -107,6 +107,15 @@ class ScopeReplacer(object):
             _cleanup = object.__getattribute__(self, '_cleanup')
             _cleanup()
         return getattr(obj, attr)
+
+    def __setattr__(self, attr, value):
+        obj = object.__getattribute__(self, '_real_obj')
+        if obj is None:
+            _replace = object.__getattribute__(self, '_replace')
+            obj = _replace()
+            _cleanup = object.__getattribute__(self, '_cleanup')
+            _cleanup()
+        return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
         _replace = object.__getattribute__(self, '_replace')
@@ -165,9 +174,9 @@ class ImportReplacer(ScopeReplacer):
             assert not children, \
                 'Cannot supply both a member and children'
 
-        self._import_replacer_children = children
-        self._member = member
-        self._module_path = module_path
+        object.__setattr__(self, '_import_replacer_children', children)
+        object.__setattr__(self, '_member', member)
+        object.__setattr__(self, '_module_path', module_path)
 
         # Indirecting through __class__ so that children can
         # override _import (especially our instrumented version)

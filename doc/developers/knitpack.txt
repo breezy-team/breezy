@@ -111,7 +111,7 @@ Here are the commands for the shared repository approach::
   bzr init-repo --knitpack-experimental .
   bzr branch my-source-branch my-new-branch
   cd my-new-branch
- 
+
 As a reminder, any of the above approaches can fail if the source branch
 has inconsistent data within it and hasn't been reconciled yet. Please
 be sure to check that before reporting problems.
@@ -124,10 +124,10 @@ you can still use and assist in testing KnitPacks. The commands to use
 are identical to the ones given above except that the name of the format
 to use is ``knitpack-subtree-experimental``.
 
-WARNING: Note that the subtree formats, ``distate-subtree`` and
+WARNING: Note that the subtree formats, ``dirstate-subtree`` and
 ``knitpack-subtree-experimental``, are **not** production strength yet and
 may cause unexpected problems. They are required for the bzr-svn
-plug-in but should otherwise ony be used by people happy to live on the
+plug-in but should otherwise only be used by people happy to live on the
 bleeding edge. If you are using bzr-svn, you're on the bleeding edge anyway.
 :-)
 
@@ -143,7 +143,7 @@ Technical notes
 ===============
 
 Bazaar 0.92 adds a new format (experimental at first) implemented in
-``bzrlib.repofmt.pack_repo.py``.  
+``bzrlib.repofmt.pack_repo.py``.
 
 This format provides a knit-like interface which is quite compatible
 with knit format repositories: you can get a VersionedFile for a
@@ -156,9 +156,9 @@ files and subdirectories:
 ==================== =============================================
 packs/               completed readonly packs
 indices/             indices for completed packs
-upload/              temporary files for packs currently being 
+upload/              temporary files for packs currently being
                      written
-obsolete_packs/      packs that have been repacked and are no 
+obsolete_packs/      packs that have been repacked and are no
                      longer normally needed
 pack-names           index of all live packs
 lock/                lockdir
@@ -184,13 +184,13 @@ extn     Purpose    Key                      References
                                              compression base
 ======== ========== ======================== ==========================
 
-Indices are accessed through the ``bzrlib.index.GraphIndex`` class.  
+Indices are accessed through the ``bzrlib.index.GraphIndex`` class.
 Indices are stored as sorted files on disk.  Each line is one record,
 and contains:
 
  * key fields
  * a value string - for all these indices, this is an ascii decimal pair
-   of "offset length" giving the position of the refenced data within 
+   of "offset length" giving the position of the referenced data within
    the pack body file
  * a list of zero or more reference lists
 
@@ -219,7 +219,7 @@ moved between packs without needing to recompress them.
 
 It is not possible to regenerate an index from the body file, because it
 contains information stored in the knit index that's not in the body.
-(In particular, the per-file graph is only stored in the index.) 
+(In particular, the per-file graph is only stored in the index.)
 We would like to change this in a future format.
 
 The lock is a regular LockDir lock.  The lock is only held for a much
@@ -227,13 +227,13 @@ reduced scope, while updating the pack-names file.  The bulk of the
 insertion can be done without the repository locked.  This is an
 implementation detail; the repository user should still call
 ``repository.lock_write`` at the regular time but be aware this does not
-correspond to a physical mutex. 
+correspond to a physical mutex.
 
 Read locks control caching but do not affect writers.
 
 The newly-added repository write group concept is very important to
 KnitPack repositories.  When ``start_write_group`` is called, a new
-temporary pack is created and all modifications to the repository will 
+temporary pack is created and all modifications to the repository will
 go into it until either ``commit_write_group`` or ``abort_write_group``
 is called, at which time it is either finished and moved into place or
 discarded respectively.  Write groups cannot be nested, only one can be
@@ -251,7 +251,7 @@ packs.  (This should always be the same as the list of files in the
 ``packs/`` directory, but the file is needed for readonly http clients
 that can't easily list directories, and it includes other information.)
 The constraint on the ``pack-names`` list is that every file mentioned
-must exist in the ``packs/`` directory.  
+must exist in the ``packs/`` directory.
 
 In rare cases, when a writer is interrupted, about-to-be-removed packs
 may still be present in the directory but removed from the list.
