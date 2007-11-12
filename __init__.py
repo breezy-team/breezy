@@ -21,10 +21,12 @@ import bzrlib
 from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
+from bzrlib.revisionspec import SPEC_TYPES
 from bzrlib.trace import warning
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 
 import format
+import revspec
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -111,6 +113,7 @@ format_registry.register("subversion", format.SvnRemoteFormat,
 format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat, 
                          "Subversion working copy. ", 
                          native=False, hidden=True)
+SPEC_TYPES.append(revspec.RevisionSpec_svn)
 
 versions_checked = False
 def lazy_check_versions():

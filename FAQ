@@ -1,3 +1,5 @@
+#FORMAT rst
+
 =================================================================
 Bazaar is using a lot of memory accessing a Subversion repository
 =================================================================
@@ -90,10 +92,10 @@ more information about how to do this.
 You also need to enable support for this in bzr-svn by setting 
 override-svn-revprops to True in ~/.bazaar/bazaar.conf.
 
-==================================================================
-I converted my Subversion repository using svn-import, but now all 
-branches are empty!
-==================================================================
+======================================================================================
+I converted my Subversion repository using svn-import, but now all branches are empty!
+======================================================================================
+
 bzr-svn does not create working trees by default. If you need 
 the working trees, run "bzr checkout" in the branch or 
 specify --trees to svn-import.

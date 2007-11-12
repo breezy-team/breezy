@@ -595,6 +595,22 @@ class SvnRepository(Repository):
             if revid is not None:
                 yield revid
 
+    def get_parents(self, revids):
+        parents_list = []
+        for revision_id in revids:
+            if revision_id == NULL_REVISION:
+                parents = []
+            else:
+                try:
+                    parents = self.revision_parents(revision_id)
+                except NoSuchRevision:
+                    parents = None
+                else:
+                    if len(parents) == 0:
+                        parents = [NULL_REVISION]
+            parents_list.append(parents)
+        return parents_list
+
     def revision_parents(self, revision_id, bzr_merges=None, svk_merges=None):
         """See Repository.revision_parents()."""
         parent_ids = []

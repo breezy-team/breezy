@@ -1,5 +1,9 @@
 bzr-svn 0.4.5	UNRELEASED
 
+  IMPROVEMENTS
+
+   * Add revision specifier for "svn:" that accepts a single revision number. (#160605)
+
   INTERNALS
 
    * No longer store svn:author, svn:date and svn:log in the bzr-svn cache. 
