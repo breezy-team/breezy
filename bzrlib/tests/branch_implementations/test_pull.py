@@ -88,7 +88,7 @@ class TestPull(TestCaseWithBranch):
         tree_a.commit('message 2', rev_id='rev2a')
         tree_b.commit('message 2', rev_id='rev2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
-        tree_a.branch.pull(tree_a.branch, overwrite=True,
+        tree_a.branch.pull(tree_b.branch, overwrite=True,
                            stop_revision='rev2b')
         self.assertEqual('rev2b', tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.revision_history(),
