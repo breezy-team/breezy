@@ -19,6 +19,9 @@ bzr-builddeb (0.92) unstable; urgency=low
   * Close old bug, only parse first changelog entry (Closes: #429299)
   * Bug fix: "bzr-builddeb: parse debian/watch if no URL specified for
     merge-upstream", thanks to Jamie Wilkinson (Closes: #449362).
+  * Bug fix: "bzr-builddeb: can't do merge packages with
+    dh-make-pear", thanks to mah@everybody.org (Mark A. Hershberger)
+    (Closes: #440069).
 
   [ Reinhard Tartler ]
   * (Build-)Depend on python-apt
@@ -26,7 +29,7 @@ bzr-builddeb (0.92) unstable; urgency=low
   * when running the testsuite, set home directory to effectively disable
     any user installed plugins
 
- -- Reinhard Tartler <siretart@tauware.de>  Mon, 12 Nov 2007 09:28:14 +0100
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 12 Nov 2007 16:39:43 +0100
 
 bzr-builddeb (0.91) unstable; urgency=low
 
