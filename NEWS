@@ -73,6 +73,9 @@ IN DEVELOPMENT
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
 
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
