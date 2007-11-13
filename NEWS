@@ -72,6 +72,12 @@ IN DEVELOPMENT
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
      during very long time. (Alexander Belchenko)
 
+   * The return value of
+     ``VersionedFile.iter_lines_added_or_present_in_versions`` has been
+     changed. Previously it was an iterator of lines, now it is an iterator of
+     (line, version_id) tuples. This change has been made to aid reconcile and
+     fetch operations. (Robert Collins)
+
   INTERNALS:
 
   TESTING:
