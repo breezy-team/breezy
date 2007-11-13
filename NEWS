@@ -79,6 +79,9 @@ IN DEVELOPMENT
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
 
+   * Fix exception when revisionspec contains merge revisons but log
+     formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib

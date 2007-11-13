@@ -229,6 +229,12 @@ def _show_log(branch,
     else:
         generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
                                            False)
+    if ((not generate_merge_revisions)
+        and ((start_rev_id and (start_rev_id not in rev_nos))
+            or (end_rev_id and (end_rev_id not in rev_nos)))):
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError('Selected log formatter only supports '
+            'mainline revisions.')
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
     view_revisions = _filter_revision_range(list(view_revs_iter),
