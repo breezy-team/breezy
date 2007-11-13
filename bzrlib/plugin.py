@@ -191,8 +191,7 @@ def load_from_dir(d):
         except Exception, e:
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
-                sanitised_name = \
-                         name.replace('.','_').replace('-','_').replace(' ','_')
+                sanitised_name = re.sub('[-. ]', '_', name)
                 warning("Unable to load %r in %r as a plugin because this isn't"
                         " a valid module name; try renaming it to %r."
                         % (name, d, sanitised_name))
