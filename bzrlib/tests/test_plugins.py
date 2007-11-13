@@ -208,7 +208,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
         self.assertContainsRe(stream.getvalue(),
             r"Unable to load 'bad plugin-name\.' in '\.' as a plugin because"
-            " this isn't a valid module name; try renaming it to"
+            " file path isn't a valid module name; try renaming it to"
             " 'bad_plugin_name_'\.")
 
         stream.close()
