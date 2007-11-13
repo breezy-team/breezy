@@ -55,6 +55,9 @@ IN DEVELOPMENT
    * Don't use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
+   * FTP server errors don't error in the error handling code.
+     (Robert Collins, #161240)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
@@ -79,6 +82,11 @@ IN DEVELOPMENT
      during very long time. (Alexander Belchenko)
 
   INTERNALS:
+
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
 
   TESTING:
 
