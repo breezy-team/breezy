@@ -20,6 +20,7 @@
 # affects the global state of the process.  See bzrlib/plugins.py for more
 # comments.
 
+import logging
 import os
 from StringIO import StringIO
 import sys
@@ -187,6 +188,30 @@ class TestLoadingPlugins(TestCaseInTempDir):
             if getattr(bzrlib.plugins, 'ts_plugin', None):
                 del bzrlib.plugins.ts_plugin
         self.failIf(getattr(bzrlib.plugins, 'ts_plugin', None))
+
+    def test_plugin_with_bad_name_does_not_load(self):
+        # Create badly-named plugin
+        file('bad plugin-name..py', 'w').close()
+
+        # Capture output
+        stream = StringIO()
+        handler = logging.StreamHandler(stream)
+        log = logging.getLogger('bzr')
+        log.addHandler(handler)
+
+        bzrlib.plugin.load_from_dir('.')
+
+        # Stop capturing output
+        handler.flush()
+        handler.close()
+        log.removeHandler(handler)
+
+        self.assertContainsRe(stream.getvalue(),
+            r"Unable to load 'bad plugin-name\.' in '\.' as a plugin because"
+            " this isn't a valid module name; try renaming it to"
+            " 'bad_plugin_name_'\.")
+
+        stream.close()
 
 
 class TestAllPlugins(TestCaseInTempDir):
