@@ -1326,9 +1326,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         errors.PathsDoNotExist(paths=(str(from_rel),
                         str(to_rel))))
                 else:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to tell bzr about a rename that has"
-                               " already happened)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
         return rename_entries
 
