@@ -58,6 +58,9 @@ IN DEVELOPMENT
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
 
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
