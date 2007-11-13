@@ -68,6 +68,9 @@ IN DEVELOPMENT
      strings now should be readable in non-utf-8 terminal.
      (Alexander Belchenko, #54173)
 
+   * The error message when ``move --after`` should be used makes how to do so
+     clearer. (Daniel Watkins, #85237)
+
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
      replaced by '?'. (Lukáš Lalinský, #151844)
@@ -84,6 +87,11 @@ IN DEVELOPMENT
      during very long time. (Alexander Belchenko)
 
   INTERNALS:
+
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
 
   TESTING:
 
