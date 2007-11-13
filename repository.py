@@ -1075,13 +1075,16 @@ class SvnRepository(Repository):
                             parents = [p]
                             while parents:
                                 p = parents.pop()
-                                for c in self.transport.get_dir(p, i)[0].keys():
-                                    n = p+"/"+c
-                                    if scheme.is_branch(n) or scheme.is_tag(n):
-                                        created_branches[n] = i
-                                    elif (scheme.is_branch_parent(n) or 
-                                          scheme.is_tag_parent(n)):
-                                        parents.append(n)
+                                try:
+                                    for c in self.transport.get_dir(p, i)[0].keys():
+                                        n = p+"/"+c
+                                        if scheme.is_branch(n) or scheme.is_tag(n):
+                                            created_branches[n] = i
+                                        elif (scheme.is_branch_parent(n) or 
+                                              scheme.is_tag_parent(n)):
+                                            parents.append(n)
+                                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                                    pass
         finally:
             pb.finished()
 
