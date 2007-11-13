@@ -63,6 +63,9 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * Removing an already-removed file reports the file does not exist. (Daniel
+     Watkins, #152811)
+
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
      replaced by '?'. (Lukáš Lalinský, #151844)
@@ -72,9 +75,6 @@ IN DEVELOPMENT
 
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
-
-   * Removing an already-removed file reports the file does not exist. (Daniel
-     Watkins, #152811)
 
   API BREAKS:
 
