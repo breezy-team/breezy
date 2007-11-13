@@ -55,6 +55,9 @@ IN DEVELOPMENT
    * Don't use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
@@ -69,9 +72,6 @@ IN DEVELOPMENT
 
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
-
-   * It is clearer when a plugin cannot be loaded because of its name, and a
-     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
   API BREAKS:
 
