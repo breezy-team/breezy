@@ -1,3 +1,11 @@
+bzr (0.92-1) unstable; urgency=low
+
+  * Final 0.92 release.
+    - Introduction Packs as experimental format, which is expected to become
+      the default format for the final release.            (Closes: #396227)
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 13 Nov 2007 07:44:48 +0100
+
 bzr (0.92~rc1-1) unstable; urgency=low
 
   * First release candidate for the upcoming 0.92 version.
