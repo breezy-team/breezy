@@ -1541,7 +1541,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 change_reporter=change_reporter)
                     if (basis_tree.inventory.root is None and
                         new_basis_tree.inventory.root is not None):
-                        self.set_root_id(new_basis_tree.inventory.root.file_id)
+                        self.set_root_id(new_basis_tree.get_root_id())
                 finally:
                     pb.finished()
                     basis_tree.unlock()
@@ -2154,7 +2154,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             try:
                 to_tree = self.branch.basis_tree()
                 if basis.inventory.root is None:
-                    self.set_root_id(to_tree.inventory.root.file_id)
+                    self.set_root_id(to_tree.get_root_id())
                     self.flush()
                 result += merge.merge_inner(
                                       self.branch,
@@ -2740,7 +2740,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _bzrdir=a_bzrdir)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.inventory.root is not None:
-            wt.set_root_id(basis_tree.inventory.root.file_id)
+            wt.set_root_id(basis_tree.get_root_id())
         # set the parent list and cache the basis tree.
         if _mod_revision.is_null(revision_id):
             parent_trees = []
@@ -2842,7 +2842,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             basis_tree = branch.repository.revision_tree(revision_id)
             # only set an explicit root id if there is one to set.
             if basis_tree.inventory.root is not None:
-                wt.set_root_id(basis_tree.inventory.root.file_id)
+                wt.set_root_id(basis_tree.get_root_id())
             if revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:

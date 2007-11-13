@@ -277,6 +277,10 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
+    def get_root_id(self):
+        """Return the file_id for the root of this tree."""
+        raise NotImplementedError(self.get_root_id)
+
     def annotate_iter(self, file_id):
         """Return an iterator of revision_id, line tuples.
 
