@@ -273,3 +273,14 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('dir/', keep_files=False)
         self.failIfExists('tree/dir/file')
         self.assertNotInWorkingTree('tree/dir/file', 'tree')
+
+    def test_remove_uncommitted_removed_file(self):
+        # As per bug #152811
+        tree = self.get_committed_tree(['a'])
+        tree.remove('a', keep_files=False)
+        tree.remove('a', keep_files=False)
+
+    def test_remove_file_and_containing_dir(self):
+        tree = self.get_committed_tree(['config/', 'config/file'])
+        tree.remove('config/file', keep_files=False)
+        tree.remove('config', keep_files=False)
