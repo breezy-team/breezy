@@ -771,12 +771,15 @@ class SvnRepository(Repository):
             for (branch, revno, _) in self.find_branches(scheme, last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
-                for line in self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
-                    try:
-                        revids.append(parse_revid_property(line))
-                    except errors.InvalidPropertyValue, ie:
-                        mutter(str(ie))
+                try:
+                    for line in self.branchprop_list.get_property(branch, revno, 
+                            SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
+                        try:
+                            revids.append(parse_revid_property(line))
+                        except errors.InvalidPropertyValue, ie:
+                            mutter(str(ie))
+                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                    continue
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them
