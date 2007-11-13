@@ -1052,7 +1052,7 @@ class SvnRepository(Repository):
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
                     if scheme.is_branch(p) or scheme.is_tag(p):
-                        if paths[p][0] in ('R', 'D'):
+                        if paths[p][0] in ('R', 'D') and p in created_branches:
                             del created_branches[p]
                             j = self._log.find_latest_change(p, i-1, 
                                 include_parents=True, include_children=True)
@@ -1065,7 +1065,7 @@ class SvnRepository(Repository):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
-                                if c.startswith(p+"/"):
+                                if c.startswith(p+"/") and c in created_branches:
                                     del created_branches[c] 
                                     j = self._log.find_latest_change(c, i-1, 
                                             include_parents=True, 
