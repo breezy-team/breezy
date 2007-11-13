@@ -3,6 +3,7 @@
 This document specifies mapping between Subversion and Bazaar semantics.
 
 Revision: 4
+
 Written by Jelmer Vernooij <jelmer@samba.org>
 
 ============
@@ -26,8 +27,7 @@ implementation. At the moment, the following branching schemes are available:
 - ListBranchingScheme: There is a list of branches. This branching 
   scheme is present in the code, but is never used automatically (yet).
 
-- SingleBranchingScheme: There is a single branch (path of that branch is also 
-	part of the scheme name).
+- SingleBranchingScheme: There is a single branch (path of that branch is also part of the scheme name).
 
 The branching scheme can be explicitly specified or automatically guessed. 
 
@@ -40,7 +40,7 @@ simply combine the repositories UUID and commit revision number.
 
 However, this can lead to overlap in revision ids when a commit touches more 
 then one branch (something that is possible in SVN). This can be fixed by 
-including the branch path (trunk, branches/SAMBA_4_0, etc) in the 
+including the branch path (``trunk``, ``branches/SAMBA_4_0``, etc) in the 
 revision-id. Example revision id:
 
 ``svn-v3-trunk0:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323``
@@ -66,16 +66,17 @@ of the mappings.
 
 To override the revision id this way, set the branch path file property:
 
-bzr:revision-id-v%d:%s (where %d is the current mapping version and %s is 
-					    the name of the branching scheme in use) 
+``bzr:revision-id-v%d:%s`` (where %d is the current mapping version and %s is 
+                            the name of the branching scheme in use) 
 
 to the bzr revision number following by a space and the revision id. This 
 property should only be honored for the revision in which it was set, as 
 subversion will not erase the property for subsequent commits.
 
 A (path,revnum) tuple is valid if:
-* path is valid according to the branching scheme
-* either path, revnum or one of its children was touched in the particular 
+
+- path is valid according to the branching scheme
+- either path, revnum or one of its children was touched in the particular 
   revision
 
 If possible, the Subversion revision property ``bzr:revision-id`` should be 
