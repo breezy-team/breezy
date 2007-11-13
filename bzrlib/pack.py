@@ -16,7 +16,8 @@
 
 """Container format for Bazaar data.
 
-"Containers" and "records" are described in doc/developers/container-format.txt.
+"Containers" and "records" are described in
+doc/developers/container-format.txt.
 """
 
 from cStringIO import StringIO
@@ -58,51 +59,26 @@ def _check_name_encoding(name):
         raise errors.InvalidRecordError(str(e))
 
 
-class ContainerWriter(object):
-    """A class for writing containers.
-
-    :attribute records_written: The number of user records added to the
-        container. This does not count the prelude or suffix of the container
-        introduced by the begin() and end() methods.
+class ContainerSerialiser(object):
+    """A helper class for serialising containers.
+    
+    It simply returns bytes from method calls to 'begin', 'end' and
+    'bytes_record'.  You may find ContainerWriter to be a more convenient
+    interface.
     """
 
-    def __init__(self, write_func):
-        """Constructor.
-
-        :param write_func: a callable that will be called when this
-            ContainerWriter needs to write some bytes.
-        """
-        self._write_func = write_func
-        self.current_offset = 0
-        self.records_written = 0
-
     def begin(self):
-        """Begin writing a container."""
-        self.write_func(FORMAT_ONE + "\n")
-
-    def write_func(self, bytes):
-        self._write_func(bytes)
-        self.current_offset += len(bytes)
+        """Return the bytes to begin a container."""
+        return FORMAT_ONE + "\n"
 
     def end(self):
-        """Finish writing a container."""
-        self.write_func("E")
+        """Return the bytes to finish a container."""
+        return "E"
 
-    def add_bytes_record(self, bytes, names):
-        """Add a Bytes record with the given names.
-        
-        :param bytes: The bytes to insert.
-        :param names: The names to give the inserted bytes. Each name is
-            a tuple of bytestrings. The bytestrings may not contain
-            whitespace.
-        :return: An offset, length tuple. The offset is the offset
-            of the record within the container, and the length is the
-            length of data that will need to be read to reconstitute the
-            record. These offset and length can only be used with the pack
-            interface - they might be offset by headers or other such details
-            and thus are only suitable for use by a ContainerReader.
+    def bytes_record(self, bytes, names):
+        """Return the bytes for a Bytes record with the given name and
+        contents.
         """
-        current_offset = self.current_offset
         # Kind marker
         byte_sections = ["B"]
         # Length
@@ -126,7 +102,57 @@ class ContainerWriter(object):
         # memory pressure in that case. One possibly improvement here is to
         # check the size of the content before deciding to join here vs call
         # write twice.
-        self.write_func(''.join(byte_sections))
+        return ''.join(byte_sections)
+
+
+class ContainerWriter(object):
+    """A class for writing containers to a file.
+
+    :attribute records_written: The number of user records added to the
+        container. This does not count the prelude or suffix of the container
+        introduced by the begin() and end() methods.
+    """
+
+    def __init__(self, write_func):
+        """Constructor.
+
+        :param write_func: a callable that will be called when this
+            ContainerWriter needs to write some bytes.
+        """
+        self._write_func = write_func
+        self.current_offset = 0
+        self.records_written = 0
+        self._serialiser = ContainerSerialiser()
+
+    def begin(self):
+        """Begin writing a container."""
+        self.write_func(self._serialiser.begin())
+
+    def write_func(self, bytes):
+        self._write_func(bytes)
+        self.current_offset += len(bytes)
+
+    def end(self):
+        """Finish writing a container."""
+        self.write_func(self._serialiser.end())
+
+    def add_bytes_record(self, bytes, names):
+        """Add a Bytes record with the given names.
+        
+        :param bytes: The bytes to insert.
+        :param names: The names to give the inserted bytes. Each name is
+            a tuple of bytestrings. The bytestrings may not contain
+            whitespace.
+        :return: An offset, length tuple. The offset is the offset
+            of the record within the container, and the length is the
+            length of data that will need to be read to reconstitute the
+            record. These offset and length can only be used with the pack
+            interface - they might be offset by headers or other such details
+            and thus are only suitable for use by a ContainerReader.
+        """
+        current_offset = self.current_offset
+        serialised_record = self._serialiser.bytes_record(bytes, names)
+        self.write_func(serialised_record)
         self.records_written += 1
         # return a memo of where we wrote data to allow random access.
         return current_offset, self.current_offset - current_offset
@@ -354,4 +380,124 @@ class BytesRecordReader(BaseReader):
             for name in name_tuple:
                 _check_name_encoding(name)
         read_bytes(None)
+
+
+class ContainerPushParser(object):
+    """A "push" parser for container format 1.
+
+    It accepts bytes via the ``accept_bytes`` method, and parses them into
+    records which can be retrieved via the ``read_pending_records`` method.
+    """
+
+    def __init__(self):
+        self._buffer = ''
+        self._state_handler = self._state_expecting_format_line
+        self._parsed_records = []
+        self._reset_current_record()
+        self.finished = False
+
+    def _reset_current_record(self):
+        self._current_record_length = None
+        self._current_record_names = []
+
+    def accept_bytes(self, bytes):
+        self._buffer += bytes
+        # Keep iterating the state machine until it stops consuming bytes from
+        # the buffer.
+        last_buffer_length = None
+        cur_buffer_length = len(self._buffer)
+        while cur_buffer_length != last_buffer_length:
+            last_buffer_length = cur_buffer_length
+            self._state_handler()
+            cur_buffer_length = len(self._buffer)
+
+    def read_pending_records(self):
+        records = self._parsed_records
+        self._parsed_records = []
+        return records
+    
+    def _consume_line(self):
+        """Take a line out of the buffer, and return the line.
+
+        If a newline byte is not found in the buffer, the buffer is
+        unchanged and this returns None instead.
+        """
+        newline_pos = self._buffer.find('\n')
+        if newline_pos != -1:
+            line = self._buffer[:newline_pos]
+            self._buffer = self._buffer[newline_pos+1:]
+            return line
+        else:
+            return None
+
+    def _state_expecting_format_line(self):
+        line = self._consume_line()
+        if line is not None:
+            if line != FORMAT_ONE:
+                raise errors.UnknownContainerFormatError(line)
+            self._state_handler = self._state_expecting_record_type
+
+    def _state_expecting_record_type(self):
+        if len(self._buffer) >= 1:
+            record_type = self._buffer[0]
+            self._buffer = self._buffer[1:]
+            if record_type == 'B':
+                self._state_handler = self._state_expecting_length
+            elif record_type == 'E':
+                self.finished = True
+                self._state_handler = self._state_expecting_nothing
+            else:
+                raise errors.UnknownRecordTypeError(record_type)
+
+    def _state_expecting_length(self):
+        line = self._consume_line()
+        if line is not None:
+            try:
+                self._current_record_length = int(line)
+            except ValueError:
+                raise errors.InvalidRecordError(
+                    "%r is not a valid length." % (line,))
+            self._state_handler = self._state_expecting_name
+
+    def _state_expecting_name(self):
+        encoded_name_parts = self._consume_line()
+        if encoded_name_parts == '':
+            self._state_handler = self._state_expecting_body
+        elif encoded_name_parts:
+            name_parts = tuple(encoded_name_parts.split('\x00'))
+            for name_part in name_parts:
+                _check_name(name_part)
+            self._current_record_names.append(name_parts)
+            
+    def _state_expecting_body(self):
+        if len(self._buffer) >= self._current_record_length:
+            body_bytes = self._buffer[:self._current_record_length]
+            self._buffer = self._buffer[self._current_record_length:]
+            record = (self._current_record_names, body_bytes)
+            self._parsed_records.append(record)
+            self._reset_current_record()
+            self._state_handler = self._state_expecting_record_type
+
+    def _state_expecting_nothing(self):
+        pass
+
+    def read_size_hint(self):
+        hint = 16384
+        if self._state_handler == self._state_expecting_body:
+            remaining = self._current_record_length - len(self._buffer)
+            if remaining < 0:
+                remaining = 0
+            return max(hint, remaining)
+        return hint
+
+
+def iter_records_from_file(source_file):
+    parser = ContainerPushParser()
+    while True:
+        bytes = source_file.read(parser.read_size_hint())
+        parser.accept_bytes(bytes)
+        for record in parser.read_pending_records():
+            yield record
+        if parser.finished:
+            break
 
