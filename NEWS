@@ -63,6 +63,9 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
+     properly. (John Arbash Meinel, #162486)
+
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
      replaced by '?'. (Lukáš Lalinský, #151844)

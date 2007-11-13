@@ -933,6 +933,7 @@ class RemoteBranch(branch.Branch):
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
+        self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
