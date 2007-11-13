@@ -195,7 +195,7 @@ def load_from_dir(d):
                          name.replace('.','_').replace('-','_').replace(' ','_')
                 warning("Unable to load %r in %r as a plugin because this isn't"
                         " a valid module name; try renaming it to %r."
-                                                    % (name, d, sanitised_name))
+                        % (name, d, sanitised_name))
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
