@@ -1055,6 +1055,27 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
+    def find_text_key_references(self):
+        """Find the text key references within the repository.
+
+        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. The inventory texts from all present
+            revision ids are assessed to generate this report.
+        """
+        revision_ids = self.all_revision_ids()
+        w = self.get_inventory_weave()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._find_text_key_references_from_xml_inventory_lines(
+                w.iter_lines_added_or_present_in_versions(revision_ids, pb=pb))
+        finally:
+            pb.finished()
+
+
     def _find_text_key_references_from_xml_inventory_lines(self,
         line_iterator):
         """Core routine for extracting references to texts from inventories.
@@ -1068,6 +1089,10 @@ class Repository(object):
             not part of the line_iterator's output then False will be given -
             even though it may actually refer to that key.
         """
+        assert self._serializer.support_altered_by_hack, \
+            ("_find_text_key_references_from_xml_inventory_lines only "
+             "supported for branches which store inventory as unnested xml, "
+             "not on %r" % self)
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -1164,9 +1189,6 @@ class Repository(object):
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
-        assert self._serializer.support_altered_by_hack, \
-            ("fileids_altered_by_revision_ids only supported for branches " 
-             "which store inventory as unnested xml, not on %r" % self)
         selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
