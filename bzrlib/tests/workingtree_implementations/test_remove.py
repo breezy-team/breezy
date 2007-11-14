@@ -279,8 +279,11 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(['a'])
         tree.remove('a', keep_files=False)
         tree.remove('a', keep_files=False)
+        self.failIfExists('a')
 
     def test_remove_file_and_containing_dir(self):
         tree = self.get_committed_tree(['config/', 'config/file'])
         tree.remove('config/file', keep_files=False)
         tree.remove('config', keep_files=False)
+        self.failIfExists('config/file')
+        self.failIfExists('config')
