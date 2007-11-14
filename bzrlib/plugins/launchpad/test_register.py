@@ -33,6 +33,7 @@ from bzrlib.plugins.launchpad.lp_registration import (
         BaseRequest,
         BranchBugLinkRequest,
         BranchRegistrationRequest,
+        ResolveLaunchpadPathRequest,
         LaunchpadService,
         )
 
@@ -81,19 +82,23 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
 
-    def __init__(self, testcase):
+    def __init__(self, testcase, expect_auth):
         self.testcase = testcase
+        self.expect_auth = expect_auth
 
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
         test = self.testcase
         self.connected_host = host
-        auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
-        assert len(auth_hdrs) == 1
-        authinfo = auth_hdrs[0]
-        expected_auth = 'testuser@launchpad.net:testpassword'
-        test.assertEquals(authinfo,
-                'Basic ' + base64.encodestring(expected_auth).strip())
+        if self.expect_auth:
+            auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
+            assert len(auth_hdrs) == 1
+            authinfo = auth_hdrs[0]
+            expected_auth = 'testuser@launchpad.net:testpassword'
+            test.assertEquals(authinfo,
+                    'Basic ' + base64.encodestring(expected_auth).strip())
+        else:
+            assert not http_headers
         return InstrumentedXMLRPCConnection(test)
 
     def send_request(self, connection, handler_path, request_body):
@@ -117,10 +122,11 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
 class MockLaunchpadService(LaunchpadService):
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, authenticated):
         """Stash away the method details rather than sending them to a real server"""
         self.called_method_name = method_name
         self.called_method_params = method_params
+        self.called_authenticated = authenticated
 
 
 class TestBranchRegistration(TestCase):
@@ -151,7 +157,7 @@ class TestBranchRegistration(TestCase):
     def test_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
         # use a real transport, but intercept at the http/xml layer
-        transport = InstrumentedXMLRPCTransport(self)
+        transport = InstrumentedXMLRPCTransport(self, expect_auth=True)
         service = LaunchpadService(transport)
         service.registrant_email = 'testuser@launchpad.net'
         service.registrant_password = 'testpassword'
@@ -173,6 +179,17 @@ class TestBranchRegistration(TestCase):
                  'product'))
         self.assertTrue(transport.got_request)
 
+    def test_onto_transport_unauthenticated(self):
+        """Test how an unauthenticated request is transmitted across a mock Transport"""
+        transport = InstrumentedXMLRPCTransport(self, expect_auth=False)
+        service = LaunchpadService(transport)
+        resolve = ResolveLaunchpadPathRequest('bzr')
+        resolve.submit(service)
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
+        self.assertEquals(len(transport.sent_params), 1)
+        self.assertEquals(transport.sent_params, ('bzr', ))
+        self.assertTrue(transport.got_request)
+
     def test_subclass_request(self):
         """Define a new type of xmlrpc request"""
         class DummyRequest(BaseRequest):
@@ -192,10 +209,11 @@ class TestBranchRegistration(TestCase):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "register_branch")
                 test_case.assertEquals(list(method_params),
                         ['url', 'name', 'title', 'description', 'email', 'name'])
+                test_case.assertEquals(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('url', 'name', 'title',
@@ -207,10 +225,11 @@ class TestBranchRegistration(TestCase):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "register_branch")
                 test_case.assertEquals(list(method_params),
                         ['http://server/branch', 'branch', '', '', '', ''])
+                test_case.assertEquals(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('http://server/branch')
@@ -221,15 +240,38 @@ class TestBranchRegistration(TestCase):
         """Send bug-branch link to mock server"""
         test_case = self
         class MockService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params, authenticated):
                 test_case.assertEquals(method_name, "link_branch_to_bug")
                 test_case.assertEquals(list(method_params),
                         ['http://server/branch', 1234, ''])
+                test_case.assertEquals(authenticated, True)
                 return 'http://launchpad.net/bug/1234'
         service = MockService()
         rego = BranchBugLinkRequest('http://server/branch', 1234)
         result = rego.submit(service)
         self.assertEquals(result, 'http://launchpad.net/bug/1234')
+
+    def test_mock_resolve_lp_url(self):
+        test_case = self
+        class MockService(MockLaunchpadService):
+            def send_request(self, method_name, method_params, authenticated):
+                test_case.assertEquals(method_name, "resolve_lp_path")
+                test_case.assertEquals(list(method_params), ['bzr'])
+                test_case.assertEquals(authenticated, False)
+                return dict(urls=[
+                        'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                        'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+        service = MockService()
+        resolve = ResolveLaunchpadPathRequest('bzr')
+        result = resolve.submit(service)
+        self.assertTrue('urls' in result)
+        self.assertEquals(result['urls'], [
+                'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                'http://bazaar.launchpad.net~bzr/bzr/trunk'])
 
 
 class TestGatherUserCredentials(tests.TestCaseInTempDir):

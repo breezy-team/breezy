@@ -382,6 +382,14 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Corrupt or incompatible data stream: my reason", str(e))
 
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
 
 class PassThroughError(errors.BzrError):
     

@@ -57,8 +57,11 @@ from bzrlib import (
     symbol_versioning,
     )
 import bzrlib.errors as errors
-from bzrlib.revisionspec import(
-    RevisionInfo
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
+from bzrlib.revisionspec import (
+    RevisionInfo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -229,6 +232,12 @@ def _show_log(branch,
     else:
         generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
                                            False)
+    if ((not generate_merge_revisions)
+        and ((start_rev_id and (start_rev_id not in rev_nos))
+            or (end_rev_id and (end_rev_id not in rev_nos)))):
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError('Selected log formatter only supports '
+            'mainline revisions.')
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
     view_revisions = _filter_revision_range(list(view_revs_iter),
@@ -356,6 +365,10 @@ def _get_mainline_revs(branch, start_revision, end_revision):
             branch.check_real_revno(end_revision)
             end_revno = end_revision
 
+    if ((start_rev_id == NULL_REVISION)
+        or (end_rev_id == NULL_REVISION)):
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError('Logging revision 0 is invalid.')
     if start_revno > end_revno:
         from bzrlib.errors import BzrCommandError
         raise BzrCommandError("Start revision must be older than "

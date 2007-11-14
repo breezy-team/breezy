@@ -1117,8 +1117,11 @@ class KnitVersionedFile(VersionedFile):
                 line_iterator = self.factory.get_fulltext_content(data)
             else:
                 line_iterator = self.factory.get_linedelta_content(data)
+            # XXX: It might be more efficient to yield (version_id,
+            # line_iterator) in the future. However for now, this is a simpler
+            # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
-                yield line
+                yield line, version_id
 
         pb.update('Walking content.', total, total)
         
