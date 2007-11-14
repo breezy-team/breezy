@@ -47,7 +47,8 @@ class TestNonAscii(TestCaseWithTransport):
         bzrlib.user_encoding = self._orig_encoding
         super(TestNonAscii, self).tearDown()
 
-    def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None):
+    def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
+                        working_dir=None):
         """Run bzr and decode the output into a particular encoding.
 
         Returns a string containing the stdout output from bzr.
@@ -59,7 +60,7 @@ class TestNonAscii(TestCaseWithTransport):
             encoding = bzrlib.user_encoding
         try:
             out = self.run_bzr(args, output_encoding=encoding, encoding=encoding,
-                retcode=retcode)[0]
+                retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError, e:
             if not fail:
@@ -94,21 +95,23 @@ class TestNonAscii(TestCaseWithTransport):
                                    % (thing, terminal_enc, fs_enc))
 
         wt = self.make_branch_and_tree('.')
-        open('a', 'wb').write('foo\n')
+        self.build_tree_contents([('a', 'foo\n')])
         wt.add('a')
         wt.commit('adding a')
 
-        open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
+        self.build_tree_contents(
+            [('b', 'non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')])
         wt.add('b')
         wt.commit(self.info['message'])
 
-        open(fname, 'wb').write('unicode filename\n')
+        self.build_tree_contents([(fname, 'unicode filename\n')])
         wt.add(fname)
         wt.commit(u'And a unicode file\n')
         self.wt = wt
 
     def test_status(self):
-        open(self.info['filename'], 'ab').write('added something\n')
+        self.build_tree_contents(
+            [(self.info['filename'], 'changed something\n')])
         txt = self.run_bzr_decode('status')
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
@@ -127,79 +130,67 @@ class TestNonAscii(TestCaseWithTransport):
         self.assertEqual('unicode filename\n', txt)
 
     def test_cat_revision(self):
-        bzr = self.run_bzr_decode
-
         committer = self.info['committer']
-        txt = bzr('cat-revision -r 1')
+        txt = self.run_bzr_decode('cat-revision -r 1')
         self.failUnless(committer in txt,
                         'failed to find %r in %r' % (committer, txt))
 
         msg = self.info['message']
-        txt = bzr('cat-revision -r 2')
+        txt = self.run_bzr_decode('cat-revision -r 2')
         self.failUnless(msg in txt, 'failed to find %r in %r' % (msg, txt))
 
     def test_mkdir(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr(['mkdir', self.info['directory']])
+        txt = self.run_bzr_decode(['mkdir', self.info['directory']])
         self.assertEqual(u'added %s\n' % self.info['directory'], txt)
 
         # The text should be garbled, but the command should succeed
-        txt = bzr(['mkdir', self.info['directory'] + '2'], encoding='ascii')
+        txt = self.run_bzr_decode(['mkdir', self.info['directory'] + '2'],
+                                  encoding='ascii')
         expected = u'added %s2\n' % (self.info['directory'],)
         expected = expected.encode('ascii', 'replace')
         self.assertEqual(expected, txt)
 
     def test_relpath(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr(['relpath', self.info['filename']])
+        txt = self.run_bzr_decode(['relpath', self.info['filename']])
         self.assertEqual(self.info['filename'] + '\n', txt)
 
-        bzr(['relpath', self.info['filename']], encoding='ascii', fail=True)
+        self.run_bzr_decode(['relpath', self.info['filename']],
+                            encoding='ascii', fail=True)
 
     def test_inventory(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr('inventory')
+        txt = self.run_bzr_decode('inventory')
         self.assertEqual(['a', 'b', self.info['filename']],
                          txt.splitlines())
 
         # inventory should fail if unable to encode
-        bzr('inventory', encoding='ascii', fail=True)
+        self.run_bzr_decode('inventory', encoding='ascii', fail=True)
 
         # We don't really care about the ids themselves,
         # but the command shouldn't fail
-        txt = bzr('inventory --show-ids')
+        txt = self.run_bzr_decode('inventory --show-ids')
 
     def test_revno(self):
         # There isn't a lot to test here, since revno should always
         # be an integer
-        bzr = self.run_bzr_decode
-
-        self.assertEqual('3\n', bzr('revno'))
-        self.assertEqual('3\n', bzr('revno', encoding='ascii'))
+        self.assertEqual('3\n', self.run_bzr_decode('revno'))
+        self.assertEqual('3\n', self.run_bzr_decode('revno', encoding='ascii'))
 
     def test_revision_info(self):
-        bzr = self.run_bzr_decode
-
-        bzr('revision-info -r 1')
+        self.run_bzr_decode('revision-info -r 1')
 
         # TODO: jam 20060105 If we support revisions with non-ascii characters,
         # this should be strict and fail.
-        bzr('revision-info -r 1', encoding='ascii')
+        self.run_bzr_decode('revision-info -r 1', encoding='ascii')
 
     def test_mv(self):
-        bzr = self.run_bzr_decode
-
         fname1 = self.info['filename']
         fname2 = self.info['filename'] + '2'
         dirname = self.info['directory']
 
         # fname1 already exists
-        bzr(['mv', 'a', fname1], fail=True)
+        self.run_bzr_decode(['mv', 'a', fname1], fail=True)
 
-        txt = bzr(['mv', 'a', fname2])
+        txt = self.run_bzr_decode(['mv', 'a', fname2])
         self.assertEqual(u'a => %s\n' % fname2, txt)
         self.failIfExists('a')
         self.failUnlessExists(fname2)
@@ -210,28 +201,26 @@ class TestNonAscii(TestCaseWithTransport):
 
         os.mkdir(dirname)
         self.wt.add(dirname)
-        txt = bzr(['mv', fname1, fname2, dirname])
+        txt = self.run_bzr_decode(['mv', fname1, fname2, dirname])
         self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
                           u'%s => %s/%s' % (fname2, dirname, fname2)]
                          , txt.splitlines())
 
         # The rename should still succeed
         newpath = u'%s/%s' % (dirname, fname2)
-        txt = bzr(['mv', newpath, 'a'], encoding='ascii')
+        txt = self.run_bzr_decode(['mv', newpath, 'a'], encoding='ascii')
         self.failUnlessExists('a')
         self.assertEqual(newpath.encode('ascii', 'replace') + ' => a\n', txt)
 
     def test_branch(self):
         # We should be able to branch into a directory that
         # has a unicode name, even if we can't display the name
-        bzr = self.run_bzr_decode
-        bzr(['branch', u'.', self.info['directory']])
-        bzr(['branch', u'.', self.info['directory'] + '2'], encoding='ascii')
+        self.run_bzr_decode(['branch', u'.', self.info['directory']])
+        self.run_bzr_decode(['branch', u'.', self.info['directory'] + '2'],
+                            encoding='ascii')
 
     def test_pull(self):
         # Make sure we can pull from paths that can't be encoded
-        bzr = self.run_bzr_decode
-
         dirname1 = self.info['directory']
         dirname2 = self.info['directory'] + '2'
         url1 = urlutils.local_path_to_url(dirname1)
@@ -239,311 +228,266 @@ class TestNonAscii(TestCaseWithTransport):
         out_bzrdir = self.wt.bzrdir.sprout(url1)
         out_bzrdir.sprout(url2)
 
-        os.chdir(dirname1)
-        open('a', 'ab').write('more text\n')
+        self.build_tree_contents(
+            [(osutils.pathjoin(dirname1, "a"), 'different text\n')])
         self.wt.commit('mod a')
 
-        pwd = osutils.getcwd()
+        txt = self.run_bzr_decode('pull', working_dir=dirname2)
 
-        os.chdir(u'../' + dirname2)
-        txt = bzr('pull')
-
+        expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(u'Using saved location: %s/\n'
-                'No revisions to pull.\n' % (pwd,), txt)
+                'No revisions to pull.\n' % (expected,), txt)
 
-        os.chdir('../' + dirname1)
-        open('a', 'ab').write('and yet more\n')
+        self.build_tree_contents(
+            [(osutils.pathjoin(dirname1, 'a'), 'and yet more\n')])
         self.wt.commit(u'modifying a by ' + self.info['committer'])
 
-        os.chdir('../' + dirname2)
         # We should be able to pull, even if our encoding is bad
-        bzr('pull --verbose', encoding='ascii')
+        self.run_bzr_decode('pull --verbose', encoding='ascii',
+                            working_dir=dirname2)
 
     def test_push(self):
         # TODO: Test push to an SFTP location
         # Make sure we can pull from paths that can't be encoded
-        bzr = self.run_bzr_decode
-
         # TODO: jam 20060427 For drastically improving performance, we probably
         #       could create a local repository, so it wouldn't have to copy
         #       the files around as much.
 
         dirname = self.info['directory']
-        bzr(['push', dirname])
+        self.run_bzr_decode(['push', dirname])
 
-        open('a', 'ab').write('adding more text\n')
+        self.build_tree_contents([('a', 'adding more text\n')])
         self.wt.commit('added some stuff')
 
         # TODO: check the output text is properly encoded
-        bzr('push')
+        self.run_bzr_decode('push')
 
-        f = open('a', 'ab')
-        try:
-            f.write('and a bit more: ')
-            f.write(dirname.encode('utf-8'))
-            f.write('\n')
-        finally:
-            f.close()
+        self.build_tree_contents(
+            [('a', 'and a bit more: \n%s\n' % (dirname.encode('utf-8'),))])
 
         self.wt.commit('Added some ' + dirname)
-        bzr('push --verbose', encoding='ascii')
+        self.run_bzr_decode('push --verbose', encoding='ascii')
 
-        bzr(['push', '--verbose', dirname + '2'])
+        self.run_bzr_decode(['push', '--verbose', dirname + '2'])
 
-        bzr(['push', '--verbose', dirname + '3'], encoding='ascii')
+        self.run_bzr_decode(['push', '--verbose', dirname + '3'],
+                            encoding='ascii')
 
-        bzr(['push', '--verbose', '--create-prefix',
-             dirname + '4/' + dirname + '5'])
-        bzr(['push', '--verbose', '--create-prefix',
-             dirname + '6/' + dirname + '7'], encoding='ascii')
+        self.run_bzr_decode(['push', '--verbose', '--create-prefix',
+                            dirname + '4/' + dirname + '5'])
+        self.run_bzr_decode(['push', '--verbose', '--create-prefix',
+                            dirname + '6/' + dirname + '7'], encoding='ascii')
 
     def test_renames(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename'] + '2'
-        bzr(['mv', 'a', fname])
-        txt = bzr('renames')
+        self.wt.rename_one('a', fname)
+        txt = self.run_bzr_decode('renames')
         self.assertEqual(u'a => %s\n' % fname, txt)
 
-        bzr('renames', fail=True, encoding='ascii')
+        self.run_bzr_decode('renames', fail=True, encoding='ascii')
 
     def test_remove(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
-        txt = bzr(['remove', fname], encoding='ascii')
+        txt = self.run_bzr_decode(['remove', fname], encoding='ascii')
 
     def test_remove_verbose(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
-        txt = bzr(['remove', '--verbose', fname], encoding='ascii')
+        txt = self.run_bzr_decode(['remove', '--verbose', fname],
+                                  encoding='ascii')
 
     def test_file_id(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
-        txt = bzr(['file-id', fname])
+        txt = self.run_bzr_decode(['file-id', fname])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = bzr(['file-id', fname], encoding='ascii')
+        txt = self.run_bzr_decode(['file-id', fname], encoding='ascii')
 
     def test_file_path(self):
-        bzr = self.run_bzr_decode
-
         # Create a directory structure
         fname = self.info['filename']
         dirname = self.info['directory']
-        os.mkdir('base')
-        os.mkdir('base/' + dirname)
+        self.build_tree_contents([
+            ('base/', ),
+            (osutils.pathjoin('base', '%s/' % (dirname,)), )])
         self.wt.add('base')
         self.wt.add('base/'+dirname)
-        path = '/'.join(['base', dirname, fname])
+        path = osutils.pathjoin('base', dirname, fname)
         self.wt.rename_one(fname, path)
         self.wt.commit('moving things around')
 
-        txt = bzr(['file-path', path])
+        txt = self.run_bzr_decode(['file-path', path])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = bzr(['file-path', path], encoding='ascii')
+        txt = self.run_bzr_decode(['file-path', path], encoding='ascii')
 
     def test_revision_history(self):
-        bzr = self.run_bzr_decode
-
         # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
         #       so there is nothing which would fail in ascii encoding
-        txt = bzr('revision-history')
+        txt = self.run_bzr_decode('revision-history')
 
     def test_ancestry(self):
-        bzr = self.run_bzr_decode
-
         # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
         #       so there is nothing which would fail in ascii encoding
-        txt = bzr('ancestry')
+        txt = self.run_bzr_decode('ancestry')
 
     def test_diff(self):
         # TODO: jam 20060106 diff is a difficult one to test, because it 
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
-        open(self.info['filename'], 'ab').write('newline\n')
+        self.build_tree_contents([(self.info['filename'], 'newline\n')])
         txt = self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
         os.remove(fname)
         self.wt.remove(fname)
 
-        txt = bzr('deleted')
+        txt = self.run_bzr_decode('deleted')
         self.assertEqual(fname+'\n', txt)
 
-        txt = bzr('deleted --show-ids')
+        txt = self.run_bzr_decode('deleted --show-ids')
         self.failUnless(txt.startswith(fname))
 
         # Deleted should fail if cannot decode
         # Because it is giving the exact paths
         # which might be used by a front end
-        bzr('deleted', encoding='ascii', fail=True)
+        self.run_bzr_decode('deleted', encoding='ascii', fail=True)
 
     def test_modified(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
-        open(fname, 'ab').write('modified\n')
+        self.build_tree_contents([(fname, 'modified\n')])
 
-        txt = bzr('modified')
+        txt = self.run_bzr_decode('modified')
         self.assertEqual(fname+'\n', txt)
 
-        bzr('modified', encoding='ascii', fail=True)
+        self.run_bzr_decode('modified', encoding='ascii', fail=True)
 
     def test_added(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename'] + '2'
-        open(fname, 'wb').write('added\n')
+        self.build_tree_contents([(fname, 'added\n')])
         self.wt.add(fname)
 
-        txt = bzr('added')
+        txt = self.run_bzr_decode('added')
         self.assertEqual(fname+'\n', txt)
 
-        bzr('added', encoding='ascii', fail=True)
+        self.run_bzr_decode('added', encoding='ascii', fail=True)
 
     def test_root(self):
-        bzr = self.run_bzr_decode
-
         dirname = self.info['directory']
         url = urlutils.local_path_to_url(dirname)
-        bzr('root')
+        self.run_bzr_decode('root')
 
         self.wt.bzrdir.sprout(url)
 
-        os.chdir(dirname)
-
-        txt = bzr('root')
+        txt = self.run_bzr_decode('root', working_dir=dirname)
         self.failUnless(txt.endswith(dirname+'\n'))
 
-        txt = bzr('root', encoding='ascii', fail=True)
+        txt = self.run_bzr_decode('root', encoding='ascii', fail=True,
+                                  working_dir=dirname)
 
     def test_log(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
 
-        txt = bzr('log')
+        txt = self.run_bzr_decode('log')
         self.assertNotEqual(-1, txt.find(self.info['committer']))
         self.assertNotEqual(-1, txt.find(self.info['message']))
 
-        txt = bzr('log --verbose')
+        txt = self.run_bzr_decode('log --verbose')
         self.assertNotEqual(-1, txt.find(fname))
 
         # Make sure log doesn't fail even if we can't write out
-        txt = bzr('log --verbose', encoding='ascii')
+        txt = self.run_bzr_decode('log --verbose', encoding='ascii')
         self.assertEqual(-1, txt.find(fname))
         self.assertNotEqual(-1, txt.find(fname.encode('ascii', 'replace')))
 
     def test_touching_revisions(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename']
-        txt = bzr(['touching-revisions', fname])
+        txt = self.run_bzr_decode(['touching-revisions', fname])
         self.assertEqual(u'     3 added %s\n' % (fname,), txt)
 
         fname2 = self.info['filename'] + '2'
         self.wt.rename_one(fname, fname2)
         self.wt.commit(u'Renamed %s => %s' % (fname, fname2))
 
-        txt = bzr(['touching-revisions', fname2])
+        txt = self.run_bzr_decode(['touching-revisions', fname2])
         expected_txt = (u'     3 added %s\n' 
                         u'     4 renamed %s => %s\n'
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
-        bzr(['touching-revisions', fname2], encoding='ascii', fail=True)
+        self.run_bzr_decode(['touching-revisions', fname2], encoding='ascii',
+                            fail=True)
 
     def test_ls(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr('ls')
+        txt = self.run_bzr_decode('ls')
         self.assertEqual(sorted(['a', 'b', self.info['filename']]),
                          sorted(txt.splitlines()))
-        txt = bzr('ls --null')
+        txt = self.run_bzr_decode('ls --null')
         self.assertEqual(sorted(['', 'a', 'b', self.info['filename']]),
                          sorted(txt.split('\0')))
 
-        txt = bzr('ls', encoding='ascii', fail=True)
-        txt = bzr('ls --null', encoding='ascii', fail=True)
+        txt = self.run_bzr_decode('ls', encoding='ascii', fail=True)
+        txt = self.run_bzr_decode('ls --null', encoding='ascii', fail=True)
 
     def test_unknowns(self):
-        bzr = self.run_bzr_decode
-
         fname = self.info['filename'] + '2'
-        open(fname, 'wb').write('unknown\n')
+        self.build_tree_contents([(fname, 'unknown\n')])
 
         # TODO: jam 20060112 bzr unknowns is the only one which 
         #       quotes paths do we really want it to?
-        txt = bzr('unknowns')
+        txt = self.run_bzr_decode('unknowns')
         self.assertEqual(u'"%s"\n' % (fname,), txt)
 
-        bzr('unknowns', encoding='ascii', fail=True)
+        self.run_bzr_decode('unknowns', encoding='ascii', fail=True)
 
     def test_ignore(self):
-        bzr = self.run_bzr_decode
-
         fname2 = self.info['filename'] + '2.txt'
-        open(fname2, 'wb').write('ignored\n')
+        self.build_tree_contents([(fname2, 'ignored\n')])
 
         def check_unknowns(expected):
             self.assertEqual(expected, list(self.wt.unknowns()))
 
         check_unknowns([fname2])
 
-        bzr(['ignore', './' + fname2])
-        # After 'ignore' you must re-open the working tree
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.run_bzr_decode(['ignore', './' + fname2])
         check_unknowns([])
 
         fname3 = self.info['filename'] + '3.txt'
-        open(fname3, 'wb').write('unknown 3\n')
+        self.build_tree_contents([(fname3, 'unknown 3\n')])
         check_unknowns([fname3])
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
-        bzr(['ignore', fname3], encoding='ascii')
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.run_bzr_decode(['ignore', fname3], encoding='ascii')
         check_unknowns([])
 
         # Now try a wildcard match
         fname4 = self.info['filename'] + '4.txt'
-        open(fname4, 'wb').write('unknown 4\n')
-        bzr('ignore *.txt')
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.build_tree_contents([(fname4, 'unknown 4\n')])
+        self.run_bzr_decode('ignore *.txt')
         check_unknowns([])
 
         # and a different wildcard that matches everything
         os.remove('.bzrignore')
-        bzr(['ignore', self.info['filename'] + '*'])
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.run_bzr_decode(['ignore', self.info['filename'] + '*'])
         check_unknowns([])
 
     def test_missing(self):
-        bzr = self.run_bzr_decode
-
         # create empty tree as reference for missing
-        self.run_bzr('init empty-tree')
+        self.make_branch_and_tree('empty-tree')
 
         msg = self.info['message']
 
-        txt = bzr('missing empty-tree', retcode=1)
+        txt = self.run_bzr_decode('missing empty-tree')
         self.assertNotEqual(-1, txt.find(self.info['committer']))
         self.assertNotEqual(-1, txt.find(msg))
 
         # Make sure missing doesn't fail even if we can't write out
-        txt = bzr('missing empty-tree', encoding='ascii', retcode=1)
+        txt = self.run_bzr_decode('missing empty-tree', encoding='ascii')
         self.assertEqual(-1, txt.find(msg))
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
 
