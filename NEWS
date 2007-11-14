@@ -111,6 +111,9 @@ IN DEVELOPMENT
      and parsing containers from streams rather than from files.  (Andrew
      Bennetts)
 
+   * New module ``lru_cache`` providing a cache for use by tasks that need
+     semi-random access to large amounts of data. (John A Meinel)
+
   TESTING:
 
 
