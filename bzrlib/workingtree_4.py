@@ -720,8 +720,7 @@ class WorkingTree4(WorkingTree3):
                 if from_missing: # implicitly just update our path mapping
                     move_file = False
                 elif not after:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
             rollbacks = []
             def rollback_rename():

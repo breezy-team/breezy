@@ -708,7 +708,7 @@ class Packer(object):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
-            an iterator.
+            an iterator of line,version_id.
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -754,18 +754,19 @@ class Packer(object):
             for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
+                version_id = key[-1]
                 if output_lines:
                     # read the entire thing
-                    content, _ = knit_data._parse_record(key[-1], raw_data)
+                    content, _ = knit_data._parse_record(version_id, raw_data)
                     if len(references[-1]) == 0:
                         line_iterator = factory.get_fulltext_content(content)
                     else:
                         line_iterator = factory.get_linedelta_content(content)
                     for line in line_iterator:
-                        yield line
+                        yield line, version_id
                 else:
                     # check the header only
-                    df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                    df, _ = knit_data._parse_record_header(version_id, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
@@ -915,7 +916,7 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names()
+        self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
@@ -1212,13 +1213,16 @@ class RepositoryPackCollection(object):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
-    def _save_pack_names(self):
+    def _save_pack_names(self, clear_obsolete_packs=False):
         """Save the list of packs.
 
         This will take out the mutex around the pack names list for the
         duration of the method call. If concurrent updates have been made, a
         three-way merge between the current list and the current in memory list
         is performed.
+
+        :param clear_obsolete_packs: If True, clear out the contents of the
+            obsolete_packs directory.
         """
         self.lock_names()
         try:
@@ -1244,6 +1248,10 @@ class RepositoryPackCollection(object):
             self.transport.put_file('pack-names', builder.finish())
             # move the baseline forward
             self._packs_at_load = disk_nodes
+            # now clear out the obsolete packs directory
+            if clear_obsolete_packs:
+                self.transport.clone('obsolete_packs').delete_multi(
+                    self.transport.list_dir('obsolete_packs'))
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:

@@ -1314,7 +1314,7 @@ class BzrBranch(Branch):
     def get_root_id(self):
         """See Branch.get_root_id."""
         tree = self.repository.revision_tree(self.last_revision())
-        return tree.inventory.root.file_id
+        return tree.get_root_id()
 
     def is_locked(self):
         return self.control_files.is_locked()

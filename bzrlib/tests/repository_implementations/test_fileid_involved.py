@@ -174,7 +174,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def fileids_altered_by_revision_ids(self, revision_ids):
         """This is a wrapper to strip TREE_ROOT if it occurs"""
         repo = self.branch.repository
-        root_id = self.branch.basis_tree().inventory.root.file_id
+        root_id = self.branch.basis_tree().get_root_id()
         result = repo.fileids_altered_by_revision_ids(revision_ids)
         if root_id in result:
             del result[root_id]
@@ -245,7 +245,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         file_ids = repo.fileids_altered_by_revision_ids([revision_id])
-        root_id = main_wt.basis_tree().path2id('')
+        root_id = main_wt.basis_tree().get_root_id()
         if root_id in file_ids:
             self.assertEqual({file_id:set([revision_id]),
                               root_id:set([revision_id])
