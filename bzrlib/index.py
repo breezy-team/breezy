@@ -1009,15 +1009,12 @@ class CombinedGraphIndex(object):
              * (parent_key, parent_key...) otherwise.
         """
         search_keys = set(revision_ids)
-        if NULL_REVISION in search_keys:
-            search_keys.remove(NULL_REVISION)
+        search_keys.discard(NULL_REVISION)
         found_parents = {NULL_REVISION:[]}
         for index, key, value, refs in self.iter_entries(search_keys):
             parents = refs[0]
             if not parents:
                 parents = (NULL_REVISION,)
-            else:
-                parents = refs[0]
             found_parents[key] = parents
         result = []
         for key in revision_ids:
