@@ -535,7 +535,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable('must support shared repositories')
         if repo.make_working_trees():
             repo.set_make_working_trees(False)
             self.assertFalse(repo.make_working_trees())
@@ -543,7 +543,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = tree.bzrdir
         a_dir = dir.clone(self.get_url('repo/a'))
         a_dir.open_branch()
-        self.failIfExists('repo/a/foo')
+        self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
 
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
