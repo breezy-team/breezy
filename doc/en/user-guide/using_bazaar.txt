@@ -1,0 +1,41 @@
+Using Bazaar
+============
+
+User interfaces
+---------------
+
+There are numerous user interfaces available for Bazaar.
+The core package provides a command line tool called **bzr** and
+graphical user interfaces (GUIs) are available as plug-ins.
+
+Using bzr
+---------
+
+The syntax is::
+
+  bzr [global-options] command [options and arguments]
+
+Global options affect how Bazaar operates and can appear either
+before or after ``command``. Command specific options must appear
+after the command but may be given either before, during or after any
+command-specific arguments.
+
+Getting help
+------------
+
+Bazaar comes with a built-in on-line help system. To see the list of topics,
+the command is::
+
+  bzr help
+
+To see the list of commands, the command is::
+
+  bzr help commands
+
+To get help on topic xxx or command xxx, the command is::
+
+  bzr help xxx
+
+If you wish to search the help or read it as a larger document, the
+information is also available in the Bazaar User Reference.
+

@@ -1,6 +1,5 @@
-====================
-Bazaar configuration
-====================
+Bazaar configuration reference
+##############################
 
 Information on how to configure Bazaar.
 
@@ -87,7 +86,7 @@ branch. This file is visible to all users of a branch, if you wish to override
 one of the values for a branch with a setting that is specific to you then you
 can do so in ``locations.conf``.
 
-General Format
+General format
 --------------
 
 An ini file has three types of contructs: section headers, section
@@ -99,7 +98,7 @@ A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
 Bazaar when parsing ini files.
 
-Section Headers
+Section headers
 ~~~~~~~~~~~~~~~
 A section header is a word enclosed in brackets that starts at the begining
 of a line.  A typical section header looks like this::
@@ -119,7 +118,7 @@ the branch as the section header. Some examples include::
     [/home/jdoe/branches/]
 
 
-Section Variables
+Section variables
 ~~~~~~~~~~~~~~~~~
 
 A section variable resides within a section. A section variable contains a
@@ -129,7 +128,7 @@ variable name, an equals sign and a value.  For example::
     check_signatures = require
 
 
-Variable Policies
+Variable policies
 ~~~~~~~~~~~~~~~~~
 
 Variables defined in a section affect the named directory or URL plus
@@ -210,7 +209,7 @@ file see the `authentication configuration file documentation`_.
 
 .. _authentication configuration file documentation: authentication_conf.html
 
-Common Variable Options
+Common variable options
 =======================
 
 email
@@ -334,7 +333,7 @@ A publically-accessible version of this branch (implying that this version is
 not publically-accessible).  Used (and set) by ``bzr send``.
 
 
-Branch 6 Options
+Branch 6 options
 ================
 
 These options apply only to branches that use the "dirstate-tags" format.  They

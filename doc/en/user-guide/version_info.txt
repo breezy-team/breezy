@@ -1,16 +1,15 @@
-==========================
-Using ``bzr version-info``
-==========================
+Embedding version information in files
+======================================
 
 Overview
-========
+--------
 
 This document describes ways of using ``bzr version-info`` as part of a
 build process to embed version information into a final project.
 
 
-Python Project
-==============
+Python project
+--------------
 
 TODO: Figure out how to attach into ``setup.py``
 
@@ -40,8 +39,8 @@ This generates a file which contains 3 dictionaries:
     map. This is also empty by default, and enabled only by ``--all``
     or ``--include-file-revisions``.
 
-Check Clean
-===========
+Check clean
+-----------
 
 Most information about the contents of the project can be cheaply
 determined by just reading the revision entry. However, it can be useful

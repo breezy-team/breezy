@@ -1,18 +1,19 @@
-=================================
-Using aliases for Bazaar commands
-=================================
+Using aliases
+=============
+
+What are aliases?
+-----------------
 
 Command aliases are an easy way to customize the behaviour of Bazaar. Aliases
 are an easy way to create shortcuts for commonly-typed commands, or to set
 defaults for commands.
 
+Defining aliases
+----------------
+
 Command aliases can be defined in the ``[ALIASES]`` section of your
 ``.bazaar/bazaar.conf`` file. Aliases start with the alias name, then an
-equal sign, then a command fragment.  Here's an example ALIASES section:
-
-Examples
-========
-A typical example::
+equal sign, then a command fragment.  Here's an example ALIASES section::
 
     [ALIASES]
     recentlog=log -r-3..-1
@@ -20,8 +21,7 @@ A typical example::
     commit=commit --strict
     diff=diff --diff-options -p
 
-Explanation of examples
-=======================
+Here are the explanations of the examples above:
 
  * The first alias makes a new ``recentlog`` command that shows the logs for the
    last three revisions
@@ -30,8 +30,9 @@ Explanation of examples
    files in the tree are not recognized.
  * the ``diff`` alias adds the coveted -p option to diff
 
-Using the Aliases
-=================
+Using the aliases
+-----------------
+
 The aliases defined above would be used like so: ::
 
    % bzr recentlog
@@ -39,8 +40,8 @@ The aliases defined above would be used like so: ::
    % bzr commit
    % bzr diff
 
-Rules for Aliases
-=================
+Rules for aliases
+-----------------
 
  * You can override a portion of the options given in an alias by
    specifying the new part on the command-line.  For example, if

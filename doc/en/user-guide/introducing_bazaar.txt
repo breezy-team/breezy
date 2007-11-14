@@ -1,0 +1,130 @@
+Introducing Bazaar
+==================
+
+What is Bazaar?
+---------------
+
+Bazaar is a tool for helping people collaborate together. It does this by
+tracking how a group of files evolves and using that information to help
+people merge their changes together as safely as possible.
+
+In general, tools that do this are known as revision control systems or
+version control systems (VCS). In the past, VCS tools have been popular
+with software developers. In the future, VCS tools will undoubtedly also be
+important for other groups of people looking to collaborate together on
+files and documents, e.g. technical writers and translators.
+
+A brief history of version control systems
+------------------------------------------
+
+VCS tools have been evolving for several decades now. In simple terms,
+there have been 5 generations of tools:
+
+  1. file versioning tools, e.g. SCCS, VCS
+  2. tree versioning tools - central style, e.g. CVS
+  3. tree versioning tools - central style, done right, e.g. Subversion
+  4. tree versioning tools - distributed style, e.g. Arch
+  5. tree versioning tools - distributed style, done right, e.g. Bazaar.
+
+The design and implementation of Bazaar builds on the lessons learned
+from all the previous generations of tools. In particular, Bazaar
+cleanly supports both the central and the distributed version
+control models.
+
+Central vs distributed VCS
+--------------------------
+
+Many traditional VCS tools require a central server which provides the
+change history or *repository* for a tree of files. To work on the files,
+users need to connect to the server and *checkout* the files. This gives
+them a directory or *working tree* in which a person can make changes.
+To record or *commit* these changes, the user needs access to the central
+server and they need to unsure they have merged their work with the latest
+version stored before trying to commit. This approach is known as the
+centralized model. 
+
+The centralized model has proven useful over time but it can have some notable
+drawbacks. Firstly, a centralized VCS requires that one is able to connect
+to the server whenever one wants to do version control work. Secondly, the
+centralized model tightly links the act of snapshotting changes with the act
+of publishing those changes. This can have a negative influence on quality.
+
+Decentralized VCS tools let users and teams have multiple repositories
+rather than just one central one. In Bazaar's case, the history is
+normally kept in the same place as the code that is being version controlled.
+This allows the user to commit their changes whenever it makes sense, even
+when offline. Network access is only required when publishing changes or
+when accessing changes in another location.
+
+For a detailed look at the advantages of decentralized VCS tools over
+centralized VCS tools, see http://bazaar-vcs.org/BzrWhy. In a nutshell,
+it comes down to this: distributed VCS tools make effective collaboration
+easier, saving effort and increasing quality along the way.
+
+
+Key features of Bazaar
+----------------------
+
+While Bazaar is not the only distributed VCS tool around, it does have some
+notable features that make it an excellent choice for many teams and
+communities. These include:
+
+  * it **Just Works** - a high focus on usability and performance
+  * **adaptive** - cleanly supports many different ways of working together
+  * **intelligent merging** that lets you collaborate without fear
+  * **truly portable** across many operating systems including Windows
+  * **renaming** of files and directories is properly supported
+  * **safe with your data** - integrity is checked using cryptographic
+    techniques and all changes can be digitally signed if required
+  * **low administration**, e.g. automatic packing of repositories
+  * **efficiently stores data** across branches in a flexible and safe way
+  * an **open architecture and API** that makes it easy to integrate
+    with other tools
+  * a **large number of plugins** including bzr-svn and GUI front-ends
+  * **excellent integration** with a range of companion tools and services
+    including PQM, Bundle Buggy and Launchpad
+  * **completely open source**
+  * **commercial training and support** available from Canonical,
+    the company that sponsors Ubuntu.
+
+While all of these are important, perhaps the greatest asset Bazaar has is
+an active and growing open source community behind it. Bazaar is completely
+free software written in Python so it is easy to contribute improvements.
+Our collective goal is to build and support a distributed VCS tool that
+developers love to use, a tool that helps them get their job done without
+getting in their way. If you wish to get involved, please see
+http://bazaar-vcs.org/Community.
+
+
+Learning more
+-------------
+
+This manual provides an easy to read introduction to Bazaar and how to use
+it effectively. If you are already familar with other version control tools,
+you may wish to get started with Bazaar more quickly by reading the
+following documents initially instead:
+
+* `Bazaar in five minutes`_ - a mini-tutorial
+
+* `Bazaar Quick Start Summary`_ - a one page summary of commonly used commands.
+
+The online help and `Bazaar User Reference`_ are also particularly useful as
+they provide all the gory details on the commands and options available.
+
+.. _Bazaar in five minutes: ../mini-tutorial/index.html
+.. _Bazaar Quick Start Summary: ../quick-reference/quick-start-summary.svg
+.. _Bazaar User Reference: ../user-reference/bzr_man.html
+
+Either way, it is recommended that all users read the rest of this chapter
+first which:
+
+  * explains the core concepts users need to know
+  * introduces some popular ways of using Bazaar to collaborate.
+
+Remaining chapters provide a closer look at how to use Bazaar to complete
+various tasks together with details on implementing some recommended
+best practices.
+
+We hope you find this manual useful. If you have suggestions on how it
+or the rest of Bazaar's documentation can be improved, please contact
+us on the mailing list, bazaar@lists.canonical.com.

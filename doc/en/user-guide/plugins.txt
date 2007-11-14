@@ -1,11 +1,11 @@
-==============
-Bazaar plugins
-==============
+Using plugins
+=============
 
-Information on how to use plugins in Bazaar.
+.. Information on how to use plugins in Bazaar.
 
-What is a Plugin
-================
+What is a plugin?
+-----------------
+
 A plugin is an external component for Bazaar that is typically made by
 third parties. A plugin is capable of augmenting Bazaar by adding new
 functionality.  A plugin can also change current Bazaar behavior by
@@ -16,12 +16,14 @@ overriding commands, adding new commands, providing additional network
 transports, or customizing log output. The sky is the limit for the
 customization that can be done through plugins.
 
-Where to find Plugins 
-=====================
+Where to find plugins 
+---------------------
+
 We keep our list of plugins on the http://bazaar-vcs.org/BzrPlugins page.
 
-How to Install a plugin 
-=======================
+How to install a plugin 
+-----------------------
+
 Installing a plugin is very easy! One can either install a plugin
 system-wide or on a per user basis. Both methods involve creating a
 ``plugins`` directory. Within this directory one can place plugins in
@@ -51,30 +53,21 @@ certain characters, notably they cannot contain hyphens (``-``). Rather
 than installing ``bzr-gtk`` to ``~/.bazaar/plugins/bzr-gtk``, install it
 to ``~/.bazaar/plugins/gtk``.
 
-Writing a plugin
-================
-Plugins are very similar to bzr core functionality.  They can import
-anything in bzrlib.  A plugin may simply override standard functionality,
-but most plugins supply new commands.
+Listing the installed plugins
+-----------------------------
 
-To create a command, make a new object that derives from
-``bzrlib.commands.Command``, and name it ``cmd_foo``, where foo is the name of
-your command.  If you create a command whose name contains an underscore,
-it will appear in the UI with the underscore turned into a hyphen.  For
-example, `cmd_baz_import` will appear as `baz-import`.  For examples of how
-to write commands, please see ``builtins.py``.
+To do this, use the plugins command like this::
 
-Once you've created a command you must register the command with
-``bzrlib.commands.register_command(cmd_foo)``.  You must register the
-command when your file is imported, otherwise bzr will not see it.
+    bzr plugins
 
-Bzr will scan ``bzrlib/plugins`` and ``~/.bazaar/plugins`` for plugins
-by default.  You can override this with ``BZR_PLUGIN_PATH``.  Plugins
-may be either modules or packages.  If your plugin is a single file,
-you can structure it as a module.  If it has multiple files, or if you
-want to distribute it as a bzr branch, you should structure it as a
-package, i.e. a directory with an ``__init__.py`` file.
+The name, location and version of each plugin installed will be displayed.
 
-Please feel free to contribute your plugin to BzrTools, if you think it
-would be useful to other people.
+Popular plugins
+---------------
 
+Here is a sample of some of the more popular plugins:
+
+* TODO ...
+
+If you wish to write your own plugins, it is not difficult to do.
+See `Writing a plugin`_ in the appendices to get started.
