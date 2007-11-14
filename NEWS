@@ -55,6 +55,9 @@ IN DEVELOPMENT
    * Don't use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
+   * Fix multiple connections during checkout --lightweight.
+     (Vincent Ladeuil, #159150)
+
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
 
