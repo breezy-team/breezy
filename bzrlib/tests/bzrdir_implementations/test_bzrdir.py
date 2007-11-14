@@ -525,6 +525,26 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.skipIfNoWorkingTree(target)
         self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
 
+    def test_clone_bzrdir_into_notrees_repo(self):
+        """Cloning into a no-trees repo should not create a working tree"""
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo')
+        tree.commit('revision 1')
+
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        if repo.make_working_trees():
+            repo.set_make_working_trees(False)
+            self.assertFalse(repo.make_working_trees())
+
+        dir = tree.bzrdir
+        a_dir = dir.clone(self.get_url('repo/a'))
+        a_dir.open_branch()
+        self.failIfExists('repo/a/foo')
+
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
         referenced_branch = self.make_branch('referenced')
