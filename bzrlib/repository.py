@@ -1055,20 +1055,18 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
-    def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
-        revision_ids):
-        """Helper routine for fileids_altered_by_revision_ids.
+    def _find_text_key_references_from_xml_inventory_lines(self,
+        line_iterator):
+        """Core routine for extracting references to texts from inventories.
 
         This performs the translation of xml lines to revision ids.
 
         :param line_iterator: An iterator of lines, origin_version_id
-        :param revision_ids: The revision ids to filter for. This should be a
-            set or other type which supports efficient __contains__ lookups, as
-            the revision id from each parsed line will be looked up in the
-            revision_ids filter.
-        :return: a dictionary mapping altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. Note that if that revision_id was
+            not part of the line_iterator's output then False will be given -
+            even though it may actually refer to that key.
         """
         result = {}
 
@@ -1115,15 +1113,46 @@ class Repository(object):
                 unescape_revid_cache[revision_id] = unescaped
                 revision_id = unescaped
 
+            # Note that unescaping always means that on a fulltext cached
+            # inventory we deserialised every fileid, which for general 'pull'
+            # is not great, but we don't really want to have some many
+            # fulltexts that this matters anyway. RBC 20071114.
+            try:
+                file_id = unescape_fileid_cache[file_id]
+            except KeyError:
+                unescaped = unescape(file_id)
+                unescape_fileid_cache[file_id] = unescaped
+                file_id = unescaped
+
+            key = (file_id, revision_id)
+            setdefault(key, False)
+            if revision_id == version_id:
+                result[key] = True
+        return result
+
+    def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
+        revision_ids):
+        """Helper routine for fileids_altered_by_revision_ids.
+
+        This performs the translation of xml lines to revision ids.
+
+        :param line_iterator: An iterator of lines, origin_version_id
+        :param revision_ids: The revision ids to filter for. This should be a
+            set or other type which supports efficient __contains__ lookups, as
+            the revision id from each parsed line will be looked up in the
+            revision_ids filter.
+        :return: a dictionary mapping altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        """
+        result = {}
+        setdefault = result.setdefault
+        for file_id, revision_id in \
+            self._find_text_key_references_from_xml_inventory_lines(
+                line_iterator).iterkeys():
             # once data is all ensured-consistent; then this is
             # if revision_id == version_id
             if revision_id in revision_ids:
-                try:
-                    file_id = unescape_fileid_cache[file_id]
-                except KeyError:
-                    unescaped = unescape(file_id)
-                    unescape_fileid_cache[file_id] = unescaped
-                    file_id = unescaped
                 setdefault(file_id, set()).add(revision_id)
         return result
 
