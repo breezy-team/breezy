@@ -1387,3 +1387,10 @@ class TestNewPack(TestCaseWithTransport):
         self.assertEqual(20, len(pack.random_name))
         self.assertIsInstance(pack.random_name, str)
         self.assertIsInstance(pack.start_time, float)
+
+
+class TestPacker(TestCaseWithTransport):
+    """Tests for the packs repository Packer class."""
+
+    # To date, this class has been factored out and nothing new added to it;
+    # thus there are not yet any tests.

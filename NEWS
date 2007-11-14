@@ -10,6 +10,76 @@ IN DEVELOPMENT
   NOTES WHEN UPGRADING:
 
   CHANGES:
+
+  FEATURES:
+
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
+  PERFORMANCE:
+
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
+
+   * Revert takes out an appropriate lock when reverting to a basis tree, and
+     does not read the basis inventory twice. (Robert Collins)
+
+  IMPROVEMENTS:
+
+   * ``bzr tags`` now prints the revision number for each tag, instead of
+     the revision id, unless --show-ids is passed. In addition, tags can be
+     sorted chronologically instead of lexicographically with --sort=time.
+     (Adeodato Simó, #120231)
+
+  DOCUMENTATION:
+
+  BUG FIXES:
+
+   * A progress bar has been added for knitpack -> knitpack fetching.
+     (Robert Collins, #157789)
+
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
+   * Don't catch the exceptions related to the http pipeline status before
+     retrying an http request or some programming errors may be masked.
+     (Vincent Ladeuil, #160012)
+
+   * Don't use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
+   * Unicode-safe output from ``bzr info``. The output will be encoded
+     using the terminal encoding and unrepresentable characters will be
+     replaced by '?'. (Lukáš Lalinský, #151844)
+
+   * Wrap medusa ftp test server as an FTPServer feature.
+     (Vincent Ladeuil, #157752)
+
+  API BREAKS:
+
+   * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
+     during very long time. (Alexander Belchenko)
+
+  INTERNALS:
+
+  TESTING:
+
+
+bzr 0.92rc1 2007-10-29
+======================
+
+  NOTES WHEN UPGRADING:
+
+  CHANGES:
   
    * ``bzr`` now returns exit code 4 if an internal error occurred, and 
      3 if a normal error occurred.  (Martin Pool)
@@ -68,9 +138,6 @@ IN DEVELOPMENT
      changed to determine if the tree is unchanged rather than recalculating
      it at the end of the commit process. (Robert Collins)
 
-   * Fetch with pack repositories will no longer read the entire history graph.
-     (Robert Collins, #88319)
-
    * Inventory serialisation no longer double-sha's the content.
      (Robert Collins)
 
@@ -84,9 +151,6 @@ IN DEVELOPMENT
 
    * Partial commits are now approximately 40% faster by walking over the
      unselected current tree more efficiently. (Robert Collins)
-
-   * Revert takes out an appropriate lock when reverting to a basis tree, and
-     does not read the basis inventory twice. (Robert Collins)
 
    * XML inventory serialisation takes 20% less time while being stricter about
      the contents. (Robert Collins)
@@ -119,9 +183,6 @@ IN DEVELOPMENT
      (Ian Clatworthy)
 
   BUG FIXES:
-
-   * A progress bar has been added for knitpack -> knitpack fetching.
-     (Robert Collins, #157789)
 
    * Connection error reporting for the smart server has been fixed to
      display a user friendly message instead of a traceback.
@@ -200,9 +261,6 @@ IN DEVELOPMENT
 
    * ``WorkingTree.rename_one`` will now raise an error if normalisation of the
      new path causes bzr to be unable to access the file. (Robert Collins)
-
-   * Wrap medusa ftp test server as an FTPServer feature.
-     (Vincent Ladeuil, #157752)
 
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
