@@ -370,10 +370,11 @@ class BzrDir(object):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """Create a working tree at this BzrDir.
         
-        revision_id: create it as of this revision id.
+        :param revision_id: create it as of this revision id.
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
         """
         raise NotImplementedError(self.create_workingtree)
 
@@ -687,13 +688,14 @@ class BzrDir(object):
         raise NotImplementedError(self.open_repository)
 
     def open_workingtree(self, _unsupported=False,
-            recommend_upgrade=True):
+                         recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this BzrDir if one is present.
 
         :param recommend_upgrade: Optional keyword parameter, when True (the
             default), emit through the ui module a recommendation that the user
             upgrade the working tree when the workingtree being opened is old
             (but still fully supported).
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
         """
         raise NotImplementedError(self.open_workingtree)
 
@@ -922,7 +924,7 @@ class BzrDirPreSplitOut(BzrDir):
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1100,10 +1102,10 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        return self._format.workingtree_format.initialize(self, revision_id)
+        return self._format.workingtree_format.initialize(
+            self, revision_id, from_branch=from_branch)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""

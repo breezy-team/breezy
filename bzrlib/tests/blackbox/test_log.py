@@ -60,8 +60,22 @@ class TestLog(ExternalBase):
     def test_log_null_both_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r ..")[0]
-        self.assertEquals(self.full_log, log)
         self.assertEqualDiff(self.full_log, log)
+
+    def test_log_zero_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0'])
+
+    def test_log_zero_begin_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0..2'])
+
+    def test_log_zero_end_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r-2..0'])
 
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
@@ -87,7 +101,7 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' in log)
 
-    def test_log_postive_revspecs(self):
+    def test_log_positive_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r 1..3")[0]
         self.assertEqualDiff(self.full_log, log)
@@ -303,6 +317,16 @@ class TestLogMerges(ExternalBase):
         self.assertTrue('revno: 1\n' not in out)
         self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
+
+    def test_merges_nonsupporting_formatter(self):
+        self._prepare()
+        err_msg = 'Selected log formatter only supports mainline revisions.'
+        out,err = self.run_bzr('log --short -r1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
+        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
+        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
 
  
 class TestLogEncodings(TestCaseInTempDir):

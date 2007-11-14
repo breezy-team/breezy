@@ -560,18 +560,14 @@ class VersionedFileTestMixIn(object):
                      ['base\n', 'lancestor\n', 'otherchild\n'])
         def iter_with_versions(versions, expected):
             # now we need to see what lines are returned, and how often.
-            lines = {'base\n':0,
-                     'lancestor\n':0,
-                     'rancestor\n':0,
-                     'child\n':0,
-                     'otherchild\n':0,
-                     }
+            lines = {}
             progress = InstrumentedProgress()
             # iterate over the lines
-            for line in vf.iter_lines_added_or_present_in_versions(versions, 
+            for line in vf.iter_lines_added_or_present_in_versions(versions,
                 pb=progress):
+                lines.setdefault(line, 0)
                 lines[line] += 1
-            if []!= progress.updates: 
+            if []!= progress.updates:
                 self.assertEqual(expected, progress.updates)
             return lines
         lines = iter_with_versions(['child', 'otherchild'],
@@ -579,8 +575,8 @@ class VersionedFileTestMixIn(object):
                                     ('Walking content.', 1, 2),
                                     ('Walking content.', 2, 2)])
         # we must see child and otherchild
-        self.assertTrue(lines['child\n'] > 0)
-        self.assertTrue(lines['otherchild\n'] > 0)
+        self.assertTrue(lines[('child\n', 'child')] > 0)
+        self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
         # we dont care if we got more than that.
         
         # test all lines
@@ -591,11 +587,11 @@ class VersionedFileTestMixIn(object):
                                           ('Walking content.', 4, 5),
                                           ('Walking content.', 5, 5)])
         # all lines must be seen at least once
-        self.assertTrue(lines['base\n'] > 0)
-        self.assertTrue(lines['lancestor\n'] > 0)
-        self.assertTrue(lines['rancestor\n'] > 0)
-        self.assertTrue(lines['child\n'] > 0)
-        self.assertTrue(lines['otherchild\n'] > 0)
+        self.assertTrue(lines[('base\n', 'base')] > 0)
+        self.assertTrue(lines[('lancestor\n', 'lancestor')] > 0)
+        self.assertTrue(lines[('rancestor\n', 'rancestor')] > 0)
+        self.assertTrue(lines[('child\n', 'child')] > 0)
+        self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
 
     def test_add_lines_with_ghosts(self):
         # some versioned file formats allow lines to be added with parent

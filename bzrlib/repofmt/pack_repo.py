@@ -708,7 +708,7 @@ class Packer(object):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
-            an iterator.
+            an iterator of line,version_id.
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -754,18 +754,19 @@ class Packer(object):
             for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
+                version_id = key[-1]
                 if output_lines:
                     # read the entire thing
-                    content, _ = knit_data._parse_record(key[-1], raw_data)
+                    content, _ = knit_data._parse_record(version_id, raw_data)
                     if len(references[-1]) == 0:
                         line_iterator = factory.get_fulltext_content(content)
                     else:
                         line_iterator = factory.get_linedelta_content(content)
                     for line in line_iterator:
-                        yield line
+                        yield line, version_id
                 else:
                     # check the header only
-                    df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                    df, _ = knit_data._parse_record_header(version_id, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
