@@ -87,6 +87,9 @@ IN DEVELOPMENT
    * Fix exception when revisionspec contains merge revisons but log
      formatter doesn't support merge revisions. (Kent Gibson, #148908)
 
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib

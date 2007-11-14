@@ -57,8 +57,11 @@ from bzrlib import (
     symbol_versioning,
     )
 import bzrlib.errors as errors
-from bzrlib.revisionspec import(
-    RevisionInfo
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
+from bzrlib.revisionspec import (
+    RevisionInfo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -362,6 +365,10 @@ def _get_mainline_revs(branch, start_revision, end_revision):
             branch.check_real_revno(end_revision)
             end_revno = end_revision
 
+    if ((start_rev_id == NULL_REVISION)
+        or (end_rev_id == NULL_REVISION)):
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError('Logging revision 0 is invalid.')
     if start_revno > end_revno:
         from bzrlib.errors import BzrCommandError
         raise BzrCommandError("Start revision must be older than "
