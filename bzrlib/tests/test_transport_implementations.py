@@ -1151,6 +1151,8 @@ class TransportTests(TestTransportImplementation):
         else:
             port = 1234
         self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+        # No point in trying to reuse a transport for a local URL
+        self.assertIs(None, t._reuse_for('/valid_but_not_existing'))
 
     def test_connection_sharing(self):
         t = self.get_transport()
