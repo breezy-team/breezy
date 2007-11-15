@@ -2482,6 +2482,14 @@ format_registry.register_metadir('dirstate-tags',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('rich-root',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
+    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
