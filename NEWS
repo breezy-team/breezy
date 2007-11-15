@@ -11,6 +11,10 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * Disable detection of plink.exe as possible ssh vendor. Plink vendor
+     still available if user selects it explicitly with BZR_SSH environment
+     variable. (Alexander Belchenko, workaround for bug #107593)
+
   FEATURES:
 
    * New ``authentication.conf`` file holding the password or other credentials
