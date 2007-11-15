@@ -45,6 +45,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
+   * Detect invalid transport reuse attempts by catching invalid URLs.
+     (Vincent Ladeuil, #161819)
+
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
@@ -52,11 +55,14 @@ IN DEVELOPMENT
      retrying an http request or some programming errors may be masked.
      (Vincent Ladeuil, #160012)
 
-   * Don't use timeout in HttpServer anymore.
-     (Vincent Ladeuil, #158972).
+   * Fix multiple connections during checkout --lightweight.
+     (Vincent Ladeuil, #159150)
 
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
+
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
@@ -65,6 +71,14 @@ IN DEVELOPMENT
 
    * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
      properly. (John Arbash Meinel, #162486)
+
+   * Stderr output via logging mechanism now goes through encoded wrapper
+     and no more uses utf-8, but terminal encoding instead. So all unicode
+     strings now should be readable in non-utf-8 terminal.
+     (Alexander Belchenko, #54173)
+
+   * The error message when ``move --after`` should be used makes how to do so
+     clearer. (Daniel Watkins, #85237)
 
    * Unicode-safe output from ``bzr info``. The output will be encoded
      using the terminal encoding and unrepresentable characters will be
@@ -76,12 +90,32 @@ IN DEVELOPMENT
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
 
+   * Fix exception when revisionspec contains merge revisons but log
+     formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
      during very long time. (Alexander Belchenko)
 
+   * The return value of
+     ``VersionedFile.iter_lines_added_or_present_in_versions`` has been
+     changed. Previously it was an iterator of lines, now it is an iterator of
+     (line, version_id) tuples. This change has been made to aid reconcile and
+     fetch operations. (Robert Collins)
+
   INTERNALS:
+
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
+
+   * New module ``lru_cache`` providing a cache for use by tasks that need
+     semi-random access to large amounts of data. (John A Meinel)
 
   TESTING:
 

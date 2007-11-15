@@ -1061,7 +1061,7 @@ class Repository(object):
 
         This performs the translation of xml lines to revision ids.
 
-        :param line_iterator: An iterator of lines
+        :param line_iterator: An iterator of lines, origin_version_id
         :param revision_ids: The revision ids to filter for. This should be a
             set or other type which supports efficient __contains__ lookups, as
             the revision id from each parsed line will be looked up in the
@@ -1091,7 +1091,7 @@ class Repository(object):
         search = self._file_ids_altered_regex.search
         unescape = _unescape_xml
         setdefault = result.setdefault
-        for line in line_iterator:
+        for line, version_id in line_iterator:
             match = search(line)
             if match is None:
                 continue
@@ -1115,6 +1115,8 @@ class Repository(object):
                 unescape_revid_cache[revision_id] = unescaped
                 revision_id = unescaped
 
+            # once data is all ensured-consistent; then this is
+            # if revision_id == version_id
             if revision_id in revision_ids:
                 try:
                     file_id = unescape_fileid_cache[file_id]
