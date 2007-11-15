@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Custom revision specifier for Subversion."""
 
-from bzrlib.errors import BzrError, InvalidRevisionSpec
+from bzrlib.errors import BzrError, InvalidRevisionSpec, NoSuchRevision
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 
 class RevisionSpec_svn(RevisionSpec):
@@ -39,6 +39,8 @@ class RevisionSpec_svn(RevisionSpec):
         try:
             return RevisionInfo.from_revision_id(branch, branch.generate_revision_id(int(self.spec[loc+1:])), branch.revision_history())
         except ValueError:
+            raise InvalidRevisionSpec(self.user_spec, branch)
+        except NoSuchRevision:
             raise InvalidRevisionSpec(self.user_spec, branch)
 
     def needs_branch(self):

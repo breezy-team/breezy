@@ -65,6 +65,18 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
 
         self.assertRaises(InvalidRevisionSpec, revspec._match_on, branch, None)
 
+    def test_oor_revnum(self):
+        """Out-of-range revnum."""
+        revspec = RevisionSpec.from_string("svn:24")
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({"dc/bar": "bar"})
+        self.client_add("dc/bar")
+        self.client_commit("dc", "msg2")
+
+        branch = Branch.open(repos_url)
+
+        self.assertRaises(InvalidRevisionSpec, revspec._match_on, branch, None)
+
     def test_non_svn_branch(self):
         revspec = RevisionSpec.from_string("svn:0")
         branch = BzrDir.create_standalone_workingtree("a").branch
