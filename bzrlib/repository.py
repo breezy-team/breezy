@@ -1241,12 +1241,21 @@ class Repository(object):
         # All revisions, to find inventory parents.
         revision_graph = self.get_revision_graph_with_ghosts()
         ancestors = revision_graph.get_ancestors()
+        text_key_references = self.find_text_key_references()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_generate_text_key_index(ancestors,
+                text_key_references, pb)
+        finally:
+            pb.finished()
+
+    def _do_generate_text_key_index(self, ancestors, text_key_references, pb):
+        """Helper for _generate_text_key_index to avoid deep nesting."""
         revision_order = tsort.topo_sort(ancestors)
         invalid_keys = set()
         revision_keys = {}
         for revision_id in revision_order:
             revision_keys[revision_id] = set()
-        text_key_references = self.find_text_key_references()
         text_count = len(text_key_references)
         # a cache of the text keys to allow reuse; costs a dict of all the
         # keys, but saves a 2-tuple for every child of a given key.
@@ -1267,7 +1276,6 @@ class Repository(object):
         # could gauge this by looking at available real memory etc, but this is
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
-        pb = ui.ui_factory.nested_progress_bar()
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
