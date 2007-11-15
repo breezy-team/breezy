@@ -1649,8 +1649,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def get_versioned_file_checker(self, revisions, revision_versions_cache):
-        return VersionedFileChecker(revisions, revision_versions_cache, self)
+    def get_versioned_file_checker(self):
+        """Return an object suitable for checking versioned files."""
+        return VersionedFileChecker(self)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2875,9 +2876,7 @@ class _RevisionTextVersionCache(object):
 
 class VersionedFileChecker(object):
 
-    def __init__(self, planned_revisions, revision_versions, repository):
-        self.planned_revisions = planned_revisions
-        self.revision_versions = revision_versions
+    def __init__(self, repository):
         self.repository = repository
     
     def calculate_file_version_parents(self, revision_id, file_id):
@@ -2905,7 +2904,8 @@ class VersionedFileChecker(object):
                 new_parents.append(parent)
         return tuple(new_parents)
 
-    def check_file_version_parents(self, weave, file_id):
+    def check_file_version_parents(self, weave, file_id, planned_revisions,
+        revision_versions):
         """Check the parents stored in a versioned file are correct.
 
         It also detects file versions that are not referenced by their
@@ -2918,6 +2918,9 @@ class VersionedFileChecker(object):
             revision_id) tuples for versions that are present in this versioned
             file, but not used by the corresponding inventory.
         """
+        # store the current task in instance variables.
+        self.planned_revisions = planned_revisions
+        self.revision_versions = revision_versions
         wrong_parents = {}
         dangling_file_versions = set()
         for num, revision_id in enumerate(self.planned_revisions):
