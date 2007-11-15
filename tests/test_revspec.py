@@ -18,7 +18,8 @@ Tests for revision specificiers.
 """
 
 from bzrlib.branch import Branch
-from bzrlib.errors import InvalidRevisionSpec
+from bzrlib.bzrdir import BzrDir
+from bzrlib.errors import BzrError, InvalidRevisionSpec
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.tests import TestCase
 
@@ -63,3 +64,8 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
 
         self.assertRaises(InvalidRevisionSpec, revspec._match_on, branch, None)
+
+    def test_non_svn_branch(self):
+        revspec = RevisionSpec.from_string("svn:0")
+        branch = BzrDir.create_standalone_workingtree("a").branch
+        self.assertRaises(BzrError, revspec._match_on, branch, None)

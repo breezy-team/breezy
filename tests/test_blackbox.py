@@ -210,3 +210,11 @@ Node-copyfrom-path: x
         self.check_output(
                 "Repository branch (format: subversion)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n  parent branch: a\n", 'info a')
 
+    def test_lightweight_checkout_lightweight_checkout(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
+        self.client_add("dc/foo")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "Msg")
+        self.run_bzr("checkout --lightweight dc de")
+

@@ -299,6 +299,34 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                           ("tags/brancha", 2, True)], 
                 list(repos.find_branches(TrunkBranchingScheme(), 2)))
 
+    def test_find_branches_file_moved_from_nobranch(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/tmp/trunk': None,
+            'dc/bla/somefile': "contents"})
+        self.client_add("dc/tmp")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/bla", "dc/tmp/branches")
+        self.client_delete("dc/tmp/branches/somefile")
+        self.client_commit("dc", "My Message 2")
+
+        Repository.open(repos_url).find_branches(TrunkBranchingScheme(2))
+
+    def test_find_branches_deleted_from_nobranch(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/tmp/trunk': None,
+            'dc/bla/somefile': "contents"})
+        self.client_add("dc/tmp")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/bla", "dc/tmp/branches")
+        self.client_delete("dc/tmp/branches/somefile")
+        self.client_commit("dc", "My Message 2")
+
+        Repository.open(repos_url).find_branches(TrunkBranchingScheme(1))
+
     def test_find_branches_moved_nobranch(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({

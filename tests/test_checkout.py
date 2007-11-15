@@ -16,6 +16,7 @@
 
 """Checkout tests."""
 
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, UninitializableFormat
 from bzrlib.tests import TestCase
@@ -79,3 +80,9 @@ class TestCheckout(TestCaseWithSubversionRepository):
         x = self.open_checkout_bzrdir("dc")
         self.assertFalse(x.needs_format_conversion(SvnWorkingTreeDirFormat()))
         
+    def test_checkout_checkout(self):
+        """Test making a checkout of a checkout."""
+        self.make_client("d", "dc")
+        x = Branch.open("dc")
+        x.create_checkout("de", lightweight=True)
+

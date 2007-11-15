@@ -85,9 +85,10 @@ def needs_busy(unbound):
     """
     def convert(self, *args, **kwargs):
         self._mark_busy()
-        ret = unbound(self, *args, **kwargs)
-        self._unmark_busy()
-        return ret
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self._unmark_busy()
 
     convert.__doc__ = unbound.__doc__
     convert.__name__ = unbound.__name__

@@ -132,8 +132,7 @@ Features held back by Subversion:
   information in Subversion, something which the Subversion folks are working 
   on at the moment (see https://svn.collab.net/repos/svn/branches/merge-tracking).
 
-  Might require cherry-picking support in Bazaar (or at least the ability 
-  to know about cherry picks). 
+  Requires tracking cherry-picking support in Bazaar:
    
   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 

@@ -772,12 +772,15 @@ class SvnRepository(Repository):
             for (branch, revno, _) in self.find_branches(scheme, last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
-                for line in self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
-                    try:
-                        revids.append(parse_revid_property(line))
-                    except errors.InvalidPropertyValue, ie:
-                        mutter(str(ie))
+                try:
+                    for line in self.branchprop_list.get_property(branch, revno, 
+                            SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
+                        try:
+                            revids.append(parse_revid_property(line))
+                        except errors.InvalidPropertyValue, ie:
+                            mutter(str(ie))
+                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                    continue
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them
@@ -1053,7 +1056,7 @@ class SvnRepository(Repository):
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
                     if scheme.is_branch(p) or scheme.is_tag(p):
-                        if paths[p][0] in ('R', 'D'):
+                        if paths[p][0] in ('R', 'D') and p in created_branches:
                             del created_branches[p]
                             j = self._log.find_latest_change(p, i-1, 
                                 include_parents=True, include_children=True)
@@ -1066,7 +1069,7 @@ class SvnRepository(Repository):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
-                                if c.startswith(p+"/"):
+                                if c.startswith(p+"/") and c in created_branches:
                                     del created_branches[c] 
                                     j = self._log.find_latest_change(c, i-1, 
                                             include_parents=True, 
@@ -1076,13 +1079,16 @@ class SvnRepository(Repository):
                             parents = [p]
                             while parents:
                                 p = parents.pop()
-                                for c in self.transport.get_dir(p, i)[0].keys():
-                                    n = p+"/"+c
-                                    if scheme.is_branch(n) or scheme.is_tag(n):
-                                        created_branches[n] = i
-                                    elif (scheme.is_branch_parent(n) or 
-                                          scheme.is_tag_parent(n)):
-                                        parents.append(n)
+                                try:
+                                    for c in self.transport.get_dir(p, i)[0].keys():
+                                        n = p+"/"+c
+                                        if scheme.is_branch(n) or scheme.is_tag(n):
+                                            created_branches[n] = i
+                                        elif (scheme.is_branch_parent(n) or 
+                                              scheme.is_tag_parent(n)):
+                                            parents.append(n)
+                                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                                    pass
         finally:
             pb.finished()
 
