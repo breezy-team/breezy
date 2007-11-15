@@ -39,6 +39,7 @@ from bzrlib import (
     revision as _mod_revision,
     symbol_versioning,
     transactions,
+    tsort,
     ui,
     )
 from bzrlib.bundle import serializer
@@ -1226,6 +1227,91 @@ class Repository(object):
             except errors.NoSuchFile:
                 raise errors.NoSuchIdInRepository(self, file_id)
             yield callable_data, weave.get_lines(revision_id)
+
+    def _generate_text_key_index(self):
+        """Generate a new text key index for the repository.
+
+        This is an expensive function that will take considerable time to run.
+
+        :return: A dict mapping text keys ((file_id, revision_id) tuples) to a
+            list of parents, also text keys. When a given key has no parents,
+            the parents list will be [NULL_REVISION].
+        """
+        # All revisions, to find inventory parents.
+        revision_graph = self.get_revision_graph_with_ghosts()
+        ancestors = revision_graph.get_ancestors()
+        revision_order = tsort.topo_sort(ancestors)
+        invalid_keys = set()
+        revision_keys = {}
+        for revision_id in revision_order:
+            revision_keys[revision_id] = set()
+        text_key_references = self.find_text_key_references()
+        text_count = len(text_key_references)
+        # a cache of the text keys to allow reuse; costs a dict of all the
+        # keys, but saves a 2-tuple for every child of a given key.
+        text_key_cache = {}
+        for text_key, valid in text_key_references.iteritems():
+            if not valid:
+                invalid_keys.add(text_key)
+            else:
+                revision_keys[text_key[1]].add(text_key)
+            text_key_cache[text_key] = text_key
+        del text_key_references
+        text_index = {}
+        text_graph = graph.Graph(graph.DictParentsProvider(text_index))
+        NULL_REVISION = _mod_revision.NULL_REVISION
+        pb = ui.ui_factory.nested_progress_bar()
+        batch_size = 10 # should be ~150MB on a 55K path tree
+        batch_count = len(revision_order) / batch_size + 1
+        processed_texts = 0
+        pb.update("Calculating text parents.", processed_texts, text_count)
+        for offset in xrange(batch_count):
+            to_query = revision_order[offset * batch_size:(offset + 1) *
+                batch_size]
+            if not to_query:
+                break
+            for rev_tree in self.revision_trees(to_query):
+                revision_id = rev_tree.get_revision_id()
+                parent_ids = ancestors[revision_id]
+                for text_key in revision_keys[revision_id]:
+                    pb.update("Calculating text parents.", processed_texts)
+                    processed_texts += 1
+                    candidate_parents = []
+                    for parent_id in parent_ids:
+                        parent_text_key = (text_key[0], parent_id)
+                        try:
+                            check_parent = parent_text_key not in \
+                                revision_keys[parent_id]
+                        except KeyError:
+                            # the parent parent_id is a ghost:
+                            check_parent = False
+                            # truncate the derived graph against this ghost.
+                            parent_text_key = None
+                        if check_parent:
+                            # look at the parent commit details inventories to
+                            # determine possible candidates in the per file graph.
+                            # TODO: cache here.
+                            parent_inv = self.revision_tree(parent_id).inventory
+                            parent_entry = parent_inv._byid.get(
+                                text_key[0], None)
+                            if parent_entry is not None:
+                                parent_text_key = (
+                                    text_key[0], parent_entry.revision)
+                            else:
+                                parent_text_key = None
+                        if parent_text_key is not None:
+                            candidate_parents.append(
+                                text_key_cache[parent_text_key])
+                    parent_heads = text_graph.heads(candidate_parents)
+                    new_parents = list(parent_heads)
+                    new_parents.sort(key=lambda x:candidate_parents.index(x))
+                    if new_parents == []:
+                        new_parents = [NULL_REVISION]
+                    text_index[text_key] = new_parents
+
+        for text_key in invalid_keys:
+            text_index[text_key] = [NULL_REVISION]
+        return text_index
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         """Get an iterable listing the keys of all the data introduced by a set

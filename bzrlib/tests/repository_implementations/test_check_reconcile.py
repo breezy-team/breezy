@@ -206,3 +206,11 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         self.assertEqual(scenario.repository_text_key_references(),
             repo.find_text_key_references())
+
+    def test__generate_text_key_index(self):
+        """Test that the generated text key index has all entries."""
+        repo, scenario = self.prepare_test_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual(scenario.repository_text_key_index(),
+            repo._generate_text_key_index())

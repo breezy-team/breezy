@@ -27,6 +27,7 @@ rather than in tests/branch_implementations/*.py.
 from bzrlib import (
     repository,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.repofmt import (
     weaverepo,
     )
@@ -143,6 +144,13 @@ class BrokenRepoScenario(object):
     def corrected_fulltexts(self):
         return []
 
+    def repository_text_key_index(self):
+        result = {}
+        if self.versioned_root:
+            result.update(self.versioned_repository_text_keys())
+        result.update(self.repository_text_keys())
+        return result
+
 
 class UndamagedRepositoryScenario(BrokenRepoScenario):
     """A scenario where the repository has no damage.
@@ -176,6 +184,12 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
             result.update({('TREE_ROOT', 'rev1a'): True})
         result.update({('a-file-id', 'rev1a'): True})
         return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'):[NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION]}
 
 
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
@@ -236,6 +250,14 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
                        ('a-file-id', 'rev2'): True})
         return result
 
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'):[NULL_REVISION],
+                ('a-file-id', 'rev2'):[('a-file-id', 'rev1a')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION],
+                ('TREE_ROOT', 'rev2'):[('TREE_ROOT', 'rev1a')]}
+
 
 class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev3' containing 'a-file' modified in
@@ -295,6 +317,14 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
         result.update({('a-file-id', 'rev2'): True,
                        ('a-file-id', 'rev3'): True})
         return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev2'):[NULL_REVISION],
+                ('a-file-id', 'rev3'):[NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev2'):[NULL_REVISION],
+                ('TREE_ROOT', 'rev3'):[NULL_REVISION]}
 
 
 class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
@@ -433,6 +463,24 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
                        ('a-file-id', 'rev5'): True})
         return result
 
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'): [NULL_REVISION],
+                 ('a-file-id', 'rev2c'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev3'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev4'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev5'): [('a-file-id', 'rev2c')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev2'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev2b'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev2c'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev4'):
+                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2b')],
+                ('TREE_ROOT', 'rev5'):
+                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2c')]}
+
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     """
@@ -516,6 +564,20 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
                        ('a-file-id', 'rev4'): True})
         return result
 
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'): [NULL_REVISION],
+                ('a-file-id', 'rev1b'): [NULL_REVISION],
+                ('a-file-id', 'rev2'): [NULL_REVISION],
+                ('a-file-id', 'rev4'): [('a-file-id', 'rev2')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev1b'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev2'):
+                    [('TREE_ROOT', 'rev1a'), ('TREE_ROOT', 'rev1b')],
+                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev2')],
+                ('TREE_ROOT', 'rev4'): [('TREE_ROOT', 'rev3')]}
+
 
 class TooManyParentsScenario(BrokenRepoScenario):
     """A scenario where 'broken-revision' of 'a-file' claims to have parents
@@ -577,6 +639,18 @@ class TooManyParentsScenario(BrokenRepoScenario):
                        ('a-file-id', 'good-parent'): True})
         return result
              
+    def repository_text_keys(self):
+        return {('a-file-id', 'bad-parent'): [NULL_REVISION],
+                ('a-file-id', 'broken-revision'):
+                    [('a-file-id', 'good-parent')],
+                ('a-file-id', 'good-parent'): [('a-file-id', 'bad-parent')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'bad-parent'): [NULL_REVISION],
+                ('TREE_ROOT', 'broken-revision'):
+                    [('TREE_ROOT', 'good-parent')],
+                ('TREE_ROOT', 'good-parent'): [('TREE_ROOT', 'bad-parent')]}
+
 
 class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
     """A scenario where the file parent is the same as the revision parent, but
@@ -646,6 +720,17 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         result.update({('a-file-id', 'basis'): True,
                        ('a-file-id', 'current'): True})
         return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'basis'): [NULL_REVISION],
+                ('a-file-id', 'current'): [('a-file-id', 'basis')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'basis'): ['null:'],
+                ('TREE_ROOT', 'current'):
+                    [('TREE_ROOT', 'modified-something-else')],
+                ('TREE_ROOT', 'modified-something-else'):
+                    [('TREE_ROOT', 'basis')]}
             
 
 class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
@@ -724,6 +809,22 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
                        ('a-file-id', 'parent-1'): True,
                        ('a-file-id', 'parent-2'): True})
         return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'broken-revision-1-2'):
+                    [('a-file-id', 'parent-1'), ('a-file-id', 'parent-2')],
+                ('a-file-id', 'broken-revision-2-1'):
+                    [('a-file-id', 'parent-2'), ('a-file-id', 'parent-1')],
+                ('a-file-id', 'parent-1'): [NULL_REVISION],
+                ('a-file-id', 'parent-2'): [NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'broken-revision-1-2'):
+                    [('TREE_ROOT', 'parent-1'), ('TREE_ROOT', 'parent-2')],
+                ('TREE_ROOT', 'broken-revision-2-1'):
+                    [('TREE_ROOT', 'parent-2'), ('TREE_ROOT', 'parent-1')],
+                ('TREE_ROOT', 'parent-1'): [NULL_REVISION],
+                ('TREE_ROOT', 'parent-2'): [NULL_REVISION]}
                
 
 all_broken_scenario_classes = [
@@ -770,6 +871,7 @@ def test_suite():
         'test_fetch',
         'test_fileid_involved',
         'test_find_text_key_references',
+        'test__generate_text_key_index',
         'test_has_same_location',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
