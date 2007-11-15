@@ -795,6 +795,10 @@ class RemoteRepository(object):
         return self._real_repository.store_revision_signature(
             gpg_strategy, plaintext, revision_id)
 
+    def add_signature(self, revision_id, signature):
+        self._ensure_real()
+        return self._real_repository.add_signature(revision_id, signature)
+
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)

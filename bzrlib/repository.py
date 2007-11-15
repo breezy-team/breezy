@@ -1051,6 +1051,10 @@ class Repository(object):
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         signature = gpg_strategy.sign(plaintext)
+        self.add_signature(revision_id, signature)
+
+    @needs_write_lock
+    def add_signature(self, revision_id, signature):
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
                                                          self.get_transaction())
@@ -1690,8 +1694,7 @@ def _install_revision(repository, rev, revision_tree, signature):
     except errors.RevisionAlreadyPresent:
         pass
     if signature is not None:
-        repository._revision_store.add_revision_signature_text(rev.revision_id,
-            signature, repository.get_transaction())
+        repository.add_signature(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
 
 
