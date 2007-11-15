@@ -1626,11 +1626,17 @@ for _name in [
     __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
 
 
-def install_revision(repository, rev, revision_tree, signature=None):
+def install_revision(repository, rev, revision_tree):
+    """Install all revision data into a repository."""
+    install_revisions(repository, [(rev, revision_tree, None)])
+
+
+def install_revisions(repository, iterable):
     """Install all revision data into a repository."""
     repository.start_write_group()
     try:
-        _install_revision(repository, rev, revision_tree, signature)
+        for revision, revision_tree, signature in iterable:
+            _install_revision(repository, revision, revision_tree, signature)
     except:
         repository.abort_write_group()
         raise
@@ -2527,14 +2533,17 @@ class InterDifferingSerializer(InterKnitRepo):
         """See InterRepository.fetch()."""
         revision_ids = self.target.missing_revision_ids(self.source,
                                                         revision_id)
-        for current_revision_id in revision_ids:
-            revision = self.source.get_revision(current_revision_id)
-            tree = self.source.revision_tree(current_revision_id)
-            try:
-                signature = self.source.get_signature_text(current_revision_id)
-            except errors.NoSuchRevision:
-                signature = None
-            install_revision(self.target, revision, tree, signature)
+        def revisions_iterator():
+            for current_revision_id in revision_ids:
+                revision = self.source.get_revision(current_revision_id)
+                tree = self.source.revision_tree(current_revision_id)
+                try:
+                    signature = self.source.get_signature_text(
+                        current_revision_id)
+                except errors.NoSuchRevision:
+                    signature = None
+                yield revision, tree, signature
+        install_revisions(self.target, revisions_iterator())
         return len(revision_ids), 0
 
 
