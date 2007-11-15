@@ -45,6 +45,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
+   * Detect invalid transport reuse attempts by catching invalid URLs.
+     (Vincent Ladeuil, #161819)
+
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
@@ -52,8 +55,8 @@ IN DEVELOPMENT
      retrying an http request or some programming errors may be masked.
      (Vincent Ladeuil, #160012)
 
-   * Don't use timeout in HttpServer anymore.
-     (Vincent Ladeuil, #158972).
+   * Fix multiple connections during checkout --lightweight.
+     (Vincent Ladeuil, #159150)
 
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
@@ -84,6 +87,12 @@ IN DEVELOPMENT
    * Fix exception when ScopeReplacer is assigned to before any members have
      been retrieved.  (Aaron Bentley)
 
+   * Fix exception when revisionspec contains merge revisons but log
+     formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
@@ -101,6 +110,9 @@ IN DEVELOPMENT
      ``bzrlib.pack``.  These classes provide more convenient APIs for generating
      and parsing containers from streams rather than from files.  (Andrew
      Bennetts)
+
+   * New module ``lru_cache`` providing a cache for use by tasks that need
+     semi-random access to large amounts of data. (John A Meinel)
 
   TESTING:
 

@@ -1133,7 +1133,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
         self.assertEquals(expected_user, user)
         self.assertEquals(expected_password, password)
 
-    def  test_empty_config(self):
+    def test_empty_config(self):
         conf = config.AuthenticationConfig(_file=StringIO())
         self.assertEquals({}, conf._get_config())
         self._got_user_passwd(None, None, conf, 'http', 'foo.net')
