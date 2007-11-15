@@ -99,8 +99,8 @@ class LaunchpadService(object):
 
     def gather_user_credentials(self):
         """Get the password from the user."""
-        config = config.GlobalConfig()
-        self.registrant_email = config.user_email()
+        the_config = config.GlobalConfig()
+        self.registrant_email = the_config.user_email()
         if self.registrant_password is None:
             auth = config.AuthenticationConfig()
             scheme, hostinfo = urlsplit(self.service_url)[:2]
@@ -109,6 +109,7 @@ class LaunchpadService(object):
             # We will reuse http[s] credentials if we can, prompt user
             # otherwise
             self.registrant_password = auth.get_password(scheme, hostinfo,
+                                                         self.registrant_email,
                                                          prompt=prompt)
 
     def send_request(self, method_name, method_params, authenticated):
