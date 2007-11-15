@@ -136,7 +136,7 @@ class SSHVendorManager(object):
         # https://bugs.launchpad.net/bzr/+bug/107593
         # who want plink should explicitly enable it with BZR_SSH environment
         # variable.
-        #for args in (['ssh', '-V'], ['plink', '-V']):
+        #~for args in (['ssh', '-V'], ['plink', '-V']):
         for args in (['ssh', '-V'],):
             version = self._get_ssh_version_string(args)
             vendor = self._get_vendor_by_version_string(version, args)
