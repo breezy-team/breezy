@@ -33,6 +33,7 @@ from bzrlib import (
     lazy_regex,
     lockable_files,
     lockdir,
+    lru_cache,
     osutils,
     registry,
     remote,
@@ -1260,6 +1261,12 @@ class Repository(object):
         text_index = {}
         text_graph = graph.Graph(graph.DictParentsProvider(text_index))
         NULL_REVISION = _mod_revision.NULL_REVISION
+        # Set a cache with a size of 10 - this suffices for bzr.dev but may be
+        # too small for large or very branchy trees. However, for 55K path
+        # trees, it would be easy to use too much memory trivially. Ideally we
+        # could gauge this by looking at available real memory etc, but this is
+        # always a tricky proposition.
+        inventory_cache = lru_cache.LRUCache(10)
         pb = ui.ui_factory.nested_progress_bar()
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
@@ -1291,9 +1298,12 @@ class Repository(object):
                             # look at the parent commit details inventories to
                             # determine possible candidates in the per file graph.
                             # TODO: cache here.
-                            parent_inv = self.revision_tree(parent_id).inventory
-                            parent_entry = parent_inv._byid.get(
-                                text_key[0], None)
+                            try:
+                                inv = inventory_cache[parent_id]
+                            except KeyError:
+                                inv = self.revision_tree(parent_id).inventory
+                                inventory_cache[parent_id] = inv
+                            parent_entry = inv._byid.get(text_key[0], None)
                             if parent_entry is not None:
                                 parent_text_key = (
                                     text_key[0], parent_entry.revision)
