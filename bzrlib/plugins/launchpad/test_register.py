@@ -17,8 +17,15 @@
 import base64
 import os
 from StringIO import StringIO
+import urlparse
 import xmlrpclib
 
+from bzrlib import (
+    config,
+    osutils,
+    tests,
+    ui,
+    )
 from bzrlib.tests import TestCase, TestSkipped
 
 # local import
@@ -130,8 +137,7 @@ class TestBranchRegistration(TestCase):
     def setUp(self):
         super(TestBranchRegistration, self).setUp()
         # make sure we have a reproducible standard environment
-        if 'BZR_LP_XMLRPC_URL' in os.environ:
-            del os.environ['BZR_LP_XMLRPC_URL']
+        self._captureVar('BZR_LP_XMLRPC_URL', None)
 
     def test_register_help(self):
         """register-branch accepts --help"""
@@ -266,3 +272,55 @@ class TestBranchRegistration(TestCase):
                 'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
                 'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
                 'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+
+
+class TestGatherUserCredentials(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestGatherUserCredentials, self).setUp()
+        # make sure we have a reproducible standard environment
+        self._captureVar('BZR_LP_XMLRPC_URL', None)
+
+    def test_gather_user_credentials_has_password(self):
+        service = LaunchpadService()
+        service.registrant_password = 'mypassword'
+        # This should be a basic no-op, since we already have the password
+        service.gather_user_credentials()
+        self.assertEqual('mypassword', service.registrant_password)
+
+    def test_gather_user_credentials_from_auth_conf(self):
+        auth_path = config.authentication_config_filename()
+        service = LaunchpadService()
+        g_conf = config.GlobalConfig()
+        g_conf.set_user_option('email', 'Test User <test@user.com>')
+        f = open(auth_path, 'wb')
+        try:
+            scheme, hostinfo = urlparse.urlsplit(service.service_url)[:2]
+            f.write('[section]\n'
+                    'scheme=%s\n'
+                    'host=%s\n'
+                    'user=test@user.com\n'
+                    'password=testpass\n'
+                    % (scheme, hostinfo))
+        finally:
+            f.close()
+        self.assertIs(None, service.registrant_password)
+        service.gather_user_credentials()
+        self.assertEqual('test@user.com', service.registrant_email)
+        self.assertEqual('testpass', service.registrant_password)
+
+    def test_gather_user_credentials_prompts(self):
+        service = LaunchpadService()
+        self.assertIs(None, service.registrant_password)
+        g_conf = config.GlobalConfig()
+        g_conf.set_user_option('email', 'Test User <test@user.com>')
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='userpass\n',
+                                            stdout=stdout)
+        self.assertIs(None, service.registrant_password)
+        service.gather_user_credentials()
+        self.assertEqual('test@user.com', service.registrant_email)
+        self.assertEqual('userpass', service.registrant_password)
+        self.assertContainsRe(stdout.getvalue(),
+                             'launchpad.net password for test@user\\.com')
+

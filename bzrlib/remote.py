@@ -95,7 +95,7 @@ class RemoteBzrDir(BzrDir):
         self._ensure_real()
         self._real_bzrdir.destroy_branch()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self):
